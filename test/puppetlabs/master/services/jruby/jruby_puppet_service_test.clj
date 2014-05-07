@@ -29,10 +29,9 @@
                      app
                      [jruby-puppet-pooled-service]
                      jruby-service-test-config
-                     (let [got-expected-exception (atom false)
-                           main-thread (future (tk/run-app app))]
+                     (let [got-expected-exception (atom false)]
                        (try
-                         @main-thread
+                         (tk/run-app app)
                          (catch Exception e
                            (let [cause (stacktrace/root-cause e)]
                              (is (= (.getMessage cause) "42"))
