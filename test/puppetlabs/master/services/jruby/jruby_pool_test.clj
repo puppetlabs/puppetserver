@@ -93,13 +93,7 @@
              background."
       (is (= (free-instance-count pool production-pool-desc) 0)))
 
-    (future
-      (try
-        (prime-pools! pool)
-        (catch Throwable t
-          (.printStackTrace t)
-          (throw t))))
-
+    (prime-pools! pool)
 
     (testing "Borrowing all instances from a pool while it is being primed and
              returning them."
@@ -170,15 +164,7 @@
         test-size 2
         config (testutils/jruby-puppet-config-with-prod-test-env prod-size test-size)
         pool (create-pool-context config)]
-
-    (future
-      (try
-
-        (prime-pools! pool)
-        (catch Throwable t
-          (.printStackTrace t)
-          (throw t))))
-
+    (prime-pools! pool)
     (testing "Borrowing all instances from each pool"
       (let [all-prod-instances (drain-pool pool production-pool-desc prod-size)
             all-test-instances (drain-pool pool test-pool-desc       test-size)]
