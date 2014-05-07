@@ -9,7 +9,7 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/jvm-puppet "0.1.2"
+(defproject puppetlabs/jvm-puppet "0.1.3-SNAPSHOT"
   :description "JVM Puppet Master."
 
   :dependencies [[org.clojure/clojure "1.5.1"]
