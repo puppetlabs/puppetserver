@@ -21,9 +21,10 @@
 (defn jruby-puppet-config-with-prod-env
   "Create some settings used for creating a JRubyPuppet pool via
   `create-jruby-pool`."
-  [size]
-  (jruby-puppet-config [{:environment "production"
-                         :size size}]))
+  ([] (jruby-puppet-config-with-prod-env 1))
+  ([size]
+   (jruby-puppet-config [{:environment "production"
+                          :size        size}])))
 
 (defn jruby-puppet-config-with-prod-test-env
   "Create a settings structure which contains a `production` environment of a

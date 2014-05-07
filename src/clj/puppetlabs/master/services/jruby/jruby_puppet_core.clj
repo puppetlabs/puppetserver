@@ -313,3 +313,15 @@
                (str "No pool was found that could be described by "
                     descriptor))))
     (.put (:pool pool-data) instance)))
+
+(schema/defn ^:always-validate
+  extract-default-pool-descriptor :- PoolDescriptor
+  "Extract the default pool descriptor, based on the service configuration.
+  The default pool descriptor is simply the first one that appears in the
+  configuration."
+  [config]
+  {:environment (-> config
+                    (:jruby-pools)
+                    (first)
+                    (:environment)
+                    (keyword))})

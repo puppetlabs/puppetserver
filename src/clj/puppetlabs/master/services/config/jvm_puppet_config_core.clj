@@ -68,10 +68,10 @@
 (schema/defn ^:always-validate
   get-puppet-config :- Config
   "Returns all of the configuration values for jvm-puppet from JRubyPuppet."
-  [jruby-service]
+  [jruby-service pool-descriptor]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet
-    jruby-puppet jruby-service {:environment :production}
+    jruby-puppet jruby-service pool-descriptor
     (get-puppet-config* jruby-puppet)))
 
 (defn init-webserver!

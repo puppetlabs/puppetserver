@@ -2,5 +2,6 @@
 
 (defprotocol RequestHandlerService
   (handle-request
+    [this request]
     [this environment request]
-    "Handles a request from an agent using the given environment."))
+    "Handles a request from an agent."))

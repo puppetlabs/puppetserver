@@ -10,7 +10,7 @@
 (tk/defservice jvm-puppet-config-service
                JvmPuppetConfigService
                [[:ConfigService get-config get-in-config]
-                JRubyPuppetService
+                [:JRubyPuppetService get-default-pool-descriptor]
                 [:WebserverService override-webserver-settings!]]
 
                (init
@@ -19,7 +19,10 @@
                    (core/validate-tk-config! tk-config))
 
                  (let [jruby-service (get-service :JRubyPuppetService)
-                       puppet-config (core/get-puppet-config jruby-service)]
+                       pool-descriptor (get-default-pool-descriptor)
+                       puppet-config (core/get-puppet-config
+                                       jruby-service
+                                       pool-descriptor)]
                    (core/init-webserver! override-webserver-settings!
                                          puppet-config)
                    (assoc context :puppet-config

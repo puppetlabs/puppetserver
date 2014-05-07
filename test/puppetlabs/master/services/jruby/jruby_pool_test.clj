@@ -127,6 +127,11 @@
         (is (= (free-instance-count pool production-pool-desc) (dec pool-size)))
         (return-to-pool pool production-pool-desc jruby-instance)))))
 
+(deftest test-default-pool
+  (let [config (testutils/jruby-puppet-config-with-prod-env)]
+    (is (= (extract-default-pool-descriptor config)
+           {:environment :production}))))
+
 (deftest prime-pools-failure
   (let [pool-size 2
         config    (testutils/jruby-puppet-config-with-prod-env pool-size)
