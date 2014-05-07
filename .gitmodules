@@ -1,0 +1,6 @@
+[submodule "ruby/puppet"]
+	path = ruby/puppet
+	url = git@github.com:puppetlabs/puppet.git
+[submodule "ruby/facter"]
+	path = ruby/facter
+	url = git@github.com:puppetlabs/facter.git
