@@ -7,11 +7,16 @@
            (clojure.lang Atom))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [puppetlabs.kitchensink.core :as ks]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
+
+(def default-pool-size
+  "The default size of each JRuby pool."
+  (+ 2 (ks/num-cpus)))
 
 (def illegal-env-names
   "These environment names are not allowed by Puppet."
@@ -50,7 +55,7 @@
 
 (def PoolDefinition
   {:environment schema/Str
-   :size schema/Int})
+   (schema/optional-key :size) schema/Int})
 
 (def PoolConfig
   "Schema defining the config map for the JRubyPuppet pooling functions.
@@ -194,10 +199,11 @@
   create-pool-from-config :- PoolData
   "Create a new PoolData based on the config input."
   [{:keys [environment size]} :- PoolDefinition]
-  {:environment     (keyword environment)
-   :pool            (instantiate-free-pool size)
-   :size            size
-   :initialized?    false})
+  (let [size (or size default-pool-size)]
+    {:environment  (keyword environment)
+     :pool         (instantiate-free-pool size)
+     :size         size
+     :initialized? false}))
 
 (schema/defn ^:always-validate
   add-pool-from-config :- PoolsMap

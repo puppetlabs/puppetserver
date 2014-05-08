@@ -18,6 +18,9 @@
    :master-conf-dir "./test-resources/config/master/conf"
    :jruby-pools     pools-list})
 
+(def default-config-no-size
+  (jruby-puppet-config [{:environment "production"}]))
+
 (defn jruby-puppet-config-with-prod-env
   "Create some settings used for creating a JRubyPuppet pool via
   `create-jruby-pool`."
