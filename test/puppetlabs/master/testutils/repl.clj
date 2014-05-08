@@ -30,10 +30,14 @@
                          :webserver {:client-auth "want"
                                      :ssl-host    "localhost"
                                      :ssl-port    8140}})]
-              (tka/init app)))))
+              (tka/init app))))
+  (alter-var-root #'system tka/init)
+  (tka/check-for-errors! system))
 
 (defn start []
-  (alter-var-root #'system tka/start))
+  (alter-var-root #'system
+                  (fn [s] (if s (tka/start s))))
+  (tka/check-for-errors! system))
 
 (defn stop []
   (alter-var-root #'system
