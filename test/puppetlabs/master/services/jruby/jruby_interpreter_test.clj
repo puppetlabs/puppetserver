@@ -7,31 +7,29 @@
                                                                 :as core]))
 
 (deftest create-jruby-instance-test
-  (let [config (testutils/jruby-puppet-config-with-prod-env 1)]
-    (testing "Var dir is optional"
-      (is (not (nil? (create-jruby-instance config))))))
 
-  (let [temp-dir (ks/temp-dir)
-        config   (assoc
-                     (testutils/jruby-puppet-config-with-prod-env 1)
-                   :master-var-dir temp-dir)]
-    (testing "Omitting load-path results in an Exception."
-      (is (thrown-with-msg? Exception
-                            #"JRuby service missing config value 'load-path'"
-                            (create-jruby-instance (dissoc config :load-path)))))
+  (testing "Var dir is not required."
+    (let [config  { :load-path       testutils/load-path
+                    :master-conf-dir testutils/conf-dir }
+          jruby   (create-jruby-instance config)
+          var-dir (.getSetting jruby "vardir")]
+      (is (not (nil? var-dir)))))
 
-    (testing "Settings from Ruby Puppet are available"
-      (let [jruby-puppet (testutils/create-jruby-instance config)]
-        (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
-        (is (= 8140 (.getSetting jruby-puppet "masterport")))
-        (is (= false (.getSetting jruby-puppet "onetime")))
-        (is (= (fs/absolute-path temp-dir)
-               (.getSetting jruby-puppet "vardir")))
+  (testing "Settings from Ruby Puppet are available"
+    (let [temp-dir      (ks/temp-dir)
+          config        (assoc (testutils/jruby-puppet-config-with-prod-env)
+                          :master-var-dir temp-dir)
+          jruby-puppet  (testutils/create-jruby-instance config)]
+      (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
+      (is (= 8140 (.getSetting jruby-puppet "masterport")))
+      (is (= false (.getSetting jruby-puppet "onetime")))
+      (is (= (fs/absolute-path temp-dir)
+             (.getSetting jruby-puppet "vardir")))
 
-        (is (= (-> (:master-conf-dir config)
-                   fs/normalized-path
-                   fs/absolute-path )
-               (.getSetting jruby-puppet "confdir")))))))
+      (is (= (-> (:master-conf-dir config)
+                 fs/normalized-path
+                 fs/absolute-path)
+             (.getSetting jruby-puppet "confdir"))))))
 
 (deftest jruby-env-vars
   (testing "the environment used by the JRuby interpreters"
