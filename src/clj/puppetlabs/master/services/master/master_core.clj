@@ -34,8 +34,7 @@
     (compojure/context "/v2.0" request
                        (request-handler request))
     (compojure/context "/:environment" [environment]
-                       (legacy-routes request-handler environment))
-    (route/not-found "Not Found")))
+                       (legacy-routes request-handler environment))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
