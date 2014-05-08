@@ -180,5 +180,10 @@
           (fill-drained-pool pool test-pool-desc all-test-instances)
           (is (= (free-instance-count pool test-pool-desc) test-size)))))))
 
-
+(deftest test-default-pool-size
+  (let [config testutils/default-config-no-size
+        pool (create-pool-context config)
+        data (core/get-pool-data-by-descriptor
+               pool {:environment :production})]
+    (= core/default-pool-size (:size data))))
 
