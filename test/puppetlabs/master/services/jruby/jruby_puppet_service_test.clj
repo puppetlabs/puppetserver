@@ -25,20 +25,22 @@
     (logging/with-test-logging
       (with-redefs [jruby-puppet-core/create-jruby-instance
                     (fn [_] (throw (Exception. "42")))]
-                   (bootstrap/with-app-with-config
-                     app
-                     [jruby-puppet-pooled-service]
-                     jruby-service-test-config
-                     (let [got-expected-exception (atom false)]
-                       (try
-                         (tk/run-app app)
-                         (catch Exception e
-                           (let [cause (stacktrace/root-cause e)]
-                             (is (= (.getMessage cause) "42"))
-                             (reset! got-expected-exception true))))
-                       (is (true? @got-expected-exception))
-                       (is (logged? #"^shutdown-on-error triggered because of exception!"
-                                    :error))))))))
+                   (let [got-expected-exception (atom false)]
+                     (try
+                       (bootstrap/with-app-with-config
+                         app
+                         [jruby-puppet-pooled-service]
+                         jruby-service-test-config
+                         (tk/run-app app))
+                       (catch Exception e
+                         (let [cause (stacktrace/root-cause e)]
+                           (is (= (.getMessage cause) "42"))
+                           (reset! got-expected-exception true))))
+                     (is (true? @got-expected-exception)
+                                "Did not get expected exception."))
+                   (is (logged?
+                         #"^shutdown-on-error triggered because of exception!"
+                                :error))))))
 
 (deftest test-pool-size
   (testing "The pool is created and the size is correctly reported"
