@@ -199,8 +199,7 @@
   create-pool-from-config :- PoolData
   "Create a new PoolData based on the config input."
   [{:keys [environment size]} :- PoolDefinition]
-  (let [size (if size size
-                      default-pool-size)]
+  (let [size (or size default-pool-size)]
     {:environment  (keyword environment)
      :pool         (instantiate-free-pool size)
      :size         size
