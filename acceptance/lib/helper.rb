@@ -15,7 +15,7 @@ def initialize_ssl
   end
 
   step "Master: Start Puppet Master"
-    with_puppet_running_on(master, :main => { :dns_alt_names => "puppet,#{hostname},#{fqdn}", :verbose => true, :daemonize => true }) do
+    with_puppet_running_on(master, "main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
       hosts.each do |host|
         next if host['roles'].include? 'master'
