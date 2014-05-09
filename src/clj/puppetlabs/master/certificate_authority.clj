@@ -3,6 +3,7 @@
             [java.security PrivateKey]
             [org.joda.time DateTime Period])
   (:require [me.raynes.fs :as fs]
+            [schema.core :as schema]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
@@ -12,21 +13,25 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
+; TODO delete this function
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `ssl-dir`."
   [ssl-dir subject]
   (str ssl-dir "/certs/" subject ".pem"))
 
+; TODO delete this function
 (defn path-to-cert-request
   "Return a path to the `subject`s certificate request file under the `ssl-dir`."
   [ssl-dir subject]
   (str ssl-dir "/ca/requests/" subject ".pem"))
 
+; TODO delete this function
 (defn path-to-ca-private-key
   "Return a path to the CA private key under the `ssl-dir`."
   [ssl-dir]
   (str ssl-dir "/ca/ca_key.pem"))
 
+; TODO delete this function
 (defn path-to-crl
   "Given the master's SSL directory, return a path to the CRL file."
   [ssl-dir]
@@ -47,22 +52,6 @@
 (defn next-serial-number
   []
   (swap! serial-number inc))
-
-(defn master-file-paths
-  "Return file paths to all of the master's SSL files."
-  [ssl-dir master-certname]
-  {:public-key  (str ssl-dir "/public_keys/" master-certname ".pem")
-   :private-key (str ssl-dir "/private_keys/" master-certname ".pem")
-   :cert        (path-to-cert ssl-dir master-certname)})
-
-(defn ca-file-paths
-  "Return file paths to all of the CA's SSL files."
-  [ssl-dir]
-  {:public-key    (str ssl-dir "/ca/ca_pub.pem")
-   :private-key   (path-to-ca-private-key ssl-dir)
-   :cert-in-ca    (str ssl-dir "/ca/ca_crt.pem")
-   :cert-in-certs (path-to-cert ssl-dir "ca")
-   :crl           (path-to-crl ssl-dir)})
 
 (defn files-exist?
   "Predicate to test whether all of the files exist on disk.
@@ -137,8 +126,24 @@
         (utils/obj->pem! (:cert master-file-paths)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def CaFilePaths
+  {:public-key    String
+   :private-key   String
+   :cert-in-ca    String
+   :cert-in-certs String
+   :crl           String})
+
+(def MasterFilePaths
+  {:public-key    String
+   :private-key   String
+   :cert          String})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+; TODO - https://tickets.puppetlabs.com/browse/PE-4033
 (defn get-certificate
   "Given a subject name and paths to the SSL directory and CA certificate,
   return the subject's certificate as a string, or nil if not found.
@@ -154,6 +159,7 @@
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
+; TODO - https://tickets.puppetlabs.com/browse/PE-4033
 (defn get-certificate-request
   "Given a subject name, return their certificate request as a string, or nil if not found.
   Looks for certificate requests in `ssl-dir/ca/requests`."
@@ -165,6 +171,7 @@
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
+; TODO - https://tickets.puppetlabs.com/browse/PE-4032
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and path to the SSL directory,
   auto-sign the request and write the certificate to disk. Return the certificate
@@ -177,6 +184,7 @@
                             utils/pem->objs
                             first)
         ca-private-key  (-> ssl-dir
+                            ; TODO - caller should just pass this in
                             path-to-ca-private-key
                             utils/pem->private-key)
         ca-x500-name    (utils/generate-x500-name ca-name)
@@ -191,6 +199,7 @@
     (utils/obj->pem! signed-cert cert-path))
   (calculate-certificate-expiration))
 
+; TODO - https://tickets.puppetlabs.com/browse/PE-4031
 (defn get-certificate-revocation-list
   "Given the master's SSL directory, return the CRL from the .pem file on disk."
   [ssl-dir]
@@ -198,32 +207,36 @@
    :post [(string? %)]}
   (slurp (path-to-crl ssl-dir)))
 
-(defn initialize!
-  "Given the SSL directory, the master's certname, and the CA's name,
-  prepare all necessary SSL files for the master and CA.
+(schema/defn ^:always-validate
+  initialize!
+  "Given the CA file paths, master file paths, the master's certname,
+  and the CA's name, prepare all necessary SSL files for the master and CA.
   If all of the necessary SSL files exist, new ones will not be generated."
-  ([ssl-dir master-certname ca-name]
-    (initialize! ssl-dir master-certname ca-name utils/default-key-length))
-  ([ssl-dir master-certname ca-name keylength]
-    {:pre  [(instance? File ssl-dir)
-            (string? master-certname)
-            (string? ca-name)
-            (integer? keylength)]
-     :post [(nil? %)]}
-    (let [ca-file-paths     (ca-file-paths ssl-dir)
-          master-file-paths (master-file-paths ssl-dir master-certname)]
-      (if (files-exist? ca-file-paths)
-        (log/info "CA already initialized for SSL")
-        (create-ca-files! ca-file-paths ca-name keylength))
-      (if (files-exist? master-file-paths)
-        (log/info "Master already initialized for SSL")
-        (create-master-files! master-file-paths
-                              master-certname
-                              ca-name
-                              keylength
-                              (-> ssl-dir
-                                  path-to-ca-private-key
-                                  utils/pem->private-key))))))
+
+  ([ca-file-paths master-file-paths master-certname ca-name]
+    (initialize! ca-file-paths
+                 master-file-paths
+                 master-certname
+                 ca-name
+                 utils/default-key-length))
+
+  ([ca-file-paths     :- CaFilePaths
+    master-file-paths :- MasterFilePaths
+    master-certname   :- String
+    ca-name           :- String
+    keylength         :- schema/Int]
+    (if (files-exist? ca-file-paths)
+      (log/info "CA already initialized for SSL")
+      (create-ca-files! ca-file-paths ca-name keylength))
+    (if (files-exist? master-file-paths)
+      (log/info "Master already initialized for SSL")
+      (create-master-files! master-file-paths
+                            master-certname
+                            ca-name
+                            keylength
+                            (-> ca-file-paths
+                                (:private-key)
+                                utils/pem->private-key)))))
 
 (defn ca-name
   [master-certname]

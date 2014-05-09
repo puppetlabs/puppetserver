@@ -17,7 +17,7 @@
   [jvm-puppet-config-service jruby-puppet-pooled-service jetty9-service])
 
 (def required-config
-  {:jruby-puppet  (jruby-testutils/jruby-puppet-config-with-prod-env 1)
+  {:jruby-puppet  (jruby-testutils/jruby-puppet-config-with-prod-env)
    :webserver     {:port 8081}})
 
 (deftest config-service-functions
@@ -59,25 +59,18 @@
                                   "default value, should not be returned")))))))))
 
 (deftest config-key-conflicts
-  (testing
-      "providing a config value that should be read from puppet results in an exception"
+  (testing (str
+             "Providing config values that should be read from Puppet results "
+             "in an error that mentions all offending config keys.")
     (with-redefs
       [jruby-puppet-core/create-jruby-instance
          jruby-testutils/create-mock-jruby-instance]
       (with-test-logging
         (is (thrown-with-msg?
               Exception
-              #".*configuration.*conflict.*ssldir"
+              #".*configuration.*conflict.*cacrl.*cacert"
               (tk-testutils/with-app-with-config
-                app service-and-deps (assoc required-config :ssldir "foo")
-                ; do nothing - bootstrap should throw the exception
-                )))
-
-        (is (thrown-with-msg?
-              Exception
-              #".*configuration.*conflict.*ssldir.*cacert"
-              (tk-testutils/with-app-with-config
-                app service-and-deps (assoc required-config :ssldir "bogus"
+                app service-and-deps (assoc required-config :cacrl "bogus"
                                                             :cacert "meow")
                 ; do nothing - bootstrap should throw the exception
                 )))))))

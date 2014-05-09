@@ -31,7 +31,7 @@
   (testing "validating a data structure with a missing key"
     (let [config-with-missing-key (dissoc
                                     (zipmap puppet-config-keys (repeat 'anything))
-                                    :ssldir)]
+                                    :cacert)]
       (is (not (nil? (schema/check Config config-with-missing-key))))))
 
   (testing "validating a map with a nil value"

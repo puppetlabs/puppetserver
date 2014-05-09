@@ -68,23 +68,24 @@
 
 ;; TODO verify contents of each created file (PE-3238)
 (deftest initialize!-test
-  (let [tmp-ssl-dir     (fs/file "./test-resources/tmp-ssl")
-        master-certname "master-foo"
-        expected-files  (for [f ["ca/ca_crl.pem"
-                                 "ca/ca_crt.pem"
-                                 "ca/ca_key.pem"
-                                 "ca/ca_pub.pem"
-                                 "certs/ca.pem"
-                                 (str "certs/" master-certname ".pem")
-                                 (str "private_keys/" master-certname ".pem")
-                                 (str "public_keys/" master-certname ".pem")]]
-                          (str tmp-ssl-dir "/" f))]
+  (let [tmp-ssl-dir       (fs/file "./test-resources/tmp-ssl")
+        master-certname   "master-foo"
+        ca-file-paths     {:public-key    (str tmp-ssl-dir "/capub")
+                           :private-key   (str tmp-ssl-dir "/cakey")
+                           :cert-in-ca    (str tmp-ssl-dir "/cacert")
+                           :cert-in-certs (str tmp-ssl-dir "/cadir")
+                           :crl           (str tmp-ssl-dir "/cacrl")}
+        master-file-paths {:public-key    (str tmp-ssl-dir "/hostpubkey")
+                           :private-key   (str tmp-ssl-dir "/hostprivkey")
+                           :cert          (str tmp-ssl-dir "/hostcert")}
+        expected-files    (concat (vals ca-file-paths)
+                                  (vals master-file-paths))]
 
     (testing "Keylength can be configured"
       (try
-        (initialize! tmp-ssl-dir master-certname "test ca" 512)
-        (is (= 512 (-> tmp-ssl-dir
-                       path-to-ca-private-key
+        (initialize! ca-file-paths master-file-paths master-certname "test ca" 512)
+        (is (= 512 (-> ca-file-paths
+                       :private-key
                        utils/pem->private-key
                        .getModulus
                        .bitLength)))
@@ -93,10 +94,10 @@
 
       (testing "but has a default value"
         (try
-          (initialize! tmp-ssl-dir master-certname "test ca")
+          (initialize! ca-file-paths master-file-paths master-certname "test ca")
           (is (= utils/default-key-length
-                 (-> tmp-ssl-dir
-                     path-to-ca-private-key
+                 (-> ca-file-paths
+                     :private-key
                      utils/pem->private-key
                      .getModulus
                      .bitLength)))
@@ -105,7 +106,7 @@
 
     (testing "Generated SSL file"
       (try
-        (initialize! tmp-ssl-dir master-certname "test ca" 512)
+        (initialize! ca-file-paths master-file-paths master-certname "test ca" 512)
         (doseq [file expected-files]
           (testing file
             (is (fs/exists? file))))
@@ -118,7 +119,7 @@
         (create-parent-directories! expected-files)
         (doseq [file expected-files]
           (spit file "content that should be unused"))
-        (initialize! tmp-ssl-dir master-certname "test ca")
+        (initialize! ca-file-paths master-file-paths master-certname "test ca")
         (doseq [file expected-files]
           (is (= "content that should be unused" (slurp file))
               "Existing file was replaced"))
