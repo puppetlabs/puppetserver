@@ -70,14 +70,14 @@
 (deftest initialize!-test
   (let [tmp-ssl-dir       (fs/file "./test-resources/tmp-ssl")
         master-certname   "master-foo"
-        ca-file-paths     {:public-key    (str tmp-ssl-dir "/capub")
-                           :private-key   (str tmp-ssl-dir "/cakey")
-                           :cert-in-ca    (str tmp-ssl-dir "/cacert")
-                           :cert-in-certs (str tmp-ssl-dir "/localcacert")
-                           :crl           (str tmp-ssl-dir "/cacrl")}
-        master-file-paths {:public-key    (str tmp-ssl-dir "/hostpubkey")
-                           :private-key   (str tmp-ssl-dir "/hostprivkey")
-                           :cert          (str tmp-ssl-dir "/hostcert")}
+        ca-file-paths     {:capub       (str tmp-ssl-dir "/capub")
+                           :cakey       (str tmp-ssl-dir "/cakey")
+                           :cacert      (str tmp-ssl-dir "/cacert")
+                           :localcacert (str tmp-ssl-dir "/localcacert")
+                           :cacrl       (str tmp-ssl-dir "/cacrl")}
+        master-file-paths {:hostpubkey  (str tmp-ssl-dir "/hostpubkey")
+                           :hostprivkey (str tmp-ssl-dir "/hostprivkey")
+                           :hostcert    (str tmp-ssl-dir "/hostcert")}
         expected-files    (concat (vals ca-file-paths)
                                   (vals master-file-paths))]
 
@@ -85,7 +85,7 @@
       (try
         (initialize! ca-file-paths master-file-paths master-certname "test ca" 512)
         (is (= 512 (-> ca-file-paths
-                       :private-key
+                       :cakey
                        utils/pem->private-key
                        .getModulus
                        .bitLength)))
@@ -97,7 +97,7 @@
           (initialize! ca-file-paths master-file-paths master-certname "test ca")
           (is (= utils/default-key-length
                  (-> ca-file-paths
-                     :private-key
+                     :cakey
                      utils/pem->private-key
                      .getModulus
                      .bitLength)))

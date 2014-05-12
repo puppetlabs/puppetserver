@@ -15,14 +15,14 @@
                     config            (get-in-config [:jvm-puppet])
                     master-certname   (get-in config [:certname])
                     ca-name           (ca/ca-name master-certname)
-                    ca-file-paths     {:public-key    (:capub config)
-                                       :private-key   (:cakey config)
-                                       :cert-in-ca    (:cacert config)
-                                       :cert-in-certs (:localcacert config)
-                                       :crl           (:cacrl config)}
-                    master-file-paths {:public-key    (:hostpubkey config)
-                                       :private-key   (:hostprivkey config)
-                                       :cert          (:hostcert config)}]
+                    ca-file-paths     (select-keys config [:cacert
+                                                           :cacrl
+                                                           :cakey
+                                                           :capub
+                                                           :localcacert])
+                    master-file-paths (select-keys config [:hostcert
+                                                           :hostprivkey
+                                                           :hostpubkey])]
 
                     ; TODO - https://tickets.puppetlabs.com/browse/PE-3929
                     ; The master needs to eventually get these files from the CA server

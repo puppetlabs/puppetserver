@@ -48,7 +48,7 @@
                 (test-path! "capub" "target/master-service-test/ca/public/key")
                 (test-path! "cakey" "target/master-service-test/ca/private/key")
                 (test-path! "cacert" "target/master-service-test/ca/cert")
-                (test-path! "localcacert" "target/master-service-test/ca/dir")
+                (test-path! "localcacert" "target/master-service-test/ca/local/cert")
                 (test-path! "cacrl" "target/master-service-test/crl")
                 (test-path! "hostpubkey" "target/master-service-test/master/pub/key")
                 (test-path! "hostprivkey" "target/master-service-test/master/private/key")

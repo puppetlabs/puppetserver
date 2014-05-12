@@ -89,16 +89,15 @@
         cert        (-> (utils/generate-certificate-request keypair x500-name)
                         (utils/sign-certificate-request x500-name (next-serial-number) private-key))]
     ;; create keys
-    (utils/key->pem! public-key (:public-key ca-file-paths))
-    (utils/key->pem! private-key (:private-key ca-file-paths))
+    (utils/key->pem! public-key (:capub ca-file-paths))
+    (utils/key->pem! private-key (:cakey ca-file-paths))
     ;; create cert in both places, because that's how the ruby version does it.
-    ;; these correspond to the 'cacert' and 'localcacert' settings from puppet.
-    (utils/obj->pem! cert (:cert-in-ca ca-file-paths))
-    (utils/obj->pem! cert (:cert-in-certs ca-file-paths))
+    (utils/obj->pem! cert (:cacert ca-file-paths))
+    (utils/obj->pem! cert (:localcacert ca-file-paths))
     ;; create CRL
     (-> (.getIssuerX500Principal cert)
         (utils/generate-crl private-key)
-        (utils/obj->pem! (:crl ca-file-paths)))))
+        (utils/obj->pem! (:cacrl ca-file-paths)))))
 
 (defn create-master-files!
   "Given the master's SSL file paths & certname, and the CA's name & private key,
@@ -119,27 +118,27 @@
         x500-name      (utils/generate-x500-name master-certname)
         ca-x500-name   (utils/generate-x500-name ca-name)]
     ;; create keys
-    (utils/key->pem! public-key (:public-key master-file-paths))
-    (utils/key->pem! private-key (:private-key master-file-paths))
+    (utils/key->pem! public-key (:hostpubkey master-file-paths))
+    (utils/key->pem! private-key (:hostprivkey master-file-paths))
     ;; create cert
     (-> (utils/generate-certificate-request keypair x500-name)
         (utils/sign-certificate-request ca-x500-name (next-serial-number) ca-private-key)
-        (utils/obj->pem! (:cert master-file-paths)))))
+        (utils/obj->pem! (:hostcert master-file-paths)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
 (def CaFilePaths
-  {:public-key    String
-   :private-key   String
-   :cert-in-ca    String
-   :cert-in-certs String
-   :crl           String})
+  {:cacert      String
+   :cacrl       String
+   :cakey       String
+   :capub       String
+   :localcacert String})
 
 (def MasterFilePaths
-  {:public-key    String
-   :private-key   String
-   :cert          String})
+  {:hostcert    String
+   :hostprivkey String
+   :hostpubkey  String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -236,7 +235,7 @@
                             ca-name
                             keylength
                             (-> ca-file-paths
-                                (:private-key)
+                                :cakey
                                 utils/pem->private-key)))))
 
 (defn ca-name
