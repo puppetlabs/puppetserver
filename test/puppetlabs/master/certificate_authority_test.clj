@@ -73,7 +73,7 @@
         ca-file-paths     {:public-key    (str tmp-ssl-dir "/capub")
                            :private-key   (str tmp-ssl-dir "/cakey")
                            :cert-in-ca    (str tmp-ssl-dir "/cacert")
-                           :cert-in-certs (str tmp-ssl-dir "/cadir")
+                           :cert-in-certs (str tmp-ssl-dir "/localcacert")
                            :crl           (str tmp-ssl-dir "/cacrl")}
         master-file-paths {:public-key    (str tmp-ssl-dir "/hostpubkey")
                            :private-key   (str tmp-ssl-dir "/hostprivkey")

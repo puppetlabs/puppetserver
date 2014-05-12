@@ -18,7 +18,7 @@
                     ca-file-paths     {:public-key    (:capub config)
                                        :private-key   (:cakey config)
                                        :cert-in-ca    (:cacert config)
-                                       :cert-in-certs (:cadir config)
+                                       :cert-in-certs (:localcacert config)
                                        :crl           (:cacrl config)}
                     master-file-paths {:public-key    (:hostpubkey config)
                                        :private-key   (:hostprivkey config)

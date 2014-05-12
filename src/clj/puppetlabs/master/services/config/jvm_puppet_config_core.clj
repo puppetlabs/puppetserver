@@ -17,7 +17,7 @@
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
   #{ :cacert
      :cacrl
-     :cadir
+     :localcacert
      :cakey
      :capub
      :certname

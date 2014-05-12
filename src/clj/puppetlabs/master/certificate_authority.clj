@@ -91,7 +91,8 @@
     ;; create keys
     (utils/key->pem! public-key (:public-key ca-file-paths))
     (utils/key->pem! private-key (:private-key ca-file-paths))
-    ;; create cert in both places
+    ;; create cert in both places, because that's how the ruby version does it.
+    ;; these correspond to the 'cacert' and 'localcacert' settings from puppet.
     (utils/obj->pem! cert (:cert-in-ca ca-file-paths))
     (utils/obj->pem! cert (:cert-in-certs ca-file-paths))
     ;; create CRL
