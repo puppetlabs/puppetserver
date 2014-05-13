@@ -27,37 +27,46 @@ def get_platform_map ()
     end
   end
 
-  {:name => platform_name,
-   :platform => platform,
-   :arch => arch,
-   :package_type => package_type,
-   :config_suffix => config_suffix
+  {:name => platform_name || nil,
+   :platform => platform || nil,
+   :arch => arch || nil,
+   :package_type => package_type || nil,
+   :config_suffix => config_suffix || nil
   }
 end
 
 def assemble_default_jvmpuppet_repo_config (platform)
+  if ENV["JVMPUPPET_REPO_CONFIG"]
+    return ENV["JVMPUPPET_REPO_CONFIG"]
+  end
+
   package_build_name = ENV["PACKAGE_BUILD_NAME"]
   package_build_version = ENV["PACKAGE_BUILD_VERSION"]
 
-  if package_build_name and package_build_version
+  if package_build_name and package_build_version and
+    platform[:name] and platform[:config_suffix]
     repo_config = "http://builds.puppetlabs.lan/"
     repo_config += "#{package_build_name}/#{package_build_version}/"
     repo_config += "repo_configs/#{platform[:package_type]}/"
     repo_config += "pl-#{package_build_name}-#{package_build_version}-"
     repo_config += "#{platform[:name]}.#{platform[:config_suffix]}"
   else
-    repo_config = 'http://builds.puppetlabs.lan/jvm-puppet/0.1.1/repo_configs/rpm/pl-jvm-puppet-0.1.1-el-6-x86_64.repo'
+    abort "Must specify an appropriate value for JVMPUPPET_REPO_CONFIG. See acceptance/README.md"
   end
 
   return repo_config
 end
 
 def assemble_default_beaker_config (platform)
+  if ENV["BEAKER_CONFIG"]
+    return ENV["BEAKER_CONFIG"]
+  end
+
   if platform[:name] and platform[:arch]
     beaker_config = "#{ACCEPTANCE_ROOT}/config/beaker/jenkins/"
     beaker_config += "#{platform[:platform]}-#{platform[:arch]}.cfg"
   else
-    beaker_config = "#{ACCEPTANCE_ROOT}/config/beaker/vbox/el6/64/1host.cfg"
+    abort "Must specify an appropriate value for BEAKER_CONFIG. See acceptance/README.md"
   end
 
   return beaker_config
@@ -109,10 +118,8 @@ namespace :test do
       # variables requiring some assembly
       platform = get_platform_map
       ENV['PLATFORM_NAME'] = platform[:name]
-
-      ENV['JVMPUPPET_REPO_CONFIG'] = ENV["JVMPUPPET_REPO_CONFIG"] ||
-        assemble_default_jvmpuppet_repo_config(platform)
-      config = ENV["BEAKER_CONFIG"] || assemble_default_beaker_config(platform)
+      ENV['JVMPUPPET_REPO_CONFIG'] = assemble_default_jvmpuppet_repo_config(platform)
+      config = assemble_default_beaker_config(platform)
 
       # variables that take a limited set of acceptable strings
       type = ENV["BEAKER_TYPE"] || "pe"
