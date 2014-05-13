@@ -24,7 +24,8 @@
                       jruby/jruby-puppet-pooled-service
                       jetty9-service
                       request-handler-service]
-            config {:jruby-puppet (assoc jruby-testutils/default-config-no-size
+            test-config (jruby-testutils/jruby-puppet-config-with-prod-env)
+            config {:jruby-puppet (assoc test-config
                                     :master-conf-dir
                                     "test-resources/another-conf-var-root/conf")
                     :webserver    {:port 8081}}]
@@ -45,13 +46,13 @@
                                (.getSetting jruby-puppet setting)))
                         (is (fs/exists? (fs/absolute-path expected-path))))]
 
-                (test-path! "capub" "target/master-service-test/ca/public/key")
-                (test-path! "cakey" "target/master-service-test/ca/private/key")
-                (test-path! "cacert" "target/master-service-test/ca/cert")
-                (test-path! "localcacert" "target/master-service-test/ca/local/cert")
-                (test-path! "cacrl" "target/master-service-test/crl")
-                (test-path! "hostpubkey" "target/master-service-test/master/pub/key")
-                (test-path! "hostprivkey" "target/master-service-test/master/private/key")
-                (test-path! "hostcert" "target/master-service-test/master/cert"))))))
+                (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
+                (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
+                (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
+                (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
+                (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
+                (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
+                (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
+                (test-path! "hostcert" "target/master-service-test/certs/localhost.pem"))))))
       (finally
         (fs/delete-dir test-dir)))))

@@ -68,7 +68,7 @@
 
 ;; TODO verify contents of each created file (PE-3238)
 (deftest initialize!-test
-  (let [tmp-ssl-dir       (fs/file "./test-resources/tmp-ssl")
+  (let [tmp-ssl-dir       (fs/temp-dir "")
         master-certname   "master-foo"
         ca-file-paths     {:capub       (str tmp-ssl-dir "/capub")
                            :cakey       (str tmp-ssl-dir "/cakey")
