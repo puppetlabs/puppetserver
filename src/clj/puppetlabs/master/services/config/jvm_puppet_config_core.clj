@@ -19,6 +19,7 @@
      :cacrl
      :localcacert
      :cakey
+     :ca-name
      :capub
      :certname
      :hostcert

@@ -14,7 +14,7 @@
               (let [path            ""
                     config            (get-in-config [:jvm-puppet])
                     master-certname   (get-in config [:certname])
-                    ca-name           (ca/ca-name master-certname)
+                    ca-name           (get-in config [:ca-name])
                     ca-file-paths     (select-keys config [:cacert
                                                            :cacrl
                                                            :cakey

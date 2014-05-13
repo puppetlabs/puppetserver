@@ -237,7 +237,3 @@
                             (-> ca-file-paths
                                 :cakey
                                 utils/pem->private-key)))))
-
-(defn ca-name
-  [master-certname]
-  (str "Puppet CA: " master-certname))
