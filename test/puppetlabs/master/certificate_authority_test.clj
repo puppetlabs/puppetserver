@@ -7,40 +7,43 @@
             [me.raynes.fs :as fs]))
 
 (def ssl-dir "./test-resources/config/master/conf/ssl")
-(def ssl-ca-cert "./test-resources/config/master/conf/ssl/certs/ca.pem")
+(def certdir (str ssl-dir "/certs"))
+(def cacert (str certdir "/ca.pem"))
+(def csrdir (str ssl-dir "/ca/requests"))
+(def cakey (str ssl-dir "/ca/ca_key.pem"))
 
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
-    (let [ca-cert  (get-certificate "ca" ssl-dir ssl-ca-cert)
-          expected (slurp ssl-ca-cert)]
-      (is (= expected ca-cert))))
+    (let [actual    (get-certificate "ca" cacert certdir)
+          expected  (slurp cacert)]
+      (is (= expected actual))))
 
   (testing "returns localhost certificate when subject is 'localhost'"
-    (let [localhost-cert (get-certificate "localhost" ssl-dir ssl-ca-cert)
-          expected       (slurp (path-to-cert ssl-dir "localhost"))]
+    (let [localhost-cert (get-certificate "localhost" cacert certdir)
+          expected       (slurp (path-to-cert certdir "localhost"))]
       (is (= expected localhost-cert))))
 
   (testing "returns nil when certificate not found for subject"
-    (is (nil? (get-certificate "not-there" ssl-dir ssl-ca-cert)))))
+    (is (nil? (get-certificate "not-there" certdir cacert)))))
 
 (deftest get-certificate-request-test
   (testing "returns certificate request for subject"
-    (let [cert-req (get-certificate-request "test-agent" ssl-dir)
-          expected (slurp (path-to-cert-request ssl-dir "test-agent"))]
+    (let [cert-req (get-certificate-request "test-agent" csrdir)
+          expected (slurp (path-to-cert-request csrdir "test-agent"))]
       (is (= expected cert-req))))
 
   (testing "returns nil when certificate request not found for subject"
-    (is (nil? (get-certificate-request "not-there" ssl-dir)))))
+    (is (nil? (get-certificate-request "not-there" csrdir)))))
 
 (deftest autosign-certificate-request!-test
   (testing "requests are autosigned and saved to disk"
     (let [subject            "test-agent"
-          request-stream     (-> ssl-dir
+          request-stream     (-> csrdir
                                  (path-to-cert-request subject)
                                  io/input-stream)
-          expected-cert-path (path-to-cert ssl-dir subject)]
+          expected-cert-path (path-to-cert certdir subject)]
       (try
-        (autosign-certificate-request! subject request-stream ssl-dir "test ca")
+        (autosign-certificate-request! subject request-stream cakey "test ca" certdir)
         (is (fs/exists? expected-cert-path))
         (let [signed-cert      (-> expected-cert-path
                                    utils/pem->certs
@@ -51,20 +54,6 @@
           (is (= expected-issuer (-> signed-cert .getIssuerX500Principal .getName))))
         (finally
           (fs/delete expected-cert-path))))))
-
-(deftest get-certificate-revocation-list-test
-  (testing "`path-to-crl` returns a valid file path"
-    (is (fs/exists? (path-to-crl ssl-dir))))
-
-  (testing "`get-certificate-revocation-list` returns a path to valid CRL file."
-    (let [crl         (get-certificate-revocation-list ssl-dir)
-          issuer-name (-> crl
-                          StringReader.
-                          utils/pem->objs
-                          first
-                          .getIssuer
-                          utils/x500-name->CN)]
-      (is (= "Puppet CA: localhost" issuer-name)))))
 
 ;; TODO verify contents of each created file (PE-3238)
 (deftest initialize!-test

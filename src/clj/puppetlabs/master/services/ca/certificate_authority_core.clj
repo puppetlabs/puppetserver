@@ -9,22 +9,23 @@
 ;;; 'handler' functions for HTTP endpoints
 
 (defn handle-get-certificate
-  [subject {:keys [ssl-dir ssl-ca-cert]}]
-  (-> (if-let [certificate (ca/get-certificate subject ssl-dir ssl-ca-cert)]
+  [subject {:keys [cacert certdir]}]
+  (-> (if-let [certificate (ca/get-certificate subject cacert certdir)]
         (rr/response certificate)
         (rr/not-found (str "Could not find certificate " subject)))
       (rr/content-type "text/plain")))
 
 (defn handle-get-certificate-request
-  [subject {:keys [ssl-dir]}]
-  (-> (if-let [certificate-request (ca/get-certificate-request subject ssl-dir)]
+  [subject {:keys [csrdir]}]
+  (-> (if-let [certificate-request (ca/get-certificate-request subject csrdir)]
         (rr/response certificate-request)
         (rr/not-found (str "Could not find certificate_request " subject)))
       (rr/content-type "text/plain")))
 
 (defn handle-put-certificate-request!
-  [subject certificate-request {:keys [ssl-dir ca-name]}]
-  (let [expiration-date (ca/autosign-certificate-request! subject certificate-request ssl-dir ca-name)]
+  [subject certificate-request {:keys [ca-name cakey certdir]}]
+  (let [expiration-date (ca/autosign-certificate-request!
+                          subject certificate-request cakey ca-name certdir)]
     ;; TODO return something proper (PE-3178)
     (-> (str "---\n"
              "  - !ruby/object:Puppet::SSL::CertificateRequest\n"
@@ -35,8 +36,8 @@
         (rr/content-type "text/yaml"))))
 
 (defn handle-get-certificate-revocation-list
-  [{:keys [ssl-dir]}]
-  (-> (ca/get-certificate-revocation-list ssl-dir)
+  [{:keys [cacrl]}]
+  (-> (slurp cacrl)
       (rr/response)
       (rr/content-type "text/plain")))
 

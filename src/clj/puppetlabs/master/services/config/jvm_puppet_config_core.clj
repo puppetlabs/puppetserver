@@ -17,16 +17,16 @@
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
   #{ :cacert
      :cacrl
-     :localcacert
      :cakey
      :ca-name
      :capub
+     :certdir
      :certname
+     :csrdir
      :hostcert
      :hostprivkey
      :hostpubkey
-     :ssldir ; TODO delete this.  The CA service is the last thing that depends on it.
-     })
+     :localcacert })
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers
