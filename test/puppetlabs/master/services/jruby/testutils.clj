@@ -7,6 +7,10 @@
 
 (def prod-pool-descriptor {:environment :production})
 
+(def load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
+
+(def conf-dir "./test-resources/config/master/conf")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
 
@@ -14,8 +18,8 @@
   "Create a JRubyPuppet pool config which includes the provided list of pool
   descriptions."
   [pools-list]
-  {:load-path       ["./ruby/puppet/lib" "./ruby/facter/lib"]
-   :master-conf-dir "./test-resources/config/master/conf"
+  {:load-path       load-path
+   :master-conf-dir conf-dir
    :jruby-pools     pools-list})
 
 (def default-config-no-size

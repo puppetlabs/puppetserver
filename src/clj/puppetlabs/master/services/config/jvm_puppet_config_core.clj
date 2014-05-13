@@ -15,7 +15,17 @@
 (def puppet-config-keys
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
-  #{:certname :ssldir :hostcert :cacert :hostprivkey})
+  #{ :cacert
+     :cacrl
+     :localcacert
+     :cakey
+     :capub
+     :certname
+     :hostcert
+     :hostprivkey
+     :hostpubkey
+     :ssldir ; TODO delete this.  The CA service is the last thing that depends on it.
+     })
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers
