@@ -7,22 +7,36 @@ Master.
 
 This acceptance testing suite has so far only been configured to work with
 VirtualBox using Beaker/Vagrant. To add support for additional Vagrant boxes or
-hypervisors, add Beaker config files to the './config/beaker' directory.  
+hypervisors, add Beaker config files to the './acceptance/config/beaker' directory.  
   
-The default Beaker config is ./config/beaker/vbox/el6/64/1host.cfg. This value
+The default Beaker config is ./acceptance/config/beaker/vbox/el6/64/1host.cfg. This value
 can be overridden with the BEAKER_CONFIG environment variable.
 
 ### Vagrant
-Example of running this setup can be found in **./bin/examples/localrun_vagrant.sh**   
-Supporting this is the beaker config found in **./config/vbox/el6/64/1host.cfg**   
+
+An example of running acceptance tests using VirtualBox can be found in Rakefile
+workflow 'c' below.  
+Beaker configues supporting Virtualbox hypervisor can be found in subdirectories
+of **./acceptance/config/vbox/**   
   
-In this setup Beaker uses Vagrant to provision your VMs. It probably requires
-the least amount of effort to get running.
+In this setup Beaker uses Vagrant to provision your VMs. 
 
 #### Local Static/Virtualbox
 
-Example of running this setup can be found in **./bin/examples/localrun-static.sh**  
-Supporting this is the beaker config found in **./config/local/el6/1host.cfg**  
+Below is an example of running this config:
+
+    VBOX_MACHINE_NAME=PL-vmware-centos-64
+    VBOX_STATE_NAME=savedstate
+    
+    VBoxManage controlvm "${VBOX_MACHINE_NAME:?}" poweroff
+    
+    VBoxManage snapshot "${VBOX_MACHINE_NAME:?}" restore "${VBOX_STATE_NAME:?}" && \
+        VBoxManage startvm --type headless "${VBOX_MACHINE_NAME:?}" && \
+        sleep 1 && \
+        bundle exec rake test:acceptance:beaker
+
+Beaker configs supporting static Virtualbox can be found in subdirectories of
+**./acceptance/config/local/**  
   
 This setup is probably the most difficult to share between different systems.
 However, it is pretty effective for fast iterative development of TestCases or
@@ -57,13 +71,15 @@ its running saved state, respectively.
 
 ### vSphere
 
-Example of running this setup can be found in **./bin/examples/vsphere.sh**  
-Supporting this is the beaker config found in **./config/beaker/vcenter_mono.ch**
-or **.config/beaker/vcenter_dual.cfg**  
+Example of running acceptance tests in vSphere can be found in the Rakefile
+workflows 'a' and 'b' below.  
+  
+Beaker configs supporting vsphere can be found in **./acceptance/config/beaker/jenkins/**
   
 This setup requires you to pass the "--keyfile <path/to/id_rsa>" that will
 allow you to log in to to the vSphere machine. There is a somewhat promiscuous
 Acceptance testing private key, if you need it please ask someone in QA or QE.
+It probably requires the least amount of effort to get this setup running.
 
 ## Workflow
 
@@ -76,68 +92,78 @@ to simply install beaker and run it, passing all the necessary configuration
 through the command line:
 
     bundle install --path vendor/bundle
-    bundle exec beaker -c ./config/beaker/vbox/el6/64/1host.cfg --type "${BEAKER_TYPE:-foss --debug --fail-mode slow --pre-suite ./suites/pre_suite --helper ./lib/helper.rb --tests ./suites/tests
+    bundle exec beaker -c ./acceptance/config/beaker/vbox/el6/64/1host.cfg --type foss --debug --fail-mode slow --pre-suite ./acceptance/suites/pre_suite --helper ./acceptance/lib/helper.rb --tests ./acceptance/suites/tests
 
-There isn't really a simple workflow for dealing with external acceptance tests.
-See the Shell Script setup section below for a way to handle that. In fact, the
-Shell Script workflow is recommended.
+### #2: Rakefile
 
-### #2: Shell Scripts
+The Rakefile in jvm-puppet top-level directory is used during acceptance testing
+in the Jenkins CI pipeline to run various types of acceptance test in a
+consistent and reliable fashion. There are at least two expected workflows, one
+where BEAKER_CONFIG and JVMPUPPET_REPO_CONFIG are set manually prior to running the
+acceptance rake task, and another where values for those variables are
+calculated based on the values of other variables (see Workflow b below).
 
-This acceptance test suite comes with a shell script that aims to be useful for
-both command-line invocations of the acceptance testing suites during normal
-development and in Continuous Integration scripts. This is
-'./bin/jvm-acceptance.sh'.
+#### Rakefile Workflow a: Local vSphere Hypervisor
 
-This script takes care of tasks like adding a "JVMPUPPET_REPO_CONFIG" key to the
-"options" file hash to make the value of JVMPUPPET_REPO_CONFIG available during
-Beaker's TestCases. Below is an example using this script:
+This is the expected workflow for running vcloud tests directly from one's
+laptop.
 
     bundle install --path vendor/bundle
-    export JVMPUPPET_REPO_CONFIG=http://int-resources.ops.puppetlabs.net/chris/jvm-puppet/internal_releases/0.1.0/repo_configs/rpm/pl-jvm-puppet-0.1.0-el-6-x86_64.repo
-    ./bin/jvm-acceptance.sh
+    export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-i386.cfg
+    export JVMPUPPET_REPO_CONFIG=http://builds.puppetlabs.lan/jvm-puppet/0.1.2.SNAPSHOT.2014.05.12T1408/repo_configs/deb/pl-jvm-puppet-0.1.2.SNAPSHOT.2014.05.12T1408-wheezy.list
+    export BEAKER_OPTS="--keyfile /home/username/downloads/id_rsa-acceptance"
+    bundle exec rake test:acceptance:beaker 
 
-#### Environment Variables
-The following is a list of environment variables are supported by
-'./bin/jvm-acceptance.sh' and descriptions of the effect each has.
+Noteworthy here is BEAKER_OPTS which specifies an acceptance testing specific
+private key used to communicate with vsphere hosts. Without this, you will see
+repeated connection refused errors in Beaker's output.
 
+#### Rakefile Workflow b: "Jenkins" vSphere Hypervisor
+
+The following is a workflow that duplicates what happens in 'Workflow a' above
+by using PACKAGE_BUILD_NAME, PACKAGE_BUILD_VERSION, PLATFORM, and ARCH to
+produce the same values of BEAKER_CONFIG and JVMPUPPET_REPO_CONFIG as seen above
+in a ruby function. It is primarily intended for use in Jenkins
+acceptance/integration test jobs.
+
+    bundle install --path vendor/bundle
+    export PACKAGE_BUILD_NAME=jvm-puppet
+    export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
+    export PLATFORM=debian-7
+    export ARCH=i386
+    export BEAKER_OPTS="--keyfile /home/username/downloads/id_rsa-acceptance"
+    bundle exec rake test:acceptance:beaker 
+
+PACKAGE_BUILD_NAME and PACKAGE_BUILD_VERSION are build parameters available as
+environment variables in the Jenkins 'execute shell script' build step.
+
+PLATFORM and ARCH are matrix parameters set for acceptance test Jenkins jobs.
+They are also available within the 'execute shell script' build step as
+environment variables.
+
+#### Rakefile Workflow c: Local Vagrant Hypervisor
+
+The following workflow is intended to demonstrate running on a local machine
+using a vagrant hypervisor.
+
+    bundle install --path vendor/bundle
+    export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-i386.cfg
+    export JVMPUPPET_REPO_CONFIG=http://builds.puppetlabs.lan/jvm-puppet/0.1.2.SNAPSHOT.2014.05.12T1408/repo_configs/deb/pl-jvm-puppet-0.1.2.SNAPSHOT.2014.05.12T1408-wheezy.list
+
+### Environment Variables
+The following is a list of environment variables are supported by the
+test:acceptance:beaker Rake task and descriptions of the effect each has.
 
 * $JVMPUPPET_REPO_CONFIG 
-  * Description: './bin/jvm-acceptance.sh' will fail gracefully if this variable
-is not set externally. This variable should point to some location that is
-accessible via wget or curl from the Puppet Master host.
-
-* $EXTERNAL_ACCEPTANCE_REPO 
-  * Description: If this variable is set before running,
-'./bin/jvm-acceptance.sh' will git clone from it into a temporary directory to
-make the acceptance tests available for this test run. The default behavior in
-this regard is simply to not use an external acceptance test suite. All the
-important BEAKER_* variables default to the correct paths for jvm-puppet
-specific acceptance testing.
-
-* $EXTERNAL_ACCEPTANCE_REF 
-  * Description: With this variable set, the external acceptance testing
-repository can be set to any arbitrary commit to allow concisely specifying
-which tests need to be run. If this variable is not set, then
-'./bin/jvm-acceptance.sh' will populate it with the contents of
-./config/param/EXTERNAL_ACCEPTANCE_REF. The use of this file allows the external
-acceptance repository commit to be asynchronously pinned to the jvm-puppet
-repository.
-
-* $EXTERNAL_ACCEPTANCE_TESTSUITE 
-  * Default: acceptance/tests
-  * Description: This variable is used relative to the cloned
-$EXTERNAL_ACCEPTANCE_REPO and is used as the value of the "tests" option passed
-to Beaker on it's command line call.
-
-* $EXTERNAL_ACCEPTANCE_LOADPATH 
-  * Default: acceptance/lib
-  * Description: This variable is used relative to the cloned
-$EXTERNAL_ACCEPTANCE_REPO and is used as the $BEAKER_LOADPATH value (see below).
+  * Default: None, fail loudly if no JVMPUPPET_REPO_CONFIG available.
+  * Description: This variable is used by the Beaker pre_suite to obtain a
+  package repository configuration file used by yum or apt on the System Under
+  Test. It is expected that this url will become available for a particular
+  version of JVM Puppet as a result of an ezbake/packaging run.
 
 * $BEAKER_CONFIG 
   * Beaker CLI Option: -c 
-  * Default: ./config/beaker/vbox/el6/64/1host.cfg 
+  * Default: None, fail loudly if no BEAKER_CONFIG available.
   * Description: Same as the Beaker option.
 
 * $BEAKER_TYPE 
@@ -152,7 +178,7 @@ $EXTERNAL_ACCEPTANCE_REPO and is used as the $BEAKER_LOADPATH value (see below).
 
 * $BEAKER_PRESUITE 
   * Beaker CLI Option: --pre-suite 
-  * Default: ./suites/pre_suite 
+  * Default: ./acceptance/suites/pre_suite 
   * Description: Same as the Beaker option.
 
 * $BEAKER_LOADPATH 
@@ -162,15 +188,11 @@ $EXTERNAL_ACCEPTANCE_REPO and is used as the $BEAKER_LOADPATH value (see below).
 
 * $BEAKER_HELPER 
   * Beaker CLI Option: --helper 
-  * Default: ./lib/helper.rb 
+  * Default: ./acceptance/lib/helper.rb 
   * Description: Same as the Beaker option.
 
 * $DEBUG 
   * Beaker CLI Option: --helper 
   * Default:  
   * Description: Any nonempty string will cause Beaker to be run in debug mode.
-
-* $@ 
-  * Description: All positional parameters passed to './bin/jvm-acceptance.sh'
-get passed as positional parameters to Beaker.
 
