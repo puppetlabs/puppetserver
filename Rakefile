@@ -2,7 +2,75 @@ PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = File.join(PROJECT_ROOT, 'acceptance')
 SPEC_TEST_GEMS = 'vendor/spec_test_gems'
 
-JVMPUPPET_REPO_CONFIG_DEFAULT = 'http://builds.puppetlabs.lan/jvm-puppet/0.1.1/repo_configs/rpm/pl-jvm-puppet-0.1.1-el-6-x86_64.repo'
+def get_platform_map ()
+  platform = ENV['PLATFORM']
+  arch = ENV['ARCH']
+
+  if platform =~ /(el-|fedora-)(.*)/
+    package_type = "rpm"
+    config_suffix = "repo"
+    platform_name = "#{platform}-#{arch}"
+  elsif platform =~ /(debian|ubuntu)(.*)/
+    package_type = "deb"
+    config_suffix = "list"
+    case platform
+    when "ubuntu-1004"
+      platform_name = "lucid"
+    when "ubuntu-1204"
+      platform_name = "precise"
+    when "debian-6"
+      platform_name = "squeeze"
+    when "debian-7"
+      platform_name = "wheezy"
+    else
+      abort "Unsupported debian-based platform!"
+    end
+  end
+
+  {:name => platform_name || nil,
+   :platform => platform || nil,
+   :arch => arch || nil,
+   :package_type => package_type || nil,
+   :config_suffix => config_suffix || nil
+  }
+end
+
+def assemble_default_jvmpuppet_repo_config (platform)
+  if ENV["JVMPUPPET_REPO_CONFIG"]
+    return ENV["JVMPUPPET_REPO_CONFIG"]
+  end
+
+  package_build_name = ENV["PACKAGE_BUILD_NAME"]
+  package_build_version = ENV["PACKAGE_BUILD_VERSION"]
+
+  if package_build_name and package_build_version and
+    platform[:name] and platform[:config_suffix]
+    repo_config = "http://builds.puppetlabs.lan/"
+    repo_config += "#{package_build_name}/#{package_build_version}/"
+    repo_config += "repo_configs/#{platform[:package_type]}/"
+    repo_config += "pl-#{package_build_name}-#{package_build_version}-"
+    repo_config += "#{platform[:name]}.#{platform[:config_suffix]}"
+  else
+    abort "Must specify an appropriate value for JVMPUPPET_REPO_CONFIG. See acceptance/README.md"
+  end
+
+  return repo_config
+end
+
+def assemble_default_beaker_config (platform)
+  if ENV["BEAKER_CONFIG"]
+    return ENV["BEAKER_CONFIG"]
+  end
+
+  if platform[:name] and platform[:arch]
+    beaker_config = "#{ACCEPTANCE_ROOT}/config/beaker/jenkins/"
+    beaker_config += "#{platform[:platform]}-#{platform[:arch]}.cfg"
+  else
+    abort "Must specify an appropriate value for BEAKER_CONFIG. See acceptance/README.md"
+  end
+
+  return beaker_config
+end
 
 task :init do
   ## Download any gems that we need for running rspec
@@ -34,7 +102,6 @@ task :spec => [:init] do
   sh run_rspec_with_jruby
 end
 
-
 namespace :test do
 
   namespace :acceptance do
@@ -43,24 +110,19 @@ namespace :test do
 
       # variables that take pathnames
       beakeropts = ENV["BEAKER_OPTS"] || ""
-      config = ENV["BEAKER_CONFIG"] || "#{ACCEPTANCE_ROOT}/config/beaker/vbox/el6/64/1host.cfg"
       presuite = ENV["BEAKER_PRESUITE"] || "#{ACCEPTANCE_ROOT}/suites/pre_suite"
       helper = ENV["BEAKER_HELPER"] || "#{ACCEPTANCE_ROOT}/lib/helper.rb"
       testsuite = ENV["BEAKER_TESTSUITE"] || "#{ACCEPTANCE_ROOT}/suites/tests"
       loadpath = ENV["BEAKER_LOADPATH"] || ""
 
+      # variables requiring some assembly
+      platform = get_platform_map
+      ENV['PLATFORM_NAME'] = platform[:name]
+      ENV['JVMPUPPET_REPO_CONFIG'] = assemble_default_jvmpuppet_repo_config(platform)
+      config = assemble_default_beaker_config(platform)
+
       # variables that take a limited set of acceptable strings
       type = ENV["BEAKER_TYPE"] || "pe"
-
-      # must-have variables
-      if not ENV['JVMPUPPET_REPO_CONFIG']
-        ENV['JVMPUPPET_REPO_CONFIG'] = JVMPUPPET_REPO_CONFIG_DEFAULT
-      end
-
-      jvmpuppet_package = ENV['JVMPUPPET_REPO_CONFIG']
-      if not jvmpuppet_package && presuite != ''
-        abort("Must set environment variable, 'JVMPUPPET_REPO_CONFIG' to run the pre_suite.")
-      end
 
       beaker = "beaker "
 
