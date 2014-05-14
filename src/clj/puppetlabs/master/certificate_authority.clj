@@ -132,7 +132,7 @@
 (defn get-certificate
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
-  If the subject is 'ca', then use the `ssl-ca-cert` path instead."
+  If the subject is 'ca', then use the `cacert` path instead."
   [subject cacert certdir]
   {:pre  [(every? string? [subject cacert certdir])]
    :post [(or (string? %)
@@ -147,7 +147,7 @@
   "Given a subject name, return their certificate request as a string, or nil if
   not found.  Looks for certificate requests in `csrdir`."
   [subject csrdir]
-  {:pre  [(every? string? [subject])]
+  {:pre  [(every? string? [subject csrdir])]
    :post [(or (string? %)
               (nil? %))]}
   (let [cert-request-path (path-to-cert-request csrdir subject)]
