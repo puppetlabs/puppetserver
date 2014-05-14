@@ -37,7 +37,7 @@
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
-  (-> (slurp cacrl)
+  (-> (ca/get-certificate-revocation-list cacrl)
       (rr/response)
       (rr/content-type "text/plain")))
 

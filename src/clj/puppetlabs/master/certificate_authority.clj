@@ -179,6 +179,14 @@
     (utils/obj->pem! signed-cert cert-path))
   (calculate-certificate-expiration))
 
+(defn get-certificate-revocation-list
+  "Given the value of the 'cacrl' setting from Puppet,
+  return the CRL from the .pem file on disk."
+  [cacrl]
+  {:pre   [(string? cacrl)]
+   :post  [(string? %)]}
+  (slurp cacrl))
+
 (schema/defn ^:always-validate
   initialize!
   "Given the CA file paths, master file paths, the master's certname,

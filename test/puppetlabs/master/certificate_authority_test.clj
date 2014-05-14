@@ -11,6 +11,7 @@
 (def cacert (str certdir "/ca.pem"))
 (def csrdir (str ssl-dir "/ca/requests"))
 (def cakey (str ssl-dir "/ca/ca_key.pem"))
+(def cacrl (str ssl-dir "/ca/ca_crl.pem"))
 
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
@@ -54,6 +55,17 @@
           (is (= expected-issuer (-> signed-cert .getIssuerX500Principal .getName))))
         (finally
           (fs/delete expected-cert-path))))))
+
+(deftest get-certificate-revocation-list-test
+  (testing "`get-certificate-revocation-list` returns a path to valid CRL file."
+      (let [crl         (get-certificate-revocation-list cacrl)
+            issuer-name (-> crl
+                            StringReader.
+                            utils/pem->objs
+                            first
+                            .getIssuer
+                            utils/x500-name->CN)]
+        (is (= "Puppet CA: localhost" issuer-name)))))
 
 ;; TODO verify contents of each created file (PE-3238)
 (deftest initialize!-test
