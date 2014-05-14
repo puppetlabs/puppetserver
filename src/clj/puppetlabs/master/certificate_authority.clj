@@ -13,29 +13,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-; TODO delete this function
 (defn path-to-cert
-  "Return a path to the `subject`s certificate file under the `ssl-dir`."
-  [ssl-dir subject]
-  (str ssl-dir "/certs/" subject ".pem"))
+  "Return a path to the `subject`s certificate file under the `certdir`."
+  [certdir subject]
+  (str certdir "/" subject ".pem"))
 
-; TODO delete this function
 (defn path-to-cert-request
-  "Return a path to the `subject`s certificate request file under the `ssl-dir`."
-  [ssl-dir subject]
-  (str ssl-dir "/ca/requests/" subject ".pem"))
-
-; TODO delete this function
-(defn path-to-ca-private-key
-  "Return a path to the CA private key under the `ssl-dir`."
-  [ssl-dir]
-  (str ssl-dir "/ca/ca_key.pem"))
-
-; TODO delete this function
-(defn path-to-crl
-  "Given the master's SSL directory, return a path to the CRL file."
-  [ssl-dir]
-  (str ssl-dir "/ca/ca_crl.pem"))
+  "Return a path to the `subject`s certificate request file under the `csrdir`."
+  [csrdir subject]
+  (str csrdir "/" subject ".pem"))
 
 (defn calculate-certificate-expiration
   "Return a date-time string for 5 years from now."
@@ -143,53 +129,47 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-; TODO - https://tickets.puppetlabs.com/browse/PE-4033
 (defn get-certificate
-  "Given a subject name and paths to the SSL directory and CA certificate,
-  return the subject's certificate as a string, or nil if not found.
-  Looks for certificates in `ssl-dir/certs/`.
-  If the subject is 'ca', then use the `ssl-ca-cert` path instead."
-  [subject ssl-dir ssl-ca-cert]
-  {:pre  [(every? string? [subject ssl-dir ssl-ca-cert])]
+  "Given a subject name and paths to the certificate directory and the CA
+  certificate, return the subject's certificate as a string, or nil if not found.
+  If the subject is 'ca', then use the `cacert` path instead."
+  [subject cacert certdir]
+  {:pre  [(every? string? [subject cacert certdir])]
    :post [(or (string? %)
               (nil? %))]}
   (let [cert-path (if (= "ca" subject)
-                    ssl-ca-cert
-                    (path-to-cert ssl-dir subject))]
+                    cacert
+                    (path-to-cert certdir subject))]
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
-; TODO - https://tickets.puppetlabs.com/browse/PE-4033
 (defn get-certificate-request
-  "Given a subject name, return their certificate request as a string, or nil if not found.
-  Looks for certificate requests in `ssl-dir/ca/requests`."
-  [subject ssl-dir]
-  {:pre  [(every? string? [subject ssl-dir])]
+  "Given a subject name, return their certificate request as a string, or nil if
+  not found.  Looks for certificate requests in `csrdir`."
+  [subject csrdir]
+  {:pre  [(every? string? [subject csrdir])]
    :post [(or (string? %)
               (nil? %))]}
-  (let [cert-request-path (path-to-cert-request ssl-dir subject)]
+  (let [cert-request-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
-; TODO - https://tickets.puppetlabs.com/browse/PE-4032
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and path to the SSL directory,
   auto-sign the request and write the certificate to disk. Return the certificate
   expiration date as 5 years from now."
-  [subject certificate-request ssl-dir ca-name]
-  {:pre  [(every? string? [subject ssl-dir ca-name])
+  [subject certificate-request cakey ca-name certdir]
+  {:pre  [(every? string? [subject cakey ca-name certdir])
           (instance? InputStream certificate-request)]
    :post [(string? %)]}
   (let [request-object  (-> certificate-request
                             utils/pem->objs
                             first)
-        ca-private-key  (-> ssl-dir
-                            ; TODO - caller should just pass this in
-                            path-to-ca-private-key
+        ca-private-key  (-> cakey
                             utils/pem->private-key)
         ca-x500-name    (utils/generate-x500-name ca-name)
         next-serial     (next-serial-number)
-        cert-path       (path-to-cert ssl-dir subject)
+        cert-path       (path-to-cert certdir subject)
         ;; TODO eventually we don't want to just be autosigning here (PE-3179)
         signed-cert     (utils/sign-certificate-request
                           request-object
@@ -199,13 +179,13 @@
     (utils/obj->pem! signed-cert cert-path))
   (calculate-certificate-expiration))
 
-; TODO - https://tickets.puppetlabs.com/browse/PE-4031
 (defn get-certificate-revocation-list
-  "Given the master's SSL directory, return the CRL from the .pem file on disk."
-  [ssl-dir]
-  {:pre  [(string? ssl-dir)]
-   :post [(string? %)]}
-  (slurp (path-to-crl ssl-dir)))
+  "Given the value of the 'cacrl' setting from Puppet,
+  return the CRL from the .pem file on disk."
+  [cacrl]
+  {:pre   [(string? cacrl)]
+   :post  [(string? %)]}
+  (slurp cacrl))
 
 (schema/defn ^:always-validate
   initialize!
@@ -237,7 +217,3 @@
                             (-> ca-file-paths
                                 :cakey
                                 utils/pem->private-key)))))
-
-(defn ca-name
-  [master-certname]
-  (str "Puppet CA: " master-certname))

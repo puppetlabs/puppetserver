@@ -12,12 +12,13 @@
   (init
     [this context]
     (let [path            ""
-          master-ssl-dir  (get-in-config [:jvm-puppet :ssldir])
-          master-certname (get-in-config [:jvm-puppet :certname])
-          ca-name         (ca/ca-name master-certname)
-          ca-settings     {:ssl-dir     master-ssl-dir
-                           :ssl-ca-cert (.toString (fs/file master-ssl-dir "certs" "ca.pem"))
-                           :ca-name     ca-name}]
+          config          (get-in-config [:jvm-puppet])
+          ca-settings     (select-keys config [:cacert
+                                               :cacrl
+                                               :cakey
+                                               :ca-name
+                                               :certdir
+                                               :csrdir])]
 
       (log/info "CA Service adding a ring handler")
       (add-ring-handler
