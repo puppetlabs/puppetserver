@@ -2,7 +2,6 @@ def initialize_repos_on_host(host)
   repo_config = ENV['JVMPUPPET_REPO_CONFIG']
   if host['platform'].include? 'el-6'
     on host, "rpm -ivh https://yum.puppetlabs.com/el/6/products/x86_64/puppetlabs-release-6-7.noarch.rpm"
-    on host, "sed -i.bak -e '/\\[puppetlabs-devel\\]/,/^$/ s|enabled=0|enabled=1|' /etc/yum.repos.d/puppetlabs.repo"
     on host, "curl #{repo_config} > /etc/yum.repos.d/jvmpuppet-puppetlabs.repo"
   elsif host['platform'].include? 'debian'
     platform_name = ENV['PLATFORM_NAME']
