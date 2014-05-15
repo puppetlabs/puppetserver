@@ -158,11 +158,10 @@
       (slurp cert-request-path))))
 
 (defn autosign-certificate-request!
-  "Given a subject name, their certificate request, and a handful a CA settings
-  from Puppet auto-sign the request and write the certificate to disk.
+  "Given a subject name, their certificate request, and the CA settings
+  from Puppet, auto-sign the request and write the certificate to disk.
   Return the certificate expiration date."
-  [subject certificate-request cakey ca-name certdir ca-ttl]
-  ; TODO consider refactoring ^^ to just take a map
+  [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
   {:pre  [(every? string? [subject cakey ca-name certdir])
           (instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}

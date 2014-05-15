@@ -52,9 +52,10 @@
       (try
         (let [expiration (autosign-certificate-request! subject
                                                         request-stream
-                                                        cakey "test ca"
-                                                        certdir
-                                                        ttl)]
+                                                        {:ca-name "test ca"
+                                                         :cakey cakey
+                                                         :certdir certdir
+                                                         :ca-ttl ttl})]
           (let [duration (Period. now expiration)]
             (is (= 6 (.getDays duration))
                 "Cert expiration was incorrect")))
