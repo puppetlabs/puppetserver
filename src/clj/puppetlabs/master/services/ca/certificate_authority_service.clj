@@ -4,7 +4,17 @@
             [puppetlabs.master.certificate-authority :as ca]
             [puppetlabs.master.services.ca.certificate-authority-core :as core]
             [compojure.core :as compojure]
+            [schema.core :as schema]
             [me.raynes.fs :as fs]))
+
+(def CaSettings
+  { :cacert   String
+    :cacrl    String
+    :cakey    String
+    :ca-name  String
+    :ca-ttl   schema/Int
+    :certdir  String
+    :csrdir   String })
 
 (tk/defservice certificate-authority-service
   [[:JvmPuppetConfigService get-in-config]
@@ -13,14 +23,9 @@
     [this context]
     (let [path            ""
           config          (get-in-config [:jvm-puppet])
-          ; TODO should ensure that all of those keys exist.  and same for master service.
-          ca-settings     (select-keys config [:cacert
-                                               :cacrl
-                                               :cakey
-                                               :ca-name
-                                               :ca-ttl
-                                               :certdir
-                                               :csrdir])]
+          ca-settings     (select-keys config (keys CaSettings))]
+
+      (schema/validate CaSettings ca-settings)
 
       (log/info "CA Service adding a ring handler")
       (add-ring-handler
