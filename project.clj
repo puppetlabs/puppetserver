@@ -1,5 +1,5 @@
-(def tk-version "0.4.1")
-(def tk-jetty-version "0.5.1")
+(def tk-version "0.4.2")
+(def tk-jetty-version "0.5.2")
 (def ks-version "0.7.1")
 
 (defn deploy-info
@@ -15,8 +15,8 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/certificate-authority "0.1.4"]
-                 [puppetlabs/http-client "0.1.3"]
+                 [puppetlabs/certificate-authority "0.1.5"]
+                 [puppetlabs/http-client "0.1.7"]
                  [org.jruby/jruby-complete "1.7.10"]
                  [clj-time "0.5.1"]
                  [compojure "1.1.6"]
@@ -46,7 +46,8 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
-                                   [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
+                                   [puppetlabs/kitchensink ~ks-version
+                                    :classifier "test" :scope "test"]
                                    [spyscope "0.1.4"]]
                    :injections    [(require 'spyscope.core)]}
 
