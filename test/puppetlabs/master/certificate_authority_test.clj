@@ -1,5 +1,6 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader))
+  (:import (java.io StringReader)
+           (org.joda.time Period DateTime))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.certificate-authority.core :as utils]
             [clojure.test :refer :all]
@@ -42,9 +43,21 @@
           request-stream     (-> csrdir
                                  (path-to-cert-request subject)
                                  io/input-stream)
-          expected-cert-path (path-to-cert certdir subject)]
+          expected-cert-path (path-to-cert certdir subject)
+          now                (DateTime/now)
+          ttl                (-> 6
+                                 Period/days
+                                 .toStandardSeconds
+                                 .getSeconds)]
       (try
-        (autosign-certificate-request! subject request-stream cakey "test ca" certdir)
+        (let [expiration (autosign-certificate-request! subject
+                                                        request-stream
+                                                        cakey "test ca"
+                                                        certdir
+                                                        ttl)]
+          (let [duration (Period. now expiration)]
+            (is (= 6 (.getDays duration))
+                "Cert expiration was incorrect")))
         (is (fs/exists? expected-cert-path))
         (let [signed-cert      (-> expected-cert-path
                                    utils/pem->certs

@@ -13,10 +13,12 @@
     [this context]
     (let [path            ""
           config          (get-in-config [:jvm-puppet])
+          ; TODO should ensure that all of those keys exist.  and same for master service.
           ca-settings     (select-keys config [:cacert
                                                :cacrl
                                                :cakey
                                                :ca-name
+                                               :ca-ttl
                                                :certdir
                                                :csrdir])]
 

@@ -23,9 +23,9 @@
       (rr/content-type "text/plain")))
 
 (defn handle-put-certificate-request!
-  [subject certificate-request {:keys [ca-name cakey certdir]}]
+  [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
   (let [expiration-date (ca/autosign-certificate-request!
-                          subject certificate-request cakey ca-name certdir)]
+                          subject certificate-request cakey ca-name certdir ca-ttl)]
     ;; TODO return something proper (PE-3178)
     (-> (str "---\n"
              "  - !ruby/object:Puppet::SSL::CertificateRequest\n"
