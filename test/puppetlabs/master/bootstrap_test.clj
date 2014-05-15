@@ -58,7 +58,8 @@
          :ssl-port    8140
          :client-auth "need"}
        :jruby-puppet (jruby-testutils/jruby-puppet-config-with-prod-env 1)}
-      (testing "Simple request to jvm puppet succeeds when client not in CRL."
+      (testing (str "Simple request to jvm puppet succeeds when the client "
+                    "certificate's serial number is not in the server's CRL.")
         (let [response
                (tk-webserver-testutils/http-get
                  test-url
@@ -70,7 +71,8 @@
                     "./test-resources/config/master/conf/ssl/certs/ca.pem"
                   :keepalive 0})]
           (is (= (:status response) 200))))
-      (testing "Basic request to the node endpoint returns success."
+      (testing (str "Simple request to jvm puppet fails when the client "
+                    "certificate's serial number is in the server's CRL.")
         (is (thrown?
               ProtocolException
               (tk-webserver-testutils/http-get
