@@ -38,37 +38,40 @@
     (is (nil? (get-certificate-request "not-there" csrdir)))))
 
 (deftest autosign-certificate-request!-test
-  (testing "requests are autosigned and saved to disk"
-    (let [subject            "test-agent"
-          request-stream     (-> csrdir
-                                 (path-to-cert-request subject)
-                                 io/input-stream)
-          expected-cert-path (path-to-cert certdir subject)
-          now                (DateTime/now)
-          ttl                (-> 6
-                                 Period/days
-                                 .toStandardSeconds
-                                 .getSeconds)]
-      (try
-        (let [expiration (autosign-certificate-request! subject
-                                                        request-stream
-                                                        {:ca-name "test ca"
-                                                         :cakey cakey
-                                                         :certdir certdir
-                                                         :ca-ttl ttl})]
+  (let [subject            "test-agent"
+        request-stream     (-> csrdir
+                               (path-to-cert-request subject)
+                               io/input-stream)
+        expected-cert-path (path-to-cert certdir subject)
+        now                (DateTime/now)
+        ttl                (-> 6
+                               Period/days
+                               .toStandardSeconds
+                               .getSeconds)
+        ca-settings        {:ca-name "test ca"
+                            :cakey cakey
+                            :certdir certdir
+                            :ca-ttl ttl}]
+    (try
+      (let [expiration (autosign-certificate-request!
+                         subject request-stream ca-settings)]
+
+        (testing "requests are autosigned and saved to disk"
+          (is (fs/exists? expected-cert-path))
+          (let [signed-cert (-> expected-cert-path
+                                utils/pem->certs
+                                first)
+                expected-subject "CN=test-agent"
+                expected-issuer "CN=test ca"]
+            (is (= expected-subject (-> signed-cert .getSubjectX500Principal .getName)))
+            (is (= expected-issuer (-> signed-cert .getIssuerX500Principal .getName)))))
+
+        (testing "cert expiration is correct based on Puppet's ca_ttl setting"
           (let [duration (Period. now expiration)]
-            (is (= 6 (.getDays duration))
-                "Cert expiration was incorrect")))
-        (is (fs/exists? expected-cert-path))
-        (let [signed-cert      (-> expected-cert-path
-                                   utils/pem->certs
-                                   first)
-              expected-subject "CN=test-agent"
-              expected-issuer  "CN=test ca"]
-          (is (= expected-subject (-> signed-cert .getSubjectX500Principal .getName)))
-          (is (= expected-issuer (-> signed-cert .getIssuerX500Principal .getName))))
-        (finally
-          (fs/delete expected-cert-path))))))
+            (is (= 6 (.getDays duration))))))
+
+      (finally
+        (fs/delete expected-cert-path)))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a path to valid CRL file."
