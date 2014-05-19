@@ -17,6 +17,7 @@ This will not use Vagrant or a Rakefile, but instead a local VM and the beaker C
    - You'll need ntp or ntpdate and then run: ```ntpdate time.apple.com```
 4. Take a snapshot of the VM now that you have a pristine OS with SSH access
    - You'll want to revert back to this snapshot every time the run fails during pre_suite
+   - Note that **you might need to set the clock again after each VM restore**
 
 #### Define a hosts config file for your new VM
 
@@ -33,7 +34,7 @@ The one thing you'll need before running the tests via beaker is a URL to the re
    - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118/
 3. Drill down into repo_configs/rpm and then the appropriate one for your VM (and 64 or 32 bit)
    - Assuming that you have a 32-bit EL6 this will look like: pl-jvm-puppet-0.1.4.SNAPSHOT.2014.05.15T1118-el-6-i386.repo
-4. Copy the URL for this file (and make sure it's "http" and not "https" otherwise you'll get curl errors during the run)
+4. Copy the URL for this file (and _make sure it's "http" and not "https" otherwise you'll get curl SSL errors during pre-suite_)
 
 #### Run Beaker
 
@@ -46,7 +47,7 @@ This should kick off a beaker run against your new VM that will run all the pre_
 If the run fails during a pre-suite step, you'll need to revert your VM back to the previous state, resolve the error, and try again.
 Otherwise, the next run will fail as the pre-suite steps assume a fresh machine and are not tolerant of existing installations.
 
-If the run succeeds, you'll want to take another snapshot of VM so you can disable the pre-suite setup in subsequent runs for faster iteration.
+When the run succeeds, you'll want to **take another snapshot of VM** so you can disable the pre-suite setup in subsequent runs for faster iteration.
 
 #### Iterative Development & Debugging
 
