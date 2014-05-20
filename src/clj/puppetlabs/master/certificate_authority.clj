@@ -24,16 +24,15 @@
   (str csrdir "/" subject ".pem"))
 
 (defn calculate-certificate-expiration
-  "Calcluate the cert's expiration date based on the value of Puppet's 'ca_ttl'
+  "Calculate the cert's expiration date based on the value of Puppet's 'ca_ttl'
    setting"
   [ca-ttl]
   {:pre   [(integer? ca-ttl)]
    :post  [(instance? DateTime %)]}
   ;; TODO - PE-3173 - calculate the expiration date based off of the issue date of the CSR
-  (let [now        (DateTime/now)
-        ttl        (Period/seconds ca-ttl)
-        expiration (.plus now ttl)]
-    expiration))
+  (let [now (DateTime/now)
+        ttl (Period/seconds ca-ttl)]
+    (.plus now ttl)))
 
 ;; TODO persist between runs (PE-3174)
 (def serial-number (atom 0))
