@@ -78,9 +78,6 @@ class Puppet::Jvm::Master
   end
 
   def handleRequest(request)
-    request["client-cert"] =
-        Puppet::SSL::Certificate.new(request["client-cert-name"])
-
     response = {}
 
     process(request, response)
@@ -134,11 +131,18 @@ class Puppet::Jvm::Master
   end
 
   def params(request)
-    request["params"]
+    params = request["query"] || {}
+
+    params = Hash[params.collect do |key, value|
+      [key, value]
+    end]
+
+    params = decode_params(params)
+    params.merge(client_information(request))
   end
 
   def client_cert(request)
-    request["client-cert"]
+    nil
   end
 
   def getSetting(setting)
@@ -147,6 +151,27 @@ class Puppet::Jvm::Master
 
   def run_mode()
     Puppet.run_mode.name.to_s
+  end
+
+  # Retrieve node/cert/ip information from the request object.
+  def client_information(request)
+    result = {}
+    if peer = request["peeraddr"]
+      result[:ip] = peer
+    end
+
+    # If they have a certificate (which will almost always be true)
+    # then we get the hostname from the cert, instead of via IP
+    # info
+    result[:authenticated] = false
+    if cn = request["client-cert-cn"]
+      result[:node] = cn
+      result[:authenticated] = true
+    else
+      result[:node] = resolve_node(result)
+    end
+
+    result
   end
 
   private
