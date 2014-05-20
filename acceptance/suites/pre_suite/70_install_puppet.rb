@@ -5,4 +5,4 @@ step "Install MRI Puppet Agents."
   end
 
 step "Install JVM Puppet Master."
-  custom_install_puppet_package master, 'jvm-puppet' 
+  custom_install_puppet_package master, 'jvm-puppet'

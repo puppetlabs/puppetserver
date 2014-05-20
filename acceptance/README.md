@@ -99,7 +99,7 @@ through the command line:
 The Rakefile in jvm-puppet top-level directory is used during acceptance testing
 in the Jenkins CI pipeline to run various types of acceptance test in a
 consistent and reliable fashion. There are at least two expected workflows, one
-where BEAKER_CONFIG and JVMPUPPET_REPO_CONFIG are set manually prior to running the
+where BEAKER_CONFIG and PACKAGE_BUILD_VERSION are set manually prior to running the
 acceptance rake task, and another where values for those variables are
 calculated based on the values of other variables (see Workflow b below).
 
@@ -110,7 +110,7 @@ laptop.
 
     bundle install --path vendor/bundle
     export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-i386.cfg
-    export JVMPUPPET_REPO_CONFIG=http://builds.puppetlabs.lan/jvm-puppet/0.1.2.SNAPSHOT.2014.05.12T1408/repo_configs/deb/pl-jvm-puppet-0.1.2.SNAPSHOT.2014.05.12T1408-wheezy.list
+    export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
     export BEAKER_OPTS="--keyfile /home/username/downloads/id_rsa-acceptance"
     bundle exec rake test:acceptance:beaker 
 
@@ -121,8 +121,8 @@ repeated connection refused errors in Beaker's output.
 #### Rakefile Workflow b: "Jenkins" vSphere Hypervisor
 
 The following is a workflow that duplicates what happens in 'Workflow a' above
-by using PACKAGE_BUILD_NAME, PACKAGE_BUILD_VERSION, PLATFORM, and ARCH to
-produce the same values of BEAKER_CONFIG and JVMPUPPET_REPO_CONFIG as seen above
+by using PACKAGE_BUILD_NAME, PACKAGE_BUILD_VERSION, PLATFORM, and LAYOUT to
+produce the same values of BEAKER_CONFIG and PACKAGE_BUILD_VERSION as seen above
 in a ruby function. It is primarily intended for use in Jenkins
 acceptance/integration test jobs.
 
@@ -130,14 +130,14 @@ acceptance/integration test jobs.
     export PACKAGE_BUILD_NAME=jvm-puppet
     export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
     export PLATFORM=debian-7
-    export ARCH=i386
+    export LAYOUT=i386
     export BEAKER_OPTS="--keyfile /home/username/downloads/id_rsa-acceptance"
     bundle exec rake test:acceptance:beaker 
 
 PACKAGE_BUILD_NAME and PACKAGE_BUILD_VERSION are build parameters available as
 environment variables in the Jenkins 'execute shell script' build step.
 
-PLATFORM and ARCH are matrix parameters set for acceptance test Jenkins jobs.
+PLATFORM and LAYOUT are matrix parameters set for acceptance test Jenkins jobs.
 They are also available within the 'execute shell script' build step as
 environment variables.
 
@@ -147,15 +147,18 @@ The following workflow is intended to demonstrate running on a local machine
 using a vagrant hypervisor.
 
     bundle install --path vendor/bundle
-    export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-i386.cfg
-    export JVMPUPPET_REPO_CONFIG=http://builds.puppetlabs.lan/jvm-puppet/0.1.2.SNAPSHOT.2014.05.12T1408/repo_configs/deb/pl-jvm-puppet-0.1.2.SNAPSHOT.2014.05.12T1408-wheezy.list
+    export BEAKER_CONFIG=./acceptance/config/beaker/vbox/el6/64/1host.cfg
+    export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
+	bundle exec rake test:acceptance:beaker
 
 ### Environment Variables
 The following is a list of environment variables are supported by the
 test:acceptance:beaker Rake task and descriptions of the effect each has.
 
-* $JVMPUPPET_REPO_CONFIG 
-  * Default: None, fail loudly if no JVMPUPPET_REPO_CONFIG available.
+* $PACKAGE_BUILD_VERSION
+  * Default: None, fail loudly if no PACKAGE_BUILD_VERSION available.
+  * Example: 0.1.2.SNAPSHOT.2014.05.12T1408
+    export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
   * Description: This variable is used by the Beaker pre_suite to obtain a
   package repository configuration file used by yum or apt on the System Under
   Test. It is expected that this url will become available for a particular

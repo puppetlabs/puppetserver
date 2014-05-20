@@ -25,6 +25,27 @@ module JVMPuppetExtensions
       end
   end
 
+  # Obtained from:
+  #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L752
+  #
+  def fetch(base_url, file_name, dst_dir)
+    FileUtils.makedirs(dst_dir)
+    src = "#{base_url}/#{file_name}"
+    dst = File.join(dst_dir, file_name)
+    if File.exists?(dst)
+      logger.notify "Already fetched #{dst}"
+    else
+      logger.notify "Fetching: #{src}"
+      logger.notify "  and saving to #{dst}"
+      open(src) do |remote|
+        File.open(dst, "w") do |file|
+          FileUtils.copy_stream(remote, file)
+        end
+      end
+    end
+    return dst
+  end
+
   def custom_install_puppet_package (host, package_name, package_version="", noarch=false)
     platform = host['platform']
 
@@ -118,31 +139,64 @@ module JVMPuppetExtensions
     end
   end
 
-  # might move repo_config generation here in the future
-  def install_jvmpuppet_repos_on(host)
+  # Obtained from:
+  #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L819
+  # With minor semantic changes.
+  #
+  def install_dev_repos_on(package, host, build_version, repo_configs_dir)
     platform = host['platform']
-    repo_config = ENV['JVMPUPPET_REPO_CONFIG']
+    platform_configs_dir = File.join(repo_configs_dir, platform)
 
     case platform
-    when /^(fedora|el|centos)-(\d+)-(.+)$/
-      variant = (($1 == 'centos')? 'el' : $1)
-      version = $2
-      arch = $3
-      on host, "curl #{repo_config} > /etc/yum.repos.d/jvmpuppet-#{variant}-#{version}-#{arch}.repo"
-      #on host, "yum update"
+      when /^(fedora|el|centos)-(\d+)-(.+)$/
+        variant = (($1 == 'centos') ? 'el' : $1)
+        fedora_prefix = ((variant == 'fedora') ? 'f' : '')
+        version = $2
+        arch = $3
 
-    when /^(debian|ubuntu)-([^-]+)-(.+)$/
-      # might move repo_config generation here in the future
-      variant = (($1 == 'centos')? 'el' : $1)
-      version = $2
-      #arch = $3
-      on host, "wget -O /etc/apt/sources.list.d/jvm-puppet-#{variant}-#{version}.list #{repo_config}"
-      on host, "apt-get update"
+        pattern = "pl-%s-%s-%s-%s%s-%s.repo"
+        repo_filename = pattern % [
+          package,
+          build_version,
+          variant,
+          fedora_prefix,
+          version,
+          arch
+        ]
 
-    else
-      raise ArgumentError, "No repository installation step for #{platform} yet..."
+        repo = fetch(
+          "http://builds.puppetlabs.lan/%s/%s/repo_configs/rpm/" % [package, build_version],
+          repo_filename,
+          platform_configs_dir
+        )
+
+        scp_to(host, repo, '/etc/yum.repos.d/')
+
+      when /^(debian|ubuntu)-([^-]+)-(.+)$/
+        variant = $1
+        version = $2
+        arch = $3
+
+        case variant
+        when /^debian$/
+          codename = get_debian_codename(version)
+        when /^ubuntu$/
+          codename = get_ubuntu_codename(version)
+        end
+
+        list = fetch(
+          "http://builds.puppetlabs.lan/%s/%s/repo_configs/deb/" % [package, build_version],
+          "pl-%s-%s-%s.list" % [package, build_version, codename],
+          platform_configs_dir
+        )
+
+        scp_to host, list, '/etc/apt/sources.list.d'
+        on host, 'apt-get update'
+      else
+        host.logger.notify("No repository installation step for #{platform} yet...")
     end
   end
+
 end
 
 Beaker::TestCase.send(:include, JVMPuppetExtensions)
