@@ -128,6 +128,15 @@
    :hostprivkey String
    :hostpubkey  String})
 
+(def CaSettings
+  { :cacert   String
+    :cacrl    String
+    :cakey    String
+    :ca-name  String
+    :ca-ttl   schema/Int
+    :certdir  String
+    :csrdir   String })
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -161,8 +170,7 @@
   from Puppet, auto-sign the request and write the certificate to disk.
   Return the certificate expiration date."
   [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
-  {:pre  [(every? string? [subject cakey ca-name certdir])
-          (instance? InputStream certificate-request)]
+  {:pre  [(instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}
   (let [request-object  (-> certificate-request
                             utils/pem->objs
