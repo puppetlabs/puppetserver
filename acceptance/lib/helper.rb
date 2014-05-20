@@ -19,7 +19,7 @@ module JVMPuppetExtensions
           next if host['roles'].include? 'master'
 
           step "Agents: Run agent --test first time to gen CSR"
-          on host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [1,0]
+          on host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0]
         end
 
       end
