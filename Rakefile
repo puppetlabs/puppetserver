@@ -2,69 +2,17 @@ PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = File.join(PROJECT_ROOT, 'acceptance')
 SPEC_TEST_GEMS = 'vendor/spec_test_gems'
 
-def get_platform_map ()
-  platform = ENV['PLATFORM']
-  arch = ENV['ARCH']
-
-  if platform =~ /(el-|fedora-)(.*)/
-    package_type = "rpm"
-    config_suffix = "repo"
-    platform_name = "#{platform}-#{arch}"
-  elsif platform =~ /(debian|ubuntu)(.*)/
-    package_type = "deb"
-    config_suffix = "list"
-    case platform
-    when "ubuntu-1004"
-      platform_name = "lucid"
-    when "ubuntu-1204"
-      platform_name = "precise"
-    when "debian-6"
-      platform_name = "squeeze"
-    when "debian-7"
-      platform_name = "wheezy"
-    else
-      abort "Unsupported debian-based platform!"
-    end
-  end
-
-  {:name => platform_name || nil,
-   :platform => platform || nil,
-   :arch => arch || nil,
-   :package_type => package_type || nil,
-   :config_suffix => config_suffix || nil
-  }
-end
-
-def assemble_default_jvmpuppet_repo_config (platform)
-  if ENV["JVMPUPPET_REPO_CONFIG"]
-    return ENV["JVMPUPPET_REPO_CONFIG"]
-  end
-
-  package_build_name = ENV["PACKAGE_BUILD_NAME"]
-  package_build_version = ENV["PACKAGE_BUILD_VERSION"]
-
-  if package_build_name and package_build_version and
-    platform[:name] and platform[:config_suffix]
-    repo_config = "http://builds.puppetlabs.lan/"
-    repo_config += "#{package_build_name}/#{package_build_version}/"
-    repo_config += "repo_configs/#{platform[:package_type]}/"
-    repo_config += "pl-#{package_build_name}-#{package_build_version}-"
-    repo_config += "#{platform[:name]}.#{platform[:config_suffix]}"
-  else
-    abort "Must specify an appropriate value for JVMPUPPET_REPO_CONFIG. See acceptance/README.md"
-  end
-
-  return repo_config
-end
-
-def assemble_default_beaker_config (platform)
+def assemble_default_beaker_config 
   if ENV["BEAKER_CONFIG"]
     return ENV["BEAKER_CONFIG"]
   end
 
-  if platform[:name] and platform[:arch]
+  platform = ENV['PLATFORM']
+  layout = ENV['LAYOUT']
+
+  if platform and layout
     beaker_config = "#{ACCEPTANCE_ROOT}/config/beaker/jenkins/"
-    beaker_config += "#{platform[:platform]}-#{platform[:arch]}.cfg"
+    beaker_config += "#{platform}-#{layout}.cfg"
   else
     abort "Must specify an appropriate value for BEAKER_CONFIG. See acceptance/README.md"
   end
@@ -116,10 +64,7 @@ namespace :test do
       loadpath = ENV["BEAKER_LOADPATH"] || ""
 
       # variables requiring some assembly
-      platform = get_platform_map
-      ENV['PLATFORM_NAME'] = platform[:name]
-      ENV['JVMPUPPET_REPO_CONFIG'] = assemble_default_jvmpuppet_repo_config(platform)
-      config = assemble_default_beaker_config(platform)
+      config = assemble_default_beaker_config
 
       # variables that take a limited set of acceptable strings
       type = ENV["BEAKER_TYPE"] || "pe"
