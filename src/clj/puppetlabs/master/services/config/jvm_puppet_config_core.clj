@@ -20,6 +20,7 @@
      :cakey
      :ca-name
      :capub
+     :ca-ttl
      :certdir
      :certname
      :csrdir

@@ -13,12 +13,7 @@
     [this context]
     (let [path            ""
           config          (get-in-config [:jvm-puppet])
-          ca-settings     (select-keys config [:cacert
-                                               :cacrl
-                                               :cakey
-                                               :ca-name
-                                               :certdir
-                                               :csrdir])]
+          ca-settings     (select-keys config (keys ca/CaSettings))]
 
       (log/info "CA Service adding a ring handler")
       (add-ring-handler

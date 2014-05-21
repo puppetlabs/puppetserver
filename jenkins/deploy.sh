@@ -6,7 +6,6 @@ set -x
 git fetch --tags
 
 lein test
-# TODO - should be running acceptance tests here.
 echo "Tests passed!"
 
 lein release

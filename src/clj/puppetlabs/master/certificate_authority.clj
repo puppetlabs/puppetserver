@@ -24,13 +24,15 @@
   (str csrdir "/" subject ".pem"))
 
 (defn calculate-certificate-expiration
-  "Return a date-time string for 5 years from now."
-  []
-  ;; TODO pull the real expiration date off of the certificate request (PE-3173)
-  (let [now        (DateTime/now)
-        five-years (Period/years 5)
-        expiration (.plus now five-years)]
-    (str expiration)))
+  "Calculate the cert's expiration date based on the value of Puppet's 'ca_ttl'
+   setting"
+  [ca-ttl]
+  {:pre   [(integer? ca-ttl)]
+   :post  [(instance? DateTime %)]}
+  ;; TODO - PE-3173 - calculate the expiration date based off of the issue date of the CSR
+  (let [now (DateTime/now)
+        ttl (Period/seconds ca-ttl)]
+    (.plus now ttl)))
 
 ;; TODO persist between runs (PE-3174)
 (def serial-number (atom 0))
@@ -126,6 +128,15 @@
    :hostprivkey String
    :hostpubkey  String})
 
+(def CaSettings
+  { :cacert   String
+    :cacrl    String
+    :cakey    String
+    :ca-name  String
+    :ca-ttl   schema/Int
+    :certdir  String
+    :csrdir   String })
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -155,13 +166,13 @@
       (slurp cert-request-path))))
 
 (defn autosign-certificate-request!
-  "Given a subject name, their certificate request, and path to the SSL directory,
-  auto-sign the request and write the certificate to disk. Return the certificate
-  expiration date as 5 years from now."
-  [subject certificate-request cakey ca-name certdir]
-  {:pre  [(every? string? [subject cakey ca-name certdir])
+  "Given a subject name, their certificate request, and the CA settings
+  from Puppet, auto-sign the request and write the certificate to disk.
+  Return the certificate expiration date."
+  [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
+  {:pre  [(string? subject)
           (instance? InputStream certificate-request)]
-   :post [(string? %)]}
+   :post [(instance? DateTime %)]}
   (let [request-object  (-> certificate-request
                             utils/pem->objs
                             first)
@@ -177,7 +188,7 @@
                           next-serial
                           ca-private-key)]
     (utils/obj->pem! signed-cert cert-path))
-  (calculate-certificate-expiration))
+  (calculate-certificate-expiration ca-ttl))
 
 (defn get-certificate-revocation-list
   "Given the value of the 'cacrl' setting from Puppet,

@@ -1,6 +1,7 @@
 (ns puppetlabs.master.services.ca.certificate-authority-core
   (:require [puppetlabs.master.certificate-authority :as ca]
             [puppetlabs.master.ringutils :as ringutils]
+            [schema.core :as schema]
             [compojure.core :as compojure]
             [compojure.handler :as handler]
             [ring.util.response :as rr]))
@@ -22,10 +23,12 @@
         (rr/not-found (str "Could not find certificate_request " subject)))
       (rr/content-type "text/plain")))
 
-(defn handle-put-certificate-request!
-  [subject certificate-request {:keys [ca-name cakey certdir]}]
+(schema/defn handle-put-certificate-request!
+  [subject
+   certificate-request
+   ca-settings :- ca/CaSettings]
   (let [expiration-date (ca/autosign-certificate-request!
-                          subject certificate-request cakey ca-name certdir)]
+                          subject certificate-request ca-settings)]
     ;; TODO return something proper (PE-3178)
     (-> (str "---\n"
              "  - !ruby/object:Puppet::SSL::CertificateRequest\n"
@@ -45,8 +48,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 
-(defn routes
-  [ca-settings]
+(schema/defn routes
+  [ca-settings :- ca/CaSettings]
   (compojure/context "/:environment" [environment]
     (compojure/routes
       (compojure/GET "/certificate/:subject" [subject]
@@ -59,8 +62,9 @@
       (compojure/GET "/certificate_revocation_list/:ignored-node-name" []
         (handle-get-certificate-revocation-list ca-settings)))))
 
-(defn compojure-app
-  [ca-settings]
+(schema/defn ^:always-validate
+  compojure-app
+  [ca-settings :- ca/CaSettings]
   (->
     (routes ca-settings)
     (handler/api)
