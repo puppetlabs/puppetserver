@@ -2,11 +2,11 @@
   (:import (com.puppetlabs.master JRubyPuppet
                                   JRubyPuppetResponse)
            (java.security.cert X509Certificate)
-           (java.util HashMap)
-           (javax.naming.ldap LdapName))
+           (java.util HashMap))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -16,15 +16,11 @@
   [request]
   (if-let [cert (:ssl-client-cert request)]
     (if-let [cert-dn (-> cert .getSubjectX500Principal .getName)]
-      (if-let [cert-cn (some #(when (.equalsIgnoreCase "CN"
-                                                       (.getType %))
-                                (.getValue %))
-                             (-> cert-dn (LdapName.) .getRdns))]
+      (if-let [cert-cn (ks/cn-for-dn cert-dn)]
         cert-cn
         (log/errorf "cn not found in client certificate dn: %s"
                    cert-dn))
-      (log/error "dn not found for client certificate subject"))
-    (log/warn "No client certificate found")))
+      (log/error "dn not found for client certificate subject"))))
 
 (defn response->map
   "Converts a JRubyPuppetResponse instance to a map."
