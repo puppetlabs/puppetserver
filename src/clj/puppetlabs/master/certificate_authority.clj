@@ -170,7 +170,8 @@
   from Puppet, auto-sign the request and write the certificate to disk.
   Return the certificate expiration date."
   [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
-  {:pre  [(instance? InputStream certificate-request)]
+  {:pre  [(string? subject)
+          (instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}
   (let [request-object  (-> certificate-request
                             utils/pem->objs
