@@ -132,11 +132,6 @@ class Puppet::Jvm::Master
 
   def params(request)
     params = request["query"] || {}
-
-    params = Hash[params.collect do |key, value|
-      [key, value]
-    end]
-
     params = decode_params(params)
     params.merge(client_information(request))
   end
