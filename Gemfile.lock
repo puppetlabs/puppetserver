@@ -1,17 +1,9 @@
-GEM
-  remote: https://rubygems.org/
+GIT
+  remote: https://github.com/KevinCorcoran/beaker.git
+  revision: d4bc4149acd4498e9accf06abbe41cb470cb1cd1
+  branch: puppet_tmpdir
   specs:
-    CFPropertyList (2.2.7)
-    addressable (2.3.6)
-    archive-tar-minitar (0.5.2)
-    autoparse (0.3.3)
-      addressable (>= 2.3.1)
-      extlib (>= 0.9.15)
-      multi_json (>= 1.0.0)
-    aws-sdk (1.40.0)
-      json (~> 1.4)
-      nokogiri (>= 1.4.4)
-    beaker (1.11.0)
+    beaker (1.11.2)
       aws-sdk (~> 1.38)
       blimpy (~> 0.6)
       docker-api
@@ -25,13 +17,27 @@ GEM
       nokogiri (= 1.5.10)
       rbvmomi (= 1.8.1)
       unf (~> 0.1)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    CFPropertyList (2.2.8)
+    addressable (2.3.6)
+    archive-tar-minitar (0.5.2)
+    autoparse (0.3.3)
+      addressable (>= 2.3.1)
+      extlib (>= 0.9.15)
+      multi_json (>= 1.0.0)
+    aws-sdk (1.40.3)
+      json (~> 1.4)
+      nokogiri (>= 1.4.4)
     blimpy (0.6.7)
       fog
       minitar
       thor
     builder (3.2.2)
     diff-lcs (1.2.5)
-    docker-api (1.10.10)
+    docker-api (1.10.11)
       archive-tar-minitar
       excon (>= 0.28)
       json
@@ -70,11 +76,11 @@ GEM
       addressable (~> 2.3)
     mime-types (1.25.1)
     minitar (0.5.4)
-    multi_json (1.10.0)
+    multi_json (1.10.1)
     multipart-post (2.0.0)
     net-scp (1.2.1)
       net-ssh (>= 2.6.5)
-    net-ssh (2.9.0)
+    net-ssh (2.9.1)
     nokogiri (1.5.10)
     rake (10.3.1)
     rbvmomi (1.8.1)
@@ -107,6 +113,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  beaker (= 1.11.0)
+  beaker!
   rake
   rspec
