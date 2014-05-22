@@ -2,6 +2,72 @@ require 'beaker/dsl/install_utils'
 
 module JVMPuppetExtensions
 
+  # Configuration code largely obtained from:
+  # https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb
+  #
+  def self.initialize_config(options, os_families)
+    base_dir = File.join(File.dirname(__FILE__), '..')
+
+    install_type = get_option_value(options[:jvmpuppet_install_type],
+      [:git, :package, :pe], "install type", "JVMPUPPET_INSTALL_TYPE", :package)
+
+    install_mode =
+        get_option_value(options[:jvmpuppet_install_mode],
+                         [:install, :upgrade], "install mode",
+                         "JVMPUPPET_INSTALL_MODE", :install)
+
+    jvmpuppet_version =
+        get_option_value(options[:jvmpuppet_version],
+                         nil, "JVM Puppet Version",
+                         "JVMPUPPET_VERSION", nil)
+    @config = {
+      :base_dir => base_dir,
+      :jvmpuppet_install_type => install_type,
+      :jvmpuppet_install_mode => install_mode,
+      :jvmpuppet_version => jvmpuppet_version,
+    }
+
+    pp_config = PP.pp(@config, "")
+
+    Beaker::Log.notify "JVMPuppet Acceptance Configuration:\n\n#{pp_config}\n\n"
+  end
+
+  class << self
+    attr_reader :config
+  end
+
+  # Return the configuration hash initialized by
+  # JVMPuppetExtensions.initialize_config
+  #
+  def test_config
+    JVMPuppetExtensions.config
+  end
+
+  def self.get_option_value(value, legal_values, description,
+    env_var_name = nil, default_value = nil)
+
+    # precedence is environment variable, option file, default value
+    value = ((env_var_name && ENV[env_var_name]) || value || default_value)
+    if value
+      value = value.to_sym
+    end
+
+    unless legal_values.nil? or legal_values.include?(value)
+      raise ArgumentError, "Unsupported #{description} '#{value}'"
+    end
+
+    value
+  end
+
+  def get_os_family(host)
+    on(host, "which yum", :silent => true)
+    if result.exit_code == 0
+      :redhat
+    else
+      :debian
+    end
+  end
+
   def initialize_ssl
     hostname = on(master, 'facter hostname').stdout.strip
     fqdn = on(master, 'facter fqdn').stdout.strip
