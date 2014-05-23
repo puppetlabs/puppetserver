@@ -5,17 +5,22 @@
            (java.util HashMap))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [clojure.walk :as walk]))
+            [clojure.walk :as walk]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(defn get-cert-name
-  "Given a request, return the name of the SSL client certificate."
+(defn get-cert-common-name
+  "Given a request, return the Common Name from the client certificate subject."
   [request]
-  (let [cert (:ssl-client-cert request)]
-    (assert (instance? X509Certificate cert))
-    (-> cert .getSubjectX500Principal .getName)))
+  (if-let [cert (:ssl-client-cert request)]
+    (if-let [cert-dn (-> cert .getSubjectX500Principal .getName)]
+      (if-let [cert-cn (ks/cn-for-dn cert-dn)]
+        cert-cn
+        (log/errorf "cn not found in client certificate dn: %s"
+                   cert-dn))
+      (log/error "dn not found for client certificate subject"))))
 
 (defn response->map
   "Converts a JRubyPuppetResponse instance to a map."
@@ -39,21 +44,21 @@
       * It also extracts the name of the SSL client cert and includes that
         in the map it returns, because it's needed by the ruby layer."
   [request]
-  { :uri              (:uri request)
-    :params           (:params request)
-    :headers          (:headers request)
-    :body             (slurp (:body request))
-    :client-cert-name (get-cert-name request)
-    :request-method   (->
-                        (:request-method request)
-                        name
-                        string/upper-case) })
+  { :uri            (:uri request)
+    :query          (:query-params request)
+    :peeraddr       (:remote-addr request)
+    :headers        (:headers request)
+    :body           (slurp (:body request))
+    :client-cert-cn (get-cert-common-name request)
+    :request-method (->
+                      (:request-method request)
+                      name
+                      string/upper-case)})
 
-(defn make-maps-mutable
+(defn make-request-mutable
   [request]
-  "Make the request and its parameters mutable.
-  This is required by the ruby layer."
-  (HashMap. (update-in request ["params"] #(HashMap. %))))
+  "Make the request mutable.  This is required by the ruby layer."
+  (HashMap. request))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -63,6 +68,6 @@
   (->> request
        as-jruby-request
        clojure.walk/stringify-keys
-       make-maps-mutable
+       make-request-mutable
        (.handleRequest jruby-instance)
        response->map))
