@@ -27,12 +27,10 @@
   [response]
   { :pre [(instance? JRubyPuppetResponse response)]
     :post [(map? %)] }
-  (let [body (slurp (.getBody response))]
-    { :status   (.getStatus response)
-      :body     body
-      :headers  { "Content-Type"      (.getContentType response)
-                  "Content-Length"    (str (count body))
-                  "X-Puppet-Version"  (.getPuppetVersion response)} }))
+    { :status  (.getStatus response)
+      :body    (.getBody response)
+      :headers {"Content-Type"     (.getContentType response)
+                "X-Puppet-Version" (.getPuppetVersion response)}})
 
 (defn as-jruby-request
   "Given a ring HTTP request, return a new map that contains all of the data

@@ -16,15 +16,17 @@
   (compojure/routes
     ; TODO there are a bunch more that we'll need to add here
     ; https://tickets.puppetlabs.com/browse/PE-3977
-    (compojure/GET "/node/:node-certificate-name" request
+    (compojure/GET "/node/*" request
                    (request-handler environment request))
-    (compojure/GET "/file_metadatas/:file" request
+    (compojure/GET "/file_content/*" request
                    (request-handler environment request))
-    (compojure/GET "/file_metadata/:file" request
+    (compojure/GET "/file_metadatas/*" request
                    (request-handler environment request))
-    (compojure/POST "/catalog/:node-certificate-name" request
+    (compojure/GET "/file_metadata/*" request
+                   (request-handler environment request))
+    (compojure/POST "/catalog/*" request
                     (request-handler environment request))
-    (compojure/PUT "/report/:node-certificate-name" request
+    (compojure/PUT "/report/*" request
                    (request-handler environment request))))
 
 (defn root-routes

@@ -87,9 +87,9 @@ class Puppet::Jvm::Master
     body = response[:body]
     body_to_return =
         if body.is_a? String
-          java.io.StringReader.new(body)
+          body
         elsif body.is_a? IO
-          java.io.InputStreamReader.new(body.to_inputstream)
+          body.to_inputstream
         else
           raise "Don't know how to handle response body from puppet, which is a #{body.class}"
         end
