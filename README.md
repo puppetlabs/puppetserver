@@ -1,6 +1,7 @@
 jvm-puppet
 ==========
 
+
 JVM implementation of the Puppet master
 
 # To run the server:
