@@ -1,7 +1,5 @@
 package com.puppetlabs.master;
 
-import java.io.Reader;
-
 /**
  * This class is a simple data structure that contains the response to an
  * agent -> master HTTP request, including all information
@@ -14,13 +12,13 @@ import java.io.Reader;
  */
 public class JRubyPuppetResponse {
     private final Integer status;
-    private final Reader body;
+    private final Object body;
     private final String contentType;
     private final String puppetVersion;
 
     public JRubyPuppetResponse(
             Integer status,
-            Reader body,
+            Object body,
             String contentType,
             String puppetVersion) {
         this.status = status;
@@ -29,7 +27,7 @@ public class JRubyPuppetResponse {
         this.puppetVersion = puppetVersion;
     }
 
-    public Reader getBody() {
+    public Object getBody() {
         return body;
     }
 
