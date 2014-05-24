@@ -52,7 +52,8 @@
                                    [spyscope "0.1.4"]]
                    :injections    [(require 'spyscope.core)]}
 
-             :uberjar {:aot [puppetlabs.trapperkeeper.main]}}
+             :uberjar {:aot [puppetlabs.trapperkeeper.main]}
+             :acceptance {:plugins [[lein-pprint "1.1.1"]]}}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]
