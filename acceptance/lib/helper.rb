@@ -9,7 +9,7 @@ module JVMPuppetExtensions
     base_dir = File.join(File.dirname(__FILE__), '..')
 
     install_type = get_option_value(options[:jvmpuppet_install_type],
-      [:git, :package, :pe], "install type", "JVMPUPPET_INSTALL_TYPE", :package)
+      [:git, :package], "install type", "JVMPUPPET_INSTALL_TYPE", :package)
 
     install_mode =
         get_option_value(options[:jvmpuppet_install_mode],
@@ -157,6 +157,36 @@ module JVMPuppetExtensions
     end
   end
 
+  def install_package_deps_on(host, package)
+    platform = host['platform']
+
+    case platform
+      when /^(fedora|el|centos)-(\d+)-(.+)$/
+        install_deps_command = "yum deplist #{package} | "
+        install_deps_command += "grep provider | "
+        install_deps_command += "awk '{print $2}' | "
+        install_deps_command += "sort | "
+        install_deps_command += "uniq | "
+        install_deps_command += "grep -v #{package} | "
+        install_deps_command += "sed ':a;N;$!ba;s/\\n/ /g' | "
+        install_deps_command += "xargs yum -y install "
+        on host, install_deps_command
+
+      when /^(debian|ubuntu)-([^-]+)-(.+)$/
+        install_deps_command = "apt-cache depends #{package} | "
+        install_deps_command += "grep Depends | "
+        install_deps_command += "sed 's|ends: ||' | "
+        install_deps_command += "tr '\n' ' ' | "
+        install_deps_command += "xargs apt-get install -y "
+        on host, install_deps_command
+
+      else
+        host.logger.notify("No repository installation step for #{platform} yet...")
+    end
+
+
+  end
+
   def get_debian_codename(version)
     case version
     when /^6$/
@@ -172,6 +202,128 @@ module JVMPuppetExtensions
       return "lucid"
     when /^1204$/
       return "precise"
+    end
+  end
+
+  def conditionally_clone(upstream_uri, local_path)
+    if system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git status"
+      system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git pull"
+      FileUtils.rm_rf(local_path + "/target/staging")
+    else
+      system "git clone #{upstream_uri} #{ezbake_dir}"
+    end
+  end
+
+  def install_from_ezbake(host, project_name, project_version=nil)
+    tmpdir = "./tmp"
+    FileUtils.mkdir_p(tmpdir)
+
+    ezbake_dir = File.join(tmpdir, "ezbake")
+    conditionally_clone "git@github.com:puppetlabs/ezbake.git", ezbake_dir
+
+    # TODO make sure java and leiningen are installed? probably not necessary.
+
+    # lein deploy
+    `NEXUS_JENKINS_PASSWORD="#{ENV['NEXUS_JENKINS_PASSOWRD']}" NEXUS_JENKINS_USERNAME="#{ENV['NEXUS_JENKINS_USERNAME']}" lein deploy`
+
+    if not project_version
+      # assumes the project has an "acceptance" profile with lein-pprint plugin
+      # installed
+      project_version = `lein with-profile acceptance pprint :version | cut -d\\" -f2`
+    end
+
+    # ezbake stage
+    remote_tarball = ""
+    local_tarball = ""
+    dir_name = ""
+
+    Dir.chdir(ezbake_dir) do
+      command = "lein run -- stage #{project_name} #{project_name}-version=#{project_version}"
+      print command
+      output = `#{command}`
+      print output
+
+      Dir.chdir("./target/staging") do
+        match = /^Tagging git repo at (.*)/.match(output)
+        project_nexus_version = match[1]
+
+        output = `rake package:bootstrap`
+        output = `rake package:tar`
+
+        pattern = "%s-%s"
+        dir_name = pattern % [
+          project_name,
+          project_nexus_version
+        ]
+        local_tarball = "./pkg/" + dir_name + ".tar.gz"
+        remote_tarball = "/root/" +  dir_name + ".tar.gz"
+
+        scp_to host, local_tarball, remote_tarball
+      end
+    end
+
+    # untar tarball on host
+    on host, "tar -xzf " + remote_tarball
+
+    # install puppet user
+    manifest = <<-EOS
+    group { 'puppet':
+      ensure => present,
+      system => true,
+    }
+    user { 'puppet':
+      ensure => present,
+      gid => 'puppet',
+      managehome => false,
+      system => true,
+    }
+    EOS
+    apply_manifest_on(host, manifest)
+
+    # "make" on target
+    cd_to_package_dir = "cd /root/" + dir_name + "; "
+    make_env = "env prefix=/usr confdir=/etc rundir=/var/run/#{project_name} "
+    on host, cd_to_package_dir + make_env + "make -e install-" + project_name
+
+    # install init scripts and default settings
+    platform = host['platform']
+    case platform
+      when /^(fedora|el|centos)-(\d+)-(.+)$/
+        on host, "install -d -m 0755 /etc/init.d"
+        on host, "install -m 0755 " + dir_name +
+          "/ext/redhat/init /etc/init.d/#{project_name}"
+        on host, "install -d -m 0755 /etc/sysconfig"
+        on host, "install -m 0755 " + dir_name +
+          "/ext/default /etc/sysconfig/#{project_name}"
+      when /^(debian|ubuntu)-([^-]+)-(.+)$/
+        host.logger.notify("#{platform} not yet supported.")
+      else
+        host.logger.notify("No ezbake installation step for #{platform} yet...")
+    end
+
+    # TODO need to ensure ownership and permissions are set correctly on all
+    # files and directories, not sure how to do that on a per-platform and
+    # per-project basis since each project seems to need a different user and
+    # has a different set of file resources
+  end
+
+  def install_jvm_puppet_on(host)
+    case test_config[:jvmpuppet_install_type]
+    when :package
+      custom_install_puppet_package host, 'jvm-puppet'
+    when :git
+      install_package_deps_on host, 'jvm-puppet'
+      install_from_ezbake host, 'jvm-puppet', test_config[:jvmpuppet_version]
+
+      # this stuff should really be done by install_project_from_ezbake but i'm
+      # not sure how to do that in a generic way that is applicable to other
+      # projects. might need to load some variables file from ezbake to get the
+      # username and libdir values.
+      on host, "find /var/lib/puppet -type d -name '*' -exec chmod 775 {} ';'"
+      on host, "chown -R puppet.puppet /var/lib/puppet"
+      on host, "mkdir -p /etc/puppet/manifests"
+    else
+      abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
     end
   end
 
