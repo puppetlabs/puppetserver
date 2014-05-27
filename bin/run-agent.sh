@@ -1,7 +1,7 @@
 #!/bin/sh
 
 export RUBYLIB="$PWD/ruby/puppet/lib:$PWD/ruby/facter/lib"
-export PATH=$PATH:$PWD/ruby/puppet/bin:$PWD/ruby/facter/bin
+export PATH=$PWD/ruby/puppet/bin:$PWD/ruby/facter/bin:$PATH
 
 puppet agent --no-daemonize --debug --trace --verbose \
             --confdir=./scratch/agent/conf \
