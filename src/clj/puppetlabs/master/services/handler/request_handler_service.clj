@@ -18,9 +18,9 @@
                [[:JRubyPuppetService get-default-pool-descriptor]]
                (handle-request
                  [this request]
-                 (let [pool-descriptor (if-let [environment (:environment request)]
-                                         (environment->pool-descriptor environment)
-                                         (get-default-pool-descriptor))
+                 ;; TODO : This should later intelligently choose the pool
+                 ;; TODO : descriptor based up on the environment of the req.
+                 (let [pool-descriptor (get-default-pool-descriptor)
                        jruby-service (get-service :JRubyPuppetService)]
                    (handle-request pool-descriptor request jruby-service)))
 
