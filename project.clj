@@ -48,6 +48,7 @@
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink ~ks-version
                                     :classifier "test" :scope "test"]
+                                   [ring-mock "0.1.5"]
                                    [spyscope "0.1.4"]]
                    :injections    [(require 'spyscope.core)]}
 

@@ -7,6 +7,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
+(defn v2_0-routes
+  "Creates the compojure routes to handle the master's '/v2.0' routes."
+  [request-handler]
+  (compojure/routes
+    (compojure/GET "/environments" request
+                   (request-handler request))))
+
 (defn legacy-routes
   "Creates the compojure routes to handle the master's 'legacy' routes
    - ie, any route without a version in its path (eg, /v2.0/whatever) - but
@@ -34,7 +41,7 @@
   [request-handler]
   (compojure/routes
     (compojure/context "/v2.0" request
-                       (request-handler request))
+                       (v2_0-routes request-handler))
     (compojure/context "/:environment" [environment]
                        (legacy-routes request-handler environment))))
 
