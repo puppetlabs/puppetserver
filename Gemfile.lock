@@ -1,9 +1,9 @@
 GIT
   remote: https://github.com/waynr/beaker.git
-  revision: 8513f378de7b2c4b42527d8ae6fbaa9c87dc42fa
+  revision: d4b8ce722fa9f163bc383249317b163c0ec0a06f
   branch: stable
   specs:
-    beaker (1.12.0)
+    beaker (1.11.2)
       aws-sdk (~> 1.38)
       blimpy (~> 0.6)
       docker-api
@@ -82,7 +82,7 @@ GEM
       net-ssh (>= 2.6.5)
     net-ssh (2.9.1)
     nokogiri (1.5.10)
-    rake (10.3.1)
+    rake (10.3.2)
     rbvmomi (1.8.1)
       builder
       nokogiri (>= 1.4.1)
