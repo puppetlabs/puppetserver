@@ -5,7 +5,7 @@ module JVMPuppetExtensions
   # Configuration code largely obtained from:
   # https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb
   #
-  def self.initialize_config(options, os_families)
+  def self.initialize_config(options)
     base_dir = File.join(File.dirname(__FILE__), '..')
 
     install_type = get_option_value(options[:jvmpuppet_install_type],
@@ -34,6 +34,7 @@ module JVMPuppetExtensions
 
   class << self
     attr_reader :config
+    attr_accessor :ezbake
   end
 
   # Return the configuration hash initialized by
@@ -41,6 +42,12 @@ module JVMPuppetExtensions
   #
   def test_config
     JVMPuppetExtensions.config
+  end
+
+  # Return the ezbake config.
+  #
+  def ezbake_config
+    JVMPuppetExtensions.ezbake
   end
 
   def self.get_option_value(value, legal_values, description,
@@ -57,15 +64,6 @@ module JVMPuppetExtensions
     end
 
     value
-  end
-
-  def get_os_family(host)
-    on(host, "which yum", :silent => true)
-    if result.exit_code == 0
-      :redhat
-    else
-      :debian
-    end
   end
 
   def initialize_ssl
@@ -122,7 +120,7 @@ module JVMPuppetExtensions
     return dst
   end
 
-  def custom_install_puppet_package (host, package_name, package_version="", noarch=false)
+  def custom_install_puppet_package (host, package_name, package_version=nil, noarch=false)
     platform = host['platform']
 
     case platform
@@ -135,19 +133,19 @@ module JVMPuppetExtensions
         arch = "noarch"
       end
 
-      if package_version != ""
+      if package_version
         package_name = "#{package_name}-#{package_version}.#{variant}#{version}.#{arch}"
       end
 
       install_package host, package_name
 
     when /^(debian|ubuntu)-([^-]+)-(.+)$/
-      variant = (($1 == 'centos')? 'el' : $1)
+      variant = $1
       version = $2
       #arch = $3
 
-      if package_version != ""
-        package_name = "#{package_name}=#{package_version}puppetlabs1"
+      if package_version
+        package_name = "#{package_name}=#{package_version}"
       end
 
       on host, "apt-get install --force-yes -y #{package_name}"
@@ -155,36 +153,6 @@ module JVMPuppetExtensions
     else
       raise ArgumentError, "No repository installation step for #{platform} yet..."
     end
-  end
-
-  def install_package_deps_on(host, package)
-    platform = host['platform']
-
-    case platform
-      when /^(fedora|el|centos)-(\d+)-(.+)$/
-        install_deps_command = "yum deplist #{package} | "
-        install_deps_command += "grep provider | "
-        install_deps_command += "awk '{print $2}' | "
-        install_deps_command += "sort | "
-        install_deps_command += "uniq | "
-        install_deps_command += "grep -v #{package} | "
-        install_deps_command += "sed ':a;N;$!ba;s/\\n/ /g' | "
-        install_deps_command += "xargs yum -y install "
-        on host, install_deps_command
-
-      when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        install_deps_command = "apt-cache depends #{package} | "
-        install_deps_command += "grep Depends | "
-        install_deps_command += "sed 's|ends: ||' | "
-        install_deps_command += "tr '\n' ' ' | "
-        install_deps_command += "xargs apt-get install -y "
-        on host, install_deps_command
-
-      else
-        host.logger.notify("No repository installation step for #{platform} yet...")
-    end
-
-
   end
 
   def get_debian_codename(version)
@@ -214,66 +182,111 @@ module JVMPuppetExtensions
     end
   end
 
-  def install_from_ezbake(host, project_name, project_version=nil)
-    tmpdir = "./tmp"
-    FileUtils.mkdir_p(tmpdir)
-
-    ezbake_dir = File.join(tmpdir, "ezbake")
+  def ezbake_stage(project_name, project_version, ezbake_dir="tmp/ezbake")
     conditionally_clone "git@github.com:puppetlabs/ezbake.git", ezbake_dir
 
-    # TODO make sure java and leiningen are installed? probably not necessary.
-
-    # lein deploy
-    `NEXUS_JENKINS_PASSWORD="#{ENV['NEXUS_JENKINS_PASSOWRD']}" NEXUS_JENKINS_USERNAME="#{ENV['NEXUS_JENKINS_USERNAME']}" lein deploy`
-
-    if not project_version
-      # assumes the project has an "acceptance" profile with lein-pprint plugin
-      # installed
-      project_version = `lein with-profile acceptance pprint :version | cut -d\\" -f2`
-    end
-
-    # ezbake stage
-    remote_tarball = ""
-    local_tarball = ""
-    dir_name = ""
-
+    package_version = ''
     Dir.chdir(ezbake_dir) do
       command = "lein run -- stage #{project_name} #{project_name}-version=#{project_version}"
       print command
       output = `#{command}`
       print output
 
-      Dir.chdir("./target/staging") do
-        match = /^Tagging git repo at (.*)/.match(output)
-        project_nexus_version = match[1]
+      match = /^Tagging git repo at (.*)/.match(output)
+      package_version = match[1]
+    end
 
-        output = `rake package:bootstrap`
-        output = `rake package:tar`
+    staging_dir = File.join(ezbake_dir, 'target/staging')
+    Dir.chdir(staging_dir) do
+      output = `rake package:bootstrap`
+      load 'ezbake.rb'
+      ezbake = EZBake::Config
+      ezbake[:package_version] = package_version
+      JVMPuppetExtensions.ezbake = ezbake
+    end
+  end
 
-        pattern = "%s-%s"
-        dir_name = pattern % [
-          project_name,
-          project_nexus_version
-        ]
-        local_tarball = "./pkg/" + dir_name + ".tar.gz"
-        remote_tarball = "/root/" +  dir_name + ".tar.gz"
+  def install_ezbake_deps_on host
+    platform = host['platform']
+    ezbake = ezbake_config
 
-        scp_to host, local_tarball, remote_tarball
+    case platform
+    when /^(fedora|el|centos)-(\d+)-(.+)$/
+      variant = (($1 == 'centos')? 'el' : $1)
+      version = $2
+      arch = $3
+
+      dependency_list = ezbake[:redhat][:additional_dependencies]
+      dependency_list.each do |dependency|
+        dependency = dependency.split
+        dependency[1] = '-'
+        install_package host, dependency.join('')
       end
+
+    when /^(debian|ubuntu)-([^-]+)-(.+)$/
+      variant = $1
+      version = $2
+      arch = $3
+
+      dependency_list = ezbake[:debian][:additional_dependencies]
+      dependency_list.each do |dependency|
+        dependency = dependency.split
+        package_name = dependency[0]
+        package_version = dependency[2].chop # ugh
+        custom_install_package_one host, package_name, package_version
+      end
+
+    else
+        host.logger.notify("No repository installation step for #{platform} yet...")
+    end
+
+  end
+
+  def install_from_ezbake(host, project_name, project_version, ezbake_dir='tmp/ezbake')
+    `lein install`
+
+    if not ezbake_config
+      ezbake_stage project_name, project_version
+    end
+
+    ezbake = ezbake_config
+    project_package_version = ezbake[:package_version]
+    project_name = ezbake[:project]
+
+    ezbake_staging_dir = File.join(ezbake_dir, "target/staging")
+
+    remote_tarball = ""
+    local_tarball = ""
+    dir_name = ""
+
+    Dir.chdir(ezbake_staging_dir) do
+      output = `rake package:tar`
+
+      pattern = "%s-%s"
+      dir_name = pattern % [
+        project_name,
+        project_package_version
+      ]
+      local_tarball = "./pkg/" + dir_name + ".tar.gz"
+      remote_tarball = "/root/" +  dir_name + ".tar.gz"
+
+      scp_to host, local_tarball, remote_tarball
     end
 
     # untar tarball on host
     on host, "tar -xzf " + remote_tarball
 
-    # install puppet user
+    # install user
+    group = ezbake[:group]
+    user = ezbake[:user]
     manifest = <<-EOS
-    group { 'puppet':
+    group { '#{group}':
       ensure => present,
       system => true,
     }
-    user { 'puppet':
+    user { '#{user}':
       ensure => present,
-      gid => 'puppet',
+      gid => '#{group}',
       managehome => false,
       system => true,
     }
@@ -285,7 +298,8 @@ module JVMPuppetExtensions
     make_env = "env prefix=/usr confdir=/etc rundir=/var/run/#{project_name} "
     on host, cd_to_package_dir + make_env + "make -e install-" + project_name
 
-    # install init scripts and default settings
+    # install init scripts and default settings, perform additional preinst
+    # TODO: figure out a better way to install init scripts and defaults
     platform = host['platform']
     case platform
       when /^(fedora|el|centos)-(\d+)-(.+)$/
@@ -295,33 +309,35 @@ module JVMPuppetExtensions
         on host, "install -d -m 0755 /etc/sysconfig"
         on host, "install -m 0755 " + dir_name +
           "/ext/default /etc/sysconfig/#{project_name}"
+
+        preinst = ezbake[:redhat][:additional_preinst]
+        preinst.each do |preinst_step|
+          on host, preinst_step
+        end
       when /^(debian|ubuntu)-([^-]+)-(.+)$/
         host.logger.notify("#{platform} not yet supported.")
+
+        preinst = ezbake_config[:debian][:additional_preinst]
+        preinst.each do |preinst_step|
+          on host, preinst_step
+        end
       else
         host.logger.notify("No ezbake installation step for #{platform} yet...")
     end
 
-    # TODO need to ensure ownership and permissions are set correctly on all
-    # files and directories, not sure how to do that on a per-platform and
-    # per-project basis since each project seems to need a different user and
-    # has a different set of file resources
+    # this step doesn't seem to be in EZBake::Config and yet it is pretty
+    # important
+    on host, "chown -R puppet.puppet /var/lib/puppet"
   end
 
   def install_jvm_puppet_on(host)
     case test_config[:jvmpuppet_install_type]
     when :package
-      custom_install_puppet_package host, 'jvm-puppet'
+      install_package host, 'jvm-puppet'
     when :git
-      install_package_deps_on host, 'jvm-puppet'
-      install_from_ezbake host, 'jvm-puppet', test_config[:jvmpuppet_version]
-
-      # this stuff should really be done by install_project_from_ezbake but i'm
-      # not sure how to do that in a generic way that is applicable to other
-      # projects. might need to load some variables file from ezbake to get the
-      # username and libdir values.
-      on host, "find /var/lib/puppet -type d -name '*' -exec chmod 775 {} ';'"
-      on host, "chown -R puppet.puppet /var/lib/puppet"
-      on host, "mkdir -p /etc/puppet/manifests"
+      project_version = test_config[:jvmpuppet_version] ||
+        `lein with-profile acceptance pprint :version | cut -d\\" -f2`
+      install_from_ezbake host, 'jvm-puppet', project_version
     else
       abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
     end
@@ -393,7 +409,8 @@ module JVMPuppetExtensions
         ]
 
         repo = fetch(
-          "http://builds.puppetlabs.lan/%s/%s/repo_configs/rpm/" % [package, build_version],
+          "http://builds.puppetlabs.lan/%s/%s/repo_configs/rpm/" % [package,
+                                                                    build_version],
           repo_filename,
           platform_configs_dir
         )
@@ -413,7 +430,8 @@ module JVMPuppetExtensions
         end
 
         list = fetch(
-          "http://builds.puppetlabs.lan/%s/%s/repo_configs/deb/" % [package, build_version],
+          "http://builds.puppetlabs.lan/%s/%s/repo_configs/deb/" % [package,
+                                                                    build_version],
           "pl-%s-%s-%s.list" % [package, build_version, codename],
           platform_configs_dir
         )
@@ -424,6 +442,39 @@ module JVMPuppetExtensions
         host.logger.notify("No repository installation step for #{platform} yet...")
     end
   end
+
+  #---------------------------------------------------------------------------
+  # Unused, but possibly useful for Beaker.
+  #
+  def install_package_deps_on(host, package)
+    platform = host['platform']
+
+    case platform
+      when /^(fedora|el|centos)-(\d+)-(.+)$/
+        install_deps_command = "yum deplist #{package} | "
+        install_deps_command += "grep provider | "
+        install_deps_command += "awk '{print $2}' | "
+        install_deps_command += "sort | "
+        install_deps_command += "uniq | "
+        install_deps_command += "grep -v #{package} | "
+        install_deps_command += "sed ':a;N;$!ba;s/\\n/ /g' | "
+        install_deps_command += "xargs yum -y install "
+        on host, install_deps_command
+
+      when /^(debian|ubuntu)-([^-]+)-(.+)$/
+        install_deps_command = "apt-cache depends #{package} | "
+        install_deps_command += "grep Depends | "
+        install_deps_command += "sed 's|ends: ||' | "
+        install_deps_command += "tr '\n' ' ' | "
+        install_deps_command += "xargs apt-get install -y "
+        on host, install_deps_command
+
+      else
+        host.logger.notify("No repository installation step for #{platform} yet...")
+    end
+
+  end
+
 
 end
 
