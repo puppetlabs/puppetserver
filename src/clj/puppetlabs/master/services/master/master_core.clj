@@ -1,7 +1,6 @@
 (ns puppetlabs.master.services.master.master-core
   (:require [compojure.core :as compojure]
             [compojure.route :as route]
-            [compojure.handler :as handler]
             [puppetlabs.master.ringutils :as ringutils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -53,6 +52,5 @@
   [request-handler]
   {:pre [(fn? request-handler)]}
   (-> (root-routes request-handler)
-      handler/api
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))

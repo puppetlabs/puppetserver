@@ -131,7 +131,23 @@ class Puppet::Jvm::Master
   end
 
   def params(request)
-    params = request["query"] || {}
+    params = request["params"] || {}
+
+    params = Hash[params.collect do |key, value|
+      # Values for query string and/or form parameters which are specified
+      # with array-like syntax will be parsed by Ring into a Clojure
+      # PersistentVector, which derives from a Java List.  Need to
+      # translate the Java List into a Ruby Array so that the request
+      # handling logic in Ruby can make use of it.
+
+      # For example, a query string of 'arr[]=one&arr[]=two" will be translated
+      # at the Clojure Ring layer into an element with a key of "arr" and
+      # value of '["one", "two"]' as a Clojure PersistentVector.  This
+      # PersistentVector needs to be converted into a Ruby Array before
+      # proceeding with the request processing.
+      [key, value.java_kind_of?(Java::JavaUtil::List) ? value.to_a : value]
+    end]
+
     params = decode_params(params)
     params.merge(client_information(request))
   end
@@ -151,8 +167,8 @@ class Puppet::Jvm::Master
   # Retrieve node/cert/ip information from the request object.
   def client_information(request)
     result = {}
-    if peer = request["peeraddr"]
-      result[:ip] = peer
+    if ip = request["remote-addr"]
+      result[:ip] = ip
     end
 
     # If they have a certificate (which will almost always be true)
