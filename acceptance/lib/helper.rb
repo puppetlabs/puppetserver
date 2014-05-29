@@ -176,9 +176,8 @@ module JVMPuppetExtensions
   def conditionally_clone(upstream_uri, local_path)
     if system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git status"
       system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git pull"
-      FileUtils.rm_rf(local_path + "/target/staging")
     else
-      system "git clone #{upstream_uri} #{ezbake_dir}"
+      system "git clone #{upstream_uri} #{local_path}"
     end
   end
 
@@ -187,13 +186,7 @@ module JVMPuppetExtensions
 
     package_version = ''
     Dir.chdir(ezbake_dir) do
-      command = "lein run -- stage #{project_name} #{project_name}-version=#{project_version}"
-      print command
-      output = `#{command}`
-      print output
-
-      match = /^Tagging git repo at (.*)/.match(output)
-      package_version = match[1]
+      `lein run -- stage #{project_name} #{project_name}-version=#{project_version}`
     end
 
     staging_dir = File.join(ezbake_dir, 'target/staging')
@@ -201,7 +194,7 @@ module JVMPuppetExtensions
       output = `rake package:bootstrap`
       load 'ezbake.rb'
       ezbake = EZBake::Config
-      ezbake[:package_version] = package_version
+      ezbake[:package_version] = `echo -n $(rake pl:print_build_param[ref] | tail -n 1)`
       JVMPuppetExtensions.ezbake = ezbake
     end
   end
@@ -233,7 +226,7 @@ module JVMPuppetExtensions
         dependency = dependency.split
         package_name = dependency[0]
         package_version = dependency[2].chop # ugh
-        custom_install_package_one host, package_name, package_version
+        custom_install_package_on host, package_name, package_version
       end
 
     else
@@ -296,6 +289,7 @@ module JVMPuppetExtensions
     # "make" on target
     cd_to_package_dir = "cd /root/" + dir_name + "; "
     make_env = "env prefix=/usr confdir=/etc rundir=/var/run/#{project_name} "
+    make_env += "initdir=/etc/init.d "
     on host, cd_to_package_dir + make_env + "make -e install-" + project_name
 
     # install init scripts and default settings, perform additional preinst
@@ -303,31 +297,14 @@ module JVMPuppetExtensions
     platform = host['platform']
     case platform
       when /^(fedora|el|centos)-(\d+)-(.+)$/
-        on host, "install -d -m 0755 /etc/init.d"
-        on host, "install -m 0755 " + dir_name +
-          "/ext/redhat/init /etc/init.d/#{project_name}"
-        on host, "install -d -m 0755 /etc/sysconfig"
-        on host, "install -m 0755 " + dir_name +
-          "/ext/default /etc/sysconfig/#{project_name}"
-
-        preinst = ezbake[:redhat][:additional_preinst]
-        preinst.each do |preinst_step|
-          on host, preinst_step
-        end
+        make_env += "defaultsdir=/etc/sysconfig "
+        on host, cd_to_package_dir + make_env + "make -e install-rpm-sysv-init"
       when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        host.logger.notify("#{platform} not yet supported.")
-
-        preinst = ezbake_config[:debian][:additional_preinst]
-        preinst.each do |preinst_step|
-          on host, preinst_step
-        end
+        make_env += "defaultsdir=/etc/defaults "
+        on host, cd_to_package_dir + make_env + "make -e install-deb-sysv-init"
       else
         host.logger.notify("No ezbake installation step for #{platform} yet...")
     end
-
-    # this step doesn't seem to be in EZBake::Config and yet it is pretty
-    # important
-    on host, "chown -R puppet.puppet /var/lib/puppet"
   end
 
   def install_jvm_puppet_on(host)
@@ -442,39 +419,6 @@ module JVMPuppetExtensions
         host.logger.notify("No repository installation step for #{platform} yet...")
     end
   end
-
-  #---------------------------------------------------------------------------
-  # Unused, but possibly useful for Beaker.
-  #
-  def install_package_deps_on(host, package)
-    platform = host['platform']
-
-    case platform
-      when /^(fedora|el|centos)-(\d+)-(.+)$/
-        install_deps_command = "yum deplist #{package} | "
-        install_deps_command += "grep provider | "
-        install_deps_command += "awk '{print $2}' | "
-        install_deps_command += "sort | "
-        install_deps_command += "uniq | "
-        install_deps_command += "grep -v #{package} | "
-        install_deps_command += "sed ':a;N;$!ba;s/\\n/ /g' | "
-        install_deps_command += "xargs yum -y install "
-        on host, install_deps_command
-
-      when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        install_deps_command = "apt-cache depends #{package} | "
-        install_deps_command += "grep Depends | "
-        install_deps_command += "sed 's|ends: ||' | "
-        install_deps_command += "tr '\n' ' ' | "
-        install_deps_command += "xargs apt-get install -y "
-        on host, install_deps_command
-
-      else
-        host.logger.notify("No repository installation step for #{platform} yet...")
-    end
-
-  end
-
 
 end
 
