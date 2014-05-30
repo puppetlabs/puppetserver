@@ -57,6 +57,8 @@ class Puppet::Jvm::Master
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
+    self.class.reset_environment_context()
+
     Puppet.settings.use :main, :master, :ssl, :metrics
 
     Puppet::FileServing::Content.indirection.terminus_class = :file_server
@@ -169,9 +171,35 @@ class Puppet::Jvm::Master
     result
   end
 
-  private
-  def pson_result(result)
-    return nil if result.nil?
-    result.to_pson
+  class << self
+    def reset_environment_context
+      # The following lines were copied for the most part from the run() method
+      # in the Puppet::Application class from .../lib/puppet/application.rb
+      # in core Ruby Puppet code.  The logic in the Puppet::Application class is
+      # executed by the core Ruby Puppet master during its initialization.
+      #
+      # The call to Puppet.base_context is needed in order for the modulepath
+      # settings just implicitly reprocessed for master run mode to be
+      # reset onto the Environment objects that later Ruby Puppet requests
+      # will use (e.g., for agent pluginsyncs).
+      #
+      # It would be better for the logic below to be put in a location where
+      # both the core Ruby Puppet and JVM Puppet masters can use the same
+      # implementation.  A separate ticket, PE-4356, was filed to cover this
+      # follow-on work.
+
+      Puppet.push_context(Puppet.base_context(Puppet.settings),
+          "Update for application settings JVM puppet master")
+      configured_environment = Puppet.lookup(:environments).get(
+                                   Puppet[:environment])
+      configured_environment = configured_environment.override_from_commandline(
+                                   Puppet.settings)
+
+      Puppet.push_context({:current_environment => configured_environment},
+          "Update current environment from JVM puppet master's configuration")
+
+      require 'puppet/util/instrumentation'
+      Puppet::Util::Instrumentation.init
+    end
   end
 end
