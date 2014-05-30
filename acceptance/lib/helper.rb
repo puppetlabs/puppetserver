@@ -12,6 +12,7 @@ module JVMPuppetExtensions
       on(host, "rm -rf '#{ssldir}'")
     end
 
+    master['curl-retries'] = 1500
     step "Master: Start Puppet Master"
       with_puppet_running_on(master, "main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
@@ -23,6 +24,7 @@ module JVMPuppetExtensions
         end
 
       end
+    master['curl-retries'] = nil
   end
 
   # Obtained from:
