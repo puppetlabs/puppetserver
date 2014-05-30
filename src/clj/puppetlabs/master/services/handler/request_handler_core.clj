@@ -69,11 +69,7 @@
           (assoc :params {})
           ; Defer to ring middleware to pull out parameters from the query
           ; string and/or form body.
-          ring-params/params-request
-          ; Defer to ring middleware to pull any array-like parameters into
-          ; vector values, e.g., a query string of 'arr[]=one&arr[]=two' would
-          ; turn into '"arr" -> ["one" "two"]'.
-          ring-nested-params/nested-params-request)))
+          ring-params/params-request)))
 
 (defn as-jruby-request
   "Given a ring HTTP request, return a new map that contains all of the data

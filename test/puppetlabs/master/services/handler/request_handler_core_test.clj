@@ -30,7 +30,7 @@
                             {:body         (StringReader. "")
                              :query-string "one=1%201&two=2&arr[]=3&arr[]=4"
                              :params       {:bogus ""}})]
-      (is (= {"one" "1 1", "two" "2", "arr" ["3", "4"]}
+      (is (= {"one" "1 1", "two" "2", "arr[]" ["3", "4"]}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= "" (:body-string wrapped-request))
@@ -41,7 +41,7 @@
                             {:body (StringReader. body-string)
                              :content-type "application/x-www-form-urlencoded"
                              :params       {:bogus ""}})]
-      (is (= {"one" "1", "two" "2 2", "arr" ["3" "4"]}
+      (is (= {"one" "1", "two" "2 2", "arr[]" ["3" "4"]}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= body-string (:body-string wrapped-request))
