@@ -14,7 +14,11 @@
     (is (nil? (request "/foo")))
     (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
-            {:get ["node" "file_content" "file_metadatas" "file_metadata"]
+            {:get ["node"
+                   "facts"
+                   "file_content"
+                   "file_metadatas"
+                   "file_metadata"]
              :post ["catalog"]
              :put ["report"]}
             path paths]
