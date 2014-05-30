@@ -25,6 +25,8 @@
     ; https://tickets.puppetlabs.com/browse/PE-3977
     (compojure/GET "/node/*" request
                    (request-handler environment request))
+    (compojure/GET "/facts/*" request
+                   (request-handler environment request))
     (compojure/GET "/file_content/*" request
                    (request-handler environment request))
     (compojure/GET "/file_metadatas/*" request
