@@ -13,6 +13,7 @@ module JVMPuppetExtensions
     end
 
     step "Master: Start Puppet Master"
+      master['curl-retries'] = 1500
       with_puppet_running_on(master, "main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
         hosts.each do |host|
@@ -23,6 +24,7 @@ module JVMPuppetExtensions
         end
 
       end
+      master['curl-retries'] = 120
   end
 
   # Obtained from:
