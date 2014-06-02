@@ -3,7 +3,6 @@
             [puppetlabs.master.ringutils :as ringutils]
             [schema.core :as schema]
             [compojure.core :as compojure]
-            [compojure.handler :as handler]
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -67,5 +66,4 @@
   [ca-settings :- ca/CaSettings]
   (->
     (routes ca-settings)
-    (handler/api)
     (ringutils/wrap-response-logging)))

@@ -133,7 +133,7 @@ class Puppet::Jvm::Master
   end
 
   def params(request)
-    params = request["query"] || {}
+    params = request["params"] || {}
     params = decode_params(params)
     params.merge(client_information(request))
   end
@@ -153,8 +153,8 @@ class Puppet::Jvm::Master
   # Retrieve node/cert/ip information from the request object.
   def client_information(request)
     result = {}
-    if peer = request["peeraddr"]
-      result[:ip] = peer
+    if ip = request["remote-addr"]
+      result[:ip] = ip
     end
 
     # If they have a certificate (which will almost always be true)
