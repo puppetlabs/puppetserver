@@ -32,9 +32,13 @@
                    (request-handler environment request))
     (compojure/GET "/file_metadata/*" request
                    (request-handler environment request))
+    (compojure/GET "/catalog/*" request
+                   (request-handler environment request))
     (compojure/POST "/catalog/*" request
                     (request-handler environment request))
     (compojure/PUT "/report/*" request
+                   (request-handler environment request))
+    (compojure/GET "/resource_type/*" request
                    (request-handler environment request))))
 
 (defn root-routes

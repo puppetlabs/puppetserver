@@ -14,14 +14,24 @@
     (is (nil? (request "/foo")))
     (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
-            {:get ["node"
+            {:get ["catalog"
+                   "node"
                    "facts"
                    "file_content"
                    "file_metadatas"
-                   "file_metadata"]
+                   "file_metadata"
+                   "resource_type"]
              :post ["catalog"]
              :put ["report"]}
             path paths]
       (let [resp (request method (str "/foo/" path "/bar"))]
-        (is (= 200 (:status resp)))
-        (is (= "foo" (:environment resp)))))))
+        (is (= 200 (:status resp))
+            (str "Did not get 200 for method: "
+                 method
+                 ", path: "
+                 path))
+        (is (= "foo" (:environment resp))
+            (str "Did not get expected response for method: "
+                 method
+                 ", path: "
+                 path))))))
