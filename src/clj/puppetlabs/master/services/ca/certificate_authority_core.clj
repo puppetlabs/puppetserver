@@ -22,20 +22,26 @@
         (rr/not-found (str "Could not find certificate_request " subject)))
       (rr/content-type "text/plain")))
 
+(defn signed-csr-response-body
+  [expiration-date subject]
+  ;; TODO return something proper (PE-3178)
+  (str "---\n"
+       "  - !ruby/object:Puppet::SSL::CertificateRequest\n"
+       "name: " subject "\n"
+       "content: !ruby/object:OpenSSL::X509::Request {}\n"
+       "expiration: " expiration-date))
+
 (schema/defn handle-put-certificate-request!
   [subject
    certificate-request
    ca-settings :- ca/CaSettings]
-  (let [expiration-date (ca/autosign-certificate-request!
-                          subject certificate-request ca-settings)]
-    ;; TODO return something proper (PE-3178)
-    (-> (str "---\n"
-             "  - !ruby/object:Puppet::SSL::CertificateRequest\n"
-             "name: " subject "\n"
-             "content: !ruby/object:OpenSSL::X509::Request {}\n"
-             "expiration: " expiration-date)
+  (if (ca/autosign-csr? (:autosign ca-settings))
+    (-> (ca/autosign-certificate-request! subject certificate-request ca-settings)
+        (signed-csr-response-body subject)
         (rr/response)
-        (rr/content-type "text/yaml"))))
+        (rr/content-type "text/yaml"))
+    (do (ca/save-certificate-request! subject certificate-request (:csrdir ca-settings))
+        (rr/content-type (rr/response nil) "text/plain"))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
