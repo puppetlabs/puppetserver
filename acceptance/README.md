@@ -3,6 +3,69 @@
 This directory is intended to manage acceptance testing for the JVM Puppet
 Master.
 
+## Acceptance Testing for Dummies
+
+This setup is intended for developers when running a VM on their local machine.
+This will not use Vagrant or a Rakefile, but instead a local pre-installed VM and the beaker CLI.
+
+#### Prepare the VM
+
+1. Get a fresh EL6 VM installed in VMWare or VirtualBox
+   - One can be downloaded at: http://int-resources.ops.puppetlabs.net/pe-supported-virtual-machines/centos6-64.vmwarevm.tar.bz2
+2. Install your SSH key on the VM so beaker can connect without authentication
+3. Set the system clock to prevent issues such as SSL authentication
+   - You'll need ntp or ntpdate and then run: ```ntpdate time.apple.com```
+4. Take a snapshot of the VM now that you have a pristine OS with SSH access
+   - You'll want to revert back to this snapshot every time the run fails during pre_suite
+   - Note that **you might need to set the clock again after each VM restore**
+
+#### Define a hosts config file for your new VM
+
+1. Copy/modify the local EL6 host config at ./config/beaker/local/el6/1host.cfg to have the fully-qualified hostname and IP of your VM
+   - Change the line at the top that looks like ```centos6-64-1.local:``` to the fully-qualified hostname of your VM
+   - Change the ```ip``` value to your VM
+
+#### Define the PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
+
+You'll need to provide a couple environment variables that specify which build of jvm-puppet to install and test against.
+
+1. Go to http://builds.puppetlabs.lan/jvm-puppet
+2. Scroll down to the most recent build at the bottom
+   - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118
+3. Copy the text (not the link address) - this will be ```PACKAGE_BUILD_VERSION```
+4. Define ```PUPPET_VERSION``` as the packaged version of Puppet that we're building with, which is currently ```3.6.1-1```
+
+#### Run Beaker
+
+    export PACKAGE_BUILD_VERSION=<SEE PREVIOUS STEP; e.g. 0.1.4.SNAPSHOT.2014.05.15T1118>
+    export PUPPET_VERSION=<SEE PREVIOUS STEP; e.g. 3.6.1-1>
+    bundle install --path vendor/bundle
+    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --pre-suite ./acceptance/suites/pre_suite --tests ./acceptance/suites/tests
+
+This should kick off a beaker run against your new VM that will run all the pre_suite steps and then the simple "no op" testtest.rb that we have in jvm-puppet/acceptance.
+
+If the run fails during a pre-suite step, you'll need to revert your VM back to the previous state, resolve the error, and try again.
+Otherwise, the next run will fail as the pre-suite steps assume a fresh machine and are not tolerant of existing installations.
+
+When the run succeeds, you'll want to **take another snapshot of VM** so you can disable the pre-suite setup in subsequent runs for faster iteration.
+
+#### Iterative Development & Debugging
+
+Now that you've done a successful beaker run and taken a VM snapshot, it's time to run beaker again using the actual acceptance tests in the puppet repository.
+It's important that you run the tests from the same version of Puppet that has been installed on your VM.
+
+You can find the version that is installed by running ```puppet --version```.
+Make sure that your cloned puppet repository on your machine is at the same version as above.
+This probably just means a simple ```git checkout tags/<version>```.
+
+Now you will want to run beaker again, but this time without the pre-suite argument and using the puppet acceptance tests.
+
+    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --tests <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/tests
+
+You should now be in a good state for running & debugging the acceptance tests.
+When the tests fail, you may want to revert the VM back to the previous snapshot (the one you took right after a successful pre-suite setup) before you run them again.
+This may be necessary because the tests can leave the machine in the same state it was in prior, and subsequent runs may be affected.
+
 ## Hypervisors
 
 This acceptance testing suite has so far only been configured to work with
@@ -17,7 +80,7 @@ can be overridden with the BEAKER_CONFIG environment variable.
 An example of running acceptance tests using VirtualBox can be found in Rakefile
 workflow 'c' below.  
 Beaker configues supporting Virtualbox hypervisor can be found in subdirectories
-of **./acceptance/config/vbox/**   
+of **./acceptance/config/vbox/**
   
 In this setup Beaker uses Vagrant to provision your VMs. 
 
@@ -36,7 +99,7 @@ Below is an example of running this config:
         bundle exec rake test:acceptance:beaker
 
 Beaker configs supporting static Virtualbox can be found in subdirectories of
-**./acceptance/config/local/**  
+**./acceptance/config/local/**
   
 This setup is probably the most difficult to share between different systems.
 However, it is pretty effective for fast iterative development of TestCases or
@@ -51,8 +114,8 @@ https://confluence.puppetlabs.com/display/DEL/Create+a+Private+NAT+in+VirtualBox
 * Install avahi, avahi-tools, lsof, man, openssh-server, curl, vim (actually
 some of these aren't necessary, but they are nice).
 * Add your public key to the VM's root authorized_keys
-* Modify /etc/sysonfig/network (HOSTNAME=centos6-64-1.local)
-* Adds /et/sysconfig/network-scripts/ifcfg-eth1
+* Modify /etc/sysconfig/network (HOSTNAME=centos6-64-1.local)
+* Adds /etc/sysconfig/network-scripts/ifcfg-eth1
 * Modify /etc/ssh/sshd_config "UseDNS no"
 * Modify /etc/rc.local to start /etc/init.d/messagebus and /etc/init.d/avahi-daemon
 * Modify /etc/sudoers, comment out "requiretty" line
