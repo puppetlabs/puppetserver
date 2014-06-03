@@ -59,6 +59,7 @@ namespace :test do
       # variables that take pathnames
       beakeropts = ENV["BEAKER_OPTS"] || ""
       presuite = ENV["BEAKER_PRESUITE"] || "#{ACCEPTANCE_ROOT}/suites/pre_suite"
+      postsuite = ENV["BEAKER_POSTSUITE"] || "#{ACCEPTANCE_ROOT}/suites/post_suite"
       helper = ENV["BEAKER_HELPER"] || "#{ACCEPTANCE_ROOT}/lib/helper.rb"
       testsuite = ENV["BEAKER_TESTSUITE"] || "#{ACCEPTANCE_ROOT}/suites/tests"
       loadpath = ENV["BEAKER_LOADPATH"] || ""
@@ -77,6 +78,7 @@ namespace :test do
 
       beaker += " --load-path #{loadpath}" if loadpath != ''
       beaker += " --pre-suite #{presuite}" if presuite != ''
+      beaker += " --post-suite #{postsuite}" if postsuite != ''
       beaker += " --tests " + testsuite if testsuite != ''
 
       beaker += " " + beakeropts
