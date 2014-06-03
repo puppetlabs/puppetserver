@@ -6,7 +6,7 @@ Master.
 ## Acceptance Testing for Dummies
 
 This setup is intended for developers when running a VM on their local machine.
-This will not use Vagrant or a Rakefile, but instead a local VM and the beaker CLI.
+This will not use Vagrant or a Rakefile, but instead a local pre-installed VM and the beaker CLI.
 
 #### Prepare the VM
 
@@ -21,26 +21,26 @@ This will not use Vagrant or a Rakefile, but instead a local VM and the beaker C
 
 #### Define a hosts config file for your new VM
 
-1. Copy/modify the local EL6 host config at ./config/beaker/local/el6/1host.cfg to have the hostname and IP of your VM
-   - Change the line at the top that looks like ```centos6-64-1.local:``` to the hostname of your VM
+1. Copy/modify the local EL6 host config at ./config/beaker/local/el6/1host.cfg to have the fully-qualified hostname and IP of your VM
+   - Change the line at the top that looks like ```centos6-64-1.local:``` to the fully-qualified hostname of your VM
    - Change the ```ip``` value to your VM
 
-#### Define the JVMPUPPET_REPO_CONFIG environment variable
+#### Define the PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
 
-The one thing you'll need before running the tests via beaker is a URL to the repository file that contains the most recent package of jvm-puppet.
+You'll need to provide a couple environment variables that specify which build of jvm-puppet to install and test against.
 
 1. Go to http://builds.puppetlabs.lan/jvm-puppet
-2. Scroll down to the bottom and go into the most recent one
-   - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118/
-3. Drill down into repo_configs/rpm and then the appropriate one for your VM (and 64 or 32 bit)
-   - Assuming that you have a 32-bit EL6 this will look like: pl-jvm-puppet-0.1.4.SNAPSHOT.2014.05.15T1118-el-6-i386.repo
-4. Copy the URL for this file (and _make sure it's "http" and not "https" otherwise you'll get curl SSL errors during pre-suite_)
+2. Scroll down to the most recent build at the bottom
+   - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118
+3. Copy the text (not the link address) - this will be ```PACKAGE_BUILD_VERSION```
+4. Define ```PUPPET_VERSION``` as the packaged version of Puppet that we're building with, which is currently ```3.6.1-1```
 
 #### Run Beaker
 
-    export JVMPUPPET_REPO_CONFIG=<URL FROM PREVIOUS STEP>
+    export PACKAGE_BUILD_VERSION=<SEE PREVIOUS STEP; e.g. 0.1.4.SNAPSHOT.2014.05.15T1118>
+    export PUPPET_VERSION=<SEE PREVIOUS STEP; e.g. 3.6.1-1>
     bundle install --path vendor/bundle
-    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --pre-suite ./acceptance/suites/pre_suite --tests ./acceptance/suites/tests
+    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --pre-suite ./acceptance/suites/pre_suite --tests ./acceptance/suites/tests
 
 This should kick off a beaker run against your new VM that will run all the pre_suite steps and then the simple "no op" testtest.rb that we have in jvm-puppet/acceptance.
 
@@ -60,11 +60,11 @@ This probably just means a simple ```git checkout tags/<version>```.
 
 Now you will want to run beaker again, but this time without the pre-suite argument and using the puppet acceptance tests.
 
-    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --tests <PATH TO THE PUPPET REPO ON YOUR MACHINE>/acceptance/tests
+    bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --tests <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/tests
 
 You should now be in a good state for running & debugging the acceptance tests.
 When the tests fail, you may want to revert the VM back to the previous snapshot (the one you took right after a successful pre-suite setup) before you run them again.
-This may be necessay because the tests can leave the machine in the same state it was in prior, and subsequent runs may be affected.
+This may be necessary because the tests can leave the machine in the same state it was in prior, and subsequent runs may be affected.
 
 ## Hypervisors
 
@@ -114,7 +114,7 @@ https://confluence.puppetlabs.com/display/DEL/Create+a+Private+NAT+in+VirtualBox
 * Install avahi, avahi-tools, lsof, man, openssh-server, curl, vim (actually
 some of these aren't necessary, but they are nice).
 * Add your public key to the VM's root authorized_keys
-* Modify /etc/sysonfig/network (HOSTNAME=centos6-64-1.local)
+* Modify /etc/sysconfig/network (HOSTNAME=centos6-64-1.local)
 * Adds /etc/sysconfig/network-scripts/ifcfg-eth1
 * Modify /etc/ssh/sshd_config "UseDNS no"
 * Modify /etc/rc.local to start /etc/init.d/messagebus and /etc/init.d/avahi-daemon
