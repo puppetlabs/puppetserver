@@ -28,6 +28,13 @@ module JVMPuppetExtensions
       master['curl-retries'] = old_retries
   end
 
+  def jvm_puppet_collect_data(host, relative_path)
+    destination = File.join("./log/latest/jvm-puppet/", relative_path)
+    FileUtils.mkdir_p(destination)
+    scp_from master, "/var/log/jvm-puppet/jvm-puppet.log", destination
+    scp_from master, "/var/log/jvm-puppet/jvm-puppet-daemon.log", destination
+  end
+
   # Obtained from:
   #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L752
   #
