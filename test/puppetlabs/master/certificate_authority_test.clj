@@ -37,6 +37,27 @@
   (testing "returns nil when certificate request not found for subject"
     (is (nil? (get-certificate-request "not-there" csrdir)))))
 
+(deftest autosign-csr?-test
+  (testing "boolean values for 'autosign'"
+    (is (true? (autosign-csr? true)))
+    (is (true? (autosign-csr? "true")))
+    (is (false? (autosign-csr? false)))
+    (is (false? (autosign-csr? "false")))
+    (is (false? (autosign-csr? "/foo/bar/autosign.conf")))))
+
+(deftest save-certificate-request!-test
+  (testing "requests are saved to disk"
+    (let [csr-stream (io/input-stream (path-to-cert-request csrdir "test-agent"))
+          path       (path-to-cert-request csrdir "foo")]
+      (try
+        (is (false? (fs/exists? path)))
+        (save-certificate-request! "foo" csr-stream csrdir)
+        (is (true? (fs/exists? path)))
+        (is (= (get-certificate-request csrdir "foo")
+               (get-certificate-request csrdir "test-agent")))
+        (finally
+          (fs/delete path))))))
+
 (deftest autosign-certificate-request!-test
   (let [subject            "test-agent"
         request-stream     (-> csrdir
