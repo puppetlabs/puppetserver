@@ -7,6 +7,7 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clojure.string :as str]
+            [slingshot.slingshot :refer [try+]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -27,8 +28,8 @@
   "Calculate the cert's expiration date based on the value of Puppet's 'ca_ttl'
    setting"
   [ca-ttl]
-  {:pre   [(integer? ca-ttl)]
-   :post  [(instance? DateTime %)]}
+  {:pre  [(integer? ca-ttl)]
+   :post [(instance? DateTime %)]}
   ;; TODO - PE-3173 - calculate the expiration date based off of the issue date of the CSR
   (let [now (DateTime/now)
         ttl (Period/seconds ca-ttl)]
@@ -129,13 +130,14 @@
    :hostpubkey  String})
 
 (def CaSettings
-  { :cacert   String
-    :cacrl    String
-    :cakey    String
-    :ca-name  String
-    :ca-ttl   schema/Int
-    :certdir  String
-    :csrdir   String })
+  {:autosign (schema/either String Boolean)
+   :cacert   String
+   :cacrl    String
+   :cakey    String
+   :ca-name  String
+   :ca-ttl   schema/Int
+   :certdir  String
+   :csrdir   String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -165,6 +167,18 @@
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
+(defn autosign-csr?
+  "Return true if CSRs should be automatically signed given
+  Puppet's autosign setting, and false otherwise."
+  [autosign]
+  {:pre  [(or (string? autosign)
+              (ks/boolean? autosign))]
+   :post [(ks/boolean? %)]}
+  (try+
+   (ks/to-bool autosign)
+   (catch Object _
+     false)))
+
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk.
@@ -176,8 +190,6 @@
   (let [request-object  (-> certificate-request
                             utils/pem->objs
                             first)
-        ca-private-key  (-> cakey
-                            utils/pem->private-key)
         ca-x500-name    (utils/generate-x500-name ca-name)
         next-serial     (next-serial-number)
         cert-path       (path-to-cert certdir subject)
@@ -186,16 +198,25 @@
                           request-object
                           ca-x500-name
                           next-serial
-                          ca-private-key)]
+                          (utils/pem->private-key cakey))]
     (utils/obj->pem! signed-cert cert-path))
   (calculate-certificate-expiration ca-ttl))
+
+(defn save-certificate-request!
+  "Write the subject's certificate request to disk under the CSR directory."
+  [subject certificate-request csrdir]
+  {:pre [(every? string? [subject csrdir])
+         (instance? InputStream certificate-request)]}
+  (-> certificate-request
+      (utils/pem->csr)
+      (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
 (defn get-certificate-revocation-list
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
   [cacrl]
-  {:pre   [(string? cacrl)]
-   :post  [(string? %)]}
+  {:pre  [(string? cacrl)]
+   :post [(string? %)]}
   (slurp cacrl))
 
 (schema/defn ^:always-validate
