@@ -227,6 +227,13 @@ test:acceptance:beaker Rake task and descriptions of the effect each has.
   Test. It is expected that this url will become available for a particular
   version of JVM Puppet as a result of an ezbake/packaging run.
 
+* $JVMPUPPET_INSTALL_TYPE 
+  * Default: package 
+  * Valid: package, git 
+  * Description: Determines whether JVM Puppet Master will be installed from a
+  pre-existing package or from the local git repository. This requires Java and
+  leiningen to be installed.
+
 * $BEAKER_CONFIG 
   * Beaker CLI Option: -c 
   * Default: None, fail loudly if no BEAKER_CONFIG available.
