@@ -272,19 +272,6 @@ module JVMPuppetExtensions
     # install user
     group = ezbake[:group]
     user = ezbake[:user]
-    manifest = <<-EOS
-    group { '#{group}':
-      ensure => present,
-      system => true,
-    }
-    user { '#{user}':
-      ensure => present,
-      gid => '#{group}',
-      managehome => false,
-      system => true,
-    }
-    EOS
-    apply_manifest_on(host, manifest)
 
     # "make" on target
     cd_to_package_dir = "cd /root/" + dir_name + "; "
