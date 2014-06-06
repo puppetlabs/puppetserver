@@ -3,6 +3,7 @@
            (org.joda.time Period DateTime))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.certificate-authority.core :as utils]
+            [puppetlabs.kitchensink.core :as ks]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]))
@@ -58,13 +59,9 @@
 
         (testing "requests are autosigned and saved to disk"
           (is (fs/exists? expected-cert-path))
-          (let [signed-cert (-> expected-cert-path
-                                utils/pem->certs
-                                first)
-                expected-subject "CN=test-agent"
-                expected-issuer "CN=test ca"]
-            (is (= expected-subject (-> signed-cert .getSubjectX500Principal .getName)))
-            (is (= expected-issuer (-> signed-cert .getIssuerX500Principal .getName)))))
+          (let [signed-cert (-> expected-cert-path utils/pem->certs first)]
+            (is (utils/has-subject? signed-cert "CN=test-agent"))
+            (is (utils/issued-by? signed-cert "CN=test ca"))))
 
         (testing "cert expiration is correct based on Puppet's ca_ttl setting"
           (let [duration (Period. now expiration)]
@@ -75,71 +72,97 @@
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a path to valid CRL file."
-      (let [crl         (get-certificate-revocation-list cacrl)
-            issuer-name (-> crl
-                            StringReader.
-                            utils/pem->objs
-                            first
-                            .getIssuer
-                            utils/x500-name->CN)]
-        (is (= "Puppet CA: localhost" issuer-name)))))
+    (let [crl         (get-certificate-revocation-list cacrl)
+          issuer-name (-> crl
+                          StringReader.
+                          utils/pem->objs
+                          first
+                          .getIssuer
+                          utils/x500-name->CN)]
+      (is (= "Puppet CA: localhost" issuer-name)))))
 
-;; TODO verify contents of each created file (PE-3238)
-(deftest initialize!-test
-  (let [tmp-ssl-dir       (fs/temp-dir "")
-        master-certname   "master-foo"
-        ca-file-paths     {:capub       (str tmp-ssl-dir "/capub")
-                           :cakey       (str tmp-ssl-dir "/cakey")
-                           :cacert      (str tmp-ssl-dir "/cacert")
-                           :localcacert (str tmp-ssl-dir "/localcacert")
-                           :cacrl       (str tmp-ssl-dir "/cacrl")}
-        master-file-paths {:hostpubkey  (str tmp-ssl-dir "/hostpubkey")
-                           :hostprivkey (str tmp-ssl-dir "/hostprivkey")
-                           :hostcert    (str tmp-ssl-dir "/hostcert")}
-        expected-files    (concat (vals ca-file-paths)
-                                  (vals master-file-paths))]
+(let [ssldir          (ks/temp-dir)
+      cadir           (str ssldir "/ca")
+      cadir-contents  {:cacrl     (str cadir "/ca_crl.pem")
+                       :cacert    (str cadir "/ca_crt.pem")
+                       :cakey     (str cadir "/ca_key.pem")
+                       :capub     (str cadir "/ca_pub.pem")
+                       :csrdir    (str cadir "/requests")
+                       :signeddir (str cadir "/signed")}
 
-    (testing "Keylength can be configured"
-      (try
-        (initialize! ca-file-paths master-file-paths master-certname "test ca" 512)
-        (is (= 512 (-> ca-file-paths
-                       :cakey
-                       utils/pem->private-key
-                       .getModulus
-                       .bitLength)))
-        (finally
-          (fs/delete-dir tmp-ssl-dir)))
+      ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
+                       :certdir     (str ssldir "/certs")
+                       :hostcert    (str ssldir "/certs/master.pem")
+                       :localcacert (str ssldir "/certs/ca.pem")
+                       :hostprivkey (str ssldir "/private_keys/master.pem")
+                       :hostpubkey  (str ssldir "/public_keys/master.pem")}
+      ca-private-key  (utils/pem->private-key "./test-resources/config/master/conf/ssl/ca/ca_key.pem")
+      ca-cert         (first (utils/pem->certs "./test-resources/config/master/conf/ssl/ca/ca_crt.pem"))]
 
-      (testing "but has a default value"
-        (try
-          (initialize! ca-file-paths master-file-paths master-certname "test ca")
-          (is (= utils/default-key-length
-                 (-> ca-file-paths
-                     :cakey
-                     utils/pem->private-key
-                     .getModulus
-                     .bitLength)))
-          (finally
-            (fs/delete-dir tmp-ssl-dir)))))
-
+  ;; TODO verify contents of each created file (PE-3238)
+  (deftest initialize-ca!-test
     (testing "Generated SSL file"
       (try
-        (initialize! ca-file-paths master-file-paths master-certname "test ca" 512)
-        (doseq [file expected-files]
+        (initialize-ca! cadir-contents "test ca" 512)
+        (doseq [file (vals cadir-contents)]
           (testing file
             (is (fs/exists? file))))
-
         (finally
-          (fs/delete-dir tmp-ssl-dir))))
+          (fs/delete-dir cadir)))))
+
+  ;; TODO verify contents of each created file (PE-3238)
+  (deftest initialize-master!-test
+    (testing "Generated SSL file"
+      (try
+        (initialize-master! ssldir-contents "master" "test ca" ca-private-key ca-cert 512)
+        (doseq [file (vals ssldir-contents)]
+          (testing file
+            (is (fs/exists? file))))
+        (finally
+          (fs/delete-dir ssldir)))))
+
+
+  (deftest initialize!-test
+    (testing "Generated SSL file"
+      (try
+        (initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+        (doseq [file (concat (vals cadir-contents) (vals ssldir-contents))]
+          (testing file
+            (is (fs/exists? file))))
+        (finally
+          (fs/delete-dir ssldir))))
 
     (testing "Does not create new files if they all exist"
-      (try
-        (create-parent-directories! expected-files)
-        (doseq [file expected-files]
-          (spit file "content that should be unused"))
-        (initialize! ca-file-paths master-file-paths master-certname "test ca")
-        (doseq [file expected-files]
-          (is (= "content that should be unused" (slurp file))
-              "Existing file was replaced"))
-        (finally
-          (fs/delete-dir tmp-ssl-dir))))))
+      (let [directories [:csrdir :signeddir :requestdir :certdir]
+            all-files   (merge cadir-contents ssldir-contents)
+            no-dirs     (vals (apply dissoc all-files directories))]
+        (try
+          ;; Create the directory structure and dummy files by hand
+          (create-parent-directories! (vals all-files))
+          (doseq [d directories] (fs/mkdir (d all-files)))
+          (doseq [file no-dirs]
+            (spit file "unused content"))
+
+          (initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+
+          (doseq [file no-dirs]
+            (is (= "unused content" (slurp file))
+                "Existing file was replaced"))
+          (finally
+            (fs/delete-dir ssldir)))))
+
+    (testing "Keylength"
+      (doseq [[message f expected]
+              [["can be configured"
+                (partial initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+                512]
+               ["has a default value"
+                (partial initialize! cadir-contents ssldir-contents "master" "test ca")
+                utils/default-key-length]]]
+        (testing message
+          (try
+            (f)
+            (is (= expected (-> cadir-contents :cakey utils/pem->private-key utils/keylength)))
+            (is (= expected (-> ssldir-contents :hostprivkey utils/pem->private-key utils/keylength)))
+            (finally
+              (fs/delete-dir ssldir))))))))
