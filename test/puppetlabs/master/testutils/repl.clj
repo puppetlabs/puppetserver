@@ -13,24 +13,23 @@
 
 (defn init []
   (alter-var-root #'system
-    (fn [_] (let [conf-dir "./scratch/master/conf"
-                   app (tk/build-app
-                        [jetty9-service
-                         master-service
-                         jruby-puppet-pooled-service
-                         request-handler-service
-                         jvm-puppet-config-service
-                         certificate-authority-service]
-                        {:global {:logging-config "./test-resources/logback-dev.xml"}
-                         :jruby-puppet { :jruby-pools  [{:environment "production"
-                                                         :size 1}]
-                                         :load-path    ["./ruby/puppet/lib"
-                                                        "./ruby/facter/lib"]
-                                         :master-conf-dir conf-dir}
-                         :webserver {:client-auth "want"
-                                     :ssl-host    "localhost"
-                                     :ssl-port    8140}})]
-              (tka/init app))))
+    (fn [_] (let [conf-dir "./scratch/master/conf"]
+              (tk/build-app
+                [jetty9-service
+                 master-service
+                 jruby-puppet-pooled-service
+                 request-handler-service
+                 jvm-puppet-config-service
+                 certificate-authority-service]
+                {:global {:logging-config "./test-resources/logback-dev.xml"}
+                 :jruby-puppet { :jruby-pools  [{:environment "production"
+                                                 :size 1}]
+                                 :load-path    ["./ruby/puppet/lib"
+                                                "./ruby/facter/lib"]
+                                 :master-conf-dir conf-dir}
+                 :webserver {:client-auth "want"
+                             :ssl-host    "localhost"
+                             :ssl-port    8140}}))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 
@@ -55,4 +54,4 @@
 
 (defn reset []
   (stop)
-  (refresh :after 'puppetlabs.enterprise.master.testutils.repl/go))
+  (refresh :after 'puppetlabs.master.testutils.repl/go))
