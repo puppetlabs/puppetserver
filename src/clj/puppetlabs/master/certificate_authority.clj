@@ -11,6 +11,9 @@
 ;;; Schemas
 
 (def CaFilePaths
+  "Paths to the various directories and files within the CA directory.
+  These are used during initialization of the CA, and may not be necessary
+  thereafter. All of these are Puppet configuration settings"
   {:cacrl     String
    :cacert    String
    :cakey     String
@@ -19,6 +22,10 @@
    :signeddir String})
 
 (def MasterFilePaths
+  "Paths to the various directories and files within the SSL directory,
+  excluding the CA directory and its contents (see `CaFilePaths`).
+  These are only used during initialization of the master.
+  All of these are Puppet configuration settings."
   {:requestdir  String
    :certdir     String
    :hostcert    String
@@ -27,20 +34,25 @@
    :hostpubkey  String})
 
 (def CaSettings
-  {:cacert  String
-   :cacrl   String
-   :cakey   String
-   :ca-name String
-   :ca-ttl  schema/Int
-   :csrdir  String})
+  "Settings from Puppet that are used through the lifetime of the CA.
+  Some of these may be necessary during initialization as well, so there
+  may be some overlap between this and `CaFilePaths`.
+  All of these are Puppet configuration settings."
+  {:cacert    String
+   :cacrl     String
+   :cakey     String
+   :ca-name   String
+   :ca-ttl    schema/Int
+   :csrdir    String
+   :signeddir String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 (defn path-to-cert
-  "Return a path to the `subject`s certificate file under the `certdir`."
-  [certdir subject]
-  (str certdir "/" subject ".pem"))
+  "Return a path to the `subject`s certificate file under the `signeddir`."
+  [signeddir subject]
+  (str signeddir "/" subject ".pem"))
 
 (defn path-to-cert-request
   "Return a path to the `subject`s certificate request file under the `csrdir`."
@@ -104,7 +116,9 @@
                         (utils/sign-certificate-request x500-name
                                                         (next-serial-number)
                                                         private-key))
-        cacrl       (-> cacert .getIssuerX500Principal (utils/generate-crl private-key))]
+        cacrl       (-> cacert
+                        .getIssuerX500Principal
+                        (utils/generate-crl private-key))]
     (utils/key->pem! public-key (:capub cadir-file-paths))
     (utils/key->pem! private-key (:cakey cadir-file-paths))
     (utils/obj->pem! cacert (:cacert cadir-file-paths))
@@ -147,13 +161,13 @@
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
-  [subject cacert certdir]
-  {:pre  [(every? string? [subject cacert certdir])]
+  [subject cacert signeddir]
+  {:pre  [(every? string? [subject cacert signeddir])]
    :post [(or (string? %)
               (nil? %))]}
   (let [cert-path (if (= "ca" subject)
                     cacert
-                    (path-to-cert certdir subject))]
+                    (path-to-cert signeddir subject))]
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
@@ -172,7 +186,7 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk.
   Return the certificate expiration date."
-  [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
+  [subject certificate-request {:keys [ca-name cakey signeddir ca-ttl]}]
   {:pre  [(string? subject)
           (instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}
@@ -181,7 +195,7 @@
                             first)
         ca-private-key  (utils/pem->private-key cakey)
         ca-x500-name    (utils/generate-x500-name ca-name)
-        cert-path       (path-to-cert certdir subject)
+        cert-path       (path-to-cert signeddir subject)
         signed-cert     (utils/sign-certificate-request
                           request-object
                           ca-x500-name

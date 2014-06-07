@@ -8,26 +8,26 @@
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]))
 
-(def ssl-dir "./test-resources/config/master/conf/ssl")
-(def certdir (str ssl-dir "/certs"))
-(def cacert (str certdir "/ca.pem"))
-(def csrdir (str ssl-dir "/ca/requests"))
-(def cakey (str ssl-dir "/ca/ca_key.pem"))
-(def cacrl (str ssl-dir "/ca/ca_crl.pem"))
+(def cadir "./test-resources/config/master/conf/ssl/ca")
+(def cacert (str cadir "/ca_crt.pem"))
+(def cakey (str cadir "/ca_key.pem"))
+(def cacrl (str cadir "/ca_crl.pem"))
+(def csrdir (str cadir "/requests"))
+(def signeddir (str cadir "/signed"))
 
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
-    (let [actual    (get-certificate "ca" cacert certdir)
-          expected  (slurp cacert)]
+    (let [actual   (get-certificate "ca" cacert signeddir)
+          expected (slurp cacert)]
       (is (= expected actual))))
 
   (testing "returns localhost certificate when subject is 'localhost'"
-    (let [localhost-cert (get-certificate "localhost" cacert certdir)
-          expected       (slurp (path-to-cert certdir "localhost"))]
+    (let [localhost-cert (get-certificate "localhost" cacert signeddir)
+          expected       (slurp (path-to-cert signeddir "localhost"))]
       (is (= expected localhost-cert))))
 
   (testing "returns nil when certificate not found for subject"
-    (is (nil? (get-certificate "not-there" certdir cacert)))))
+    (is (nil? (get-certificate "not-there" cacert signeddir)))))
 
 (deftest get-certificate-request-test
   (testing "returns certificate request for subject"
@@ -43,7 +43,7 @@
         request-stream     (-> csrdir
                                (path-to-cert-request subject)
                                io/input-stream)
-        expected-cert-path (path-to-cert certdir subject)
+        expected-cert-path (path-to-cert signeddir subject)
         now                (DateTime/now)
         ttl                (-> 6
                                Period/days
@@ -51,7 +51,7 @@
                                .getSeconds)
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
-                            :certdir certdir
+                            :signeddir signeddir
                             :ca-ttl ttl}]
     (try
       (let [expiration (autosign-certificate-request!
@@ -89,15 +89,12 @@
                        :capub     (str cadir "/ca_pub.pem")
                        :csrdir    (str cadir "/requests")
                        :signeddir (str cadir "/signed")}
-
       ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
                        :certdir     (str ssldir "/certs")
                        :hostcert    (str ssldir "/certs/master.pem")
                        :localcacert (str ssldir "/certs/ca.pem")
                        :hostprivkey (str ssldir "/private_keys/master.pem")
-                       :hostpubkey  (str ssldir "/public_keys/master.pem")}
-      ca-private-key  (utils/pem->private-key "./test-resources/config/master/conf/ssl/ca/ca_key.pem")
-      ca-cert         (first (utils/pem->certs "./test-resources/config/master/conf/ssl/ca/ca_crt.pem"))]
+                       :hostpubkey  (str ssldir "/public_keys/master.pem")}]
 
   ;; TODO verify contents of each created file (PE-3238)
   (deftest initialize-ca!-test
@@ -114,7 +111,10 @@
   (deftest initialize-master!-test
     (testing "Generated SSL file"
       (try
-        (initialize-master! ssldir-contents "master" "test ca" ca-private-key ca-cert 512)
+        (initialize-master! ssldir-contents "master" "test ca"
+                            (utils/pem->private-key cakey)
+                            (first (utils/pem->certs cacert))
+                            512)
         (doseq [file (vals ssldir-contents)]
           (testing file
             (is (fs/exists? file))))
@@ -154,15 +154,19 @@
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"
-                (partial initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+                (partial initialize! cadir-contents ssldir-contents
+                         "master" "test ca" 512)
                 512]
                ["has a default value"
-                (partial initialize! cadir-contents ssldir-contents "master" "test ca")
+                (partial initialize! cadir-contents ssldir-contents
+                         "master" "test ca")
                 utils/default-key-length]]]
         (testing message
           (try
             (f)
-            (is (= expected (-> cadir-contents :cakey utils/pem->private-key utils/keylength)))
-            (is (= expected (-> ssldir-contents :hostprivkey utils/pem->private-key utils/keylength)))
+            (is (= expected (-> cadir-contents :cakey
+                                utils/pem->private-key utils/keylength)))
+            (is (= expected (-> ssldir-contents :hostprivkey
+                                utils/pem->private-key utils/keylength)))
             (finally
               (fs/delete-dir ssldir))))))))
