@@ -1,4 +1,5 @@
 require 'beaker/dsl/install_utils'
+require 'beaker/dsl/ezbake_utils'
 
 module JVMPuppetExtensions
 
@@ -34,7 +35,6 @@ module JVMPuppetExtensions
 
   class << self
     attr_reader :config
-    attr_accessor :ezbake
   end
 
   # Return the configuration hash initialized by
@@ -42,12 +42,6 @@ module JVMPuppetExtensions
   #
   def test_config
     JVMPuppetExtensions.config
-  end
-
-  # Return the ezbake config.
-  #
-  def ezbake_config
-    JVMPuppetExtensions.ezbake
   end
 
   def self.get_option_value(value, legal_values, description,
@@ -120,41 +114,6 @@ module JVMPuppetExtensions
     return dst
   end
 
-  def custom_install_puppet_package (host, package_name, package_version=nil, noarch=false)
-    platform = host['platform']
-
-    case platform
-    when /^(fedora|el|centos)-(\d+)-(.+)$/
-      variant = (($1 == 'centos')? 'el' : $1)
-      version = $2
-      arch = $3
-
-      if noarch
-        arch = "noarch"
-      end
-
-      if package_version
-        package_name = "#{package_name}-#{package_version}.#{variant}#{version}.#{arch}"
-      end
-
-      install_package host, package_name
-
-    when /^(debian|ubuntu)-([^-]+)-(.+)$/
-      variant = $1
-      version = $2
-      #arch = $3
-
-      if package_version
-        package_name = "#{package_name}=#{package_version}"
-      end
-
-      on host, "apt-get install --force-yes -y #{package_name}"
-
-    else
-      raise ArgumentError, "No repository installation step for #{platform} yet..."
-    end
-  end
-
   def get_debian_codename(version)
     case version
     when /^6$/
@@ -173,128 +132,7 @@ module JVMPuppetExtensions
     end
   end
 
-  def conditionally_clone(upstream_uri, local_path)
-    if system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git status"
-      system "git --work-tree=#{local_path} --git-dir=#{local_path}/.git pull"
-    else
-      system "git clone #{upstream_uri} #{local_path}"
-    end
-  end
-
-  def ezbake_stage(project_name, project_version, ezbake_dir="tmp/ezbake")
-    conditionally_clone "git@github.com:puppetlabs/ezbake.git", ezbake_dir
-
-    package_version = ''
-    Dir.chdir(ezbake_dir) do
-      `lein run -- stage #{project_name} #{project_name}-version=#{project_version}`
-    end
-
-    staging_dir = File.join(ezbake_dir, 'target/staging')
-    Dir.chdir(staging_dir) do
-      output = `rake package:bootstrap`
-      load 'ezbake.rb'
-      ezbake = EZBake::Config
-      ezbake[:package_version] = `echo -n $(rake pl:print_build_param[ref] | tail -n 1)`
-      JVMPuppetExtensions.ezbake = ezbake
-    end
-  end
-
-  def install_ezbake_deps_on host
-    platform = host['platform']
-    ezbake = ezbake_config
-
-    case platform
-    when /^(fedora|el|centos)-(\d+)-(.+)$/
-      variant = (($1 == 'centos')? 'el' : $1)
-      version = $2
-      arch = $3
-
-      dependency_list = ezbake[:redhat][:additional_dependencies]
-      dependency_list.each do |dependency|
-        dependency = dependency.split
-        dependency[1] = '-'
-        install_package host, dependency.join('')
-      end
-
-    when /^(debian|ubuntu)-([^-]+)-(.+)$/
-      variant = $1
-      version = $2
-      arch = $3
-
-      dependency_list = ezbake[:debian][:additional_dependencies]
-      dependency_list.each do |dependency|
-        dependency = dependency.split
-        package_name = dependency[0]
-        package_version = dependency[2].chop # ugh
-        custom_install_package_on host, package_name, package_version
-      end
-
-    else
-        host.logger.notify("No repository installation step for #{platform} yet...")
-    end
-
-  end
-
-  def install_from_ezbake(host, project_name, project_version, ezbake_dir='tmp/ezbake')
-    `lein install`
-
-    if not ezbake_config
-      ezbake_stage project_name, project_version
-    end
-
-    ezbake = ezbake_config
-    project_package_version = ezbake[:package_version]
-    project_name = ezbake[:project]
-
-    ezbake_staging_dir = File.join(ezbake_dir, "target/staging")
-
-    remote_tarball = ""
-    local_tarball = ""
-    dir_name = ""
-
-    Dir.chdir(ezbake_staging_dir) do
-      output = `rake package:tar`
-
-      pattern = "%s-%s"
-      dir_name = pattern % [
-        project_name,
-        project_package_version
-      ]
-      local_tarball = "./pkg/" + dir_name + ".tar.gz"
-      remote_tarball = "/root/" +  dir_name + ".tar.gz"
-
-      scp_to host, local_tarball, remote_tarball
-    end
-
-    # untar tarball on host
-    on host, "tar -xzf " + remote_tarball
-
-    # install user
-    group = ezbake[:group]
-    user = ezbake[:user]
-
-    # "make" on target
-    cd_to_package_dir = "cd /root/" + dir_name + "; "
-    make_env = "env prefix=/usr confdir=/etc rundir=/var/run/#{project_name} "
-    make_env += "initdir=/etc/init.d "
-    on host, cd_to_package_dir + make_env + "make -e install-" + project_name
-
-    # install init scripts and default settings, perform additional preinst
-    # TODO: figure out a better way to install init scripts and defaults
-    platform = host['platform']
-    case platform
-      when /^(fedora|el|centos)-(\d+)-(.+)$/
-        make_env += "defaultsdir=/etc/sysconfig "
-        on host, cd_to_package_dir + make_env + "make -e install-rpm-sysv-init"
-      when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        make_env += "defaultsdir=/etc/defaults "
-        on host, cd_to_package_dir + make_env + "make -e install-deb-sysv-init"
-      else
-        host.logger.notify("No ezbake installation step for #{platform} yet...")
-    end
-  end
-
-  def install_jvm_puppet_on(host)
+  def install_jvm_puppet (host)
     case test_config[:jvmpuppet_install_type]
     when :package
       install_package host, 'jvm-puppet'
@@ -351,7 +189,7 @@ module JVMPuppetExtensions
   #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L819
   # With minor semantic changes.
   #
-  def install_dev_repos_on(package, host, build_version, repo_configs_dir)
+  def install_dev_repos (host, package, build_version, repo_configs_dir)
     platform = host['platform']
     platform_configs_dir = File.join(repo_configs_dir, platform)
 
