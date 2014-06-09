@@ -144,6 +144,36 @@ allow you to log in to to the vSphere machine. There is a somewhat promiscuous
 Acceptance testing private key, if you need it please ask someone in QA or QE.
 It probably requires the least amount of effort to get this setup running.
 
+## Install from `ezbake`
+
+Installing from source can be accomplished without the need for
+`PACKAGE_BUILD_VERSION` if `JVMPUPPET_INSTALL_TYPE=git`. Roughly speaking, the
+following events will occur when using this install type:
+
+1. Run `lein install`
+1. Clone ezbake to `./tmp/ezbake` or pull from origin if it's already there.
+1. Use `JVMPUPPET_VERSION` or `lein with-profile acceptance pprint version` to get
+the current jvm-puppet development version. If `JVMPUPPET_VERSION` is set in the
+environment when Beaker is run, then this will be preferred and must refer to a
+valid jvm-puppet version stored either in the local Maven repository or Nexus.
+1. Change working directory to `./tmp/ezbake` and run `lein run stage jvm-puppet
+jvm-puppet-version=VERSION` where VERSION is the version obtained in the
+previous step.
+1. Change working directory to `./tmp/ezbake/target/staging` and run `rake
+package:bootstrap`. **Note** This step uses the locally installed version of
+jvm-puppet installed in the first step.
+1. Run `rake pl:print_build_param[ref]` to obtain the staging version number.
+1. Run `rake package:tar` to build tarball with all necessary installation files.
+1. Create user:group `puppet:puppet` on SUT.
+1. Run `env prefix=/usr confdir=/etc rundir=/var/run/jvm-puppet
+initdir=/etc/init.d make -e install-jvm-puppet`
+1. Run `env prefix=/usr confdir=/etc rundir=/var/run/jvm-puppet
+initdir=/etc/init.d make -e install-{rpm,deb}-sysv-init`
+
+This is just an overview to give an idea of what is going on and how/why it
+works or doesn't work. `PACKAGE_BUILD_VERSION` can be set but won't do anything in
+this case.
+
 ## Workflow
 
 Below are some suggested workflows that ought to help getting started.
@@ -219,13 +249,23 @@ The following is a list of environment variables are supported by the
 test:acceptance:beaker Rake task and descriptions of the effect each has.
 
 * $PACKAGE_BUILD_VERSION
-  * Default: None, fail loudly if no PACKAGE_BUILD_VERSION available.
+  * Default: None
   * Example: 0.1.2.SNAPSHOT.2014.05.12T1408
     export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
   * Description: This variable is used by the Beaker pre_suite to obtain a
   package repository configuration file used by yum or apt on the System Under
   Test. It is expected that this url will become available for a particular
-  version of JVM Puppet as a result of an ezbake/packaging run.
+  version of JVM Puppet as a result of an ezbake/packaging run. **NOTE:** This variable is
+  only necessary if `JVMPUPPET_INSTALL_TYPE=package`, which is the default.
+
+* $JVMPUPPET_VERSION 
+  * Default: None 
+  * Valid: Any released/snapshotted `project.clj` jvm-puppet version.
+  * Description: Determines the VALUE for `jvm-puppet-version=VALUE` when
+  running Beaker with `JVMPUPPET_INSTALL_TYPE=git`. For example if
+  `JVMPUPPET_VERSION=0.1.4-SNAPSHOT` and `JVMPUPPET_INSTALL_TYPE=git` then the
+  ezbake staging command run by the default pre_suite will look like `lein run
+  stage jvm-puppet jvm-puppet-version=0.1.4-SNAPSHOT`
 
 * $JVMPUPPET_INSTALL_TYPE 
   * Default: package 
@@ -252,6 +292,11 @@ test:acceptance:beaker Rake task and descriptions of the effect each has.
 * $BEAKER_PRESUITE 
   * Beaker CLI Option: --pre-suite 
   * Default: ./acceptance/suites/pre_suite 
+  * Description: Same as the Beaker option.
+
+* $BEAKER_POSTSUITE 
+  * Beaker CLI Option: --post-suite 
+  * Default: ./acceptance/suites/post_suite 
   * Description: Same as the Beaker option.
 
 * $BEAKER_LOADPATH 
