@@ -83,12 +83,15 @@
 
 (let [ssldir          (ks/temp-dir)
       cadir           (str ssldir "/ca")
-      cadir-contents  {:cacrl     (str cadir "/ca_crl.pem")
+      ca-settings     {:ca-name   "test ca"
+                       :ca-ttl    1
+                       :cacrl     (str cadir "/ca_crl.pem")
                        :cacert    (str cadir "/ca_crt.pem")
                        :cakey     (str cadir "/ca_key.pem")
                        :capub     (str cadir "/ca_pub.pem")
                        :csrdir    (str cadir "/requests")
                        :signeddir (str cadir "/signed")}
+      cadir-contents  (settings->cadir-paths ca-settings)
       ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
                        :certdir     (str ssldir "/certs")
                        :hostcert    (str ssldir "/certs/master.pem")
@@ -100,7 +103,7 @@
   (deftest initialize-ca!-test
     (testing "Generated SSL file"
       (try
-        (initialize-ca! cadir-contents "test ca" 512)
+        (initialize-ca! ca-settings 512)
         (doseq [file (vals cadir-contents)]
           (testing file
             (is (fs/exists? file))))
@@ -125,7 +128,7 @@
   (deftest initialize!-test
     (testing "Generated SSL file"
       (try
-        (initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+        (initialize! ca-settings ssldir-contents "master" 512)
         (doseq [file (concat (vals cadir-contents) (vals ssldir-contents))]
           (testing file
             (is (fs/exists? file))))
@@ -143,7 +146,7 @@
           (doseq [file no-dirs]
             (spit file "unused content"))
 
-          (initialize! cadir-contents ssldir-contents "master" "test ca" 512)
+          (initialize! ca-settings ssldir-contents "master" 512)
 
           (doseq [file no-dirs]
             (is (= "unused content" (slurp file))
@@ -154,17 +157,15 @@
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"
-                (partial initialize! cadir-contents ssldir-contents
-                         "master" "test ca" 512)
+                (partial initialize! ca-settings ssldir-contents "master" 512)
                 512]
                ["has a default value"
-                (partial initialize! cadir-contents ssldir-contents
-                         "master" "test ca")
+                (partial initialize! ca-settings ssldir-contents "master")
                 utils/default-key-length]]]
         (testing message
           (try
             (f)
-            (is (= expected (-> cadir-contents :cakey
+            (is (= expected (-> ca-settings :cakey
                                 utils/pem->private-key utils/keylength)))
             (is (= expected (-> ssldir-contents :hostprivkey
                                 utils/pem->private-key utils/keylength)))

@@ -10,22 +10,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
-(def CaFilePaths
-  "Paths to the various directories and files within the CA directory.
-  These are used during initialization of the CA, and may not be necessary
-  thereafter. All of these are Puppet configuration settings"
-  {:cacrl     String
-   :cacert    String
-   :cakey     String
-   :capub     String
-   :csrdir    String
-   :signeddir String})
-
 (def MasterFilePaths
   "Paths to the various directories and files within the SSL directory,
-  excluding the CA directory and its contents (see `CaFilePaths`).
-  These are only used during initialization of the master.
-  All of these are Puppet configuration settings."
+  excluding the CA directory and its contents. These are only used during
+  initialization of the master. All of these are Puppet configuration settings."
   {:requestdir  String
    :certdir     String
    :hostcert    String
@@ -34,13 +22,13 @@
    :hostpubkey  String})
 
 (def CaSettings
-  "Settings from Puppet that are used through the lifetime of the CA.
-  Some of these may be necessary during initialization as well, so there
-  may be some overlap between this and `CaFilePaths`.
+  "Settings from Puppet that are necessary for CA initialization and request
+  handling during normal Puppet operation.
   All of these are Puppet configuration settings."
   {:cacert    String
    :cacrl     String
    :cakey     String
+   :capub     String
    :ca-name   String
    :ca-ttl    schema/Int
    :csrdir    String
@@ -48,6 +36,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(schema/defn settings->cadir-paths
+  "Trim down the CA settings to include only paths to files and directories.
+  These paths are necessary during CA initialization for determining what needs
+  to be created and where they should be placed."
+  [ca-settings :- CaSettings]
+  (dissoc ca-settings :ca-ttl :ca-name))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
@@ -80,7 +75,7 @@
 (defn files-exist?
   "Predicate to test whether all of the files exist on disk.
   `paths` is expected to be a map with file path values,
-  such as `ssldir-file-paths` or `cadir-file-paths`."
+  such as `ssldir-file-paths` or `ca-settings`."
   [paths]
   {:pre [(map? paths)]}
   (every? fs/exists? (vals paths)))
@@ -93,25 +88,21 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
-(defn initialize-ca!
-  "Given the CA directory file paths and CA name, generate and
-  write to disk all of the necessary SSL files for the CA.
-  Any existing files will be replaced."
-  [cadir-file-paths ca-name keylength]
-  {:pre  [(map? cadir-file-paths)
-          (every? string? (vals cadir-file-paths))
-          (string? ca-name)
-          (integer? keylength)]
-   :post [(files-exist? cadir-file-paths)]}
-  (log/info (str "Initializing SSL for the CA; file paths:\n"
-                 (ks/pprint-to-string cadir-file-paths)))
-  (create-parent-directories! (vals cadir-file-paths))
-  (-> cadir-file-paths :csrdir fs/file ks/mkdirs!)
-  (-> cadir-file-paths :signeddir fs/file ks/mkdirs!)
+(schema/defn initialize-ca!
+  "Given the CA settings, generate and write to disk all of the necessary
+  SSL files for the CA. Any existing files will be replaced."
+  [ca-settings :- CaSettings
+   keylength :- schema/Int]
+  {:post [(files-exist? (settings->cadir-paths ca-settings))]}
+  (log/debug (str "Initializing SSL for the CA; settings:\n"
+                  (ks/pprint-to-string ca-settings)))
+  (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
+  (-> ca-settings :csrdir fs/file ks/mkdirs!)
+  (-> ca-settings :signeddir fs/file ks/mkdirs!)
   (let [keypair     (utils/generate-key-pair keylength)
         public-key  (.getPublic keypair)
         private-key (.getPrivate keypair)
-        x500-name   (utils/generate-x500-name ca-name)
+        x500-name   (utils/generate-x500-name (:ca-name ca-settings))
         cacert      (-> (utils/generate-certificate-request keypair x500-name)
                         (utils/sign-certificate-request x500-name
                                                         (next-serial-number)
@@ -119,26 +110,26 @@
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
-    (utils/key->pem! public-key (:capub cadir-file-paths))
-    (utils/key->pem! private-key (:cakey cadir-file-paths))
-    (utils/obj->pem! cacert (:cacert cadir-file-paths))
-    (utils/obj->pem! cacrl (:cacrl cadir-file-paths))))
+    (utils/key->pem! public-key (:capub ca-settings))
+    (utils/key->pem! private-key (:cakey ca-settings))
+    (utils/obj->pem! cacert (:cacert ca-settings))
+    (utils/obj->pem! cacrl (:cacrl ca-settings))))
 
-(defn initialize-master!
+(schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
   generate and write to disk all of the necessary SSL files for the master.
   Any existing files will be replaced."
-  [ssldir-file-paths master-certname ca-name ca-private-key ca-cert keylength]
-  {:pre  [(every? string? (vals ssldir-file-paths))
-          (string? master-certname)
-          (string? ca-name)
-          (utils/private-key? ca-private-key)
-          (utils/certificate? ca-cert)
-          (integer? keylength)]
-   :post [(files-exist? ssldir-file-paths)]}
-  (log/info (str "Initializing SSL for the Master; file paths:\n"
-                 (ks/pprint-to-string ssldir-file-paths)))
+  [ssldir-file-paths :- MasterFilePaths
+   master-certname :- String
+   ca-name :- String
+   ca-private-key :- (schema/pred utils/private-key?)
+   ca-cert :- (schema/pred utils/certificate?)
+   keylength :- schema/Int]
+  {:post [(files-exist? ssldir-file-paths)]}
+  (log/debug (str "Initializing SSL for the Master; file paths:\n"
+                  (ks/pprint-to-string ssldir-file-paths)))
   (create-parent-directories! (vals ssldir-file-paths))
+  (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
   (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
   (let [keypair      (utils/generate-key-pair keylength)
         public-key   (.getPublic keypair)
@@ -214,26 +205,25 @@
 
 (schema/defn ^:always-validate
   initialize!
-  "Given the CA file paths, master file paths, the master's certname,
-  and the CA's name, prepare all necessary SSL files for the master and CA.
+  "Given the CA settings, master file paths, and the master's certname,
+  prepare all necessary SSL files for the master and CA.
   If all of the necessary SSL files exist, new ones will not be generated."
-  ([ca-file-paths master-file-paths master-certname ca-name]
-    (initialize! ca-file-paths
+  ([ca-settings master-file-paths master-certname]
+    (initialize! ca-settings
                  master-file-paths
                  master-certname
-                 ca-name
                  utils/default-key-length))
-  ([ca-file-paths     :- CaFilePaths
+  ([ca-settings       :- CaSettings
     master-file-paths :- MasterFilePaths
     master-certname   :- String
-    ca-name           :- String
     keylength         :- schema/Int]
-    (if (files-exist? ca-file-paths)
+    (if (files-exist? (settings->cadir-paths ca-settings))
       (log/info "CA already initialized for SSL")
-      (initialize-ca! ca-file-paths ca-name keylength))
+      (initialize-ca! ca-settings keylength))
     (if (files-exist? master-file-paths)
       (log/info "Master already initialized for SSL")
-      (let [cakey  (-> ca-file-paths :cakey utils/pem->private-key)
-            cacert (-> ca-file-paths :cacert utils/pem->certs first)]
+      (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
+            cacert (-> ca-settings :cacert utils/pem->certs first)
+            caname (:ca-name ca-settings)]
         (initialize-master! master-file-paths master-certname
-                            ca-name cakey cacert keylength)))))
+                            caname cakey cacert keylength)))))
