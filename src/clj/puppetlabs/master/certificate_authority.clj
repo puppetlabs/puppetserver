@@ -112,8 +112,8 @@
                         (utils/generate-crl private-key))]
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key (:cakey ca-settings))
-    (utils/obj->pem! cacert (:cacert ca-settings))
-    (utils/obj->pem! cacrl (:cacrl ca-settings))))
+    (utils/cert->pem! cacert (:cacert ca-settings))
+    (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
@@ -142,8 +142,8 @@
                                                          ca-private-key))]
     (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
     (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
-    (utils/obj->pem! hostcert (:hostcert ssldir-file-paths))
-    (utils/obj->pem! ca-cert (:localcacert ssldir-file-paths))))
+    (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
+    (utils/cert->pem! ca-cert (:localcacert ssldir-file-paths))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -181,9 +181,7 @@
   {:pre  [(string? subject)
           (instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}
-  (let [request-object  (-> certificate-request
-                            utils/pem->objs
-                            first)
+  (let [request-object  (utils/pem->csr certificate-request)
         ca-private-key  (utils/pem->private-key cakey)
         ca-x500-name    (utils/generate-x500-name ca-name)
         cert-path       (path-to-cert signeddir subject)
@@ -192,7 +190,7 @@
                           ca-x500-name
                           (next-serial-number)
                           ca-private-key)]
-    (utils/obj->pem! signed-cert cert-path))
+    (utils/cert->pem! signed-cert cert-path))
   (calculate-certificate-expiration ca-ttl))
 
 (defn get-certificate-revocation-list
@@ -223,7 +221,7 @@
     (if (files-exist? master-file-paths)
       (log/info "Master already initialized for SSL")
       (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
-            cacert (-> ca-settings :cacert utils/pem->certs first)
+            cacert (-> ca-settings :cacert utils/pem->cert)
             caname (:ca-name ca-settings)]
         (initialize-master! master-file-paths master-certname
                             caname cakey cacert keylength)))))

@@ -59,9 +59,11 @@
 
         (testing "requests are autosigned and saved to disk"
           (is (fs/exists? expected-cert-path))
-          (let [signed-cert (-> expected-cert-path utils/pem->certs first)]
-            (is (utils/has-subject? signed-cert "CN=test-agent"))
-            (is (utils/issued-by? signed-cert "CN=test ca"))))
+          (let [signed-cert (utils/pem->cert expected-cert-path)
+                subject     (-> signed-cert .getSubjectX500Principal .getName)
+                issuer      (-> signed-cert .getIssuerX500Principal .getName)]
+            (is (= "CN=test-agent" subject))
+            (is (= "CN=test ca" issuer))))
 
         (testing "cert expiration is correct based on Puppet's ca_ttl setting"
           (let [duration (Period. now expiration)]
@@ -71,15 +73,13 @@
         (fs/delete expected-cert-path)))))
 
 (deftest get-certificate-revocation-list-test
-  (testing "`get-certificate-revocation-list` returns a path to valid CRL file."
-    (let [crl         (get-certificate-revocation-list cacrl)
-          issuer-name (-> crl
-                          StringReader.
-                          utils/pem->objs
-                          first
-                          .getIssuer
-                          utils/x500-name->CN)]
-      (is (= "Puppet CA: localhost" issuer-name)))))
+  (testing "`get-certificate-revocation-list` returns a valid CRL file."
+    (let [crl    (-> cacrl
+                     get-certificate-revocation-list
+                     StringReader.
+                     utils/pem->crl)
+          issuer (-> crl .getIssuerX500Principal .getName)]
+      (is (= "CN=Puppet CA: localhost" issuer)))))
 
 (let [ssldir          (ks/temp-dir)
       cadir           (str ssldir "/ca")
@@ -116,7 +116,7 @@
       (try
         (initialize-master! ssldir-contents "master" "test ca"
                             (utils/pem->private-key cakey)
-                            (first (utils/pem->certs cacert))
+                            (utils/pem->cert cacert)
                             512)
         (doseq [file (vals ssldir-contents)]
           (testing file
