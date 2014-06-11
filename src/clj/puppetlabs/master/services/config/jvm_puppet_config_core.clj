@@ -15,19 +15,21 @@
 (def puppet-config-keys
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
-  #{ :cacert
-     :cacrl
-     :cakey
-     :ca-name
-     :capub
-     :ca-ttl
-     :certdir
-     :certname
-     :csrdir
-     :hostcert
-     :hostprivkey
-     :hostpubkey
-     :localcacert })
+  #{:cacert
+    :cacrl
+    :cakey
+    :ca-name
+    :capub
+    :ca-ttl
+    :certdir
+    :certname
+    :csrdir
+    :hostcert
+    :hostprivkey
+    :hostpubkey
+    :localcacert
+    :signeddir
+    :requestdir})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers

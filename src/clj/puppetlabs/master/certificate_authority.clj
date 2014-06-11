@@ -1,22 +1,53 @@
 (ns puppetlabs.master.certificate-authority
-  (:import  [java.io InputStream File IOException]
-            [java.security PrivateKey]
+  (:import  [java.io InputStream]
             [org.joda.time DateTime Period])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
-            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def MasterFilePaths
+  "Paths to the various directories and files within the SSL directory,
+  excluding the CA directory and its contents. These are only used during
+  initialization of the master. All of these are Puppet configuration settings."
+  {:requestdir  String
+   :certdir     String
+   :hostcert    String
+   :localcacert String
+   :hostprivkey String
+   :hostpubkey  String})
+
+(def CaSettings
+  "Settings from Puppet that are necessary for CA initialization and request
+  handling during normal Puppet operation.
+  All of these are Puppet configuration settings."
+  {:cacert    String
+   :cacrl     String
+   :cakey     String
+   :capub     String
+   :ca-name   String
+   :ca-ttl    schema/Int
+   :csrdir    String
+   :signeddir String})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
+(schema/defn settings->cadir-paths
+  "Trim down the CA settings to include only paths to files and directories.
+  These paths are necessary during CA initialization for determining what needs
+  to be created and where they should be placed."
+  [ca-settings :- CaSettings]
+  (dissoc ca-settings :ca-ttl :ca-name))
+
 (defn path-to-cert
-  "Return a path to the `subject`s certificate file under the `certdir`."
-  [certdir subject]
-  (str certdir "/" subject ".pem"))
+  "Return a path to the `subject`s certificate file under the `signeddir`."
+  [signeddir subject]
+  (str signeddir "/" subject ".pem"))
 
 (defn path-to-cert-request
   "Return a path to the `subject`s certificate request file under the `csrdir`."
@@ -44,10 +75,10 @@
 (defn files-exist?
   "Predicate to test whether all of the files exist on disk.
   `paths` is expected to be a map with file path values,
-  such as `master-file-paths` or `ca-file-paths`."
+  such as `ssldir-file-paths` or `ca-settings`."
   [paths]
   {:pre [(map? paths)]}
-  (every? #(fs/exists? %) (vals paths)))
+  (every? fs/exists? (vals paths)))
 
 (defn create-parent-directories!
   "Create all intermediate directories present in each of the file paths.
@@ -57,85 +88,62 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
-(defn create-ca-files!
-  "Given the paths to all of the CA's SSL files and the name of the CA,
-  generate and write to disk all of the necessary SSL files for the CA.
-  Any existing files will be replaced."
-  [ca-file-paths ca-name keylength]
-  {:pre  [(map? ca-file-paths)
-          (every? string? (vals ca-file-paths))
-          (string? ca-name)
-          (integer? keylength)]
-   :post [(files-exist? ca-file-paths)]}
-  (log/info (str "Initializing SSL for the CA; file paths:\n"
-                 (ks/pprint-to-string ca-file-paths)))
-  (create-parent-directories! (vals ca-file-paths))
+(schema/defn initialize-ca!
+  "Given the CA settings, generate and write to disk all of the necessary
+  SSL files for the CA. Any existing files will be replaced."
+  [ca-settings :- CaSettings
+   keylength :- schema/Int]
+  {:post [(files-exist? (settings->cadir-paths ca-settings))]}
+  (log/debug (str "Initializing SSL for the CA; settings:\n"
+                  (ks/pprint-to-string ca-settings)))
+  (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
+  (-> ca-settings :csrdir fs/file ks/mkdirs!)
+  (-> ca-settings :signeddir fs/file ks/mkdirs!)
   (let [keypair     (utils/generate-key-pair keylength)
         public-key  (.getPublic keypair)
         private-key (.getPrivate keypair)
-        x500-name   (utils/generate-x500-name ca-name)
-        cert        (-> (utils/generate-certificate-request keypair x500-name)
-                        (utils/sign-certificate-request x500-name (next-serial-number) private-key))]
-    ;; create keys
-    (utils/key->pem! public-key (:capub ca-file-paths))
-    (utils/key->pem! private-key (:cakey ca-file-paths))
-    ;; create cert in both places, because that's how the ruby version does it.
-    (utils/obj->pem! cert (:cacert ca-file-paths))
-    (utils/obj->pem! cert (:localcacert ca-file-paths))
-    ;; create CRL
-    (-> (.getIssuerX500Principal cert)
-        (utils/generate-crl private-key)
-        (utils/obj->pem! (:cacrl ca-file-paths)))))
+        x500-name   (utils/generate-x500-name (:ca-name ca-settings))
+        cacert      (-> (utils/generate-certificate-request keypair x500-name)
+                        (utils/sign-certificate-request x500-name
+                                                        (next-serial-number)
+                                                        private-key))
+        cacrl       (-> cacert
+                        .getIssuerX500Principal
+                        (utils/generate-crl private-key))]
+    (utils/key->pem! public-key (:capub ca-settings))
+    (utils/key->pem! private-key (:cakey ca-settings))
+    (utils/cert->pem! cacert (:cacert ca-settings))
+    (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
-(defn create-master-files!
-  "Given the master's SSL file paths & certname, and the CA's name & private key,
+(schema/defn initialize-master!
+  "Given the SSL directory file paths, master certname, and CA information,
   generate and write to disk all of the necessary SSL files for the master.
   Any existing files will be replaced."
-  [master-file-paths master-certname ca-name keylength ca-private-key]
-  {:pre  [(every? string? (vals master-file-paths))
-          (string? master-certname)
-          (instance? PrivateKey ca-private-key)
-          (string? ca-name)
-          (integer? keylength)]
-   :post [(files-exist? master-file-paths)]}
-  (log/info "Initializing SSL for the Master")
-  (create-parent-directories! (vals master-file-paths))
-  (let [keypair        (utils/generate-key-pair keylength)
-        public-key     (.getPublic keypair)
-        private-key    (.getPrivate keypair)
-        x500-name      (utils/generate-x500-name master-certname)
-        ca-x500-name   (utils/generate-x500-name ca-name)]
-    ;; create keys
-    (utils/key->pem! public-key (:hostpubkey master-file-paths))
-    (utils/key->pem! private-key (:hostprivkey master-file-paths))
-    ;; create cert
-    (-> (utils/generate-certificate-request keypair x500-name)
-        (utils/sign-certificate-request ca-x500-name (next-serial-number) ca-private-key)
-        (utils/obj->pem! (:hostcert master-file-paths)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Schemas
-
-(def CaFilePaths
-  {:cacert      String
-   :cacrl       String
-   :cakey       String
-   :capub       String
-   :localcacert String})
-
-(def MasterFilePaths
-  {:hostcert    String
-   :hostprivkey String
-   :hostpubkey  String})
-
-(def CaSettings
-  { :cacert   String
-    :cacrl    String
-    :cakey    String
-    :ca-name  String
-    :ca-ttl   schema/Int
-    :certdir  String
-    :csrdir   String })
+  [ssldir-file-paths :- MasterFilePaths
+   master-certname :- String
+   ca-name :- String
+   ca-private-key :- (schema/pred utils/private-key?)
+   ca-cert :- (schema/pred utils/certificate?)
+   keylength :- schema/Int]
+  {:post [(files-exist? ssldir-file-paths)]}
+  (log/debug (str "Initializing SSL for the Master; file paths:\n"
+                  (ks/pprint-to-string ssldir-file-paths)))
+  (create-parent-directories! (vals ssldir-file-paths))
+  (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
+  (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
+  (let [keypair      (utils/generate-key-pair keylength)
+        public-key   (.getPublic keypair)
+        private-key  (.getPrivate keypair)
+        x500-name    (utils/generate-x500-name master-certname)
+        ca-x500-name (utils/generate-x500-name ca-name)
+        hostcert     (-> (utils/generate-certificate-request keypair x500-name)
+                         (utils/sign-certificate-request ca-x500-name
+                                                         (next-serial-number)
+                                                         ca-private-key))]
+    (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
+    (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
+    (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
+    (utils/cert->pem! ca-cert (:localcacert ssldir-file-paths))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -144,13 +152,13 @@
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
-  [subject cacert certdir]
-  {:pre  [(every? string? [subject cacert certdir])]
+  [subject cacert signeddir]
+  {:pre  [(every? string? [subject cacert signeddir])]
    :post [(or (string? %)
               (nil? %))]}
   (let [cert-path (if (= "ca" subject)
                     cacert
-                    (path-to-cert certdir subject))]
+                    (path-to-cert signeddir subject))]
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
@@ -169,62 +177,51 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk.
   Return the certificate expiration date."
-  [subject certificate-request {:keys [ca-name cakey certdir ca-ttl]}]
+  [subject certificate-request {:keys [ca-name cakey signeddir ca-ttl]}]
   {:pre  [(string? subject)
           (instance? InputStream certificate-request)]
    :post [(instance? DateTime %)]}
-  (let [request-object  (-> certificate-request
-                            utils/pem->objs
-                            first)
-        ca-private-key  (-> cakey
-                            utils/pem->private-key)
+  (let [request-object  (utils/pem->csr certificate-request)
+        ca-private-key  (utils/pem->private-key cakey)
         ca-x500-name    (utils/generate-x500-name ca-name)
-        next-serial     (next-serial-number)
-        cert-path       (path-to-cert certdir subject)
-        ;; TODO eventually we don't want to just be autosigning here (PE-3179)
+        cert-path       (path-to-cert signeddir subject)
         signed-cert     (utils/sign-certificate-request
                           request-object
                           ca-x500-name
-                          next-serial
+                          (next-serial-number)
                           ca-private-key)]
-    (utils/obj->pem! signed-cert cert-path))
+    (utils/cert->pem! signed-cert cert-path))
   (calculate-certificate-expiration ca-ttl))
 
 (defn get-certificate-revocation-list
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
   [cacrl]
-  {:pre   [(string? cacrl)]
-   :post  [(string? %)]}
+  {:pre  [(string? cacrl)]
+   :post [(string? %)]}
   (slurp cacrl))
 
 (schema/defn ^:always-validate
   initialize!
-  "Given the CA file paths, master file paths, the master's certname,
-  and the CA's name, prepare all necessary SSL files for the master and CA.
+  "Given the CA settings, master file paths, and the master's certname,
+  prepare all necessary SSL files for the master and CA.
   If all of the necessary SSL files exist, new ones will not be generated."
-
-  ([ca-file-paths master-file-paths master-certname ca-name]
-    (initialize! ca-file-paths
+  ([ca-settings master-file-paths master-certname]
+    (initialize! ca-settings
                  master-file-paths
                  master-certname
-                 ca-name
                  utils/default-key-length))
-
-  ([ca-file-paths     :- CaFilePaths
+  ([ca-settings       :- CaSettings
     master-file-paths :- MasterFilePaths
     master-certname   :- String
-    ca-name           :- String
     keylength         :- schema/Int]
-    (if (files-exist? ca-file-paths)
+    (if (files-exist? (settings->cadir-paths ca-settings))
       (log/info "CA already initialized for SSL")
-      (create-ca-files! ca-file-paths ca-name keylength))
+      (initialize-ca! ca-settings keylength))
     (if (files-exist? master-file-paths)
       (log/info "Master already initialized for SSL")
-      (create-master-files! master-file-paths
-                            master-certname
-                            ca-name
-                            keylength
-                            (-> ca-file-paths
-                                :cakey
-                                utils/pem->private-key)))))
+      (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
+            cacert (-> ca-settings :cacert utils/pem->cert)
+            caname (:ca-name ca-settings)]
+        (initialize-master! master-file-paths master-certname
+                            caname cakey cacert keylength)))))

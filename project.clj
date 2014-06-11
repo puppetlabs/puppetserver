@@ -15,7 +15,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/certificate-authority "0.1.5"]
+                 [puppetlabs/certificate-authority "0.2.0"]
                  [puppetlabs/http-client "0.1.7"]
                  [org.jruby/jruby-complete "1.7.10"]
                  [clj-time "0.5.1"]

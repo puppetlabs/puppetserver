@@ -9,8 +9,8 @@
 ;;; 'handler' functions for HTTP endpoints
 
 (defn handle-get-certificate
-  [subject {:keys [cacert certdir]}]
-  (-> (if-let [certificate (ca/get-certificate subject cacert certdir)]
+  [subject {:keys [cacert signeddir]}]
+  (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
         (rr/response certificate)
         (rr/not-found (str "Could not find certificate " subject)))
       (rr/content-type "text/plain")))
@@ -43,7 +43,6 @@
       (rr/response)
       (rr/content-type "text/plain")))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 
@@ -64,6 +63,5 @@
 (schema/defn ^:always-validate
   compojure-app
   [ca-settings :- ca/CaSettings]
-  (->
-    (routes ca-settings)
-    (ringutils/wrap-response-logging)))
+  (-> (routes ca-settings)
+      (ringutils/wrap-response-logging)))
