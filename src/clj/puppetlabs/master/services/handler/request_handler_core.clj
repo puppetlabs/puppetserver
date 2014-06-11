@@ -86,6 +86,7 @@
     :remote-addr    (:remote-addr request)
     :headers        (:headers request)
     :body           (:body-string request)
+    :client-cert    (:ssl-client-cert request)
     :client-cert-cn (get-cert-common-name request)
     :request-method (->
                       (:request-method request)

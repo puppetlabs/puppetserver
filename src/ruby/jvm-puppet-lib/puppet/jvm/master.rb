@@ -9,6 +9,7 @@ require 'puppet/jvm'
 require 'puppet/jvm/config'
 require 'puppet/jvm/logger'
 require 'puppet/jvm/http_client'
+require 'puppet/jvm/certificate'
 
 require 'java'
 
@@ -139,7 +140,7 @@ class Puppet::Jvm::Master
   end
 
   def client_cert(request)
-    nil
+    Puppet::Jvm::Certificate.new(request['client-cert'])
   end
 
   def getSetting(setting)
