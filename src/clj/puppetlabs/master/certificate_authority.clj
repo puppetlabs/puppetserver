@@ -4,7 +4,6 @@
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.tools.logging :as log]
-            [slingshot.slingshot :refer [try+]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -182,10 +181,7 @@
   {:pre  [(or (string? autosign)
               (ks/boolean? autosign))]
    :post [(ks/boolean? %)]}
-  (try+
-   (ks/to-bool autosign)
-   (catch Object _
-     false)))
+  (and (ks/boolean? autosign) autosign))
 
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings

@@ -41,9 +41,8 @@
 (deftest autosign-csr?-test
   (testing "boolean values for 'autosign'"
     (is (true? (autosign-csr? true)))
-    (is (true? (autosign-csr? "true")))
     (is (false? (autosign-csr? false)))
-    (is (false? (autosign-csr? "false")))
+    (is (false? (autosign-csr? "true")))
     (is (false? (autosign-csr? "/foo/bar/autosign.conf")))))
 
 (deftest save-certificate-request!-test
