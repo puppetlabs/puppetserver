@@ -15,6 +15,12 @@
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
 
+(defn assert-subject [o subject]
+  (is (= subject (-> o .getSubjectX500Principal .getName))))
+
+(defn assert-issuer [o issuer]
+  (is (= issuer (-> o .getIssuerX500Principal .getName))))
+
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
     (let [actual   (get-certificate "ca" cacert signeddir)
@@ -79,11 +85,9 @@
 
         (testing "requests are autosigned and saved to disk"
           (is (fs/exists? expected-cert-path))
-          (let [signed-cert (utils/pem->cert expected-cert-path)
-                subject     (-> signed-cert .getSubjectX500Principal .getName)
-                issuer      (-> signed-cert .getIssuerX500Principal .getName)]
-            (is (= "CN=test-agent" subject))
-            (is (= "CN=test ca" issuer))))
+          (doto (utils/pem->cert expected-cert-path)
+            (assert-subject "CN=test-agent")
+            (assert-issuer "CN=test ca")))
 
         (testing "cert expiration is correct based on Puppet's ca_ttl setting"
           (let [duration (Period. now expiration)]
@@ -94,12 +98,10 @@
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
-    (let [crl    (-> cacrl
-                     get-certificate-revocation-list
-                     StringReader.
-                     utils/pem->crl)
-          issuer (-> crl .getIssuerX500Principal .getName)]
-      (is (= "CN=Puppet CA: localhost" issuer)))))
+    (let [crl (-> (get-certificate-revocation-list cacrl)
+                  StringReader.
+                  utils/pem->crl)]
+      (assert-issuer crl "CN=Puppet CA: localhost"))))
 
 (let [ssldir          (ks/temp-dir)
       cadir           (str ssldir "/ca")
@@ -120,31 +122,74 @@
                        :hostprivkey (str ssldir "/private_keys/master.pem")
                        :hostpubkey  (str ssldir "/public_keys/master.pem")}]
 
-  ;; TODO verify contents of each created file (PE-3238)
   (deftest initialize-ca!-test
-    (testing "Generated SSL file"
-      (try
-        (initialize-ca! ca-settings 512)
+    (try
+      (initialize-ca! ca-settings 512)
+
+      (testing "Generated SSL file"
         (doseq [file (vals cadir-contents)]
           (testing file
-            (is (fs/exists? file))))
-        (finally
-          (fs/delete-dir cadir)))))
+            (is (fs/exists? file)))))
 
-  ;; TODO verify contents of each created file (PE-3238)
+      (testing "cacrl"
+        (let [crl (-> cadir-contents :cacrl utils/pem->crl)]
+          (assert-issuer crl "CN=test ca")))
+
+      (testing "cacert"
+        (let [cert (-> cadir-contents :cacert utils/pem->cert)]
+          (is (utils/certificate? cert))
+          (assert-subject cert "CN=test ca")
+          (assert-issuer cert "CN=test ca")))
+
+      (testing "cakey"
+        (let [key (-> cadir-contents :cakey utils/pem->private-key)]
+          (is (utils/private-key? key))
+          (is (= 512 (utils/keylength key)))))
+
+      (testing "capub"
+        (let [key (-> cadir-contents :capub utils/pem->public-key)]
+          (is (utils/public-key? key))
+          (is (= 512 (utils/keylength key)))))
+
+      (finally
+        (fs/delete-dir cadir))))
+
   (deftest initialize-master!-test
-    (testing "Generated SSL file"
-      (try
-        (initialize-master! ssldir-contents "master" "test ca"
-                            (utils/pem->private-key cakey)
-                            (utils/pem->cert cacert)
-                            512)
+    (try
+      (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
+                          (utils/pem->private-key cakey)
+                          (utils/pem->cert cacert)
+                          512)
+
+      (testing "Generated SSL file"
         (doseq [file (vals ssldir-contents)]
           (testing file
-            (is (fs/exists? file))))
-        (finally
-          (fs/delete-dir ssldir)))))
+            (is (fs/exists? file)))))
 
+      (testing "hostcert"
+        (let [cert (-> ssldir-contents :hostcert utils/pem->certs first)]
+          (is (utils/certificate? cert))
+          (assert-subject cert "CN=master")
+          (assert-issuer cert "CN=Puppet CA: localhost")))
+
+      (testing "localcacert"
+        (let [cacert (-> ssldir-contents :localcacert utils/pem->certs first)]
+          (is (utils/certificate? cacert))
+          (assert-subject cacert "CN=Puppet CA: localhost")
+          (assert-issuer cacert "CN=Puppet CA: localhost")))
+
+      (testing "hostprivkey"
+        (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
+          (is (utils/private-key? key))
+          (is (= 512 (utils/keylength key)))))
+
+      (testing "hostpubkey"
+        (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
+          (is (utils/public-key? key))
+          (is (= 512 (utils/keylength key)))))
+
+      (finally
+        (fs/delete-dir ssldir))))
 
   (deftest initialize!-test
     (testing "Generated SSL file"
@@ -186,9 +231,13 @@
         (testing message
           (try
             (f)
-            (is (= expected (-> ca-settings :cakey
+            (is (= expected (-> cadir-contents :cakey
                                 utils/pem->private-key utils/keylength)))
+            (is (= expected (-> cadir-contents :capub
+                                utils/pem->public-key utils/keylength)))
             (is (= expected (-> ssldir-contents :hostprivkey
                                 utils/pem->private-key utils/keylength)))
+            (is (= expected (-> ssldir-contents :hostpubkey
+                                utils/pem->public-key utils/keylength)))
             (finally
               (fs/delete-dir ssldir))))))))
