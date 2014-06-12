@@ -73,7 +73,7 @@ module JVMPuppetExtensions
     step "Master: Start Puppet Master"
       old_retries = master['curl-retries']
       master['curl-retries'] = 1500
-      with_puppet_running_on(master, "main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
+      with_puppet_running_on(master, "main" => { "autosign" => true, "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
         hosts.each do |host|
           next if host['roles'].include? 'master'
