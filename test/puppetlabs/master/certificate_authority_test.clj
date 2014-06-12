@@ -146,6 +146,11 @@
           (is (utils/private-key? key))
           (is (= 512 (utils/keylength key)))))
 
+      (testing "capub"
+        (let [key (-> cadir-contents :capub utils/pem->public-key)]
+          (is (utils/public-key? key))
+          (is (= 512 (utils/keylength key)))))
+
       (finally
         (fs/delete-dir cadir))))
 
@@ -176,6 +181,11 @@
       (testing "hostprivkey"
         (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
           (is (utils/private-key? key))
+          (is (= 512 (utils/keylength key)))))
+
+      (testing "hostpubkey"
+        (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
+          (is (utils/public-key? key))
           (is (= 512 (utils/keylength key)))))
 
       (finally
@@ -221,9 +231,13 @@
         (testing message
           (try
             (f)
-            (is (= expected (-> ca-settings :cakey
+            (is (= expected (-> cadir-contents :cakey
                                 utils/pem->private-key utils/keylength)))
+            (is (= expected (-> cadir-contents :capub
+                                utils/pem->public-key utils/keylength)))
             (is (= expected (-> ssldir-contents :hostprivkey
                                 utils/pem->private-key utils/keylength)))
+            (is (= expected (-> ssldir-contents :hostpubkey
+                                utils/pem->public-key utils/keylength)))
             (finally
               (fs/delete-dir ssldir))))))))
