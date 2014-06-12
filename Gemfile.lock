@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/waynr/beaker.git
-  revision: dea593c02f0ced929ab11cf37730771a42b39f1e
-  branch: stable
+  revision: 55587db9301067e4d866c3fd165154bfd028d450
+  ref: 55587db
   specs:
     beaker (1.12.1)
       aws-sdk (~> 1.38)
@@ -41,7 +41,7 @@ GEM
       archive-tar-minitar
       excon (>= 0.34.0)
       json
-    excon (0.36.0)
+    excon (0.37.0)
     extlib (0.9.16)
     faraday (0.9.0)
       multipart-post (>= 1.2, < 3)
