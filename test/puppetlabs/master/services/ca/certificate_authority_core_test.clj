@@ -31,14 +31,14 @@
             expected-path (ca/path-to-cert signeddir "test-agent")]
 
         (testing "it signs the CSR, writes the certificate to disk, and
-                 returns a 200 response with the CSR as a Ruby YAML string"
+                 returns a 200 response with empty plaintext body"
           (try
             (is (false? (fs/exists? expected-path)))
             (let [response (handle-put-certificate-request! "test-agent" csr settings)]
               (is (true? (fs/exists? expected-path)))
               (is (= 200 (:status response)))
-              (is (= "text/yaml" (get-in response [:headers "Content-Type"])))
-              (is (string? (:body response))))
+              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+              (is (nil? (:body response))))
             (finally
               (fs/delete expected-path))))))
 

@@ -251,7 +251,7 @@
   "Sequentially fill each pool with new JRubyPuppet instances."
   [context :- PoolContext]
   (let [config (:config context)]
-    (log/debugf (str "Initializing JRubyPuppet instances with the following settings:"
+    (log/debugf (str "Initializing JRubyPuppet instances with the following settings:\n"
                      "\tload path: %s\n"
                      "\tmaster conf dir: %s")
                 (:load-path config)
