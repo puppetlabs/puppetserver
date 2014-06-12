@@ -21,11 +21,17 @@ module JVMPuppetExtensions
         get_option_value(options[:jvmpuppet_version],
                          nil, "JVM Puppet Version",
                          "JVMPUPPET_VERSION", nil)
+
+    puppet_version = get_puppet_version ||
+        get_option_value(options[:puppet_version],
+                         nil, "Puppet Version",
+                         "PUPPET_VERSION", nil)
     @config = {
       :base_dir => base_dir,
       :jvmpuppet_install_type => install_type,
       :jvmpuppet_install_mode => install_mode,
       :jvmpuppet_version => jvmpuppet_version,
+      :puppet_version => puppet_version,
     }
 
     pp_config = PP.pp(@config, "")
@@ -58,6 +64,18 @@ module JVMPuppetExtensions
     end
 
     value
+  end
+
+  def self.get_puppet_version
+    puppet_submodule = "ruby/puppet"
+    puppet_version = `git --work-tree=#{puppet_submodule} --git-dir=#{puppet_submodule}/.git describe | cut -d- -f1`
+    case puppet_version
+    when /(\d\.\d\.\d)\n/
+      return $1
+    else
+      logger.warn("Failed to discern Puppet version using `git describe` on #{puppet_submodule}")
+      return nil
+    end
   end
 
   def initialize_ssl
