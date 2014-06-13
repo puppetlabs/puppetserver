@@ -33,12 +33,12 @@ You'll need to provide a couple environment variables that specify which build o
 2. Scroll down to the most recent build at the bottom
    - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118
 3. Copy the text (not the link address) - this will be ```PACKAGE_BUILD_VERSION```
-4. Define ```PUPPET_VERSION``` as the packaged version of Puppet that we're building with, which is currently ```3.6.1-1```
+4. Define ```PUPPET_VERSION``` as the packaged version of Puppet that we're building with, which is currently ```3.6.1```
 
 #### Run Beaker
 
     export PACKAGE_BUILD_VERSION=<SEE PREVIOUS STEP; e.g. 0.1.4.SNAPSHOT.2014.05.15T1118>
-    export PUPPET_VERSION=<SEE PREVIOUS STEP; e.g. 3.6.1-1>
+    export PUPPET_VERSION=<SEE PREVIOUS STEP; e.g. 3.6.1>
     bundle install --path vendor/bundle
     bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --pre-suite ./acceptance/suites/pre_suite --tests ./acceptance/suites/tests
 
