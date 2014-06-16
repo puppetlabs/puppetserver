@@ -21,11 +21,17 @@ module JVMPuppetExtensions
         get_option_value(options[:jvmpuppet_version],
                          nil, "JVM Puppet Version",
                          "JVMPUPPET_VERSION", nil)
+
+    puppet_version = get_puppet_version ||
+        get_option_value(options[:puppet_version],
+                         nil, "Puppet Version",
+                         "PUPPET_VERSION", nil)
     @config = {
       :base_dir => base_dir,
       :jvmpuppet_install_type => install_type,
       :jvmpuppet_install_mode => install_mode,
       :jvmpuppet_version => jvmpuppet_version,
+      :puppet_version => puppet_version,
     }
 
     pp_config = PP.pp(@config, "")
@@ -58,6 +64,18 @@ module JVMPuppetExtensions
     end
 
     value
+  end
+
+  def self.get_puppet_version
+    puppet_submodule = "ruby/puppet"
+    puppet_version = `git --work-tree=#{puppet_submodule} --git-dir=#{puppet_submodule}/.git describe | cut -d- -f1`
+    case puppet_version
+    when /(\d\.\d\.\d)\n/
+      return $1
+    else
+      logger.warn("Failed to discern Puppet version using `git describe` on #{puppet_submodule}")
+      return nil
+    end
   end
 
   def initialize_ssl
@@ -114,24 +132,6 @@ module JVMPuppetExtensions
     return dst
   end
 
-  def get_debian_codename(version)
-    case version
-    when /^6$/
-      return "squeeze"
-    when /^7$/
-      return "wheezy"
-    end
-  end
-
-  def get_ubuntu_codename(version)
-    case version
-    when /^1004$/
-      return "lucid"
-    when /^1204$/
-      return "precise"
-    end
-  end
-
   def install_jvm_puppet (host)
     case test_config[:jvmpuppet_install_type]
     when :package
@@ -146,14 +146,11 @@ module JVMPuppetExtensions
   end
 
   def install_release_repos_on(host)
-    platform = host['platform']
+    variant, version, arch = host['platform'].split('-',3)
+    _, codename, _ = host['platform'].with_version_codename.split('-',3)
 
-    case platform
-      when /^(fedora|el|centos)-(\d+)-(.+)$/
-        variant = (($1 == 'centos') ? 'el' : $1)
-        version = $2
-        arch = $3
-
+    case variant
+      when /(fedora|el|centos)/
         # need to get the release minor version into platform name
         rpm_name = "puppetlabs-release-#{version}-7.noarch.rpm"
         repo_url = "https://yum.puppetlabs.com"
@@ -161,18 +158,7 @@ module JVMPuppetExtensions
         on host,
           "rpm -ivh #{repo_url}/#{variant}/#{version}/products/#{arch}/#{rpm_name}"
 
-      when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        variant = $1
-        version = $2
-        arch = $3
-
-        case variant
-        when /^debian$/
-          codename = get_debian_codename(version)
-        when /^ubuntu$/
-          codename = get_ubuntu_codename(version)
-        end
-
+      when /(debian|ubuntu)/
         deb_name = "puppetlabs-release-#{codename}.deb"
         repo_url = "https://apt.puppetlabs.com"
 
@@ -185,20 +171,15 @@ module JVMPuppetExtensions
     end
   end
 
-  # Obtained from:
-  #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L819
-  # With minor semantic changes.
-  #
   def install_dev_repos (host, package, build_version, repo_configs_dir)
-    platform = host['platform']
-    platform_configs_dir = File.join(repo_configs_dir, platform)
+    variant, version, arch = host['platform'].split('-',3)
+    _, codename, _ = host['platform'].with_version_codename.split('-',3)
 
-    case platform
-      when /^(fedora|el|centos)-(\d+)-(.+)$/
-        variant = (($1 == 'centos') ? 'el' : $1)
+    platform_configs_dir = File.join(repo_configs_dir, [variant, version, arch].join('-'))
+
+    case variant
+      when /(fedora|el|centos)/
         fedora_prefix = ((variant == 'fedora') ? 'f' : '')
-        version = $2
-        arch = $3
 
         pattern = "pl-%s-%s-%s-%s%s-%s.repo"
         repo_filename = pattern % [
@@ -219,18 +200,7 @@ module JVMPuppetExtensions
 
         scp_to(host, repo, '/etc/yum.repos.d/')
 
-      when /^(debian|ubuntu)-([^-]+)-(.+)$/
-        variant = $1
-        version = $2
-        arch = $3
-
-        case variant
-        when /^debian$/
-          codename = get_debian_codename(version)
-        when /^ubuntu$/
-          codename = get_ubuntu_codename(version)
-        end
-
+      when /(debian|ubuntu)/
         list = fetch(
           "http://builds.puppetlabs.lan/%s/%s/repo_configs/deb/" % [package,
                                                                     build_version],

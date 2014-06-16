@@ -1,7 +1,15 @@
 step "Install MRI Puppet Agents."
-  puppet_version = ENV["PUPPET_VERSION"]
   hosts.each do |host|
-    install_package_version host, 'puppet', puppet_version
+    puppet_version = test_config[:puppet_version]
+
+    variant, _, _ = host['platform'].split('-', 3)
+    if variant =~ /^(debian|ubuntu)$/ and puppet_version
+      puppet_version += "-1puppetlabs1"
+      install_package host, "puppet=#{puppet_version} puppet-common=#{puppet_version}"
+    elsif variant =~ /^(redhat|el|centos)$/
+      install_package host, 'puppet', puppet_version
+    end
+
   end
 
 step "Install JVM Puppet Master."
