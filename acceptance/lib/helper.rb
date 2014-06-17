@@ -138,7 +138,7 @@ module JVMPuppetExtensions
       install_package host, 'jvm-puppet'
     when :git
       project_version = test_config[:jvmpuppet_version] ||
-        `lein with-profile acceptance pprint :version | cut -d\\" -f2`
+        `lein with-profile ci pprint :version | tail -n 1 | cut -d\\" -f2`
       install_from_ezbake host, 'jvm-puppet', project_version
     else
       abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
