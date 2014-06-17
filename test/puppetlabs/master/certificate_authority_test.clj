@@ -1,6 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader)
-           (org.joda.time Period DateTime))
+  (:import (java.io StringReader))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -70,28 +69,19 @@
                                (path-to-cert-request subject)
                                io/input-stream)
         expected-cert-path (path-to-cert signeddir subject)
-        now                (DateTime/now)
-        ttl                (-> 6
-                               Period/days
-                               .toStandardSeconds
-                               .getSeconds)
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
-                            :signeddir signeddir
-                            :ca-ttl ttl}]
+                            :signeddir signeddir}]
     (try
-      (let [expiration (autosign-certificate-request!
-                         subject request-stream ca-settings)]
+      (autosign-certificate-request! subject request-stream ca-settings)
 
-        (testing "requests are autosigned and saved to disk"
-          (is (fs/exists? expected-cert-path))
-          (doto (utils/pem->cert expected-cert-path)
-            (assert-subject "CN=test-agent")
-            (assert-issuer "CN=test ca")))
+      (testing "requests are autosigned and saved to disk"
+        (is (fs/exists? expected-cert-path))
+        (doto (utils/pem->cert expected-cert-path)
+          (assert-subject "CN=test-agent")
+          (assert-issuer "CN=test ca")))
 
-        (testing "cert expiration is correct based on Puppet's ca_ttl setting"
-          (let [duration (Period. now expiration)]
-            (is (= 6 (.getDays duration))))))
+      ;; TODO PE-3173 verify signed certificate expiration is based on ca-ttl
 
       (finally
         (fs/delete expected-cert-path)))))

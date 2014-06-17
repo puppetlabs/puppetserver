@@ -1,6 +1,5 @@
 (ns puppetlabs.master.certificate-authority
-  (:import  [java.io InputStream]
-            [org.joda.time DateTime Period])
+  (:import  [java.io InputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.tools.logging :as log]
@@ -54,17 +53,6 @@
   "Return a path to the `subject`s certificate request file under the `csrdir`."
   [csrdir subject]
   (str csrdir "/" subject ".pem"))
-
-(defn calculate-certificate-expiration
-  "Calculate the cert's expiration date based on the value of Puppet's 'ca_ttl'
-   setting"
-  [ca-ttl]
-  {:pre  [(integer? ca-ttl)]
-   :post [(instance? DateTime %)]}
-  ;; TODO - PE-3173 - calculate the expiration date based off of the issue date of the CSR
-  (let [now (DateTime/now)
-        ttl (Period/seconds ca-ttl)]
-    (.plus now ttl)))
 
 ;; TODO persist between runs (PE-3174)
 (def serial-number (atom 0))
@@ -185,19 +173,19 @@
 
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
-  from Puppet, auto-sign the request and write the certificate to disk.
-  Return the certificate expiration date."
+  from Puppet, auto-sign the request and write the certificate to disk."
   [subject certificate-request {:keys [ca-name cakey signeddir ca-ttl]}]
   {:pre  [(string? subject)
           (instance? InputStream certificate-request)]
-   :post [(instance? DateTime %)]}
+   :post [(nil? %)]}
+  ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
+  ;;              issue date and pass to utils/sign-certificate-request
   (let [signed-cert (utils/sign-certificate-request
                       (utils/pem->csr certificate-request)
                       (utils/generate-x500-name ca-name)
                       (next-serial-number)
                       (utils/pem->private-key cakey))]
-    (utils/cert->pem! signed-cert (path-to-cert signeddir subject)))
-  (calculate-certificate-expiration ca-ttl))
+    (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
 (defn save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
