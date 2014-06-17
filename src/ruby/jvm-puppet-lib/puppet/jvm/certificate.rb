@@ -3,6 +3,7 @@ require 'puppet/ssl/certificate'
 require 'puppet/jvm'
 require 'java'
 
+java_import com.puppetlabs.certificate_authority.CertificateAuthority
 java_import java.security.cert.X509Certificate
 
 class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
@@ -31,18 +32,20 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   end
 
   def unmunged_name
-    @java_cert.getSubjectX500Principal.getName
+    CertificateAuthority.get_cn_from_x500_principal(@java_cert.getSubjectX500Principal)
   end
 
   def custom_extensions
-    valid_oids = (@java_cert.getCriticalExtensionOIDs +
-                  @java_cert.getNonCriticalExtensionOIDs).select do |oid|
+    critical_exts = CertificateAuthority.get_critical_extensions(@java_cert)
+    noncritical_exts = CertificateAuthority.get_non_critical_extensions(@java_cert)
+
+    valid_oids = critical_exts.merge(noncritical_exts).select do |oid,value|
       Puppet::SSL::Oids.subtree_of?('ppRegCertExt', oid) or
         Puppet::SSL::Oids.subtree_of?('ppPrivCertExt', oid)
     end
 
-    valid_oids.map do |oid|
-      {'oid' => oid, 'value' => @java_cert.getExtensionValue(oid).to_s}
+    valid_oids.collect do |oid,value|
+      {'oid' => oid, 'value' => value}
     end
   end
 end

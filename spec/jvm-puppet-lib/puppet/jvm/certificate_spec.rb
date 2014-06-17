@@ -25,14 +25,21 @@ describe Puppet::Jvm::Certificate do
   it 'should return Puppet white-listed extensions' do
     exts = agent_certificate.custom_extensions
 
-    exts.select { |ext| ext['oid'] == '1.3.6.1.4.1.34380.1.1.1' }.size.should == 1
-    exts.select { |ext| ext['oid'] == '1.3.6.1.4.1.34380.1.1.2' }.size.should == 1
-    exts.select { |ext| ext['oid'] == '1.3.6.1.4.1.34380.1.1.3' }.size.should == 1
-    exts.select { |ext| ext['oid'] == '1.3.6.1.4.1.34380.1.1.4' }.size.should == 1
+    exts.find { |ext|
+      ext['oid'] == '1.3.6.1.4.1.34380.1.1.1' }['value'].should == "ED803750-E3C7-44F5-BB08-41A04433FE2E"
+
+    exts.find { |ext|
+      ext['oid'] == '1.3.6.1.4.1.34380.1.1.2' }['value'].should == "1234567890"
+
+    exts.find { |ext|
+      ext['oid'] == '1.3.6.1.4.1.34380.1.1.3' }['value'].should == "my_ami_image"
+
+    exts.find { |ext|
+      ext['oid'] == '1.3.6.1.4.1.34380.1.1.4' }['value'].should == "342thbjkt82094y0uthhor289jnqthpc2290"
   end
 
   it 'should return the proper subject name' do
-    agent_certificate.unmunged_name.should == 'CN=myagent'
+    agent_certificate.unmunged_name.should == 'myagent'
   end
 
   it 'should return the expiration date' do

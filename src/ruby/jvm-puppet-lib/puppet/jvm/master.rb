@@ -140,7 +140,9 @@ class Puppet::Jvm::Master
   end
 
   def client_cert(request)
-    Puppet::Jvm::Certificate.new(request['client-cert'])
+    if request['client-cert']
+      Puppet::Jvm::Certificate.new(request['client-cert'])
+    end
   end
 
   def getSetting(setting)
