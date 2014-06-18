@@ -36,10 +36,9 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   end
 
   def custom_extensions
-    critical_exts = CertificateAuthority.get_critical_extensions(@java_cert)
-    noncritical_exts = CertificateAuthority.get_non_critical_extensions(@java_cert)
+    exts = CertificateAuthority.get_all_extensions(@java_cert)
 
-    valid_oids = critical_exts.merge(noncritical_exts).select do |oid,value|
+    valid_oids = exts.select do |oid,value|
       Puppet::SSL::Oids.subtree_of?('ppRegCertExt', oid) or
         Puppet::SSL::Oids.subtree_of?('ppPrivCertExt', oid)
     end
