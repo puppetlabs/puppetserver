@@ -59,13 +59,14 @@
   nil)
 
 (deftest test-app-startup-against-crls
-  (let [test-url "https://localhost:8140/production/node/localhost"]
+  (let [port     8081
+        test-url (str "https://localhost:" port "/production/node/localhost")]
     (tk-bootstrap-testutils/with-app-with-config
       app
       jvm-puppet-service-stack
       {:webserver
         {:ssl-host    "0.0.0.0"
-         :ssl-port    8140
+         :ssl-port    port
          :client-auth "need"}
        :jruby-puppet (jruby-testutils/jruby-puppet-config-with-prod-env 1)}
       (testing (str "Simple request to jvm puppet succeeds when the client "
