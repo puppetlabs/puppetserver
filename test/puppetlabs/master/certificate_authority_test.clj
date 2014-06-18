@@ -1,11 +1,15 @@
 (ns puppetlabs.master.certificate-authority-test
   (:import (java.io StringReader))
   (:require [puppetlabs.master.certificate-authority :refer :all]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities
 
 (def cadir "./test-resources/config/master/conf/ssl/ca")
 (def cacert (str cadir "/ca_crt.pem"))
@@ -19,6 +23,23 @@
 
 (defn assert-issuer [o issuer]
   (is (= issuer (-> o .getIssuerX500Principal .getName))))
+
+(defn tmp-whitelist [& lines]
+  (let [whitelist (ks/temp-file)]
+    (doseq [line lines]
+      (spit whitelist (str line "\n") :append true))
+    (str whitelist)))
+
+(defn assert-autosign [whitelist subject]
+  (testing subject
+    (is (true? (autosign-csr? whitelist subject)))))
+
+(defn assert-no-autosign [whitelist subject]
+  (testing subject
+    (is (false? (autosign-csr? whitelist subject)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Tests
 
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
@@ -44,11 +65,97 @@
     (is (nil? (get-certificate-request "not-there" csrdir)))))
 
 (deftest autosign-csr?-test
-  (testing "boolean values for 'autosign'"
-    (is (true? (autosign-csr? true)))
-    (is (false? (autosign-csr? false)))
-    (is (false? (autosign-csr? "true")))
-    (is (false? (autosign-csr? "/foo/bar/autosign.conf")))))
+  (testing "boolean values"
+    (is (true? (autosign-csr? true "unused")))
+    (is (false? (autosign-csr? false "unused"))))
+
+  (testing "whitelist"
+    (testing "autosign is false when whitelist doesn't exist"
+      (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"))))
+
+    (testing "exact certnames"
+      (doto (tmp-whitelist "foo"
+                           "UPPERCASE"
+                           "this.THAT."
+                           "bar1234"
+                           "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")
+        (assert-autosign "foo")
+        (assert-autosign "UPPERCASE")
+        (assert-autosign "this.THAT.")
+        (assert-autosign "bar1234")
+        (assert-autosign "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")
+        (assert-no-autosign "Foo")
+        (assert-no-autosign "uppercase")
+        (assert-no-autosign "this-THAT-")))
+
+    (testing "domain-name globs"
+      (doto (tmp-whitelist "*.red"
+                           "*.black.local"
+                           "*.UPPER.case")
+        (assert-autosign "red")
+        (assert-autosign ".red")
+        (assert-autosign "green.red")
+        (assert-autosign "blue.1.red")
+        (assert-no-autosign "red.white")
+        (assert-autosign "black.local")
+        (assert-autosign ".black.local")
+        (assert-autosign "blue.black.local")
+        (assert-autosign "2.three.black.local")
+        (assert-no-autosign "red.local")
+        (assert-no-autosign "black.local.white")
+        (assert-autosign "one.0.upper.case")
+        (assert-autosign "two.upPEr.case")
+        (assert-autosign "one-two-three.red")))
+
+    (testing "allow all with '*'"
+      (doto (tmp-whitelist "*")
+        (assert-autosign "foo")
+        (assert-autosign "BAR")
+        (assert-autosign "baz-buz.")
+        (assert-autosign "0.qux.1.xuq")
+        (assert-autosign "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")))
+
+    (testing "ignores comments and blank lines"
+      (doto (tmp-whitelist "#foo"
+                           "  "
+                           "bar"
+                           ""
+                           "# *.baz"
+                           "*.qux")
+        (assert-no-autosign "foo")
+        (assert-no-autosign "  ")
+        (assert-autosign "bar")
+        (assert-no-autosign "foo.baz")
+        (assert-autosign "bar.qux")))
+
+    (testing "invalid lines logged and ignored"
+      (doseq [invalid-line ["bar#bar"
+                            " #bar"
+                            "bar "
+                            " bar"]]
+        (let [whitelist (tmp-whitelist "foo"
+                                       invalid-line
+                                       "qux")]
+          (assert-autosign whitelist "foo")
+          (logutils/with-log-output logs
+            (assert-no-autosign whitelist invalid-line)
+            (is (logutils/logs-matching
+                  (re-pattern (format "Invalid pattern '%s' found in %s"
+                                      invalid-line whitelist))
+                  @logs))
+            (assert-autosign whitelist "qux")))))
+
+    (testing "sample file that covers everything"
+      (logutils/with-test-logging
+        (doto "test-resources/config/master/conf/autosign-whitelist.conf"
+          (assert-no-autosign "aaa")
+          (assert-autosign "bbb123")
+          (assert-autosign "one_2.red")
+          (assert-autosign "1.blacK.6")
+          (assert-no-autosign "black.white")
+          (assert-no-autosign "coffee")
+          (assert-no-autosign "coffee#tea")
+          (assert-autosign "qux"))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
