@@ -1,5 +1,6 @@
 (ns puppetlabs.master.bootstrap-test
-  (:import (org.httpkit ProtocolException))
+  (:import (java.io IOException)
+           (org.httpkit ProtocolException))
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.testutils :refer [with-no-jvm-shutdown-hooks]]
             [puppetlabs.master.services.config.jvm-puppet-config-service
@@ -48,14 +49,24 @@
           (tk-internal/throw-app-error-if-exists!))))
     (is (true? true))))
 
+(defn validate-connection-failure
+  [f]
+  (try
+    (f)
+    (is false "Connection succeeded but should have failed")
+    (catch IOException e)
+    (catch ProtocolException e))
+  nil)
+
 (deftest test-app-startup-against-crls
-  (let [test-url "https://localhost:8140/production/node/localhost"]
+  (let [port     8081
+        test-url (str "https://localhost:" port "/production/node/localhost")]
     (tk-bootstrap-testutils/with-app-with-config
       app
       jvm-puppet-service-stack
       {:webserver
         {:ssl-host    "0.0.0.0"
-         :ssl-port    8140
+         :ssl-port    port
          :client-auth "need"}
        :jruby-puppet (jruby-testutils/jruby-puppet-config-with-prod-env 1)}
       (testing (str "Simple request to jvm puppet succeeds when the client "
@@ -73,14 +84,13 @@
           (is (= (:status response) 200))))
       (testing (str "Simple request to jvm puppet fails when the client "
                     "certificate's serial number is in the server's CRL.")
-        (is (thrown?
-              ProtocolException
-              (tk-webserver-testutils/http-get
-                test-url
-                {:ssl-cert
-                  "./test-resources/config/master/conf/ssl/certs/localhost-compromised.pem"
-                 :ssl-key
-                  "./test-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
-                 :ssl-ca-cert
-                  "./test-resources/config/master/conf/ssl/certs/ca.pem"
-                 :keepalive 0})))))))
+        (validate-connection-failure
+          #(tk-webserver-testutils/http-get
+            test-url
+            {:ssl-cert
+              "./test-resources/config/master/conf/ssl/certs/localhost-compromised.pem"
+             :ssl-key
+              "./test-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
+             :ssl-ca-cert
+              "./test-resources/config/master/conf/ssl/certs/ca.pem"
+             :keepalive 0}))))))
