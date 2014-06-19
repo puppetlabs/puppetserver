@@ -73,8 +73,8 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
     end
   end
 
-  def subtree_of?(first, second, exclusive = false)
-    if exclusive and first == second
+  def subtree_of?(first, second)
+    if first == second
       false
     else
       second.start_with? first
