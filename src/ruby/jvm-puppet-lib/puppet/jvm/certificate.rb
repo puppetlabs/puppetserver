@@ -1,5 +1,6 @@
 require 'puppet/ssl/base'
 require 'puppet/ssl/certificate'
+require 'puppet/ssl/oids'
 require 'puppet/jvm'
 require 'java'
 
@@ -44,7 +45,21 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
     end
 
     valid_oids.collect do |oid,value|
-      {'oid' => oid, 'value' => value}
+      {'oid' => get_oid_name(oid), 'value' => value}
+    end
+  end
+
+  private
+
+  def get_oid_name(oid)
+    found_oid_desc = Puppet::SSL::Oids::PUPPET_OIDS.select { |oid_desc|
+      oid_desc[0] == oid
+    }[0]
+
+    unless found_oid_desc.nil?
+      found_oid_desc[1]
+    else
+      oid
     end
   end
 end
