@@ -2,7 +2,7 @@ PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = File.join(PROJECT_ROOT, 'acceptance')
 SPEC_TEST_GEMS = 'vendor/spec_test_gems'
 
-def assemble_default_beaker_config 
+def assemble_default_beaker_config
   if ENV["BEAKER_CONFIG"]
     return ENV["BEAKER_CONFIG"]
   end
@@ -56,19 +56,21 @@ namespace :test do
     desc "Run beaker based acceptance tests"
     task :beaker do |t, args|
 
+      # variables that take a limited set of acceptable strings
+      type = ENV["BEAKER_TYPE"] || "pe"
+
       # variables that take pathnames
       beakeropts = ENV["BEAKER_OPTS"] || ""
-      presuite = ENV["BEAKER_PRESUITE"] || "#{ACCEPTANCE_ROOT}/suites/pre_suite"
+      presuite = ENV["BEAKER_PRESUITE"] ||
+        "#{ACCEPTANCE_ROOT}/suites/pre_suite/#{type}"
       postsuite = ENV["BEAKER_POSTSUITE"] || "#{ACCEPTANCE_ROOT}/suites/post_suite"
       helper = ENV["BEAKER_HELPER"] || "#{ACCEPTANCE_ROOT}/lib/helper.rb"
       testsuite = ENV["BEAKER_TESTSUITE"] || "#{ACCEPTANCE_ROOT}/suites/tests"
       loadpath = ENV["BEAKER_LOADPATH"] || ""
+      helper = ENV["BEAKER_OPTIONSFILE"] || "#{ACCEPTANCE_ROOT}/config/beaker/options.rb"
 
       # variables requiring some assembly
       config = assemble_default_beaker_config
-
-      # variables that take a limited set of acceptable strings
-      type = ENV["BEAKER_TYPE"] || "pe"
 
       beaker = "beaker "
 
@@ -76,6 +78,7 @@ namespace :test do
       beaker += " --helper #{helper}"
       beaker += " --type #{type}"
 
+      beaker += " --options-file #{loadpath}" if options != ''
       beaker += " --load-path #{loadpath}" if loadpath != ''
       beaker += " --pre-suite #{presuite}" if presuite != ''
       beaker += " --post-suite #{postsuite}" if postsuite != ''
