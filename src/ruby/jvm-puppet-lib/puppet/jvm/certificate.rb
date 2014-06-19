@@ -36,7 +36,7 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   end
 
   def custom_extensions
-    exts = CertificateAuthority.get_all_extensions(@java_cert)
+    exts = CertificateAuthority.get_extensions(@java_cert)
 
     valid_oids = exts.select do |oid,value|
       Puppet::SSL::Oids.subtree_of?('ppRegCertExt', oid) or
