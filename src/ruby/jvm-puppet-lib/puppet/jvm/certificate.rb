@@ -40,8 +40,8 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
     exts = CertificateAuthority.get_extensions(@java_cert)
 
     valid_oids = exts.select do |oid,value|
-      Puppet::SSL::Oids.subtree_of?('ppRegCertExt', oid) or
-        Puppet::SSL::Oids.subtree_of?('ppPrivCertExt', oid)
+      subtree_of?(get_name_from_oid('ppRegCertExt'), oid) or
+          subtree_of?(get_name_from_oid('ppPrivCertExt'), oid)
     end
 
     valid_oids.collect do |oid,value|
@@ -56,10 +56,29 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
       oid_desc[0] == oid
     }[0]
 
-    unless found_oid_desc.nil?
-      found_oid_desc[1]
-    else
+    if found_oid_desc.nil?
       oid
+    else
+      found_oid_desc[1]
     end
   end
+
+  def get_name_from_oid(short_name)
+    found_oid_desc = Puppet::SSL::Oids::PUPPET_OIDS.select { |oid_desc|
+      oid_desc[1] == short_name
+    }[0]
+
+    unless found_oid_desc.nil?
+      found_oid_desc[0]
+    end
+  end
+
+  def subtree_of?(first, second, exclusive = false)
+    if exclusive and first == second
+      false
+    else
+      second.start_with? first
+    end
+  end
+
 end
