@@ -43,6 +43,6 @@ describe Puppet::Jvm::Certificate do
   end
 
   it 'should return the expiration date' do
-    agent_certificate.expiration.to_s.should == '2019-06-09 15:57:49 -0700'
+    agent_certificate.expiration.to_s.should == '2019-06-09 22:57:49 UTC'
   end
 end

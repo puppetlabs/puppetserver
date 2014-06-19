@@ -29,7 +29,7 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   end
 
   def expiration
-    Time.at(@java_cert.getNotAfter.getTime / 1000)
+    Time.at(@java_cert.getNotAfter.getTime / 1000).utc
   end
 
   def unmunged_name
