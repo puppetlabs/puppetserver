@@ -24,15 +24,16 @@
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
   All of these are Puppet configuration settings."
-  {:autosign  (schema/either String Boolean)
-   :cacert    String
-   :cacrl     String
-   :cakey     String
-   :capub     String
-   :ca-name   String
-   :ca-ttl    schema/Int
-   :csrdir    String
-   :signeddir String})
+  {:autosign      (schema/either String Boolean)
+   :dns-alt-names String
+   :cacert        String
+   :cacrl         String
+   :cakey         String
+   :capub         String
+   :ca-name       String
+   :ca-ttl        schema/Int
+   :csrdir        String
+   :signeddir     String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -42,7 +43,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :dns-alt-names))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
