@@ -1,6 +1,7 @@
 (ns puppetlabs.master.certificate-authority
   (:import  [java.io InputStream])
   (:require [me.raynes.fs :as fs]
+            [clojure.string :as string]
             [schema.core :as schema]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
@@ -78,6 +79,19 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
+(defn split-hostnames
+  "Given a comma-separated list of hostnames, return a list of the
+  individual dns alt names with all surrounding whitespace removed. If
+  hostnames is empty or nil, then nil is returned."
+  [hostnames]
+  {:pre  [(or (nil? hostnames)
+              (string? hostnames))]
+   :post [(or (nil? %)
+              (vector? %))]}
+  (let [hostnames (string/trim hostnames)]
+    (when (and hostnames (> (count hostnames) 0))
+      (mapv #(string/trim %) (string/split hostnames #",")))))
+
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -89,11 +103,14 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (let [keypair     (utils/generate-key-pair keylength)
+  (let [dns-alt-names (utils/generate-dns-alt-names-ext
+                        (split-hostnames (:dns-alt-names ca-settings)))
+        keypair     (utils/generate-key-pair keylength)
         public-key  (.getPublic keypair)
         private-key (.getPrivate keypair)
         x500-name   (utils/generate-x500-name (:ca-name ca-settings))
-        cacert      (-> (utils/generate-certificate-request keypair x500-name)
+        cacert      (-> (utils/generate-certificate-request keypair x500-name
+                                                            dns-alt-names)
                         (utils/sign-certificate-request x500-name
                                                         (next-serial-number)
                                                         private-key))
@@ -111,9 +128,7 @@
   Any existing files will be replaced."
   [ssldir-file-paths :- MasterFilePaths
    master-certname :- String
-   ca-name :- String
-   ca-private-key :- (schema/pred utils/private-key?)
-   ca-cert :- (schema/pred utils/certificate?)
+   ca-settings :- CaSettings
    keylength :- schema/Int]
   {:post [(files-exist? ssldir-file-paths)]}
   (log/debug (str "Initializing SSL for the Master; file paths:\n"
@@ -121,12 +136,19 @@
   (create-parent-directories! (vals ssldir-file-paths))
   (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
   (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
-  (let [keypair      (utils/generate-key-pair keylength)
+  (let [dns-alt-names (utils/generate-dns-alt-names-ext
+                        (split-hostnames (:dns-alt-names ca-settings)))
+        ca-private-key  (-> ca-settings :cakey utils/pem->private-key)
+        ca-cert (-> ca-settings :cacert utils/pem->cert)
+        ca-name (:ca-name ca-settings)
+        keypair      (utils/generate-key-pair keylength)
         public-key   (.getPublic keypair)
         private-key  (.getPrivate keypair)
         x500-name    (utils/generate-x500-name master-certname)
         ca-x500-name (utils/generate-x500-name ca-name)
-        hostcert     (-> (utils/generate-certificate-request keypair x500-name)
+
+        hostcert     (-> (utils/generate-certificate-request keypair x500-name
+                                                             dns-alt-names)
                          (utils/sign-certificate-request ca-x500-name
                                                          (next-serial-number)
                                                          ca-private-key))]
@@ -224,8 +246,5 @@
       (initialize-ca! ca-settings keylength))
     (if (files-exist? master-file-paths)
       (log/info "Master already initialized for SSL")
-      (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
-            cacert (-> ca-settings :cacert utils/pem->cert)
-            caname (:ca-name ca-settings)]
-        (initialize-master! master-file-paths master-certname
-                            caname cakey cacert keylength)))))
+      (initialize-master! master-file-paths master-certname
+                          ca-settings keylength))))
