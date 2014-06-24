@@ -14,7 +14,7 @@ JVM implementation of the Puppet master
   * or, from the command line:
 
 ```sh
-    lein run --config test-resources/jvm-puppet.conf
+    lein run --config dev-resources/jvm-puppet.conf
 ```
 
 # Run the agent against jvm-puppet:

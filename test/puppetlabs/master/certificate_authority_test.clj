@@ -14,7 +14,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(def cadir "./test-resources/config/master/conf/ssl/ca")
+(def cadir "./dev-resources/config/master/conf/ssl/ca")
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
 (def cacrl (str cadir "/ca_crl.pem"))

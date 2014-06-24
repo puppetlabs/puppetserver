@@ -23,7 +23,7 @@
                  request-handler-service
                  jvm-puppet-config-service
                  certificate-authority-service]
-                {:global {:logging-config "./test-resources/logback-dev.xml"}
+                {:global {:logging-config "./dev-resources/logback-dev.xml"}
                  :jruby-puppet { :jruby-pools  [{:environment "production"
                                                  :size 1}]
                                  :load-path    ["./ruby/puppet/lib"

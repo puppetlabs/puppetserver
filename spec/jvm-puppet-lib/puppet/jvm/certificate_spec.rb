@@ -12,11 +12,11 @@ java_import java.io.FileReader
 describe Puppet::Jvm::Certificate do
 
   java_master_cert = CertificateAuthority.pem_to_cert(
-      FileReader.new("test-resources/master-cert-with-dns-alts.pem"))
+      FileReader.new("dev-resources/master-cert-with-dns-alts.pem"))
   master_certificate = Puppet::Jvm::Certificate.new(java_master_cert)
 
   java_agent_cert = CertificateAuthority.pem_to_cert(
-      FileReader.new("test-resources/agent-cert-with-exts.pem"))
+      FileReader.new("dev-resources/agent-cert-with-exts.pem"))
   agent_certificate = Puppet::Jvm::Certificate.new(java_agent_cert)
 
   it 'should return DNS alt names' do

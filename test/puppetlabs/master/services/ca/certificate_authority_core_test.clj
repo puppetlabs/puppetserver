@@ -12,14 +12,14 @@
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
     (let [response (handle-get-certificate-revocation-list
-                     {:cacrl "./test-resources/config/master/conf/ssl/crl.pem"})]
+                     {:cacrl "./dev-resources/config/master/conf/ssl/crl.pem"})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
       (is (string? (:body response))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [cadir     "./test-resources/config/master/conf/ssl/ca"
+  (let [cadir     "./dev-resources/config/master/conf/ssl/ca"
         signeddir (str cadir "/signed")
         csrdir    (str cadir "/requests")
         serial-number-file (str "/tmp/serial-number" (ks/uuid))
