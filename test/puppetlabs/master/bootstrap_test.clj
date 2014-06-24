@@ -27,10 +27,10 @@
 (use-fixtures :each logging/reset-logging-config-after-test)
 
 (def dev-config-file
-  "./test-resources/jvm-puppet.conf")
+  "./dev-resources/jvm-puppet.conf")
 
 (def dev-bootstrap-file
-  "./test-resources/bootstrap.cfg")
+  "./dev-resources/bootstrap.cfg")
 
 (def jvm-puppet-service-stack
   [jetty-service/jetty9-service
@@ -75,11 +75,11 @@
                (tk-webserver-testutils/http-get
                  test-url
                  {:ssl-cert
-                   "./test-resources/config/master/conf/ssl/certs/localhost.pem"
+                   "./dev-resources/config/master/conf/ssl/certs/localhost.pem"
                   :ssl-key
-                   "./test-resources/config/master/conf/ssl/private_keys/localhost.pem"
+                   "./dev-resources/config/master/conf/ssl/private_keys/localhost.pem"
                   :ssl-ca-cert
-                    "./test-resources/config/master/conf/ssl/certs/ca.pem"
+                    "./dev-resources/config/master/conf/ssl/certs/ca.pem"
                   :keepalive 0})]
           (is (= (:status response) 200))))
       (testing (str "Simple request to jvm puppet fails when the client "
@@ -88,9 +88,9 @@
           #(tk-webserver-testutils/http-get
             test-url
             {:ssl-cert
-              "./test-resources/config/master/conf/ssl/certs/localhost-compromised.pem"
+              "./dev-resources/config/master/conf/ssl/certs/localhost-compromised.pem"
              :ssl-key
-              "./test-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
+              "./dev-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
              :ssl-ca-cert
-              "./test-resources/config/master/conf/ssl/certs/ca.pem"
+              "./dev-resources/config/master/conf/ssl/certs/ca.pem"
              :keepalive 0}))))))
