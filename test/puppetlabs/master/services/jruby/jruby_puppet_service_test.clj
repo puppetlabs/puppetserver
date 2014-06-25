@@ -9,9 +9,9 @@
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
             [clojure.stacktrace :as stacktrace]
-            [puppetlabs.kitchensink.testutils.fixtures :as ks-fixtures]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.master.services.puppet-profiler.puppet-profiler-service :as profiler]))
 
 (use-fixtures :each testutils/mock-jruby-fixture)
 
@@ -24,12 +24,13 @@
            "the pool the application should shut down.")
     (logging/with-test-logging
       (with-redefs [jruby-puppet-core/create-jruby-instance
-                    (fn [_] (throw (Exception. "42")))]
+                    (fn [& _] (throw (Exception. "42")))]
                    (let [got-expected-exception (atom false)]
                      (try
                        (bootstrap/with-app-with-config
                          app
-                         [jruby-puppet-pooled-service]
+                         [jruby-puppet-pooled-service
+                          profiler/puppet-profiler-service]
                          jruby-service-test-config
                          (tk/run-app app))
                        (catch Exception e
@@ -47,7 +48,8 @@
     (let [pool-size 2]
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service]
+        [jruby-puppet-pooled-service
+         profiler/puppet-profiler-service]
         {:jruby-puppet (testutils/jruby-puppet-config-with-prod-env pool-size)}
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
@@ -77,7 +79,7 @@
 
       ; Bootstrap TK, causing the 'init' function above to be executed.
       (tk/boot-services-with-config
-        [test-service jruby-puppet-pooled-service]
+        [test-service jruby-puppet-pooled-service profiler/puppet-profiler-service]
         jruby-service-test-config)
 
       ; If execution gets here, the test passed.
@@ -87,7 +89,7 @@
   (testing "the `with-jruby-puppet macro`"
     (bootstrap/with-app-with-config
       app
-      [jruby-puppet-pooled-service]
+      [jruby-puppet-pooled-service profiler/puppet-profiler-service]
       jruby-service-test-config
       (let [service (app/get-service app :JRubyPuppetService)]
         (with-jruby-puppet

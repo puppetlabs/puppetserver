@@ -73,6 +73,7 @@
 (deftest jruby-core-standalone-funcs
   (testing "find-pool-by-desc finds pools properly"
     (let [mock-pool {:config (testutils/jruby-puppet-config-with-prod-env 1)
+                     :profiler testutils/default-profiler
                      :pools  (atom
                                {:production {:environment   :production
                                              :pool          (instantiate-free-pool 1)
@@ -87,7 +88,7 @@
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
         config           (testutils/jruby-puppet-config-with-prod-env pool-size)
-        pool             (create-pool-context config)]
+        pool             (create-pool-context config testutils/default-profiler)]
 
     (testing "The pool should not yet be full as it is being primed in the
              background."
@@ -129,7 +130,7 @@
 (deftest prime-pools-failure
   (let [pool-size 2
         config    (testutils/jruby-puppet-config-with-prod-env pool-size)
-        pool      (create-pool-context config)
+        pool      (create-pool-context config testutils/default-profiler)
         err-msg   (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [core/create-jruby-instance (fn [x] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (prime-pools! pool))))
@@ -151,7 +152,7 @@
 (deftest pool-state-initialization
   (let [pool-size        1
         config           (testutils/jruby-puppet-config-with-prod-env pool-size)
-        pool-ctxt        (create-pool-context config)
+        pool-ctxt        (create-pool-context config testutils/default-profiler)
         prod-pool        (get-pool-data-by-descriptor pool-ctxt production-pool-desc)]
     (is (false? (:initialized? prod-pool)))
     (is (= 1 (:size prod-pool)))
@@ -163,7 +164,7 @@
   (let [prod-size 2
         test-size 2
         config (testutils/jruby-puppet-config-with-prod-test-env prod-size test-size)
-        pool (create-pool-context config)]
+        pool (create-pool-context config testutils/default-profiler)]
     (prime-pools! pool)
     (testing "Borrowing all instances from each pool"
       (let [all-prod-instances (drain-pool pool production-pool-desc prod-size)
@@ -182,7 +183,8 @@
 
 (deftest test-default-pool-size
   (let [config testutils/default-config-no-size
-        pool (create-pool-context config)
+        profiler testutils/default-profiler
+        pool (create-pool-context config profiler)
         data (core/get-pool-data-by-descriptor
                pool {:environment :production})]
     (= core/default-pool-size (:size data))))

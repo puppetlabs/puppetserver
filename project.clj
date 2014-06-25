@@ -19,7 +19,7 @@
                  [puppetlabs/http-client "0.1.7"]
                  [org.jruby/jruby-complete "1.7.10"]
                  [clj-time "0.5.1"]
-                 [compojure "1.1.6"]
+                 [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
                  [prismatic/schema "0.2.1"]]
 
@@ -49,11 +49,13 @@
                                    [puppetlabs/kitchensink ~ks-version
                                     :classifier "test" :scope "test"]
                                    [ring-mock "0.1.5"]
-                                   [spyscope "0.1.4"]]
+                                   [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}
 
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
+
+  :aliases {"go" ["trampoline" "run" "--config" "./test-resources/jvm-puppet.conf" "--bootstrap-config" "./test-resources/bootstrap.cfg"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]

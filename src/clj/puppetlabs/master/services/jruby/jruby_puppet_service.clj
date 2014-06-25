@@ -13,12 +13,13 @@
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
                           [[:ConfigService get-in-config]
-                           [:ShutdownService shutdown-on-error]]
+                           [:ShutdownService shutdown-on-error]
+                           [:PuppetProfilerService get-profiler]]
   (init
     [this context]
     (let [config    (get-in-config [:jruby-puppet])]
       (log/info "Initializing the JRuby service")
-      (let [pool-context (core/create-pool-context config)
+      (let [pool-context (core/create-pool-context config (get-profiler))
             default-pool-descriptor (core/extract-default-pool-descriptor config)]
         (future
           (shutdown-on-error

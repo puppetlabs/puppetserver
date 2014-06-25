@@ -1,5 +1,6 @@
 (ns puppetlabs.master.services.jruby.testutils
-  (:require [puppetlabs.master.services.jruby.jruby-puppet-core :as jruby-core])
+  (:require [puppetlabs.master.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.master.services.puppet-profiler.puppet-profiler-core :as profiler-core])
   (:import (com.puppetlabs.master JRubyPuppet JRubyPuppetResponse)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25,6 +26,9 @@
 (def default-config-no-size
   (jruby-puppet-config [{:environment "production"}]))
 
+(def default-profiler
+  (profiler-core/logging-profiler))
+
 (defn jruby-puppet-config-with-prod-env
   "Create some settings used for creating a JRubyPuppet pool via
   `create-jruby-pool`."
@@ -46,11 +50,11 @@
   ([]
    (create-jruby-instance (jruby-puppet-config-with-prod-env 1)))
   ([config]
-   (jruby-core/create-jruby-instance config)))
+   (jruby-core/create-jruby-instance config default-profiler)))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
-  [_]
+  [& _]
   (reify JRubyPuppet
     (handleRequest [this request]
       (JRubyPuppetResponse. 0 nil nil nil))
