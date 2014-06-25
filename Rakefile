@@ -1,7 +1,14 @@
 PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
   File.join(PROJECT_ROOT, 'acceptance')
-SPEC_TEST_GEMS = 'vendor/spec_test_gems'
+PUPPET_SRC = File.join(PROJECT_ROOT, 'ruby', 'puppet')
+PUPPET_LIB = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'lib')
+PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
+FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
+JVM_PUPPET_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'jvm-puppet-lib')
+
+TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
+TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
 
 def assemble_default_beaker_config
   if ENV["BEAKER_CONFIG"]
@@ -21,32 +28,51 @@ def assemble_default_beaker_config
   return beaker_config
 end
 
-task :init do
-  ## Download any gems that we need for running rspec
-  ## Line 1 launches the JRuby that we depend on via leiningen
-  ## Line 2 programmatically runs 'gem install rspec' via the gem command that comes with JRuby
-  gem_install_rspec = <<-CMD
-    lein run -m org.jruby.Main \
-    -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{SPEC_TEST_GEMS}' --no-rdoc --no-ri rspec
-  CMD
-  sh gem_install_rspec unless Dir.exists? SPEC_TEST_GEMS
+namespace :spec do
+  task :init do
+    if ! Dir.exists? TEST_GEMS_DIR
+      ## Install bundler
+      ## Line 1 launches the JRuby that we depend on via leiningen
+      ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
+      gem_install_bundler = <<-CMD
+      lein run -m org.jruby.Main \
+      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler
+      CMD
+      sh gem_install_bundler
+
+      path = ENV['PATH']
+      ## Install gems via bundler
+      ## Line 1 makes sure that our local bundler script is on the path first
+      ## Line 2 tells bundler to use puppet's Gemfile
+      ## Line 3 tells JRuby where to look for gems
+      ## Line 4 launches the JRuby that we depend on via leiningen
+      ## Line 5 runs our bundle install script
+      bundle_install = <<-CMD
+      PATH='#{TEST_GEMS_DIR}/bin:#{path}' \
+      BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
+      GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
+      lein run -m org.jruby.Main \
+        -S bundle install --path='#{TEST_BUNDLE_DIR}'
+      CMD
+      sh bundle_install
+    end
+  end
 end
 
-task :spec => [:init] do
-  puppet_lib = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'lib')
-  facter_lib = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
-  ruby_src = File.join(PROJECT_ROOT, 'src', 'ruby', 'jvm-puppet-lib')
-
+task :spec => ["spec:init"] do
   ## Run RSpec via our JRuby dependency
-  ## Line 1 tells JRuby where to look for gems
-  ## Line 2 launches the JRuby that we depend on via leiningen
-  ## Line 3 adds all our Ruby source to the JRuby LOAD_PATH
-  ## Line 4 programmatically runs 'rspec ./spec' in JRuby
+  ## Line 1 tells bundler to use puppet's Gemfile
+  ## Line 2 tells JRuby where to look for gems
+  ## Line 3 launches the JRuby that we depend on via leiningen
+  ## Line 4 adds all our Ruby source to the JRuby LOAD_PATH
+  ## Line 5 runs our rspec wrapper script
+  ## <sarcasm-font>dang ole real easy man</sarcasm-font>
   run_rspec_with_jruby = <<-CMD
-    GEM_HOME='#{SPEC_TEST_GEMS}' GEM_PATH='#{SPEC_TEST_GEMS}' \
+    BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
+    GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
     lein run -m org.jruby.Main \
-    -I'#{puppet_lib}' -I'#{facter_lib}' -I'#{ruby_src}' \
-    -e 'require \"rspec\"; RSpec::Core::Runner.run(%w[./spec], $stderr, $stdout)'
+      -I'#{PUPPET_LIB}' -I'#{PUPPET_SPEC}' -I'#{FACTER_LIB}' -I'#{JVM_PUPPET_RUBY_SRC}' \
+      ./spec/run_specs.rb
   CMD
   sh run_rspec_with_jruby
 end

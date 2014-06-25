@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 require 'puppet/ssl'
 require 'puppet/ssl/base'
 require 'puppet/jvm/certificate'

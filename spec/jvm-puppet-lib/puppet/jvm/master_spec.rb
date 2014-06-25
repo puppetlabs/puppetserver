@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 require 'puppet/jvm/master'
 
 describe Puppet::Jvm::Master do
