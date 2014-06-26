@@ -26,7 +26,7 @@
   [subject
    certificate-request
    ca-settings :- ca/CaSettings]
-  (if (ca/autosign-csr? (:autosign ca-settings))
+  (if (ca/autosign-csr? (:autosign ca-settings) subject)
     (ca/autosign-certificate-request! subject certificate-request ca-settings)
     (ca/save-certificate-request! subject certificate-request (:csrdir ca-settings)))
   (rr/content-type (rr/response nil) "text/plain"))

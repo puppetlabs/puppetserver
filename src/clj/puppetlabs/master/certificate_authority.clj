@@ -2,6 +2,8 @@
   (:import  [java.io InputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
+            [clojure.string :as str]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
@@ -135,6 +137,62 @@
     (utils/cert->pem! ca-cert (:localcacert ssldir-file-paths))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Autosign
+
+(defn glob-matches?
+  "Test if a subject matches the domain-name glob from the autosign whitelist.
+
+   The glob is expected to start with a '*' and be in a form like `*.foo.bar`.
+   The subject is expected to contain only lowercase characters and be in a
+   form like `agent.foo.bar`. Capitalization in the glob will be ignored.
+
+   Examples:
+     (glob-matches? *.foo.bar agent.foo.bar) => true
+     (glob-matches? *.baz baz) => true
+     (glob-matches? *.QUX 0.1.qux) => true"
+  [glob subject]
+  (letfn [(munge [name]
+            (-> name
+                str/lower-case
+                (str/split #"\.")
+                reverse))
+          (seq-starts-with? [a b]
+            (= b (take (count b) a)))]
+    (seq-starts-with? (munge subject)
+                      (butlast (munge glob)))))
+
+(defn line-matches?
+  "Test if the subject matches the line from the autosign whitelist.
+   The line is expected to be an exact certname or a domain-name glob.
+   A single line with the character '*' will match all subjects.
+   If the line contains invalid characters it will be logged and
+   false will be returned."
+  [whitelist subject line]
+  (if (or (.contains line "#") (.contains line " "))
+    (do (log/errorf "Invalid pattern '%s' found in %s" line whitelist)
+        false)
+    (if (= line "*")
+      true
+      (if (.startsWith line "*")
+        (glob-matches? line subject)
+        (= line subject)))))
+
+(defn whitelist-matches?
+  "Test if the whitelist file contains an entry that matches the subject.
+   Each line of the file is expected to contain a single entry, either as
+   an exact certname or a domain-name glob, and will be evaluated verbatim.
+   All blank lines and comment lines (starting with '#') will be ignored.
+   If an invalid pattern is encountered, it will be logged and ignored."
+  [whitelist subject]
+  {:pre  [(every? string? [whitelist subject])]
+   :post [(ks/boolean? %)]}
+  (with-open [r (io/reader whitelist)]
+    (not (nil? (some (partial line-matches? whitelist subject)
+                     (remove #(or (.startsWith % "#")
+                                  (str/blank? %))
+                             (line-seq r)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn get-certificate
@@ -165,11 +223,18 @@
 (defn autosign-csr?
   "Return true if CSRs should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign]
+  [autosign subject]
   {:pre  [(or (string? autosign)
-              (ks/boolean? autosign))]
+              (ks/boolean? autosign))
+          (string? subject)]
    :post [(ks/boolean? %)]}
-  (and (ks/boolean? autosign) autosign))
+  (if (ks/boolean? autosign)
+    autosign
+    (if (fs/exists? autosign)
+      (if (fs/executable? autosign)
+        false ;; TODO PE-3865 external autosign
+        (whitelist-matches? autosign subject))
+      false)))
 
 (defn autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
