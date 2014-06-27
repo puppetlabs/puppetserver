@@ -132,14 +132,14 @@ module JVMPuppetExtensions
     return dst
   end
 
-  def install_jvm_puppet (host)
+  def install_jvm_puppet (host, jvm_puppet_name='jvm-puppet', make_env={})
     case test_config[:jvmpuppet_install_type]
     when :package
-      install_package host, 'jvm-puppet'
+      install_package host, jvm_puppet_name
     when :git
       project_version = test_config[:jvmpuppet_version] ||
         `lein with-profile ci pprint :version | tail -n 1 | cut -d\\" -f2`
-      install_from_ezbake host, 'jvm-puppet', project_version
+      install_from_ezbake host, jvm_puppet_name, project_version, make_env
     else
       abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
     end
@@ -165,50 +165,6 @@ module JVMPuppetExtensions
         on host, "wget -O /tmp/puppet.deb #{repo_url}/#{deb_name}"
         on host, "dpkg -i --force-all /tmp/puppet.deb"
 
-        on host, 'apt-get update'
-      else
-        host.logger.notify("No repository installation step for #{platform} yet...")
-    end
-  end
-
-  def install_dev_repos (host, package, build_version, repo_configs_dir)
-    variant, version, arch = host['platform'].split('-',3)
-    _, codename, _ = host['platform'].with_version_codename.split('-',3)
-
-    platform_configs_dir = File.join(repo_configs_dir, [variant, version, arch].join('-'))
-
-    case variant
-      when /(fedora|el|centos)/
-        fedora_prefix = ((variant == 'fedora') ? 'f' : '')
-
-        pattern = "pl-%s-%s-%s-%s%s-%s.repo"
-        repo_filename = pattern % [
-          package,
-          build_version,
-          variant,
-          fedora_prefix,
-          version,
-          arch
-        ]
-
-        repo = fetch(
-          "http://builds.puppetlabs.lan/%s/%s/repo_configs/rpm/" % [package,
-                                                                    build_version],
-          repo_filename,
-          platform_configs_dir
-        )
-
-        scp_to(host, repo, '/etc/yum.repos.d/')
-
-      when /(debian|ubuntu)/
-        list = fetch(
-          "http://builds.puppetlabs.lan/%s/%s/repo_configs/deb/" % [package,
-                                                                    build_version],
-          "pl-%s-%s-%s.list" % [package, build_version, codename],
-          platform_configs_dir
-        )
-
-        scp_to host, list, '/etc/apt/sources.list.d'
         on host, 'apt-get update'
       else
         host.logger.notify("No repository installation step for #{platform} yet...")

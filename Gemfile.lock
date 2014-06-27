@@ -1,10 +1,10 @@
 GIT
   remote: https://github.com/waynr/beaker.git
-  revision: 55587db9301067e4d866c3fd165154bfd028d450
-  ref: 55587db
+  revision: 2659fda97e9f0c32966e881b939cd8c8b15ee12e
+  ref: 2659fda
   specs:
-    beaker (1.12.1)
-      aws-sdk (~> 1.38)
+    beaker (1.13.1)
+      aws-sdk (= 1.42.0)
       blimpy (~> 0.6)
       docker-api
       fission (~> 0.4)
@@ -14,7 +14,7 @@ GIT
       mime-types (~> 1.25)
       net-scp (~> 1.1)
       net-ssh (~> 2.6)
-      nokogiri (= 1.5.10)
+      nokogiri (~> 1.5.10)
       rbvmomi (= 1.8.1)
       unf (~> 0.1)
 
@@ -37,9 +37,9 @@ GEM
       thor
     builder (3.2.2)
     diff-lcs (1.2.5)
-    docker-api (1.11.1)
+    docker-api (1.11.2)
       archive-tar-minitar
-      excon (>= 0.34.0)
+      excon (>= 0.37.0)
       json
     excon (0.37.0)
     extlib (0.9.16)
@@ -47,16 +47,24 @@ GEM
       multipart-post (>= 1.2, < 3)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
-    fog (1.11.1)
+    fog (1.22.1)
+      fog-brightbox
+      fog-core (~> 1.22)
+      fog-json
+      ipaddress (~> 0.5)
+      nokogiri (~> 1.5, >= 1.5.11)
+    fog-brightbox (0.0.2)
+      fog-core
+      fog-json
+    fog-core (1.22.0)
       builder
-      excon (~> 0.20)
-      formatador (~> 0.2.0)
-      json (~> 1.7)
+      excon (~> 0.33)
+      formatador (~> 0.2)
       mime-types
       net-scp (~> 1.1)
       net-ssh (>= 2.1.3)
-      nokogiri (~> 1.5.0)
-      ruby-hmac
+    fog-json (1.0.0)
+      multi_json (~> 1.0)
     formatador (0.2.5)
     google-api-client (0.7.1)
       addressable (>= 2.3.2)
@@ -70,6 +78,7 @@ GEM
       signet (>= 0.5.0)
       uuidtools (>= 2.1.0)
     inifile (2.0.2)
+    ipaddress (0.8.0)
     json (1.8.1)
     jwt (1.0.0)
     launchy (2.4.2)
@@ -81,7 +90,7 @@ GEM
     net-scp (1.2.1)
       net-ssh (>= 2.6.5)
     net-ssh (2.9.1)
-    nokogiri (1.5.10)
+    nokogiri (1.5.11)
     rake (10.3.2)
     rbvmomi (1.8.1)
       builder
@@ -92,15 +101,14 @@ GEM
       rspec-core (~> 3.0.0)
       rspec-expectations (~> 3.0.0)
       rspec-mocks (~> 3.0.0)
-    rspec-core (3.0.0)
+    rspec-core (3.0.2)
       rspec-support (~> 3.0.0)
-    rspec-expectations (3.0.0)
+    rspec-expectations (3.0.2)
       diff-lcs (>= 1.2.0, < 2.0)
       rspec-support (~> 3.0.0)
-    rspec-mocks (3.0.1)
+    rspec-mocks (3.0.2)
       rspec-support (~> 3.0.0)
-    rspec-support (3.0.0)
-    ruby-hmac (0.4.0)
+    rspec-support (3.0.2)
     signet (0.5.1)
       addressable (>= 2.2.3)
       faraday (>= 0.9.0.rc5)
