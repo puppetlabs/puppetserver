@@ -105,7 +105,9 @@ module JVMPuppetExtensions
   end
 
   def jvm_puppet_collect_data(host, relative_path)
-    destination = File.join("./log/latest/jvm-puppet/", relative_path)
+    basedir = options[:log_dir]
+    log_dir = File.join(basedir, options[:timestamp].strftime("%F_%H_%M_%S"))
+    destination = File.join(log_dir, relative_path)
     FileUtils.mkdir_p(destination)
     scp_from master, "/var/log/jvm-puppet/jvm-puppet.log", destination
     scp_from master, "/var/log/jvm-puppet/jvm-puppet-daemon.log", destination
