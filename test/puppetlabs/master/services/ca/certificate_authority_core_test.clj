@@ -22,7 +22,8 @@
                    :cakey     (str cadir "/ca_key.pem")
                    :signeddir signeddir
                    :csrdir    csrdir
-                   :ca-ttl    100}
+                   :ca-ttl    100
+                   :load-path []}
         csr-path  (ca/path-to-cert-request csrdir "test-agent")]
 
     (testing "when autosign is true"

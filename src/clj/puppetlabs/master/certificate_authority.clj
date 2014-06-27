@@ -4,6 +4,7 @@
             [schema.core :as schema]
             [clojure.string :as str]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
@@ -25,7 +26,7 @@
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
-  All of these are Puppet configuration settings."
+  Most of these are Puppet configuration settings."
   {:autosign  (schema/either String Boolean)
    :cacert    String
    :cacrl     String
@@ -34,6 +35,7 @@
    :ca-name   String
    :ca-ttl    schema/Int
    :csrdir    String
+   :load-path [String]
    :signeddir String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,7 +46,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
@@ -192,6 +194,31 @@
                                   (str/blank? %))
                              (line-seq r)))))))
 
+(defn executable-success?
+  "Run the autosign executable with the subject and CSR and test if it
+   exits successfully (exit code 0). All output (stdout, stderr) will
+   be captured and logged at the debug level."
+  [executable subject certificate-request load-path]
+  {:pre  [(every? string? [executable subject])
+          (instance? InputStream certificate-request)
+          (vector? load-path)]
+   :post [(ks/boolean? %)]}
+  (log/debugf "Executing '%s %s'" executable subject)
+  (let [env     (into {} (System/getenv))
+        rubylib (->> (if-let [lib (get env "RUBYLIB")]
+                       (cons lib load-path)
+                       load-path)
+                     (map fs/absolute-path)
+                     (str/join (System/getProperty "path.separator")))
+        result  (shell/sh executable subject
+                          :in certificate-request
+                          :env (merge env {:RUBYLIB rubylib}))]
+    (log/debugf "Autosign command '%s %s' exit status: %d"
+                executable subject (:exit result))
+    (log/debugf "Autosign command '%s %s' output: %s"
+                executable subject (str (:err result) (:out result)))
+    (zero? (:exit result))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -223,16 +250,18 @@
 (defn autosign-csr?
   "Return true if CSRs should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign subject]
+  [autosign subject certificate-request load-path]
   {:pre  [(or (string? autosign)
               (ks/boolean? autosign))
-          (string? subject)]
+          (string? subject)
+          (instance? InputStream certificate-request)
+          (vector? load-path)]
    :post [(ks/boolean? %)]}
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        false ;; TODO PE-3865 external autosign
+        (executable-success? autosign subject certificate-request load-path)
         (whitelist-matches? autosign subject))
       false)))
 
