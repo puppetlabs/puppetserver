@@ -4,9 +4,12 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
+            [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities

@@ -38,6 +38,8 @@
    :load-path [String]
    :signeddir String})
 
+(def StringOrNil (schema/either String (schema/pred nil?)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -141,7 +143,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
 
-(defn glob-matches?
+(schema/defn glob-matches? :- schema/Bool
   "Test if a subject matches the domain-name glob from the autosign whitelist.
 
    The glob is expected to start with a '*' and be in a form like `*.foo.bar`.
@@ -152,7 +154,8 @@
      (glob-matches? *.foo.bar agent.foo.bar) => true
      (glob-matches? *.baz baz) => true
      (glob-matches? *.QUX 0.1.qux) => true"
-  [glob subject]
+  [glob :- String
+   subject :- String]
   (letfn [(munge [name]
             (-> name
                 str/lower-case
@@ -163,13 +166,15 @@
     (seq-starts-with? (munge subject)
                       (butlast (munge glob)))))
 
-(defn line-matches?
+(schema/defn line-matches? :- schema/Bool
   "Test if the subject matches the line from the autosign whitelist.
    The line is expected to be an exact certname or a domain-name glob.
    A single line with the character '*' will match all subjects.
    If the line contains invalid characters it will be logged and
    false will be returned."
-  [whitelist subject line]
+  [whitelist :- String
+   subject :- String
+   line :- String]
   (if (or (.contains line "#") (.contains line " "))
     (do (log/errorf "Invalid pattern '%s' found in %s" line whitelist)
         false)
@@ -179,30 +184,28 @@
         (glob-matches? line subject)
         (= line subject)))))
 
-(defn whitelist-matches?
+(schema/defn whitelist-matches? :- schema/Bool
   "Test if the whitelist file contains an entry that matches the subject.
    Each line of the file is expected to contain a single entry, either as
    an exact certname or a domain-name glob, and will be evaluated verbatim.
    All blank lines and comment lines (starting with '#') will be ignored.
    If an invalid pattern is encountered, it will be logged and ignored."
-  [whitelist subject]
-  {:pre  [(every? string? [whitelist subject])]
-   :post [(ks/boolean? %)]}
+  [whitelist :- String
+   subject :- String]
   (with-open [r (io/reader whitelist)]
     (not (nil? (some (partial line-matches? whitelist subject)
                      (remove #(or (.startsWith % "#")
                                   (str/blank? %))
                              (line-seq r)))))))
 
-(defn executable-success?
+(schema/defn executable-success? :- schema/Bool
   "Run the autosign executable with the subject and CSR and test if it
    exits successfully (exit code 0). All output (stdout, stderr) will
    be captured and logged at the debug level."
-  [executable subject certificate-request load-path]
-  {:pre  [(every? string? [executable subject])
-          (instance? InputStream certificate-request)
-          (vector? load-path)]
-   :post [(ks/boolean? %)]}
+  [executable :- String
+   subject :- String
+   certificate-request :- InputStream
+   load-path :- [String]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
@@ -222,41 +225,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn get-certificate
+(schema/defn ^:always-validate
+  get-certificate :- StringOrNil
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
-  [subject cacert signeddir]
-  {:pre  [(every? string? [subject cacert signeddir])]
-   :post [(or (string? %)
-              (nil? %))]}
+  [subject :- String
+   cacert :- String
+   signeddir :- String]
   (let [cert-path (if (= "ca" subject)
                     cacert
                     (path-to-cert signeddir subject))]
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
-(defn get-certificate-request
+(schema/defn ^:always-validate
+  get-certificate-request :- StringOrNil
   "Given a subject name, return their certificate request as a string, or nil if
   not found.  Looks for certificate requests in `csrdir`."
-  [subject csrdir]
-  {:pre  [(every? string? [subject csrdir])]
-   :post [(or (string? %)
-              (nil? %))]}
+  [subject :- String
+   csrdir :- String]
   (let [cert-request-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
-(defn autosign-csr?
+(schema/defn ^:always-validate
+  autosign-csr? :- schema/Bool
   "Return true if CSRs should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign subject certificate-request load-path]
-  {:pre  [(or (string? autosign)
-              (ks/boolean? autosign))
-          (string? subject)
-          (instance? InputStream certificate-request)
-          (vector? load-path)]
-   :post [(ks/boolean? %)]}
+  [autosign :- (schema/either String schema/Bool)
+   subject :- String
+   certificate-request :- InputStream
+   load-path :- [String]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
@@ -265,13 +265,13 @@
         (whitelist-matches? autosign subject))
       false)))
 
-(defn autosign-certificate-request!
+(schema/defn ^:always-validate
+  autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
-  [subject certificate-request {:keys [ca-name cakey signeddir ca-ttl]}]
-  {:pre  [(string? subject)
-          (instance? InputStream certificate-request)]
-   :post [(nil? %)]}
+  [subject :- String
+   certificate-request :- InputStream
+   {:keys [ca-name cakey signeddir ca-ttl]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [signed-cert (utils/sign-certificate-request
@@ -281,21 +281,21 @@
                       (utils/pem->private-key cakey))]
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
-(defn save-certificate-request!
+(schema/defn ^:always-validate
+  save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
-  [subject certificate-request csrdir]
-  {:pre [(every? string? [subject csrdir])
-         (instance? InputStream certificate-request)]}
+  [subject :- String
+   certificate-request :- InputStream
+   csrdir :- String]
   (-> certificate-request
       utils/pem->csr
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
-(defn get-certificate-revocation-list
+(schema/defn ^:always-validate
+  get-certificate-revocation-list :- String
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
-  [cacrl]
-  {:pre  [(string? cacrl)]
-   :post [(string? %)]}
+  [cacrl :- String]
   (slurp cacrl))
 
 (schema/defn ^:always-validate
