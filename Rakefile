@@ -7,7 +7,7 @@ PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 JVM_PUPPET_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'jvm-puppet-lib')
 
-TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
+TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
 TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
 
 def assemble_default_beaker_config
