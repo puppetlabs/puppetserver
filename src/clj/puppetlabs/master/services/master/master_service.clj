@@ -13,8 +13,10 @@
               (let [path              ""
                     config            (get-in-config [:jvm-puppet])
                     master-certname   (get-in config [:certname])
-                    ca-settings       (select-keys
-                                        config (keys ca/CaSettings))
+                    ca-settings       (assoc
+                                        (select-keys config (keys ca/CaSettings))
+                                        :load-path (get-in-config
+                                                    [:jruby-puppet :load-path]))
                     master-file-paths (select-keys
                                         config (keys ca/MasterFilePaths))]
 

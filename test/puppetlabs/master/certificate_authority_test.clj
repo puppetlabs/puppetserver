@@ -1,5 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader))
+  (:import (java.io StringReader BufferedInputStream))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -30,13 +30,15 @@
       (spit whitelist (str line "\n") :append true))
     (str whitelist)))
 
+(def empty-stream (BufferedInputStream. nil))
+
 (defn assert-autosign [whitelist subject]
   (testing subject
-    (is (true? (autosign-csr? whitelist subject)))))
+    (is (true? (autosign-csr? whitelist subject empty-stream [])))))
 
 (defn assert-no-autosign [whitelist subject]
   (testing subject
-    (is (false? (autosign-csr? whitelist subject)))))
+    (is (false? (autosign-csr? whitelist subject empty-stream [])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -66,12 +68,13 @@
 
 (deftest autosign-csr?-test
   (testing "boolean values"
-    (is (true? (autosign-csr? true "unused")))
-    (is (false? (autosign-csr? false "unused"))))
+    (is (true? (autosign-csr? true "unused" empty-stream [])))
+    (is (false? (autosign-csr? false "unused" empty-stream []))))
 
   (testing "whitelist"
     (testing "autosign is false when whitelist doesn't exist"
-      (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"))))
+      (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"
+                                 empty-stream []))))
 
     (testing "exact certnames"
       (doto (tmp-whitelist "foo"
@@ -155,7 +158,56 @@
           (assert-no-autosign "black.white")
           (assert-no-autosign "coffee")
           (assert-no-autosign "coffee#tea")
-          (assert-autosign "qux"))))))
+          (assert-autosign "qux")))))
+
+  (testing "executable"
+    (testing "ruby script"
+      (let [executable "test-resources/config/master/conf/ruby-autosign-executable"
+            csr-stream #(io/input-stream (path-to-cert-request csrdir "test-agent"))
+            load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
+
+        (testing "stdout and stderr are copied to master's log at debug level"
+          (logutils/with-test-logging
+            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (is (logged? #"print to stdout" :debug))
+            (is (logged? #"print to stderr" :debug))))
+
+        (testing "Ruby load path is configured and contains Puppet"
+          (logutils/with-test-logging
+            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (is (logged? #"Ruby load path configured properly"))))
+
+        (testing "subject is passed as argument and CSR is provided on stdin"
+          (logutils/with-test-logging
+            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (is (logged? #"subject: test-agent"))
+            (is (logged? #"CSR for: test-agent"))))
+
+        (testing "only exit code 0 results in autosigning"
+          (logutils/with-test-logging
+            (is (true? (autosign-csr? executable "test-agent" (csr-stream) load-path)))
+            (is (false? (autosign-csr? executable "foo" (csr-stream) load-path)))))))
+
+    (testing "bash script"
+      (let [executable "test-resources/config/master/conf/bash-autosign-executable"
+            csr-stream #(io/input-stream (path-to-cert-request csrdir "test-agent"))]
+
+        (testing "stdout and stderr are copied to master's log at debug level"
+          (logutils/with-test-logging
+            (autosign-csr? executable "test-agent" (csr-stream) [])
+            (is (logged? #"print to stdout" :debug))
+            (is (logged? #"print to stderr" :debug))))
+
+        (testing "subject is passed as argument and CSR is provided on stdin"
+          (logutils/with-test-logging
+            (autosign-csr? executable "test-agent" (csr-stream) [])
+            (is (logged? #"subject: test-agent"))
+            (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
+
+        (testing "only exit code 0 results in autosigning"
+          (logutils/with-test-logging
+            (is (true? (autosign-csr? executable "test-agent" (csr-stream) [])))
+            (is (false? (autosign-csr? executable "foo" (csr-stream) [])))))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
@@ -210,7 +262,8 @@
                        :cakey     (str cadir "/ca_key.pem")
                        :capub     (str cadir "/ca_pub.pem")
                        :csrdir    (str cadir "/requests")
-                       :signeddir (str cadir "/signed")}
+                       :signeddir (str cadir "/signed")
+                       :load-path []}
       cadir-contents  (settings->cadir-paths ca-settings)
       ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
                        :certdir     (str ssldir "/certs")

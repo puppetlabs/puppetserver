@@ -25,10 +25,10 @@
 (schema/defn handle-put-certificate-request!
   [subject
    certificate-request
-   ca-settings :- ca/CaSettings]
-  (if (ca/autosign-csr? (:autosign ca-settings) subject)
+   {:keys [autosign csrdir load-path] :as ca-settings} :- ca/CaSettings]
+  (if (ca/autosign-csr? autosign subject certificate-request load-path)
     (ca/autosign-certificate-request! subject certificate-request ca-settings)
-    (ca/save-certificate-request! subject certificate-request (:csrdir ca-settings)))
+    (ca/save-certificate-request! subject certificate-request csrdir))
   (rr/content-type (rr/response nil) "text/plain"))
 
 (defn handle-get-certificate-revocation-list
