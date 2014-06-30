@@ -1,5 +1,4 @@
 (ns puppetlabs.master.certificate-authority
-  (:import  [java.io InputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -202,7 +201,7 @@
    be captured and logged at the debug level."
   [executable :- String
    subject :- String
-   certificate-request :- InputStream
+   csr-fn :- (schema/pred fn?)
    load-path :- [String]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
@@ -212,7 +211,7 @@
                      (map fs/absolute-path)
                      (str/join (System/getProperty "path.separator")))
         result  (shell/sh executable subject
-                          :in certificate-request
+                          :in (csr-fn)
                           :env (merge env {:RUBYLIB rubylib}))]
     (log/debugf "Autosign command '%s %s' exit status: %d"
                 executable subject (:exit result))
@@ -249,17 +248,17 @@
 
 (schema/defn ^:always-validate
   autosign-csr? :- schema/Bool
-  "Return true if CSRs should be automatically signed given
+  "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
   [autosign :- (schema/either String schema/Bool)
    subject :- String
-   certificate-request :- InputStream
+   csr-fn :- (schema/pred fn?)
    load-path :- [String]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (executable-success? autosign subject certificate-request load-path)
+        (executable-success? autosign subject csr-fn load-path)
         (whitelist-matches? autosign subject))
       false)))
 
@@ -268,12 +267,12 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- String
-   certificate-request :- InputStream
+   csr-fn :- (schema/pred fn?)
    {:keys [ca-name cakey signeddir ca-ttl]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [signed-cert (utils/sign-certificate-request
-                      (utils/pem->csr certificate-request)
+                      (utils/pem->csr (csr-fn))
                       (utils/generate-x500-name ca-name)
                       (next-serial-number)
                       (utils/pem->private-key cakey))]
@@ -283,10 +282,9 @@
   save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
   [subject :- String
-   certificate-request :- InputStream
+   csr-fn :- (schema/pred fn?)
    csrdir :- String]
-  (-> certificate-request
-      utils/pem->csr
+  (-> (utils/pem->csr (csr-fn))
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
 (schema/defn ^:always-validate

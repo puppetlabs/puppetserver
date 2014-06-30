@@ -22,7 +22,8 @@
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
                  [prismatic/schema "0.2.1"]
-                 [commons-lang "2.6"]]
+                 [commons-lang "2.6"]
+                 [commons-io "2.4"]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -47,8 +48,7 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
-                                   [puppetlabs/kitchensink ~ks-version
-                                    :classifier "test" :scope "test"]
+                                   [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}

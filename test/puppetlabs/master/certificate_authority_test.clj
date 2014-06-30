@@ -1,5 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader BufferedInputStream))
+  (:import (java.io StringReader ByteArrayInputStream))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -33,15 +33,15 @@
       (spit whitelist (str line "\n") :append true))
     (str whitelist)))
 
-(def empty-stream (BufferedInputStream. nil))
+(def empty-stream-fn #(ByteArrayInputStream. (.getBytes "")))
 
 (defn assert-autosign [whitelist subject]
   (testing subject
-    (is (true? (autosign-csr? whitelist subject empty-stream [])))))
+    (is (true? (autosign-csr? whitelist subject empty-stream-fn [])))))
 
 (defn assert-no-autosign [whitelist subject]
   (testing subject
-    (is (false? (autosign-csr? whitelist subject empty-stream [])))))
+    (is (false? (autosign-csr? whitelist subject empty-stream-fn [])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -71,13 +71,13 @@
 
 (deftest autosign-csr?-test
   (testing "boolean values"
-    (is (true? (autosign-csr? true "unused" empty-stream [])))
-    (is (false? (autosign-csr? false "unused" empty-stream []))))
+    (is (true? (autosign-csr? true "unused" empty-stream-fn [])))
+    (is (false? (autosign-csr? false "unused" empty-stream-fn []))))
 
   (testing "whitelist"
     (testing "autosign is false when whitelist doesn't exist"
       (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"
-                                 empty-stream []))))
+                                 empty-stream-fn []))))
 
     (testing "exact certnames"
       (doto (tmp-whitelist "foo"
@@ -166,59 +166,59 @@
   (testing "executable"
     (testing "ruby script"
       (let [executable "test-resources/config/master/conf/ruby-autosign-executable"
-            csr-stream #(io/input-stream (path-to-cert-request csrdir "test-agent"))
+            csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))
             load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (autosign-csr? executable "test-agent" csr-fn load-path)
             (is (logged? #"print to stdout" :debug))
             (is (logged? #"print to stderr" :debug))))
 
         (testing "Ruby load path is configured and contains Puppet"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (autosign-csr? executable "test-agent" csr-fn load-path)
             (is (logged? #"Ruby load path configured properly"))))
 
         (testing "subject is passed as argument and CSR is provided on stdin"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-stream) load-path)
+            (autosign-csr? executable "test-agent" csr-fn load-path)
             (is (logged? #"subject: test-agent"))
             (is (logged? #"CSR for: test-agent"))))
 
         (testing "only exit code 0 results in autosigning"
           (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" (csr-stream) load-path)))
-            (is (false? (autosign-csr? executable "foo" (csr-stream) load-path)))))))
+            (is (true? (autosign-csr? executable "test-agent" csr-fn load-path)))
+            (is (false? (autosign-csr? executable "foo" csr-fn load-path)))))))
 
     (testing "bash script"
       (let [executable "test-resources/config/master/conf/bash-autosign-executable"
-            csr-stream #(io/input-stream (path-to-cert-request csrdir "test-agent"))]
+            csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))]
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-stream) [])
+            (autosign-csr? executable "test-agent" csr-fn [])
             (is (logged? #"print to stdout" :debug))
             (is (logged? #"print to stderr" :debug))))
 
         (testing "subject is passed as argument and CSR is provided on stdin"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-stream) [])
+            (autosign-csr? executable "test-agent" csr-fn [])
             (is (logged? #"subject: test-agent"))
             (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
 
         (testing "only exit code 0 results in autosigning"
           (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" (csr-stream) [])))
-            (is (false? (autosign-csr? executable "foo" (csr-stream) [])))))))))
+            (is (true? (autosign-csr? executable "test-agent" csr-fn [])))
+            (is (false? (autosign-csr? executable "foo" csr-fn [])))))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
-    (let [csr-stream (io/input-stream (path-to-cert-request csrdir "test-agent"))
-          path       (path-to-cert-request csrdir "foo")]
+    (let [csr-fn #(io/input-stream (path-to-cert-request csrdir "test-agent"))
+          path   (path-to-cert-request csrdir "foo")]
       (try
         (is (false? (fs/exists? path)))
-        (save-certificate-request! "foo" csr-stream csrdir)
+        (save-certificate-request! "foo" csr-fn csrdir)
         (is (true? (fs/exists? path)))
         (is (= (get-certificate-request csrdir "foo")
                (get-certificate-request csrdir "test-agent")))
@@ -227,15 +227,15 @@
 
 (deftest autosign-certificate-request!-test
   (let [subject            "test-agent"
-        request-stream     (-> csrdir
-                               (path-to-cert-request subject)
-                               io/input-stream)
+        csr-fn             #(-> csrdir
+                                (path-to-cert-request subject)
+                                io/input-stream)
         expected-cert-path (path-to-cert signeddir subject)
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
                             :signeddir signeddir}]
     (try
-      (autosign-certificate-request! subject request-stream ca-settings)
+      (autosign-certificate-request! subject csr-fn ca-settings)
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))

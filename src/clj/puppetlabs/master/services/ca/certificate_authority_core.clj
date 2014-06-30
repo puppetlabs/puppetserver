@@ -1,4 +1,6 @@
 (ns puppetlabs.master.services.ca.certificate-authority-core
+  (:import [org.apache.commons.io IOUtils]
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [puppetlabs.master.certificate-authority :as ca]
             [puppetlabs.master.ringutils :as ringutils]
             [schema.core :as schema]
@@ -22,13 +24,23 @@
         (rr/not-found (str "Could not find certificate_request " subject)))
       (rr/content-type "text/plain")))
 
+(defn input-stream->byte-array
+  [input-stream]
+  (with-open [os (ByteArrayOutputStream.)]
+    (IOUtils/copy input-stream os)
+    (.toByteArray os)))
+
 (schema/defn handle-put-certificate-request!
-  [subject
-   certificate-request
+  [subject :- String
+   certificate-request :- InputStream
    {:keys [autosign csrdir load-path] :as ca-settings} :- ca/CaSettings]
-  (if (ca/autosign-csr? autosign subject certificate-request load-path)
-    (ca/autosign-certificate-request! subject certificate-request ca-settings)
-    (ca/save-certificate-request! subject certificate-request csrdir))
+  (with-open [byte-stream (-> certificate-request
+                              input-stream->byte-array
+                              ByteArrayInputStream.)]
+    (let [csr-fn #(doto byte-stream .reset)]
+      (if (ca/autosign-csr? autosign subject csr-fn load-path)
+        (ca/autosign-certificate-request! subject csr-fn ca-settings)
+        (ca/save-certificate-request! subject csr-fn csrdir))))
   (rr/content-type (rr/response nil) "text/plain"))
 
 (defn handle-get-certificate-revocation-list
