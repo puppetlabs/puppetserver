@@ -5,6 +5,6 @@
   "service-prefix" => 'service ',
   "service-num-retries" => 1500,
   "puppetservice" => 'jvm-puppet',
-  "curl-retries" => 200,
+  "master-start-curl-retries" => 200,
 }
 
