@@ -146,11 +146,10 @@ module JVMPuppetExtensions
   end
 
   def install_release_repos_on(host)
-    variant, version, arch = host['platform'].split('-',3)
-    _, codename, _ = host['platform'].with_version_codename.split('-',3)
+    variant, version, arch, codename = host['platform'].with_attr_array
 
     case variant
-      when /(fedora|el|centos)/
+      when /^(fedora|el|centos)$/
         # need to get the release minor version into platform name
         rpm_name = "puppetlabs-release-#{version}-7.noarch.rpm"
         repo_url = "https://yum.puppetlabs.com"
@@ -158,7 +157,7 @@ module JVMPuppetExtensions
         on host,
           "rpm -ivh #{repo_url}/#{variant}/#{version}/products/#{arch}/#{rpm_name}"
 
-      when /(debian|ubuntu)/
+      when /^(debian|ubuntu)$/
         deb_name = "puppetlabs-release-#{codename}.deb"
         repo_url = "https://apt.puppetlabs.com"
 
