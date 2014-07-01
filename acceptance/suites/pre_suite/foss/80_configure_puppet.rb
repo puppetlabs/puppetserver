@@ -16,7 +16,7 @@ step "Configure puppet.conf" do
   when /^(debian|ubuntu)$/
     defaults_file = '/etc/default/jvm-puppet'
   else
-    host.logger.notify("Not sure how to handle defaults for #{platform} yet...")
+    logger.notify("Not sure how to handle defaults for #{variant} yet...")
   end
   on master, "sed -i -e 's/\(SERVICE_NUM_RETRIES\)=[0-9]*/\1=60/' #{defaults_file}"
 end

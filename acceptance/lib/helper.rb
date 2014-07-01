@@ -166,7 +166,7 @@ module JVMPuppetExtensions
 
         on host, 'apt-get update'
       else
-        host.logger.notify("No repository installation step for #{platform} yet...")
+        logger.notify("No repository installation step for #{variant} yet...")
     end
   end
 
