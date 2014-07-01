@@ -85,7 +85,7 @@ module JVMPuppetExtensions
     step "Clear SSL on all hosts"
     hosts.each do |host|
       ssldir = on(host, puppet('agent --configprint ssldir')).stdout.chomp
-      on(host, "rm -rf '#{ssldir}'")
+      on(host, "rm -rf '#{ssldir}'/*")
     end
 
     step "Master: Start Puppet Master"
