@@ -5,10 +5,13 @@ require 'puppet/network/http/handler'
 require 'puppet/network/http_pool'
 require 'puppet/application/master'
 
+require 'puppet/util/profiler'
+
 require 'puppet/jvm'
 require 'puppet/jvm/config'
 require 'puppet/jvm/logger'
 require 'puppet/jvm/http_client'
+require 'puppet/jvm/jvm_profiler'
 require 'puppet/jvm/certificate'
 
 require 'java'
@@ -28,7 +31,7 @@ class Puppet::Jvm::Master
   include Java::com.puppetlabs.master.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
-  def initialize(config)
+  def initialize(config, profiler)
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -48,6 +51,10 @@ class Puppet::Jvm::Master
 
     Puppet::Jvm::Logger.init_logging
     initialize_execution_stub
+
+    if profiler
+      Puppet::Util::Profiler.add_profiler(Puppet::Jvm::JvmProfiler.new(profiler))
+    end
 
     Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
 

@@ -11,7 +11,7 @@
   (testing "Var dir is not required."
     (let [config  { :load-path       testutils/load-path
                     :master-conf-dir testutils/conf-dir }
-          jruby   (create-jruby-instance config)
+          jruby   (create-jruby-instance config testutils/default-profiler)
           var-dir (.getSetting jruby "vardir")]
       (is (not (nil? var-dir)))))
 

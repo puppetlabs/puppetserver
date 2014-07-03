@@ -10,6 +10,7 @@
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.master.services.jruby.testutils :as jruby-testutils]
+    [puppetlabs.master.services.puppet-profiler.puppet-profiler-service :as profiler]
     [me.raynes.fs :as fs]))
 
 (def test-dir "target/master-service-test")
@@ -23,7 +24,8 @@
                       jvm-puppet-config-service
                       jruby/jruby-puppet-pooled-service
                       jetty9-service
-                      request-handler-service]
+                      request-handler-service
+                      profiler/puppet-profiler-service]
             test-config (jruby-testutils/jruby-puppet-config-with-prod-env)
             config {:jruby-puppet (assoc test-config
                                     :master-conf-dir

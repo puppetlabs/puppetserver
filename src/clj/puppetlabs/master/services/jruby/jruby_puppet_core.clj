@@ -1,6 +1,6 @@
 (ns puppetlabs.master.services.jruby.jruby-puppet-core
   (:import (java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit)
-           (com.puppetlabs.master JRubyPuppet)
+           (com.puppetlabs.master JRubyPuppet PuppetProfiler)
            (java.util HashMap)
            (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
            (org.jruby.embed ScriptingContainer LocalContextScope)
@@ -97,6 +97,7 @@
 (def PoolContext
   "The data structure that stores all JRubyPuppet pools and the original configuration."
   {:config PoolConfig
+   :profiler (schema/maybe PuppetProfiler)
    :pools  PoolsState})
 
 (def PoolDescriptor
@@ -129,7 +130,7 @@
 (defn create-jruby-instance
   "Creates a new JRubyPuppet instance.  See the docs on `create-jruby-pool`
   for the contents of `config`."
-  [config]
+  [config profiler]
   {:pre [((some-fn nil? vector?) (:load-path config))]
    :post [(instance? JRubyPuppet %)]}
   (let [{:keys [load-path master-conf-dir master-var-dir]} config]
@@ -144,7 +145,8 @@
       (when master-var-dir
         (.put jruby-config "vardir" (fs/absolute-path master-var-dir)))
 
-      (.callMethod scripting-container ruby-puppet-class "new" jruby-config JRubyPuppet))))
+      (.callMethod scripting-container ruby-puppet-class "new"
+                   (into-array Object [jruby-config profiler]) JRubyPuppet))))
 
 (schema/defn ^:always-validate
   get-pool-data-by-descriptor :- (schema/maybe PoolData)
@@ -239,9 +241,10 @@
   "Creates a new JRubyPuppet pool context with empty pools. Once the JRubyPuppet
   pool object has been created, it will need to have its pools filled using
   `prime-pools!`."
-  [config]
+  [config profiler]
   (validate-config! config)
   {:config config
+   :profiler profiler
    :pools  (atom (reduce add-pool-from-config
                     {}
                     (:jruby-pools config)))})
@@ -262,7 +265,7 @@
           (dotimes [i count]
             (log/debugf (str "Priming JRubyPuppet for the " (name environment)
                              " environment instance %d of %s") (inc i) count)
-            (.put pool (create-jruby-instance config))
+            (.put pool (create-jruby-instance config (:profiler context)))
             (log/info "Finished creation the JRubyPuppet instance for the"
                       (name environment) "environment" (inc i) "of" count))
           (swap! (:pools context) update-in [environment] mark-as-initialized!))

@@ -12,6 +12,7 @@
             [puppetlabs.master.services.jruby.testutils :as jruby-testutils]
             [puppetlabs.master.services.master.master-service
               :as master-service]
+            [puppetlabs.master.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
@@ -37,7 +38,8 @@
    master-service/master-service
    jvm-puppet-config-service/jvm-puppet-config-service
    jruby-puppet-service/jruby-puppet-pooled-service
-   request-handler-service/request-handler-service])
+   request-handler-service/request-handler-service
+   profiler/puppet-profiler-service])
 
 (deftest test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
