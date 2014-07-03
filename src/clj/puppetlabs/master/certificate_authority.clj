@@ -195,7 +195,28 @@
                                   (str/blank? %))
                              (line-seq r)))))))
 
-(schema/defn executable-success? :- schema/Bool
+(schema/defn execute-autosign-command!
+  :- {:out (schema/maybe String) :err (schema/maybe String) :exit schema/Int}
+  "Execute the autosign script and return a map containing the standard-out,
+   standard-err, and exit code. The subject will be passed in as input, and
+   the CSR stream will be provided on standard-in. The load-path will be
+   prepended to the RUBYLIB found in the environment, and is intended to make
+   the Puppet and Facter Ruby libraries available to the autosign script."
+  [executable :- String
+   subject :- String
+   csr-fn :- (schema/pred fn?)
+   load-path :- [String]]
+  (let [env     (into {} (System/getenv))
+        rubylib (->> (if-let [lib (get env "RUBYLIB")]
+                       (cons lib load-path)
+                       load-path)
+                     (map fs/absolute-path)
+                     (str/join (System/getProperty "path.separator")))]
+    (shell/sh executable subject
+              :in (csr-fn)
+              :env (merge env {:RUBYLIB rubylib}))))
+
+(schema/defn executable-succeeded? :- Boolean
   "Run the autosign executable with the subject and CSR and test if it
    exits successfully (exit code 0). All output (stdout, stderr) will
    be captured and logged at the debug level."
@@ -204,23 +225,24 @@
    csr-fn :- (schema/pred fn?)
    load-path :- [String]]
   (log/debugf "Executing '%s %s'" executable subject)
-  (let [env     (into {} (System/getenv))
-        rubylib (->> (if-let [lib (get env "RUBYLIB")]
-                       (cons lib load-path)
-                       load-path)
-                     (map fs/absolute-path)
-                     (str/join (System/getProperty "path.separator")))
-        result  (shell/sh executable subject
-                          :in (csr-fn)
-                          :env (merge env {:RUBYLIB rubylib}))]
+  (let [{:keys [out err exit]}
+        (execute-autosign-command! executable subject csr-fn load-path)]
     (log/debugf "Autosign command '%s %s' exit status: %d"
-                executable subject (:exit result))
+                executable subject exit)
     (log/debugf "Autosign command '%s %s' output: %s"
-                executable subject (str (:err result) (:out result)))
-    (zero? (:exit result))))
+                executable subject (str err out))
+    (zero? exit)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(schema/defn ^:always-validate
+  config->settings :- CaSettings
+  "Given the configuration map from the JVM Puppet config
+   service return a map with of all the CA settings."
+  [{:keys [jvm-puppet jruby-puppet]}]
+  (-> (select-keys jvm-puppet (keys CaSettings))
+      (assoc :load-path (:load-path jruby-puppet))))
 
 (schema/defn ^:always-validate
   get-certificate :- (schema/maybe String)
@@ -258,7 +280,7 @@
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (executable-success? autosign subject csr-fn load-path)
+        (executable-succeeded? autosign subject csr-fn load-path)
         (whitelist-matches? autosign subject))
       false)))
 

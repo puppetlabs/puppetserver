@@ -3,7 +3,10 @@
             [puppetlabs.master.certificate-authority :as ca]
             [me.raynes.fs :as fs]
             [clojure.test :refer :all]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
@@ -19,7 +22,10 @@
         signeddir (str cadir "/signed")
         csrdir    (str cadir "/requests")
         settings  {:ca-name   "some CA"
+                   :cacert    (str cadir "/ca_crt.pem")
+                   :cacrl     (str cadir "/ca_crl.pem")
                    :cakey     (str cadir "/ca_key.pem")
+                   :capub     (str cadir "/ca_pub.pem")
                    :signeddir signeddir
                    :csrdir    csrdir
                    :ca-ttl    100
