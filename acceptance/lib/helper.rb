@@ -111,27 +111,6 @@ module JVMPuppetExtensions
     scp_from master, "/var/log/jvm-puppet/jvm-puppet-daemon.log", destination
   end
 
-  # Obtained from:
-  #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L752
-  #
-  def fetch(base_url, file_name, dst_dir)
-    FileUtils.makedirs(dst_dir)
-    src = "#{base_url}/#{file_name}"
-    dst = File.join(dst_dir, file_name)
-    if File.exists?(dst)
-      logger.notify "Already fetched #{dst}"
-    else
-      logger.notify "Fetching: #{src}"
-      logger.notify "  and saving to #{dst}"
-      open(src) do |remote|
-        File.open(dst, "w") do |file|
-          FileUtils.copy_stream(remote, file)
-        end
-      end
-    end
-    return dst
-  end
-
   def install_jvm_puppet (host, jvm_puppet_name='jvm-puppet', make_env={})
     case test_config[:jvmpuppet_install_type]
     when :package
@@ -142,31 +121,6 @@ module JVMPuppetExtensions
       install_from_ezbake host, jvm_puppet_name, project_version, make_env
     else
       abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
-    end
-  end
-
-  def install_release_repos_on(host)
-    variant, version, arch, codename = host['platform'].with_attr_array
-
-    case variant
-      when /^(fedora|el|centos)$/
-        # need to get the release minor version into platform name
-        rpm_name = "puppetlabs-release-#{version}-7.noarch.rpm"
-        repo_url = "https://yum.puppetlabs.com"
-
-        on host,
-          "rpm -ivh #{repo_url}/#{variant}/#{version}/products/#{arch}/#{rpm_name}"
-
-      when /^(debian|ubuntu)$/
-        deb_name = "puppetlabs-release-#{codename}.deb"
-        repo_url = "https://apt.puppetlabs.com"
-
-        on host, "wget -O /tmp/puppet.deb #{repo_url}/#{deb_name}"
-        on host, "dpkg -i --force-all /tmp/puppet.deb"
-
-        on host, 'apt-get update'
-      else
-        logger.notify("No repository installation step for #{variant} yet...")
     end
   end
 
