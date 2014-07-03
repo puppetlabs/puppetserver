@@ -21,7 +21,8 @@
                  [clj-time "0.5.1"]
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
-                 [prismatic/schema "0.2.1"]]
+                 [prismatic/schema "0.2.1"]
+                 [commons-lang "2.6"]]
 
   :main puppetlabs.trapperkeeper.main
 

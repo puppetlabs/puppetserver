@@ -27,7 +27,7 @@
   (jruby-puppet-config [{:environment "production"}]))
 
 (def default-profiler
-  (profiler-core/logging-profiler))
+  nil)
 
 (defn jruby-puppet-config-with-prod-env
   "Create some settings used for creating a JRubyPuppet pool via
