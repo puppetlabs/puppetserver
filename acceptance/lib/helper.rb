@@ -22,16 +22,20 @@ module JVMPuppetExtensions
                          nil, "JVM Puppet Version",
                          "JVMPUPPET_VERSION", nil)
 
-    puppet_version = get_puppet_version ||
-        get_option_value(options[:puppet_version],
-                         nil, "Puppet Version",
-                         "PUPPET_VERSION", nil)
+    puppet_version = get_option_value(options[:puppet_version],
+                         nil, "Puppet Version", "PUPPET_VERSION", nil) ||
+                         get_puppet_version
+
+    puppet_build_version = get_option_value(options[:puppet_build_version],
+                         nil, "Puppet Development Build Version", "PUPPET_BUILD_VERSION", nil)
+
     @config = {
       :base_dir => base_dir,
       :jvmpuppet_install_type => install_type,
       :jvmpuppet_install_mode => install_mode,
       :jvmpuppet_version => jvmpuppet_version,
       :puppet_version => puppet_version,
+      :puppet_build_version => puppet_build_version,
     }
 
     pp_config = PP.pp(@config, "")
