@@ -27,7 +27,8 @@ module JVMPuppetExtensions
                          get_puppet_version
 
     puppet_build_version = get_option_value(options[:puppet_build_version],
-                         nil, "Puppet Development Build Version", "PUPPET_BUILD_VERSION", nil)
+                         nil, "Puppet Development Build Version",
+                         "PUPPET_BUILD_VERSION", "3.7.0-jvm-puppet-preview")
 
     @config = {
       :base_dir => base_dir,
