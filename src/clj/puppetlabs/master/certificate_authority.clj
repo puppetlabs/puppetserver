@@ -201,37 +201,27 @@
    standard-err, and exit code. The subject will be passed in as input, and
    the CSR stream will be provided on standard-in. The load-path will be
    prepended to the RUBYLIB found in the environment, and is intended to make
-   the Puppet and Facter Ruby libraries available to the autosign script."
-  [executable :- String
-   subject :- String
-   csr-fn :- (schema/pred fn?)
-   load-path :- [String]]
-  (let [env     (into {} (System/getenv))
-        rubylib (->> (if-let [lib (get env "RUBYLIB")]
-                       (cons lib load-path)
-                       load-path)
-                     (map fs/absolute-path)
-                     (str/join (System/getProperty "path.separator")))]
-    (shell/sh executable subject
-              :in (csr-fn)
-              :env (merge env {:RUBYLIB rubylib}))))
-
-(schema/defn executable-succeeded? :- Boolean
-  "Run the autosign executable with the subject and CSR and test if it
-   exits successfully (exit code 0). All output (stdout, stderr) will
-   be captured and logged at the debug level."
+   the Puppet and Facter Ruby libraries available to the autosign script.
+   All output (stdout & stderr) will be logged at the debug level."
   [executable :- String
    subject :- String
    csr-fn :- (schema/pred fn?)
    load-path :- [String]]
   (log/debugf "Executing '%s %s'" executable subject)
-  (let [{:keys [out err exit]}
-        (execute-autosign-command! executable subject csr-fn load-path)]
+  (let [env     (into {} (System/getenv))
+        rubylib (->> (if-let [lib (get env "RUBYLIB")]
+                       (cons lib load-path)
+                       load-path)
+                     (map fs/absolute-path)
+                     (str/join (System/getProperty "path.separator")))
+        results (shell/sh executable subject
+                          :in (csr-fn)
+                          :env (merge env {:RUBYLIB rubylib}))]
     (log/debugf "Autosign command '%s %s' exit status: %d"
-                executable subject exit)
+                executable subject (:exit results))
     (log/debugf "Autosign command '%s %s' output: %s"
-                executable subject (str err out))
-    (zero? exit)))
+                executable subject (str (:err results) (:out results)))
+    results))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -280,7 +270,9 @@
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (executable-succeeded? autosign subject csr-fn load-path)
+        (-> (execute-autosign-command! autosign subject csr-fn load-path)
+            :exit
+            zero?)
         (whitelist-matches? autosign subject))
       false)))
 
