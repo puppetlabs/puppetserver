@@ -8,13 +8,15 @@ step "Configure puppet.conf" do
                                        "verbose" => true,
                                        "certname" => "#{master}" }}, dir)
 
-  case master['platform']
-  when /^(fedora|el|centos)-(\d+)-(.+)$/
+  variant, _, _, _ = master['platform'].to_array
+
+  case variant
+  when /^(fedora|el|centos)$/
     defaults_file = '/etc/sysconfig/jvm-puppet'
-  when /^(debian|ubuntu)-([^-]+)-(.+)$/
+  when /^(debian|ubuntu)$/
     defaults_file = '/etc/default/jvm-puppet'
   else
-    host.logger.notify("Not sure how to handle defaults for #{platform} yet...")
+    logger.notify("Not sure how to handle defaults for #{variant} yet...")
   end
   on master, "sed -i -e 's/\(SERVICE_NUM_RETRIES\)=[0-9]*/\1=60/' #{defaults_file}"
 end

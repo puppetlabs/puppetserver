@@ -22,16 +22,21 @@ module JVMPuppetExtensions
                          nil, "JVM Puppet Version",
                          "JVMPUPPET_VERSION", nil)
 
-    puppet_version = get_puppet_version ||
-        get_option_value(options[:puppet_version],
-                         nil, "Puppet Version",
-                         "PUPPET_VERSION", nil)
+    puppet_version = get_option_value(options[:puppet_version],
+                         nil, "Puppet Version", "PUPPET_VERSION", nil) ||
+                         get_puppet_version
+
+    puppet_build_version = get_option_value(options[:puppet_build_version],
+                         nil, "Puppet Development Build Version",
+                         "PUPPET_BUILD_VERSION", "3.7.0-jvm-puppet-preview")
+
     @config = {
       :base_dir => base_dir,
       :jvmpuppet_install_type => install_type,
       :jvmpuppet_install_mode => install_mode,
       :jvmpuppet_version => jvmpuppet_version,
       :puppet_version => puppet_version,
+      :puppet_build_version => puppet_build_version,
     }
 
     pp_config = PP.pp(@config, "")
@@ -111,27 +116,6 @@ module JVMPuppetExtensions
     scp_from master, "/var/log/jvm-puppet/jvm-puppet-daemon.log", destination
   end
 
-  # Obtained from:
-  #   https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb#L752
-  #
-  def fetch(base_url, file_name, dst_dir)
-    FileUtils.makedirs(dst_dir)
-    src = "#{base_url}/#{file_name}"
-    dst = File.join(dst_dir, file_name)
-    if File.exists?(dst)
-      logger.notify "Already fetched #{dst}"
-    else
-      logger.notify "Fetching: #{src}"
-      logger.notify "  and saving to #{dst}"
-      open(src) do |remote|
-        File.open(dst, "w") do |file|
-          FileUtils.copy_stream(remote, file)
-        end
-      end
-    end
-    return dst
-  end
-
   def install_jvm_puppet (host, jvm_puppet_name='jvm-puppet', make_env={})
     case test_config[:jvmpuppet_install_type]
     when :package
@@ -142,32 +126,6 @@ module JVMPuppetExtensions
       install_from_ezbake host, jvm_puppet_name, project_version, make_env
     else
       abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
-    end
-  end
-
-  def install_release_repos_on(host)
-    variant, version, arch = host['platform'].split('-',3)
-    _, codename, _ = host['platform'].with_version_codename.split('-',3)
-
-    case variant
-      when /(fedora|el|centos)/
-        # need to get the release minor version into platform name
-        rpm_name = "puppetlabs-release-#{version}-7.noarch.rpm"
-        repo_url = "https://yum.puppetlabs.com"
-
-        on host,
-          "rpm -ivh #{repo_url}/#{variant}/#{version}/products/#{arch}/#{rpm_name}"
-
-      when /(debian|ubuntu)/
-        deb_name = "puppetlabs-release-#{codename}.deb"
-        repo_url = "https://apt.puppetlabs.com"
-
-        on host, "wget -O /tmp/puppet.deb #{repo_url}/#{deb_name}"
-        on host, "dpkg -i --force-all /tmp/puppet.deb"
-
-        on host, 'apt-get update'
-      else
-        host.logger.notify("No repository installation step for #{platform} yet...")
     end
   end
 
