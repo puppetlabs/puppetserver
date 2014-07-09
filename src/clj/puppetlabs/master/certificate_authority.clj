@@ -107,10 +107,7 @@
   "Converts a serial number to the format it needs to be written in on disk.
   This function has to write serial numbers in the same format that the puppet
   ruby code does, to maintain compatibility with things like 'puppet cert';
-  for whatever arcane reason, that format is 0-padding up to 4 digits.
-
-  (format '%04X' 42)
-  => '002A'"
+  for whatever arcane reason, that format is 0-padding up to 4 digits."
   [serial-number]
   {:pre [(integer? serial-number)]}
   (format "%04X" serial-number))
