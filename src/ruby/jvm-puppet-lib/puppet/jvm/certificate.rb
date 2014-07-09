@@ -5,6 +5,7 @@ require 'puppet/jvm'
 require 'java'
 
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
+java_import com.puppetlabs.certificate_authority.ExtensionsUtils
 java_import java.security.cert.X509Certificate
 
 class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
@@ -37,15 +38,15 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   end
 
   def custom_extensions
-    exts = CertificateAuthority.get_extensions(@java_cert)
+    exts = ExtensionsUtils.get_extension_list(@java_cert)
 
-    valid_oids = exts.select do |oid,value|
-      subtree_of?(get_name_from_oid('ppRegCertExt'), oid) or
-          subtree_of?(get_name_from_oid('ppPrivCertExt'), oid)
+    valid_oids = exts.select do |ext|
+      subtree_of?(get_name_from_oid('ppRegCertExt'), ext['oid']) or
+          subtree_of?(get_name_from_oid('ppPrivCertExt'), ext['oid'])
     end
 
-    valid_oids.collect do |oid,value|
-      {'oid' => get_oid_name(oid), 'value' => value}
+    valid_oids.collect do |ext|
+      {'oid' => get_oid_name(ext['oid']), 'value' => ext['value']}
     end
   end
 

@@ -16,6 +16,7 @@
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
   #{:autosign
+    :dns-alt-names
     :cacert
     :cacrl
     :cakey

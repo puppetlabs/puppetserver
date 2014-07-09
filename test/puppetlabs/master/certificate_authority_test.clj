@@ -253,9 +253,11 @@
 
   (deftest initialize-master!-test
     (try
-      (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
-                          (utils/pem->private-key cakey)
-                          (utils/pem->cert cacert)
+      (initialize-master! ssldir-contents
+                          "master"
+                          {:cakey   cakey
+                           :cacert  cacert
+                           :ca-name "Puppet CA: localhost"}
                           512)
 
       (testing "Generated SSL file"
