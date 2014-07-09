@@ -11,7 +11,7 @@ GEM
     aws-sdk (1.42.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
-    beaker (1.14.1)
+    beaker (1.15.0)
       aws-sdk (= 1.42.0)
       blimpy (~> 0.6)
       docker-api
@@ -121,6 +121,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  beaker (= 1.14.1)
+  beaker (= 1.15.0)
   rake
   rspec
