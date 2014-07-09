@@ -1,6 +1,7 @@
 (ns puppetlabs.master.services.ca.certificate-authority-core-test
   (:require [puppetlabs.master.services.ca.certificate-authority-core :refer :all]
             [puppetlabs.master.certificate-authority :as ca]
+            [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -21,6 +22,7 @@
   (let [cadir     "./test-resources/config/master/conf/ssl/ca"
         signeddir (str cadir "/signed")
         csrdir    (str cadir "/requests")
+        serial-number-file (str "/tmp/serial-number" (ks/uuid))
         settings  {:ca-name   "some CA"
                    :cacert    (str cadir "/ca_crt.pem")
                    :cacrl     (str cadir "/ca_crl.pem")
@@ -29,6 +31,7 @@
                    :signeddir signeddir
                    :csrdir    csrdir
                    :ca-ttl    100
+                   :serial    serial-number-file
                    :load-path ["ruby/puppet/lib" "ruby/facter/lib"]}
         csr-path  (ca/path-to-cert-request csrdir "test-agent")]
 
@@ -50,6 +53,7 @@
                 (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                 (is (nil? (:body response))))
               (finally
+                (fs/delete serial-number-file)
                 (fs/delete expected-path)))))))
 
     (testing "when autosign results in false"
@@ -71,4 +75,5 @@
                 (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                 (is (nil? (:body response))))
               (finally
+                (fs/delete serial-number-file)
                 (fs/delete expected-path)))))))))

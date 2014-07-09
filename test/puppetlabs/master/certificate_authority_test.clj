@@ -231,9 +231,11 @@
                                 (path-to-cert-request subject)
                                 io/input-stream)
         expected-cert-path (path-to-cert signeddir subject)
+        serial-number-file (str "/tmp/serial-number" (ks/uuid))
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
-                            :signeddir signeddir}]
+                            :signeddir signeddir
+                            :serial serial-number-file}]
     (try
       (autosign-certificate-request! subject csr-fn ca-settings)
 
@@ -246,7 +248,8 @@
       ;; TODO PE-3173 verify signed certificate expiration is based on ca-ttl
 
       (finally
-        (fs/delete expected-cert-path)))))
+        (fs/delete expected-cert-path)
+        (fs/delete serial-number-file)))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
@@ -266,6 +269,7 @@
                        :capub     (str cadir "/ca_pub.pem")
                        :csrdir    (str cadir "/requests")
                        :signeddir (str cadir "/signed")
+                       :serial    (str cadir "/serial")
                        :load-path []}
       cadir-contents  (settings->cadir-paths ca-settings)
       ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
@@ -312,7 +316,8 @@
       (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
                           (utils/pem->private-key cakey)
                           (utils/pem->cert cacert)
-                          512)
+                          512
+                          (str ssldir "/serial" (ks/uuid)))
 
       (testing "Generated SSL file"
         (doseq [file (vals ssldir-contents)]
@@ -394,3 +399,33 @@
                                 utils/pem->public-key utils/keylength)))
             (finally
               (fs/delete-dir ssldir))))))))
+
+(deftest parse-serial-number-test
+  (is (= (parse-serial-number "0001") 1))
+  (is (= (parse-serial-number "0010") 16))
+  (is (= (parse-serial-number "002A") 42)))
+
+(deftest format-serial-number-test
+  (is (= (format-serial-number 1) "0001"))
+  (is (= (format-serial-number 16) "0010"))
+  (is (= (format-serial-number 42) "002A")))
+
+(deftest next-serial-number!-test
+  (let [serial-number-file (str "/tmp/serial" (ks/uuid))]
+    (try
+      (testing "when the serial file doesn't exist,
+                it is created, and the serial number is 1"
+        (is (= (next-serial-number! serial-number-file) 1))
+        (is (fs/exists? serial-number-file)))
+
+      (testing "The serial number file should contain the next serial number"
+        (is (= "0002" (slurp serial-number-file))))
+
+      (testing "subsequent calls produce increasing serial numbers"
+        (is (= (next-serial-number! serial-number-file) 2))
+        (is (= "0003" (slurp serial-number-file)))
+
+        (is (= (next-serial-number! serial-number-file) 3))
+        (is (= "0004" (slurp serial-number-file))))
+
+      (fs/delete serial-number-file))))
