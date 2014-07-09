@@ -6,25 +6,25 @@
             [puppetlabs.master.certificate-authority :as ca]))
 
 (defservice master-service
-            [[:WebserverService add-ring-handler]
-             [:JvmPuppetConfigService get-in-config]
-             [:RequestHandlerService handle-request]]
-            (init [this context]
-              (let [path              ""
-                    config            (get-in-config [:jvm-puppet])
-                    master-certname   (get-in config [:certname])
-                    ca-settings       (select-keys
-                                        config (keys ca/CaSettings))
-                    master-file-paths (select-keys
-                                        config (keys ca/MasterFilePaths))]
+  [[:WebserverService add-ring-handler]
+   [:JvmPuppetConfigService get-config]
+   [:RequestHandlerService handle-request]]
+  (init
+   [this context]
+   (let [path              ""
+         config            (get-config)
+         master-certname   (get-in config [:jvm-puppet :certname])
+         master-file-paths (select-keys (:jvm-puppet config)
+                                        (keys ca/MasterFilePaths))
+         ca-settings       (ca/config->settings config)]
 
-                    ; TODO - https://tickets.puppetlabs.com/browse/PE-3929
-                    ; The master needs to eventually get these files from the CA server
-                    ; via http or git or something.
-                    (ca/initialize! ca-settings master-file-paths master-certname)
+     ; TODO - https://tickets.puppetlabs.com/browse/PE-3929
+     ; The master needs to eventually get these files from the CA server
+     ; via http or git or something.
+     (ca/initialize! ca-settings master-file-paths master-certname)
 
-                    (log/info "Master Service adding a ring handler")
-                    (add-ring-handler
-                      (compojure/context path [] (core/compojure-app handle-request))
-                      path))
-              context))
+     (log/info "Master Service adding a ring handler")
+     (add-ring-handler
+      (compojure/context path [] (core/compojure-app handle-request))
+      path))
+   context))

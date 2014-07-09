@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+echo "print to stdout"
+echo "print to stderr" 1>&2
+
+SUBJECT=$1
+if [ $SUBJECT ]; then
+  echo "subject: $SUBJECT"
+else
+  echo "subject argument missing" 1>&2
+fi
+
+CSR=$(cat)
+if [ "$CSR" ]; then
+  echo "CSR: $CSR"
+else
+  echo "CSR must be provided on stdin" 1>&2
+fi
+
+if [ $SUBJECT == "test-agent" ]; then
+  exit 0
+else
+  exit 1
+fi

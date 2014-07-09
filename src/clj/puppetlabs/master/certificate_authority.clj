@@ -1,9 +1,9 @@
 (ns puppetlabs.master.certificate-authority
-  (:import  [java.io InputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
@@ -25,7 +25,7 @@
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
-  All of these are Puppet configuration settings."
+  Most of these are Puppet configuration settings."
   {:autosign  (schema/either String Boolean)
    :cacert    String
    :cacrl     String
@@ -34,6 +34,7 @@
    :ca-name   String
    :ca-ttl    schema/Int
    :csrdir    String
+   :load-path [String]
    :signeddir String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -44,7 +45,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
@@ -139,7 +140,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
 
-(defn glob-matches?
+(schema/defn glob-matches? :- schema/Bool
   "Test if a subject matches the domain-name glob from the autosign whitelist.
 
    The glob is expected to start with a '*' and be in a form like `*.foo.bar`.
@@ -150,7 +151,8 @@
      (glob-matches? *.foo.bar agent.foo.bar) => true
      (glob-matches? *.baz baz) => true
      (glob-matches? *.QUX 0.1.qux) => true"
-  [glob subject]
+  [glob :- String
+   subject :- String]
   (letfn [(munge [name]
             (-> name
                 str/lower-case
@@ -161,13 +163,15 @@
     (seq-starts-with? (munge subject)
                       (butlast (munge glob)))))
 
-(defn line-matches?
+(schema/defn line-matches? :- schema/Bool
   "Test if the subject matches the line from the autosign whitelist.
    The line is expected to be an exact certname or a domain-name glob.
    A single line with the character '*' will match all subjects.
    If the line contains invalid characters it will be logged and
    false will be returned."
-  [whitelist subject line]
+  [whitelist :- String
+   subject :- String
+   line :- String]
   (if (or (.contains line "#") (.contains line " "))
     (do (log/errorf "Invalid pattern '%s' found in %s" line whitelist)
         false)
@@ -177,96 +181,131 @@
         (glob-matches? line subject)
         (= line subject)))))
 
-(defn whitelist-matches?
+(schema/defn whitelist-matches? :- schema/Bool
   "Test if the whitelist file contains an entry that matches the subject.
    Each line of the file is expected to contain a single entry, either as
    an exact certname or a domain-name glob, and will be evaluated verbatim.
    All blank lines and comment lines (starting with '#') will be ignored.
    If an invalid pattern is encountered, it will be logged and ignored."
-  [whitelist subject]
-  {:pre  [(every? string? [whitelist subject])]
-   :post [(ks/boolean? %)]}
+  [whitelist :- String
+   subject :- String]
   (with-open [r (io/reader whitelist)]
     (not (nil? (some (partial line-matches? whitelist subject)
                      (remove #(or (.startsWith % "#")
                                   (str/blank? %))
                              (line-seq r)))))))
 
+(schema/defn execute-autosign-command!
+  :- {:out (schema/maybe String) :err (schema/maybe String) :exit schema/Int}
+  "Execute the autosign script and return a map containing the standard-out,
+   standard-err, and exit code. The subject will be passed in as input, and
+   the CSR stream will be provided on standard-in. The load-path will be
+   prepended to the RUBYLIB found in the environment, and is intended to make
+   the Puppet and Facter Ruby libraries available to the autosign script.
+   All output (stdout & stderr) will be logged at the debug level."
+  [executable :- String
+   subject :- String
+   csr-fn :- (schema/pred fn?)
+   load-path :- [String]]
+  (log/debugf "Executing '%s %s'" executable subject)
+  (let [env     (into {} (System/getenv))
+        rubylib (->> (if-let [lib (get env "RUBYLIB")]
+                       (cons lib load-path)
+                       load-path)
+                     (map fs/absolute-path)
+                     (str/join (System/getProperty "path.separator")))
+        results (shell/sh executable subject
+                          :in (csr-fn)
+                          :env (merge env {:RUBYLIB rubylib}))]
+    (log/debugf "Autosign command '%s %s' exit status: %d"
+                executable subject (:exit results))
+    (log/debugf "Autosign command '%s %s' output: %s"
+                executable subject (str (:err results) (:out results)))
+    results))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn get-certificate
+(schema/defn ^:always-validate
+  config->settings :- CaSettings
+  "Given the configuration map from the JVM Puppet config
+   service return a map with of all the CA settings."
+  [{:keys [jvm-puppet jruby-puppet]}]
+  (-> (select-keys jvm-puppet (keys CaSettings))
+      (assoc :load-path (:load-path jruby-puppet))))
+
+(schema/defn ^:always-validate
+  get-certificate :- (schema/maybe String)
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
-  [subject cacert signeddir]
-  {:pre  [(every? string? [subject cacert signeddir])]
-   :post [(or (string? %)
-              (nil? %))]}
+  [subject :- String
+   cacert :- String
+   signeddir :- String]
   (let [cert-path (if (= "ca" subject)
                     cacert
                     (path-to-cert signeddir subject))]
     (if (fs/exists? cert-path)
       (slurp cert-path))))
 
-(defn get-certificate-request
+(schema/defn ^:always-validate
+  get-certificate-request :- (schema/maybe String)
   "Given a subject name, return their certificate request as a string, or nil if
   not found.  Looks for certificate requests in `csrdir`."
-  [subject csrdir]
-  {:pre  [(every? string? [subject csrdir])]
-   :post [(or (string? %)
-              (nil? %))]}
+  [subject :- String
+   csrdir :- String]
   (let [cert-request-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
 
-(defn autosign-csr?
-  "Return true if CSRs should be automatically signed given
+(schema/defn ^:always-validate
+  autosign-csr? :- schema/Bool
+  "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign subject]
-  {:pre  [(or (string? autosign)
-              (ks/boolean? autosign))
-          (string? subject)]
-   :post [(ks/boolean? %)]}
+  [autosign :- (schema/either String schema/Bool)
+   subject :- String
+   csr-fn :- (schema/pred fn?)
+   load-path :- [String]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        false ;; TODO PE-3865 external autosign
+        (-> (execute-autosign-command! autosign subject csr-fn load-path)
+            :exit
+            zero?)
         (whitelist-matches? autosign subject))
       false)))
 
-(defn autosign-certificate-request!
+(schema/defn ^:always-validate
+  autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
-  [subject certificate-request {:keys [ca-name cakey signeddir ca-ttl]}]
-  {:pre  [(string? subject)
-          (instance? InputStream certificate-request)]
-   :post [(nil? %)]}
+  [subject :- String
+   csr-fn :- (schema/pred fn?)
+   {:keys [ca-name cakey signeddir ca-ttl]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [signed-cert (utils/sign-certificate-request
-                      (utils/pem->csr certificate-request)
+                      (utils/pem->csr (csr-fn))
                       (utils/generate-x500-name ca-name)
                       (next-serial-number)
                       (utils/pem->private-key cakey))]
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
-(defn save-certificate-request!
+(schema/defn ^:always-validate
+  save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
-  [subject certificate-request csrdir]
-  {:pre [(every? string? [subject csrdir])
-         (instance? InputStream certificate-request)]}
-  (-> certificate-request
-      utils/pem->csr
+  [subject :- String
+   csr-fn :- (schema/pred fn?)
+   csrdir :- String]
+  (-> (utils/pem->csr (csr-fn))
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
-(defn get-certificate-revocation-list
+(schema/defn ^:always-validate
+  get-certificate-revocation-list :- String
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
-  [cacrl]
-  {:pre  [(string? cacrl)]
-   :post [(string? %)]}
+  [cacrl :- String]
   (slurp cacrl))
 
 (schema/defn ^:always-validate
