@@ -35,7 +35,9 @@
    :ca-ttl    schema/Int
    :csrdir    String
    :load-path [String]
-   :signeddir String})
+   :signeddir String
+   :serial    String})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -57,13 +59,6 @@
   [csrdir subject]
   (str csrdir "/" subject ".pem"))
 
-;; TODO persist between runs (PE-3174)
-(def serial-number (atom 0))
-
-(defn next-serial-number
-  []
-  (swap! serial-number inc))
-
 (defn files-exist?
   "Predicate to test whether all of the files exist on disk.
   `paths` is expected to be a map with file path values,
@@ -80,6 +75,57 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Serial number functions + lock
+(def serial-number-file-lock
+  "The lock used to prevent concurrent access to the serial number file."
+  (new Object))
+
+(defn parse-serial-number
+  "Parses a serial number from its format on disk.  See `format-serial-number`
+  for the awful, gory details."
+  [serial-number]
+  {:post [(integer? %)]}
+  (read-string (str "0x" serial-number)))
+
+(defn get-serial-number!
+  "Reads the serial number file from disk and returns the serial number.
+  If the file does not exist, it will be created, and the serial number will be 1."
+  [serial-number-file]
+  (if (fs/exists? serial-number-file)
+    (-> serial-number-file
+        (slurp)
+        (.trim)
+        (parse-serial-number))
+    (do
+      (create-parent-directories! [serial-number-file])
+      (fs/create (fs/file serial-number-file))
+      1)))
+
+(defn format-serial-number
+  "Converts a serial number to the format it needs to be written in on disk.
+  This function has to write serial numbers in the same format that the puppet
+  ruby code does, to maintain compatibility with things like 'puppet cert';
+  for whatever arcane reason, that format is 0-padding up to 4 digits."
+  [serial-number]
+  {:pre [(integer? serial-number)]}
+  (format "%04X" serial-number))
+
+(defn next-serial-number!
+  "Returns the next serial number to be used when signing a certificate request.
+  Reads the serial number as a hex value from the given file and replaces the
+  contents of `serial-number-file` with the next serial number for a subsequent
+  call.  Puppet's 'serial' setting defines the location of the serial number file."
+  [serial-number-file]
+  (locking serial-number-file-lock
+    (let [serial-number (get-serial-number! serial-number-file)]
+      (spit serial-number-file (format-serial-number (inc serial-number)))
+      serial-number)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Initialization
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -95,10 +141,12 @@
         public-key  (.getPublic keypair)
         private-key (.getPrivate keypair)
         x500-name   (utils/generate-x500-name (:ca-name ca-settings))
+        serial-file (:serial ca-settings)
         cacert      (-> (utils/generate-certificate-request keypair x500-name)
-                        (utils/sign-certificate-request x500-name
-                                                        (next-serial-number)
-                                                        private-key))
+                        (utils/sign-certificate-request
+                          x500-name
+                          (next-serial-number! serial-file)
+                          private-key))
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
@@ -116,7 +164,8 @@
    ca-name :- String
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
-   keylength :- schema/Int]
+   keylength :- schema/Int
+   serial-number-file :- String]
   {:post [(files-exist? ssldir-file-paths)]}
   (log/debug (str "Initializing SSL for the Master; file paths:\n"
                   (ks/pprint-to-string ssldir-file-paths)))
@@ -129,9 +178,10 @@
         x500-name    (utils/generate-x500-name master-certname)
         ca-x500-name (utils/generate-x500-name ca-name)
         hostcert     (-> (utils/generate-certificate-request keypair x500-name)
-                         (utils/sign-certificate-request ca-x500-name
-                                                         (next-serial-number)
-                                                         ca-private-key))]
+                         (utils/sign-certificate-request
+                           ca-x500-name
+                           (next-serial-number! serial-number-file)
+                           ca-private-key))]
     (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
     (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
     (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
@@ -282,13 +332,13 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- String
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name cakey signeddir ca-ttl]}]
+   {:keys [ca-name cakey signeddir ca-ttl serial]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [signed-cert (utils/sign-certificate-request
                       (utils/pem->csr (csr-fn))
                       (utils/generate-x500-name ca-name)
-                      (next-serial-number)
+                      (next-serial-number! serial)
                       (utils/pem->private-key cakey))]
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
@@ -329,6 +379,13 @@
       (log/info "Master already initialized for SSL")
       (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
             cacert (-> ca-settings :cacert utils/pem->cert)
-            caname (:ca-name ca-settings)]
-        (initialize-master! master-file-paths master-certname
-                            caname cakey cacert keylength)))))
+            caname (:ca-name ca-settings)
+            serial-number-file (:serial ca-settings)]
+        (initialize-master!
+          master-file-paths
+          master-certname
+          caname
+          cakey
+          cacert
+          keylength
+          serial-number-file)))))

@@ -29,6 +29,7 @@
     :hostprivkey
     :hostpubkey
     :localcacert
+    :serial
     :signeddir
     :requestdir})
 
