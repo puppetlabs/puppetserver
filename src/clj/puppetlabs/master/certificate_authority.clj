@@ -5,6 +5,7 @@
             [clojure.java.io :as io]
             [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
+            [clj-time.core :as time]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -38,9 +39,16 @@
    :signeddir String
    :serial    String})
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(defn generate-not-before-date []
+  "Make the not-before date set to yesterday to avoid clock skewing issues."
+  (.toDate (time/minus (time/now) (time/days 1))))
+
+(defn generate-not-after-date []
+  "Generate a date 5 years in the future. This will be configurable soon."
+  (.toDate (time/plus (time/now) (time/years 5))))
 
 (schema/defn settings->cadir-paths
   "Trim down the CA settings to include only paths to files and directories.
@@ -137,24 +145,24 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (let [serial-number-file (:serial ca-settings)]
-    (initialize-serial-number-file! serial-number-file)
-    (let [keypair (utils/generate-key-pair keylength)
-          public-key (.getPublic keypair)
-          private-key (.getPrivate keypair)
-          x500-name (utils/generate-x500-name (:ca-name ca-settings))
-          cacert (-> (utils/generate-certificate-request keypair x500-name)
-                     (utils/sign-certificate-request
-                       x500-name
-                       (next-serial-number! serial-number-file)
-                       private-key))
-          cacrl (-> cacert
-                    .getIssuerX500Principal
-                    (utils/generate-crl private-key))]
-      (utils/key->pem! public-key (:capub ca-settings))
-      (utils/key->pem! private-key (:cakey ca-settings))
-      (utils/cert->pem! cacert (:cacert ca-settings))
-      (utils/crl->pem! cacrl (:cacrl ca-settings)))))
+  (let [serial-number-file (:serial ca-settings)
+        _ (initialize-serial-number-file! serial-number-file)
+        keypair     (utils/generate-key-pair keylength)
+        public-key  (utils/get-public-key keypair)
+        private-key (utils/get-private-key keypair)
+        x500-name   (utils/cn (:ca-name ca-settings))
+        cacert      (utils/sign-certificate x500-name private-key
+                                            (next-serial-number! serial-number-file)
+                                            (generate-not-before-date)
+                                            (generate-not-after-date)
+                                            x500-name public-key)
+        cacrl       (-> cacert
+                        .getIssuerX500Principal
+                        (utils/generate-crl private-key))]
+    (utils/key->pem! public-key (:capub ca-settings))
+    (utils/key->pem! private-key (:cakey ca-settings))
+    (utils/cert->pem! cacert (:cacert ca-settings))
+    (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
@@ -174,15 +182,15 @@
   (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
   (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
   (let [keypair      (utils/generate-key-pair keylength)
-        public-key   (.getPublic keypair)
-        private-key  (.getPrivate keypair)
-        x500-name    (utils/generate-x500-name master-certname)
-        ca-x500-name (utils/generate-x500-name ca-name)
-        hostcert     (-> (utils/generate-certificate-request keypair x500-name)
-                         (utils/sign-certificate-request
-                           ca-x500-name
-                           (next-serial-number! serial-number-file)
-                           ca-private-key))]
+        public-key   (utils/get-public-key keypair)
+        private-key  (utils/get-private-key keypair)
+        x500-name    (utils/cn master-certname)
+        ca-x500-name (utils/cn ca-name)
+        hostcert     (utils/sign-certificate ca-x500-name ca-private-key
+                                             (next-serial-number! serial-number-file)
+                                             (generate-not-before-date)
+                                             (generate-not-after-date)
+                                             x500-name public-key)]
     (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
     (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
     (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
@@ -336,11 +344,14 @@
    {:keys [ca-name cakey signeddir ca-ttl serial]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
-  (let [signed-cert (utils/sign-certificate-request
-                      (utils/pem->csr (csr-fn))
-                      (utils/generate-x500-name ca-name)
-                      (next-serial-number! serial)
-                      (utils/pem->private-key cakey))]
+  (let [csr         (utils/pem->csr (csr-fn))
+        signed-cert (utils/sign-certificate (utils/cn ca-name)
+                                            (utils/pem->private-key cakey)
+                                            (next-serial-number! serial)
+                                            (generate-not-before-date)
+                                            (generate-not-after-date)
+                                            (utils/cn subject)
+                                            (utils/get-public-key csr))]
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
