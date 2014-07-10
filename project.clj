@@ -55,7 +55,7 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
-  :aliases {"go" ["trampoline" "run" "--config" "./test-resources/jvm-puppet.conf" "--bootstrap-config" "./test-resources/bootstrap.cfg"]}
+  :aliases {"go" ["trampoline" "run" "--config" "./dev-resources/jvm-puppet.conf" "--bootstrap-config" "./dev-resources/bootstrap.cfg"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]

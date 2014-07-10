@@ -37,8 +37,8 @@
 
     (testing "when autosign results in true"
       (doseq [value [true
-                     "test-resources/config/master/conf/ruby-autosign-executable"
-                     "test-resources/config/master/conf/autosign-whitelist.conf"]]
+                     "dev-resources/config/master/conf/ruby-autosign-executable"
+                     "dev-resources/config/master/conf/autosign-whitelist.conf"]]
         (let [settings      (assoc settings :autosign value)
               csr-stream    (io/input-stream csr-path)
               expected-path (ca/path-to-cert signeddir "test-agent")]
@@ -58,8 +58,8 @@
 
     (testing "when autosign results in false"
       (doseq [value [false
-                     "test-resources/config/master/conf/ruby-autosign-executable"
-                     "test-resources/config/master/conf/autosign-whitelist.conf"]]
+                     "dev-resources/config/master/conf/ruby-autosign-executable"
+                     "dev-resources/config/master/conf/autosign-whitelist.conf"]]
         (let [settings      (assoc settings :autosign value)
               csr-stream    (io/input-stream csr-path)
               expected-path (ca/path-to-cert-request csrdir "foo-agent")]

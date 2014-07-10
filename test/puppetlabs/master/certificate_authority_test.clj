@@ -153,7 +153,7 @@
 
     (testing "sample file that covers everything"
       (logutils/with-test-logging
-        (doto "test-resources/config/master/conf/autosign-whitelist.conf"
+        (doto "dev-resources/config/master/conf/autosign-whitelist.conf"
           (assert-no-autosign "aaa")
           (assert-autosign "bbb123")
           (assert-autosign "one_2.red")
@@ -165,7 +165,7 @@
 
   (testing "executable"
     (testing "ruby script"
-      (let [executable "test-resources/config/master/conf/ruby-autosign-executable"
+      (let [executable "dev-resources/config/master/conf/ruby-autosign-executable"
             csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))
             load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
 
@@ -192,7 +192,7 @@
             (is (false? (autosign-csr? executable "foo" csr-fn load-path)))))))
 
     (testing "bash script"
-      (let [executable "test-resources/config/master/conf/bash-autosign-executable"
+      (let [executable "dev-resources/config/master/conf/bash-autosign-executable"
             csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))]
 
         (testing "stdout and stderr are copied to master's log at debug level"
