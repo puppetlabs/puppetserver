@@ -4,6 +4,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
+            [clojure.string :as string]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -355,6 +356,40 @@
 
         (finally
           (fs/delete serial-number-file)
+          (fs/delete-dir ssldir)))))
+
+  (deftest initialize-master!-alt-dns-names-test
+    (let [serial-number-file (temp-serial-number-file)]
+      (try
+        (let [alt-names ["onefish", "twofish"]
+              master-name "master"
+              ca-name "Puppet CA: localhost"
+              alt-name-settings (assoc master-settings
+                                  :dns-alt-names
+                                  (string/join "," alt-names))]
+          (initialize-master! alt-name-settings master-name ca-name
+                              (utils/pem->private-key cakey)
+                              (utils/pem->cert cacert)
+                              512
+                              serial-number-file)
+
+          (testing "Generated SSL files"
+            (doseq [file (vals ssldir-contents)]
+              (testing file
+                (is (fs/exists? file)))))
+
+          (testing "Cert has alt names extension"
+            (let [cert (-> ssldir-contents
+                           :hostcert
+                           utils/pem->certs first)
+                  alt-names-ext (utils/get-extension cert "2.5.29.17")
+                  expected (set (conj alt-names master-name))]
+              (is (= expected (set (get-in alt-names-ext [:value :dns-name])))
+                  (str "The Subject Alternative Names extension should contain "
+                       "all the hostnames listed in the dns_alt_names setting in "
+                       "addition to the master name itsef.")))))
+
+        (finally
           (fs/delete-dir ssldir)))))
 
   (deftest initialize!-test
