@@ -200,22 +200,22 @@
   "Given the SSL directory file paths, master certname, and CA information,
   generate and write to disk all of the necessary SSL files for the master.
   Any existing files will be replaced."
-  [master-settings :- MasterSettings
+  [settings :- MasterSettings
    master-certname :- String
    ca-name :- String
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
    serial-number-file :- String]
-  {:post [(files-exist? (settings->master-dir-paths master-settings))]}
+  {:post [(files-exist? (settings->master-dir-paths settings))]}
   ;; TODO: straighten out the let mess
-  (let [ssldir-file-paths (settings->master-dir-paths master-settings)]
+  (let [ssldir-file-paths (settings->master-dir-paths settings)]
     (log/debug (str "Initializing SSL for the Master; file paths:\n"
                     (ks/pprint-to-string ssldir-file-paths)))
     (create-parent-directories! (vals ssldir-file-paths))
     (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
     (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
-    (let [extensions (create-master-extensions-list master-settings master-certname)
+    (let [extensions (create-master-extensions-list settings master-certname)
           keypair (utils/generate-key-pair keylength)
           public-key (utils/get-public-key keypair)
           private-key (utils/get-private-key keypair)
