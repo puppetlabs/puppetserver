@@ -429,3 +429,36 @@
         (is (= "0004" (slurp serial-number-file))))
 
       (fs/delete serial-number-file))))
+
+(defn contains-duplicates? [coll]
+  (not= (count coll) (count (distinct coll))))
+
+; If the locking is deleted from `next-serial-number!`, this test will hang,
+; which is not as nice as simply failing ...
+; This seems to happen due to a deadlock caused by concurrently reading and
+; writing to the same file (via `slurp` and `spit`)
+(deftest next-serial-number-threadsafety
+  (testing "next-serial-number! is thread-safe and
+            never returns a duplicate serial number"
+    (let [serial-number-file (fs/temp-file nil)
+          _ (spit serial-number-file "0001")
+          serial-numbers (atom [])
+
+          ; spin off a new thread for each CPU
+          promises (for [_ (range (ks/num-cpus))]
+                     (let [p (promise)]
+                       (future
+
+                         ; get a bunch of serial numbers and keep track of them
+                         (dotimes [_ 100]
+                           (let [serial-number (next-serial-number!
+                                                 serial-number-file)]
+                             (swap! serial-numbers conj serial-number)))
+                         (deliver p 'done))
+                       p))]
+
+      ; wait on all the threads to finish
+      (doseq [p promises] (deref p))
+
+      (is (false? (contains-duplicates? @serial-numbers))
+          "Got a duplicate serial number"))))
