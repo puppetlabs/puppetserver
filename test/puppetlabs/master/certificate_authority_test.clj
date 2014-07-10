@@ -277,12 +277,13 @@
                        :serial    (str cadir "/serial")
                        :load-path []}
       cadir-contents  (settings->cadir-paths ca-settings)
-      ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
+      master-settings {:requestdir  (str ssldir "/certificate_requests")
                        :certdir     (str ssldir "/certs")
                        :hostcert    (str ssldir "/certs/master.pem")
                        :localcacert (str ssldir "/certs/ca.pem")
                        :hostprivkey (str ssldir "/private_keys/master.pem")
-                       :hostpubkey  (str ssldir "/public_keys/master.pem")}]
+                       :hostpubkey  (str ssldir "/public_keys/master.pem")}
+      ssldir-contents (settings->master-dir-paths master-settings)]
 
   (deftest initialize-ca!-test
     (try
