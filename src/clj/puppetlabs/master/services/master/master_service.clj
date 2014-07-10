@@ -11,17 +11,16 @@
    [:RequestHandlerService handle-request]]
   (init
    [this context]
-   (let [path              ""
-         config            (get-config)
-         master-certname   (get-in config [:jvm-puppet :certname])
-         master-file-paths (select-keys (:jvm-puppet config)
-                                        (keys ca/MasterFilePaths))
-         ca-settings       (ca/config->settings config)]
+   (let [path            ""
+         config          (get-config)
+         master-certname (get-in config [:jvm-puppet :certname])
+         master-settings (ca/config->master-settings config)
+         ca-settings     (ca/config->ca-settings config)]
 
      ; TODO - https://tickets.puppetlabs.com/browse/PE-3929
      ; The master needs to eventually get these files from the CA server
      ; via http or git or something.
-     (ca/initialize! ca-settings master-file-paths master-certname)
+     (ca/initialize! ca-settings master-settings master-certname)
 
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
