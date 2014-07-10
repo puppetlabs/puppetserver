@@ -172,6 +172,30 @@
     (utils/cert->pem! cacert (:cacert ca-settings))
     (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
+(defn split-hostnames
+  "Given a comma-separated list of hostnames, return a list of the
+  individual dns alt names with all surrounding whitespace removed. If
+  hostnames is empty or nil, then nil is returned."
+  [hostnames]
+  {:pre  [(or nil? (string? hostnames))]
+   :post [(every? string? %)]}
+  (let [hostnames (str/trim (or hostnames ""))]
+    (when (and hostnames (> (count hostnames) 0))
+      (mapv #(str/trim %) (str/split hostnames #",")))))
+
+(schema/defn
+  create-master-extensions-list
+  "Create a list of extensions to be added to the master certificate."
+  [settings  :- MasterSettings
+   cert-name :- schema/Str]
+  (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
+        alt-names-ext (when (> (count dns-alt-names) 0)
+                        ;; TODO: Create a list of OID def'ns in CA lib
+                        {:oid      "2.5.29.17"
+                         :critical false
+                         :value    {:dns-name (conj dns-alt-names cert-name)}})]
+    (filter #((complement nil?) %) [alt-names-ext])))
+
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
   generate and write to disk all of the necessary SSL files for the master.
@@ -191,7 +215,8 @@
     (create-parent-directories! (vals ssldir-file-paths))
     (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
     (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
-    (let [keypair (utils/generate-key-pair keylength)
+    (let [extensions (create-master-extensions-list master-settings master-certname)
+          keypair (utils/generate-key-pair keylength)
           public-key (utils/get-public-key keypair)
           private-key (utils/get-private-key keypair)
           x500-name (utils/cn master-certname)
@@ -200,7 +225,8 @@
                                            (next-serial-number! serial-number-file)
                                            (generate-not-before-date)
                                            (generate-not-after-date)
-                                           x500-name public-key)]
+                                           x500-name public-key
+                                           extensions)]
       (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
       (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
       (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
