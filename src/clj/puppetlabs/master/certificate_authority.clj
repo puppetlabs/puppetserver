@@ -90,18 +90,13 @@
   (read-string (str "0x" serial-number)))
 
 (defn get-serial-number!
-  "Reads the serial number file from disk and returns the serial number.
-  If the file does not exist, it will be created, and the serial number will be 1."
+  "Reads the serial number file from disk and returns the serial number."
   [serial-number-file]
-  (if (fs/exists? serial-number-file)
-    (-> serial-number-file
-        (slurp)
-        (.trim)
-        (parse-serial-number))
-    (do
-      (create-parent-directories! [serial-number-file])
-      (fs/create (fs/file serial-number-file))
-      1)))
+  {:pre [(fs/exists? serial-number-file)]}
+  (-> serial-number-file
+      (slurp)
+      (.trim)
+      (parse-serial-number)))
 
 (defn format-serial-number
   "Converts a serial number to the format it needs to be written in on disk.
@@ -123,6 +118,11 @@
       (spit serial-number-file (format-serial-number (inc serial-number)))
       serial-number)))
 
+(defn initialize-serial-number-file!
+  "Initializes the serial number file on disk.  Serial numbers start at 1."
+  [path]
+  (fs/create (fs/file path))
+  (spit path (format-serial-number 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
@@ -137,23 +137,24 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (let [keypair     (utils/generate-key-pair keylength)
-        public-key  (.getPublic keypair)
-        private-key (.getPrivate keypair)
-        x500-name   (utils/generate-x500-name (:ca-name ca-settings))
-        serial-file (:serial ca-settings)
-        cacert      (-> (utils/generate-certificate-request keypair x500-name)
-                        (utils/sign-certificate-request
-                          x500-name
-                          (next-serial-number! serial-file)
-                          private-key))
-        cacrl       (-> cacert
-                        .getIssuerX500Principal
-                        (utils/generate-crl private-key))]
-    (utils/key->pem! public-key (:capub ca-settings))
-    (utils/key->pem! private-key (:cakey ca-settings))
-    (utils/cert->pem! cacert (:cacert ca-settings))
-    (utils/crl->pem! cacrl (:cacrl ca-settings))))
+  (let [serial-number-file (:serial ca-settings)]
+    (initialize-serial-number-file! serial-number-file)
+    (let [keypair (utils/generate-key-pair keylength)
+          public-key (.getPublic keypair)
+          private-key (.getPrivate keypair)
+          x500-name (utils/generate-x500-name (:ca-name ca-settings))
+          cacert (-> (utils/generate-certificate-request keypair x500-name)
+                     (utils/sign-certificate-request
+                       x500-name
+                       (next-serial-number! serial-number-file)
+                       private-key))
+          cacrl (-> cacert
+                    .getIssuerX500Principal
+                    (utils/generate-crl private-key))]
+      (utils/key->pem! public-key (:capub ca-settings))
+      (utils/key->pem! private-key (:cakey ca-settings))
+      (utils/cert->pem! cacert (:cacert ca-settings))
+      (utils/crl->pem! cacrl (:cacrl ca-settings)))))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
@@ -165,7 +166,7 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file :- String]
+   serial-number-file]
   {:post [(files-exist? ssldir-file-paths)]}
   (log/debug (str "Initializing SSL for the Master; file paths:\n"
                   (ks/pprint-to-string ssldir-file-paths)))

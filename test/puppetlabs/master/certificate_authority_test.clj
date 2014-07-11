@@ -43,6 +43,11 @@
   (testing subject
     (is (false? (autosign-csr? whitelist subject empty-stream-fn [])))))
 
+(defn temp-serial-number-file []
+  (let [f (str "./target/serial" (ks/uuid))]
+    (initialize-serial-number-file! f)
+    f))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
@@ -231,7 +236,7 @@
                                 (path-to-cert-request subject)
                                 io/input-stream)
         expected-cert-path (path-to-cert signeddir subject)
-        serial-number-file (str "/tmp/serial-number" (ks/uuid))
+        serial-number-file (temp-serial-number-file)
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
                             :signeddir signeddir
@@ -312,42 +317,44 @@
         (fs/delete-dir cadir))))
 
   (deftest initialize-master!-test
-    (try
-      (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
-                          (utils/pem->private-key cakey)
-                          (utils/pem->cert cacert)
-                          512
-                          (str ssldir "/serial" (ks/uuid)))
+    (let [serial-number-file (temp-serial-number-file)]
+      (try
+        (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
+                            (utils/pem->private-key cakey)
+                            (utils/pem->cert cacert)
+                            512
+                            serial-number-file)
 
-      (testing "Generated SSL file"
-        (doseq [file (vals ssldir-contents)]
-          (testing file
-            (is (fs/exists? file)))))
+        (testing "Generated SSL file"
+          (doseq [file (vals ssldir-contents)]
+            (testing file
+              (is (fs/exists? file)))))
 
-      (testing "hostcert"
-        (let [cert (-> ssldir-contents :hostcert utils/pem->certs first)]
-          (is (utils/certificate? cert))
-          (assert-subject cert "CN=master")
-          (assert-issuer cert "CN=Puppet CA: localhost")))
+        (testing "hostcert"
+          (let [cert (-> ssldir-contents :hostcert utils/pem->certs first)]
+            (is (utils/certificate? cert))
+            (assert-subject cert "CN=master")
+            (assert-issuer cert "CN=Puppet CA: localhost")))
 
-      (testing "localcacert"
-        (let [cacert (-> ssldir-contents :localcacert utils/pem->certs first)]
-          (is (utils/certificate? cacert))
-          (assert-subject cacert "CN=Puppet CA: localhost")
-          (assert-issuer cacert "CN=Puppet CA: localhost")))
+        (testing "localcacert"
+          (let [cacert (-> ssldir-contents :localcacert utils/pem->certs first)]
+            (is (utils/certificate? cacert))
+            (assert-subject cacert "CN=Puppet CA: localhost")
+            (assert-issuer cacert "CN=Puppet CA: localhost")))
 
-      (testing "hostprivkey"
-        (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
-          (is (utils/private-key? key))
-          (is (= 512 (utils/keylength key)))))
+        (testing "hostprivkey"
+          (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
+            (is (utils/private-key? key))
+            (is (= 512 (utils/keylength key)))))
 
-      (testing "hostpubkey"
-        (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
-          (is (utils/public-key? key))
-          (is (= 512 (utils/keylength key)))))
+        (testing "hostpubkey"
+          (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
+            (is (utils/public-key? key))
+            (is (= 512 (utils/keylength key)))))
 
-      (finally
-        (fs/delete-dir ssldir))))
+        (finally
+          (fs/delete serial-number-file)
+          (fs/delete-dir ssldir)))))
 
   (deftest initialize!-test
     (testing "Generated SSL file"
@@ -411,24 +418,25 @@
   (is (= (format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (let [serial-number-file (str "/tmp/serial" (ks/uuid))]
-    (try
-      (testing "when the serial file doesn't exist,
+  (testing "when the serial file doesn't exist,
                 it is created, and the serial number is 1"
+    (let [serial-number-file (temp-serial-number-file)]
+      (try
+        (is (fs/exists? serial-number-file))
         (is (= (next-serial-number! serial-number-file) 1))
-        (is (fs/exists? serial-number-file)))
 
-      (testing "The serial number file should contain the next serial number"
-        (is (= "0002" (slurp serial-number-file))))
+        (testing "The serial number file should contain the next serial number"
+          (is (= "0002" (slurp serial-number-file))))
 
-      (testing "subsequent calls produce increasing serial numbers"
-        (is (= (next-serial-number! serial-number-file) 2))
-        (is (= "0003" (slurp serial-number-file)))
+        (testing "subsequent calls produce increasing serial numbers"
+          (is (= (next-serial-number! serial-number-file) 2))
+          (is (= "0003" (slurp serial-number-file)))
 
-        (is (= (next-serial-number! serial-number-file) 3))
-        (is (= "0004" (slurp serial-number-file))))
+          (is (= (next-serial-number! serial-number-file) 3))
+          (is (= "0004" (slurp serial-number-file))))
 
-      (fs/delete serial-number-file))))
+        (finally
+          (fs/delete serial-number-file))))))
 
 (defn contains-duplicates? [coll]
   (not= (count coll) (count (distinct coll))))
