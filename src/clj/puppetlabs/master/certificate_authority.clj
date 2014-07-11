@@ -1,4 +1,5 @@
 (ns puppetlabs.master.certificate-authority
+  (:import (org.joda.time DateTime))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -6,6 +7,7 @@
             [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -139,6 +141,48 @@
   [path]
   (fs/create (fs/file path))
   (spit path (format-serial-number 1)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Inventory File
+(defn format-date-time
+  "Formats a date-time into the format expected by the ruby puppet code."
+  [date-time]
+  (time-format/unparse
+    (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
+    (new DateTime date-time)))
+
+(schema/defn ^:always-validate
+  write-cert-to-inventory!
+  "Writes an entry into Puppet's inventory file for a given certificate.
+  The location of this file is defined by Puppet's 'cert_inventory' setting.
+  The inventory is a text file where each line represents a certificate in the
+  following format:
+
+  $SN $NB $NA /$S
+
+  where:
+    * $SN = The serial number of the cert.  The serial number is formatted as a
+            hexadecimal number, with a leading 0x, and zero-padded up to four
+            digits, eg. 0x002f.
+    * $NB = The 'not before' field of the cert, as a date/timestamp in UTC.
+    * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
+    * $S  = The distinguished name of the cert's subject."
+  [cert :- (schema/pred utils/certificate?)
+   inventory-file]
+  (let [serial-number (->> cert
+                           (.getSerialNumber)
+                           (format-serial-number)
+                           (str "0x"))
+        not-before (-> cert
+                       (.getNotBefore)
+                       (format-date-time))
+        not-after (-> cert
+                      (.getNotAfter)
+                      (format-date-time))
+        subject (.getSubjectDN cert)
+        entry (str serial-number " " not-before " " not-after " /" subject "\n")]
+    (spit inventory-file entry :append true)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization

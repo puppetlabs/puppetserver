@@ -8,6 +8,7 @@
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -15,7 +16,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(def cadir "./dev-resources/config/master/conf/ssl/ca")
+(def ssldir "./dev-resources/config/master/conf/ssl")
+(def certs-dir (str ssldir "/certs"))
+(def localhost-cert (str certs-dir "/localhost.pem"))
+
+(def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
 (def cacrl (str cadir "/ca_crl.pem"))
@@ -496,3 +501,40 @@
 
       (is (false? (contains-duplicates? @serial-numbers))
           "Got a duplicate serial number"))))
+
+(defn verify-inventory-entry!
+  [inventory-entry serial-number not-before not-after subject]
+  (let [parts (string/split inventory-entry #" ")]
+    (is (= serial-number (first parts)))
+    (is (= not-before (second parts)))
+    (is (= not-after (nth parts 2)))
+    (is (= subject (string/join " " (subvec parts 3))))))
+
+(deftest test-write-cert-to-inventory
+  (testing "Certs can be written to an inventory file."
+    (let [first-cert (utils/pem->cert cacert)
+          second-cert (utils/pem->cert localhost-cert)
+          inventory-file (fs/temp-file nil)]
+      (write-cert-to-inventory! first-cert inventory-file)
+      (write-cert-to-inventory! second-cert inventory-file)
+
+      (testing "The format of a cert in the inventory matches the existing
+                format used by the ruby puppet code."
+        (let [inventory (slurp inventory-file)
+              entries (string/split inventory #"\n")]
+          (is (count entries) 2)
+
+          (verify-inventory-entry!
+            (first entries)
+            "0x0001"
+            "2014-02-14T18:09:07UTC"
+            "2019-02-14T18:09:07UTC"
+            "/CN=Puppet CA: localhost")
+
+          (verify-inventory-entry!
+            (second entries)
+            "0x0002"
+            "2014-02-14T18:09:07UTC"
+            "2019-02-14T18:09:07UTC"
+            "/CN=localhost"))))))
+
