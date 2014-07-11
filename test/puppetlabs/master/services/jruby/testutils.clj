@@ -10,7 +10,7 @@
 
 (def load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
 
-(def conf-dir "./test-resources/config/master/conf")
+(def conf-dir "./dev-resources/config/master/conf")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions

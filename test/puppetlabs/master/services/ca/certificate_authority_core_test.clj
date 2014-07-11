@@ -12,14 +12,14 @@
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
     (let [response (handle-get-certificate-revocation-list
-                     {:cacrl "./test-resources/config/master/conf/ssl/crl.pem"})]
+                     {:cacrl "./dev-resources/config/master/conf/ssl/crl.pem"})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
       (is (string? (:body response))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [cadir     "./test-resources/config/master/conf/ssl/ca"
+  (let [cadir     "./dev-resources/config/master/conf/ssl/ca"
         signeddir (str cadir "/signed")
         csrdir    (str cadir "/requests")
         serial-number-file (str "/tmp/serial-number" (ks/uuid))
@@ -37,8 +37,8 @@
 
     (testing "when autosign results in true"
       (doseq [value [true
-                     "test-resources/config/master/conf/ruby-autosign-executable"
-                     "test-resources/config/master/conf/autosign-whitelist.conf"]]
+                     "dev-resources/config/master/conf/ruby-autosign-executable"
+                     "dev-resources/config/master/conf/autosign-whitelist.conf"]]
         (let [settings      (assoc settings :autosign value)
               csr-stream    (io/input-stream csr-path)
               expected-path (ca/path-to-cert signeddir "test-agent")]
@@ -58,8 +58,8 @@
 
     (testing "when autosign results in false"
       (doseq [value [false
-                     "test-resources/config/master/conf/ruby-autosign-executable"
-                     "test-resources/config/master/conf/autosign-whitelist.conf"]]
+                     "dev-resources/config/master/conf/ruby-autosign-executable"
+                     "dev-resources/config/master/conf/autosign-whitelist.conf"]]
         (let [settings      (assoc settings :autosign value)
               csr-stream    (io/input-stream csr-path)
               expected-path (ca/path-to-cert-request csrdir "foo-agent")]

@@ -1,5 +1,5 @@
 scratch
-test-resources/config/master/var/
+dev-resources/config/master/var/
 pom.xml
 *jar
 /lib/

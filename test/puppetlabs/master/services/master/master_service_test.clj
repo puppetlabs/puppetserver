@@ -29,7 +29,7 @@
             test-config (jruby-testutils/jruby-puppet-config-with-prod-env)
             config {:jruby-puppet (assoc test-config
                                     :master-conf-dir
-                                    "test-resources/another-conf-var-root/conf")
+                                    "dev-resources/another-conf-var-root/conf")
                     :webserver    {:port 8081}}]
         (tk-testutils/with-app-with-config
           app
