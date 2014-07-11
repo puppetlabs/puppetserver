@@ -177,7 +177,7 @@
   individual dns alt names with all surrounding whitespace removed. If
   hostnames is empty or nil, then nil is returned."
   [hostnames]
-  {:pre  [(or nil? (string? hostnames))]
+  {:pre  [(or (nil? hostnames) (string? hostnames))]
    :post [(every? string? %)]}
   (let [hostnames (str/trim (or hostnames ""))]
     (when (and hostnames (> (count hostnames) 0))
