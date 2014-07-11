@@ -166,7 +166,7 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file]
+   serial-number-file :- String]
   {:post [(files-exist? ssldir-file-paths)]}
   (log/debug (str "Initializing SSL for the Master; file paths:\n"
                   (ks/pprint-to-string ssldir-file-paths)))
