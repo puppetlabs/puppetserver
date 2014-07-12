@@ -23,6 +23,7 @@
     :capub
     :ca-ttl
     :certdir
+    :cert-inventory
     :certname
     :csrdir
     :hostcert

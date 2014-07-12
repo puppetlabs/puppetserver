@@ -30,17 +30,18 @@
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
   Most of these are Puppet configuration settings."
-  {:autosign  (schema/either String Boolean)
-   :cacert    String
-   :cacrl     String
-   :cakey     String
-   :capub     String
-   :ca-name   String
-   :ca-ttl    schema/Int
-   :csrdir    String
-   :load-path [String]
-   :signeddir String
-   :serial    String})
+  {:autosign        (schema/either String Boolean)
+   :cacert          String
+   :cacrl           String
+   :cakey           String
+   :capub           String
+   :ca-name         String
+   :ca-ttl          schema/Int
+   :cert-inventory  String
+   :csrdir          String
+   :load-path       [String]
+   :signeddir       String
+   :serial          String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -211,6 +212,7 @@
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
+    (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key (:cakey ca-settings))
     (utils/cert->pem! cacert (:cacert ca-settings))
@@ -251,7 +253,8 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file :- String]
+   serial-number-file :- String
+   inventory-file :- String]
   {:post [(files-exist? (settings->master-dir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
@@ -270,6 +273,7 @@
                                              (generate-not-after-date)
                                              x500-name public-key
                                              extensions)]
+    (write-cert-to-inventory! hostcert inventory-file)
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
@@ -427,7 +431,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- String
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name cakey signeddir ca-ttl serial]}]
+   {:keys [ca-name cakey signeddir ca-ttl serial cert-inventory]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [csr         (utils/pem->csr (csr-fn))
@@ -438,6 +442,7 @@
                                             (generate-not-after-date)
                                             (utils/cn subject)
                                             (utils/get-public-key csr))]
+    (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
@@ -478,7 +483,8 @@
       (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
             cacert (-> ca-settings :cacert utils/pem->cert)
             caname (:ca-name ca-settings)
-            serial-number-file (:serial ca-settings)]
+            serial-number-file (:serial ca-settings)
+            inventory-file (:cert-inventory ca-settings)]
         (initialize-master!
           master-settings
           master-certname
@@ -486,4 +492,5 @@
           cakey
           cacert
           keylength
-          serial-number-file)))))
+          serial-number-file
+          inventory-file)))))

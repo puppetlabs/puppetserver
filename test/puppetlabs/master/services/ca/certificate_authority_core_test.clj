@@ -23,16 +23,18 @@
         signeddir (str cadir "/signed")
         csrdir (str cadir "/requests")
         serial-number-file (str "/tmp/serial-number" (ks/uuid))
-        settings {:ca-name   "some CA"
-                  :cacert    (str cadir "/ca_crt.pem")
-                  :cacrl     (str cadir "/ca_crl.pem")
-                  :cakey     (str cadir "/ca_key.pem")
-                  :capub     (str cadir "/ca_pub.pem")
-                  :signeddir signeddir
-                  :csrdir    csrdir
-                  :ca-ttl    100
-                  :serial    serial-number-file
-                  :load-path ["ruby/puppet/lib" "ruby/facter/lib"]}
+        inventory-file (str "/tmp/inventory.txt" (ks/uuid))
+        settings {:ca-name        "some CA"
+                  :cacert         (str cadir "/ca_crt.pem")
+                  :cacrl          (str cadir "/ca_crl.pem")
+                  :cakey          (str cadir "/ca_key.pem")
+                  :capub          (str cadir "/ca_pub.pem")
+                  :signeddir      signeddir
+                  :csrdir         csrdir
+                  :ca-ttl         100
+                  :serial         serial-number-file
+                  :cert-inventory inventory-file
+                  :load-path      ["ruby/puppet/lib" "ruby/facter/lib"]}
         csr-path (ca/path-to-cert-request csrdir "test-agent")]
 
     (testing "when autosign results in true"
