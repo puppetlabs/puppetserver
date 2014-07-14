@@ -334,9 +334,8 @@
   config->master-settings :- MasterSettings
   "Given the configuration map from the JVM Puppet config
   service return a map with of all the master settings."
-  [{:keys [jvm-puppet jruby-puppet]}]
-  (-> (select-keys jvm-puppet (keys MasterSettings))
-      (assoc :dns-alt-names (:dns-alt-names jvm-puppet))))
+  [{:keys [jvm-puppet]}]
+  (select-keys jvm-puppet (keys MasterSettings)))
 
 (schema/defn ^:always-validate
   get-certificate :- (schema/maybe String)
