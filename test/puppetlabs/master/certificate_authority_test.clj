@@ -283,7 +283,8 @@
                        :hostcert    (str ssldir "/certs/master.pem")
                        :localcacert (str ssldir "/certs/ca.pem")
                        :hostprivkey (str ssldir "/private_keys/master.pem")
-                       :hostpubkey  (str ssldir "/public_keys/master.pem")}
+                       :hostpubkey  (str ssldir "/public_keys/master.pem")
+                       :dns-alt-names ""}
       ssldir-contents (settings->master-dir-paths master-settings)]
 
   (deftest initialize-ca!-test
@@ -321,7 +322,7 @@
   (deftest initialize-master!-test
     (let [serial-number-file (temp-serial-number-file)]
       (try
-        (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
+        (initialize-master! master-settings "master" "Puppet CA: localhost"
                             (utils/pem->private-key cakey)
                             (utils/pem->cert cacert)
                             512
@@ -395,7 +396,7 @@
   (deftest initialize!-test
     (testing "Generated SSL file"
       (try
-        (initialize! ca-settings ssldir-contents "master" 512)
+        (initialize! ca-settings master-settings "master" 512)
         (doseq [file (concat (vals cadir-contents) (vals ssldir-contents))]
           (testing file
             (is (fs/exists? file))))
@@ -413,7 +414,7 @@
           (doseq [file no-dirs]
             (spit file "unused content"))
 
-          (initialize! ca-settings ssldir-contents "master" 512)
+          (initialize! ca-settings master-settings "master" 512)
 
           (doseq [file no-dirs]
             (is (= "unused content" (slurp file))
@@ -424,10 +425,10 @@
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"
-                (partial initialize! ca-settings ssldir-contents "master" 512)
+                (partial initialize! ca-settings master-settings "master" 512)
                 512]
                ["has a default value"
-                (partial initialize! ca-settings ssldir-contents "master")
+                (partial initialize! ca-settings master-settings "master")
                 utils/default-key-length]]]
         (testing message
           (try
