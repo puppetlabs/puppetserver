@@ -374,11 +374,6 @@
                               512
                               serial-number-file)
 
-          (testing "Generated SSL files"
-            (doseq [file (vals ssldir-contents)]
-              (testing file
-                (is (fs/exists? file)))))
-
           (testing "Cert has alt names extension"
             (let [cert (-> ssldir-contents
                            :hostcert
