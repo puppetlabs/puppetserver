@@ -49,6 +49,7 @@
   (.toDate (time/minus (time/now) (time/days 1))))
 
 (defn generate-not-after-date []
+  ;; TODO: PE-3173
   "Generate a date 5 years in the future. This will be configurable soon."
   (.toDate (time/plus (time/now) (time/years 5))))
 
@@ -191,6 +192,7 @@
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
         alt-names-ext (when (> (count dns-alt-names) 0)
                         ;; TODO: Create a list of OID def'ns in CA lib
+                        ;;       This is happening in PE-4373
                         {:oid      "2.5.29.17"
                          :critical false
                          :value    {:dns-name (conj dns-alt-names cert-name)}})]
