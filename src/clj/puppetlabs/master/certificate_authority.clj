@@ -180,8 +180,8 @@
   {:pre  [(or (nil? hostnames) (string? hostnames))]
    :post [(every? string? %)]}
   (let [hostnames (str/trim (or hostnames ""))]
-    (when (and hostnames (> (count hostnames) 0))
-      (mapv #(str/trim %) (str/split hostnames #",")))))
+    (when-not (empty? hostnames)
+      (map str/trim (str/split hostnames #",")))))
 
 (schema/defn
   create-master-extensions-list
@@ -189,13 +189,13 @@
   [settings  :- MasterSettings
    cert-name :- schema/Str]
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
-        alt-names-ext (when (> (count dns-alt-names) 0)
+        alt-names-ext (when-not (empty? dns-alt-names)
                         ;; TODO: Create a list of OID def'ns in CA lib
                         ;;       This is happening in PE-4373
                         {:oid      "2.5.29.17"
                          :critical false
                          :value    {:dns-name (conj dns-alt-names cert-name)}})]
-    (filter #((complement nil?) %) [alt-names-ext])))
+    (if alt-names-ext [alt-names-ext] [])))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
