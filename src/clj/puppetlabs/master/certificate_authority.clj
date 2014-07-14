@@ -209,29 +209,27 @@
    keylength :- schema/Int
    serial-number-file :- String]
   {:post [(files-exist? (settings->master-dir-paths settings))]}
-  ;; TODO: straighten out the let mess
-  (let [ssldir-file-paths (settings->master-dir-paths settings)]
-    (log/debug (str "Initializing SSL for the Master; file paths:\n"
-                    (ks/pprint-to-string ssldir-file-paths)))
-    (create-parent-directories! (vals ssldir-file-paths))
-    (-> ssldir-file-paths :certdir fs/file ks/mkdirs!)
-    (-> ssldir-file-paths :requestdir fs/file ks/mkdirs!)
-    (let [extensions (create-master-extensions-list settings master-certname)
-          keypair (utils/generate-key-pair keylength)
-          public-key (utils/get-public-key keypair)
-          private-key (utils/get-private-key keypair)
-          x500-name (utils/cn master-certname)
-          ca-x500-name (utils/cn ca-name)
-          hostcert (utils/sign-certificate ca-x500-name ca-private-key
-                                           (next-serial-number! serial-number-file)
-                                           (generate-not-before-date)
-                                           (generate-not-after-date)
-                                           x500-name public-key
-                                           extensions)]
-      (utils/key->pem! public-key (:hostpubkey ssldir-file-paths))
-      (utils/key->pem! private-key (:hostprivkey ssldir-file-paths))
-      (utils/cert->pem! hostcert (:hostcert ssldir-file-paths))
-      (utils/cert->pem! ca-cert (:localcacert ssldir-file-paths)))))
+  (log/debug (str "Initializing SSL for the Master; settings:\n"
+                  (ks/pprint-to-string settings)))
+  (create-parent-directories! (vals (settings->master-dir-paths settings)))
+  (-> settings :certdir fs/file ks/mkdirs!)
+  (-> settings :requestdir fs/file ks/mkdirs!)
+  (let [extensions (create-master-extensions-list settings master-certname)
+        keypair (utils/generate-key-pair keylength)
+        public-key (utils/get-public-key keypair)
+        private-key (utils/get-private-key keypair)
+        x500-name (utils/cn master-certname)
+        ca-x500-name (utils/cn ca-name)
+        hostcert (utils/sign-certificate ca-x500-name ca-private-key
+                                         (next-serial-number! serial-number-file)
+                                         (generate-not-before-date)
+                                         (generate-not-after-date)
+                                         x500-name public-key
+                                         extensions)]
+    (utils/key->pem! public-key (:hostpubkey settings))
+    (utils/key->pem! private-key (:hostprivkey settings))
+    (utils/cert->pem! hostcert (:hostcert settings))
+    (utils/cert->pem! ca-cert (:localcacert settings))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
