@@ -22,8 +22,7 @@
    :localcacert      String
    :hostprivkey      String
    :hostpubkey       String
-   (schema/optional-key :dns-alt-names)
-                     (schema/maybe String)})
+   :dns-alt-names    (schema/maybe String)})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization and request
