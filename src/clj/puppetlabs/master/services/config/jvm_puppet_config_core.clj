@@ -15,7 +15,8 @@
 (def puppet-config-keys
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
-  #{:autosign
+  #{:allow-duplicate-certs
+    :autosign
     :cacert
     :cacrl
     :cakey

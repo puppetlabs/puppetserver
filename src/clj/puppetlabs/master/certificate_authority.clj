@@ -1,5 +1,7 @@
 (ns puppetlabs.master.certificate-authority
-  (:import (org.joda.time DateTime))
+  (:import [org.joda.time DateTime]
+           [org.apache.commons.io IOUtils]
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -30,18 +32,19 @@
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
   Most of these are Puppet configuration settings."
-  {:autosign        (schema/either String Boolean)
-   :cacert          String
-   :cacrl           String
-   :cakey           String
-   :capub           String
-   :ca-name         String
-   :ca-ttl          schema/Int
-   :cert-inventory  String
-   :csrdir          String
-   :load-path       [String]
-   :signeddir       String
-   :serial          String})
+  {:autosign              (schema/either String Boolean)
+   :allow-duplicate-certs Boolean
+   :cacert                String
+   :cacrl                 String
+   :cakey                 String
+   :capub                 String
+   :ca-name               String
+   :ca-ttl                schema/Int
+   :cert-inventory        String
+   :csrdir                String
+   :load-path             [String]
+   :signeddir             String
+   :serial                String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -60,7 +63,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path :allow-duplicate-certs))
 
 (schema/defn settings->master-dir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -94,9 +97,15 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
+(defn input-stream->byte-array
+  [input-stream]
+  (with-open [os (ByteArrayOutputStream.)]
+    (IOUtils/copy input-stream os)
+    (.toByteArray os)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
+
 (def serial-number-file-lock
   "The lock used to prevent concurrent access to the serial number file."
   (new Object))
@@ -189,6 +198,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
+
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -455,6 +465,40 @@
    csrdir :- String]
   (-> (utils/pem->csr (csr-fn))
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
+
+(schema/defn validate-duplicate-cert-policy!
+  "Throw an exception if a allow-duplicate-certs is false
+   and we already have a certificate or CSR for the subject."
+  [subject :- String
+   {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
+  (when-not allow-duplicate-certs
+    ;; TODO PE-5084 In the error message below, we should say "revoked certificate"
+    ;;              instead of "signed certificate" if the cert has been revoked
+    (if (fs/exists? (path-to-cert signeddir subject))
+      (throw
+       (IllegalArgumentException.
+        (str subject " already has a signed certificate; ignoring certificate request"))))
+    (if (fs/exists? (path-to-cert-request csrdir subject))
+      (throw
+       (IllegalArgumentException.
+        (str subject " already has a requested certificate; ignoring certificate request"))))))
+
+(schema/defn ^:always-validate process-csr-submission!
+  "Given a CSR for a subject (typically from the HTTP endpoint),
+   perform policy checks and sign or save the CSR (based on autosign).
+   Throws an exception if allow-duplicate-certs is false and there
+   already exists a certificate or CSR for the subject."
+  [subject :- String
+   certificate-request :- InputStream
+   {:keys [autosign csrdir load-path] :as settings} :- CaSettings]
+  (validate-duplicate-cert-policy! subject settings)
+  (with-open [byte-stream (-> certificate-request
+                              input-stream->byte-array
+                              ByteArrayInputStream.)]
+    (let [csr-fn #(doto byte-stream .reset)]
+      (if (autosign-csr? autosign subject csr-fn load-path)
+        (autosign-certificate-request! subject csr-fn settings)
+        (save-certificate-request! subject csr-fn csrdir)))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- String

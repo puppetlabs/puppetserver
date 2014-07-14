@@ -27,6 +27,24 @@
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
 
+(defn default-settings
+  ([] (default-settings cadir))
+  ([cadir]
+     {:autosign              true
+      :allow-duplicate-certs false
+      :ca-name               "test ca"
+      :ca-ttl                1
+      :cacrl                 (str cadir "/ca_crl.pem")
+      :cacert                (str cadir "/ca_crt.pem")
+      :cakey                 (str cadir "/ca_key.pem")
+      :capub                 (str cadir "/ca_pub.pem")
+      :cert-inventory        (doto (str (ks/temp-file)) println)
+      :csrdir                (str cadir "/requests")
+      :signeddir             (str cadir "/signed")
+      :load-path             []
+      :serial                (doto (str (ks/temp-file))
+                               initialize-serial-number-file!)}))
+
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
 
@@ -41,6 +59,9 @@
 
 (def empty-stream-fn #(ByteArrayInputStream. (.getBytes "")))
 
+(defn csr-stream [subject]
+  (io/input-stream (path-to-cert-request csrdir subject)))
+
 (defn assert-autosign [whitelist subject]
   (testing subject
     (is (true? (autosign-csr? whitelist subject empty-stream-fn [])))))
@@ -48,16 +69,6 @@
 (defn assert-no-autosign [whitelist subject]
   (testing subject
     (is (false? (autosign-csr? whitelist subject empty-stream-fn [])))))
-
-(defn temp-serial-number-file []
-  (let [f (str "./target/serial" (ks/uuid))]
-    (initialize-serial-number-file! f)
-    f))
-
-(defn temp-inventory-file []
-  (let [f (str "./target/inventory" (ks/uuid))]
-    (fs/touch f)
-    f))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -182,7 +193,7 @@
   (testing "executable"
     (testing "ruby script"
       (let [executable "dev-resources/config/master/conf/ruby-autosign-executable"
-            csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))
+            csr-fn     #(csr-stream "test-agent")
             load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
 
         (testing "stdout and stderr are copied to master's log at debug level"
@@ -209,7 +220,7 @@
 
     (testing "bash script"
       (let [executable "dev-resources/config/master/conf/bash-autosign-executable"
-            csr-fn     #(io/input-stream (path-to-cert-request csrdir "test-agent"))]
+            csr-fn     #(csr-stream "test-agent")]
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
@@ -230,7 +241,7 @@
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
-    (let [csr-fn #(io/input-stream (path-to-cert-request csrdir "test-agent"))
+    (let [csr-fn #(csr-stream "test-agent")
           path   (path-to-cert-request csrdir "foo")]
       (try
         (is (false? (fs/exists? path)))
@@ -242,20 +253,10 @@
           (fs/delete path))))))
 
 (deftest autosign-certificate-request!-test
-  (let [subject            "test-agent"
-        csr-fn             #(-> csrdir
-                                (path-to-cert-request subject)
-                                io/input-stream)
-        expected-cert-path (path-to-cert signeddir subject)
-        serial-number-file (temp-serial-number-file)
-        inventory-file     (temp-inventory-file)
-        ca-settings        {:ca-name "test ca"
-                            :cakey cakey
-                            :signeddir signeddir
-                            :serial serial-number-file
-                            :cert-inventory inventory-file}]
+  (let [csr-fn             #(csr-stream "test-agent")
+        expected-cert-path (path-to-cert signeddir "test-agent")]
     (try
-      (autosign-certificate-request! subject csr-fn ca-settings)
+      (autosign-certificate-request! "test-agent" csr-fn (default-settings))
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))
@@ -266,9 +267,7 @@
       ;; TODO PE-3173 verify signed certificate expiration is based on ca-ttl
 
       (finally
-        (fs/delete expected-cert-path)
-        (fs/delete inventory-file)
-        (fs/delete serial-number-file)))))
+        (fs/delete expected-cert-path)))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
@@ -279,18 +278,7 @@
 
 (let [ssldir          (ks/temp-dir)
       cadir           (str ssldir "/ca")
-      ca-settings     {:autosign        true
-                       :ca-name         "test ca"
-                       :ca-ttl          1
-                       :cacrl           (str cadir "/ca_crl.pem")
-                       :cacert          (str cadir "/ca_crt.pem")
-                       :cakey           (str cadir "/ca_key.pem")
-                       :capub           (str cadir "/ca_pub.pem")
-                       :csrdir          (str cadir "/requests")
-                       :signeddir       (str cadir "/signed")
-                       :serial          (str cadir "/serial")
-                       :cert-inventory  (str cadir "/inventory")
-                       :load-path       []}
+      ca-settings     (default-settings cadir)
       cadir-contents  (settings->cadir-paths ca-settings)
       master-settings {:requestdir      (str ssldir "/certificate_requests")
                        :certdir         (str ssldir "/certs")
@@ -298,7 +286,7 @@
                        :localcacert     (str ssldir "/certs/ca.pem")
                        :hostprivkey     (str ssldir "/private_keys/master.pem")
                        :hostpubkey      (str ssldir "/public_keys/master.pem")
-                       :dns-alt-names   ""}
+                       :dns-alt-names   "onefish,twofish"}
       ssldir-contents (settings->master-dir-paths master-settings)]
 
   (deftest initialize-ca!-test
@@ -340,71 +328,51 @@
         (fs/delete-dir cadir))))
 
   (deftest initialize-master!-test
-    (let [serial-number-file (temp-serial-number-file)
-          inventory-file (temp-inventory-file)]
-      (try
-        (initialize-master! master-settings "master" "Puppet CA: localhost"
-                            (utils/pem->private-key cakey)
-                            (utils/pem->cert cacert)
-                            512
-                            serial-number-file
-                            inventory-file)
+    (try
+      (initialize-master! master-settings "master" "Puppet CA: localhost"
+                          (utils/pem->private-key cakey)
+                          (utils/pem->cert cacert)
+                          512
+                          (:serial ca-settings)
+                          (:cert-inventory ca-settings))
 
-        (testing "Generated SSL file"
-          (doseq [file (vals ssldir-contents)]
-            (testing file
-              (is (fs/exists? file)))))
+      (testing "Generated SSL file"
+        (doseq [file (vals ssldir-contents)]
+          (testing file
+            (is (fs/exists? file)))))
 
-        (testing "hostcert"
-          (let [cert (-> ssldir-contents :hostcert utils/pem->certs first)]
-            (is (utils/certificate? cert))
-            (assert-subject cert "CN=master")
-            (assert-issuer cert "CN=Puppet CA: localhost")))
+      (testing "hostcert"
+        (let [cert (-> ssldir-contents :hostcert utils/pem->cert)]
+          (is (utils/certificate? cert))
+          (assert-subject cert "CN=master")
+          (assert-issuer cert "CN=Puppet CA: localhost")
 
-        (testing "localcacert"
-          (let [cacert (-> ssldir-contents :localcacert utils/pem->certs first)]
-            (is (utils/certificate? cacert))
-            (assert-subject cacert "CN=Puppet CA: localhost")
-            (assert-issuer cacert "CN=Puppet CA: localhost")))
+          (testing "has alt names extension"
+            (let [dns-alt-names (-> (utils/get-extension cert "2.5.29.17")
+                                    (get-in [:value :dns-name])
+                                    set)])
+            (is (= #{"master" "onefish" "twofish"} dns-alt-names)
+                "The Subject Alternative Names extension should contain the
+                 master's actual hostname and the hostnames in $dns-alt-names"))))
 
-        (testing "hostprivkey"
-          (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
-            (is (utils/private-key? key))
-            (is (= 512 (utils/keylength key)))))
+      (testing "localcacert"
+        (let [cacert (-> ssldir-contents :localcacert utils/pem->cert)]
+          (is (utils/certificate? cacert))
+          (assert-subject cacert "CN=Puppet CA: localhost")
+          (assert-issuer cacert "CN=Puppet CA: localhost")))
 
-        (testing "hostpubkey"
-          (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
-            (is (utils/public-key? key))
-            (is (= 512 (utils/keylength key)))))
+      (testing "hostprivkey"
+        (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
+          (is (utils/private-key? key))
+          (is (= 512 (utils/keylength key)))))
 
-        (let [alt-names ["onefish", "twofish"]
-              master-name "master"
-              ca-name "Puppet CA: localhost"
-              alt-name-settings (assoc master-settings
-                                  :dns-alt-names
-                                  (string/join "," alt-names))]
-          (initialize-master! alt-name-settings master-name ca-name
-                              (utils/pem->private-key cakey)
-                              (utils/pem->cert cacert)
-                              512
-                              serial-number-file
-                              inventory-file)
+      (testing "hostpubkey"
+        (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
+          (is (utils/public-key? key))
+          (is (= 512 (utils/keylength key)))))
 
-          (testing "Cert has alt names extension"
-            (let [cert (-> ssldir-contents
-                           :hostcert
-                           utils/pem->certs first)
-                  alt-names-ext (utils/get-extension cert "2.5.29.17")
-                  expected (set (conj alt-names master-name))]
-              (is (= expected (set (get-in alt-names-ext [:value :dns-name])))
-                  (str "The Subject Alternative Names extension should contain "
-                       "all the hostnames listed in the dns_alt_names setting in "
-                       "addition to the master name itsef.")))))
-
-        (finally
-          (fs/delete serial-number-file)
-          (fs/delete inventory-file)
-          (fs/delete-dir ssldir)))))
+      (finally
+        (fs/delete-dir ssldir))))
 
   (deftest initialize!-test
     (testing "Generated SSL file"
@@ -468,25 +436,19 @@
   (is (= (format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (testing "when the serial file doesn't exist,
-                it is created, and the serial number is 1"
-    (let [serial-number-file (temp-serial-number-file)]
-      (try
-        (is (fs/exists? serial-number-file))
-        (is (= (next-serial-number! serial-number-file) 1))
+  (let [serial-number-file (:serial (default-settings))]
+    (is (fs/exists? serial-number-file))
+    (is (= (next-serial-number! serial-number-file) 1))
 
-        (testing "The serial number file should contain the next serial number"
-          (is (= "0002" (slurp serial-number-file))))
+    (testing "The serial number file should contain the next serial number"
+      (is (= "0002" (slurp serial-number-file))))
 
-        (testing "subsequent calls produce increasing serial numbers"
-          (is (= (next-serial-number! serial-number-file) 2))
-          (is (= "0003" (slurp serial-number-file)))
+    (testing "subsequent calls produce increasing serial numbers"
+      (is (= (next-serial-number! serial-number-file) 2))
+      (is (= "0003" (slurp serial-number-file)))
 
-          (is (= (next-serial-number! serial-number-file) 3))
-          (is (= "0004" (slurp serial-number-file))))
-
-        (finally
-          (fs/delete serial-number-file))))))
+      (is (= (next-serial-number! serial-number-file) 3))
+      (is (= "0004" (slurp serial-number-file))))))
 
 (defn contains-duplicates? [coll]
   (not= (count coll) (count (distinct coll))))
@@ -533,7 +495,7 @@
   (testing "Certs can be written to an inventory file."
     (let [first-cert (utils/pem->cert cacert)
           second-cert (utils/pem->cert localhost-cert)
-          inventory-file (fs/temp-file nil)]
+          inventory-file (:cert-inventory (default-settings))]
       (write-cert-to-inventory! first-cert inventory-file)
       (write-cert-to-inventory! second-cert inventory-file)
 
@@ -557,3 +519,32 @@
             "2019-02-14T18:09:07UTC"
             "/CN=localhost"))))))
 
+(deftest process-csr-submission!-test
+  (testing "throws an exception if a CSR already exists for that subject"
+    (is (thrown-with-msg?
+         IllegalArgumentException
+         #"test-agent already has a requested certificate; ignoring certificate request"
+         (process-csr-submission! "test-agent" (csr-stream "test-agent") (default-settings))))
+
+    (testing "unless $allow-duplicate-certs is true"
+      (let [settings  (assoc (default-settings) :allow-duplicate-certs true)
+            cert-path (path-to-cert (:signeddir settings) "test-agent")]
+        (is (false? (fs/exists? cert-path)))
+        (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
+        (is (true? (fs/exists? cert-path)))
+        (fs/delete cert-path))))
+
+  (testing "throws an exception if a certificate already exists for that subject"
+    (is (thrown-with-msg?
+         IllegalArgumentException
+         #"localhost already has a signed certificate; ignoring certificate request"
+         (process-csr-submission! "localhost" (csr-stream "test-agent") (default-settings))))
+
+    (testing "unless $allow-duplicate-certs is true"
+      (let [settings (-> (default-settings)
+                         (assoc :allow-duplicate-certs true :autosign false))
+            csr-path (path-to-cert-request (:csrdir settings) "localhost")]
+        (is (false? (fs/exists? csr-path)))
+        (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
+        (is (true? (fs/exists? csr-path)))
+        (fs/delete csr-path)))))
