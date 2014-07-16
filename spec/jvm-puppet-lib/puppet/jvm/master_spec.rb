@@ -14,7 +14,7 @@ describe Puppet::Jvm::Master do
   context "puppet version" do
     it "returns the correct puppet version number" do
       master = Puppet::Jvm::Master.new({}, nil)
-      master.puppet_version.should == '3.6.2'
+      master.puppetVersion.should == '3.6.2'
     end
   end
 

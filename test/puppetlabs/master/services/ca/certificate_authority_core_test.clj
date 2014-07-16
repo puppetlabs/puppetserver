@@ -6,6 +6,7 @@
             [me.raynes.fs :as fs]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
+            [ring.mock.request :as mock]
             [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -40,6 +41,16 @@
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
       (is (string? (:body response))))))
+
+(deftest puppet-version-header-test
+  (testing "Responses contain a X-Puppet-Version header"
+    (let [version-number "42.42.42"
+          ring-app (compojure-app (assoc settings :autosign true) version-number)
+          ; we can just GET the /CRL endpoint, so that's an easy test here.
+          request (mock/request :get
+                                "/production/certificate_revocation_list/mynode")
+          response (ring-app request)]
+      (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-put-certificate-request!-test
   (let [csr-path  (ca/path-to-cert-request csrdir "test-agent")]

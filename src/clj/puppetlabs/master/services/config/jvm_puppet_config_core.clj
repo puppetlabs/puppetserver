@@ -70,6 +70,9 @@
   config keys are present in the map, and there is a non-nil value for each key."
   (zipmap puppet-config-keys (repeat Object)))
 
+(def ConfigWithPuppetVersion
+  (assoc Config :puppet-version String))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public API
 
@@ -85,13 +88,14 @@
                     "read from puppet: " key-conflicts))))))
 
 (schema/defn ^:always-validate
-  get-puppet-config :- Config
+  get-puppet-config :- ConfigWithPuppetVersion
   "Returns all of the configuration values for jvm-puppet from JRubyPuppet."
   [jruby-service pool-descriptor]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet
     jruby-puppet jruby-service pool-descriptor
-    (get-puppet-config* jruby-puppet)))
+    (let [config (get-puppet-config* jruby-puppet)]
+      (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
 
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."
