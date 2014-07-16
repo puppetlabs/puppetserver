@@ -160,7 +160,7 @@ class Puppet::Jvm::Master
     Puppet.run_mode.name.to_s
   end
 
-  def puppet_version()
+  def puppetVersion()
     Puppet.version
   end
 
