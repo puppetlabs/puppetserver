@@ -31,7 +31,8 @@
     :localcacert
     :serial
     :signeddir
-    :requestdir})
+    :requestdir
+    :dns-alt-names})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers

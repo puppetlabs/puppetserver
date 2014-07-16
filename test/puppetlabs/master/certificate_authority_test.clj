@@ -4,6 +4,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
+            [clojure.string :as string]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -277,12 +278,14 @@
                        :serial    (str cadir "/serial")
                        :load-path []}
       cadir-contents  (settings->cadir-paths ca-settings)
-      ssldir-contents {:requestdir  (str ssldir "/certificate_requests")
+      master-settings {:requestdir  (str ssldir "/certificate_requests")
                        :certdir     (str ssldir "/certs")
                        :hostcert    (str ssldir "/certs/master.pem")
                        :localcacert (str ssldir "/certs/ca.pem")
                        :hostprivkey (str ssldir "/private_keys/master.pem")
-                       :hostpubkey  (str ssldir "/public_keys/master.pem")}]
+                       :hostpubkey  (str ssldir "/public_keys/master.pem")
+                       :dns-alt-names ""}
+      ssldir-contents (settings->master-dir-paths master-settings)]
 
   (deftest initialize-ca!-test
     (try
@@ -319,7 +322,7 @@
   (deftest initialize-master!-test
     (let [serial-number-file (temp-serial-number-file)]
       (try
-        (initialize-master! ssldir-contents "master" "Puppet CA: localhost"
+        (initialize-master! master-settings "master" "Puppet CA: localhost"
                             (utils/pem->private-key cakey)
                             (utils/pem->cert cacert)
                             512
@@ -352,6 +355,29 @@
             (is (utils/public-key? key))
             (is (= 512 (utils/keylength key)))))
 
+        (let [alt-names ["onefish", "twofish"]
+              master-name "master"
+              ca-name "Puppet CA: localhost"
+              alt-name-settings (assoc master-settings
+                                  :dns-alt-names
+                                  (string/join "," alt-names))]
+          (initialize-master! alt-name-settings master-name ca-name
+                              (utils/pem->private-key cakey)
+                              (utils/pem->cert cacert)
+                              512
+                              serial-number-file)
+
+          (testing "Cert has alt names extension"
+            (let [cert (-> ssldir-contents
+                           :hostcert
+                           utils/pem->certs first)
+                  alt-names-ext (utils/get-extension cert "2.5.29.17")
+                  expected (set (conj alt-names master-name))]
+              (is (= expected (set (get-in alt-names-ext [:value :dns-name])))
+                  (str "The Subject Alternative Names extension should contain "
+                       "all the hostnames listed in the dns_alt_names setting in "
+                       "addition to the master name itsef.")))))
+
         (finally
           (fs/delete serial-number-file)
           (fs/delete-dir ssldir)))))
@@ -359,7 +385,7 @@
   (deftest initialize!-test
     (testing "Generated SSL file"
       (try
-        (initialize! ca-settings ssldir-contents "master" 512)
+        (initialize! ca-settings master-settings "master" 512)
         (doseq [file (concat (vals cadir-contents) (vals ssldir-contents))]
           (testing file
             (is (fs/exists? file))))
@@ -377,7 +403,7 @@
           (doseq [file no-dirs]
             (spit file "unused content"))
 
-          (initialize! ca-settings ssldir-contents "master" 512)
+          (initialize! ca-settings master-settings "master" 512)
 
           (doseq [file no-dirs]
             (is (= "unused content" (slurp file))
@@ -388,10 +414,10 @@
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"
-                (partial initialize! ca-settings ssldir-contents "master" 512)
+                (partial initialize! ca-settings master-settings "master" 512)
                 512]
                ["has a default value"
-                (partial initialize! ca-settings ssldir-contents "master")
+                (partial initialize! ca-settings master-settings "master")
                 utils/default-key-length]]]
         (testing message
           (try

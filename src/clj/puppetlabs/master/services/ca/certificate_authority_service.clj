@@ -12,7 +12,7 @@
   (init
    [this context]
    (let [path     ""
-         settings (ca/config->settings (get-config))]
+         settings (ca/config->ca-settings (get-config))]
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
       (compojure/context path [] (core/compojure-app settings))
