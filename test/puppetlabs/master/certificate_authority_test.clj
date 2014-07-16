@@ -355,13 +355,6 @@
             (is (utils/public-key? key))
             (is (= 512 (utils/keylength key)))))
 
-        (finally
-          (fs/delete serial-number-file)
-          (fs/delete-dir ssldir)))))
-
-  (deftest initialize-master!-alt-dns-names-test
-    (let [serial-number-file (temp-serial-number-file)]
-      (try
         (let [alt-names ["onefish", "twofish"]
               master-name "master"
               ca-name "Puppet CA: localhost"
@@ -386,6 +379,7 @@
                        "addition to the master name itsef.")))))
 
         (finally
+          (fs/delete serial-number-file)
           (fs/delete-dir ssldir)))))
 
   (deftest initialize!-test
