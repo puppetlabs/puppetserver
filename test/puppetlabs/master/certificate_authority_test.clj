@@ -541,7 +541,7 @@
                 format used by the ruby puppet code."
         (let [inventory (slurp inventory-file)
               entries (string/split inventory #"\n")]
-          (is (count entries) 2)
+          (is (= (count entries) 2))
 
           (verify-inventory-entry!
             (first entries)
