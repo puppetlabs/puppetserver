@@ -187,14 +187,14 @@
   create-master-extensions-list
   "Create a list of extensions to be added to the master certificate."
   [settings  :- MasterSettings
-   cert-name :- schema/Str]
+   subject-name :- schema/Str]
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
         alt-names-ext (when-not (empty? dns-alt-names)
                         ;; TODO: Create a list of OID def'ns in CA lib
                         ;;       This is happening in PE-4373
                         {:oid      "2.5.29.17"
                          :critical false
-                         :value    {:dns-name (conj dns-alt-names cert-name)}})]
+                         :value    {:dns-name (conj dns-alt-names subject-name)}})]
     (if alt-names-ext [alt-names-ext] [])))
 
 (schema/defn initialize-master!
