@@ -214,18 +214,18 @@
   (create-parent-directories! (vals (settings->master-dir-paths settings)))
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
-  (let [extensions (create-master-extensions-list settings master-certname)
-        keypair (utils/generate-key-pair keylength)
-        public-key (utils/get-public-key keypair)
-        private-key (utils/get-private-key keypair)
-        x500-name (utils/cn master-certname)
+  (let [extensions   (create-master-extensions-list settings master-certname)
+        keypair      (utils/generate-key-pair keylength)
+        public-key   (utils/get-public-key keypair)
+        private-key  (utils/get-private-key keypair)
+        x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
-        hostcert (utils/sign-certificate ca-x500-name ca-private-key
-                                         (next-serial-number! serial-number-file)
-                                         (generate-not-before-date)
-                                         (generate-not-after-date)
-                                         x500-name public-key
-                                         extensions)]
+        hostcert     (utils/sign-certificate ca-x500-name ca-private-key
+                                             (next-serial-number! serial-number-file)
+                                             (generate-not-before-date)
+                                             (generate-not-after-date)
+                                             x500-name public-key
+                                             extensions)]
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
