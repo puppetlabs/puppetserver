@@ -174,13 +174,15 @@
                            (.getSerialNumber)
                            (format-serial-number)
                            (str "0x"))
-        not-before (-> cert
-                       (.getNotBefore)
-                       (format-date-time))
-        not-after (-> cert
-                      (.getNotAfter)
-                      (format-date-time))
-        subject (.getSubjectDN cert)
+        not-before    (-> cert
+                          (.getNotBefore)
+                          (format-date-time))
+        not-after     (-> cert
+                          (.getNotAfter)
+                          (format-date-time))
+        subject       (-> cert
+                          (.getSubjectX500Principal)
+                          (.getName))
         entry (str serial-number " " not-before " " not-after " /" subject "\n")]
     (spit inventory-file entry :append true)))
 
