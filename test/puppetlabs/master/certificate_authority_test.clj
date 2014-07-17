@@ -285,14 +285,14 @@
       cadir           (str ssldir "/ca")
       ca-settings     (default-settings cadir)
       cadir-contents  (settings->cadir-paths ca-settings)
-      master-settings {:requestdir      (str ssldir "/certificate_requests")
-                       :certdir         (str ssldir "/certs")
-                       :hostcert        (str ssldir "/certs/master.pem")
-                       :localcacert     (str ssldir "/certs/ca.pem")
-                       :hostprivkey     (str ssldir "/private_keys/master.pem")
-                       :hostpubkey      (str ssldir "/public_keys/master.pem")
-                       :dns-alt-names   "onefish,twofish"}
-      ssldir-contents (settings->master-dir-paths master-settings)]
+      master-settings {:requestdir    (str ssldir "/certificate_requests")
+                       :certdir       (str ssldir "/certs")
+                       :hostcert      (str ssldir "/certs/master.pem")
+                       :localcacert   (str ssldir "/certs/ca.pem")
+                       :hostprivkey   (str ssldir "/private_keys/master.pem")
+                       :hostpubkey    (str ssldir "/public_keys/master.pem")
+                       :dns-alt-names "onefish,twofish"}
+      ssldir-contents (settings->ssldir-paths master-settings)]
 
   (deftest initialize-ca!-test
     (try

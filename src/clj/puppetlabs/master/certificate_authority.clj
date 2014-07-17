@@ -1,6 +1,5 @@
 (ns puppetlabs.master.certificate-authority
-  (:import [org.joda.time DateTime]
-           [org.apache.commons.io IOUtils]
+  (:import [org.apache.commons.io IOUtils]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -10,6 +9,7 @@
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
+            [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
@@ -18,21 +18,22 @@
 ;;; Schemas
 
 (def MasterSettings
-  "Paths to the various directories and files within the SSL directory,
-  excluding the CA directory and its contents. These are only used during
-  initialization of the master. All of these are Puppet configuration settings."
-  {:requestdir       String
-   :certdir          String
-   :hostcert         String
-   :localcacert      String
-   :hostprivkey      String
-   :hostpubkey       String
-   :dns-alt-names    (schema/maybe String)})
+  "Settings from Puppet that are necessary for SSL initialization on the master.
+   Most of these are files and directories within the SSL directory, excluding
+   the CA directory and its contents.
+   All of these are Puppet configuration settings."
+  {:requestdir    String
+   :certdir       String
+   :hostcert      String
+   :localcacert   String
+   :hostprivkey   String
+   :hostpubkey    String
+   :dns-alt-names String})
 
 (def CaSettings
-  "Settings from Puppet that are necessary for CA initialization and request
-  handling during normal Puppet operation.
-  Most of these are Puppet configuration settings."
+  "Settings from Puppet that are necessary for CA initialization
+   and request handling during normal Puppet operation.
+   Most of these are Puppet configuration settings."
   {:autosign              (schema/either String Boolean)
    :allow-duplicate-certs Boolean
    :cacert                String
@@ -51,11 +52,12 @@
 ;;; Internal
 
 (defn generate-not-before-date []
+  ;; TODO PE-3173 Use the CSR issue date to determine this
   "Make the not-before date set to yesterday to avoid clock skewing issues."
   (.toDate (time/minus (time/now) (time/days 1))))
 
 (defn generate-not-after-date []
-  ;; TODO: PE-3173
+  ;; TODO: PE-3173 Use the CSR issue date and $ca-ttl to determine this
   "Generate a date 5 years in the future. This will be configurable soon."
   (.toDate (time/plus (time/now) (time/years 5))))
 
@@ -66,9 +68,10 @@
   [ca-settings :- CaSettings]
   (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path :allow-duplicate-certs))
 
-(schema/defn settings->master-dir-paths
+(schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
-  paths."
+   paths. These paths are necessary during initialization for determining what
+   needs to be created and where."
   [master-settings :- MasterSettings]
   (dissoc master-settings :dns-alt-names))
 
@@ -155,12 +158,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
+
 (defn format-date-time
   "Formats a date-time into the format expected by the ruby puppet code."
   [date-time]
   (time-format/unparse
     (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
-    (new DateTime date-time)))
+    (time-coerce/from-date date-time)))
 
 (schema/defn ^:always-validate
   write-cert-to-inventory!
@@ -268,10 +272,10 @@
    keylength :- schema/Int
    serial-number-file :- String
    inventory-file :- String]
-  {:post [(files-exist? (settings->master-dir-paths settings))]}
+  {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
-  (create-parent-directories! (vals (settings->master-dir-paths settings)))
+  (create-parent-directories! (vals (settings->ssldir-paths settings)))
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [extensions   (create-master-extensions-list settings master-certname)
@@ -528,7 +532,7 @@
     (if (files-exist? (settings->cadir-paths ca-settings))
       (log/info "CA already initialized for SSL")
       (initialize-ca! ca-settings keylength))
-    (if (files-exist? (settings->master-dir-paths master-settings))
+    (if (files-exist? (settings->ssldir-paths master-settings))
       (log/info "Master already initialized for SSL")
       (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
             cacert (-> ca-settings :cacert utils/pem->cert)
