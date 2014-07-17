@@ -2,6 +2,7 @@
   (:import  [java.io InputStream])
   (:require [puppetlabs.master.certificate-authority :as ca]
             [puppetlabs.master.ringutils :as ringutils]
+            [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
             [compojure.core :as compojure]
@@ -28,12 +29,12 @@
   [subject :- String
    certificate-request :- InputStream
    ca-settings :- ca/CaSettings]
-  (try
+  (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch Exception e
-      (log/error (.getMessage e))
-      (-> (rr/response (.getMessage e))
+    (catch [:type :duplicate-cert] {:keys [message]}
+      (log/error message)
+      (-> (rr/response message)
           (rr/status 400)
           (rr/content-type "text/plain")))))
 

@@ -10,6 +10,7 @@
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
+            [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -467,21 +468,24 @@
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
 (schema/defn validate-duplicate-cert-policy!
-  "Throw an exception if a allow-duplicate-certs is false
-   and we already have a certificate or CSR for the subject."
+  "Throw a slingshot exception if allow-duplicate-certs is false
+   and we already have a certificate or CSR for the subject.
+   The exception map will look like:
+   {:type    :duplicate-cert
+    :message <specific error message>}"
   [subject :- String
    {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
   (when-not allow-duplicate-certs
     ;; TODO PE-5084 In the error message below, we should say "revoked certificate"
     ;;              instead of "signed certificate" if the cert has been revoked
     (if (fs/exists? (path-to-cert signeddir subject))
-      (throw
-       (IllegalArgumentException.
-        (str subject " already has a signed certificate; ignoring certificate request"))))
+      (sling/throw+
+       {:type    :duplicate-cert
+        :message (str subject " already has a signed certificate; ignoring certificate request")}))
     (if (fs/exists? (path-to-cert-request csrdir subject))
-      (throw
-       (IllegalArgumentException.
-        (str subject " already has a requested certificate; ignoring certificate request"))))))
+      (sling/throw+
+       {:type    :duplicate-cert
+        :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),

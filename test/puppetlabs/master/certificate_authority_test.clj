@@ -4,7 +4,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
-            [clojure.string :as string]
+            [slingshot.slingshot :as sling]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -17,9 +17,6 @@
 ;;; Utilities
 
 (def ssldir "./dev-resources/config/master/conf/ssl")
-(def certs-dir (str ssldir "/certs"))
-(def localhost-cert (str certs-dir "/localhost.pem"))
-
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
@@ -38,7 +35,7 @@
       :cacert                (str cadir "/ca_crt.pem")
       :cakey                 (str cadir "/ca_key.pem")
       :capub                 (str cadir "/ca_pub.pem")
-      :cert-inventory        (doto (str (ks/temp-file)) println)
+      :cert-inventory        (str (ks/temp-file))
       :csrdir                (str cadir "/requests")
       :signeddir             (str cadir "/signed")
       :load-path             []
@@ -69,6 +66,14 @@
 (defn assert-no-autosign [whitelist subject]
   (testing subject
     (is (false? (autosign-csr? whitelist subject empty-stream-fn [])))))
+
+(defmacro thrown-with-slingshot?
+  [expected-map f]
+  `(sling/try+
+    ~f
+    false
+    (catch map? actual-map#
+      (= actual-map# ~expected-map))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -350,10 +355,10 @@
           (testing "has alt names extension"
             (let [dns-alt-names (-> (utils/get-extension cert "2.5.29.17")
                                     (get-in [:value :dns-name])
-                                    set)])
-            (is (= #{"master" "onefish" "twofish"} dns-alt-names)
-                "The Subject Alternative Names extension should contain the
-                 master's actual hostname and the hostnames in $dns-alt-names"))))
+                                    set)]
+              (is (= #{"master" "onefish" "twofish"} dns-alt-names)
+                  "The Subject Alternative Names extension should contain the
+                  master's actual hostname and the hostnames in $dns-alt-names")))))
 
       (testing "localcacert"
         (let [cacert (-> ssldir-contents :localcacert utils/pem->cert)]
@@ -493,8 +498,8 @@
 
 (deftest test-write-cert-to-inventory
   (testing "Certs can be written to an inventory file."
-    (let [first-cert (utils/pem->cert cacert)
-          second-cert (utils/pem->cert localhost-cert)
+    (let [first-cert     (utils/pem->cert cacert)
+          second-cert    (utils/pem->cert (path-to-cert signeddir "localhost"))
           inventory-file (:cert-inventory (default-settings))]
       (write-cert-to-inventory! first-cert inventory-file)
       (write-cert-to-inventory! second-cert inventory-file)
@@ -502,7 +507,7 @@
       (testing "The format of a cert in the inventory matches the existing
                 format used by the ruby puppet code."
         (let [inventory (slurp inventory-file)
-              entries (string/split inventory #"\n")]
+              entries   (string/split inventory #"\n")]
           (is (= (count entries) 2))
 
           (verify-inventory-entry!
@@ -521,9 +526,9 @@
 
 (deftest process-csr-submission!-test
   (testing "throws an exception if a CSR already exists for that subject"
-    (is (thrown-with-msg?
-         IllegalArgumentException
-         #"test-agent already has a requested certificate; ignoring certificate request"
+    (is (thrown-with-slingshot?
+         {:type    :duplicate-cert
+          :message "test-agent already has a requested certificate; ignoring certificate request"}
          (process-csr-submission! "test-agent" (csr-stream "test-agent") (default-settings))))
 
     (testing "unless $allow-duplicate-certs is true"
@@ -535,9 +540,9 @@
         (fs/delete cert-path))))
 
   (testing "throws an exception if a certificate already exists for that subject"
-    (is (thrown-with-msg?
-         IllegalArgumentException
-         #"localhost already has a signed certificate; ignoring certificate request"
+    (is (thrown-with-slingshot?
+         {:type    :duplicate-cert
+          :message "localhost already has a signed certificate; ignoring certificate request"}
          (process-csr-submission! "localhost" (csr-stream "test-agent") (default-settings))))
 
     (testing "unless $allow-duplicate-certs is true"

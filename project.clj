@@ -23,7 +23,8 @@
                  [me.raynes/fs "1.4.5"]
                  [prismatic/schema "0.2.1"]
                  [commons-lang "2.6"]
-                 [commons-io "2.4"]]
+                 [commons-io "2.4"]
+                 [slingshot "0.10.3"]]
 
   :main puppetlabs.trapperkeeper.main
 
