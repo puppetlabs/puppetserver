@@ -7,14 +7,15 @@
             [me.raynes.fs :as fs]))
 
 (tk/defservice certificate-authority-service
-  [[:JvmPuppetConfigService get-config]
+  [[:JvmPuppetConfigService get-config get-in-config]
    [:WebserverService add-ring-handler]]
   (init
    [this context]
    (let [path     ""
-         settings (ca/config->ca-settings (get-config))]
+         settings (ca/config->ca-settings (get-config))
+         puppet-version (get-in-config [:jvm-puppet :puppet-version])]
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
-      (compojure/context path [] (core/compojure-app settings))
+      (compojure/context path [] (core/compojure-app settings puppet-version))
       path))
    context))

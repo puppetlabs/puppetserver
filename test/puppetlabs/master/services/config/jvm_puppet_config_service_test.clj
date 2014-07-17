@@ -36,8 +36,12 @@
                (jruby-testutils/jruby-puppet-config-with-prod-env 1)))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
-        (is (= (set (keys (:jvm-puppet service-config))) core/puppet-config-keys)
+        (is (= (set (keys (:jvm-puppet service-config)))
+               (conj core/puppet-config-keys :puppet-version))
             (str "config not as expected: " service-config))
+
+        (testing "The config service has puppet's version available."
+          (is (string? (get-in-config service [:jvm-puppet :puppet-version]))))
 
         (testing "`get-in-config` functions"
 
