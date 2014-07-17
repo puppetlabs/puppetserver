@@ -8,6 +8,7 @@
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -15,7 +16,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(def cadir "./dev-resources/config/master/conf/ssl/ca")
+(def ssldir "./dev-resources/config/master/conf/ssl")
+(def certs-dir (str ssldir "/certs"))
+(def localhost-cert (str certs-dir "/localhost.pem"))
+
+(def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
 (def cacrl (str cadir "/ca_crl.pem"))
@@ -47,6 +52,11 @@
 (defn temp-serial-number-file []
   (let [f (str "./target/serial" (ks/uuid))]
     (initialize-serial-number-file! f)
+    f))
+
+(defn temp-inventory-file []
+  (let [f (str "./target/inventory" (ks/uuid))]
+    (fs/touch f)
     f))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -238,10 +248,12 @@
                                 io/input-stream)
         expected-cert-path (path-to-cert signeddir subject)
         serial-number-file (temp-serial-number-file)
+        inventory-file     (temp-inventory-file)
         ca-settings        {:ca-name "test ca"
                             :cakey cakey
                             :signeddir signeddir
-                            :serial serial-number-file}]
+                            :serial serial-number-file
+                            :cert-inventory inventory-file}]
     (try
       (autosign-certificate-request! subject csr-fn ca-settings)
 
@@ -255,6 +267,7 @@
 
       (finally
         (fs/delete expected-cert-path)
+        (fs/delete inventory-file)
         (fs/delete serial-number-file)))))
 
 (deftest get-certificate-revocation-list-test
@@ -266,25 +279,26 @@
 
 (let [ssldir          (ks/temp-dir)
       cadir           (str ssldir "/ca")
-      ca-settings     {:autosign  true
-                       :ca-name   "test ca"
-                       :ca-ttl    1
-                       :cacrl     (str cadir "/ca_crl.pem")
-                       :cacert    (str cadir "/ca_crt.pem")
-                       :cakey     (str cadir "/ca_key.pem")
-                       :capub     (str cadir "/ca_pub.pem")
-                       :csrdir    (str cadir "/requests")
-                       :signeddir (str cadir "/signed")
-                       :serial    (str cadir "/serial")
-                       :load-path []}
+      ca-settings     {:autosign        true
+                       :ca-name         "test ca"
+                       :ca-ttl          1
+                       :cacrl           (str cadir "/ca_crl.pem")
+                       :cacert          (str cadir "/ca_crt.pem")
+                       :cakey           (str cadir "/ca_key.pem")
+                       :capub           (str cadir "/ca_pub.pem")
+                       :csrdir          (str cadir "/requests")
+                       :signeddir       (str cadir "/signed")
+                       :serial          (str cadir "/serial")
+                       :cert-inventory  (str cadir "/inventory")
+                       :load-path       []}
       cadir-contents  (settings->cadir-paths ca-settings)
-      master-settings {:requestdir  (str ssldir "/certificate_requests")
-                       :certdir     (str ssldir "/certs")
-                       :hostcert    (str ssldir "/certs/master.pem")
-                       :localcacert (str ssldir "/certs/ca.pem")
-                       :hostprivkey (str ssldir "/private_keys/master.pem")
-                       :hostpubkey  (str ssldir "/public_keys/master.pem")
-                       :dns-alt-names ""}
+      master-settings {:requestdir      (str ssldir "/certificate_requests")
+                       :certdir         (str ssldir "/certs")
+                       :hostcert        (str ssldir "/certs/master.pem")
+                       :localcacert     (str ssldir "/certs/ca.pem")
+                       :hostprivkey     (str ssldir "/private_keys/master.pem")
+                       :hostpubkey      (str ssldir "/public_keys/master.pem")
+                       :dns-alt-names   ""}
       ssldir-contents (settings->master-dir-paths master-settings)]
 
   (deftest initialize-ca!-test
@@ -316,17 +330,25 @@
           (is (utils/public-key? key))
           (is (= 512 (utils/keylength key)))))
 
+      (testing "Inventory file should have been created."
+        (is (fs/exists? (:cert-inventory ca-settings))))
+
+      (testing "Serial number file file should have been created."
+        (is (fs/exists? (:serial ca-settings))))
+
       (finally
         (fs/delete-dir cadir))))
 
   (deftest initialize-master!-test
-    (let [serial-number-file (temp-serial-number-file)]
+    (let [serial-number-file (temp-serial-number-file)
+          inventory-file (temp-inventory-file)]
       (try
         (initialize-master! master-settings "master" "Puppet CA: localhost"
                             (utils/pem->private-key cakey)
                             (utils/pem->cert cacert)
                             512
-                            serial-number-file)
+                            serial-number-file
+                            inventory-file)
 
         (testing "Generated SSL file"
           (doseq [file (vals ssldir-contents)]
@@ -365,7 +387,8 @@
                               (utils/pem->private-key cakey)
                               (utils/pem->cert cacert)
                               512
-                              serial-number-file)
+                              serial-number-file
+                              inventory-file)
 
           (testing "Cert has alt names extension"
             (let [cert (-> ssldir-contents
@@ -380,6 +403,7 @@
 
         (finally
           (fs/delete serial-number-file)
+          (fs/delete inventory-file)
           (fs/delete-dir ssldir)))))
 
   (deftest initialize!-test
@@ -496,3 +520,40 @@
 
       (is (false? (contains-duplicates? @serial-numbers))
           "Got a duplicate serial number"))))
+
+(defn verify-inventory-entry!
+  [inventory-entry serial-number not-before not-after subject]
+  (let [parts (string/split inventory-entry #" ")]
+    (is (= serial-number (first parts)))
+    (is (= not-before (second parts)))
+    (is (= not-after (nth parts 2)))
+    (is (= subject (string/join " " (subvec parts 3))))))
+
+(deftest test-write-cert-to-inventory
+  (testing "Certs can be written to an inventory file."
+    (let [first-cert (utils/pem->cert cacert)
+          second-cert (utils/pem->cert localhost-cert)
+          inventory-file (fs/temp-file nil)]
+      (write-cert-to-inventory! first-cert inventory-file)
+      (write-cert-to-inventory! second-cert inventory-file)
+
+      (testing "The format of a cert in the inventory matches the existing
+                format used by the ruby puppet code."
+        (let [inventory (slurp inventory-file)
+              entries (string/split inventory #"\n")]
+          (is (= (count entries) 2))
+
+          (verify-inventory-entry!
+            (first entries)
+            "0x0001"
+            "2014-02-14T18:09:07UTC"
+            "2019-02-14T18:09:07UTC"
+            "/CN=Puppet CA: localhost")
+
+          (verify-inventory-entry!
+            (second entries)
+            "0x0002"
+            "2014-02-14T18:09:07UTC"
+            "2019-02-14T18:09:07UTC"
+            "/CN=localhost"))))))
+

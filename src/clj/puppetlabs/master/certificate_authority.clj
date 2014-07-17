@@ -1,4 +1,5 @@
 (ns puppetlabs.master.certificate-authority
+  (:import (org.joda.time DateTime))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -6,6 +7,7 @@
             [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -28,17 +30,18 @@
   "Settings from Puppet that are necessary for CA initialization and request
   handling during normal Puppet operation.
   Most of these are Puppet configuration settings."
-  {:autosign  (schema/either String Boolean)
-   :cacert    String
-   :cacrl     String
-   :cakey     String
-   :capub     String
-   :ca-name   String
-   :ca-ttl    schema/Int
-   :csrdir    String
-   :load-path [String]
-   :signeddir String
-   :serial    String})
+  {:autosign        (schema/either String Boolean)
+   :cacert          String
+   :cacrl           String
+   :cakey           String
+   :capub           String
+   :ca-name         String
+   :ca-ttl          schema/Int
+   :cert-inventory  String
+   :csrdir          String
+   :load-path       [String]
+   :signeddir       String
+   :serial          String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -141,6 +144,50 @@
   (spit path (format-serial-number 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Inventory File
+(defn format-date-time
+  "Formats a date-time into the format expected by the ruby puppet code."
+  [date-time]
+  (time-format/unparse
+    (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
+    (new DateTime date-time)))
+
+(schema/defn ^:always-validate
+  write-cert-to-inventory!
+  "Writes an entry into Puppet's inventory file for a given certificate.
+  The location of this file is defined by Puppet's 'cert_inventory' setting.
+  The inventory is a text file where each line represents a certificate in the
+  following format:
+
+  $SN $NB $NA /$S
+
+  where:
+    * $SN = The serial number of the cert.  The serial number is formatted as a
+            hexadecimal number, with a leading 0x, and zero-padded up to four
+            digits, eg. 0x002f.
+    * $NB = The 'not before' field of the cert, as a date/timestamp in UTC.
+    * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
+    * $S  = The distinguished name of the cert's subject."
+  [cert :- (schema/pred utils/certificate?)
+   inventory-file]
+  (let [serial-number (->> cert
+                           (.getSerialNumber)
+                           (format-serial-number)
+                           (str "0x"))
+        not-before    (-> cert
+                          (.getNotBefore)
+                          (format-date-time))
+        not-after     (-> cert
+                          (.getNotAfter)
+                          (format-date-time))
+        subject       (-> cert
+                          (.getSubjectX500Principal)
+                          (.getName))
+        entry (str serial-number " " not-before " " not-after " /" subject "\n")]
+    (spit inventory-file entry :append true)))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
@@ -167,6 +214,7 @@
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
+    (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key (:cakey ca-settings))
     (utils/cert->pem! cacert (:cacert ca-settings))
@@ -207,7 +255,8 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file :- String]
+   serial-number-file :- String
+   inventory-file :- String]
   {:post [(files-exist? (settings->master-dir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
@@ -226,6 +275,7 @@
                                              (generate-not-after-date)
                                              x500-name public-key
                                              extensions)]
+    (write-cert-to-inventory! hostcert inventory-file)
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
@@ -383,7 +433,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- String
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name cakey signeddir ca-ttl serial]}]
+   {:keys [ca-name cakey signeddir ca-ttl serial cert-inventory]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [csr         (utils/pem->csr (csr-fn))
@@ -394,6 +444,7 @@
                                             (generate-not-after-date)
                                             (utils/cn subject)
                                             (utils/get-public-key csr))]
+    (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
@@ -434,7 +485,8 @@
       (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
             cacert (-> ca-settings :cacert utils/pem->cert)
             caname (:ca-name ca-settings)
-            serial-number-file (:serial ca-settings)]
+            serial-number-file (:serial ca-settings)
+            inventory-file (:cert-inventory ca-settings)]
         (initialize-master!
           master-settings
           master-certname
@@ -442,4 +494,5 @@
           cakey
           cacert
           keylength
-          serial-number-file)))))
+          serial-number-file
+          inventory-file)))))
