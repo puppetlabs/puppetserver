@@ -534,9 +534,11 @@
     (testing "unless $allow-duplicate-certs is true"
       (let [settings  (assoc (default-settings) :allow-duplicate-certs true)
             cert-path (path-to-cert (:signeddir settings) "test-agent")]
-        (is (false? (fs/exists? cert-path)))
-        (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
-        (is (true? (fs/exists? cert-path)))
+        (logutils/with-test-logging
+          (is (false? (fs/exists? cert-path)))
+          (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
+          (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
+          (is (true? (fs/exists? cert-path))))
         (fs/delete cert-path))))
 
   (testing "throws an exception if a certificate already exists for that subject"
@@ -549,7 +551,9 @@
       (let [settings (-> (default-settings)
                          (assoc :allow-duplicate-certs true :autosign false))
             csr-path (path-to-cert-request (:csrdir settings) "localhost")]
-        (is (false? (fs/exists? csr-path)))
-        (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
-        (is (true? (fs/exists? csr-path)))
+        (logutils/with-test-logging
+          (is (false? (fs/exists? csr-path)))
+          (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
+          (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
+          (is (true? (fs/exists? csr-path))))
         (fs/delete csr-path)))))

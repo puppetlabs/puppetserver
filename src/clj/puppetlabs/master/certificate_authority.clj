@@ -479,14 +479,17 @@
     :message <specific error message>}"
   [subject :- String
    {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
-  (when-not allow-duplicate-certs
-    ;; TODO PE-5084 In the error message below, we should say "revoked certificate"
-    ;;              instead of "signed certificate" if the cert has been revoked
-    (if (fs/exists? (path-to-cert signeddir subject))
+  ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
+  ;;              instead of "signed certificate" if the cert has been revoked
+  (if (fs/exists? (path-to-cert signeddir subject))
+    (if allow-duplicate-certs
+      (log/info (str subject " already has a signed certificate; new certificate will overwrite it"))
       (sling/throw+
        {:type    :duplicate-cert
-        :message (str subject " already has a signed certificate; ignoring certificate request")}))
-    (if (fs/exists? (path-to-cert-request csrdir subject))
+        :message (str subject " already has a signed certificate; ignoring certificate request")})))
+  (if (fs/exists? (path-to-cert-request csrdir subject))
+    (if allow-duplicate-certs
+      (log/info (str subject " already has a requested certificate; new certificate will overwrite it"))
       (sling/throw+
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
