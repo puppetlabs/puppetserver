@@ -40,13 +40,17 @@ class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
   def custom_extensions
     exts = ExtensionsUtils.get_extension_list(@java_cert)
 
-    valid_oids = exts.select do |ext|
-      subtree_of?(get_name_from_oid('ppRegCertExt'), ext['oid']) or
-          subtree_of?(get_name_from_oid('ppPrivCertExt'), ext['oid'])
-    end
+    if exts.nil?
+      []
+    else
+      valid_oids = exts.select do |ext|
+        subtree_of?(get_name_from_oid('ppRegCertExt'), ext['oid']) or
+            subtree_of?(get_name_from_oid('ppPrivCertExt'), ext['oid'])
+      end
 
-    valid_oids.collect do |ext|
-      {'oid' => get_oid_name(ext['oid']), 'value' => ext['value']}
+      valid_oids.collect do |ext|
+        {'oid' => get_oid_name(ext['oid']), 'value' => ext['value']}
+      end
     end
   end
 
