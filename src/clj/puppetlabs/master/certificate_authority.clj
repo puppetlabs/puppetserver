@@ -1,5 +1,6 @@
 (ns puppetlabs.master.certificate-authority
-  (:import (org.joda.time DateTime))
+  (:import [org.apache.commons.io IOUtils]
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -8,6 +9,8 @@
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
+            [clj-time.coerce :as time-coerce]
+            [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]))
 
@@ -15,43 +18,46 @@
 ;;; Schemas
 
 (def MasterSettings
-  "Paths to the various directories and files within the SSL directory,
-  excluding the CA directory and its contents. These are only used during
-  initialization of the master. All of these are Puppet configuration settings."
-  {:requestdir       String
-   :certdir          String
-   :hostcert         String
-   :localcacert      String
-   :hostprivkey      String
-   :hostpubkey       String
-   :dns-alt-names    (schema/maybe String)})
+  "Settings from Puppet that are necessary for SSL initialization on the master.
+   Most of these are files and directories within the SSL directory, excluding
+   the CA directory and its contents.
+   All of these are Puppet configuration settings."
+  {:requestdir    String
+   :certdir       String
+   :hostcert      String
+   :localcacert   String
+   :hostprivkey   String
+   :hostpubkey    String
+   :dns-alt-names String})
 
 (def CaSettings
-  "Settings from Puppet that are necessary for CA initialization and request
-  handling during normal Puppet operation.
-  Most of these are Puppet configuration settings."
-  {:autosign        (schema/either String Boolean)
-   :cacert          String
-   :cacrl           String
-   :cakey           String
-   :capub           String
-   :ca-name         String
-   :ca-ttl          schema/Int
-   :cert-inventory  String
-   :csrdir          String
-   :load-path       [String]
-   :signeddir       String
-   :serial          String})
+  "Settings from Puppet that are necessary for CA initialization
+   and request handling during normal Puppet operation.
+   Most of these are Puppet configuration settings."
+  {:autosign              (schema/either String Boolean)
+   :allow-duplicate-certs Boolean
+   :cacert                String
+   :cacrl                 String
+   :cakey                 String
+   :capub                 String
+   :ca-name               String
+   :ca-ttl                schema/Int
+   :cert-inventory        String
+   :csrdir                String
+   :load-path             [String]
+   :signeddir             String
+   :serial                String})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 (defn generate-not-before-date []
+  ;; TODO PE-3173 Use the CSR issue date to determine this
   "Make the not-before date set to yesterday to avoid clock skewing issues."
   (.toDate (time/minus (time/now) (time/days 1))))
 
 (defn generate-not-after-date []
-  ;; TODO: PE-3173
+  ;; TODO: PE-3173 Use the CSR issue date and $ca-ttl to determine this
   "Generate a date 5 years in the future. This will be configurable soon."
   (.toDate (time/plus (time/now) (time/years 5))))
 
@@ -60,11 +66,12 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path :allow-duplicate-certs))
 
-(schema/defn settings->master-dir-paths
+(schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
-  paths."
+   paths. These paths are necessary during initialization for determining what
+   needs to be created and where."
   [master-settings :- MasterSettings]
   (dissoc master-settings :dns-alt-names))
 
@@ -94,10 +101,16 @@
   (doseq [path paths]
     (ks/mkdirs! (fs/parent path))))
 
+(defn input-stream->byte-array
+  [input-stream]
+  (with-open [os (ByteArrayOutputStream.)]
+    (IOUtils/copy input-stream os)
+    (.toByteArray os)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
-(def serial-number-file-lock
+
+(def serial-file-lock
   "The lock used to prevent concurrent access to the serial number file."
   (new Object))
 
@@ -106,13 +119,13 @@
   for the awful, gory details."
   [serial-number]
   {:post [(integer? %)]}
-  (read-string (str "0x" serial-number)))
+  (Integer/parseInt serial-number 16))
 
 (defn get-serial-number!
   "Reads the serial number file from disk and returns the serial number."
-  [serial-number-file]
-  {:pre [(fs/exists? serial-number-file)]}
-  (-> serial-number-file
+  [serial-file]
+  {:pre [(fs/exists? serial-file)]}
+  (-> serial-file
       (slurp)
       (.trim)
       (parse-serial-number)))
@@ -129,15 +142,15 @@
 (defn next-serial-number!
   "Returns the next serial number to be used when signing a certificate request.
   Reads the serial number as a hex value from the given file and replaces the
-  contents of `serial-number-file` with the next serial number for a subsequent
-  call.  Puppet's 'serial' setting defines the location of the serial number file."
-  [serial-number-file]
-  (locking serial-number-file-lock
-    (let [serial-number (get-serial-number! serial-number-file)]
-      (spit serial-number-file (format-serial-number (inc serial-number)))
+  contents of `serial-file` with the next serial number for a subsequent call.
+  Puppet's $serial setting defines the location of the serial number file."
+  [serial-file]
+  (locking serial-file-lock
+    (let [serial-number (get-serial-number! serial-file)]
+      (spit serial-file (format-serial-number (inc serial-number)))
       serial-number)))
 
-(defn initialize-serial-number-file!
+(defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
   [path]
   (fs/create (fs/file path))
@@ -145,12 +158,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
+
 (defn format-date-time
   "Formats a date-time into the format expected by the ruby puppet code."
   [date-time]
   (time-format/unparse
     (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
-    (new DateTime date-time)))
+    (time-coerce/from-date date-time)))
 
 (schema/defn ^:always-validate
   write-cert-to-inventory!
@@ -189,6 +203,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
+
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -200,17 +215,19 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (let [serial-number-file (:serial ca-settings)
-        _ (initialize-serial-number-file! serial-number-file)
-        keypair     (utils/generate-key-pair keylength)
+  (initialize-serial-file! (:serial ca-settings))
+  (let [keypair     (utils/generate-key-pair keylength)
         public-key  (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
-        cacert      (utils/sign-certificate x500-name private-key
-                                            (next-serial-number! serial-number-file)
-                                            (generate-not-before-date)
-                                            (generate-not-after-date)
-                                            x500-name public-key)
+        cacert      (utils/sign-certificate
+                      x500-name
+                      private-key
+                      (next-serial-number! (:serial ca-settings))
+                      (generate-not-before-date)
+                      (generate-not-after-date)
+                      x500-name
+                      public-key)
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
@@ -255,12 +272,12 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file :- String
+   serial-file :- String
    inventory-file :- String]
-  {:post [(files-exist? (settings->master-dir-paths settings))]}
+  {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
-  (create-parent-directories! (vals (settings->master-dir-paths settings)))
+  (create-parent-directories! (vals (settings->ssldir-paths settings)))
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [extensions   (create-master-extensions-list settings master-certname)
@@ -270,7 +287,7 @@
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
         hostcert     (utils/sign-certificate ca-x500-name ca-private-key
-                                             (next-serial-number! serial-number-file)
+                                             (next-serial-number! serial-file)
                                              (generate-not-before-date)
                                              (generate-not-after-date)
                                              x500-name public-key
@@ -456,6 +473,46 @@
   (-> (utils/pem->csr (csr-fn))
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
+(schema/defn validate-duplicate-cert-policy!
+  "Throw a slingshot exception if allow-duplicate-certs is false
+   and we already have a certificate or CSR for the subject.
+   The exception map will look like:
+   {:type    :duplicate-cert
+    :message <specific error message>}"
+  [subject :- String
+   {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
+  ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
+  ;;              instead of "signed certificate" if the cert has been revoked
+  (if (fs/exists? (path-to-cert signeddir subject))
+    (if allow-duplicate-certs
+      (log/info (str subject " already has a signed certificate; new certificate will overwrite it"))
+      (sling/throw+
+       {:type    :duplicate-cert
+        :message (str subject " already has a signed certificate; ignoring certificate request")})))
+  (if (fs/exists? (path-to-cert-request csrdir subject))
+    (if allow-duplicate-certs
+      (log/info (str subject " already has a requested certificate; new certificate will overwrite it"))
+      (sling/throw+
+       {:type    :duplicate-cert
+        :message (str subject " already has a requested certificate; ignoring certificate request")}))))
+
+(schema/defn ^:always-validate process-csr-submission!
+  "Given a CSR for a subject (typically from the HTTP endpoint),
+   perform policy checks and sign or save the CSR (based on autosign).
+   Throws an exception if allow-duplicate-certs is false and there
+   already exists a certificate or CSR for the subject."
+  [subject :- String
+   certificate-request :- InputStream
+   {:keys [autosign csrdir load-path] :as settings} :- CaSettings]
+  (validate-duplicate-cert-policy! subject settings)
+  (with-open [byte-stream (-> certificate-request
+                              input-stream->byte-array
+                              ByteArrayInputStream.)]
+    (let [csr-fn #(doto byte-stream .reset)]
+      (if (autosign-csr? autosign subject csr-fn load-path)
+        (autosign-certificate-request! subject csr-fn settings)
+        (save-certificate-request! subject csr-fn csrdir)))))
+
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- String
   "Given the value of the 'cacrl' setting from Puppet,
@@ -480,12 +537,12 @@
     (if (files-exist? (settings->cadir-paths ca-settings))
       (log/info "CA already initialized for SSL")
       (initialize-ca! ca-settings keylength))
-    (if (files-exist? (settings->master-dir-paths master-settings))
+    (if (files-exist? (settings->ssldir-paths master-settings))
       (log/info "Master already initialized for SSL")
-      (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
-            cacert (-> ca-settings :cacert utils/pem->cert)
-            caname (:ca-name ca-settings)
-            serial-number-file (:serial ca-settings)
+      (let [cakey          (-> ca-settings :cakey utils/pem->private-key)
+            cacert         (-> ca-settings :cacert utils/pem->cert)
+            caname         (:ca-name ca-settings)
+            serial-file    (:serial ca-settings)
             inventory-file (:cert-inventory ca-settings)]
         (initialize-master!
           master-settings
@@ -494,5 +551,5 @@
           cakey
           cacert
           keylength
-          serial-number-file
+          serial-file
           inventory-file)))))
