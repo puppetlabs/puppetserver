@@ -119,7 +119,7 @@
   for the awful, gory details."
   [serial-number]
   {:post [(integer? %)]}
-  (read-string (str "0x" serial-number)))
+  (Integer/parseInt serial-number 16))
 
 (defn get-serial-number!
   "Reads the serial number file from disk and returns the serial number."
