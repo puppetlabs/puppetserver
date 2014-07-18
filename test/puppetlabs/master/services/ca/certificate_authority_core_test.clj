@@ -20,26 +20,24 @@
       (is (string? (:body response))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [cadir          "./dev-resources/config/master/conf/ssl/ca"
-        signeddir      (str cadir "/signed")
-        csrdir         (str cadir "/requests")
-        serial-file    (doto (str (ks/temp-file))
-                         (ca/initialize-serial-number-file!))
-        inventory-file (str (ks/temp-file))
-        settings       {:allow-duplicate-certs true
-                        :autosign              true
-                        :ca-name               "some CA"
-                        :cacert                (str cadir "/ca_crt.pem")
-                        :cacrl                 (str cadir "/ca_crl.pem")
-                        :cakey                 (str cadir "/ca_key.pem")
-                        :capub                 (str cadir "/ca_pub.pem")
-                        :signeddir             signeddir
-                        :csrdir                csrdir
-                        :ca-ttl                100
-                        :serial                serial-file
-                        :cert-inventory        inventory-file
-                        :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]}
-        csr-path       (ca/path-to-cert-request csrdir "test-agent")]
+  (let [cadir     "./dev-resources/config/master/conf/ssl/ca"
+        signeddir (str cadir "/signed")
+        csrdir    (str cadir "/requests")
+        settings  {:allow-duplicate-certs true
+                   :autosign              true
+                   :ca-name               "some CA"
+                   :cacert                (str cadir "/ca_crt.pem")
+                   :cacrl                 (str cadir "/ca_crl.pem")
+                   :cakey                 (str cadir "/ca_key.pem")
+                   :capub                 (str cadir "/ca_pub.pem")
+                   :signeddir             signeddir
+                   :csrdir                csrdir
+                   :ca-ttl                100
+                   :serial                (doto (str (ks/temp-file))
+                                            (ca/initialize-serial-file!))
+                   :cert-inventory        (str (ks/temp-file))
+                   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]}
+        csr-path  (ca/path-to-cert-request csrdir "test-agent")]
 
     (testing "when autosign results in true"
       (doseq [value [true
@@ -52,7 +50,6 @@
           (testing "it signs the CSR, writes the certificate to disk, and
                     returns a 200 response with empty plaintext body"
             (try
-              (ca/initialize-serial-number-file! serial-file)
               (is (false? (fs/exists? expected-path)))
               (logutils/with-test-logging
                 (let [response (handle-put-certificate-request! "test-agent" csr-stream settings)]
@@ -61,7 +58,6 @@
                   (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                   (is (nil? (:body response)))))
               (finally
-                (fs/delete serial-file)
                 (fs/delete expected-path)))))))
 
     (testing "when autosign results in false"
@@ -75,7 +71,6 @@
           (testing "it writes the CSR to disk and returns a
                     200 response with empty plaintext body"
             (try
-              (ca/initialize-serial-number-file! serial-file)
               (is (false? (fs/exists? expected-path)))
               (logutils/with-test-logging
                 (let [response (handle-put-certificate-request! "foo-agent" csr-stream settings)]
@@ -85,7 +80,6 @@
                   (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                   (is (nil? (:body response)))))
               (finally
-                (fs/delete serial-file)
                 (fs/delete expected-path)))))))
 
     (testing "when $allow-duplicate-certs is false and we receive a new CSR,

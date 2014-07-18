@@ -110,7 +110,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
-(def serial-number-file-lock
+(def serial-file-lock
   "The lock used to prevent concurrent access to the serial number file."
   (new Object))
 
@@ -123,9 +123,9 @@
 
 (defn get-serial-number!
   "Reads the serial number file from disk and returns the serial number."
-  [serial-number-file]
-  {:pre [(fs/exists? serial-number-file)]}
-  (-> serial-number-file
+  [serial-file]
+  {:pre [(fs/exists? serial-file)]}
+  (-> serial-file
       (slurp)
       (.trim)
       (parse-serial-number)))
@@ -142,15 +142,15 @@
 (defn next-serial-number!
   "Returns the next serial number to be used when signing a certificate request.
   Reads the serial number as a hex value from the given file and replaces the
-  contents of `serial-number-file` with the next serial number for a subsequent
-  call.  Puppet's 'serial' setting defines the location of the serial number file."
-  [serial-number-file]
-  (locking serial-number-file-lock
-    (let [serial-number (get-serial-number! serial-number-file)]
-      (spit serial-number-file (format-serial-number (inc serial-number)))
+  contents of `serial-file` with the next serial number for a subsequent call.
+  Puppet's $serial setting defines the location of the serial number file."
+  [serial-file]
+  (locking serial-file-lock
+    (let [serial-number (get-serial-number! serial-file)]
+      (spit serial-file (format-serial-number (inc serial-number)))
       serial-number)))
 
-(defn initialize-serial-number-file!
+(defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
   [path]
   (fs/create (fs/file path))
@@ -215,17 +215,19 @@
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
   (-> ca-settings :signeddir fs/file ks/mkdirs!)
-  (let [serial-number-file (:serial ca-settings)
-        _ (initialize-serial-number-file! serial-number-file)
-        keypair     (utils/generate-key-pair keylength)
+  (initialize-serial-file! (:serial ca-settings))
+  (let [keypair     (utils/generate-key-pair keylength)
         public-key  (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
-        cacert      (utils/sign-certificate x500-name private-key
-                                            (next-serial-number! serial-number-file)
-                                            (generate-not-before-date)
-                                            (generate-not-after-date)
-                                            x500-name public-key)
+        cacert      (utils/sign-certificate
+                      x500-name
+                      private-key
+                      (next-serial-number! (:serial ca-settings))
+                      (generate-not-before-date)
+                      (generate-not-after-date)
+                      x500-name
+                      public-key)
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
@@ -270,7 +272,7 @@
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-number-file :- String
+   serial-file :- String
    inventory-file :- String]
   {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
@@ -285,7 +287,7 @@
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
         hostcert     (utils/sign-certificate ca-x500-name ca-private-key
-                                             (next-serial-number! serial-number-file)
+                                             (next-serial-number! serial-file)
                                              (generate-not-before-date)
                                              (generate-not-after-date)
                                              x500-name public-key
@@ -537,10 +539,10 @@
       (initialize-ca! ca-settings keylength))
     (if (files-exist? (settings->ssldir-paths master-settings))
       (log/info "Master already initialized for SSL")
-      (let [cakey  (-> ca-settings :cakey utils/pem->private-key)
-            cacert (-> ca-settings :cacert utils/pem->cert)
-            caname (:ca-name ca-settings)
-            serial-number-file (:serial ca-settings)
+      (let [cakey          (-> ca-settings :cakey utils/pem->private-key)
+            cacert         (-> ca-settings :cacert utils/pem->cert)
+            caname         (:ca-name ca-settings)
+            serial-file    (:serial ca-settings)
             inventory-file (:cert-inventory ca-settings)]
         (initialize-master!
           master-settings
@@ -549,5 +551,5 @@
           cakey
           cacert
           keylength
-          serial-number-file
+          serial-file
           inventory-file)))))

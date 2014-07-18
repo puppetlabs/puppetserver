@@ -40,7 +40,7 @@
       :signeddir             (str cadir "/signed")
       :load-path             []
       :serial                (doto (str (ks/temp-file))
-                               initialize-serial-number-file!)}))
+                                initialize-serial-file!)}))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -441,19 +441,19 @@
   (is (= (format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (let [serial-number-file (:serial (default-settings))]
-    (is (fs/exists? serial-number-file))
-    (is (= (next-serial-number! serial-number-file) 1))
+  (let [serial-file (:serial (default-settings))]
+    (is (fs/exists? serial-file))
+    (is (= (next-serial-number! serial-file) 1))
 
     (testing "The serial number file should contain the next serial number"
-      (is (= "0002" (slurp serial-number-file))))
+      (is (= "0002" (slurp serial-file))))
 
     (testing "subsequent calls produce increasing serial numbers"
-      (is (= (next-serial-number! serial-number-file) 2))
-      (is (= "0003" (slurp serial-number-file)))
+      (is (= (next-serial-number! serial-file) 2))
+      (is (= "0003" (slurp serial-file)))
 
-      (is (= (next-serial-number! serial-number-file) 3))
-      (is (= "0004" (slurp serial-number-file))))))
+      (is (= (next-serial-number! serial-file) 3))
+      (is (= "0004" (slurp serial-file))))))
 
 (defn contains-duplicates? [coll]
   (not= (count coll) (count (distinct coll))))
@@ -465,27 +465,24 @@
 (deftest next-serial-number-threadsafety
   (testing "next-serial-number! is thread-safe and
             never returns a duplicate serial number"
-    (let [serial-number-file (fs/temp-file nil)
-          _ (spit serial-number-file "0001")
-          serial-numbers (atom [])
+    (let [serial-file (doto (ks/temp-file) (spit "0001"))
+          serials     (atom [])
 
           ; spin off a new thread for each CPU
-          promises (for [_ (range (ks/num-cpus))]
-                     (let [p (promise)]
-                       (future
-
-                         ; get a bunch of serial numbers and keep track of them
-                         (dotimes [_ 100]
-                           (let [serial-number (next-serial-number!
-                                                 serial-number-file)]
-                             (swap! serial-numbers conj serial-number)))
-                         (deliver p 'done))
-                       p))]
+          promises    (for [_ (range (ks/num-cpus))]
+                        (let [p (promise)]
+                          (future
+                            ; get a bunch of serial numbers and keep track of them
+                            (dotimes [_ 100]
+                              (let [serial-number (next-serial-number! serial-file)]
+                                (swap! serials conj serial-number)))
+                            (deliver p 'done))
+                          p))]
 
       ; wait on all the threads to finish
       (doseq [p promises] (deref p))
 
-      (is (false? (contains-duplicates? @serial-numbers))
+      (is (false? (contains-duplicates? @serials))
           "Got a duplicate serial number"))))
 
 (defn verify-inventory-entry!
