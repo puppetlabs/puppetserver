@@ -10,6 +10,28 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
+
+(def cadir "./dev-resources/config/master/conf/ssl/ca")
+(def csrdir (str cadir "/requests"))
+(def signeddir (str cadir "/signed"))
+
+
+(def settings
+  {:allow-duplicate-certs true
+   :autosign              true
+   :ca-name               "some CA"
+   :cacert                (str cadir "/ca_crt.pem")
+   :cacrl                 (str cadir "/ca_crl.pem")
+   :cakey                 (str cadir "/ca_key.pem")
+   :capub                 (str cadir "/ca_pub.pem")
+   :signeddir             signeddir
+   :csrdir                csrdir
+   :ca-ttl                100
+   :serial                (doto (str (ks/temp-file))
+                            (ca/initialize-serial-file!))
+   :cert-inventory        (str (ks/temp-file))
+   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]})
+
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
     (let [response (handle-get-certificate-revocation-list
@@ -20,25 +42,7 @@
       (is (string? (:body response))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [cadir     "./dev-resources/config/master/conf/ssl/ca"
-        signeddir (str cadir "/signed")
-        csrdir    (str cadir "/requests")
-        settings  {:allow-duplicate-certs true
-                   :autosign              true
-                   :ca-name               "some CA"
-                   :cacert                (str cadir "/ca_crt.pem")
-                   :cacrl                 (str cadir "/ca_crl.pem")
-                   :cakey                 (str cadir "/ca_key.pem")
-                   :capub                 (str cadir "/ca_pub.pem")
-                   :signeddir             signeddir
-                   :csrdir                csrdir
-                   :ca-ttl                100
-                   :serial                (doto (str (ks/temp-file))
-                                            (ca/initialize-serial-file!))
-                   :cert-inventory        (str (ks/temp-file))
-                   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]}
-        csr-path  (ca/path-to-cert-request csrdir "test-agent")]
-
+  (let [csr-path  (ca/path-to-cert-request csrdir "test-agent")]
     (testing "when autosign results in true"
       (doseq [value [true
                      "dev-resources/config/master/conf/ruby-autosign-executable"
