@@ -66,7 +66,10 @@
   [handler version]
   (fn [request]
     (let [response (handler request)]
-      (rr/header response "X-Puppet-Version" version))))
+      ; Our compojure app returns nil responses sometimes.
+      ; In that case, don't add the header.
+      (when response
+        (rr/header response "X-Puppet-Version" version)))))
 
 (schema/defn ^:always-validate
   compojure-app
