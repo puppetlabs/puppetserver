@@ -11,50 +11,51 @@
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.master.services.jruby.testutils :as jruby-testutils]
     [puppetlabs.master.services.puppet-profiler.puppet-profiler-service :as profiler]
+    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [me.raynes.fs :as fs]))
 
-(def test-dir "target/master-service-test")
-
 (deftest ca-files-test
-  (testing (str "CA settings from puppet are honored and the CA files are "
-                "created when the service starts up.")
-    (try
-      (fs/mkdir test-dir)
-      (let [services [master-service
-                      jvm-puppet-config-service
-                      jruby/jruby-puppet-pooled-service
-                      jetty9-service
-                      request-handler-service
-                      profiler/puppet-profiler-service]
-            test-config (jruby-testutils/jruby-puppet-config-with-prod-env)
-            config {:jruby-puppet (assoc test-config
-                                    :master-conf-dir
-                                    "dev-resources/another-conf-var-root/conf")
-                    :webserver    {:port 8081}}]
-        (tk-testutils/with-app-with-config
-          app
-          services
-          config
+  (testing "CA settings from puppet are honored and the CA
+            files are created when the service starts up"
+    (let [test-dir (doto "target/master-service-test" fs/mkdir)]
+      (try
+        (logutils/with-test-logging
+          (tk-testutils/with-app-with-config
+            app
 
-          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-            (jruby/with-jruby-puppet
-              jruby-puppet
-              jruby-service
-              (jruby-protocol/get-default-pool-descriptor jruby-service)
+            [master-service
+             jvm-puppet-config-service
+             jruby/jruby-puppet-pooled-service
+             jetty9-service
+             request-handler-service
+             profiler/puppet-profiler-service]
 
-              (letfn [(test-path!
-                        [setting expected-path]
-                        (is (= (fs/absolute-path expected-path)
-                               (.getSetting jruby-puppet setting)))
-                        (is (fs/exists? (fs/absolute-path expected-path))))]
+            {:jruby-puppet (assoc (jruby-testutils/jruby-puppet-config-with-prod-env)
+                             :master-conf-dir
+                             "dev-resources/another-conf-var-root/conf")
+             :webserver    {:port 8081}}
 
-                (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
-                (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
-                (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
-                (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
-                (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
-                (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
-                (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
-                (test-path! "hostcert" "target/master-service-test/certs/localhost.pem"))))))
-      (finally
-        (fs/delete-dir test-dir)))))
+            (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+              (jruby/with-jruby-puppet
+                jruby-puppet
+                jruby-service
+                (jruby-protocol/get-default-pool-descriptor jruby-service)
+
+                (letfn [(test-path!
+                          [setting expected-path]
+                          (is (= (fs/absolute-path expected-path)
+                                 (.getSetting jruby-puppet setting)))
+                          (is (fs/exists? (fs/absolute-path expected-path))))]
+
+                  (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
+                  (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
+                  (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
+                  (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
+                  (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
+                  (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
+                  (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
+                  (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
+                  (test-path! "serial" "target/master-service-test/certs/serial")
+                  (test-path! "cert_inventory" "target/master-service-test/inventory.txt"))))))
+        (finally
+          (fs/delete-dir test-dir))))))
