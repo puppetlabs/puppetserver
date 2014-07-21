@@ -24,8 +24,11 @@
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
 
-(defn default-settings
-  ([] (default-settings cadir))
+(defn ca-test-settings
+  "CA configuration settings with defaults appropriate for testing.
+   All file and directory paths will be rooted at the static 'cadir'
+   in dev-resources, unless a different `cadir` is provided."
+  ([] (ca-test-settings cadir))
   ([cadir]
      {:autosign              true
       :allow-duplicate-certs false
@@ -40,7 +43,21 @@
       :signeddir             (str cadir "/signed")
       :load-path             []
       :serial                (doto (str (ks/temp-file))
-                                initialize-serial-file!)}))
+                               initialize-serial-file!)}))
+
+(defn master-test-settings
+  "Master configuration settings with defaults appropriate for testing.
+   All file and directory paths will be rooted at the static 'ssldir'
+   in dev-resources, unless a different `ssldir` is provided."
+  ([] (master-test-settings ssldir "localhost"))
+  ([ssldir hostname]
+     {:certdir       (str ssldir "/certs")
+      :dns-alt-names "onefish,twofish"
+      :hostcert      (str ssldir "/certs/" hostname ".pem")
+      :hostprivkey   (str ssldir "/private_keys/" hostname ".pem")
+      :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
+      :localcacert   (str ssldir "/certs/ca.pem")
+      :requestdir    (str ssldir "/certificate_requests")}))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -261,7 +278,7 @@
   (let [csr-fn             #(csr-stream "test-agent")
         expected-cert-path (path-to-cert signeddir "test-agent")]
     (try
-      (autosign-certificate-request! "test-agent" csr-fn (default-settings))
+      (autosign-certificate-request! "test-agent" csr-fn (ca-test-settings))
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))
@@ -281,109 +298,98 @@
                   utils/pem->crl)]
       (assert-issuer crl "CN=Puppet CA: localhost"))))
 
-(let [ssldir          (ks/temp-dir)
-      cadir           (str ssldir "/ca")
-      ca-settings     (default-settings cadir)
-      cadir-contents  (settings->cadir-paths ca-settings)
-      master-settings {:requestdir    (str ssldir "/certificate_requests")
-                       :certdir       (str ssldir "/certs")
-                       :hostcert      (str ssldir "/certs/master.pem")
-                       :localcacert   (str ssldir "/certs/ca.pem")
-                       :hostprivkey   (str ssldir "/private_keys/master.pem")
-                       :hostpubkey    (str ssldir "/public_keys/master.pem")
-                       :dns-alt-names "onefish,twofish"}
-      ssldir-contents (settings->ssldir-paths master-settings)]
+(deftest initialize-ca!-test
+  (let [settings (ca-test-settings (ks/temp-dir))]
 
-  (deftest initialize-ca!-test
-    (try
-      (initialize-ca! ca-settings 512)
+    (initialize-ca! settings 512)
 
-      (testing "Generated SSL file"
-        (doseq [file (vals cadir-contents)]
-          (testing file
-            (is (fs/exists? file)))))
+    (testing "Generated SSL file"
+      (doseq [file (vals (settings->cadir-paths settings))]
+        (testing file
+          (is (fs/exists? file)))))
 
-      (testing "cacrl"
-        (let [crl (-> cadir-contents :cacrl utils/pem->crl)]
-          (assert-issuer crl "CN=test ca")))
+    (testing "cacrl"
+      (let [crl (-> settings :cacrl utils/pem->crl)]
+        (assert-issuer crl "CN=test ca")))
 
-      (testing "cacert"
-        (let [cert (-> cadir-contents :cacert utils/pem->cert)]
-          (is (utils/certificate? cert))
-          (assert-subject cert "CN=test ca")
-          (assert-issuer cert "CN=test ca")))
+    (testing "cacert"
+      (let [cert (-> settings :cacert utils/pem->cert)]
+        (is (utils/certificate? cert))
+        (assert-subject cert "CN=test ca")
+        (assert-issuer cert "CN=test ca")))
 
-      (testing "cakey"
-        (let [key (-> cadir-contents :cakey utils/pem->private-key)]
-          (is (utils/private-key? key))
-          (is (= 512 (utils/keylength key)))))
+    (testing "cakey"
+      (let [key (-> settings :cakey utils/pem->private-key)]
+        (is (utils/private-key? key))
+        (is (= 512 (utils/keylength key)))))
 
-      (testing "capub"
-        (let [key (-> cadir-contents :capub utils/pem->public-key)]
-          (is (utils/public-key? key))
-          (is (= 512 (utils/keylength key)))))
+    (testing "capub"
+      (let [key (-> settings :capub utils/pem->public-key)]
+        (is (utils/public-key? key))
+        (is (= 512 (utils/keylength key)))))
 
-      (testing "Inventory file should have been created."
-        (is (fs/exists? (:cert-inventory ca-settings))))
+    (testing "Inventory file should have been created."
+      (is (fs/exists? (:cert-inventory settings))))
 
-      (testing "Serial number file file should have been created."
-        (is (fs/exists? (:serial ca-settings))))
+    (testing "Serial number file file should have been created."
+      (is (fs/exists? (:serial settings))))))
 
-      (finally
-        (fs/delete-dir cadir))))
+(deftest initialize-master!-test
+  (let [ssldir          (ks/temp-dir)
+        master-settings (master-test-settings ssldir "master")
+        serial          (doto (str (ks/temp-file)) initialize-serial-file!)
+        inventory       (str (ks/temp-file))]
 
-  (deftest initialize-master!-test
-    (try
-      (initialize-master! master-settings "master" "Puppet CA: localhost"
-                          (utils/pem->private-key cakey)
-                          (utils/pem->cert cacert)
-                          512
-                          (:serial ca-settings)
-                          (:cert-inventory ca-settings))
+    (initialize-master! master-settings "master" "Puppet CA: localhost"
+                        (utils/pem->private-key cakey)
+                        (utils/pem->cert cacert)
+                        512 serial inventory)
 
-      (testing "Generated SSL file"
-        (doseq [file (vals ssldir-contents)]
-          (testing file
-            (is (fs/exists? file)))))
+    (testing "Generated SSL file"
+      (doseq [file (vals (settings->ssldir-paths master-settings))]
+        (testing file
+          (is (fs/exists? file)))))
 
-      (testing "hostcert"
-        (let [cert (-> ssldir-contents :hostcert utils/pem->cert)]
-          (is (utils/certificate? cert))
-          (assert-subject cert "CN=master")
-          (assert-issuer cert "CN=Puppet CA: localhost")
+    (testing "hostcert"
+      (let [hostcert (-> master-settings :hostcert utils/pem->cert)]
+        (is (utils/certificate? hostcert))
+        (assert-subject hostcert "CN=master")
+        (assert-issuer hostcert "CN=Puppet CA: localhost")
 
-          (testing "has alt names extension"
-            (let [dns-alt-names (-> (utils/get-extension cert "2.5.29.17")
-                                    (get-in [:value :dns-name])
-                                    set)]
-              (is (= #{"master" "onefish" "twofish"} dns-alt-names)
-                  "The Subject Alternative Names extension should contain the
+        (testing "has alt names extension"
+          (let [dns-alt-names (-> (utils/get-extension hostcert "2.5.29.17")
+                                  (get-in [:value :dns-name])
+                                  set)]
+            (is (= #{"master" "onefish" "twofish"} dns-alt-names)
+                "The Subject Alternative Names extension should contain the
                   master's actual hostname and the hostnames in $dns-alt-names")))))
 
-      (testing "localcacert"
-        (let [cacert (-> ssldir-contents :localcacert utils/pem->cert)]
-          (is (utils/certificate? cacert))
-          (assert-subject cacert "CN=Puppet CA: localhost")
-          (assert-issuer cacert "CN=Puppet CA: localhost")))
+    (testing "localcacert"
+      (let [cacert (-> master-settings :localcacert utils/pem->cert)]
+        (is (utils/certificate? cacert))
+        (assert-subject cacert "CN=Puppet CA: localhost")
+        (assert-issuer cacert "CN=Puppet CA: localhost")))
 
-      (testing "hostprivkey"
-        (let [key (-> ssldir-contents :hostprivkey utils/pem->private-key)]
-          (is (utils/private-key? key))
-          (is (= 512 (utils/keylength key)))))
+    (testing "hostprivkey"
+      (let [key (-> master-settings :hostprivkey utils/pem->private-key)]
+        (is (utils/private-key? key))
+        (is (= 512 (utils/keylength key)))))
 
-      (testing "hostpubkey"
-        (let [key (-> ssldir-contents :hostpubkey utils/pem->public-key)]
-          (is (utils/public-key? key))
-          (is (= 512 (utils/keylength key)))))
+    (testing "hostpubkey"
+      (let [key (-> master-settings :hostpubkey utils/pem->public-key)]
+        (is (utils/public-key? key))
+        (is (= 512 (utils/keylength key)))))))
 
-      (finally
-        (fs/delete-dir ssldir))))
+(deftest initialize!-test
+  (let [ssldir          (ks/temp-dir)
+        ca-settings     (ca-test-settings (str ssldir "/ca"))
+        master-settings (master-test-settings ssldir "master")]
 
-  (deftest initialize!-test
     (testing "Generated SSL file"
       (try
         (initialize! ca-settings master-settings "master" 512)
-        (doseq [file (concat (vals cadir-contents) (vals ssldir-contents))]
+        (doseq [file (concat (vals (settings->cadir-paths ca-settings))
+                             (vals (settings->ssldir-paths master-settings)))]
           (testing file
             (is (fs/exists? file))))
         (finally
@@ -391,7 +397,8 @@
 
     (testing "Does not create new files if they all exist"
       (let [directories [:csrdir :signeddir :requestdir :certdir]
-            all-files   (merge cadir-contents ssldir-contents)
+            all-files   (merge (settings->cadir-paths ca-settings)
+                               (settings->ssldir-paths master-settings))
             no-dirs     (vals (apply dissoc all-files directories))]
         (try
           ;; Create the directory structure and dummy files by hand
@@ -419,13 +426,13 @@
         (testing message
           (try
             (f)
-            (is (= expected (-> cadir-contents :cakey
+            (is (= expected (-> ca-settings :cakey
                                 utils/pem->private-key utils/keylength)))
-            (is (= expected (-> cadir-contents :capub
+            (is (= expected (-> ca-settings :capub
                                 utils/pem->public-key utils/keylength)))
-            (is (= expected (-> ssldir-contents :hostprivkey
+            (is (= expected (-> master-settings :hostprivkey
                                 utils/pem->private-key utils/keylength)))
-            (is (= expected (-> ssldir-contents :hostpubkey
+            (is (= expected (-> master-settings :hostpubkey
                                 utils/pem->public-key utils/keylength)))
             (finally
               (fs/delete-dir ssldir))))))))
@@ -441,7 +448,7 @@
   (is (= (format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (let [serial-file (:serial (default-settings))]
+  (let [serial-file (:serial (ca-test-settings))]
     (is (fs/exists? serial-file))
     (is (= (next-serial-number! serial-file) 1))
 
@@ -497,7 +504,7 @@
   (testing "Certs can be written to an inventory file."
     (let [first-cert     (utils/pem->cert cacert)
           second-cert    (utils/pem->cert (path-to-cert signeddir "localhost"))
-          inventory-file (:cert-inventory (default-settings))]
+          inventory-file (:cert-inventory (ca-test-settings))]
       (write-cert-to-inventory! first-cert inventory-file)
       (write-cert-to-inventory! second-cert inventory-file)
 
@@ -526,10 +533,10 @@
     (is (thrown-with-slingshot?
          {:type    :duplicate-cert
           :message "test-agent already has a requested certificate; ignoring certificate request"}
-         (process-csr-submission! "test-agent" (csr-stream "test-agent") (default-settings))))
+         (process-csr-submission! "test-agent" (csr-stream "test-agent") (ca-test-settings))))
 
     (testing "unless $allow-duplicate-certs is true"
-      (let [settings  (assoc (default-settings) :allow-duplicate-certs true)
+      (let [settings  (assoc (ca-test-settings) :allow-duplicate-certs true)
             cert-path (path-to-cert (:signeddir settings) "test-agent")]
         (logutils/with-test-logging
           (is (false? (fs/exists? cert-path)))
@@ -542,10 +549,10 @@
     (is (thrown-with-slingshot?
          {:type    :duplicate-cert
           :message "localhost already has a signed certificate; ignoring certificate request"}
-         (process-csr-submission! "localhost" (csr-stream "test-agent") (default-settings))))
+         (process-csr-submission! "localhost" (csr-stream "test-agent") (ca-test-settings))))
 
     (testing "unless $allow-duplicate-certs is true"
-      (let [settings (-> (default-settings)
+      (let [settings (-> (ca-test-settings)
                          (assoc :allow-duplicate-certs true :autosign false))
             csr-path (path-to-cert-request (:csrdir settings) "localhost")]
         (logutils/with-test-logging

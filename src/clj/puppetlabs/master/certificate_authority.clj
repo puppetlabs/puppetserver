@@ -20,15 +20,15 @@
 (def MasterSettings
   "Settings from Puppet that are necessary for SSL initialization on the master.
    Most of these are files and directories within the SSL directory, excluding
-   the CA directory and its contents.
+   the CA directory and its contents; see `CaSettings` for more information.
    All of these are Puppet configuration settings."
-  {:requestdir    String
-   :certdir       String
+  {:certdir       String
+   :dns-alt-names String
    :hostcert      String
-   :localcacert   String
    :hostprivkey   String
    :hostpubkey    String
-   :dns-alt-names String})
+   :localcacert   String
+   :requestdir    String})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
@@ -248,10 +248,9 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn
-  create-master-extensions-list
+(schema/defn create-master-extensions-list
   "Create a list of extensions to be added to the master certificate."
-  [settings  :- MasterSettings
+  [settings :- MasterSettings
    subject-name :- schema/Str]
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
         alt-names-ext (when-not (empty? dns-alt-names)
