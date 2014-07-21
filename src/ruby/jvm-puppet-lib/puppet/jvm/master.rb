@@ -199,14 +199,22 @@ class Puppet::Jvm::Master
     # follow-on work.
 
     Puppet.push_context(Puppet.base_context(Puppet.settings),
-        "Update for application settings JVM puppet master")
-    configured_environment = Puppet.lookup(:environments).get(
-                                 Puppet[:environment])
-    configured_environment = configured_environment.override_from_commandline(
-                                 Puppet.settings)
+                        "Update for application settings (JVM Puppet Master).")
+    # This use of configured environment is correct, this is used to establish
+    # the defaults for an application that does not override, or where an override
+    # has not been made from the command line.
+    #
+    configured_environment_name = Puppet[:environment]
+    configured_environment =
+      Puppet.lookup(:environments).get(configured_environment_name)
+    configured_environment =
+      configured_environment.override_from_commandline(Puppet.settings)
 
+    if configured_environment.nil?
+      fail(Puppet::Environments::EnvironmentNotFound, configured_environment_name)
+    end
     Puppet.push_context({:current_environment => configured_environment},
-        "Update current environment from JVM puppet master's configuration")
+      "Update current environment from JVM puppet master's configuration")
 
     require 'puppet/util/instrumentation'
     Puppet::Util::Instrumentation.init
