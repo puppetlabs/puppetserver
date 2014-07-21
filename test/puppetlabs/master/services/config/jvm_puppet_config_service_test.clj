@@ -22,6 +22,9 @@
   {:jruby-puppet  (jruby-testutils/jruby-puppet-config-with-prod-env)
    :webserver     {:port 8081}})
 
+(defn valid-semver-number? [v]
+  (re-matches #"[0-9]\.[0-9]\.[0-9]" v))
+
 (deftest config-service-functions
   (tk-testutils/with-app-with-config
     app
@@ -41,7 +44,8 @@
             (str "config not as expected: " service-config))
 
         (testing "The config service has puppet's version available."
-          (is (string? (get-in-config service [:jvm-puppet :puppet-version]))))
+          (is (valid-semver-number?
+                (get-in-config service [:jvm-puppet :puppet-version]))))
 
         (testing "`get-in-config` functions"
 
