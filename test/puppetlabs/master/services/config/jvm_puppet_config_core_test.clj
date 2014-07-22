@@ -23,11 +23,6 @@
           (is (not (nil? (get puppet-config k)))))))))
 
 (deftest test-schema-validation
-  (testing "validating a valid data structure"
-    (is (nil?
-          (schema/check Config
-                        (zipmap puppet-config-keys (repeat 'anything))))))
-
   (testing "validating a data structure with a missing key"
     (let [config-with-missing-key (dissoc
                                     (zipmap puppet-config-keys (repeat 'anything))

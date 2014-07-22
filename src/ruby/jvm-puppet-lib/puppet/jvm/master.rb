@@ -160,6 +160,10 @@ class Puppet::Jvm::Master
     Puppet.run_mode.name.to_s
   end
 
+  def puppetVersion()
+    Puppet.version
+  end
+
   # Retrieve node/cert/ip information from the request object.
   def client_information(request)
     result = {}

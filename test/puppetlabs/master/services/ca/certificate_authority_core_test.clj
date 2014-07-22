@@ -6,9 +6,32 @@
             [me.raynes.fs :as fs]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
+            [ring.mock.request :as mock]
             [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
+
+
+(def cadir "./dev-resources/config/master/conf/ssl/ca")
+(def csrdir (str cadir "/requests"))
+(def signeddir (str cadir "/signed"))
+
+
+(def settings
+  {:allow-duplicate-certs true
+   :autosign              true
+   :ca-name               "some CA"
+   :cacert                (str cadir "/ca_crt.pem")
+   :cacrl                 (str cadir "/ca_crl.pem")
+   :cakey                 (str cadir "/ca_key.pem")
+   :capub                 (str cadir "/ca_pub.pem")
+   :signeddir             signeddir
+   :csrdir                csrdir
+   :ca-ttl                100
+   :serial                (doto (str (ks/temp-file))
+                            (ca/initialize-serial-file!))
+   :cert-inventory        (str (ks/temp-file))
+   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]})
 
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
@@ -19,26 +42,18 @@
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
       (is (string? (:body response))))))
 
-(deftest handle-put-certificate-request!-test
-  (let [cadir     "./dev-resources/config/master/conf/ssl/ca"
-        signeddir (str cadir "/signed")
-        csrdir    (str cadir "/requests")
-        settings  {:allow-duplicate-certs true
-                   :autosign              true
-                   :ca-name               "some CA"
-                   :cacert                (str cadir "/ca_crt.pem")
-                   :cacrl                 (str cadir "/ca_crl.pem")
-                   :cakey                 (str cadir "/ca_key.pem")
-                   :capub                 (str cadir "/ca_pub.pem")
-                   :signeddir             signeddir
-                   :csrdir                csrdir
-                   :ca-ttl                100
-                   :serial                (doto (str (ks/temp-file))
-                                            (ca/initialize-serial-file!))
-                   :cert-inventory        (str (ks/temp-file))
-                   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]}
-        csr-path  (ca/path-to-cert-request csrdir "test-agent")]
+(deftest puppet-version-header-test
+  (testing "Responses contain a X-Puppet-Version header"
+    (let [version-number "42.42.42"
+          ring-app (compojure-app settings version-number)
+          ; we can just GET the /CRL endpoint, so that's an easy test here.
+          request (mock/request :get
+                                "/production/certificate_revocation_list/mynode")
+          response (ring-app request)]
+      (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
+(deftest handle-put-certificate-request!-test
+  (let [csr-path  (ca/path-to-cert-request csrdir "test-agent")]
     (testing "when autosign results in true"
       (doseq [value [true
                      "dev-resources/config/master/conf/ruby-autosign-executable"

@@ -61,8 +61,20 @@
       (compojure/GET "/certificate_revocation_list/:ignored-node-name" []
         (handle-get-certificate-revocation-list ca-settings)))))
 
+(defn wrap-with-puppet-version-header
+  "Middleware that adds a X-Puppet-Version header to the response."
+  [handler version]
+  (fn [request]
+    (let [response (handler request)]
+      ; Our compojure app returns nil responses sometimes.
+      ; In that case, don't add the header.
+      (when response
+        (rr/header response "X-Puppet-Version" version)))))
+
 (schema/defn ^:always-validate
   compojure-app
-  [ca-settings :- ca/CaSettings]
+  [ca-settings :- ca/CaSettings
+   puppet-version :- String]
   (-> (routes ca-settings)
+      (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))

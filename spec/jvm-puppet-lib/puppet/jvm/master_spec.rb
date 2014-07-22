@@ -11,6 +11,13 @@ describe Puppet::Jvm::Master do
     end
   end
 
+  context "puppet version" do
+    it "returns the correct puppet version number" do
+      master = Puppet::Jvm::Master.new({}, nil)
+      master.puppetVersion.should == '3.6.2'
+    end
+  end
+
   class MasterTestProfiler
     def start(description, metric_id)
       metric_id
