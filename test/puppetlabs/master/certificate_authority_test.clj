@@ -478,7 +478,7 @@
 (deftest next-serial-number-threadsafety
   (testing "next-serial-number! is thread-safe and
             never returns a duplicate serial number"
-    (let [serial-file (doto (ks/temp-file) (spit "0001"))
+    (let [serial-file (doto (str (ks/temp-file)) (spit "0001"))
           serials     (atom [])
 
           ; spin off a new thread for each CPU
