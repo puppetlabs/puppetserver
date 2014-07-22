@@ -338,12 +338,13 @@
   (let [ssldir          (ks/temp-dir)
         master-settings (master-test-settings ssldir "master")
         serial          (doto (str (ks/temp-file)) initialize-serial-file!)
-        inventory       (str (ks/temp-file))]
+        inventory       (str (ks/temp-file))
+        signeddir       (str (ks/temp-dir))]
 
     (initialize-master! master-settings "master" "Puppet CA: localhost"
                         (utils/pem->private-key cakey)
                         (utils/pem->cert cacert)
-                        512 serial inventory)
+                        512 serial inventory signeddir)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->ssldir-paths master-settings))]
@@ -362,7 +363,12 @@
                                   set)]
             (is (= #{"master" "onefish" "twofish"} dns-alt-names)
                 "The Subject Alternative Names extension should contain the
-                  master's actual hostname and the hostnames in $dns-alt-names")))))
+                  master's actual hostname and the hostnames in $dns-alt-names")))
+
+        (testing "is also saved in the CA's $signeddir"
+          (let [signedpath (path-to-cert signeddir "master")]
+            (is (fs/exists? signedpath))
+            (is (= hostcert (utils/pem->cert signedpath)))))))
 
     (testing "localcacert"
       (let [cacert (-> master-settings :localcacert utils/pem->cert)]

@@ -251,14 +251,14 @@
 (schema/defn create-master-extensions-list
   "Create a list of extensions to be added to the master certificate."
   [settings :- MasterSettings
-   subject-name :- schema/Str]
+   master-certname :- schema/Str]
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
         alt-names-ext (when-not (empty? dns-alt-names)
                         ;; TODO: Create a list of OID def'ns in CA lib
                         ;;       This is happening in PE-4373
                         {:oid      "2.5.29.17"
                          :critical false
-                         :value    {:dns-name (conj dns-alt-names subject-name)}})]
+                         :value    {:dns-name (conj dns-alt-names master-certname)}})]
     (if alt-names-ext [alt-names-ext] [])))
 
 (schema/defn initialize-master!
@@ -272,7 +272,8 @@
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
    serial-file :- String
-   inventory-file :- String]
+   inventory-file :- String
+   signeddir :- String]
   {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
@@ -295,6 +296,7 @@
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
+    (utils/cert->pem! hostcert (path-to-cert signeddir master-certname))
     (utils/cert->pem! ca-cert (:localcacert settings))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -542,7 +544,8 @@
             cacert         (-> ca-settings :cacert utils/pem->cert)
             caname         (:ca-name ca-settings)
             serial-file    (:serial ca-settings)
-            inventory-file (:cert-inventory ca-settings)]
+            inventory-file (:cert-inventory ca-settings)
+            signeddir      (:signeddir ca-settings)]
         (initialize-master!
           master-settings
           master-certname
@@ -551,4 +554,5 @@
           cacert
           keylength
           serial-file
-          inventory-file)))))
+          inventory-file
+          signeddir)))))
