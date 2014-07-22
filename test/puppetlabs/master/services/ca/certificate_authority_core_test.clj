@@ -45,7 +45,7 @@
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"
-          ring-app (compojure-app (assoc settings :autosign true) version-number)
+          ring-app (compojure-app settings version-number)
           ; we can just GET the /CRL endpoint, so that's an easy test here.
           request (mock/request :get
                                 "/production/certificate_revocation_list/mynode")

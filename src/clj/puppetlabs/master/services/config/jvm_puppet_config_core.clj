@@ -66,12 +66,13 @@
 ;; Schemas
 
 (def Config
-  "Represents valid configuration data from Puppet.  Just ensures that all
-  config keys are present in the map, and there is a non-nil value for each key."
-  (zipmap puppet-config-keys (repeat Object)))
-
-(def ConfigWithPuppetVersion
-  (assoc Config :puppet-version String))
+  "Represents valid configuration data from Puppet.  Ensures that
+    * all config keys are present in the map,
+      and there is a non-nil value for each key.
+    * :puppet-version is present."
+  (assoc
+    (zipmap puppet-config-keys (repeat Object))
+    :puppet-version String))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public API
@@ -88,7 +89,7 @@
                     "read from puppet: " key-conflicts))))))
 
 (schema/defn ^:always-validate
-  get-puppet-config :- ConfigWithPuppetVersion
+  get-puppet-config :- Config
   "Returns all of the configuration values for jvm-puppet from JRubyPuppet."
   [jruby-service pool-descriptor]
   {:post [(map? %)]}
