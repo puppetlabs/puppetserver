@@ -427,6 +427,23 @@
           (finally
             (fs/delete-dir ssldir)))))
 
+    (testing "Throws an exception if only some of the files exist"
+      (try
+        ;; Create all the files and directories, then delete some
+        (initialize! ca-settings master-settings "master" 512)
+        (fs/delete-dir (:signeddir ca-settings))
+        (fs/delete (:capub ca-settings))
+
+        ;; Verify exception is thrown with message that contains
+        ;; the paths for both the missing and found files
+        (initialize! ca-settings master-settings "master" 512)
+        (catch IllegalStateException e
+          (doseq [file (vals (settings->cadir-paths ca-settings))]
+            (is (true? (.contains (.getMessage e) file)))))
+
+        (finally
+          (fs/delete-dir ssldir))))
+
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"

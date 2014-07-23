@@ -88,14 +88,6 @@
   [csrdir subject]
   (str csrdir "/" subject ".pem"))
 
-(defn files-exist?
-  "Predicate to test whether all of the files exist on disk.
-  `paths` is expected to be a map with file path values,
-  such as `ssldir-file-paths` or `ca-settings`."
-  [paths]
-  {:pre [(map? paths)]}
-  (every? fs/exists? (vals paths)))
-
 (defn create-parent-directories!
   "Create all intermediate directories present in each of the file paths.
   Throws an exception if the directory cannot be created."
@@ -109,6 +101,20 @@
   (with-open [os (ByteArrayOutputStream.)]
     (IOUtils/copy input-stream os)
     (.toByteArray os)))
+
+(defn partial-state-error
+  "Construct an exception appropriate for the end-user to signify that there
+   are missing SSL files and the CA cannot start until action is taken."
+  [found-files missing-files]
+  (IllegalStateException.
+   (format
+    (str "Cannot initialize CA with partial state; need all files or none.\n"
+         "Found:\n"
+         "%s\n"
+         "Missing:\n"
+         "%s\n")
+    (str/join "\n" found-files)
+    (str/join "\n" missing-files))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
@@ -208,7 +214,6 @@
   SSL files for the CA. Any existing files will be replaced."
   [ca-settings :- CaSettings
    keylength :- schema/Int]
-  {:post [(files-exist? (settings->cadir-paths ca-settings))]}
   (log/debug (str "Initializing SSL for the CA; settings:\n"
                   (ks/pprint-to-string ca-settings)))
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
@@ -271,7 +276,6 @@
    serial-file :- schema/Str
    inventory-file :- schema/Str
    signeddir :- schema/Str]
-  {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
@@ -521,35 +525,35 @@
 (schema/defn ^:always-validate
   initialize!
   "Given the CA settings, master file paths, and the master's certname,
-  prepare all necessary SSL files for the master and CA.
-  If all of the necessary SSL files exist, new ones will not be generated."
+   prepare all necessary SSL files for the master and CA.
+   If all of the necessary SSL files exist, new ones will not be generated.
+   If only some are found (but others are missing), an exception is thrown."
   ([ca-settings master-file-paths master-certname]
     (initialize! ca-settings
                  master-file-paths
                  master-certname
                  utils/default-key-length))
-  ([ca-settings       :- CaSettings
-    master-settings   :- MasterSettings
-    master-certname   :- schema/Str
-    keylength         :- schema/Int]
-    (if (files-exist? (settings->cadir-paths ca-settings))
-      (log/info "CA already initialized for SSL")
-      (initialize-ca! ca-settings keylength))
-    (if (files-exist? (settings->ssldir-paths master-settings))
-      (log/info "Master already initialized for SSL")
-      (let [cakey          (-> ca-settings :cakey utils/pem->private-key)
-            cacert         (-> ca-settings :cacert utils/pem->cert)
-            caname         (:ca-name ca-settings)
-            serial-file    (:serial ca-settings)
-            inventory-file (:cert-inventory ca-settings)
-            signeddir      (:signeddir ca-settings)]
-        (initialize-master!
-          master-settings
-          master-certname
-          caname
-          cakey
-          cacert
-          keylength
-          serial-file
-          inventory-file
-          signeddir)))))
+  ([ca-settings :- CaSettings
+    master-settings :- MasterSettings
+    master-certname :- schema/Str
+    keylength :- schema/Int]
+    (let [required-ca-files     (vals (settings->cadir-paths ca-settings))
+          required-master-files (vals (settings->ssldir-paths master-settings))]
+      (if (every? fs/exists? required-ca-files)
+        (log/info "CA already initialized for SSL")
+        (let [{found   true
+               missing false} (group-by fs/exists? required-ca-files)]
+          (if (= required-ca-files missing)
+            (initialize-ca! ca-settings keylength)
+            (throw (partial-state-error found missing)))))
+      (if (every? fs/exists? required-master-files)
+        (log/info "Master already initialized for SSL")
+        (initialize-master! master-settings
+                            master-certname
+                            (:ca-name ca-settings)
+                            (utils/pem->private-key (:cakey ca-settings))
+                            (utils/pem->cert (:cacert ca-settings))
+                            keylength
+                            (:serial ca-settings)
+                            (:cert-inventory ca-settings)
+                            (:signeddir ca-settings))))))
