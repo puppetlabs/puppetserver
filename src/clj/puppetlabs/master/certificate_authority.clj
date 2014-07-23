@@ -443,23 +443,64 @@
         (whitelist-matches? autosign subject))
       false)))
 
+(defn filter-authorized-extensions
+  "Given a list of X.509 extensions, remove all extensions that are considered
+  unsafe to sign to a certificate. Currently only Puppet extensions are
+  considered safe, all others are removed."
+  [ext-list]
+  {:pre [(utils/extension-list? ext-list)]}
+  (letfn [(puppet-oid? [{oid :oid}]
+                       ;; TODO: Define this somewhere
+            (utils/subtree-of? "1.3.6.1.4.1.34380.1" oid))]
+    (filter puppet-oid? ext-list)))
+
+(defn create-agent-extensions
+  "Given a certificate signing request, generate a list of extensions that
+  should be signed onto the certificate. This includes a base set of standard
+  extensions in addition to any valid extensiosn found on the signing request."
+  [csr capub]
+  {:pre [(utils/certificate-request? csr)
+         (utils/public-key? capub)]
+   :post [(utils/extension-list? %)]}
+  (let [subj-pub-key (utils/get-public-key csr)
+        csr-ext-list (filter-authorized-extensions
+                       (utils/get-extensions csr))
+        base-ext-list [(utils/netscape-comment
+                         "Puppet JVM Internal Certificate")
+                       (utils/authority-key-identifier
+                         capub false)
+                       (utils/basic-constraints
+                         false nil true)
+                       (utils/ext-key-usages
+                         ["1.3.6.1.5.5.7.3.1"
+                          "1.3.6.1.5.5.7.3.2"] true)
+                       (utils/key-usage
+                         #{:key-encipherment
+                           :digital-signature} true)
+                       (utils/subject-key-identifier
+                         subj-pub-key false)]]
+    (concat base-ext-list csr-ext-list)))
+
 (schema/defn ^:always-validate
   autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name cakey signeddir ca-ttl serial cert-inventory]}]
+   {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
   ;;              issue date and pass to utils/sign-certificate-request
   (let [csr         (utils/pem->csr (csr-fn))
+        ca-pub-key  (utils/pem->public-key capub)
         signed-cert (utils/sign-certificate (utils/cn ca-name)
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
                                             (generate-not-before-date)
                                             (generate-not-after-date)
                                             (utils/cn subject)
-                                            (utils/get-public-key csr))]
+                                            (utils/get-public-key csr)
+                                            (create-agent-extensions
+                                              csr ca-pub-key))]
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 

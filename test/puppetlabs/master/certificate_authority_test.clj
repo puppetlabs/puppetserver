@@ -1,5 +1,7 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream))
+  (:import (java.io StringReader ByteArrayInputStream)
+           (java.security MessageDigest)
+           (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -592,3 +594,92 @@
             (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
             (is (true? (fs/exists? csr-path))))
           (fs/delete csr-path))))))
+
+(deftest cert-signing-extension-test
+  (let [issuer-keys  (utils/generate-key-pair 512)
+        issuer-pub   (utils/get-public-key issuer-keys)
+        subject-keys (utils/generate-key-pair 512)
+        subject-pub  (utils/get-public-key subject-keys)
+        subject-dn   (utils/cn "subject")]
+    (testing "basic extensions are created"
+      (let [csr  (utils/generate-certificate-request subject-keys subject-dn)
+            exts (create-agent-extensions csr issuer-pub)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    "Puppet JVM Internal Certificate"}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    issuer-pub}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false
+                                       :path-len-constraint nil}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "trusted fact extensions are copied from CSR"
+      (let [csr-exts [(utils/puppet-node-image-name "imagename" false)
+                      (utils/puppet-node-uid "UUUU-IIIII-DDD" false)]
+            csr      (utils/generate-certificate-request
+                       subject-keys subject-dn csr-exts)
+            exts (create-agent-extensions csr issuer-pub)
+            exts-expected [{:oid "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value "Puppet JVM Internal Certificate"}
+                           {:oid "2.5.29.35"
+                            :critical false
+                            :value issuer-pub}
+                           {:oid "2.5.29.19"
+                            :critical true
+                            :value {:is-ca false
+                                    :path-len-constraint nil}}
+                           {:oid "2.5.29.37"
+                            :critical true
+                            :value ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                           {:oid "2.5.29.15"
+                            :critical true
+                            :value #{:digital-signature :key-encipherment}}
+                           {:oid "2.5.29.14"
+                            :critical false
+                            :value subject-pub}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.3"
+                            :critical false
+                            :value    "imagename"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :critical false
+                            :value    "UUUU-IIIII-DDD"}]]
+        (is (= exts exts-expected))))
+
+    (testing "only puppet extensions are copied from CSR to cert"
+      (let [csr-exts [(utils/subject-dns-alt-names ["onefish"] false)]
+            csr      (utils/generate-certificate-request
+                       subject-keys subject-dn csr-exts)
+            exts (create-agent-extensions csr issuer-pub)
+            exts-expected [{:oid "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value "Puppet JVM Internal Certificate"}
+                           {:oid "2.5.29.35"
+                            :critical false
+                            :value issuer-pub}
+                           {:oid "2.5.29.19"
+                            :critical true
+                            :value {:is-ca false
+                                    :path-len-constraint nil}}
+                           {:oid "2.5.29.37"
+                            :critical true
+                            :value ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                           {:oid "2.5.29.15"
+                            :critical true
+                            :value #{:digital-signature :key-encipherment}}
+                           {:oid "2.5.29.14"
+                            :critical false
+                            :value subject-pub}]]
+        (is (= exts exts-expected))))))
