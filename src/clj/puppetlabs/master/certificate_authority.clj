@@ -69,17 +69,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(schema/defn generate-not-before-date :- Date
-  "Make the not-before date set to yesterday to avoid clock skewing issues."
-  []
-  ;; TODO PE-3173 Use the CSR issue date to determine this
-  (.toDate (time/minus (time/now) (time/days 1))))
-
-(schema/defn generate-not-after-date :- Date
-  "Generate a date 5 years in the future. This will be configurable soon."
-  []
-  ;; TODO: PE-3173 Use the CSR issue date and $ca-ttl to determine this
-  (.toDate (time/plus (time/now) (time/years 5))))
+(schema/defn cert-validity-dates :- [Date]
+  "Calculate the not-before & not-after dates that define a certificate's
+   period of validity. The value of `ca-ttl` is expected to be in seconds,
+   and the dates will be based on the current time. Returns a list of dates
+   in the format: [not-before not-after]"
+  [ca-ttl :- schema/Int]
+  (let [now        (time/now)
+        not-before (time/minus now (time/days 1))
+        not-after  (time/plus now (time/secs ca-ttl))]
+    [(.toDate not-before) (.toDate not-after)]))
 
 (schema/defn settings->cadir-paths
   "Trim down the CA settings to include only paths to files and directories.
@@ -241,12 +240,14 @@
         public-key  (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
+        [not-before
+         not-after] (cert-validity-dates (:ca-ttl ca-settings))
         cacert      (utils/sign-certificate
                       x500-name
                       private-key
                       (next-serial-number! (:serial ca-settings))
-                      (generate-not-before-date)
-                      (generate-not-after-date)
+                      not-before
+                      not-after
                       x500-name
                       public-key)
         cacrl       (-> cacert
@@ -289,7 +290,8 @@
    keylength :- schema/Int
    serial-file :- schema/Str
    inventory-file :- schema/Str
-   signeddir :- schema/Str]
+   signeddir :- schema/Str
+   ca-ttl :- schema/Int]
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
@@ -301,10 +303,12 @@
         private-key  (utils/get-private-key keypair)
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
+        [not-before
+         not-after]  (cert-validity-dates ca-ttl)
         hostcert     (utils/sign-certificate ca-x500-name ca-private-key
                                              (next-serial-number! serial-file)
-                                             (generate-not-before-date)
-                                             (generate-not-after-date)
+                                             not-before
+                                             not-after
                                              x500-name public-key
                                              extensions)]
     (write-cert-to-inventory! hostcert inventory-file)
@@ -505,19 +509,19 @@
   [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
    {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]}]
-  ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
-  ;;              issue date and pass to utils/sign-certificate-request
   (let [csr         (utils/pem->csr (csr-fn))
-        ca-pub-key  (utils/pem->public-key capub)
+        [not-before
+         not-after] (cert-validity-dates ca-ttl)
         signed-cert (utils/sign-certificate (utils/cn ca-name)
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
-                                            (generate-not-before-date)
-                                            (generate-not-after-date)
+                                            not-before
+                                            not-after
                                             (utils/cn subject)
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
-                                              csr ca-pub-key))]
+                                             csr
+                                             (utils/pem->public-key capub)))]
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
@@ -611,4 +615,5 @@
                             keylength
                             (:serial ca-settings)
                             (:cert-inventory ca-settings)
-                            (:signeddir ca-settings))))))
+                            (:signeddir ca-settings)
+                            (:ca-ttl ca-settings))))))

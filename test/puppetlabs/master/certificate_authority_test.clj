@@ -9,6 +9,8 @@
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -283,13 +285,18 @@
           (fs/delete path))))))
 
 (deftest autosign-certificate-request!-test
-  (let [settings           (assoc (ca-test-settings)
+  (let [now                (time/epoch)
+        two-years          (* 60 60 24 365 2)
+        settings           (assoc (ca-test-settings)
                              :serial (tmp-serial-file!)
-                             :cert-inventory (str (ks/temp-file)))
+                             :cert-inventory (str (ks/temp-file))
+                             :ca-ttl two-years)
         csr-fn             #(csr-stream "test-agent")
         expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
     (try
-      (autosign-certificate-request! "test-agent" csr-fn settings)
+      ;; Fix the value of "now" so we can reliably test the dates
+      (time/do-at now
+       (autosign-certificate-request! "test-agent" csr-fn settings))
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))
@@ -297,7 +304,14 @@
           (assert-subject "CN=test-agent")
           (assert-issuer "CN=test ca")))
 
-      ;; TODO PE-3173 verify signed certificate expiration is based on ca-ttl
+      (testing "certificate has not-before/not-after dates based on $ca-ttl"
+        (let [cert       (utils/pem->cert expected-cert-path)
+              not-before (time-coerce/from-date (.getNotBefore cert))
+              not-after  (time-coerce/from-date (.getNotAfter cert))]
+          (testing "not-before is 1 day before now"
+            (is (= (time/minus now (time/days 1)) not-before)))
+          (testing "not-after is 2 years from now"
+            (is (= (time/plus now (time/years 2)) not-after)))))
 
       (finally
         (fs/delete expected-cert-path)))))
@@ -355,7 +369,7 @@
     (initialize-master! master-settings "master" "Puppet CA: localhost"
                         (utils/pem->private-key cakey)
                         (utils/pem->cert cacert)
-                        512 serial inventory signeddir)
+                        512 serial inventory signeddir 1)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->ssldir-paths master-settings))]
