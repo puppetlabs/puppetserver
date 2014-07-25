@@ -16,6 +16,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.3.0"]
+                 [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                  [puppetlabs/http-client "0.1.7"]
                  [org.jruby/jruby-complete "1.7.13"]
                  [clj-time "0.5.1"]
