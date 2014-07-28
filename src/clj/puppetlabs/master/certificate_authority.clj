@@ -1,5 +1,6 @@
 (ns puppetlabs.master.certificate-authority
   (:import [org.apache.commons.io IOUtils]
+           [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -20,45 +21,47 @@
 (def MasterSettings
   "Settings from Puppet that are necessary for SSL initialization on the master.
    Most of these are files and directories within the SSL directory, excluding
-   the CA directory and its contents.
+   the CA directory and its contents; see `CaSettings` for more information.
    All of these are Puppet configuration settings."
-  {:requestdir    String
-   :certdir       String
-   :hostcert      String
-   :localcacert   String
-   :hostprivkey   String
-   :hostpubkey    String
-   :dns-alt-names String})
+  {:certdir       schema/Str
+   :dns-alt-names schema/Str
+   :hostcert      schema/Str
+   :hostprivkey   schema/Str
+   :hostpubkey    schema/Str
+   :localcacert   schema/Str
+   :requestdir    schema/Str})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:autosign              (schema/either String Boolean)
+  {:autosign              (schema/either schema/Str Boolean)
    :allow-duplicate-certs Boolean
-   :cacert                String
-   :cacrl                 String
-   :cakey                 String
-   :capub                 String
-   :ca-name               String
+   :cacert                schema/Str
+   :cacrl                 schema/Str
+   :cakey                 schema/Str
+   :capub                 schema/Str
+   :ca-name               schema/Str
    :ca-ttl                schema/Int
-   :cert-inventory        String
-   :csrdir                String
-   :load-path             [String]
-   :signeddir             String
-   :serial                String})
+   :cert-inventory        schema/Str
+   :csrdir                schema/Str
+   :load-path             [schema/Str]
+   :signeddir             schema/Str
+   :serial                schema/Str})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(defn generate-not-before-date []
-  ;; TODO PE-3173 Use the CSR issue date to determine this
+(schema/defn generate-not-before-date :- Date
   "Make the not-before date set to yesterday to avoid clock skewing issues."
+  []
+  ;; TODO PE-3173 Use the CSR issue date to determine this
   (.toDate (time/minus (time/now) (time/days 1))))
 
-(defn generate-not-after-date []
-  ;; TODO: PE-3173 Use the CSR issue date and $ca-ttl to determine this
+(schema/defn generate-not-after-date :- Date
   "Generate a date 5 years in the future. This will be configurable soon."
+  []
+  ;; TODO: PE-3173 Use the CSR issue date and $ca-ttl to determine this
   (.toDate (time/plus (time/now) (time/years 5))))
 
 (schema/defn settings->cadir-paths
@@ -114,54 +117,51 @@
   "The lock used to prevent concurrent access to the serial number file."
   (new Object))
 
-(defn parse-serial-number
+(schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
   for the awful, gory details."
-  [serial-number]
-  {:post [(integer? %)]}
+  [serial-number :- schema/Str]
   (Integer/parseInt serial-number 16))
 
-(defn get-serial-number!
+(schema/defn get-serial-number! :- schema/Int
   "Reads the serial number file from disk and returns the serial number."
-  [serial-file]
-  {:pre [(fs/exists? serial-file)]}
+  [serial-file :- schema/Str]
   (-> serial-file
       (slurp)
       (.trim)
       (parse-serial-number)))
 
-(defn format-serial-number
+(schema/defn format-serial-number :- schema/Str
   "Converts a serial number to the format it needs to be written in on disk.
   This function has to write serial numbers in the same format that the puppet
   ruby code does, to maintain compatibility with things like 'puppet cert';
   for whatever arcane reason, that format is 0-padding up to 4 digits."
-  [serial-number]
-  {:pre [(integer? serial-number)]}
+  [serial-number :- schema/Int]
   (format "%04X" serial-number))
 
-(defn next-serial-number!
+(schema/defn next-serial-number! :- schema/Int
   "Returns the next serial number to be used when signing a certificate request.
   Reads the serial number as a hex value from the given file and replaces the
   contents of `serial-file` with the next serial number for a subsequent call.
   Puppet's $serial setting defines the location of the serial number file."
-  [serial-file]
+  [serial-file :- schema/Str]
   (locking serial-file-lock
     (let [serial-number (get-serial-number! serial-file)]
       (spit serial-file (format-serial-number (inc serial-number)))
       serial-number)))
 
-(defn initialize-serial-file!
+(schema/defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
-  [path]
+  [path :- schema/Str]
   (fs/create (fs/file path))
   (spit path (format-serial-number 1)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
 
-(defn format-date-time
+(schema/defn format-date-time :- schema/Str
   "Formats a date-time into the format expected by the ruby puppet code."
-  [date-time]
+  [date-time :- Date]
   (time-format/unparse
     (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")
     (time-coerce/from-date date-time)))
@@ -183,7 +183,7 @@
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
   [cert :- (schema/pred utils/certificate?)
-   inventory-file]
+   inventory-file :- schema/Str]
   (let [serial-number (->> cert
                            (.getSerialNumber)
                            (format-serial-number)
@@ -199,7 +199,6 @@
                           (.getName))
         entry (str serial-number " " not-before " " not-after " /" subject "\n")]
     (spit inventory-file entry :append true)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
@@ -237,29 +236,26 @@
     (utils/cert->pem! cacert (:cacert ca-settings))
     (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
-(defn split-hostnames
+(schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
   individual dns alt names with all surrounding whitespace removed. If
   hostnames is empty or nil, then nil is returned."
-  [hostnames]
-  {:pre  [(or (nil? hostnames) (string? hostnames))]
-   :post [(every? string? %)]}
+  [hostnames :- (schema/maybe schema/Str)]
   (let [hostnames (str/trim (or hostnames ""))]
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn
-  create-master-extensions-list
+(schema/defn create-master-extensions-list
   "Create a list of extensions to be added to the master certificate."
-  [settings  :- MasterSettings
-   subject-name :- schema/Str]
+  [settings :- MasterSettings
+   master-certname :- schema/Str]
   (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
         alt-names-ext (when-not (empty? dns-alt-names)
                         ;; TODO: Create a list of OID def'ns in CA lib
                         ;;       This is happening in PE-4373
                         {:oid      "2.5.29.17"
                          :critical false
-                         :value    {:dns-name (conj dns-alt-names subject-name)}})]
+                         :value    {:dns-name (conj dns-alt-names master-certname)}})]
     (if alt-names-ext [alt-names-ext] [])))
 
 (schema/defn initialize-master!
@@ -267,13 +263,14 @@
   generate and write to disk all of the necessary SSL files for the master.
   Any existing files will be replaced."
   [settings :- MasterSettings
-   master-certname :- String
-   ca-name :- String
+   master-certname :- schema/Str
+   ca-name :- schema/Str
    ca-private-key :- (schema/pred utils/private-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
-   serial-file :- String
-   inventory-file :- String]
+   serial-file :- schema/Str
+   inventory-file :- schema/Str
+   signeddir :- schema/Str]
   {:post [(files-exist? (settings->ssldir-paths settings))]}
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
@@ -296,6 +293,7 @@
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
+    (utils/cert->pem! hostcert (path-to-cert signeddir master-certname))
     (utils/cert->pem! ca-cert (:localcacert settings))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -312,8 +310,8 @@
      (glob-matches? *.foo.bar agent.foo.bar) => true
      (glob-matches? *.baz baz) => true
      (glob-matches? *.QUX 0.1.qux) => true"
-  [glob :- String
-   subject :- String]
+  [glob :- schema/Str
+   subject :- schema/Str]
   (letfn [(munge [name]
             (-> name
                 str/lower-case
@@ -330,9 +328,9 @@
    A single line with the character '*' will match all subjects.
    If the line contains invalid characters it will be logged and
    false will be returned."
-  [whitelist :- String
-   subject :- String
-   line :- String]
+  [whitelist :- schema/Str
+   subject :- schema/Str
+   line :- schema/Str]
   (if (or (.contains line "#") (.contains line " "))
     (do (log/errorf "Invalid pattern '%s' found in %s" line whitelist)
         false)
@@ -348,8 +346,8 @@
    an exact certname or a domain-name glob, and will be evaluated verbatim.
    All blank lines and comment lines (starting with '#') will be ignored.
    If an invalid pattern is encountered, it will be logged and ignored."
-  [whitelist :- String
-   subject :- String]
+  [whitelist :- schema/Str
+   subject :- schema/Str]
   (with-open [r (io/reader whitelist)]
     (not (nil? (some (partial line-matches? whitelist subject)
                      (remove #(or (.startsWith % "#")
@@ -357,17 +355,17 @@
                              (line-seq r)))))))
 
 (schema/defn execute-autosign-command!
-  :- {:out (schema/maybe String) :err (schema/maybe String) :exit schema/Int}
+  :- {:out (schema/maybe schema/Str) :err (schema/maybe schema/Str) :exit schema/Int}
   "Execute the autosign script and return a map containing the standard-out,
    standard-err, and exit code. The subject will be passed in as input, and
    the CSR stream will be provided on standard-in. The load-path will be
    prepended to the RUBYLIB found in the environment, and is intended to make
    the Puppet and Facter Ruby libraries available to the autosign script.
    All output (stdout & stderr) will be logged at the debug level."
-  [executable :- String
-   subject :- String
+  [executable :- schema/Str
+   subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   load-path :- [String]]
+   load-path :- [schema/Str]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
@@ -403,13 +401,13 @@
   (select-keys jvm-puppet (keys MasterSettings)))
 
 (schema/defn ^:always-validate
-  get-certificate :- (schema/maybe String)
+  get-certificate :- (schema/maybe schema/Str)
   "Given a subject name and paths to the certificate directory and the CA
   certificate, return the subject's certificate as a string, or nil if not found.
   If the subject is 'ca', then use the `cacert` path instead."
-  [subject :- String
-   cacert :- String
-   signeddir :- String]
+  [subject :- schema/Str
+   cacert :- schema/Str
+   signeddir :- schema/Str]
   (let [cert-path (if (= "ca" subject)
                     cacert
                     (path-to-cert signeddir subject))]
@@ -417,11 +415,11 @@
       (slurp cert-path))))
 
 (schema/defn ^:always-validate
-  get-certificate-request :- (schema/maybe String)
+  get-certificate-request :- (schema/maybe schema/Str)
   "Given a subject name, return their certificate request as a string, or nil if
   not found.  Looks for certificate requests in `csrdir`."
-  [subject :- String
-   csrdir :- String]
+  [subject :- schema/Str
+   csrdir :- schema/Str]
   (let [cert-request-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? cert-request-path)
       (slurp cert-request-path))))
@@ -430,10 +428,10 @@
   autosign-csr? :- schema/Bool
   "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign :- (schema/either String schema/Bool)
-   subject :- String
+  [autosign :- (schema/either schema/Str schema/Bool)
+   subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   load-path :- [String]]
+   load-path :- [schema/Str]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
@@ -448,7 +446,7 @@
   autosign-certificate-request!
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
-  [subject :- String
+  [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
    {:keys [ca-name cakey signeddir ca-ttl serial cert-inventory]}]
   ;; TODO PE-3173 calculate cert expiration based on ca-ttl and the CSR
@@ -467,9 +465,9 @@
 (schema/defn ^:always-validate
   save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
-  [subject :- String
+  [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   csrdir :- String]
+   csrdir :- schema/Str]
   (-> (utils/pem->csr (csr-fn))
       (utils/obj->pem! (path-to-cert-request csrdir subject))))
 
@@ -479,7 +477,7 @@
    The exception map will look like:
    {:type    :duplicate-cert
     :message <specific error message>}"
-  [subject :- String
+  [subject :- schema/Str
    {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
   ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
   ;;              instead of "signed certificate" if the cert has been revoked
@@ -501,7 +499,7 @@
    perform policy checks and sign or save the CSR (based on autosign).
    Throws an exception if allow-duplicate-certs is false and there
    already exists a certificate or CSR for the subject."
-  [subject :- String
+  [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir load-path] :as settings} :- CaSettings]
   (validate-duplicate-cert-policy! subject settings)
@@ -514,10 +512,10 @@
         (save-certificate-request! subject csr-fn csrdir)))))
 
 (schema/defn ^:always-validate
-  get-certificate-revocation-list :- String
+  get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
   return the CRL from the .pem file on disk."
-  [cacrl :- String]
+  [cacrl :- schema/Str]
   (slurp cacrl))
 
 (schema/defn ^:always-validate
@@ -532,7 +530,7 @@
                  utils/default-key-length))
   ([ca-settings       :- CaSettings
     master-settings   :- MasterSettings
-    master-certname   :- String
+    master-certname   :- schema/Str
     keylength         :- schema/Int]
     (if (files-exist? (settings->cadir-paths ca-settings))
       (log/info "CA already initialized for SSL")
@@ -543,7 +541,8 @@
             cacert         (-> ca-settings :cacert utils/pem->cert)
             caname         (:ca-name ca-settings)
             serial-file    (:serial ca-settings)
-            inventory-file (:cert-inventory ca-settings)]
+            inventory-file (:cert-inventory ca-settings)
+            signeddir      (:signeddir ca-settings)]
         (initialize-master!
           master-settings
           master-certname
@@ -552,4 +551,5 @@
           cacert
           keylength
           serial-file
-          inventory-file)))))
+          inventory-file
+          signeddir)))))
