@@ -9,15 +9,16 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/jvm-puppet "0.1.6-SNAPSHOT"
+(defproject puppetlabs/jvm-puppet "0.1.6-jruby13-SNAPSHOT"
   :description "JVM Puppet Master."
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.3.0"]
+                 [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                  [puppetlabs/http-client "0.1.7"]
-                 [org.jruby/jruby-complete "1.7.10"]
+                 [org.jruby/jruby-complete "1.7.13"]
                  [clj-time "0.5.1"]
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
