@@ -615,7 +615,7 @@
                                        :path-len-constraint nil}}
                            {:oid      "2.5.29.37"
                             :critical true
-                            :value    ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                            :value    [ssl-server-cert ssl-client-cert]}
                            {:oid      "2.5.29.15"
                             :critical true
                             :value    #{:digital-signature :key-encipherment}}
@@ -642,7 +642,7 @@
                                     :path-len-constraint nil}}
                            {:oid "2.5.29.37"
                             :critical true
-                            :value ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                            :value [ssl-server-cert ssl-client-cert]}
                            {:oid "2.5.29.15"
                             :critical true
                             :value #{:digital-signature :key-encipherment}}
@@ -675,7 +675,7 @@
                                     :path-len-constraint nil}}
                            {:oid "2.5.29.37"
                             :critical true
-                            :value ["1.3.6.1.5.5.7.3.1" "1.3.6.1.5.5.7.3.2"]}
+                            :value [ssl-server-cert ssl-client-cert]}
                            {:oid "2.5.29.15"
                             :critical true
                             :value #{:digital-signature :key-encipherment}}

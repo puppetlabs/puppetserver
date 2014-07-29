@@ -50,6 +50,19 @@
    :serial                schema/Str})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Definitions
+
+(def ssl-server-cert
+  "OID which indicates that a certificate can be used as an SSL server
+  certificate."
+  "1.3.6.1.5.5.7.3.1")
+
+(def ssl-client-cert
+  "OID which indicates that a certificate can be used as an SSL client
+  certificate."
+  "1.3.6.1.5.5.7.3.2")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 (schema/defn generate-not-before-date :- Date
@@ -472,8 +485,7 @@
                        (utils/basic-constraints
                          false nil true)
                        (utils/ext-key-usages
-                         ["1.3.6.1.5.5.7.3.1"
-                          "1.3.6.1.5.5.7.3.2"] true)
+                         [ssl-server-cert ssl-client-cert] true)
                        (utils/key-usage
                          #{:key-encipherment
                            :digital-signature} true)
