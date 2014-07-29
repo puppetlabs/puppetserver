@@ -1,7 +1,6 @@
 (ns puppetlabs.master.certificate-authority-test
   (:import (java.io StringReader ByteArrayInputStream)
-           (java.security MessageDigest)
-           (org.bouncycastle.asn1.x509 SubjectPublicKeyInfo))
+           (java.security MessageDigest))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -625,7 +624,7 @@
                             :value    subject-pub}]]
         (is (= (set exts) (set exts-expected)))))
 
-    (testing "trusted fact extensions are copied from CSR"
+    (testing "trusted fact extensions are properly unfiltered"
       (let [csr-exts [(utils/puppet-node-image-name "imagename" false)
                       (utils/puppet-node-uid "UUUU-IIIII-DDD" false)]
             csr      (utils/generate-certificate-request
@@ -659,7 +658,8 @@
         (is (= exts exts-expected))))
 
     (testing "only puppet extensions are copied from CSR to cert"
-      (let [csr-exts [(utils/subject-dns-alt-names ["onefish"] false)]
+      (let [csr-exts [(utils/subject-dns-alt-names ["onefish"] false)
+                      (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)]
             csr      (utils/generate-certificate-request
                        subject-keys subject-dn csr-exts)
             exts (create-agent-extensions csr issuer-pub)
@@ -681,5 +681,8 @@
                             :value #{:digital-signature :key-encipherment}}
                            {:oid "2.5.29.14"
                             :critical false
-                            :value subject-pub}]]
+                            :value subject-pub}
+                           {:critical false
+                            :oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :value    "AAAA-BBBB-CCCC-DDDD"}]]
         (is (= exts exts-expected))))))
