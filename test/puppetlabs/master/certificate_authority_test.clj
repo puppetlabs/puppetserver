@@ -1,6 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream)
-           (java.security MessageDigest))
+  (:import (java.io StringReader ByteArrayInputStream))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
