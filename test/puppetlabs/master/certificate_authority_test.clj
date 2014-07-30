@@ -38,12 +38,11 @@
       :cacert                (str cadir "/ca_crt.pem")
       :cakey                 (str cadir "/ca_key.pem")
       :capub                 (str cadir "/ca_pub.pem")
-      :cert-inventory        (str (ks/temp-file))
+      :cert-inventory        (str cadir "/inventory.txt")
       :csrdir                (str cadir "/requests")
       :signeddir             (str cadir "/signed")
-      :load-path             []
-      :serial                (doto (str (ks/temp-file))
-                               initialize-serial-file!)}))
+      :serial                (str cadir "/serial")
+      :load-path             []}))
 
 (defn master-test-settings
   "Master configuration settings with defaults appropriate for testing.
@@ -65,11 +64,15 @@
 (defn assert-issuer [o issuer]
   (is (= issuer (-> o .getIssuerX500Principal .getName))))
 
-(defn tmp-whitelist [& lines]
+(defn tmp-whitelist! [& lines]
   (let [whitelist (ks/temp-file)]
     (doseq [line lines]
       (spit whitelist (str line "\n") :append true))
     (str whitelist)))
+
+(defn tmp-serial-file! []
+  (doto (str (ks/temp-file))
+    initialize-serial-file!))
 
 (def empty-stream-fn #(ByteArrayInputStream. (.getBytes "")))
 
@@ -129,11 +132,11 @@
                                  empty-stream-fn []))))
 
     (testing "exact certnames"
-      (doto (tmp-whitelist "foo"
-                           "UPPERCASE"
-                           "this.THAT."
-                           "bar1234"
-                           "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")
+      (doto (tmp-whitelist! "foo"
+                            "UPPERCASE"
+                            "this.THAT."
+                            "bar1234"
+                            "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")
         (assert-autosign "foo")
         (assert-autosign "UPPERCASE")
         (assert-autosign "this.THAT.")
@@ -144,9 +147,9 @@
         (assert-no-autosign "this-THAT-")))
 
     (testing "domain-name globs"
-      (doto (tmp-whitelist "*.red"
-                           "*.black.local"
-                           "*.UPPER.case")
+      (doto (tmp-whitelist! "*.red"
+                            "*.black.local"
+                            "*.UPPER.case")
         (assert-autosign "red")
         (assert-autosign ".red")
         (assert-autosign "green.red")
@@ -163,7 +166,7 @@
         (assert-autosign "one-two-three.red")))
 
     (testing "allow all with '*'"
-      (doto (tmp-whitelist "*")
+      (doto (tmp-whitelist! "*")
         (assert-autosign "foo")
         (assert-autosign "BAR")
         (assert-autosign "baz-buz.")
@@ -171,12 +174,12 @@
         (assert-autosign "AB=foo,BC=bar,CD=rab,DE=oof,EF=1a2b3d")))
 
     (testing "ignores comments and blank lines"
-      (doto (tmp-whitelist "#foo"
-                           "  "
-                           "bar"
-                           ""
-                           "# *.baz"
-                           "*.qux")
+      (doto (tmp-whitelist! "#foo"
+                            "  "
+                            "bar"
+                            ""
+                            "# *.baz"
+                            "*.qux")
         (assert-no-autosign "foo")
         (assert-no-autosign "  ")
         (assert-autosign "bar")
@@ -188,9 +191,9 @@
                             " #bar"
                             "bar "
                             " bar"]]
-        (let [whitelist (tmp-whitelist "foo"
-                                       invalid-line
-                                       "qux")]
+        (let [whitelist (tmp-whitelist! "foo"
+                                        invalid-line
+                                        "qux")]
           (assert-autosign whitelist "foo")
           (logutils/with-log-output logs
             (assert-no-autosign whitelist invalid-line)
@@ -275,10 +278,13 @@
           (fs/delete path))))))
 
 (deftest autosign-certificate-request!-test
-  (let [csr-fn             #(csr-stream "test-agent")
-        expected-cert-path (path-to-cert signeddir "test-agent")]
+  (let [settings           (assoc (ca-test-settings)
+                             :serial (tmp-serial-file!)
+                             :cert-inventory (str (ks/temp-file)))
+        csr-fn             #(csr-stream "test-agent")
+        expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
     (try
-      (autosign-certificate-request! "test-agent" csr-fn (ca-test-settings))
+      (autosign-certificate-request! "test-agent" csr-fn settings)
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))
@@ -337,7 +343,7 @@
 (deftest initialize-master!-test
   (let [ssldir          (ks/temp-dir)
         master-settings (master-test-settings ssldir "master")
-        serial          (doto (str (ks/temp-file)) initialize-serial-file!)
+        serial          (tmp-serial-file!)
         inventory       (str (ks/temp-file))
         signeddir       (str (ks/temp-dir))]
 
@@ -421,6 +427,23 @@
           (finally
             (fs/delete-dir ssldir)))))
 
+    (testing "Throws an exception if only some of the files exist"
+      (try
+        ;; Create all the files and directories, then delete some
+        (initialize! ca-settings master-settings "master" 512)
+        (fs/delete-dir (:signeddir ca-settings))
+        (fs/delete (:capub ca-settings))
+
+        ;; Verify exception is thrown with message that contains
+        ;; the paths for both the missing and found files
+        (initialize! ca-settings master-settings "master" 512)
+        (catch IllegalStateException e
+          (doseq [file (vals (settings->cadir-paths ca-settings))]
+            (is (true? (.contains (.getMessage e) file)))))
+
+        (finally
+          (fs/delete-dir ssldir))))
+
     (testing "Keylength"
       (doseq [[message f expected]
               [["can be configured"
@@ -454,9 +477,10 @@
   (is (= (format-serial-number 42) "002A")))
 
 (deftest next-serial-number!-test
-  (let [serial-file (:serial (ca-test-settings))]
-    (is (fs/exists? serial-file))
-    (is (= (next-serial-number! serial-file) 1))
+  (let [serial-file (str (ks/temp-file))]
+    (testing "Serial file is initialized to 1"
+      (initialize-serial-file! serial-file)
+      (is (= (next-serial-number! serial-file) 1)))
 
     (testing "The serial number file should contain the next serial number"
       (is (= "0002" (slurp serial-file))))
@@ -467,9 +491,6 @@
 
       (is (= (next-serial-number! serial-file) 3))
       (is (= "0004" (slurp serial-file))))))
-
-(defn contains-duplicates? [coll]
-  (not= (count coll) (count (distinct coll))))
 
 ; If the locking is deleted from `next-serial-number!`, this test will hang,
 ; which is not as nice as simply failing ...
@@ -490,7 +511,9 @@
                               (let [serial-number (next-serial-number! serial-file)]
                                 (swap! serials conj serial-number)))
                             (deliver p 'done))
-                          p))]
+                          p))
+
+          contains-duplicates? #(not= (count %) (count (distinct %)))]
 
       ; wait on all the threads to finish
       (doseq [p promises] (deref p))
@@ -510,7 +533,7 @@
   (testing "Certs can be written to an inventory file."
     (let [first-cert     (utils/pem->cert cacert)
           second-cert    (utils/pem->cert (path-to-cert signeddir "localhost"))
-          inventory-file (:cert-inventory (ca-test-settings))]
+          inventory-file (str (ks/temp-file))]
       (write-cert-to-inventory! first-cert inventory-file)
       (write-cert-to-inventory! second-cert inventory-file)
 
@@ -535,35 +558,37 @@
             "/CN=localhost"))))))
 
 (deftest process-csr-submission!-test
-  (testing "throws an exception if a CSR already exists for that subject"
-    (is (thrown-with-slingshot?
-         {:type    :duplicate-cert
-          :message "test-agent already has a requested certificate; ignoring certificate request"}
-         (process-csr-submission! "test-agent" (csr-stream "test-agent") (ca-test-settings))))
+  (let [settings (assoc (ca-test-settings)
+                   :serial (tmp-serial-file!)
+                   :cert-inventory (str (ks/temp-file)))]
+    (testing "throws an exception if a CSR already exists for that subject"
+      (is (thrown-with-slingshot?
+           {:type    :duplicate-cert
+            :message "test-agent already has a requested certificate; ignoring certificate request"}
+           (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)))
 
-    (testing "unless $allow-duplicate-certs is true"
-      (let [settings  (assoc (ca-test-settings) :allow-duplicate-certs true)
-            cert-path (path-to-cert (:signeddir settings) "test-agent")]
-        (logutils/with-test-logging
-          (is (false? (fs/exists? cert-path)))
-          (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
-          (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
-          (is (true? (fs/exists? cert-path))))
-        (fs/delete cert-path))))
+      (testing "unless $allow-duplicate-certs is true"
+        (let [settings  (assoc settings :allow-duplicate-certs true)
+              cert-path (path-to-cert (:signeddir settings) "test-agent")]
+          (logutils/with-test-logging
+            (is (false? (fs/exists? cert-path)))
+            (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
+            (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
+            (is (true? (fs/exists? cert-path))))
+          (fs/delete cert-path))))
 
-  (testing "throws an exception if a certificate already exists for that subject"
-    (is (thrown-with-slingshot?
-         {:type    :duplicate-cert
-          :message "localhost already has a signed certificate; ignoring certificate request"}
-         (process-csr-submission! "localhost" (csr-stream "test-agent") (ca-test-settings))))
+    (testing "throws an exception if a certificate already exists for that subject"
+      (is (thrown-with-slingshot?
+           {:type    :duplicate-cert
+            :message "localhost already has a signed certificate; ignoring certificate request"}
+           (process-csr-submission! "localhost" (csr-stream "test-agent") settings)))
 
-    (testing "unless $allow-duplicate-certs is true"
-      (let [settings (-> (ca-test-settings)
-                         (assoc :allow-duplicate-certs true :autosign false))
-            csr-path (path-to-cert-request (:csrdir settings) "localhost")]
-        (logutils/with-test-logging
-          (is (false? (fs/exists? csr-path)))
-          (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
-          (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
-          (is (true? (fs/exists? csr-path))))
-        (fs/delete csr-path)))))
+      (testing "unless $allow-duplicate-certs is true"
+        (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
+              csr-path (path-to-cert-request (:csrdir settings) "localhost")]
+          (logutils/with-test-logging
+            (is (false? (fs/exists? csr-path)))
+            (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
+            (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
+            (is (true? (fs/exists? csr-path))))
+          (fs/delete csr-path))))))
