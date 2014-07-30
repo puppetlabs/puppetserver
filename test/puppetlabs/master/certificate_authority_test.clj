@@ -96,6 +96,11 @@
     (catch map? actual-map#
       (= actual-map# ~expected-map))))
 
+(defn contains-ext?
+  "Does the provided extension list contain an extensions with the given OID."
+  [ext-list oid]
+  (> (count (filter #(= oid (:oid %)) ext-list)) 0))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
@@ -599,7 +604,8 @@
         issuer-pub   (utils/get-public-key issuer-keys)
         subject-keys (utils/generate-key-pair 512)
         subject-pub  (utils/get-public-key subject-keys)
-        subject-dn   (utils/cn "subject")]
+        subject      "subject"
+        subject-dn   (utils/cn subject)]
     (testing "basic extensions are created"
       (let [csr  (utils/generate-certificate-request subject-keys subject-dn)
             exts (create-agent-extensions csr issuer-pub)
@@ -658,31 +664,21 @@
         (is (= exts exts-expected))))
 
     (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
-      (let [csr-exts [(utils/subject-dns-alt-names ["onefish"] false)
-                      (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)]
-            csr      (utils/generate-certificate-request
-                       subject-keys subject-dn csr-exts)
-            exts (create-agent-extensions csr issuer-pub)
-            exts-expected [{:oid "2.16.840.1.113730.1.13"
-                            :critical false
-                            :value "Puppet JVM Internal Certificate"}
-                           {:oid "2.5.29.35"
-                            :critical false
-                            :value issuer-pub}
-                           {:oid "2.5.29.19"
-                            :critical true
-                            :value {:is-ca false
-                                    :path-len-constraint nil}}
-                           {:oid "2.5.29.37"
-                            :critical true
-                            :value [ssl-server-cert ssl-client-cert]}
-                           {:oid "2.5.29.15"
-                            :critical true
-                            :value #{:digital-signature :key-encipherment}}
-                           {:oid "2.5.29.14"
-                            :critical false
-                            :value subject-pub}
-                           {:critical false
-                            :oid      "1.3.6.1.4.1.34380.1.1.1"
-                            :value    "AAAA-BBBB-CCCC-DDDD"}]]
-        (is (= exts exts-expected))))))
+      (let [csr-exts           [(utils/subject-dns-alt-names
+                                  ["onefish"] false)
+                                (utils/puppet-node-uid
+                                  "AAAA-BBBB-CCCC-DDDD" false)]
+            csr                (utils/generate-certificate-request
+                                 subject-keys subject-dn csr-exts)
+            csr-path           (path-to-cert-request csrdir subject)
+            _                  (utils/obj->pem! csr csr-path)
+            csr-fn             #(identity csr-path)
+            expected-cert-path (path-to-cert signeddir subject)
+            _                  (autosign-certificate-request!
+                                 subject csr-fn (ca-test-settings))
+            exts               (utils/get-extensions
+                                 (utils/pem->cert expected-cert-path))]
+        (is (not (contains-ext? exts "2.5.29.17")))
+        (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
+        (fs/delete expected-cert-path)
+        (fs/delete csr-path)))))
