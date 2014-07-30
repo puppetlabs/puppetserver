@@ -62,6 +62,10 @@
   certificate."
   "1.3.6.1.5.5.7.3.2")
 
+(def puppet-oid-arc
+  "The parent OID for all Puppet Labs specific X.509 certificate extensions."
+  "1.3.6.1.4.1.34380.1")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -460,11 +464,12 @@
   "Given a list of X.509 extensions, remove all extensions that are considered
   unsafe to sign to a certificate. Currently only Puppet extensions are
   considered safe, all others are removed."
+  ;; TODO: (PE-3864) Figure out what is supposed to happen when an extension
+  ;;                 cannot be copied from the CSR to the certificate.
   [ext-list]
   {:pre [(utils/extension-list? ext-list)]}
   (letfn [(puppet-oid? [{oid :oid}]
-                       ;; TODO: Define this somewhere
-            (utils/subtree-of? "1.3.6.1.4.1.34380.1" oid))]
+            (utils/subtree-of? puppet-oid-arc oid))]
     (filter puppet-oid? ext-list)))
 
 (defn create-agent-extensions
