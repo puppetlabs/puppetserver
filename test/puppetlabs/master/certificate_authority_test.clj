@@ -657,7 +657,7 @@
                             :value    "UUUU-IIIII-DDD"}]]
         (is (= exts exts-expected))))
 
-    (testing "only puppet extensions are copied from CSR to cert"
+    (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
       (let [csr-exts [(utils/subject-dns-alt-names ["onefish"] false)
                       (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)]
             csr      (utils/generate-certificate-request
