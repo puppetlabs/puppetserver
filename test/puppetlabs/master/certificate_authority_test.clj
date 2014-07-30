@@ -631,6 +631,8 @@
 
     (testing "trusted fact extensions are properly unfiltered"
       (let [csr-exts [(utils/puppet-node-image-name "imagename" false)
+                      (utils/puppet-node-preshared-key "key" false)
+                      (utils/puppet-node-instance-id "instance" false)
                       (utils/puppet-node-uid "UUUU-IIIII-DDD" false)]
             csr      (utils/generate-certificate-request
                        subject-keys subject-dn csr-exts)
@@ -654,13 +656,20 @@
                            {:oid "2.5.29.14"
                             :critical false
                             :value subject-pub}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :critical false
+                            :value    "UUUU-IIIII-DDD"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.2"
+                            :critical false
+                            :value    "instance"}
                            {:oid      "1.3.6.1.4.1.34380.1.1.3"
                             :critical false
                             :value    "imagename"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
+                           {:oid      "1.3.6.1.4.1.34380.1.1.4"
                             :critical false
-                            :value    "UUUU-IIIII-DDD"}]]
-        (is (= exts exts-expected "The puppet trusted facts extenions were not added by create-agent-extensions"))))
+                            :value    "key"}]]
+        (is (= (set exts) (set exts-expected))
+            "The puppet trusted facts extensions were not added by create-agent-extensions")))
 
     (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
       (let [csr-exts           [(utils/subject-dns-alt-names
