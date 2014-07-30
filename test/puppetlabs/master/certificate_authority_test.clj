@@ -660,7 +660,7 @@
                            {:oid      "1.3.6.1.4.1.34380.1.1.1"
                             :critical false
                             :value    "UUUU-IIIII-DDD"}]]
-        (is (= exts exts-expected))))
+        (is (= exts exts-expected "The puppet trusted facts extenions were not added by create-agent-extensions"))))
 
     (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
       (let [csr-exts           [(utils/subject-dns-alt-names
