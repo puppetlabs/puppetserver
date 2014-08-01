@@ -1,5 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream))
+  (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -80,6 +80,11 @@
 
 (defn csr-stream [subject]
   (io/input-stream (path-to-cert-request csrdir subject)))
+
+(defn write-to-stream [o]
+  (let [s (ByteArrayOutputStream.)]
+    (utils/obj->pem! o s)
+    (-> s .toByteArray ByteArrayInputStream.)))
 
 (defn assert-autosign [whitelist subject]
   (testing subject
@@ -686,21 +691,18 @@
             "The puppet trusted facts extensions were not added by create-agent-extensions")))
 
     (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
-      (let [csr-exts           [(utils/subject-dns-alt-names
-                                  ["onefish"] false)
-                                (utils/puppet-node-uid
-                                  "AAAA-BBBB-CCCC-DDDD" false)]
+      (let [settings           (assoc (ca-test-settings)
+                                 :serial (tmp-serial-file!)
+                                 :cert-inventory (str (ks/temp-file)))
             csr                (utils/generate-certificate-request
-                                 subject-keys subject-dn csr-exts)
-            csr-path           (path-to-cert-request csrdir subject)
-            _                  (utils/obj->pem! csr csr-path)
-            csr-fn             #(identity csr-path)
-            expected-cert-path (path-to-cert signeddir subject)
+                                subject-keys subject-dn
+                                [(utils/subject-dns-alt-names ["onefish"] false)
+                                 (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)])
+            expected-cert-path (path-to-cert (:signeddir settings) subject)
             _                  (autosign-certificate-request!
-                                 subject csr-fn (ca-test-settings))
+                                 subject #(write-to-stream csr) settings)
             exts               (utils/get-extensions
-                                 (utils/pem->cert expected-cert-path))]
+                                (utils/pem->cert expected-cert-path))]
         (is (not (contains-ext? exts "2.5.29.17")))
         (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
-        (fs/delete expected-cert-path)
-        (fs/delete csr-path)))))
+        (fs/delete expected-cert-path)))))

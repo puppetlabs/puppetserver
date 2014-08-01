@@ -508,7 +508,7 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]}]
+   {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [csr         (utils/pem->csr (csr-fn))
         [not-before
          not-after] (cert-validity-dates ca-ttl)
