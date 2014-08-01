@@ -35,8 +35,8 @@
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:autosign              (schema/either schema/Str Boolean)
-   :allow-duplicate-certs Boolean
+  {:autosign              (schema/either schema/Str schema/Bool)
+   :allow-duplicate-certs schema/Bool
    :cacert                schema/Str
    :cacrl                 schema/Str
    :cakey                 schema/Str
@@ -69,16 +69,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(schema/defn cert-validity-dates :- [Date]
+(schema/defn cert-validity-dates :- {:not-before Date :not-after Date}
   "Calculate the not-before & not-after dates that define a certificate's
    period of validity. The value of `ca-ttl` is expected to be in seconds,
-   and the dates will be based on the current time. Returns a list of dates
-   in the format: [not-before not-after]"
+   and the dates will be based on the current time. Returns a map in the
+   form {:not-before Date :not-after Date}."
   [ca-ttl :- schema/Int]
   (let [now        (time/now)
         not-before (time/minus now (time/days 1))
         not-after  (time/plus now (time/secs ca-ttl))]
-    [(.toDate not-before) (.toDate not-after)]))
+    {:not-before (.toDate not-before)
+     :not-after  (.toDate not-after)}))
 
 (schema/defn settings->cadir-paths
   "Trim down the CA settings to include only paths to files and directories.
@@ -240,14 +241,13 @@
         public-key  (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
-        [not-before
-         not-after] (cert-validity-dates (:ca-ttl ca-settings))
+        validity    (cert-validity-dates (:ca-ttl ca-settings))
         cacert      (utils/sign-certificate
                       x500-name
                       private-key
                       (next-serial-number! (:serial ca-settings))
-                      not-before
-                      not-after
+                      (:not-before validity)
+                      (:not-after validity)
                       x500-name
                       public-key)
         cacrl       (-> cacert
@@ -303,12 +303,11 @@
         private-key  (utils/get-private-key keypair)
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
-        [not-before
-         not-after]  (cert-validity-dates ca-ttl)
+        validity     (cert-validity-dates ca-ttl)
         hostcert     (utils/sign-certificate ca-x500-name ca-private-key
                                              (next-serial-number! serial-file)
-                                             not-before
-                                             not-after
+                                             (:not-before validity)
+                                             (:not-after validity)
                                              x500-name public-key
                                              extensions)]
     (write-cert-to-inventory! hostcert inventory-file)
@@ -510,13 +509,12 @@
    csr-fn :- (schema/pred fn?)
    {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [csr         (utils/pem->csr (csr-fn))
-        [not-before
-         not-after] (cert-validity-dates ca-ttl)
+        validity    (cert-validity-dates ca-ttl)
         signed-cert (utils/sign-certificate (utils/cn ca-name)
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
-                                            not-before
-                                            not-after
+                                            (:not-before validity)
+                                            (:not-after validity)
                                             (utils/cn subject)
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
