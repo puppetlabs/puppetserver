@@ -5,8 +5,7 @@ step "Configure puppet.conf" do
 
   lay_down_new_puppet_conf( master,
                            {"main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}",
-                                       "verbose" => true,
-                                       "certname" => "#{master}" }}, dir)
+                                       "verbose" => true }}, dir)
 
   variant, _, _, _ = master['platform'].to_array
 
