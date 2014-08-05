@@ -17,7 +17,7 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.3.3"]
                  [puppetlabs/http-client "0.1.7"]
-                 [org.jruby/jruby-complete "1.7.13"]
+                 [org.jruby/jruby-complete "1.7.12"]
                  [clj-time "0.5.1"]
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
