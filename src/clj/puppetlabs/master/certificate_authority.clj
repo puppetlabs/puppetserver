@@ -133,6 +133,12 @@
     (str/join "\n" found-files)
     (str/join "\n" missing-files))))
 
+(schema/defn get-subject
+  [cert :- (schema/pred utils/certificate?)]
+  (-> cert
+      (.getSubjectX500Principal)
+      (.getName)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -217,9 +223,7 @@
         not-after     (-> cert
                           (.getNotAfter)
                           (format-date-time))
-        subject       (-> cert
-                          (.getSubjectX500Principal)
-                          (.getName))
+        subject       (get-subject cert)
         entry (str serial-number " " not-before " " not-after " /" subject "\n")]
     (spit inventory-file entry :append true)))
 
@@ -507,10 +511,10 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr-fn :- (schema/pred fn?)
-   {:keys [ca-name capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
+   {:keys [cacert capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [csr         (utils/pem->csr (csr-fn))
         validity    (cert-validity-dates ca-ttl)
-        signed-cert (utils/sign-certificate (utils/cn ca-name)
+        signed-cert (utils/sign-certificate (get-subject (utils/pem->cert cacert))
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
                                             (:not-before validity)

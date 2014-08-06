@@ -16,7 +16,7 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Utilities
+;;; Test Data
 
 (def ssldir "./dev-resources/config/master/conf/ssl")
 (def cadir (str ssldir "/ca"))
@@ -59,6 +59,14 @@
       :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
       :localcacert   (str ssldir "/certs/ca.pem")
       :requestdir    (str ssldir "/certificate_requests")}))
+
+(def ca-cert-subject
+  (-> cacert
+      utils/pem->cert
+      get-subject))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -304,19 +312,22 @@
        (autosign-certificate-request! "test-agent" csr-fn settings))
 
       (testing "requests are autosigned and saved to disk"
-        (is (fs/exists? expected-cert-path))
-        (doto (utils/pem->cert expected-cert-path)
-          (assert-subject "CN=test-agent")
-          (assert-issuer "CN=test ca")))
+        (is (fs/exists? expected-cert-path)))
 
-      (testing "certificate has not-before/not-after dates based on $ca-ttl"
-        (let [cert       (utils/pem->cert expected-cert-path)
-              not-before (time-coerce/from-date (.getNotBefore cert))
-              not-after  (time-coerce/from-date (.getNotAfter cert))]
-          (testing "not-before is 1 day before now"
-            (is (= (time/minus now (time/days 1)) not-before)))
-          (testing "not-after is 2 years from now"
-            (is (= (time/plus now (time/years 2)) not-after)))))
+      (let [cert (utils/pem->cert expected-cert-path)]
+        (testing "The subject name on the agent's cert"
+          (assert-subject cert "CN=test-agent"))
+
+        (testing "The cert is issued by the name on the CA's cert"
+          (assert-issuer cert ca-cert-subject))
+
+        (testing "certificate has not-before/not-after dates based on $ca-ttl"
+          (let [not-before (time-coerce/from-date (.getNotBefore cert))
+                not-after (time-coerce/from-date (.getNotAfter cert))]
+            (testing "not-before is 1 day before now"
+              (is (= (time/minus now (time/days 1)) not-before)))
+            (testing "not-after is 2 years from now"
+              (is (= (time/plus now (time/years 2)) not-after))))))
 
       (finally
         (fs/delete expected-cert-path)))))
