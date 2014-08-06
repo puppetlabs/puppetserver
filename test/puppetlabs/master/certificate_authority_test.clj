@@ -1,5 +1,5 @@
 (ns puppetlabs.master.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream))
+  (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream))
   (:require [puppetlabs.master.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
@@ -9,6 +9,8 @@
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [clj-time.core :as time]
+            [clj-time.coerce :as time-coerce]
             [me.raynes.fs :as fs]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -78,6 +80,11 @@
 
 (defn csr-stream [subject]
   (io/input-stream (path-to-cert-request csrdir subject)))
+
+(defn write-to-stream [o]
+  (let [s (ByteArrayOutputStream.)]
+    (utils/obj->pem! o s)
+    (-> s .toByteArray ByteArrayInputStream.)))
 
 (defn assert-autosign [whitelist subject]
   (testing subject
@@ -283,13 +290,18 @@
           (fs/delete path))))))
 
 (deftest autosign-certificate-request!-test
-  (let [settings           (assoc (ca-test-settings)
+  (let [now                (time/epoch)
+        two-years          (* 60 60 24 365 2)
+        settings           (assoc (ca-test-settings)
                              :serial (tmp-serial-file!)
-                             :cert-inventory (str (ks/temp-file)))
+                             :cert-inventory (str (ks/temp-file))
+                             :ca-ttl two-years)
         csr-fn             #(csr-stream "test-agent")
         expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
     (try
-      (autosign-certificate-request! "test-agent" csr-fn settings)
+      ;; Fix the value of "now" so we can reliably test the dates
+      (time/do-at now
+       (autosign-certificate-request! "test-agent" csr-fn settings))
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path))
@@ -297,7 +309,14 @@
           (assert-subject "CN=test-agent")
           (assert-issuer "CN=test ca")))
 
-      ;; TODO PE-3173 verify signed certificate expiration is based on ca-ttl
+      (testing "certificate has not-before/not-after dates based on $ca-ttl"
+        (let [cert       (utils/pem->cert expected-cert-path)
+              not-before (time-coerce/from-date (.getNotBefore cert))
+              not-after  (time-coerce/from-date (.getNotAfter cert))]
+          (testing "not-before is 1 day before now"
+            (is (= (time/minus now (time/days 1)) not-before)))
+          (testing "not-after is 2 years from now"
+            (is (= (time/plus now (time/years 2)) not-after)))))
 
       (finally
         (fs/delete expected-cert-path)))))
@@ -355,7 +374,7 @@
     (initialize-master! master-settings "master" "Puppet CA: localhost"
                         (utils/pem->private-key cakey)
                         (utils/pem->cert cacert)
-                        512 serial inventory signeddir)
+                        512 serial inventory signeddir 1)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->ssldir-paths master-settings))]
@@ -672,21 +691,18 @@
             "The puppet trusted facts extensions were not added by create-agent-extensions")))
 
     (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
-      (let [csr-exts           [(utils/subject-dns-alt-names
-                                  ["onefish"] false)
-                                (utils/puppet-node-uid
-                                  "AAAA-BBBB-CCCC-DDDD" false)]
+      (let [settings           (assoc (ca-test-settings)
+                                 :serial (tmp-serial-file!)
+                                 :cert-inventory (str (ks/temp-file)))
             csr                (utils/generate-certificate-request
-                                 subject-keys subject-dn csr-exts)
-            csr-path           (path-to-cert-request csrdir subject)
-            _                  (utils/obj->pem! csr csr-path)
-            csr-fn             #(identity csr-path)
-            expected-cert-path (path-to-cert signeddir subject)
+                                subject-keys subject-dn
+                                [(utils/subject-dns-alt-names ["onefish"] false)
+                                 (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)])
+            expected-cert-path (path-to-cert (:signeddir settings) subject)
             _                  (autosign-certificate-request!
-                                 subject csr-fn (ca-test-settings))
+                                 subject #(write-to-stream csr) settings)
             exts               (utils/get-extensions
-                                 (utils/pem->cert expected-cert-path))]
+                                (utils/pem->cert expected-cert-path))]
         (is (not (contains-ext? exts "2.5.29.17")))
         (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
-        (fs/delete expected-cert-path)
-        (fs/delete csr-path)))))
+        (fs/delete expected-cert-path)))))
