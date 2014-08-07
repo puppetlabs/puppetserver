@@ -133,7 +133,7 @@
     (str/join "\n" found-files)
     (str/join "\n" missing-files))))
 
-(schema/defn get-subject
+(schema/defn get-subject :- String
   [cert :- (schema/pred utils/certificate?)]
   (-> cert
       (.getSubjectX500Principal)
