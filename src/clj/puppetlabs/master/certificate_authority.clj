@@ -143,6 +143,13 @@
       (.getSubjectX500Principal)
       (.getName)))
 
+(schema/defn get-csr-subject :- String
+  [csr :- (schema/pred utils/certificate-request?)]
+  (-> csr
+      (.getSubject)
+      (.toString)
+      (.substring 3)))  ; strip off the leading 'CN='
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -602,6 +609,19 @@
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
+(schema/defn validate-csr-hostname!
+  "Verifies that the hostname specified in the HTTP request (subject) matches
+  the subject CN on the CSR."
+  [subject :- schema/Str
+   certificate-request :- InputStream]
+  (let [certificate-request (utils/pem->csr certificate-request)
+        cert-subject (get-csr-subject certificate-request)]
+    (when-not (= subject cert-subject)
+      (sling/throw+
+        {:type    :hostname-mismatch
+         :message (str "Instance name \"" cert-subject
+                       "\" does not match requested key \"" subject "\"")}))))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -616,7 +636,9 @@
                               ByteArrayInputStream.)]
     (let [csr-fn #(doto byte-stream .reset)]
       (if (autosign-csr? autosign subject csr-fn load-path)
-        (autosign-certificate-request! subject csr-fn settings)
+        (do
+          (validate-csr-hostname! subject (csr-fn))
+          (autosign-certificate-request! subject csr-fn settings))
         (save-certificate-request! subject csr-fn csrdir)))))
 
 (schema/defn ^:always-validate

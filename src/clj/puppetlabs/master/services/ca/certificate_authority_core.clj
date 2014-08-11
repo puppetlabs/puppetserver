@@ -9,6 +9,19 @@
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Internal
+
+(defn bad-request?
+  "Given a map (thrown via slingshot), should it result in a
+  HTTP 400 (bad request) response being sent back to the client?"
+  [x]
+  (when (map? x)
+    (let [type (:type x)]
+      (or
+        (= type :duplicate-cert)
+        (= type :hostname-mismatch)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
 (defn handle-get-certificate
@@ -32,7 +45,7 @@
   (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch [:type :duplicate-cert] {:keys [message]}
+    (catch bad-request? {:keys [message]}
       (log/error message)
       (-> (rr/response message)
           (rr/status 400)

@@ -105,4 +105,14 @@
               response   (handle-put-certificate-request! "test-agent" csr-stream settings)]
           (is (logged? #"ignoring certificate request" :error))
           (is (= 400 (:status response)))
-          (is (true? (.contains (:body response) "ignoring certificate request"))))))))
+          (is (true? (.contains (:body response) "ignoring certificate request"))))))
+
+    (testing "when the subject CN on a CSR does not match the hostname specified
+            in the URL, the response is a 400"
+      (let [csr-stream (io/input-stream csr-path)]
+        (let [response (handle-put-certificate-request!
+                         "NOT-test-agent" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (re-matches
+                #"Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""
+                (:body response))))))))

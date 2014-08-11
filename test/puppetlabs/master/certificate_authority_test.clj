@@ -783,3 +783,11 @@
 (deftest netscape-comment-value-test
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
+
+(deftest validatate-csr-hostname!-test
+  (testing "an exception is thrown when the hostnames don't match"
+    (is (thrown-with-slingshot?
+          {:type    :hostname-mismatch
+           :message "Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""}
+          (validate-csr-hostname!
+            "NOT-test-agent" (csr-stream "test-agent"))))))
