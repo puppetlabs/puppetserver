@@ -19,7 +19,8 @@
     (let [type (:type x)
           expected-types #{:duplicate-cert
                            :hostname-mismatch
-                           :invalid-signature}]
+                           :invalid-signature
+                           :invalid-subject-name}]
       (contains? expected-types type))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

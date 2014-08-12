@@ -610,8 +610,9 @@
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
 (schema/defn validate-csr-hostname!
-  "Verifies that the hostname specified in the HTTP request (subject) matches
-  the subject CN on the CSR."
+  "Validate the CSR subject name.  The subject name must:
+    * match the hostname specified in the HTTP request (the `subject` parameter)
+    * not contain any non-printable characters or slashes"
   [subject :- schema/Str
    certificate-request :- InputStream]
   (let [certificate-request (utils/pem->csr certificate-request)
@@ -620,7 +621,12 @@
       (sling/throw+
         {:type    :hostname-mismatch
          :message (str "Instance name \"" cert-subject
-                       "\" does not match requested key \"" subject "\"")}))))
+                       "\" does not match requested key \"" subject "\"")}))
+
+    (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
+      (sling/throw+
+        {:type    :invalid-subject-name
+         :message "CSR subject contains unprintable or non-ASCII characters"}))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.

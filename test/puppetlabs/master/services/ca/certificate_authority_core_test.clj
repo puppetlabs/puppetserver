@@ -16,7 +16,6 @@
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
 
-
 (def settings
   {:allow-duplicate-certs true
    :autosign              true
@@ -124,4 +123,25 @@
                          "luke.madstop.com" csr-stream settings)]
           (is (= 400 (:status response)))
           (is (= "CSR contains a public key that does not correspond to the signing key"
-                 (:body response))))))))
+                 (:body response))))))
+
+    (testing "when the CSR subject contains invalid characters,
+              the response is a 400"
+
+      ; These test cases are lifted out of the puppet spec tests.
+      (let [bad-csrs #{{:subject "super/bad"
+                        :csr     "dev-resources/bad-subject-name-1.pem"}
+
+                       {:subject "not\neven\tkind\rof"
+                        :csr     "dev-resources/bad-subject-name-2.pem"}
+
+                       {:subject "hidden\b\b\b\b\b\bmessage"
+                        :csr     "dev-resources/bad-subject-name-3.pem"}}]
+
+        (doseq [{:keys [subject csr]} bad-csrs]
+          (let [csr-stream (io/input-stream csr)
+                response (handle-put-certificate-request!
+                           subject csr-stream settings)]
+            (is (= 400 (:status response)))
+            (is (= "CSR subject contains unprintable or non-ASCII characters"
+                   (:body response)))))))))
