@@ -622,6 +622,16 @@
          :message (str "Instance name \"" cert-subject
                        "\" does not match requested key \"" subject "\"")}))))
 
+(schema/defn validate-csr-signature!
+  "Throws an exception when the CSR's signature is invalid.
+  See `signature-valid?` for more detail."
+  [certificate-request :- InputStream]
+  (let [certificate-request (utils/pem->csr certificate-request)]
+    (when-not (utils/signature-valid? certificate-request)
+      (sling/throw+
+        {:type    :invalid-signature
+         :message "CSR contains a public key that does not correspond to the signing key"}))))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -638,6 +648,7 @@
       (if (autosign-csr? autosign subject csr-fn load-path)
         (do
           (validate-csr-hostname! subject (csr-fn))
+          (validate-csr-signature! (csr-fn))
           (autosign-certificate-request! subject csr-fn settings))
         (save-certificate-request! subject csr-fn csrdir)))))
 

@@ -16,10 +16,11 @@
   HTTP 400 (bad request) response being sent back to the client?"
   [x]
   (when (map? x)
-    (let [type (:type x)]
-      (or
-        (= type :duplicate-cert)
-        (= type :hostname-mismatch)))))
+    (let [type (:type x)
+          expected-types #{:duplicate-cert
+                           :hostname-mismatch
+                           :invalid-signature}]
+      (contains? expected-types type))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints

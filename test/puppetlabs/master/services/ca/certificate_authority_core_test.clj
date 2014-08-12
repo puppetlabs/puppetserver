@@ -115,4 +115,13 @@
           (is (= 400 (:status response)))
           (is (re-matches
                 #"Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""
-                (:body response))))))))
+                (:body response))))))
+
+    (testing "when the public key on the CSR is bogus, the repsonse is a 400"
+      (let [csr-with-bad-public-key "dev-resources/luke.madstop.com-bad-public-key.pem"
+            csr-stream (io/input-stream csr-with-bad-public-key)]
+        (let [response (handle-put-certificate-request!
+                         "luke.madstop.com" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (= "CSR contains a public key that does not correspond to the signing key"
+                 (:body response))))))))
