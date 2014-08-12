@@ -609,7 +609,7 @@
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
-(schema/defn validate-csr-hostname!
+(schema/defn validate-csr-subject!
   "Validate the CSR subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes"
@@ -653,7 +653,7 @@
     (let [csr-fn #(doto byte-stream .reset)]
       (if (autosign-csr? autosign subject csr-fn load-path)
         (do
-          (validate-csr-hostname! subject (csr-fn))
+          (validate-csr-subject! subject (csr-fn))
           (validate-csr-signature! (csr-fn))
           (autosign-certificate-request! subject csr-fn settings))
         (save-certificate-request! subject csr-fn csrdir)))))

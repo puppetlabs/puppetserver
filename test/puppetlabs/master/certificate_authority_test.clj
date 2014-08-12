@@ -789,5 +789,5 @@
     (is (thrown-with-slingshot?
           {:type    :hostname-mismatch
            :message "Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""}
-          (validate-csr-hostname!
+          (validate-csr-subject!
             "NOT-test-agent" (csr-stream "test-agent"))))))
