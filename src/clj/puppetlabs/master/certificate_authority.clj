@@ -612,7 +612,8 @@
 (schema/defn validate-csr-subject!
   "Validate the CSR subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
-    * not contain any non-printable characters or slashes"
+    * not contain any non-printable characters or slashes
+    * not contain the wildcard character (*)"
   [subject :- schema/Str
    certificate-request :- InputStream]
   (let [certificate-request (utils/pem->csr certificate-request)
@@ -626,7 +627,14 @@
     (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
       (sling/throw+
         {:type    :invalid-subject-name
-         :message "CSR subject contains unprintable or non-ASCII characters"}))))
+         :message "CSR subject contains unprintable or non-ASCII characters"}))
+
+    (when (.contains cert-subject "*")
+      (sling/throw+
+        {:type    :invalid-subject-name
+         :message (format
+                    "CSR subject contains a wildcard, which is not allowed: %s"
+                    cert-subject)}))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.

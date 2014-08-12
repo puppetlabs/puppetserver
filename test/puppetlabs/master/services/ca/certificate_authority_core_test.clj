@@ -144,4 +144,13 @@
                            subject csr-stream settings)]
             (is (= 400 (:status response)))
             (is (= "CSR subject contains unprintable or non-ASCII characters"
+                   (:body response))))))
+
+      (testing "no wildcards allowed"
+        (let [csr-with-wildcard "dev-resources/bad-subject-name-wildcard.pem"
+              csr-stream (io/input-stream csr-with-wildcard)]
+          (let [response (handle-put-certificate-request!
+                           "foo*bar" csr-stream settings)]
+            (is (= 400 (:status response)))
+            (is (= "CSR subject contains a wildcard, which is not allowed: foo*bar"
                    (:body response)))))))))
