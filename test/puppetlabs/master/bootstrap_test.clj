@@ -56,8 +56,10 @@
   (try
     (f)
     (is false "Connection succeeded but should have failed")
-    (catch IOException e)
-    (catch ConnectionClosedException e))
+    (catch ConnectionClosedException e)
+    (catch IOException e
+      (if-not (= (.getMessage e) "Connection reset by peer")
+        (throw e))))
   nil)
 
 (deftest test-app-startup-against-crls
