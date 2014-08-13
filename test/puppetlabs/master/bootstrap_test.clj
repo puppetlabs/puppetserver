@@ -1,6 +1,6 @@
 (ns puppetlabs.master.bootstrap-test
   (:import (java.io IOException)
-           (org.httpkit ProtocolException))
+           (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.testutils :refer [with-no-jvm-shutdown-hooks]]
             [puppetlabs.master.services.config.jvm-puppet-config-service
@@ -57,7 +57,7 @@
     (f)
     (is false "Connection succeeded but should have failed")
     (catch IOException e)
-    (catch ProtocolException e))
+    (catch ConnectionClosedException e))
   nil)
 
 (deftest test-app-startup-against-crls
@@ -81,8 +81,8 @@
                   :ssl-key
                    "./dev-resources/config/master/conf/ssl/private_keys/localhost.pem"
                   :ssl-ca-cert
-                    "./dev-resources/config/master/conf/ssl/certs/ca.pem"
-                  :keepalive 0})]
+                   "./dev-resources/config/master/conf/ssl/certs/ca.pem"
+                  :headers {"Accept" "pson"}})]
           (is (= (:status response) 200))))
       (testing (str "Simple request to jvm puppet fails when the client "
                     "certificate's serial number is in the server's CRL.")
@@ -95,4 +95,4 @@
               "./dev-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
              :ssl-ca-cert
               "./dev-resources/config/master/conf/ssl/certs/ca.pem"
-             :keepalive 0}))))))
+             :headers {"Accept" "pson"}}))))))

@@ -1,6 +1,6 @@
-(def tk-version "0.4.2")
-(def tk-jetty-version "0.5.2")
-(def ks-version "0.7.1")
+(def tk-version "0.4.3")
+(def tk-jetty-version "0.6.1")
+(def ks-version "0.7.2")
 
 (defn deploy-info
   [url]
@@ -16,7 +16,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.3.3"]
-                 [puppetlabs/http-client "0.1.7"]
+                 [puppetlabs/http-client "0.2.1"]
                  [org.jruby/jruby-complete "1.7.13"]
                  [clj-time "0.5.1"]
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
