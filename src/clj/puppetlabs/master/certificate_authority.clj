@@ -66,7 +66,7 @@
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
 
-(def ns-comment
+(def netscape-comment
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
@@ -240,7 +240,7 @@
    ca-serial :- (schema/pred number?)
    ca-public-key :- (schema/pred utils/public-key?)]
   [(utils/netscape-comment
-     ns-comment)
+     netscape-comment)
    (utils/authority-key-identifier
      ca-name ca-serial false)
    (utils/basic-constraints-for-ca)
@@ -309,7 +309,7 @@
                                (conj dns-alt-names-list master-certname) false))
         alt-names-ext-list (if alt-names-ext [alt-names-ext] [])
         base-ext-list      [(utils/netscape-comment
-                              ns-comment)
+                              netscape-comment)
                             (utils/authority-key-identifier
                               ca-public-key false)
                             (utils/basic-constraints-for-non-ca true)
@@ -535,7 +535,7 @@
         csr-ext-list (filter-authorized-extensions
                        (utils/get-extensions csr))
         base-ext-list [(utils/netscape-comment
-                         ns-comment)
+                         netscape-comment)
                        (utils/authority-key-identifier
                          capub false)
                        (utils/basic-constraints-for-non-ca true)
