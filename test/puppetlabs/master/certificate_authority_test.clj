@@ -643,7 +643,7 @@
             exts (create-agent-extensions csr issuer-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value    "Puppet Server Internal Certificate"}
+                            :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
@@ -671,7 +671,7 @@
                                                     dns-alt-names)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value    "Puppet Server Internal Certificate"}
+                            :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
@@ -703,7 +703,7 @@
                                                 subject-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value    "Puppet Server Internal Certificate"}
+                            :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     (str "CN=" subject)
@@ -730,7 +730,7 @@
             exts (create-agent-extensions csr issuer-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value    "Puppet Server Internal Certificate"}
+                            :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
@@ -779,3 +779,7 @@
         (is (not (contains-ext? exts "2.5.29.17")))
         (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
         (fs/delete expected-cert-path)))))
+
+(deftest netscape-comment-value-test
+  (testing "Netscape comment constant has expected value"
+    (is (= "Puppet Server Internal Certificate" netscape-comment-value))))

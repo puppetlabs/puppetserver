@@ -66,7 +66,7 @@
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
 
-(def netscape-comment
+(def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
@@ -234,13 +234,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
 
-(schema/defn create-ca-extensions
+(schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
   [ca-name :- (schema/pred utils/valid-x500-name?)
    ca-serial :- (schema/pred number?)
    ca-public-key :- (schema/pred utils/public-key?)]
   [(utils/netscape-comment
-     netscape-comment)
+     netscape-comment-value)
    (utils/authority-key-identifier
      ca-name ca-serial false)
    (utils/basic-constraints-for-ca)
@@ -297,7 +297,7 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn create-master-extensions
+(schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
   [master-certname :- schema/Str
    master-public-key :- (schema/pred utils/public-key?)
@@ -309,7 +309,7 @@
                                (conj dns-alt-names-list master-certname) false))
         alt-names-ext-list (if alt-names-ext [alt-names-ext] [])
         base-ext-list      [(utils/netscape-comment
-                              netscape-comment)
+                              netscape-comment-value)
                             (utils/authority-key-identifier
                               ca-public-key false)
                             (utils/basic-constraints-for-non-ca true)
@@ -535,7 +535,7 @@
         csr-ext-list (filter-authorized-extensions
                        (utils/get-extensions csr))
         base-ext-list [(utils/netscape-comment
-                         netscape-comment)
+                         netscape-comment-value)
                        (utils/authority-key-identifier
                          capub false)
                        (utils/basic-constraints-for-non-ca true)
