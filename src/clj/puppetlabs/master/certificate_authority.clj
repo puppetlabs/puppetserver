@@ -520,18 +520,6 @@
         (whitelist-matches? autosign subject))
       false)))
 
-(defn filter-authorized-extensions
-  "Given a list of X.509 extensions, remove all extensions that are considered
-  unsafe to sign to a certificate. Currently only Puppet extensions are
-  considered safe, all others are removed."
-  ;; TODO: (PE-3864) Figure out what is supposed to happen when an extension
-  ;;                 cannot be copied from the CSR to the certificate.
-  [ext-list]
-  {:pre [(utils/extension-list? ext-list)]}
-  (letfn [(puppet-oid? [{oid :oid}]
-            (utils/subtree-of? puppet-oid-arc oid))]
-    (filter puppet-oid? ext-list)))
-
 (defn create-agent-extensions
   "Given a certificate signing request, generate a list of extensions that
   should be signed onto the certificate. This includes a base set of standard
@@ -541,8 +529,7 @@
          (utils/public-key? capub)]
    :post [(utils/extension-list? %)]}
   (let [subj-pub-key (utils/get-public-key csr)
-        csr-ext-list (filter-authorized-extensions
-                       (utils/get-extensions csr))
+        csr-ext-list (utils/get-extensions csr)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
                        (utils/authority-key-identifier

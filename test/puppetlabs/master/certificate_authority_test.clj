@@ -761,24 +761,7 @@
                             :critical false
                             :value    "key"}]]
         (is (= (set exts) (set exts-expected))
-            "The puppet trusted facts extensions were not added by create-agent-extensions")))
-
-    (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
-      (let [settings           (assoc (ca-test-settings)
-                                 :serial (tmp-serial-file!)
-                                 :cert-inventory (str (ks/temp-file)))
-            csr                (utils/generate-certificate-request
-                                subject-keys subject-dn
-                                [(utils/subject-dns-alt-names ["onefish"] false)
-                                 (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)])
-            expected-cert-path (path-to-cert (:signeddir settings) subject)
-            _                  (autosign-certificate-request!
-                                 subject csr settings)
-            exts               (utils/get-extensions
-                                (utils/pem->cert expected-cert-path))]
-        (is (not (contains-ext? exts "2.5.29.17")))
-        (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
-        (fs/delete expected-cert-path)))))
+            "The puppet trusted facts extensions were not added by create-agent-extensions")))))
 
 (deftest netscape-comment-value-test
   (testing "Netscape comment constant has expected value"
