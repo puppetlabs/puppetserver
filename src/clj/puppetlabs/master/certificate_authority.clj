@@ -66,6 +66,10 @@
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
 
+(def netscape-comment-value
+  "Standard value applied to the Netscape Comment extension for certificates"
+  "Puppet Server Internal Certificate")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -230,6 +234,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
 
+(schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
+  "Create a list of extensions to be added to the CA certificate."
+  [ca-name :- (schema/pred utils/valid-x500-name?)
+   ca-serial :- (schema/pred number?)
+   ca-public-key :- (schema/pred utils/public-key?)]
+  [(utils/netscape-comment
+     netscape-comment-value)
+   (utils/authority-key-identifier
+     ca-name ca-serial false)
+   (utils/basic-constraints-for-ca)
+   (utils/key-usage
+     #{:key-cert-sign
+       :crl-sign} true)
+   (utils/subject-key-identifier
+     ca-public-key false)])
+
 (schema/defn initialize-ca!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -246,14 +266,19 @@
         private-key (utils/get-private-key keypair)
         x500-name   (utils/cn (:ca-name ca-settings))
         validity    (cert-validity-dates (:ca-ttl ca-settings))
+        serial      (next-serial-number! (:serial ca-settings))
+        extensions  (create-ca-extensions x500-name
+                                          serial
+                                          public-key)
         cacert      (utils/sign-certificate
                       x500-name
                       private-key
-                      (next-serial-number! (:serial ca-settings))
+                      serial
                       (:not-before validity)
                       (:not-after validity)
                       x500-name
-                      public-key)
+                      public-key
+                      extensions)
         cacrl       (-> cacert
                         .getIssuerX500Principal
                         (utils/generate-crl private-key))]
@@ -272,15 +297,30 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn create-master-extensions-list
+(schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
-  [settings :- MasterSettings
-   master-certname :- schema/Str]
-  (let [dns-alt-names (split-hostnames (:dns-alt-names settings))
-        alt-names-ext (when-not (empty? dns-alt-names)
-                        (utils/subject-dns-alt-names
-                          (conj dns-alt-names master-certname) false))]
-    (if alt-names-ext [alt-names-ext] [])))
+  [master-certname :- schema/Str
+   master-public-key :- (schema/pred utils/public-key?)
+   ca-public-key :- (schema/pred utils/public-key?)
+   dns-alt-names :- schema/Str]
+  (let [dns-alt-names-list (split-hostnames dns-alt-names)
+        alt-names-ext      (when-not (empty? dns-alt-names-list)
+                             (utils/subject-dns-alt-names
+                               (conj dns-alt-names-list master-certname) false))
+        alt-names-ext-list (if alt-names-ext [alt-names-ext] [])
+        base-ext-list      [(utils/netscape-comment
+                              netscape-comment-value)
+                            (utils/authority-key-identifier
+                              ca-public-key false)
+                            (utils/basic-constraints-for-non-ca true)
+                            (utils/ext-key-usages
+                              [ssl-server-cert ssl-client-cert] true)
+                            (utils/key-usage
+                              #{:key-encipherment
+                                :digital-signature} true)
+                            (utils/subject-key-identifier
+                              master-public-key false)]]
+    (concat base-ext-list alt-names-ext-list)))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
@@ -290,6 +330,7 @@
    master-certname :- schema/Str
    ca-name :- schema/Str
    ca-private-key :- (schema/pred utils/private-key?)
+   ca-public-key :- (schema/pred utils/public-key?)
    ca-cert :- (schema/pred utils/certificate?)
    keylength :- schema/Int
    serial-file :- schema/Str
@@ -301,9 +342,12 @@
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
-  (let [extensions   (create-master-extensions-list settings master-certname)
-        keypair      (utils/generate-key-pair keylength)
+  (let [keypair      (utils/generate-key-pair keylength)
         public-key   (utils/get-public-key keypair)
+        extensions   (create-master-extensions master-certname
+                                               public-key
+                                               ca-public-key
+                                               (:dns-alt-names settings))
         private-key  (utils/get-private-key keypair)
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
@@ -482,7 +526,7 @@
 (defn create-agent-extensions
   "Given a certificate signing request, generate a list of extensions that
   should be signed onto the certificate. This includes a base set of standard
-  extensions in addition to any valid extensiosn found on the signing request."
+  extensions in addition to any valid extensions found on the signing request."
   [csr capub]
   {:pre [(utils/certificate-request? csr)
          (utils/public-key? capub)]
@@ -491,11 +535,10 @@
         csr-ext-list (filter-authorized-extensions
                        (utils/get-extensions csr))
         base-ext-list [(utils/netscape-comment
-                         "Puppet JVM Internal Certificate")
+                         netscape-comment-value)
                        (utils/authority-key-identifier
                          capub false)
-                       (utils/basic-constraints
-                         false nil true)
+                       (utils/basic-constraints-for-non-ca true)
                        (utils/ext-key-usages
                          [ssl-server-cert ssl-client-cert] true)
                        (utils/key-usage
@@ -613,6 +656,7 @@
                             master-certname
                             (:ca-name ca-settings)
                             (utils/pem->private-key (:cakey ca-settings))
+                            (utils/pem->public-key (:capub ca-settings))
                             (utils/pem->cert (:cacert ca-settings))
                             keylength
                             (:serial ca-settings)

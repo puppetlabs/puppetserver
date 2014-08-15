@@ -22,6 +22,7 @@
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
+(def capub (str cadir "/ca_pub.pem"))
 (def cacrl (str cadir "/ca_crl.pem"))
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
@@ -380,10 +381,12 @@
         master-settings (master-test-settings ssldir "master")
         serial          (tmp-serial-file!)
         inventory       (str (ks/temp-file))
-        signeddir       (str (ks/temp-dir))]
+        signeddir       (str (ks/temp-dir))
+        capubkey        (utils/pem->public-key capub)]
 
     (initialize-master! master-settings "master" "Puppet CA: localhost"
                         (utils/pem->private-key cakey)
+                        capubkey
                         (utils/pem->cert cacert)
                         512 serial inventory signeddir 1)
 
@@ -635,25 +638,83 @@
         subject-pub  (utils/get-public-key subject-keys)
         subject      "subject"
         subject-dn   (utils/cn subject)]
-    (testing "basic extensions are created"
+    (testing "basic extensions are created for an agent"
       (let [csr  (utils/generate-certificate-request subject-keys subject-dn)
             exts (create-agent-extensions csr issuer-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value    "Puppet JVM Internal Certificate"}
+                            :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
                             :critical false
-                            :value    issuer-pub}
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
                            {:oid      "2.5.29.19"
                             :critical true
-                            :value    {:is-ca false
-                                       :path-len-constraint nil}}
+                            :value    {:is-ca false}}
                            {:oid      "2.5.29.37"
                             :critical true
                             :value    [ssl-server-cert ssl-client-cert]}
                            {:oid      "2.5.29.15"
                             :critical true
                             :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "basic extensions are created for a master"
+      (let [dns-alt-names "onefish,twofish"
+            exts          (create-master-extensions subject
+                                                    subject-pub
+                                                    issuer-pub
+                                                    dns-alt-names)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}
+                           {:oid      "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name ["subject"
+                                                  "onefish"
+                                                  "twofish"]}}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "basic extensions are created for a CA"
+      (let [serial        42
+            exts          (create-ca-extensions subject-dn
+                                                serial
+                                                subject-pub)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     (str "CN=" subject)
+                                       :public-key    nil
+                                       :serial-number (biginteger serial)}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca true}}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:crl-sign :key-cert-sign}}
                            {:oid      "2.5.29.14"
                             :critical false
                             :value    subject-pub}]]
@@ -667,25 +728,26 @@
             csr      (utils/generate-certificate-request
                        subject-keys subject-dn csr-exts)
             exts (create-agent-extensions csr issuer-pub)
-            exts-expected [{:oid "2.16.840.1.113730.1.13"
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
-                            :value "Puppet JVM Internal Certificate"}
-                           {:oid "2.5.29.35"
+                            :value    netscape-comment-value}
+                           {:oid      "2.5.29.35"
                             :critical false
-                            :value issuer-pub}
-                           {:oid "2.5.29.19"
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
                             :critical true
-                            :value {:is-ca false
-                                    :path-len-constraint nil}}
-                           {:oid "2.5.29.37"
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
                             :critical true
-                            :value [ssl-server-cert ssl-client-cert]}
-                           {:oid "2.5.29.15"
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
                             :critical true
-                            :value #{:digital-signature :key-encipherment}}
-                           {:oid "2.5.29.14"
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
                             :critical false
-                            :value subject-pub}
+                            :value    subject-pub}
                            {:oid      "1.3.6.1.4.1.34380.1.1.1"
                             :critical false
                             :value    "UUUU-IIIII-DDD"}
@@ -717,3 +779,7 @@
         (is (not (contains-ext? exts "2.5.29.17")))
         (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
         (fs/delete expected-cert-path)))))
+
+(deftest netscape-comment-value-test
+  (testing "Netscape comment constant has expected value"
+    (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
