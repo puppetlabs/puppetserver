@@ -1,7 +1,8 @@
 (ns puppetlabs.master.certificate-authority
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream]
+           [com.puppetlabs.certificate_authority Extensions])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -13,7 +14,8 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.certificate-authority.core :as utils]))
+            [puppetlabs.certificate-authority.core :as utils]
+            [clojure.string :as string]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -607,6 +609,28 @@
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
+(schema/defn disallowed-extension?
+  "A predicate that answers if an extension is allowed or not.
+  This logic is copied out of the ruby CA."
+  [extension :- (schema/pred utils/extension?)]
+  (let [oid (:oid extension)]
+    (not
+      (or
+        (utils/subtree-of? Extensions/ppRegCertExt oid)
+        (utils/subtree-of? Extensions/ppPrivCertExt oid)))))
+
+(schema/defn validate-csr-extensions!
+  "Throws an error if the CSR contains any invalid extensions, according to
+  `disallowed-extension?`"
+  [csr :- (schema/pred utils/certificate-request?)]
+  (let [extensions (utils/get-extensions csr)
+        bad-extensions (filter disallowed-extension? extensions)]
+    (when-not (empty? bad-extensions)
+      (let [bad-extension-oids (map :oid bad-extensions)]
+        (sling/throw+ {:type    :disallowed-extension
+                       :message (str "CSR has request extensions that are not permitted: "
+                                     (string/join ", " bad-extension-oids))})))))
+
 (schema/defn validate-csr-subject!
   "Validate the CSR subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
@@ -658,6 +682,9 @@
           csr-stream (doto byte-stream .reset)]
       (if (autosign-csr? autosign subject csr-stream load-path)
         (do
+          ; These validations must happen in this order
+          ; if we are to behave exactly like the ruby CA.
+          (validate-csr-extensions! csr)
           (validate-csr-subject! subject csr)
           (validate-csr-signature! csr)
           (autosign-certificate-request! subject csr settings))

@@ -17,7 +17,8 @@
   [x]
   (when (map? x)
     (let [type (:type x)
-          expected-types #{:duplicate-cert
+          expected-types #{:disallowed-extension
+                           :duplicate-cert
                            :hostname-mismatch
                            :invalid-signature
                            :invalid-subject-name}]
