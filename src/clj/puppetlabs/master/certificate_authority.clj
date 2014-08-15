@@ -440,7 +440,7 @@
    All output (stdout & stderr) will be logged at the debug level."
   [executable :- schema/Str
    subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr-stream :- InputStream
    load-path :- [schema/Str]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
@@ -450,7 +450,7 @@
                      (map fs/absolute-path)
                      (str/join (System/getProperty "path.separator")))
         results (shell/sh executable subject
-                          :in (csr-fn)
+                          :in csr-stream
                           :env (merge env {:RUBYLIB rubylib}))]
     (log/debugf "Autosign command '%s %s' exit status: %d"
                 executable subject (:exit results))
@@ -506,13 +506,13 @@
   Puppet's autosign setting, and false otherwise."
   [autosign :- (schema/either schema/Str schema/Bool)
    subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr-stream :- InputStream
    load-path :- [schema/Str]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (-> (execute-autosign-command! autosign subject csr-fn load-path)
+        (-> (execute-autosign-command! autosign subject csr-stream load-path)
             :exit
             zero?)
         (whitelist-matches? autosign subject))
@@ -560,10 +560,9 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr :- (schema/pred utils/certificate-request?)
    {:keys [cacert capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
-  (let [csr         (utils/pem->csr (csr-fn))
-        validity    (cert-validity-dates ca-ttl)
+  (let [validity    (cert-validity-dates ca-ttl)
         signed-cert (utils/sign-certificate (get-subject (utils/pem->cert cacert))
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
@@ -581,10 +580,9 @@
   save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
   [subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr :- (schema/pred utils/certificate-request?)
    csrdir :- schema/Str]
-  (-> (utils/pem->csr (csr-fn))
-      (utils/obj->pem! (path-to-cert-request csrdir subject))))
+  (utils/obj->pem! csr (path-to-cert-request csrdir subject)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false
@@ -615,9 +613,8 @@
     * not contain any non-printable characters or slashes
     * not contain the wildcard character (*)"
   [subject :- schema/Str
-   certificate-request :- InputStream]
-  (let [certificate-request (utils/pem->csr certificate-request)
-        cert-subject (get-csr-subject certificate-request)]
+   certificate-request :- (schema/pred utils/certificate-request?)]
+  (let [cert-subject (get-csr-subject certificate-request)]
     (when-not (= subject cert-subject)
       (sling/throw+
         {:type    :hostname-mismatch
@@ -639,12 +636,11 @@
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
   See `signature-valid?` for more detail."
-  [certificate-request :- InputStream]
-  (let [certificate-request (utils/pem->csr certificate-request)]
-    (when-not (utils/signature-valid? certificate-request)
-      (sling/throw+
-        {:type    :invalid-signature
-         :message "CSR contains a public key that does not correspond to the signing key"}))))
+  [certificate-request :- (schema/pred utils/certificate-request?)]
+  (when-not (utils/signature-valid? certificate-request)
+    (sling/throw+
+      {:type    :invalid-signature
+       :message "CSR contains a public key that does not correspond to the signing key"})))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -658,13 +654,14 @@
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
-    (let [csr-fn #(doto byte-stream .reset)]
-      (if (autosign-csr? autosign subject csr-fn load-path)
+    (let [csr (utils/pem->csr byte-stream)
+          csr-stream (doto byte-stream .reset)]
+      (if (autosign-csr? autosign subject csr-stream load-path)
         (do
-          (validate-csr-subject! subject (csr-fn))
-          (validate-csr-signature! (csr-fn))
-          (autosign-certificate-request! subject csr-fn settings))
-        (save-certificate-request! subject csr-fn csrdir)))))
+          (validate-csr-subject! subject csr)
+          (validate-csr-signature! csr)
+          (autosign-certificate-request! subject csr settings))
+        (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
