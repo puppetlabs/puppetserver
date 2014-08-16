@@ -1,6 +1,6 @@
-(ns puppetlabs.master.services.config.jvm-puppet-config-core-test
+(ns puppetlabs.master.services.config.puppet-server-config-core-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.master.services.config.jvm-puppet-config-core :refer :all]
+            [puppetlabs.master.services.config.puppet-server-config-core :refer :all]
             [puppetlabs.master.services.jruby.testutils :as testutils]
             [schema.core :as schema]))
 

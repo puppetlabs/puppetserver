@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-require 'puppet/jvm/jvm_profiler'
+require 'puppet/server/jvm_profiler'
 
 class TestWrappedProfiler
   attr_reader :context, :description, :metric_id, :is_shutdown
@@ -26,9 +26,9 @@ class TestWrappedProfiler
   end
 end
 
-describe Puppet::Jvm::JvmProfiler do
+describe Puppet::Server::JvmProfiler do
   let(:wrapped) { TestWrappedProfiler.new }
-  let(:profiler) { Puppet::Jvm::JvmProfiler.new(wrapped) }
+  let(:profiler) { Puppet::Server::JvmProfiler.new(wrapped) }
 
   it "converts metric ids to java" do
     converted = profiler.javify_metric_id(["foo", "bar"])

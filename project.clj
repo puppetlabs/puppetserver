@@ -9,8 +9,8 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/jvm-puppet "0.1.7-SNAPSHOT"
-  :description "JVM Puppet Master."
+(defproject puppetlabs/puppet-server "0.1.7-SNAPSHOT"
+  :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
@@ -57,7 +57,7 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
-  :aliases {"go" ["trampoline" "run" "--config" "./dev-resources/jvm-puppet.conf" "--bootstrap-config" "./dev-resources/bootstrap.cfg"]}
+  :aliases {"go" ["trampoline" "run" "--config" "./dev-resources/puppet-server.conf" "--bootstrap-config" "./dev-resources/bootstrap.cfg"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]

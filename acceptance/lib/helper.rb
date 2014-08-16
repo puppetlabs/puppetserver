@@ -1,7 +1,7 @@
 require 'beaker/dsl/install_utils'
 require 'beaker/dsl/ezbake_utils'
 
-module JVMPuppetExtensions
+module PuppetServerExtensions
 
   # Configuration code largely obtained from:
   # https://github.com/puppetlabs/classifier/blob/master/integration/helper.rb
@@ -9,18 +9,18 @@ module JVMPuppetExtensions
   def self.initialize_config(options)
     base_dir = File.join(File.dirname(__FILE__), '..')
 
-    install_type = get_option_value(options[:jvmpuppet_install_type],
-      [:git, :package], "install type", "JVMPUPPET_INSTALL_TYPE", :package)
+    install_type = get_option_value(options[:puppetserver_install_type],
+      [:git, :package], "install type", "PUPPETSERVER_INSTALL_TYPE", :package)
 
     install_mode =
-        get_option_value(options[:jvmpuppet_install_mode],
+        get_option_value(options[:puppetserver_install_mode],
                          [:install, :upgrade], "install mode",
-                         "JVMPUPPET_INSTALL_MODE", :install)
+                         "PUPPETSERVER_INSTALL_MODE", :install)
 
-    jvmpuppet_version =
-        get_option_value(options[:jvmpuppet_version],
-                         nil, "JVM Puppet Version",
-                         "JVMPUPPET_VERSION", nil)
+    puppetserver_version =
+        get_option_value(options[:puppetserver_version],
+                         nil, "Puppet Server Version",
+                         "PUPPETSERVER_VERSION", nil)
 
     puppet_version = get_option_value(options[:puppet_version],
                          nil, "Puppet Version", "PUPPET_VERSION", nil) ||
@@ -28,20 +28,20 @@ module JVMPuppetExtensions
 
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "3.7.0-jvm-puppet-preview")
+                         "PUPPET_BUILD_VERSION", "3.7.0-puppet-server-preview")
 
     @config = {
       :base_dir => base_dir,
-      :jvmpuppet_install_type => install_type,
-      :jvmpuppet_install_mode => install_mode,
-      :jvmpuppet_version => jvmpuppet_version,
+      :puppetserver_install_type => install_type,
+      :puppetserver_install_mode => install_mode,
+      :puppetserver_version => puppetserver_version,
       :puppet_version => puppet_version,
       :puppet_build_version => puppet_build_version,
     }
 
     pp_config = PP.pp(@config, "")
 
-    Beaker::Log.notify "JVMPuppet Acceptance Configuration:\n\n#{pp_config}\n\n"
+    Beaker::Log.notify "Puppet Server Acceptance Configuration:\n\n#{pp_config}\n\n"
   end
 
   class << self
@@ -49,10 +49,10 @@ module JVMPuppetExtensions
   end
 
   # Return the configuration hash initialized by
-  # JVMPuppetExtensions.initialize_config
+  # PuppetServerExtensions.initialize_config
   #
   def test_config
-    JVMPuppetExtensions.config
+    PuppetServerExtensions.config
   end
 
   def self.get_option_value(value, legal_values, description,
@@ -93,7 +93,7 @@ module JVMPuppetExtensions
       on(host, "rm -rf '#{ssldir}'/*")
     end
 
-    step "Master: Start Puppet Master"
+    step "Server: Start Puppet Server"
       old_retries = master['master-start-curl-retries']
       master['master-start-curl-retries'] = 1500
       with_puppet_running_on(master, "main" => { "autosign" => true, "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
@@ -109,26 +109,26 @@ module JVMPuppetExtensions
       master['master-start-curl-retries'] = old_retries
   end
 
-  def jvm_puppet_collect_data(host, relative_path)
-    destination = File.join("./log/latest/jvm-puppet/", relative_path)
+  def puppet_server_collect_data(host, relative_path)
+    destination = File.join("./log/latest/puppet-server/", relative_path)
     FileUtils.mkdir_p(destination)
-    scp_from master, "/var/log/jvm-puppet/jvm-puppet.log", destination
-    scp_from master, "/var/log/jvm-puppet/jvm-puppet-daemon.log", destination
+    scp_from master, "/var/log/puppet-server/puppet-server.log", destination
+    scp_from master, "/var/log/puppet-server/puppet-server-daemon.log", destination
   end
 
-  def install_jvm_puppet (host, jvm_puppet_name='jvm-puppet', make_env={})
-    case test_config[:jvmpuppet_install_type]
+  def install_puppet_server (host, puppet_server_name='puppet-server', make_env={})
+    case test_config[:puppetserver_install_type]
     when :package
-      install_package host, jvm_puppet_name
+      install_package host, puppet_server_name
     when :git
-      project_version = test_config[:jvmpuppet_version] ||
+      project_version = test_config[:puppetserver_version] ||
         `lein with-profile ci pprint :version | tail -n 1 | cut -d\\" -f2`
-      install_from_ezbake host, jvm_puppet_name, project_version, make_env
+      install_from_ezbake host, puppet_server_name, project_version, make_env
     else
-      abort("Invalid install type: " + test_config[:jvmpuppet_install_type])
+      abort("Invalid install type: " + test_config[:puppetserver_install_type])
     end
   end
 
 end
 
-Beaker::TestCase.send(:include, JVMPuppetExtensions)
+Beaker::TestCase.send(:include, PuppetServerExtensions)

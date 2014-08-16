@@ -1,2 +1,2 @@
-step "Preserve JVM Puppet Log Files"
-  jvm_puppet_collect_data master, 'pre_suite'
+step "Preserve Puppet Server Log Files"
+  puppet_server_collect_data master, 'pre_suite'

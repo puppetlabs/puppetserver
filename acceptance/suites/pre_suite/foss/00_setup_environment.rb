@@ -1,2 +1,2 @@
 step "Initialize Test Config"
-  JVMPuppetExtensions.initialize_config options
+  PuppetServerExtensions.initialize_config options

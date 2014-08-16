@@ -1,14 +1,14 @@
 require 'puppet/ssl/base'
 require 'puppet/ssl/certificate'
 require 'puppet/ssl/oids'
-require 'puppet/jvm'
+require 'puppet/server'
 require 'java'
 
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
 java_import com.puppetlabs.certificate_authority.ExtensionsUtils
 java_import java.security.cert.X509Certificate
 
-class Puppet::Jvm::Certificate < Puppet::SSL::Certificate
+class Puppet::Server::Certificate < Puppet::SSL::Certificate
   def initialize(java_cert)
     unless java_cert.is_a? Java::JavaSecurityCert::X509Certificate
       raise(ArgumentError, "java_cert must be a Java X509Certificate.")

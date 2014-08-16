@@ -1,7 +1,5 @@
-jvm-puppet
-==========
-
-JVM implementation of the Puppet master
+puppet-server
+=============
 
 # To run the server:
 
@@ -9,15 +7,15 @@ JVM implementation of the Puppet master
     * `git submodule init`
     * `git submodule update`
   * in the REPL:
-    * load the namespace `puppetlabs.jvm-puppet.testutils.repl`
+    * load the namespace `puppetlabs.puppet-server.testutils.repl`
     * `(go)`
   * or, from the command line:
 
 ```sh
-    lein run --config dev-resources/jvm-puppet.conf
+    lein run --config dev-resources/puppet-server.conf
 ```
 
-# Run the agent against jvm-puppet:
+# Run the agent against puppet-server:
 
 ```sh
     bin/run-agent.sh
