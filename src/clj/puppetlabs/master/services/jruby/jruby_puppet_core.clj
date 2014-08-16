@@ -42,7 +42,7 @@
 (def ruby-code-dir
   "The name of the directory containing the ruby code in this project.
   This directory lives under src/ruby/"
-  "jvm-puppet-lib")
+  "puppet-server-lib")
 
 (defrecord PoisonPill
   ;; A sentinel object to put into a pool in case an error occurs while we're trying
@@ -125,7 +125,7 @@
     (.setCompatVersion (CompatVersion/RUBY1_9))
     (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
     (.setEnvironment jruby-puppet-env)
-    (.runScriptlet "require 'puppet/jvm/master'")))
+    (.runScriptlet "require 'puppet/server/master'")))
 
 (defn create-jruby-instance
   "Creates a new JRubyPuppet instance.  See the docs on `create-jruby-pool`
@@ -138,7 +138,7 @@
       (throw (Exception.
                "JRuby service missing config value 'load-path'")))
     (let [scripting-container (create-scripting-container load-path)
-          ruby-puppet-class   (.runScriptlet scripting-container "Puppet::Jvm::Master")
+          ruby-puppet-class   (.runScriptlet scripting-container "Puppet::Server::Master")
           jruby-config        (HashMap.)]
       (when master-conf-dir
         (.put jruby-config "confdir" (fs/absolute-path master-conf-dir)))

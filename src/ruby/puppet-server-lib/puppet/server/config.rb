@@ -1,11 +1,11 @@
 require 'puppet'
-require 'puppet/jvm'
+require 'puppet/server'
 
 require 'java'
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
 java_import java.io.FileReader
 
-class Puppet::Jvm::Config
+class Puppet::Server::Config
 
   def self.ssl_context
     # Initialize an SSLContext for use during HTTPS client requests.

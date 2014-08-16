@@ -479,18 +479,18 @@
 
 (schema/defn ^:always-validate
   config->ca-settings :- CaSettings
-  "Given the configuration map from the JVM Puppet config
+  "Given the configuration map from the Puppet Server config
   service return a map with of all the CA settings."
-  [{:keys [jvm-puppet jruby-puppet]}]
-  (-> (select-keys jvm-puppet (keys CaSettings))
+  [{:keys [puppet-server jruby-puppet]}]
+  (-> (select-keys puppet-server (keys CaSettings))
       (assoc :load-path (:load-path jruby-puppet))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
-  "Given the configuration map from the JVM Puppet config
+  "Given the configuration map from the Puppet Server config
   service return a map with of all the master settings."
-  [{:keys [jvm-puppet]}]
-  (select-keys jvm-puppet (keys MasterSettings)))
+  [{:keys [puppet-server]}]
+  (select-keys puppet-server (keys MasterSettings)))
 
 (schema/defn ^:always-validate
   get-certificate :- (schema/maybe schema/Str)

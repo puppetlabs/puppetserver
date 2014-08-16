@@ -21,11 +21,11 @@ step "Install MRI Puppet Agents."
 
   end
 
-step "Install JVM Puppet Master."
+step "Install Puppet Server."
   make_env = {
     "prefix" => "/usr",
     "confdir" => "/etc/",
-    "rundir" => "/var/run/jvm-puppet",
+    "rundir" => "/var/run/puppet-server",
     "initdir" => "/etc/init.d",
   }
-  install_jvm_puppet master, 'jvm-puppet', make_env
+  install_puppet_server master, 'puppet-server', make_env

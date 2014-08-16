@@ -9,7 +9,7 @@
     "Borrows an instance of a JRubyPuppet interpreter from a pool which
      matches the provided descriptor. The pool descriptor, pool-desc, is a
      map which contains a list of attribtues which uniquely identify a
-     JRubyPuppet pool from the JVM Puppet configuration. Currently only the
+     JRubyPuppet pool from the Puppet Server configuration. Currently only the
      :environment key is honored.
 
      If there are no interpreters left in the pool then the operation blocks

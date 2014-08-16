@@ -2,7 +2,7 @@
   (:require
     [clojure.test :refer :all]
     [puppetlabs.master.services.master.master-service :refer :all]
-    [puppetlabs.master.services.config.jvm-puppet-config-service :refer [jvm-puppet-config-service]]
+    [puppetlabs.master.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
     [puppetlabs.master.services.jruby.jruby-puppet-service :as jruby]
     [puppetlabs.master.services.protocols.jruby-puppet :as jruby-protocol]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
@@ -24,7 +24,7 @@
             app
 
             [master-service
-             jvm-puppet-config-service
+             puppet-server-config-service
              jruby/jruby-puppet-pooled-service
              jetty9-service
              request-handler-service
