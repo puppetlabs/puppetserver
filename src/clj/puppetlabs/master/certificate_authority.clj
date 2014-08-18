@@ -2,7 +2,7 @@
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream]
-           [com.puppetlabs.certificate_authority Extensions])
+           [com.puppetlabs.certificate_authority])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -15,6 +15,7 @@
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]
+            [puppetlabs.master.certificate-extensions :as extensions]
             [clojure.string :as string]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -602,8 +603,8 @@
   [extension :- (schema/pred utils/extension?)]
   (let [oid (:oid extension)]
     (or
-      (utils/subtree-of? Extensions/ppRegCertExt oid)
-      (utils/subtree-of? Extensions/ppPrivCertExt oid))))
+      (utils/subtree-of? extensions/ppRegCertExt oid)
+      (utils/subtree-of? extensions/ppPrivCertExt oid))))
 
 (schema/defn validate-csr-extensions!
   "Throws an error if the CSR contains any invalid extensions, according to

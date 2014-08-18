@@ -15,8 +15,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 ; TODO upgrade to non-SNAPSHOT
-                 [puppetlabs/certificate-authority "0.4.1-SNAPSHOT"]
+                 [puppetlabs/certificate-authority "0.4.0"]
                  [puppetlabs/http-client "0.2.1"]
                  [org.jruby/jruby-complete "1.7.13"]
                  [clj-time "0.5.1"]
