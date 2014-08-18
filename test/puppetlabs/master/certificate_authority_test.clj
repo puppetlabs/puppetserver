@@ -85,7 +85,7 @@
   (doto (str (ks/temp-file))
     initialize-serial-file!))
 
-(def empty-stream-fn #(ByteArrayInputStream. (.getBytes "")))
+(def empty-stream (ByteArrayInputStream. (.getBytes "")))
 
 (defn csr-stream [subject]
   (io/input-stream (path-to-cert-request csrdir subject)))
@@ -97,11 +97,11 @@
 
 (defn assert-autosign [whitelist subject]
   (testing subject
-    (is (true? (autosign-csr? whitelist subject empty-stream-fn [])))))
+    (is (true? (autosign-csr? whitelist subject empty-stream [])))))
 
 (defn assert-no-autosign [whitelist subject]
   (testing subject
-    (is (false? (autosign-csr? whitelist subject empty-stream-fn [])))))
+    (is (false? (autosign-csr? whitelist subject empty-stream [])))))
 
 (defmacro thrown-with-slingshot?
   [expected-map f]
@@ -144,13 +144,13 @@
 
 (deftest autosign-csr?-test
   (testing "boolean values"
-    (is (true? (autosign-csr? true "unused" empty-stream-fn [])))
-    (is (false? (autosign-csr? false "unused" empty-stream-fn []))))
+    (is (true? (autosign-csr? true "unused" empty-stream [])))
+    (is (false? (autosign-csr? false "unused" empty-stream []))))
 
   (testing "whitelist"
     (testing "autosign is false when whitelist doesn't exist"
       (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"
-                                 empty-stream-fn []))))
+                                 empty-stream []))))
 
     (testing "exact certnames"
       (doto (tmp-whitelist! "foo"
@@ -244,25 +244,25 @@
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" csr-fn load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) load-path)
             (is (logged? #"print to stdout" :debug))
             (is (logged? #"print to stderr" :debug))))
 
         (testing "Ruby load path is configured and contains Puppet"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" csr-fn load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) load-path)
             (is (logged? #"Ruby load path configured properly"))))
 
         (testing "subject is passed as argument and CSR is provided on stdin"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" csr-fn load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) load-path)
             (is (logged? #"subject: test-agent"))
             (is (logged? #"CSR for: test-agent"))))
 
         (testing "only exit code 0 results in autosigning"
           (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" csr-fn load-path)))
-            (is (false? (autosign-csr? executable "foo" csr-fn load-path)))))))
+            (is (true? (autosign-csr? executable "test-agent" (csr-fn) load-path)))
+            (is (false? (autosign-csr? executable "foo" (csr-fn) load-path)))))))
 
     (testing "bash script"
       (let [executable "dev-resources/config/master/conf/bash-autosign-executable"
@@ -270,28 +270,28 @@
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" csr-fn [])
+            (autosign-csr? executable "test-agent" (csr-fn) [])
             (is (logged? #"print to stdout" :debug))
             (is (logged? #"print to stderr" :debug))))
 
         (testing "subject is passed as argument and CSR is provided on stdin"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" csr-fn [])
+            (autosign-csr? executable "test-agent" (csr-fn) [])
             (is (logged? #"subject: test-agent"))
             (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
 
         (testing "only exit code 0 results in autosigning"
           (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" csr-fn [])))
-            (is (false? (autosign-csr? executable "foo" csr-fn [])))))))))
+            (is (true? (autosign-csr? executable "test-agent" (csr-fn) [])))
+            (is (false? (autosign-csr? executable "foo" (csr-fn) [])))))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
-    (let [csr-fn #(csr-stream "test-agent")
+    (let [csr    (utils/pem->csr (path-to-cert-request csrdir "test-agent"))
           path   (path-to-cert-request csrdir "foo")]
       (try
         (is (false? (fs/exists? path)))
-        (save-certificate-request! "foo" csr-fn csrdir)
+        (save-certificate-request! "foo" csr csrdir)
         (is (true? (fs/exists? path)))
         (is (= (get-certificate-request csrdir "foo")
                (get-certificate-request csrdir "test-agent")))
@@ -305,12 +305,12 @@
                              :serial (tmp-serial-file!)
                              :cert-inventory (str (ks/temp-file))
                              :ca-ttl two-years)
-        csr-fn             #(csr-stream "test-agent")
+        csr                (utils/pem->csr (path-to-cert-request csrdir "test-agent"))
         expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
     (try
       ;; Fix the value of "now" so we can reliably test the dates
       (time/do-at now
-       (autosign-certificate-request! "test-agent" csr-fn settings))
+       (autosign-certificate-request! "test-agent" csr settings))
 
       (testing "requests are autosigned and saved to disk"
         (is (fs/exists? expected-cert-path)))
@@ -780,25 +780,16 @@
                             :critical false
                             :value    "key"}]]
         (is (= (set exts) (set exts-expected))
-            "The puppet trusted facts extensions were not added by create-agent-extensions")))
-
-    (testing "only puppet extensions are extracted from CSR and DNS alt names is ignored."
-      (let [settings           (assoc (ca-test-settings)
-                                 :serial (tmp-serial-file!)
-                                 :cert-inventory (str (ks/temp-file)))
-            csr                (utils/generate-certificate-request
-                                subject-keys subject-dn
-                                [(utils/subject-dns-alt-names ["onefish"] false)
-                                 (utils/puppet-node-uid "AAAA-BBBB-CCCC-DDDD" false)])
-            expected-cert-path (path-to-cert (:signeddir settings) subject)
-            _                  (autosign-certificate-request!
-                                 subject #(write-to-stream csr) settings)
-            exts               (utils/get-extensions
-                                (utils/pem->cert expected-cert-path))]
-        (is (not (contains-ext? exts "2.5.29.17")))
-        (is (contains-ext? exts "1.3.6.1.4.1.34380.1.1.1"))
-        (fs/delete expected-cert-path)))))
+            "The puppet trusted facts extensions were not added by create-agent-extensions")))))
 
 (deftest netscape-comment-value-test
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
+
+(deftest validate-csr-hostname!-test
+  (testing "an exception is thrown when the hostnames don't match"
+    (is (thrown-with-slingshot?
+          {:type    :hostname-mismatch
+           :message "Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""}
+          (validate-csr-subject!
+            "NOT-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent")))))))

@@ -66,6 +66,14 @@
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
 
+(def ppRegCertExt
+  "The OID for the extension with shortname 'ppRegCertExt'."
+  "1.3.6.1.4.1.34380.1.1")
+
+(def ppPrivCertExt
+  "The OID for the extension with shortname 'ppPrivCertExt'."
+  "1.3.6.1.4.1.34380.1.2")
+
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
@@ -142,6 +150,13 @@
   (-> cert
       (.getSubjectX500Principal)
       (.getName)))
+
+(schema/defn get-csr-subject :- String
+  [csr :- (schema/pred utils/certificate-request?)]
+  (-> csr
+      (.getSubject)
+      (.toString)
+      (utils/x500-name->CN)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
@@ -441,7 +456,7 @@
    All output (stdout & stderr) will be logged at the debug level."
   [executable :- schema/Str
    subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr-stream :- InputStream
    load-path :- [schema/Str]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
@@ -451,7 +466,7 @@
                      (map fs/absolute-path)
                      (str/join (System/getProperty "path.separator")))
         results (shell/sh executable subject
-                          :in (csr-fn)
+                          :in csr-stream
                           :env (merge env {:RUBYLIB rubylib}))]
     (log/debugf "Autosign command '%s %s' exit status: %d"
                 executable subject (:exit results))
@@ -507,29 +522,17 @@
   Puppet's autosign setting, and false otherwise."
   [autosign :- (schema/either schema/Str schema/Bool)
    subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr-stream :- InputStream
    load-path :- [schema/Str]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (-> (execute-autosign-command! autosign subject csr-fn load-path)
+        (-> (execute-autosign-command! autosign subject csr-stream load-path)
             :exit
             zero?)
         (whitelist-matches? autosign subject))
       false)))
-
-(defn filter-authorized-extensions
-  "Given a list of X.509 extensions, remove all extensions that are considered
-  unsafe to sign to a certificate. Currently only Puppet extensions are
-  considered safe, all others are removed."
-  ;; TODO: (PE-3864) Figure out what is supposed to happen when an extension
-  ;;                 cannot be copied from the CSR to the certificate.
-  [ext-list]
-  {:pre [(utils/extension-list? ext-list)]}
-  (letfn [(puppet-oid? [{oid :oid}]
-            (utils/subtree-of? puppet-oid-arc oid))]
-    (filter puppet-oid? ext-list)))
 
 (defn create-agent-extensions
   "Given a certificate signing request, generate a list of extensions that
@@ -540,8 +543,7 @@
          (utils/public-key? capub)]
    :post [(utils/extension-list? %)]}
   (let [subj-pub-key (utils/get-public-key csr)
-        csr-ext-list (filter-authorized-extensions
-                       (utils/get-extensions csr))
+        csr-ext-list (utils/get-extensions csr)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
                        (utils/authority-key-identifier
@@ -561,10 +563,9 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr :- (schema/pred utils/certificate-request?)
    {:keys [cacert capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
-  (let [csr         (utils/pem->csr (csr-fn))
-        validity    (cert-validity-dates ca-ttl)
+  (let [validity    (cert-validity-dates ca-ttl)
         signed-cert (utils/sign-certificate (get-subject (utils/pem->cert cacert))
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
@@ -582,10 +583,9 @@
   save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
   [subject :- schema/Str
-   csr-fn :- (schema/pred fn?)
+   csr :- (schema/pred utils/certificate-request?)
    csrdir :- schema/Str]
-  (-> (utils/pem->csr (csr-fn))
-      (utils/obj->pem! (path-to-cert-request csrdir subject))))
+  (utils/obj->pem! csr (path-to-cert-request csrdir subject)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false
@@ -610,6 +610,62 @@
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
+(schema/defn allowed-extension?
+  "A predicate that answers if an extension is allowed or not.
+  This logic is copied out of the ruby CA."
+  [extension :- (schema/pred utils/extension?)]
+  (let [oid (:oid extension)]
+    (or
+      (utils/subtree-of? ppRegCertExt oid)
+      (utils/subtree-of? ppPrivCertExt oid))))
+
+(schema/defn validate-csr-extensions!
+  "Throws an error if the CSR contains any invalid extensions, according to
+  `allowed-extension?`"
+  [csr :- (schema/pred utils/certificate-request?)]
+  (let [extensions (utils/get-extensions csr)
+        bad-extensions (remove allowed-extension? extensions)]
+    (when-not (empty? bad-extensions)
+      (let [bad-extension-oids (map :oid bad-extensions)]
+        (sling/throw+ {:type    :disallowed-extension
+                       :message (str "CSR has request extensions that are not permitted: "
+                                     (str/join ", " bad-extension-oids))})))))
+
+(schema/defn validate-csr-subject!
+  "Validate the CSR subject name.  The subject name must:
+    * match the hostname specified in the HTTP request (the `subject` parameter)
+    * not contain any non-printable characters or slashes
+    * not contain the wildcard character (*)"
+  [subject :- schema/Str
+   certificate-request :- (schema/pred utils/certificate-request?)]
+  (let [cert-subject (get-csr-subject certificate-request)]
+    (when-not (= subject cert-subject)
+      (sling/throw+
+        {:type    :hostname-mismatch
+         :message (str "Instance name \"" cert-subject
+                       "\" does not match requested key \"" subject "\"")}))
+
+    (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
+      (sling/throw+
+        {:type    :invalid-subject-name
+         :message "CSR subject contains unprintable or non-ASCII characters"}))
+
+    (when (.contains cert-subject "*")
+      (sling/throw+
+        {:type    :invalid-subject-name
+         :message (format
+                    "CSR subject contains a wildcard, which is not allowed: %s"
+                    cert-subject)}))))
+
+(schema/defn validate-csr-signature!
+  "Throws an exception when the CSR's signature is invalid.
+  See `signature-valid?` for more detail."
+  [certificate-request :- (schema/pred utils/certificate-request?)]
+  (when-not (utils/signature-valid? certificate-request)
+    (sling/throw+
+      {:type    :invalid-signature
+       :message "CSR contains a public key that does not correspond to the signing key"})))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -622,10 +678,17 @@
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
-    (let [csr-fn #(doto byte-stream .reset)]
-      (if (autosign-csr? autosign subject csr-fn load-path)
-        (autosign-certificate-request! subject csr-fn settings)
-        (save-certificate-request! subject csr-fn csrdir)))))
+    (let [csr (utils/pem->csr byte-stream)
+          csr-stream (doto byte-stream .reset)]
+      (if (autosign-csr? autosign subject csr-stream load-path)
+        (do
+          ; These validations must happen in this order
+          ; if we are to behave exactly like the ruby CA.
+          (validate-csr-extensions! csr)
+          (validate-csr-subject! subject csr)
+          (validate-csr-signature! csr)
+          (autosign-certificate-request! subject csr settings))
+        (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str

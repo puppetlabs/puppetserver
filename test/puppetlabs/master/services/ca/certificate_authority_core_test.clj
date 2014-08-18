@@ -16,7 +16,6 @@
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
 
-
 (def settings
   {:allow-duplicate-certs true
    :autosign              true
@@ -105,4 +104,70 @@
               response   (handle-put-certificate-request! "test-agent" csr-stream settings)]
           (is (logged? #"ignoring certificate request" :error))
           (is (= 400 (:status response)))
-          (is (true? (.contains (:body response) "ignoring certificate request"))))))))
+          (is (true? (.contains (:body response) "ignoring certificate request"))))))
+
+    (testing "when the subject CN on a CSR does not match the hostname specified
+            in the URL, the response is a 400"
+      (let [csr-stream (io/input-stream csr-path)]
+        (let [response (handle-put-certificate-request!
+                         "NOT-test-agent" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (re-matches
+                #"Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""
+                (:body response))))))
+
+    (testing "when the public key on the CSR is bogus, the repsonse is a 400"
+      (let [csr-with-bad-public-key "dev-resources/luke.madstop.com-bad-public-key.pem"
+            csr-stream (io/input-stream csr-with-bad-public-key)]
+        (let [response (handle-put-certificate-request!
+                         "luke.madstop.com" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (= "CSR contains a public key that does not correspond to the signing key"
+                 (:body response))))))
+
+    (testing "when the CSR has disallowed extensions on it, the repsonse is a 400"
+      (let [csr-with-bad-ext "dev-resources/meow-bad-extension.pem"
+            csr-stream (io/input-stream csr-with-bad-ext)]
+        (let [response (handle-put-certificate-request!
+                         "meow" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (= "CSR has request extensions that are not permitted: 1.9.9.9.9.9.9"
+                 (:body response)))))
+
+      (let [csr-with-bad-ext "dev-resources/woof-bad-extensions.pem"
+            csr-stream (io/input-stream csr-with-bad-ext)]
+        (let [response (handle-put-certificate-request!
+                         "woof" csr-stream settings)]
+          (is (= 400 (:status response)))
+          (is (= "CSR has request extensions that are not permitted: 1.9.9.9.9.9.0, 1.9.9.9.9.9.1"
+                 (:body response))))))
+
+    (testing "when the CSR subject contains invalid characters,
+              the response is a 400"
+
+      ; These test cases are lifted out of the puppet spec tests.
+      (let [bad-csrs #{{:subject "super/bad"
+                        :csr     "dev-resources/bad-subject-name-1.pem"}
+
+                       {:subject "not\neven\tkind\rof"
+                        :csr     "dev-resources/bad-subject-name-2.pem"}
+
+                       {:subject "hidden\b\b\b\b\b\bmessage"
+                        :csr     "dev-resources/bad-subject-name-3.pem"}}]
+
+        (doseq [{:keys [subject csr]} bad-csrs]
+          (let [csr-stream (io/input-stream csr)
+                response (handle-put-certificate-request!
+                           subject csr-stream settings)]
+            (is (= 400 (:status response)))
+            (is (= "CSR subject contains unprintable or non-ASCII characters"
+                   (:body response))))))
+
+      (testing "no wildcards allowed"
+        (let [csr-with-wildcard "dev-resources/bad-subject-name-wildcard.pem"
+              csr-stream (io/input-stream csr-with-wildcard)]
+          (let [response (handle-put-certificate-request!
+                           "foo*bar" csr-stream settings)]
+            (is (= 400 (:status response)))
+            (is (= "CSR subject contains a wildcard, which is not allowed: foo*bar"
+                   (:body response)))))))))
