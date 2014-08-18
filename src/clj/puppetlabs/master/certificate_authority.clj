@@ -150,7 +150,7 @@
   (-> csr
       (.getSubject)
       (.toString)
-      (.substring 3)))  ; strip off the leading 'CN='
+      (utils/x500-name->CN)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
