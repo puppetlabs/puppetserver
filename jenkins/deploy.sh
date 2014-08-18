@@ -11,6 +11,6 @@ echo "Tests passed!"
 lein release
 echo "Release plugin successful, pushing changes to git"
 
-git push origin --tags HEAD:$JVM_PUPPET_BRANCH
+git push origin --tags HEAD:$PUPPET_SERVER_BRANCH
 
 echo "git push successful."

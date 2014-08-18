@@ -8,7 +8,7 @@
 ;;; Public
 
 ;; This service uses TK's normal config service instead of the
-;; JvmPuppetConfigService.  This is because that service depends on this one.
+;; PuppetServerConfigService.  This is because that service depends on this one.
 
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService

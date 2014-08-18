@@ -32,7 +32,7 @@
     (assoc required-config :my-config {:foo "bar"})
     (testing "Basic puppet-server config service function usage"
 
-      (let [service (tk-app/get-service app :JvmPuppetConfigService)
+      (let [service (tk-app/get-service app :PuppetServerConfigService)
             service-config (get-config service)]
 
         (is (= (:jruby-puppet service-config)

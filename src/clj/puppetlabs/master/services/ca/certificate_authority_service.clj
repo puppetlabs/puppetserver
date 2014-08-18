@@ -7,7 +7,7 @@
             [me.raynes.fs :as fs]))
 
 (tk/defservice certificate-authority-service
-  [[:JvmPuppetConfigService get-config get-in-config]
+  [[:PuppetServerConfigService get-config get-in-config]
    [:WebserverService add-ring-handler]]
   (init
    [this context]

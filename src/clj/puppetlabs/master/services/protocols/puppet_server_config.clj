@@ -1,6 +1,6 @@
 (ns puppetlabs.master.services.protocols.puppet-server-config)
 
-(defprotocol JvmPuppetConfigService
+(defprotocol PuppetServerConfigService
   "The configuration service for puppet-server.  This is built on top of
   Trapperkeeper's normal configuration service.  It adds a few features -
   most importantly, it merges in settings from the Puppet's 'settings' in ruby.

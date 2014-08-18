@@ -7,7 +7,7 @@
 
 (defservice master-service
   [[:WebserverService add-ring-handler]
-   [:JvmPuppetConfigService get-config]
+   [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]]
   (init
    [this context]

@@ -218,7 +218,7 @@ class Puppet::Server::Master
       fail(Puppet::Environments::EnvironmentNotFound, configured_environment_name)
     end
     Puppet.push_context({:current_environment => configured_environment},
-      "Update current environment from JVM puppet master's configuration")
+      "Update current environment from puppet master's configuration")
 
     require 'puppet/util/instrumentation'
     Puppet::Util::Instrumentation.init
