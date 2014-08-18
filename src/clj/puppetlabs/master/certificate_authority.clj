@@ -611,7 +611,7 @@
   `allowed-extension?`"
   [csr :- (schema/pred utils/certificate-request?)]
   (let [extensions (utils/get-extensions csr)
-        bad-extensions (filter (comp not allowed-extension?) extensions)]
+        bad-extensions (remove allowed-extension? extensions)]
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:type    :disallowed-extension
