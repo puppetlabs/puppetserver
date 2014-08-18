@@ -1,8 +1,7 @@
 (ns puppetlabs.master.certificate-authority
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream]
-           [com.puppetlabs.certificate_authority])
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -14,8 +13,7 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.certificate-authority.core :as utils]
-            [clojure.string :as string]))
+            [puppetlabs.certificate-authority.core :as utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -623,7 +621,7 @@
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:type    :disallowed-extension
                        :message (str "CSR has request extensions that are not permitted: "
-                                     (string/join ", " bad-extension-oids))})))))
+                                     (str/join ", " bad-extension-oids))})))))
 
 (schema/defn validate-csr-subject!
   "Validate the CSR subject name.  The subject name must:
