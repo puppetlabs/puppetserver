@@ -15,7 +15,6 @@
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as utils]
-            [puppetlabs.master.certificate-extensions :as extensions]
             [clojure.string :as string]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -68,6 +67,14 @@
 (def puppet-oid-arc
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
+
+(def ppRegCertExt
+  "The OID for the extension with shortname 'ppRegCertExt'."
+  "1.3.6.1.4.1.34380.1.1")
+
+(def ppPrivCertExt
+  "The OID for the extension with shortname 'ppPrivCertExt'."
+  "1.3.6.1.4.1.34380.1.2")
 
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
@@ -603,8 +610,8 @@
   [extension :- (schema/pred utils/extension?)]
   (let [oid (:oid extension)]
     (or
-      (utils/subtree-of? extensions/ppRegCertExt oid)
-      (utils/subtree-of? extensions/ppPrivCertExt oid))))
+      (utils/subtree-of? ppRegCertExt oid)
+      (utils/subtree-of? ppPrivCertExt oid))))
 
 (schema/defn validate-csr-extensions!
   "Throws an error if the CSR contains any invalid extensions, according to
