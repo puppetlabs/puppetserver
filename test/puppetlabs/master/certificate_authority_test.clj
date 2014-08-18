@@ -767,7 +767,7 @@
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
 
-(deftest validatate-csr-hostname!-test
+(deftest validate-csr-hostname!-test
   (testing "an exception is thrown when the hostnames don't match"
     (is (thrown-with-slingshot?
           {:type    :hostname-mismatch
