@@ -5,7 +5,7 @@
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
-            [compojure.core :as compojure]
+            [compojure.core :as compojure :refer [GET ANY PUT]]
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -67,14 +67,14 @@
   [ca-settings :- ca/CaSettings]
   (compojure/context "/:environment" [environment]
     (compojure/routes
-      (compojure/GET "/certificate/:subject" [subject]
+      (GET "/certificate/:subject" [subject]
         (handle-get-certificate subject ca-settings))
       (compojure/context "/certificate_request/:subject" [subject]
-        (compojure/GET "/" []
+        (GET "/" []
           (handle-get-certificate-request subject ca-settings))
-        (compojure/PUT "/" {body :body}
+        (PUT "/" {body :body}
           (handle-put-certificate-request! subject body ca-settings)))
-      (compojure/GET "/certificate_revocation_list/:ignored-node-name" []
+      (GET "/certificate_revocation_list/:ignored-node-name" []
         (handle-get-certificate-revocation-list ca-settings)))))
 
 (defn wrap-with-puppet-version-header
