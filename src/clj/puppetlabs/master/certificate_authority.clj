@@ -596,22 +596,21 @@
        {:type    :duplicate-cert
         :message (str subject " already has a requested certificate; ignoring certificate request")}))))
 
-(schema/defn disallowed-extension?
+(schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
   This logic is copied out of the ruby CA."
   [extension :- (schema/pred utils/extension?)]
   (let [oid (:oid extension)]
-    (not
-      (or
-        (utils/subtree-of? Extensions/ppRegCertExt oid)
-        (utils/subtree-of? Extensions/ppPrivCertExt oid)))))
+    (or
+      (utils/subtree-of? Extensions/ppRegCertExt oid)
+      (utils/subtree-of? Extensions/ppPrivCertExt oid))))
 
 (schema/defn validate-csr-extensions!
   "Throws an error if the CSR contains any invalid extensions, according to
-  `disallowed-extension?`"
+  `allowed-extension?`"
   [csr :- (schema/pred utils/certificate-request?)]
   (let [extensions (utils/get-extensions csr)
-        bad-extensions (filter disallowed-extension? extensions)]
+        bad-extensions (filter (comp not allowed-extension?) extensions)]
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:type    :disallowed-extension
