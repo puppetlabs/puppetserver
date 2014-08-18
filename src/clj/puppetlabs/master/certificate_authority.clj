@@ -234,6 +234,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
 
+(schema/defn create-crl-extensions :- (schema/pred utils/extension-list?)
+  "Create a list of extensions to be added to the CRL."
+  [ca-public-key :- (schema/pred utils/public-key?)]
+  [(utils/authority-key-identifier
+      ca-public-key false)
+   (utils/crl-number 0)])
+
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
   [ca-name :- (schema/pred utils/valid-x500-name?)
@@ -267,7 +274,7 @@
         x500-name   (utils/cn (:ca-name ca-settings))
         validity    (cert-validity-dates (:ca-ttl ca-settings))
         serial      (next-serial-number! (:serial ca-settings))
-        extensions  (create-ca-extensions x500-name
+        ca-exts     (create-ca-extensions x500-name
                                           serial
                                           public-key)
         cacert      (utils/sign-certificate
@@ -278,10 +285,11 @@
                       (:not-after validity)
                       x500-name
                       public-key
-                      extensions)
+                      ca-exts)
+        crl-exts    (create-crl-extensions public-key)
         cacrl       (-> cacert
                         .getIssuerX500Principal
-                        (utils/generate-crl private-key))]
+                        (utils/generate-crl private-key crl-exts))]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key (:cakey ca-settings))
