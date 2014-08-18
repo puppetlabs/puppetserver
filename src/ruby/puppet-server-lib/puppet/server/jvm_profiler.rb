@@ -2,7 +2,7 @@ require 'java'
 
 # A wrapper class that implements Puppet's profiler API by passing calls
 # through to a Java/JVM-based implementation.
-class Puppet::Jvm::JvmProfiler
+class Puppet::Server::JvmProfiler
   def initialize(profiler)
     @profiler = profiler
   end

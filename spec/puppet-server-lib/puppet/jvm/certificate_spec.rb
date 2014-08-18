@@ -2,22 +2,22 @@ require 'spec_helper'
 
 require 'puppet/ssl'
 require 'puppet/ssl/base'
-require 'puppet/jvm/certificate'
+require 'puppet/server/certificate'
 require 'rspec'
 
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
 java_import java.io.FileReader
 
 
-describe Puppet::Jvm::Certificate do
+describe Puppet::Server::Certificate do
 
   java_master_cert = CertificateAuthority.pem_to_cert(
       FileReader.new("dev-resources/master-cert-with-dns-alts.pem"))
-  master_certificate = Puppet::Jvm::Certificate.new(java_master_cert)
+  master_certificate = Puppet::Server::Certificate.new(java_master_cert)
 
   java_agent_cert = CertificateAuthority.pem_to_cert(
       FileReader.new("dev-resources/agent-cert-with-exts.pem"))
-  agent_certificate = Puppet::Jvm::Certificate.new(java_agent_cert)
+  agent_certificate = Puppet::Server::Certificate.new(java_agent_cert)
 
   it 'should return DNS alt names' do
     Set.new(master_certificate.subject_alt_names).should ==

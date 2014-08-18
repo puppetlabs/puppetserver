@@ -1,13 +1,13 @@
 require 'puppet'
-require 'puppet/jvm'
-require 'puppet/jvm/config'
+require 'puppet/server'
+require 'puppet/server/config'
 require 'net/http'
 
 require 'java'
 java_import com.puppetlabs.http.client.SyncHttpClient
 java_import com.puppetlabs.http.client.RequestOptions
 
-class Puppet::Jvm::HttpClient
+class Puppet::Server::HttpClient
 
   OPTION_DEFAULTS = {
       :use_ssl => true,
@@ -46,7 +46,7 @@ class Puppet::Jvm::HttpClient
 
   def configure_ssl(request_options)
     return unless @use_ssl
-    request_options.set_ssl_context(Puppet::Jvm::Config.ssl_context)
+    request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
   end
 
   def remove_leading_slash(url)

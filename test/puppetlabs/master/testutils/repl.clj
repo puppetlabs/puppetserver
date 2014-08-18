@@ -4,7 +4,7 @@
             [puppetlabs.master.services.handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.master.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.master.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
-            [puppetlabs.master.services.config.jvm-puppet-config-service :refer [jvm-puppet-config-service]]
+            [puppetlabs.master.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
             [puppetlabs.master.services.ca.certificate-authority-service :refer [certificate-authority-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
@@ -21,7 +21,7 @@
                  jruby-puppet-pooled-service
                  puppet-profiler-service
                  request-handler-service
-                 jvm-puppet-config-service
+                 puppet-server-config-service
                  certificate-authority-service]
                 {:global {:logging-config "./dev-resources/logback-dev.xml"}
                  :jruby-puppet { :jruby-pools  [{:environment "production"
