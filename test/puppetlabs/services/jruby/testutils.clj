@@ -8,18 +8,26 @@
 
 (def prod-pool-descriptor {:environment :production})
 
-(def load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
+(def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
 
 (def conf-dir "./dev-resources/config/master/conf")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
 
+(defn jruby-puppet-tk-config
+  "Create a JRubyPuppet pool config which includes the provided list of pool
+  descriptions.  Suitable for use in bootstrapping trapperkeeper."
+  [pools-list]
+  {:os-settings {:ruby-load-path ruby-load-path}
+   :jruby-puppet {:master-conf-dir conf-dir
+                  :jruby-pools     pools-list}})
+
 (defn jruby-puppet-config
   "Create a JRubyPuppet pool config which includes the provided list of pool
-  descriptions."
+  descriptions.  Suitable for use when calling jruby service functions directly."
   [pools-list]
-  {:load-path       load-path
+  {:ruby-load-path  ruby-load-path
    :master-conf-dir conf-dir
    :jruby-pools     pools-list})
 
@@ -31,11 +39,21 @@
 
 (defn jruby-puppet-config-with-prod-env
   "Create some settings used for creating a JRubyPuppet pool via
-  `create-jruby-pool`."
+  `create-jruby-pool`.  Suitable for use when calling jruby service functions
+  directly."
   ([] (jruby-puppet-config-with-prod-env 1))
   ([size]
    (jruby-puppet-config [{:environment "production"
                           :size        size}])))
+
+(defn jruby-puppet-tk-config-with-prod-env
+  "Create some settings used for creating a JRubyPuppet pool via
+  `create-jruby-pool`.  Suitable for use in bootstrapping trapperkeeper."
+  ([] (jruby-puppet-tk-config-with-prod-env 1))
+  ([size]
+   (jruby-puppet-tk-config [{:environment "production"
+                          :size        size}])))
+
 
 (defn jruby-puppet-config-with-prod-test-env
   "Create a settings structure which contains a `production` environment of a

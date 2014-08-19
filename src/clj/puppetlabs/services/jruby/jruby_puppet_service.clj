@@ -17,7 +17,8 @@
                            [:PuppetProfilerService get-profiler]]
   (init
     [this context]
-    (let [config    (get-in-config [:jruby-puppet])]
+    (let [config (-> (get-in-config [:jruby-puppet])
+                     (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path])))]
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config (get-profiler))
             default-pool-descriptor (core/extract-default-pool-descriptor config)]

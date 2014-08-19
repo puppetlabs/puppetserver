@@ -45,7 +45,7 @@
       :csrdir                (str cadir "/requests")
       :signeddir             (str cadir "/signed")
       :serial                (str cadir "/serial")
-      :load-path             []}))
+      :ruby-load-path        []}))
 
 (defn master-test-settings
   "Master configuration settings with defaults appropriate for testing.
@@ -238,31 +238,31 @@
 
   (testing "executable"
     (testing "ruby script"
-      (let [executable "dev-resources/config/master/conf/ruby-autosign-executable"
-            csr-fn     #(csr-stream "test-agent")
-            load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
+      (let [executable      "dev-resources/config/master/conf/ruby-autosign-executable"
+            csr-fn          #(csr-stream "test-agent")
+            ruby-load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
 
         (testing "stdout and stderr are copied to master's log at debug level"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
             (is (logged? #"print to stdout" :debug))
             (is (logged? #"print to stderr" :debug))))
 
         (testing "Ruby load path is configured and contains Puppet"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
             (is (logged? #"Ruby load path configured properly"))))
 
         (testing "subject is passed as argument and CSR is provided on stdin"
           (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) load-path)
+            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
             (is (logged? #"subject: test-agent"))
             (is (logged? #"CSR for: test-agent"))))
 
         (testing "only exit code 0 results in autosigning"
           (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" (csr-fn) load-path)))
-            (is (false? (autosign-csr? executable "foo" (csr-fn) load-path)))))))
+            (is (true? (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)))
+            (is (false? (autosign-csr? executable "foo" (csr-fn) ruby-load-path)))))))
 
     (testing "bash script"
       (let [executable "dev-resources/config/master/conf/bash-autosign-executable"

@@ -9,14 +9,15 @@
 (deftest create-jruby-instance-test
 
   (testing "Var dir is not required."
-    (let [config  { :load-path       testutils/load-path
-                    :master-conf-dir testutils/conf-dir }
+    (let [config  { :ruby-load-path  testutils/ruby-load-path
+                    :master-conf-dir testutils/conf-dir
+                    :jruby-pools     []}
           jruby   (create-jruby-instance config testutils/default-profiler)
           var-dir (.getSetting jruby "vardir")]
       (is (not (nil? var-dir)))))
 
   (testing "Settings from Ruby Puppet are available"
-    (let [temp-dir      (ks/temp-dir)
+    (let [temp-dir      (.getAbsolutePath (ks/temp-dir))
           config        (assoc (testutils/jruby-puppet-config-with-prod-env)
                           :master-var-dir temp-dir)
           jruby-puppet  (testutils/create-jruby-instance config)]
