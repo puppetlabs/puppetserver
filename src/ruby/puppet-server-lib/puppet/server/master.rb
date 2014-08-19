@@ -16,11 +16,11 @@ require 'puppet/server/certificate'
 
 require 'java'
 
-java_import com.puppetlabs.master.ExecutionStubImpl
+java_import com.puppetlabs.puppetserver.ExecutionStubImpl
 
 ##
 ## This class is a bridge between the puppet ruby code and the java interface
-## `com.puppetlabs.master.JRubyPuppet`.  The first `include` line in the class
+## `com.puppetlabs.puppetserver.JRubyPuppet`.  The first `include` line in the class
 ## is some JRuby magic that causes this class to "implement" the Java interface.
 ## So, in this class we can make calls into the puppet ruby code, but from
 ## outside (in the clojure/Java code), we can interact with an instance of this
@@ -28,7 +28,7 @@ java_import com.puppetlabs.master.ExecutionStubImpl
 ## code need not be aware of any of the JRuby implementation details.
 ##
 class Puppet::Server::Master
-  include Java::com.puppetlabs.master.JRubyPuppet
+  include Java::com.puppetlabs.puppetserver.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
   def initialize(config, profiler)
@@ -104,7 +104,7 @@ class Puppet::Server::Master
           raise "Don't know how to handle response body from puppet, which is a #{body.class}"
         end
 
-    com.puppetlabs.master.JRubyPuppetResponse.new(
+    com.puppetlabs.puppetserver.JRubyPuppetResponse.new(
         response[:status],
         body_to_return,
         response[:content_type],
