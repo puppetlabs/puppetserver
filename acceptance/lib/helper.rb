@@ -110,13 +110,13 @@ module PuppetServerExtensions
   end
 
   def puppet_server_collect_data(host, relative_path)
-    destination = File.join("./log/latest/puppet-server/", relative_path)
+    destination = File.join("./log/latest/puppetserver/", relative_path)
     FileUtils.mkdir_p(destination)
-    scp_from master, "/var/log/puppet-server/puppet-server.log", destination
-    scp_from master, "/var/log/puppet-server/puppet-server-daemon.log", destination
+    scp_from master, "/var/log/puppetserver/puppetserver.log", destination
+    scp_from master, "/var/log/puppetserver/puppetserver-daemon.log", destination
   end
 
-  def install_puppet_server (host, puppet_server_name='puppet-server', make_env={})
+  def install_puppet_server (host, puppet_server_name='puppetserver', make_env={})
     case test_config[:puppetserver_install_type]
     when :package
       install_package host, puppet_server_name

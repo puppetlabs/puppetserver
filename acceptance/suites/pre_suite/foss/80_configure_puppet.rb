@@ -12,9 +12,9 @@ step "Configure puppet.conf" do
 
   case variant
   when /^(fedora|el|centos)$/
-    defaults_file = '/etc/sysconfig/puppet-server'
+    defaults_file = '/etc/sysconfig/puppetserver'
   when /^(debian|ubuntu)$/
-    defaults_file = '/etc/default/puppet-server'
+    defaults_file = '/etc/default/puppetserver'
   else
     logger.notify("Not sure how to handle defaults for #{variant} yet...")
   end

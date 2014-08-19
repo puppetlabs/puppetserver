@@ -3,7 +3,7 @@
   "service-wait" => true,
   "service-prefix" => 'service ',
   "service-num-retries" => 1500,
-  "puppetservice" => 'puppet-server',
+  "puppetservice" => 'puppetserver',
   "master-start-curl-retries" => 200,
 }
 
