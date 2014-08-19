@@ -1,5 +1,5 @@
 (ns ^{:doc
-       "Core logic for the implementation of the JvmPuppetConfigService in
+       "Core logic for the implementation of the PuppetServerConfigService in
         puppetlabs.services.config.puppet-server-config-service."}
     puppetlabs.services.config.puppet-server-config-core
   (:import (com.puppetlabs.puppetserver JRubyPuppet))
