@@ -7,12 +7,12 @@ require 'puppet/application/master'
 
 require 'puppet/util/profiler'
 
-require 'puppet/jvm'
-require 'puppet/jvm/config'
-require 'puppet/jvm/logger'
-require 'puppet/jvm/http_client'
-require 'puppet/jvm/jvm_profiler'
-require 'puppet/jvm/certificate'
+require 'puppet/server'
+require 'puppet/server/config'
+require 'puppet/server/logger'
+require 'puppet/server/http_client'
+require 'puppet/server/jvm_profiler'
+require 'puppet/server/certificate'
 
 require 'java'
 
@@ -27,7 +27,7 @@ java_import com.puppetlabs.master.ExecutionStubImpl
 ## class simply as if it were an instance of the Java interface; thus, consuming
 ## code need not be aware of any of the JRuby implementation details.
 ##
-class Puppet::Jvm::Master
+class Puppet::Server::Master
   include Java::com.puppetlabs.master.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
@@ -49,11 +49,11 @@ class Puppet::Jvm::Master
     # TODO: find out if this is actually the best way to set the run mode
     Puppet.settings.preferred_run_mode = :master
 
-    Puppet::Jvm::Logger.init_logging
+    Puppet::Server::Logger.init_logging
     initialize_execution_stub
 
     if profiler
-      Puppet::Util::Profiler.add_profiler(Puppet::Jvm::JvmProfiler.new(profiler))
+      Puppet::Util::Profiler.add_profiler(Puppet::Server::JvmProfiler.new(profiler))
     end
 
     Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
@@ -148,7 +148,7 @@ class Puppet::Jvm::Master
 
   def client_cert(request)
     if request['client-cert']
-      Puppet::Jvm::Certificate.new(request['client-cert'])
+      Puppet::Server::Certificate.new(request['client-cert'])
     end
   end
 
@@ -198,12 +198,12 @@ class Puppet::Jvm::Master
     # will use (e.g., for agent pluginsyncs).
     #
     # It would be better for the logic below to be put in a location where
-    # both the core Ruby Puppet and JVM Puppet masters can use the same
+    # both the core Ruby Puppet and Puppet Server masters can use the same
     # implementation.  A separate ticket, PE-4356, was filed to cover this
     # follow-on work.
 
     Puppet.push_context(Puppet.base_context(Puppet.settings),
-                        "Update for application settings (JVM Puppet Master).")
+                        "Update for application settings (Puppet Server).")
     # This use of configured environment is correct, this is used to establish
     # the defaults for an application that does not override, or where an override
     # has not been made from the command line.
@@ -218,7 +218,7 @@ class Puppet::Jvm::Master
       fail(Puppet::Environments::EnvironmentNotFound, configured_environment_name)
     end
     Puppet.push_context({:current_environment => configured_environment},
-      "Update current environment from JVM puppet master's configuration")
+      "Update current environment from puppet master's configuration")
 
     require 'puppet/util/instrumentation'
     Puppet::Util::Instrumentation.init

@@ -7,13 +7,13 @@
 
 (defservice master-service
   [[:WebserverService add-ring-handler]
-   [:JvmPuppetConfigService get-config]
+   [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]]
   (init
    [this context]
    (let [path            ""
          config          (get-config)
-         master-certname (get-in config [:jvm-puppet :certname])
+         master-certname (get-in config [:puppet-server :certname])
          master-settings (ca/config->master-settings config)
          ca-settings     (ca/config->ca-settings config)]
 

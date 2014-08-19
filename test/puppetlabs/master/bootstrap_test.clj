@@ -3,8 +3,8 @@
            (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.testutils :refer [with-no-jvm-shutdown-hooks]]
-            [puppetlabs.master.services.config.jvm-puppet-config-service
-              :as jvm-puppet-config-service]
+            [puppetlabs.master.services.config.puppet-server-config-service
+              :as puppet-server-config-service]
             [puppetlabs.master.services.handler.request-handler-service
               :as request-handler-service]
             [puppetlabs.master.services.jruby.jruby-puppet-service
@@ -28,15 +28,15 @@
 (use-fixtures :each logging/reset-logging-config-after-test)
 
 (def dev-config-file
-  "./dev-resources/jvm-puppet.conf")
+  "./dev-resources/puppet-server.conf")
 
 (def dev-bootstrap-file
   "./dev-resources/bootstrap.cfg")
 
-(def jvm-puppet-service-stack
+(def puppet-server-service-stack
   [jetty-service/jetty9-service
    master-service/master-service
-   jvm-puppet-config-service/jvm-puppet-config-service
+   puppet-server-config-service/puppet-server-config-service
    jruby-puppet-service/jruby-puppet-pooled-service
    request-handler-service/request-handler-service
    profiler/puppet-profiler-service])
@@ -67,13 +67,13 @@
         test-url (str "https://localhost:" port "/production/node/localhost")]
     (tk-bootstrap-testutils/with-app-with-config
       app
-      jvm-puppet-service-stack
+      puppet-server-service-stack
       {:webserver
         {:ssl-host    "0.0.0.0"
          :ssl-port    port
          :client-auth "need"}
        :jruby-puppet (jruby-testutils/jruby-puppet-config-with-prod-env 1)}
-      (testing (str "Simple request to jvm puppet succeeds when the client "
+      (testing (str "Simple request to puppet server succeeds when the client "
                     "certificate's serial number is not in the server's CRL.")
         (let [response
                (tk-webserver-testutils/http-get
@@ -86,7 +86,7 @@
                    "./dev-resources/config/master/conf/ssl/certs/ca.pem"
                   :headers {"Accept" "pson"}})]
           (is (= (:status response) 200))))
-      (testing (str "Simple request to jvm puppet fails when the client "
+      (testing (str "Simple request to puppet server fails when the client "
                     "certificate's serial number is in the server's CRL.")
         (validate-connection-failure
           #(tk-webserver-testutils/http-get

@@ -1,7 +1,7 @@
 (ns ^{:doc
-       "Core logic for the implementation of the JvmPuppetConfigService in
-        puppetlabs.master.services.config.jvm-puppet-config-service."}
-    puppetlabs.master.services.config.jvm-puppet-config-core
+       "Core logic for the implementation of the PuppetServerConfigService in
+        puppetlabs.master.services.config.puppet-server-config-service."}
+    puppetlabs.master.services.config.puppet-server-config-core
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [keyset]]
@@ -90,7 +90,7 @@
 
 (schema/defn ^:always-validate
   get-puppet-config :- Config
-  "Returns all of the configuration values for jvm-puppet from JRubyPuppet."
+  "Returns all of the configuration values for puppet-server from JRubyPuppet."
   [jruby-service pool-descriptor]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet

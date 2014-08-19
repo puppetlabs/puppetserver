@@ -1,14 +1,14 @@
 (ns ^{:doc
-       "Implementation of the JvmPuppetConfigService."}
-    puppetlabs.master.services.config.jvm-puppet-config-service
+       "Implementation of the PuppetServerConfigService."}
+    puppetlabs.master.services.config.puppet-server-config-service
 
   (:require [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.master.services.protocols.jvm-puppet-config
-             :refer [JvmPuppetConfigService]]
-            [puppetlabs.master.services.config.jvm-puppet-config-core :as core]))
+            [puppetlabs.master.services.protocols.puppet-server-config
+             :refer [PuppetServerConfigService]]
+            [puppetlabs.master.services.config.puppet-server-config-core :as core]))
 
-(tk/defservice jvm-puppet-config-service
-  JvmPuppetConfigService
+(tk/defservice puppet-server-config-service
+  PuppetServerConfigService
   [[:ConfigService get-config get-in-config]
    [:JRubyPuppetService get-default-pool-descriptor]
    [:WebserverService override-webserver-settings!]]
@@ -26,7 +26,7 @@
       (core/init-webserver! override-webserver-settings!
                             puppet-config)
       (assoc context :puppet-config
-                     {:jvm-puppet puppet-config})))
+                     {:puppet-server puppet-config})))
 
   (get-config
     [this]

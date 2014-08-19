@@ -1,8 +1,8 @@
-(ns puppetlabs.master.services.config.jvm-puppet-config-service-test
+(ns puppetlabs.master.services.config.puppet-server-config-service-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.master.services.protocols.jvm-puppet-config :refer :all]
-            [puppetlabs.master.services.config.jvm-puppet-config-service :refer :all]
-            [puppetlabs.master.services.config.jvm-puppet-config-core :as core]
+            [puppetlabs.master.services.protocols.puppet-server-config :refer :all]
+            [puppetlabs.master.services.config.puppet-server-config-service :refer :all]
+            [puppetlabs.master.services.config.puppet-server-config-core :as core]
             [puppetlabs.master.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.master.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.master.services.jruby.testutils :as jruby-testutils]
@@ -15,7 +15,7 @@
             [puppetlabs.master.services.jruby.testutils :as jruby-testutils]))
 
 (def service-and-deps
-  [jvm-puppet-config-service jruby-puppet-pooled-service jetty9-service
+  [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
    profiler/puppet-profiler-service])
 
 (def required-config
@@ -30,22 +30,22 @@
     app
     service-and-deps
     (assoc required-config :my-config {:foo "bar"})
-    (testing "Basic jvm-puppet config service function usage"
+    (testing "Basic puppet-server config service function usage"
 
-      (let [service (tk-app/get-service app :JvmPuppetConfigService)
+      (let [service (tk-app/get-service app :PuppetServerConfigService)
             service-config (get-config service)]
 
         (is (= (:jruby-puppet service-config)
                (jruby-testutils/jruby-puppet-config-with-prod-env 1)))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
-        (is (= (set (keys (:jvm-puppet service-config)))
+        (is (= (set (keys (:puppet-server service-config)))
                (conj core/puppet-config-keys :puppet-version))
             (str "config not as expected: " service-config))
 
         (testing "The config service has puppet's version available."
           (is (valid-semver-number?
-                (get-in-config service [:jvm-puppet :puppet-version]))))
+                (get-in-config service [:puppet-server :puppet-version]))))
 
         (testing "`get-in-config` functions"
 
@@ -53,7 +53,7 @@
             (is (= "bar" (get-in-config service [:my-config :foo]))))
 
           (testing "get a value from JRuby's config"
-            (is (= "localhost" (get-in-config service [:jvm-puppet :certname])))))
+            (is (= "localhost" (get-in-config service [:puppet-server :certname])))))
 
         (testing "Default values passed to `get-in-config` are handled correctly"
           (is (= "default" (get-in-config service [:bogus] "default")))
@@ -65,7 +65,7 @@
 
           (testing "get a value from JRuby's config (w/ default specified"
             (is (= "localhost"
-                   (get-in-config service [:jvm-puppet :certname]
+                   (get-in-config service [:puppet-server :certname]
                                   "default value, should not be returned")))))))))
 
 (deftest config-key-conflicts
