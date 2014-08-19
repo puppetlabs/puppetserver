@@ -34,7 +34,8 @@
     :serial
     :signeddir
     :requestdir
-    :dns-alt-names})
+    :dns-alt-names
+    :csr-attributes})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers

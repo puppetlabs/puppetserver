@@ -23,13 +23,14 @@
    Most of these are files and directories within the SSL directory, excluding
    the CA directory and its contents; see `CaSettings` for more information.
    All of these are Puppet configuration settings."
-  {:certdir       schema/Str
-   :dns-alt-names schema/Str
-   :hostcert      schema/Str
-   :hostprivkey   schema/Str
-   :hostpubkey    schema/Str
-   :localcacert   schema/Str
-   :requestdir    schema/Str})
+  {:certdir        schema/Str
+   :dns-alt-names  schema/Str
+   :hostcert       schema/Str
+   :hostprivkey    schema/Str
+   :hostpubkey     schema/Str
+   :localcacert    schema/Str
+   :requestdir     schema/Str
+   :csr-attributes schema/Str})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
@@ -105,7 +106,7 @@
    paths. These paths are necessary during initialization for determining what
    needs to be created and where."
   [master-settings :- MasterSettings]
-  (dissoc master-settings :dns-alt-names))
+  (dissoc master-settings :dns-alt-names :csr-attributes))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
