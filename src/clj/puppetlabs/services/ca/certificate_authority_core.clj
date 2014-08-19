@@ -2,10 +2,13 @@
   (:import  [java.io InputStream])
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.puppetserver.liberator-utils :as utils]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
             [compojure.core :as compojure :refer [GET ANY PUT]]
+            [liberator.core :as liberator]
+            [ring.middleware.json :as json]
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -63,10 +66,54 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 
+(defn get-desired-state
+  [context]
+  (keyword (get-in context [:request :body :desired_state])))
+
+; TODO - need to test this against the console + `puppet certificate`.  Issues w/ headers? (Accept / Content-Type, JSON vs. PSON?)
+(liberator/defresource certificate-status
+  [certname]
+  :allowed-methods [:get :put :delete]
+
+  :delete! (fn [context]
+             (ca/delete-certificate! certname))
+
+  :exists? (fn [context]
+             (ca/certificate-exists? certname))
+
+  :handle-exception utils/exception-handler
+
+  :handle-ok (fn [context]
+               (ca/get-certificate-status certname))
+
+  :malformed? (fn [context]
+                (when (= :put (get-in context [:request :request-method]))
+                  (let [state (get-desired-state context)]
+                    (schema/check ca/CertState state))))
+
+  ; Never return a 201, we're not creating a new cert or anything like that.
+  :new? false
+
+  :put! (fn [context]
+          (let [desired-state (get-desired-state context)]
+            (ca/set-certificate-status! certname desired-state)))
+
+  ; Requests must be JSON for us to handle them.
+  :valid-content-header? (fn [context]
+                           (ringutils/json-request? (get context :request))))
+
+(liberator/defresource certificate-statuses
+  :handle-ok (fn [context]
+               (ca/get-certificate-status)))
+
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
   (compojure/context "/:environment" [environment]
     (compojure/routes
+      (ANY "/certificate_status/:certname" [certname]
+        (certificate-status certname))
+      (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
+           certificate-statuses)
       (GET "/certificate/:subject" [subject]
         (handle-get-certificate subject ca-settings))
       (compojure/context "/certificate_request/:subject" [subject]
@@ -78,7 +125,8 @@
         (handle-get-certificate-revocation-list ca-settings)))))
 
 (defn wrap-with-puppet-version-header
-  "Middleware that adds a X-Puppet-Version header to the response."
+  "Function that returns a middleware that adds an
+  X-Puppet-Version header to the response."
   [handler version]
   (fn [request]
     (let [response (handler request)]
@@ -92,5 +140,6 @@
   [ca-settings :- ca/CaSettings
    puppet-version :- String]
   (-> (routes ca-settings)
+      (json/wrap-json-body {:keywords? true})
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
