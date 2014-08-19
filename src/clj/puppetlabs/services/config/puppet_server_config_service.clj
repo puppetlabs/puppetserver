@@ -1,5 +1,5 @@
 (ns ^{:doc
-       "Implementation of the JvmPuppetConfigService."}
+       "Implementation of the PuppetServerConfigService."}
     puppetlabs.services.config.puppet-server-config-service
 
   (:require [puppetlabs.trapperkeeper.core :as tk]
