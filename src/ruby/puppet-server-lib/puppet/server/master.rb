@@ -15,7 +15,6 @@ require 'puppet/server/jvm_profiler'
 require 'puppet/server/certificate'
 
 require 'java'
-
 java_import com.puppetlabs.puppetserver.ExecutionStubImpl
 
 ##
@@ -74,6 +73,8 @@ class Puppet::Server::Master
     Puppet::FileBucket::File.indirection.terminus_class = :file
 
     Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
+
+    Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     # Tell Puppet's network layer which routes we are willing handle - which is
     # all of them.  This is copied directly out of the WEBrick handler.
