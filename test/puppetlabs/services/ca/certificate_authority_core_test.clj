@@ -30,7 +30,7 @@
    :serial                (doto (str (ks/temp-file))
                             (ca/initialize-serial-file!))
    :cert-inventory        (str (ks/temp-file))
-   :load-path             ["ruby/puppet/lib" "ruby/facter/lib"]})
+   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]})
 
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"

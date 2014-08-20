@@ -68,11 +68,11 @@
     (tk-bootstrap-testutils/with-app-with-config
       app
       puppet-server-service-stack
-      {:webserver
-        {:ssl-host    "0.0.0.0"
-         :ssl-port    port
-         :client-auth "need"}
-       :jruby-puppet (jruby-testutils/jruby-puppet-config-with-prod-env 1)}
+      (merge {:webserver
+               {:ssl-host    "0.0.0.0"
+                :ssl-port    port
+                :client-auth "need"}}
+             (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))
       (testing (str "Simple request to puppet server succeeds when the client "
                     "certificate's serial number is not in the server's CRL.")
         (let [response

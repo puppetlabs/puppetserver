@@ -62,7 +62,7 @@
 
   The keys should have the following values:
 
-    * :load-path  - a vector of file paths, containing the locations of puppet source code.
+    * :ruby-load-path - a vector of file paths, containing the locations of puppet source code.
 
     * :jruby-pools - a list of JRubyPuppet pool descriptions
 
@@ -72,7 +72,7 @@
 
     * :master-var-dir - path to the puppetmaster' var dir;
                         if not specified, will use the puppet default."
-  {:load-path [schema/Str]
+  {:ruby-load-path [schema/Str]
    (schema/optional-key :master-conf-dir) schema/Str
    (schema/optional-key :master-var-dir) schema/Str
    :jruby-pools [PoolDefinition]})
@@ -110,9 +110,9 @@
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
   puppet and facter code inside it."
-  [load-path]
-  {:pre [(sequential? load-path)
-         (every? string? load-path)]
+  [ruby-load-path]
+  {:pre [(sequential? ruby-load-path)
+         (every? string? ruby-load-path)]
    :post [(instance? ScriptingContainer %)]}
   ;; for information on other legal values for `LocalContextScope`, there
   ;; is some documentation available in the JRuby source code; e.g.:
@@ -121,23 +121,22 @@
   ;; to use here, but we could potentially explore optimizations in the future.
   (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
     (.setLoadPaths (cons ruby-code-dir
-                         (map fs/absolute-path load-path)))
+                         (map fs/absolute-path ruby-load-path)))
     (.setCompatVersion (CompatVersion/RUBY1_9))
     (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
     (.setEnvironment jruby-puppet-env)
     (.runScriptlet "require 'puppet/server/master'")))
 
-(defn create-jruby-instance
+(schema/defn ^:always-validate create-jruby-instance :- JRubyPuppet
   "Creates a new JRubyPuppet instance.  See the docs on `create-jruby-pool`
   for the contents of `config`."
-  [config profiler]
-  {:pre [((some-fn nil? vector?) (:load-path config))]
-   :post [(instance? JRubyPuppet %)]}
-  (let [{:keys [load-path master-conf-dir master-var-dir]} config]
-    (when-not load-path
+  [config :- PoolConfig
+   profiler :- (schema/maybe PuppetProfiler)]
+  (let [{:keys [ruby-load-path master-conf-dir master-var-dir]} config]
+    (when-not ruby-load-path
       (throw (Exception.
-               "JRuby service missing config value 'load-path'")))
-    (let [scripting-container (create-scripting-container load-path)
+               "JRuby service missing config value 'ruby-load-path'")))
+    (let [scripting-container (create-scripting-container ruby-load-path)
           ruby-puppet-class   (.runScriptlet scripting-container "Puppet::Server::Master")
           jruby-config        (HashMap.)]
       (when master-conf-dir

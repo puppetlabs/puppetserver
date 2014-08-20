@@ -19,8 +19,8 @@
    profiler/puppet-profiler-service])
 
 (def required-config
-  {:jruby-puppet  (jruby-testutils/jruby-puppet-config-with-prod-env)
-   :webserver     {:port 8081}})
+  (merge (jruby-testutils/jruby-puppet-tk-config-with-prod-env)
+         {:webserver    {:port 8081}}))
 
 (defn valid-semver-number? [v]
   (re-matches #"[0-9]\.[0-9]\.[0-9]" v))
@@ -36,7 +36,9 @@
             service-config (get-config service)]
 
         (is (= (:jruby-puppet service-config)
-               (jruby-testutils/jruby-puppet-config-with-prod-env 1)))
+               (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))))
+        (is (= (:os-settings service-config)
+               (:os-settings (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
         (is (= (set (keys (:puppet-server service-config)))

@@ -45,7 +45,7 @@
    :ca-ttl                schema/Int
    :cert-inventory        schema/Str
    :csrdir                schema/Str
-   :load-path             [schema/Str]
+   :ruby-load-path        [schema/Str]
    :signeddir             schema/Str
    :serial                schema/Str})
 
@@ -98,7 +98,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name :load-path :allow-duplicate-certs))
+  (dissoc ca-settings :autosign :ca-ttl :ca-name :ruby-load-path :allow-duplicate-certs))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -450,19 +450,19 @@
   :- {:out (schema/maybe schema/Str) :err (schema/maybe schema/Str) :exit schema/Int}
   "Execute the autosign script and return a map containing the standard-out,
    standard-err, and exit code. The subject will be passed in as input, and
-   the CSR stream will be provided on standard-in. The load-path will be
+   the CSR stream will be provided on standard-in. The ruby-load-path will be
    prepended to the RUBYLIB found in the environment, and is intended to make
    the Puppet and Facter Ruby libraries available to the autosign script.
    All output (stdout & stderr) will be logged at the debug level."
   [executable :- schema/Str
    subject :- schema/Str
    csr-stream :- InputStream
-   load-path :- [schema/Str]]
+   ruby-load-path :- [schema/Str]]
   (log/debugf "Executing '%s %s'" executable subject)
   (let [env     (into {} (System/getenv))
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
-                       (cons lib load-path)
-                       load-path)
+                       (cons lib ruby-load-path)
+                       ruby-load-path)
                      (map fs/absolute-path)
                      (str/join (System/getProperty "path.separator")))
         results (shell/sh executable subject
@@ -481,9 +481,9 @@
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
   service return a map with of all the CA settings."
-  [{:keys [puppet-server jruby-puppet]}]
+  [{:keys [puppet-server os-settings]}]
   (-> (select-keys puppet-server (keys CaSettings))
-      (assoc :load-path (:load-path jruby-puppet))))
+      (assoc :ruby-load-path (:ruby-load-path os-settings))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -523,12 +523,12 @@
   [autosign :- (schema/either schema/Str schema/Bool)
    subject :- schema/Str
    csr-stream :- InputStream
-   load-path :- [schema/Str]]
+   ruby-load-path :- [schema/Str]]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (-> (execute-autosign-command! autosign subject csr-stream load-path)
+        (-> (execute-autosign-command! autosign subject csr-stream ruby-load-path)
             :exit
             zero?)
         (whitelist-matches? autosign subject))
@@ -673,14 +673,14 @@
    already exists a certificate or CSR for the subject."
   [subject :- schema/Str
    certificate-request :- InputStream
-   {:keys [autosign csrdir load-path] :as settings} :- CaSettings]
+   {:keys [autosign csrdir ruby-load-path] :as settings} :- CaSettings]
   (validate-duplicate-cert-policy! subject settings)
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
-      (if (autosign-csr? autosign subject csr-stream load-path)
+      (if (autosign-csr? autosign subject csr-stream ruby-load-path)
         (do
           ; These validations must happen in this order
           ; if we are to behave exactly like the ruby CA.

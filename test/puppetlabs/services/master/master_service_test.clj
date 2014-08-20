@@ -30,10 +30,9 @@
              request-handler-service
              profiler/puppet-profiler-service]
 
-            {:jruby-puppet (assoc (jruby-testutils/jruby-puppet-config-with-prod-env)
-                             :master-conf-dir
-                             "dev-resources/another-conf-var-root/conf")
-             :webserver    {:port 8081}}
+            (-> (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1)
+                (assoc-in [:jruby-puppet :master-conf-dir] "dev-resources/another-conf-var-root/conf")
+                (assoc :webserver {:port 8081}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet

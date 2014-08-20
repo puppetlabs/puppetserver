@@ -40,9 +40,9 @@
                             (validate-config! malformed-config)))))
 
   (testing "config with no production environment fails"
-    (let [no-default-env { :load-path   ["./ruby/puppet/lib"]
-                           :jruby-pools [{:environment "notdefault"
-                                          :size 1}]}]
+    (let [no-default-env { :ruby-load-path    ["./ruby/puppet/lib"]
+                           :jruby-pools       [{:environment "notdefault"
+                                                :size 1}]}]
       (is (thrown? IllegalArgumentException
                    (validate-config! no-default-env)))))
 
