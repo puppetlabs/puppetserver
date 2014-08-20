@@ -185,6 +185,13 @@
     (when (> (pools-matching-environment config (:environment pool)) 1)
       (throw (IllegalArgumentException. "Two or more JRuby pools were found with same environment.")))))
 
+(defn verify-config-found!
+  [config]
+  (if (or (not (map? config))
+          (empty? config))
+    (throw (IllegalArgumentException. (str "No configuration data found.  Perhaps "
+                                           "you did not specify the --config option?")))))
+
 (schema/defn ^:always-validate
   validate-config!
   "Is the JRubyPuppetPool config map valid? Aside from checking schema validity,
