@@ -52,7 +52,7 @@
   ([] (jruby-puppet-tk-config-with-prod-env 1))
   ([size]
    (jruby-puppet-tk-config [{:environment "production"
-                          :size        size}])))
+                             :size        size}])))
 
 
 (defn jruby-puppet-config-with-prod-test-env
