@@ -327,6 +327,63 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
+(schema/defn validate-cert-subject!
+  "Validate the CSR subject name.  The subject name must:
+    * match the hostname specified in the HTTP request (the `subject` parameter)
+    * not contain any non-printable characters or slashes
+    * not contain the wildcard character (*)"
+  [subject :- schema/Str
+   cert-subject :- schema/Str]
+  (when-not (= subject cert-subject)
+    (sling/throw+
+      {:type    :hostname-mismatch
+       :message (str "Instance name \"" cert-subject
+                     "\" does not match requested key \"" subject "\"")}))
+
+  (when (contains-uppercase? subject)
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message "Certificate names must be lower case."}))
+
+  (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message "CSR subject contains unprintable or non-ASCII characters"}))
+
+  (when (.contains cert-subject "*")
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message (format
+                  "CSR subject contains a wildcard, which is not allowed: %s"
+                  cert-subject)})))
+
+(schema/defn validate-dns-alt-names!
+  "Validate that the provided Subject Alternative Names extension is valid for
+  a cert signed by this CA. This entails:
+    * Only DNS alternative names are allowed, no other types
+    * Each DNS name does not contain a wildcard character (*)"
+  [{:keys [oid value]} :- (schema/both (schema/pred utils/extension?))]
+  (when-not (= oid "2.5.29.17")
+    (sling/throw+
+      {:type    :invalid-alt-name
+       :message (format "An invalid OID was provided for the Subject Alt. Names extension: %s"
+                        oid)}))
+  (let [name-types (keys value)
+        names      (:dns-name value)]
+    (when-not (and (= (count name-types) 1)
+                   (= (first name-types) :dns-name))
+      (sling/throw+
+        {:type    :invalid-alt-name
+         :message "Only DNS names are allowed in the Subject Alternative Names extension"}))
+
+    (doseq [name names]
+      (when (.contains name "*")
+        (sling/throw+
+          {:type    :invalid-alt-name
+           :message (format
+                      "Cert subjectAltName contains a wildcard, which is not allowed: %s"
+                      name)})))))
+
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
   [master-certname :- schema/Str
@@ -337,7 +394,10 @@
         alt-names-ext      (when-not (empty? dns-alt-names-list)
                              (utils/subject-dns-alt-names
                                (conj dns-alt-names-list master-certname) false))
-        alt-names-ext-list (if alt-names-ext [alt-names-ext] [])
+        alt-names-ext-list (if alt-names-ext
+                             (do (validate-dns-alt-names! alt-names-ext)
+                                 [alt-names-ext])
+                             [])
         base-ext-list      [(utils/netscape-comment
                               netscape-comment-value)
                             (utils/authority-key-identifier
@@ -350,6 +410,7 @@
                                 :digital-signature} true)
                             (utils/subject-key-identifier
                               master-public-key false)]]
+    (validate-cert-subject! master-certname master-certname)
     (concat base-ext-list alt-names-ext-list)))
 
 (schema/defn initialize-master!
@@ -626,12 +687,11 @@
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
-(schema/defn validate-csr-extensions!
-  "Throws an error if the CSR contains any invalid extensions, according to
-  `allowed-extension?`"
-  [csr :- (schema/pred utils/certificate-request?)]
-  (let [extensions (utils/get-extensions csr)
-        bad-extensions (remove allowed-extension? extensions)]
+(schema/defn validate-cert-extensions!
+  "Throws an error if the extensions list contains any invalid extensions,
+  according to `allowed-extension?`"
+  [extensions :- (schema/pred utils/extension-list?)]
+  (let [bad-extensions (remove allowed-extension? extensions)]
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:type    :disallowed-extension
@@ -642,7 +702,6 @@
   "Validate the CSR subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes
-    * not contain any capital letters
     * not contain the wildcard character (*)"
   [subject :- schema/Str
    certificate-request :- (schema/pred utils/certificate-request?)]
@@ -652,11 +711,6 @@
         {:type    :hostname-mismatch
          :message (str "Instance name \"" cert-subject
                        "\" does not match requested key \"" subject "\"")}))
-
-    (when (contains-uppercase? subject)
-      (sling/throw+
-        {:type    :invalid-subject-name
-         :message "Certificate names must be lower case."}))
 
     (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
       (sling/throw+
@@ -679,6 +733,18 @@
       {:type    :invalid-signature
        :message "CSR contains a public key that does not correspond to the signing key"})))
 
+(schema/defn validate-csr!
+  "Perform all policy checks against the provided certificate signing request. "
+  [csr     :- (schema/pred utils/certificate-request?)
+   subject :- schema/Str]
+  ; These validations must happen in this order
+  ; if we are to behave exactly like the ruby CA.
+  (let [extensions  (utils/get-extensions csr)
+        csr-subject (get-csr-subject csr)]
+    (validate-cert-extensions! extensions)
+    (validate-cert-subject! subject csr-subject)
+    (validate-csr-signature! csr)))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -694,13 +760,8 @@
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (do
-          ; These validations must happen in this order
-          ; if we are to behave exactly like the ruby CA.
-          (validate-csr-extensions! csr)
-          (validate-csr-subject! subject csr)
-          (validate-csr-signature! csr)
-          (autosign-certificate-request! subject csr settings))
+        (do (validate-csr! csr subject)
+            (autosign-certificate-request! subject csr settings))
         (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate

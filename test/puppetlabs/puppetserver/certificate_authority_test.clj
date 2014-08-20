@@ -18,7 +18,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
 
-(def ssldir "./dev-resources/config/master/conf/ssl")
+(def masterdir "./dev-resources/config/master/conf")
+(def ssldir (str masterdir "/ssl"))
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
@@ -59,7 +60,8 @@
       :hostprivkey   (str ssldir "/private_keys/" hostname ".pem")
       :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
       :localcacert   (str ssldir "/certs/ca.pem")
-      :requestdir    (str ssldir "/certificate_requests")}))
+      :requestdir    (str ssldir "/certificate_requests")
+      :csr-attributes (str masterdir "/csr_attributes.yaml")}))
 
 (def ca-cert-subject
   (-> cacert
@@ -702,6 +704,13 @@
                                                   "twofish"]}}]]
         (is (= (set exts) (set exts-expected)))))
 
+    (testing "invalid DNS alt names are rejected"
+      (let [dns-alt-names "*.wildcard"]
+        (is (thrown-with-slingshot?
+              {:type    :invalid-alt-name
+               :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
+              (create-master-extensions subject subject-pub issuer-pub dns-alt-names)))))
+
     (testing "basic extensions are created for a CA"
       (let [serial        42
             exts          (create-ca-extensions subject-dn
@@ -786,18 +795,19 @@
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
 
-(deftest validate-csr-hostname!-test
+(deftest validate-cert-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
-    (is (thrown-with-slingshot?
-          {:type    :hostname-mismatch
-           :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
-          (validate-csr-subject!
-            "not-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent"))))))
+    (let [csr (utils/pem->csr (path-to-cert-request csrdir "test-agent"))]
+      (is (thrown-with-slingshot?
+            {:type    :hostname-mismatch
+             :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
+            (validate-cert-subject!
+              "not-test-agent" (get-csr-subject csr))))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
-    (is (thrown-with-slingshot?
-          {:type    :invalid-subject-name
-           :message "Certificate names must be lower case."}
-          (validate-csr-subject!
-            "Host-With-Capital-Letters"
-            (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem"))))))
+    (let [csr (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem")]
+      (is (thrown-with-slingshot?
+            {:type    :invalid-subject-name
+             :message "Certificate names must be lower case."}
+            (validate-cert-subject! "Host-With-Capital-Letters"
+                                    (get-csr-subject csr)))))))
