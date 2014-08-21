@@ -24,6 +24,7 @@
                  [prismatic/schema "0.2.1"]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
+                 [clj-yaml "0.4.0"]
                  [slingshot "0.10.3"]]
 
   :main puppetlabs.trapperkeeper.main

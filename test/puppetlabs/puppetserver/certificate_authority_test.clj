@@ -673,11 +673,14 @@
 
     (testing "basic extensions are created for a master"
       (let [dns-alt-names "onefish,twofish"
+            settings      (assoc (master-test-settings ssldir "hostname")
+                                 :dns-alt-names dns-alt-names)
             exts          (create-master-extensions subject
                                                     subject-pub
                                                     issuer-pub
-                                                    dns-alt-names)
-            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                                                    settings)
+            exts-expected [
+                           {:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
@@ -701,15 +704,39 @@
                             :critical false
                             :value    {:dns-name ["subject"
                                                   "onefish"
-                                                  "twofish"]}}]]
+                                                  "twofish"]}}
+                           ;; These extensions come form the csr_attributes.yaml file
+                           {:critical false
+                            :oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
+                           {:critical false
+                            :oid      "1.3.6.1.4.1.34380.1.1.2"
+                            :value    "thisisanid"}
+                           {:critical false
+                            :oid      "1.3.6.1.4.1.34380.1.1.3"
+                            :value    "my_ami_image"}
+                           {:critical false
+                            :oid      "1.3.6.1.4.1.34380.1.1.4"
+                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}]]
         (is (= (set exts) (set exts-expected)))))
+
+    (testing "A non-puppet OID read from a CSR attributes file is rejected"
+      (let [config (assoc (master-test-settings ssldir "master")
+                          :csr-attributes
+                          (str masterdir "/insecure_csr_attribute.yaml"))]
+        (is (thrown-with-slingshot?
+              {:type    :disallowed-extension,
+               :message "CSR has request extensions that are not permitted: 1.2.3.4"}
+              (create-master-extensions subject subject-pub issuer-pub config)))))
 
     (testing "invalid DNS alt names are rejected"
       (let [dns-alt-names "*.wildcard"]
         (is (thrown-with-slingshot?
               {:type    :invalid-alt-name
                :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
-              (create-master-extensions subject subject-pub issuer-pub dns-alt-names)))))
+              (create-master-extensions subject subject-pub issuer-pub
+                                        (assoc (master-test-settings ssldir "hostname")
+                                               :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
       (let [serial        42
