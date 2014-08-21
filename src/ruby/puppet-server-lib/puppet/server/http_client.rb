@@ -6,6 +6,7 @@ require 'net/http'
 require 'java'
 java_import com.puppetlabs.http.client.SyncHttpClient
 java_import com.puppetlabs.http.client.RequestOptions
+java_import com.puppetlabs.http.client.ResponseBodyType
 
 class Puppet::Server::HttpClient
 
@@ -27,6 +28,7 @@ class Puppet::Server::HttpClient
   def post(url, body, headers)
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
+    request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
     configure_ssl(request_options)
     response = SyncHttpClient.post(request_options)
@@ -36,6 +38,7 @@ class Puppet::Server::HttpClient
   def get(url, headers)
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
+    request_options.set_as(ResponseBodyType::TEXT)
     configure_ssl(request_options)
     response = SyncHttpClient.get(request_options)
     ruby_response(response)
