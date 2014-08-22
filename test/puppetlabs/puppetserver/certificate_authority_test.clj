@@ -726,7 +726,7 @@
                           (str masterdir "/insecure_csr_attribute.yaml"))]
         (is (thrown-with-slingshot?
               {:type    :disallowed-extension,
-               :message "CSR has request extensions that are not permitted: 1.2.3.4"}
+               :message  "Found extensions that are not permitted: 1.2.3.4"}
               (create-master-extensions subject subject-pub issuer-pub config)))))
 
     (testing "invalid DNS alt names are rejected"
@@ -822,19 +822,17 @@
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
 
-(deftest validate-cert-subject!-test
+(deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
-    (let [csr (utils/pem->csr (path-to-cert-request csrdir "test-agent"))]
-      (is (thrown-with-slingshot?
-            {:type    :hostname-mismatch
-             :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
-            (validate-cert-subject!
-              "not-test-agent" (get-csr-subject csr))))))
+    (is (thrown-with-slingshot?
+          {:type    :hostname-mismatch
+           :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
+          (validate-subject!
+            "not-test-agent" "test-agent"))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
-    (let [csr (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem")]
-      (is (thrown-with-slingshot?
-            {:type    :invalid-subject-name
-             :message "Certificate names must be lower case."}
-            (validate-cert-subject! "Host-With-Capital-Letters"
-                                    (get-csr-subject csr)))))))
+    (is (thrown-with-slingshot?
+          {:type    :invalid-subject-name
+           :message "Certificate names must be lower case."}
+          (validate-subject! "Host-With-Capital-Letters"
+                             "Host-With-Capital-Letters")))))

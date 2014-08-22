@@ -11,7 +11,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-
 (def cadir "./dev-resources/config/master/conf/ssl/ca")
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
@@ -160,7 +159,7 @@
                 response (handle-put-certificate-request!
                            subject csr-stream settings)]
             (is (= 400 (:status response)))
-            (is (= "CSR subject contains unprintable or non-ASCII characters"
+            (is (= "Subject contains unprintable or non-ASCII characters"
                    (:body response))))))
 
       (testing "no wildcards allowed"
@@ -169,5 +168,5 @@
           (let [response (handle-put-certificate-request!
                            "foo*bar" csr-stream settings)]
             (is (= 400 (:status response)))
-            (is (= "CSR subject contains a wildcard, which is not allowed: foo*bar"
+            (is (= "Subject contains a wildcard, which is not allowed: foo*bar"
                    (:body response)))))))))

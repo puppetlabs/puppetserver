@@ -346,35 +346,35 @@
       (utils/subject-dns-alt-names
         (conj alt-names-list host-name) false))))
 
-(schema/defn validate-cert-subject!
-  "Validate the CSR subject name.  The subject name must:
+(schema/defn validate-subject!
+  "Validate the CSR or certificate's subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes
     * not contain the wildcard character (*)"
-  [subject :- schema/Str
-   cert-subject :- schema/Str]
-  (when-not (= subject cert-subject)
+  [hostname :- schema/Str
+   subject :- schema/Str]
+  (when-not (= hostname subject)
     (sling/throw+
       {:type    :hostname-mismatch
-       :message (str "Instance name \"" cert-subject
-                     "\" does not match requested key \"" subject "\"")}))
+       :message (str "Instance name \"" subject
+                     "\" does not match requested key \"" hostname "\"")}))
 
-  (when (contains-uppercase? subject)
+  (when (contains-uppercase? hostname)
     (sling/throw+
       {:type    :invalid-subject-name
        :message "Certificate names must be lower case."}))
 
-  (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
+  (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
     (sling/throw+
       {:type    :invalid-subject-name
-       :message "CSR subject contains unprintable or non-ASCII characters"}))
+       :message "Subject contains unprintable or non-ASCII characters"}))
 
-  (when (.contains cert-subject "*")
+  (when (.contains subject "*")
     (sling/throw+
       {:type    :invalid-subject-name
        :message (format
-                  "CSR subject contains a wildcard, which is not allowed: %s"
-                  cert-subject)})))
+                  "Subject contains a wildcard, which is not allowed: %s"
+                  subject)})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -385,7 +385,7 @@
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
-(schema/defn validate-cert-extensions!
+(schema/defn validate-extensions!
   "Throws an error if the extensions list contains any invalid extensions,
   according to `allowed-extension?`"
   [extensions :- (schema/pred utils/extension-list?)]
@@ -393,7 +393,7 @@
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:type    :disallowed-extension
-                       :message (str "CSR has request extensions that are not permitted: "
+                       :message (str "Found extensions that are not permitted: "
                                      (str/join ", " bad-extension-oids))})))))
 
 (schema/defn validate-dns-alt-names!
@@ -401,12 +401,7 @@
   a cert signed by this CA. This entails:
     * Only DNS alternative names are allowed, no other types
     * Each DNS name does not contain a wildcard character (*)"
-  [{:keys [oid value]} :- (schema/both (schema/pred utils/extension?))]
-  (when-not (= oid "2.5.29.17")
-    (sling/throw+
-      {:type    :invalid-alt-name
-       :message (format "An invalid OID was provided for the Subject Alt. Names extension: %s"
-                        oid)}))
+  [{value :value} :- (schema/pred utils/extension?)]
   (let [name-types (keys value)
         names      (:dns-name value)]
     (when-not (and (= (count name-types) 1)
@@ -461,11 +456,11 @@
                            :digital-signature} true)
                        (utils/subject-key-identifier
                          master-public-key false)]]
-    (validate-cert-subject! master-certname master-certname)
+    (validate-subject! master-certname master-certname)
     (when alt-names-ext
           (validate-dns-alt-names! alt-names-ext))
     (when csr-attr-exts
-          (validate-cert-extensions! csr-attr-exts))
+          (validate-extensions! csr-attr-exts))
     (filter (complement nil?)
             (concat base-ext-list [alt-names-ext] csr-attr-exts))))
 
@@ -772,7 +767,7 @@
   (let [extensions  (utils/get-extensions csr)
         csr-subject (get-csr-subject csr)]
     (validate-cert-extensions! extensions)
-    (validate-cert-subject! subject csr-subject)
+    (validate-subject! subject csr-subject)
     (validate-csr-signature! csr)))
 
 (schema/defn ^:always-validate process-csr-submission!
