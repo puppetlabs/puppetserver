@@ -107,6 +107,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
+(defn empty-scripting-container
+  "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
+  [ruby-load-path]
+  {:pre [(sequential? ruby-load-path)
+         (every? string? ruby-load-path)]
+   :post [(instance? ScriptingContainer %)]}
+  (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+    (.setLoadPaths (cons ruby-code-dir
+                         (map fs/absolute-path ruby-load-path)))
+    (.setCompatVersion (CompatVersion/RUBY1_9))
+    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+    (.setEnvironment jruby-puppet-env)))
+
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
   puppet and facter code inside it."
@@ -119,12 +132,7 @@
   ;; https://github.com/jruby/jruby/blob/1.7.11/core/src/main/java/org/jruby/embed/LocalContextScope.java#L58
   ;; I'm convinced that this is the safest and most reasonable value
   ;; to use here, but we could potentially explore optimizations in the future.
-  (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-    (.setLoadPaths (cons ruby-code-dir
-                         (map fs/absolute-path ruby-load-path)))
-    (.setCompatVersion (CompatVersion/RUBY1_9))
-    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    (.setEnvironment jruby-puppet-env)
+  (doto (empty-scripting-container ruby-load-path)
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate create-jruby-instance :- JRubyPuppet
