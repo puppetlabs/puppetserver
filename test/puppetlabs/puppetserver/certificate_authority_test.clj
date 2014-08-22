@@ -790,6 +790,14 @@
   (testing "an exception is thrown when the hostnames don't match"
     (is (thrown-with-slingshot?
           {:type    :hostname-mismatch
-           :message "Instance name \"test-agent\" does not match requested key \"NOT-test-agent\""}
+           :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
           (validate-csr-subject!
-            "NOT-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent")))))))
+            "not-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent"))))))
+
+  (testing "an exception is thrown if the subject name contains a capital letter"
+    (is (thrown-with-slingshot?
+          {:type    :invalid-subject-name
+           :message "Certificate names must be lower case."}
+          (validate-csr-subject!
+            "Host-With-Capital-Letters"
+            (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem"))))))

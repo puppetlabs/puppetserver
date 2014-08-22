@@ -145,6 +145,7 @@
     (str/join "\n" found-files)
     (str/join "\n" missing-files))))
 
+; TODO - PE-5529 - these should be moved to jvm-c-a.
 (schema/defn get-subject :- String
   [cert :- (schema/pred utils/certificate?)]
   (-> cert
@@ -157,6 +158,11 @@
       (.getSubject)
       (.toString)
       (utils/x500-name->CN)))
+
+(defn contains-uppercase?
+  "Does the given string contain any uppercase letters?"
+  [s]
+  (not= s (.toLowerCase s)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
@@ -635,6 +641,7 @@
   "Validate the CSR subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes
+    * not contain any capital letters
     * not contain the wildcard character (*)"
   [subject :- schema/Str
    certificate-request :- (schema/pred utils/certificate-request?)]
@@ -644,6 +651,11 @@
         {:type    :hostname-mismatch
          :message (str "Instance name \"" cert-subject
                        "\" does not match requested key \"" subject "\"")}))
+
+    (when (contains-uppercase? subject)
+      (sling/throw+
+        {:type    :invalid-subject-name
+         :message "Certificate names must be lower case."}))
 
     (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
       (sling/throw+
