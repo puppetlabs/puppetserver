@@ -794,9 +794,10 @@
           (validate-csr-subject!
             "not-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent"))))))
 
-  (testing "an exception is thrown if either the CSR subject contains a capital letter"
+  (testing "an exception is thrown if the subject name contains a capital letter"
     (is (thrown-with-slingshot?
           {:type    :invalid-subject-name
            :message "Certificate names must be lower case."}
           (validate-csr-subject!
-            "Host-With-Capital-Letters" (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem"))))))
+            "Host-With-Capital-Letters"
+            (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem"))))))
