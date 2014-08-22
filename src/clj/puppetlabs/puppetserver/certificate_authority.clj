@@ -351,30 +351,32 @@
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes
     * not contain the wildcard character (*)"
-  [hostname :- schema/Str
-   subject :- schema/Str]
-  (when-not (= hostname subject)
-    (sling/throw+
-      {:type    :hostname-mismatch
-       :message (str "Instance name \"" subject
-                     "\" does not match requested key \"" hostname "\"")}))
+  ([hostname :- schema/Str]
+   (validate-subject! hostname hostname))
+  ([hostname :- schema/Str
+    subject :- schema/Str]
+   (when-not (= hostname subject)
+     (sling/throw+
+       {:type    :hostname-mismatch
+        :message (str "Instance name \"" subject
+                      "\" does not match requested key \"" hostname "\"")}))
 
-  (when (contains-uppercase? hostname)
-    (sling/throw+
-      {:type    :invalid-subject-name
-       :message "Certificate names must be lower case."}))
+   (when (contains-uppercase? hostname)
+     (sling/throw+
+       {:type    :invalid-subject-name
+        :message "Certificate names must be lower case."}))
 
-  (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
-    (sling/throw+
-      {:type    :invalid-subject-name
-       :message "Subject contains unprintable or non-ASCII characters"}))
+   (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
+     (sling/throw+
+       {:type    :invalid-subject-name
+        :message "Subject contains unprintable or non-ASCII characters"}))
 
-  (when (.contains subject "*")
-    (sling/throw+
-      {:type    :invalid-subject-name
-       :message (format
-                  "Subject contains a wildcard, which is not allowed: %s"
-                  subject)})))
+   (when (.contains subject "*")
+     (sling/throw+
+       {:type    :invalid-subject-name
+        :message (format
+                   "Subject contains a wildcard, which is not allowed: %s"
+                   subject)}))))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -456,7 +458,7 @@
                            :digital-signature} true)
                        (utils/subject-key-identifier
                          master-public-key false)]]
-    (validate-subject! master-certname master-certname)
+    (validate-subject! master-certname)
     (when alt-names-ext
           (validate-dns-alt-names! alt-names-ext))
     (when csr-attr-exts
