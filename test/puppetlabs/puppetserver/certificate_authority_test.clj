@@ -673,7 +673,7 @@
 
     (testing "basic extensions are created for a master"
       (let [dns-alt-names "onefish,twofish"
-            settings      (assoc (master-test-settings ssldir "hostname")
+            settings      (assoc (master-test-settings)
                                  :dns-alt-names dns-alt-names)
             exts          (create-master-extensions subject
                                                     subject-pub
@@ -721,7 +721,7 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
-      (let [config (assoc (master-test-settings ssldir "master")
+      (let [config (assoc (master-test-settings)
                           :csr-attributes
                           (str masterdir "/insecure_csr_attribute.yaml"))]
         (is (thrown-with-slingshot?
@@ -735,7 +735,7 @@
               {:type    :invalid-alt-name
                :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
               (create-master-extensions subject subject-pub issuer-pub
-                                        (assoc (master-test-settings ssldir "hostname")
+                                        (assoc (master-test-settings)
                                                :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
