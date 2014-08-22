@@ -55,7 +55,7 @@
   ([] (master-test-settings ssldir "localhost"))
   ([ssldir hostname]
      {:certdir       (str ssldir "/certs")
-      :dns-alt-names "onefish,twofish"
+      :dns-alt-names ""
       :hostcert      (str ssldir "/certs/" hostname ".pem")
       :hostprivkey   (str ssldir "/private_keys/" hostname ".pem")
       :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
@@ -386,7 +386,8 @@
 
 (deftest initialize-master!-test
   (let [ssldir          (ks/temp-dir)
-        master-settings (master-test-settings ssldir "master")
+        master-settings (assoc (master-test-settings ssldir "master")
+                          :dns-alt-names "onefish,twofish")
         serial          (tmp-serial-file!)
         inventory       (str (ks/temp-file))
         signeddir       (str (ks/temp-dir))
@@ -672,6 +673,35 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "basic extensions are created for a master"
+      (let [settings      (assoc (master-test-settings)
+                            :csr-attributes "doesntexist")
+            exts          (create-master-extensions subject
+                                                    subject-pub
+                                                    issuer-pub
+                                                    settings)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                             :critical false
+                             :value    netscape-comment-value}
+                            {:oid      "2.5.29.35"
+                             :critical false
+                             :value    {:issuer-dn     nil
+                                        :public-key    issuer-pub
+                                        :serial-number nil}}
+                            {:oid      "2.5.29.19"
+                             :critical true
+                             :value    {:is-ca false}}
+                            {:oid      "2.5.29.37"
+                             :critical true
+                             :value    [ssl-server-cert ssl-client-cert]}
+                            {:oid      "2.5.29.15"
+                             :critical true
+                             :value    #{:digital-signature :key-encipherment}}
+                            {:oid      "2.5.29.14"
+                             :critical false
+                             :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "additional extensions are created for a master"
       (let [dns-alt-names "onefish,twofish"
             settings      (assoc (master-test-settings)
                                  :dns-alt-names dns-alt-names)
