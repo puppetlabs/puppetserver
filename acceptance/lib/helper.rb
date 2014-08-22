@@ -130,6 +130,40 @@ module PuppetServerExtensions
     end
   end
 
+  def get_rubylibdir host, config_key
+    on(host, "ruby -rrbconfig -e \"puts Config::CONFIG['#{config_key}']\"").stdout.strip
+  end
+
+  def configure_puppet_server
+    variant, version, _, _ = master['platform'].to_array
+
+    case variant
+    when /^fedora$/
+      config_key = 'sitelibdir'
+      if version.to_i >= 17
+        config_key = 'vendorlibdir'
+      end
+    when /^(el|centos)$/
+      config_key = 'sitelibdir'
+      if version.to_i >= 7
+        config_key = 'vendorlibdir'
+      end
+    when /^(debian|ubuntu)$/
+      config_key = 'sitelibdir'
+    else
+      logger.warn("#{platform}: Unsupported platform for puppetserver.")
+    end
+
+    rubylibdir = get_rubylibdir master, config_key
+    create_remote_file master, '/etc/puppetserver/conf.d/os-settings.conf', <<EOF
+os-settings: {
+    ruby-load-path: [#{rubylibdir}]
+}
+EOF
+    on master, "chmod 0644 /etc/puppetserver/conf.d/os-settings.conf"
+
+  end
+
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)
