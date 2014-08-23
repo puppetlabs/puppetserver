@@ -19,3 +19,10 @@ step "Configure puppet.conf" do
   end
   on master, "sed -i -e 's/\(SERVICE_NUM_RETRIES\)=[0-9]*/\1=60/' #{defaults_file}"
 end
+
+case test_config[:puppetserver_install_type]
+when :git
+  step "Configure os-settings.conf" do
+    configure_puppet_server
+  end
+end
