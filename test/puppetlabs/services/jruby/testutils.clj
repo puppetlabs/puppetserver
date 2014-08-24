@@ -12,6 +12,8 @@
 
 (def conf-dir "./dev-resources/config/master/conf")
 
+(def gem-home "./scratch/jruby-gems")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
 
@@ -20,7 +22,8 @@
   descriptions.  Suitable for use in bootstrapping trapperkeeper."
   [pools-list]
   {:os-settings {:ruby-load-path ruby-load-path}
-   :jruby-puppet {:master-conf-dir conf-dir
+   :jruby-puppet {:gem-home        gem-home
+                  :master-conf-dir conf-dir
                   :jruby-pools     pools-list}})
 
 (defn jruby-puppet-config
@@ -28,6 +31,7 @@
   descriptions.  Suitable for use when calling jruby service functions directly."
   [pools-list]
   {:ruby-load-path  ruby-load-path
+   :gem-home        gem-home
    :master-conf-dir conf-dir
    :jruby-pools     pools-list})
 

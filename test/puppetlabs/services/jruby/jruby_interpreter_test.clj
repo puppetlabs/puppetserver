@@ -10,6 +10,7 @@
 
   (testing "Var dir is not required."
     (let [config  { :ruby-load-path  testutils/ruby-load-path
+                    :gem-home        testutils/gem-home
                     :master-conf-dir testutils/conf-dir
                     :jruby-pools     []}
           jruby   (create-jruby-instance config testutils/default-profiler)
@@ -35,8 +36,9 @@
 (deftest jruby-env-vars
   (testing "the environment used by the JRuby interpreters"
     (let [jruby-interpreter (create-scripting-container
-                              ["./ruby/puppet/lib" "./ruby/facter/lib"])
+                              ["./ruby/puppet/lib" "./ruby/facter/lib"]
+                              "./scratch/jruby-gems")
           jruby-env (.runScriptlet jruby-interpreter "ENV")]
 
       ; $HOME and $PATH are left in by `jruby-puppet-env`
-      (is (= #{"HOME" "PATH"} (set (keys jruby-env)))))))
+      (is (= #{"HOME" "PATH" "GEM_HOME"} (set (keys jruby-env)))))))
