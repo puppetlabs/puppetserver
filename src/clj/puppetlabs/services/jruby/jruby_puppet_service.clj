@@ -2,6 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -24,7 +25,7 @@
             default-pool-descriptor (core/extract-default-pool-descriptor config)]
         (future
           (shutdown-on-error
-            (service-id this)
+            (tk-services/service-id this)
             #(core/prime-pools! pool-context)))
 
         (assoc context :pool-context pool-context
@@ -32,27 +33,27 @@
 
   (borrow-instance
     [this pool-desc]
-    (let [pool-context (:pool-context (service-context this))]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
       (core/borrow-from-pool pool-context pool-desc)))
 
   (borrow-instance
     [this pool-desc timeout]
-    (let [pool-context (:pool-context (service-context this))]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
       (core/borrow-from-pool-with-timeout pool-context pool-desc timeout)))
 
   (return-instance
     [this pool-desc jruby-instance]
-    (let [pool-context (:pool-context (service-context this))]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
       (core/return-to-pool pool-context pool-desc jruby-instance)))
 
   (free-instance-count
     [this pool-desc]
-    (let [pool-context (:pool-context (service-context this))]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
       (core/free-instance-count pool-context pool-desc)))
 
   (get-default-pool-descriptor
     [this]
-    (-> (service-context this)
+    (-> (tk-services/service-context this)
         (:default-pool-descriptor))))
 
 (defmacro with-jruby-puppet

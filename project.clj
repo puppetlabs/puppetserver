@@ -1,5 +1,5 @@
-(def tk-version "0.4.3")
-(def tk-jetty-version "0.6.1")
+(def tk-version "0.5.1")
+(def tk-jetty-version "0.7.2")
 (def ks-version "0.7.2")
 
 (defn deploy-info
@@ -15,13 +15,13 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/certificate-authority "0.4.0"]
+                 [puppetlabs/certificate-authority "0.5.0"]
                  [puppetlabs/http-client "0.2.5"]
                  [org.jruby/jruby-complete "1.7.13"]
                  [clj-time "0.5.1"]
                  [compojure "1.1.6" :exclusions [org.clojure/tools.macro]]
                  [me.raynes/fs "1.4.5"]
-                 [prismatic/schema "0.2.1"]
+                 [prismatic/schema "0.2.2"]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [slingshot "0.10.3"]]
