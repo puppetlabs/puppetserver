@@ -44,7 +44,7 @@
 (deftest test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
     (with-no-jvm-shutdown-hooks
-      (let [config (tk-config/parse-config-path dev-config-file)
+      (let [config (tk-config/load-config dev-config-file)
             services (tk-bootstrap/parse-bootstrap-config! dev-bootstrap-file)]
         (->
           (tk/build-app services config)
