@@ -212,7 +212,7 @@
       (testing "no body results in a 400"
         (let [request {:uri "/production/certificate_status/myagent"
                        :request-method :put
-                       :content-type"application/json"}
+                       :content-type "application/json"}
               response (test-compojure-app request)]
           (is (= 400 (:status response))
               (str "response was: " response))))
@@ -249,7 +249,7 @@
 
   (testing "GET to /certificate_statuses"
       (let [response (test-compojure-app
-                       {:uri            "/production/certificate_statuses/ourapisucks"
+                       {:uri            "/production/certificate_statuses/thisisirrelevant"
                         :request-method :get})]
         (is (= 200 (:status response)))
         (is (= "get-certificate-statuses called" (:body response))))))
