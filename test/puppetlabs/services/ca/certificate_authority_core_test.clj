@@ -130,7 +130,7 @@
         (let [response (handle-put-certificate-request!
                          "meow" csr-stream settings)]
           (is (= 400 (:status response)))
-          (is (= "CSR has request extensions that are not permitted: 1.9.9.9.9.9.9"
+          (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.9"
                  (:body response)))))
 
       (let [csr-with-bad-ext "dev-resources/woof-bad-extensions.pem"
@@ -138,7 +138,7 @@
         (let [response (handle-put-certificate-request!
                          "woof" csr-stream settings)]
           (is (= 400 (:status response)))
-          (is (= "CSR has request extensions that are not permitted: 1.9.9.9.9.9.0, 1.9.9.9.9.9.1"
+          (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.0, 1.9.9.9.9.9.1"
                  (:body response))))))
 
     (testing "when the CSR subject contains invalid characters,
