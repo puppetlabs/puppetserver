@@ -866,3 +866,20 @@
            :message "Certificate names must be lower case."}
           (validate-subject! "Host-With-Capital-Letters"
                              "Host-With-Capital-Letters")))))
+
+(deftest validate-dns-alt-names!-test
+  (testing "Only DNS alt names are allowed"
+    (is (thrown-with-slingshot?
+          {:type    :invalid-alt-name
+           :message "Only DNS names are allowed in the Subject Alternative Names extension"}
+          (validate-dns-alt-names! {:oid "2.5.29.17"
+                                    :critical false
+                                    :value {:ip-address ["12.34.5.6"]}}))))
+
+  (testing "No DNS wildcards are allowed"
+    (is (thrown-with-slingshot?
+          {:type    :invalid-alt-name
+           :message "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"}
+          (validate-dns-alt-names! {:oid "2.5.29.17"
+                                    :critical false
+                                    :value {:dns-name ["ahostname" "foo*bar"]}})))))
