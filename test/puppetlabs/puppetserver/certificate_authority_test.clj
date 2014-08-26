@@ -736,17 +736,20 @@
                                                   "onefish"
                                                   "twofish"]}}
                            ;; These extensions come form the csr_attributes.yaml file
-                           {:critical false
-                            :oid      "1.3.6.1.4.1.34380.1.1.1"
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :critical false
                             :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
-                           {:critical false
-                            :oid      "1.3.6.1.4.1.34380.1.1.2"
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1.4"
+                            :critical false
+                            :value    "I am undefined but still work"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.2"
+                            :critical false
                             :value    "thisisanid"}
-                           {:critical false
-                            :oid      "1.3.6.1.4.1.34380.1.1.3"
+                           {:oid      "1.3.6.1.4.1.34380.1.1.3"
+                            :critical false
                             :value    "my_ami_image"}
-                           {:critical false
-                            :oid      "1.3.6.1.4.1.34380.1.1.4"
+                           {:oid      "1.3.6.1.4.1.34380.1.1.4"
+                            :critical false
                             :value    "342thbjkt82094y0uthhor289jnqthpc2290"}]]
         (is (= (set exts) (set exts-expected)))))
 
