@@ -707,22 +707,21 @@
    The exception map will look like:
    {:type    :duplicate-cert
     :message <specific error message>}"
-  [subject :- schema/Str
+  [csr :- (schema/pred utils/certificate-request?)
    {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
   ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
   ;;              instead of "signed certificate" if the cert has been revoked
-  (if (fs/exists? (path-to-cert signeddir subject))
-    (if allow-duplicate-certs
-      (log/info (str subject " already has a signed certificate; new certificate will overwrite it"))
-      (sling/throw+
-       {:type    :duplicate-cert
-        :message (str subject " already has a signed certificate; ignoring certificate request")})))
-  (if (fs/exists? (path-to-cert-request csrdir subject))
-    (if allow-duplicate-certs
-      (log/info (str subject " already has a requested certificate; new certificate will overwrite it"))
-      (sling/throw+
-       {:type    :duplicate-cert
-        :message (str subject " already has a requested certificate; ignoring certificate request")}))))
+  (let [subject (get-csr-subject csr)
+        existing-cert? (fs/exists? (path-to-cert signeddir subject))
+        existing-csr? (fs/exists? (path-to-cert-request csrdir subject))]
+    (when (or existing-cert? existing-csr?)
+      (let [status (if existing-cert? "signed" "requested")]
+        (if allow-duplicate-certs
+          (log/info
+            (str subject " already has a " status " certificate; new certificate will overwrite it"))
+          (sling/throw+
+            {:type    :duplicate-cert
+             :message (str subject " already has a " status " certificate; ignoring certificate request")}))))))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -762,12 +761,12 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path] :as settings} :- CaSettings]
-  (validate-duplicate-cert-policy! subject settings)
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
+      (validate-duplicate-cert-policy! csr settings)
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
         (do (validate-csr! csr subject)
             (autosign-certificate-request! subject csr settings))
