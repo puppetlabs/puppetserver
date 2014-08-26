@@ -18,7 +18,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
 
-(def ssldir "./dev-resources/config/master/conf/ssl")
+(def masterdir "./dev-resources/config/master/conf")
+(def ssldir (str masterdir "/ssl"))
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
@@ -54,12 +55,13 @@
   ([] (master-test-settings ssldir "localhost"))
   ([ssldir hostname]
      {:certdir       (str ssldir "/certs")
-      :dns-alt-names "onefish,twofish"
+      :dns-alt-names ""
       :hostcert      (str ssldir "/certs/" hostname ".pem")
       :hostprivkey   (str ssldir "/private_keys/" hostname ".pem")
       :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
       :localcacert   (str ssldir "/certs/ca.pem")
-      :requestdir    (str ssldir "/certificate_requests")}))
+      :requestdir    (str ssldir "/certificate_requests")
+      :csr-attributes (str masterdir "/csr_attributes.yaml")}))
 
 (def ca-cert-subject
   (-> cacert
@@ -384,7 +386,8 @@
 
 (deftest initialize-master!-test
   (let [ssldir          (ks/temp-dir)
-        master-settings (master-test-settings ssldir "master")
+        master-settings (assoc (master-test-settings ssldir "master")
+                          :dns-alt-names "onefish,twofish")
         serial          (tmp-serial-file!)
         inventory       (str (ks/temp-file))
         signeddir       (str (ks/temp-dir))
@@ -670,12 +673,44 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "basic extensions are created for a master"
-      (let [dns-alt-names "onefish,twofish"
+      (let [settings      (assoc (master-test-settings)
+                            :csr-attributes "doesntexist")
             exts          (create-master-extensions subject
                                                     subject-pub
                                                     issuer-pub
-                                                    dns-alt-names)
+                                                    settings)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "additional extensions are created for a master"
+      (let [dns-alt-names "onefish,twofish"
+            settings      (assoc (master-test-settings)
+                                 :dns-alt-names dns-alt-names)
+            exts          (create-master-extensions subject
+                                                    subject-pub
+                                                    issuer-pub
+                                                    settings)
+            exts-expected [
+                           {:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
                            {:oid      "2.5.29.35"
@@ -699,8 +734,42 @@
                             :critical false
                             :value    {:dns-name ["subject"
                                                   "onefish"
-                                                  "twofish"]}}]]
+                                                  "twofish"]}}
+                           ;; These extensions come form the csr_attributes.yaml file
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
+                            :critical false
+                            :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.1.4"
+                            :critical false
+                            :value    "I am undefined but still work"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.2"
+                            :critical false
+                            :value    "thisisanid"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.3"
+                            :critical false
+                            :value    "my_ami_image"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.4"
+                            :critical false
+                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}]]
         (is (= (set exts) (set exts-expected)))))
+
+    (testing "A non-puppet OID read from a CSR attributes file is rejected"
+      (let [config (assoc (master-test-settings)
+                          :csr-attributes
+                          (str masterdir "/insecure_csr_attributes.yaml"))]
+        (is (thrown-with-slingshot?
+              {:type    :disallowed-extension
+               :message "Found extensions that are not permitted: 1.2.3.4"}
+              (create-master-extensions subject subject-pub issuer-pub config)))))
+
+    (testing "invalid DNS alt names are rejected"
+      (let [dns-alt-names "*.wildcard"]
+        (is (thrown-with-slingshot?
+              {:type    :invalid-alt-name
+               :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
+              (create-master-extensions subject subject-pub issuer-pub
+                                        (assoc (master-test-settings)
+                                               :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
       (let [serial        42
@@ -786,18 +855,34 @@
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
 
-(deftest validate-csr-hostname!-test
+(deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
     (is (thrown-with-slingshot?
           {:type    :hostname-mismatch
            :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
-          (validate-csr-subject!
-            "not-test-agent" (utils/pem->csr (path-to-cert-request csrdir "test-agent"))))))
+          (validate-subject!
+            "not-test-agent" "test-agent"))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
     (is (thrown-with-slingshot?
           {:type    :invalid-subject-name
            :message "Certificate names must be lower case."}
-          (validate-csr-subject!
-            "Host-With-Capital-Letters"
-            (utils/pem->csr "dev-resources/Host-With-Capital-Letters.pem"))))))
+          (validate-subject! "Host-With-Capital-Letters"
+                             "Host-With-Capital-Letters")))))
+
+(deftest validate-dns-alt-names!-test
+  (testing "Only DNS alt names are allowed"
+    (is (thrown-with-slingshot?
+          {:type    :invalid-alt-name
+           :message "Only DNS names are allowed in the Subject Alternative Names extension"}
+          (validate-dns-alt-names! {:oid "2.5.29.17"
+                                    :critical false
+                                    :value {:ip-address ["12.34.5.6"]}}))))
+
+  (testing "No DNS wildcards are allowed"
+    (is (thrown-with-slingshot?
+          {:type    :invalid-alt-name
+           :message "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"}
+          (validate-dns-alt-names! {:oid "2.5.29.17"
+                                    :critical false
+                                    :value {:dns-name ["ahostname" "foo*bar"]}})))))

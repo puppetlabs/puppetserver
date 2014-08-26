@@ -13,7 +13,8 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.certificate-authority.core :as utils]))
+            [puppetlabs.certificate-authority.core :as utils]
+            [clj-yaml.core :as yaml]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -23,13 +24,14 @@
    Most of these are files and directories within the SSL directory, excluding
    the CA directory and its contents; see `CaSettings` for more information.
    All of these are Puppet configuration settings."
-  {:certdir       schema/Str
-   :dns-alt-names schema/Str
-   :hostcert      schema/Str
-   :hostprivkey   schema/Str
-   :hostpubkey    schema/Str
-   :localcacert   schema/Str
-   :requestdir    schema/Str})
+  {:certdir        schema/Str
+   :dns-alt-names  schema/Str
+   :hostcert       schema/Str
+   :hostprivkey    schema/Str
+   :hostpubkey     schema/Str
+   :localcacert    schema/Str
+   :requestdir     schema/Str
+   :csr-attributes schema/Str})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
@@ -77,6 +79,14 @@
   "The OID for the extension with shortname 'ppPrivCertExt'."
   "1.3.6.1.4.1.34380.1.2")
 
+(def puppet-short-names
+  "A mapping of Puppet extension short names to their OIDs. These appear in
+  csr_attributes.yaml."
+  {:pp_uuid          "1.3.6.1.4.1.34380.1.1.1"
+   :pp_instance_id   "1.3.6.1.4.1.34380.1.1.2"
+   :pp_image_name    "1.3.6.1.4.1.34380.1.1.3"
+   :pp_preshared_key "1.3.6.1.4.1.34380.1.1.4"})
+
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
@@ -108,7 +118,7 @@
    paths. These paths are necessary during initialization for determining what
    needs to be created and where."
   [master-settings :- MasterSettings]
-  (dissoc master-settings :dns-alt-names))
+  (dissoc master-settings :dns-alt-names :csr-attributes))
 
 (defn path-to-cert
   "Return a path to the `subject`s certificate file under the `signeddir`."
@@ -329,30 +339,133 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
+(schema/defn create-dns-alt-names-ext
+  "Given a hostname and a comma-separated list of DNS names, create a Subject
+  Alternative Names extension."
+  [host-name :- schema/Str
+   alt-names :- schema/Str]
+  (let [alt-names-list (split-hostnames alt-names)]
+    (when-not (empty? alt-names-list)
+      (utils/subject-dns-alt-names
+        (conj alt-names-list host-name) false))))
+
+(schema/defn validate-subject!
+  "Validate the CSR or certificate's subject name.  The subject name must:
+    * match the hostname specified in the HTTP request (the `subject` parameter)
+    * not contain any non-printable characters or slashes
+    * not contain any capital letters
+    * not contain the wildcard character (*)"
+  [hostname :- schema/Str
+   subject :- schema/Str]
+  (when-not (= hostname subject)
+    (sling/throw+
+      {:type    :hostname-mismatch
+       :message (str "Instance name \"" subject
+                     "\" does not match requested key \"" hostname "\"")}))
+
+  (when (contains-uppercase? hostname)
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message "Certificate names must be lower case."}))
+
+  (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message "Subject contains unprintable or non-ASCII characters"}))
+
+  (when (.contains subject "*")
+    (sling/throw+
+      {:type    :invalid-subject-name
+       :message (format
+                  "Subject contains a wildcard, which is not allowed: %s"
+                  subject)})))
+
+(schema/defn allowed-extension?
+  "A predicate that answers if an extension is allowed or not.
+  This logic is copied out of the ruby CA."
+  [extension :- (schema/pred utils/extension?)]
+  (let [oid (:oid extension)]
+    (or
+      (utils/subtree-of? ppRegCertExt oid)
+      (utils/subtree-of? ppPrivCertExt oid))))
+
+(schema/defn validate-extensions!
+  "Throws an error if the extensions list contains any invalid extensions,
+  according to `allowed-extension?`"
+  [extensions :- (schema/pred utils/extension-list?)]
+  (let [bad-extensions (remove allowed-extension? extensions)]
+    (when-not (empty? bad-extensions)
+      (let [bad-extension-oids (map :oid bad-extensions)]
+        (sling/throw+ {:type    :disallowed-extension
+                       :message (str "Found extensions that are not permitted: "
+                                     (str/join ", " bad-extension-oids))})))))
+
+(schema/defn validate-dns-alt-names!
+  "Validate that the provided Subject Alternative Names extension is valid for
+  a cert signed by this CA. This entails:
+    * Only DNS alternative names are allowed, no other types
+    * Each DNS name does not contain a wildcard character (*)"
+  [{value :value} :- (schema/pred utils/extension?)]
+  (let [name-types (keys value)
+        names      (:dns-name value)]
+    (when-not (and (= (count name-types) 1)
+                   (= (first name-types) :dns-name))
+      (sling/throw+
+        {:type    :invalid-alt-name
+         :message "Only DNS names are allowed in the Subject Alternative Names extension"}))
+
+    (doseq [name names]
+      (when (.contains name "*")
+        (sling/throw+
+          {:type    :invalid-alt-name
+           :message (format
+                      "Cert subjectAltName contains a wildcard, which is not allowed: %s"
+                      name)})))))
+
+(schema/defn create-csr-attrs-exts
+  "Parse the CSR attributes yaml file at the given path and create a list of
+  certificate extensions from the `extensions_requests` section."
+  [csr-attributes-file :- schema/Str]
+  (when (fs/file? csr-attributes-file)
+    (try
+      (let [csr-attrs (yaml/parse-string (slurp csr-attributes-file))
+            ext-req   (:extension_requests csr-attrs)]
+        (map (fn [[oid value]]
+               {:oid      (or (get puppet-short-names oid)
+                              (name oid))
+                :critical false
+                :value    (str value)})
+             ext-req))
+      (catch Exception e
+        (throw (Exception.
+                 (str "There was a problem parsing " csr-attributes-file) e))))))
+
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
   [master-certname :- schema/Str
    master-public-key :- (schema/pred utils/public-key?)
    ca-public-key :- (schema/pred utils/public-key?)
-   dns-alt-names :- schema/Str]
-  (let [dns-alt-names-list (split-hostnames dns-alt-names)
-        alt-names-ext      (when-not (empty? dns-alt-names-list)
-                             (utils/subject-dns-alt-names
-                               (conj dns-alt-names-list master-certname) false))
-        alt-names-ext-list (if alt-names-ext [alt-names-ext] [])
-        base-ext-list      [(utils/netscape-comment
-                              netscape-comment-value)
-                            (utils/authority-key-identifier
-                              ca-public-key false)
-                            (utils/basic-constraints-for-non-ca true)
-                            (utils/ext-key-usages
-                              [ssl-server-cert ssl-client-cert] true)
-                            (utils/key-usage
-                              #{:key-encipherment
-                                :digital-signature} true)
-                            (utils/subject-key-identifier
-                              master-public-key false)]]
-    (concat base-ext-list alt-names-ext-list)))
+   {:keys [dns-alt-names csr-attributes]} :- MasterSettings]
+  (let [alt-names-ext (create-dns-alt-names-ext master-certname dns-alt-names)
+        csr-attr-exts (create-csr-attrs-exts csr-attributes)
+        base-ext-list [(utils/netscape-comment
+                         netscape-comment-value)
+                       (utils/authority-key-identifier
+                         ca-public-key false)
+                       (utils/basic-constraints-for-non-ca true)
+                       (utils/ext-key-usages
+                         [ssl-server-cert ssl-client-cert] true)
+                       (utils/key-usage
+                         #{:key-encipherment
+                           :digital-signature} true)
+                       (utils/subject-key-identifier
+                         master-public-key false)]]
+    (when alt-names-ext
+          (validate-dns-alt-names! alt-names-ext))
+    (when csr-attr-exts
+          (validate-extensions! csr-attr-exts))
+    (filter (complement nil?)
+            (concat base-ext-list [alt-names-ext] csr-attr-exts))))
 
 (schema/defn initialize-master!
   "Given the SSL directory file paths, master certname, and CA information,
@@ -379,7 +492,7 @@
         extensions   (create-master-extensions master-certname
                                                public-key
                                                ca-public-key
-                                               (:dns-alt-names settings))
+                                               settings)
         private-key  (utils/get-private-key keypair)
         x500-name    (utils/cn master-certname)
         ca-x500-name (utils/cn ca-name)
@@ -628,50 +741,6 @@
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
-(schema/defn validate-csr-extensions!
-  "Throws an error if the CSR contains any invalid extensions, according to
-  `allowed-extension?`"
-  [csr :- (schema/pred utils/certificate-request?)]
-  (let [extensions (utils/get-extensions csr)
-        bad-extensions (remove allowed-extension? extensions)]
-    (when-not (empty? bad-extensions)
-      (let [bad-extension-oids (map :oid bad-extensions)]
-        (sling/throw+ {:type    :disallowed-extension
-                       :message (str "CSR has request extensions that are not permitted: "
-                                     (str/join ", " bad-extension-oids))})))))
-
-(schema/defn validate-csr-subject!
-  "Validate the CSR subject name.  The subject name must:
-    * match the hostname specified in the HTTP request (the `subject` parameter)
-    * not contain any non-printable characters or slashes
-    * not contain any capital letters
-    * not contain the wildcard character (*)"
-  [subject :- schema/Str
-   certificate-request :- (schema/pred utils/certificate-request?)]
-  (let [cert-subject (get-csr-subject certificate-request)]
-    (when-not (= subject cert-subject)
-      (sling/throw+
-        {:type    :hostname-mismatch
-         :message (str "Instance name \"" cert-subject
-                       "\" does not match requested key \"" subject "\"")}))
-
-    (when (contains-uppercase? subject)
-      (sling/throw+
-        {:type    :invalid-subject-name
-         :message "Certificate names must be lower case."}))
-
-    (when-not (re-matches #"\A[ -.0-~]+\Z" cert-subject)
-      (sling/throw+
-        {:type    :invalid-subject-name
-         :message "CSR subject contains unprintable or non-ASCII characters"}))
-
-    (when (.contains cert-subject "*")
-      (sling/throw+
-        {:type    :invalid-subject-name
-         :message (format
-                    "CSR subject contains a wildcard, which is not allowed: %s"
-                    cert-subject)}))))
-
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
   See `signature-valid?` for more detail."
@@ -680,6 +749,18 @@
     (sling/throw+
       {:type    :invalid-signature
        :message "CSR contains a public key that does not correspond to the signing key"})))
+
+(schema/defn validate-csr!
+  "Perform all policy checks against the provided certificate signing request. "
+  [csr     :- (schema/pred utils/certificate-request?)
+   subject :- schema/Str]
+  ; These validations must happen in this order
+  ; if we are to behave exactly like the ruby CA.
+  (let [extensions  (utils/get-extensions csr)
+        csr-subject (get-csr-subject csr)]
+    (validate-extensions! extensions)
+    (validate-subject! subject csr-subject)
+    (validate-csr-signature! csr)))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -696,13 +777,8 @@
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (do
-          ; These validations must happen in this order
-          ; if we are to behave exactly like the ruby CA.
-          (validate-csr-extensions! csr)
-          (validate-csr-subject! subject csr)
-          (validate-csr-signature! csr)
-          (autosign-certificate-request! subject csr settings))
+        (do (validate-csr! csr subject)
+            (autosign-certificate-request! subject csr settings))
         (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate
