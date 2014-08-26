@@ -743,12 +743,14 @@
 
 (schema/defn validate-csr!
   "Perform all policy checks against the provided certificate signing request. "
-  [csr     :- (schema/pred utils/certificate-request?)
-   subject :- schema/Str]
+  [csr      :- (schema/pred utils/certificate-request?)
+   subject  :- schema/Str
+   settings :- CaSettings]
   ; These validations must happen in this order
   ; if we are to behave exactly like the ruby CA.
   (let [extensions  (utils/get-extensions csr)
         csr-subject (get-csr-subject csr)]
+    (validate-duplicate-cert-policy! csr settings)
     (validate-extensions! extensions)
     (validate-subject! subject csr-subject)
     (validate-csr-signature! csr)))
@@ -766,10 +768,9 @@
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
-      (validate-duplicate-cert-policy! csr settings)
+      (validate-csr! csr subject settings)
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (do (validate-csr! csr subject)
-            (autosign-certificate-request! subject csr settings))
+        (autosign-certificate-request! subject csr settings)
         (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate
