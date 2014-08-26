@@ -737,7 +737,7 @@
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
-(schema/defn validate-cert-extensions!
+(schema/defn validate-extensions!
   "Throws an error if the extensions list contains any invalid extensions,
   according to `allowed-extension?`"
   [extensions :- (schema/pred utils/extension-list?)]
@@ -765,7 +765,7 @@
   ; if we are to behave exactly like the ruby CA.
   (let [extensions  (utils/get-extensions csr)
         csr-subject (get-csr-subject csr)]
-    (validate-cert-extensions! extensions)
+    (validate-extensions! extensions)
     (validate-subject! subject csr-subject)
     (validate-csr-signature! csr)))
 
