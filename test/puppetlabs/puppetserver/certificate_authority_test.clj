@@ -680,25 +680,25 @@
                                                     issuer-pub
                                                     settings)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
-                             :critical false
-                             :value    netscape-comment-value}
-                            {:oid      "2.5.29.35"
-                             :critical false
-                             :value    {:issuer-dn     nil
-                                        :public-key    issuer-pub
-                                        :serial-number nil}}
-                            {:oid      "2.5.29.19"
-                             :critical true
-                             :value    {:is-ca false}}
-                            {:oid      "2.5.29.37"
-                             :critical true
-                             :value    [ssl-server-cert ssl-client-cert]}
-                            {:oid      "2.5.29.15"
-                             :critical true
-                             :value    #{:digital-signature :key-encipherment}}
-                            {:oid      "2.5.29.14"
-                             :critical false
-                             :value    subject-pub}]]
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "additional extensions are created for a master"

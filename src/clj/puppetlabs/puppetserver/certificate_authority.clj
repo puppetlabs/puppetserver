@@ -420,13 +420,13 @@
                       name)})))))
 
 (schema/defn create-csr-attrs-exts
-  "Parse the CSR attribtues yaml file at the given path and create a list of
+  "Parse the CSR attributes yaml file at the given path and create a list of
   certificate extensions from the `extensions_requests` section."
   [csr-attributes-file :- schema/Str]
   (when (fs/file? csr-attributes-file)
     (try
       (let [csr-attrs (yaml/parse-string (slurp csr-attributes-file))
-            ext-req (:extension_requests csr-attrs)]
+            ext-req   (:extension_requests csr-attrs)]
         (map (fn [[oid value]]
                {:oid      (or (get puppet-short-names oid)
                               (name oid))
@@ -434,7 +434,7 @@
                 :value    (str value)})
              ext-req))
       (catch Exception _
-        (throw (IllegalStateException.
+        (throw (Exception.
                  (str "There was a problem parsing " csr-attributes-file)))))))
 
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
