@@ -49,6 +49,9 @@
    :signeddir             schema/Str
    :serial                schema/Str})
 
+(def CertState
+  (schema/enum :signed :revoked))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -746,3 +749,29 @@
                             (:cert-inventory ca-settings)
                             (:signeddir ca-settings)
                             (:ca-ttl ca-settings))))))
+
+; TODO implement
+(defn get-certificate-status
+  ([] (get-certificate-status nil))
+  ([certname]
+   (if certname
+     (str "get-certificate-status on certname: " certname)
+     "get-certificate-statuses called")))
+
+; TODO implement
+(schema/defn set-certificate-status!
+  [certname :- schema/Str
+   desired-state :- CertState]
+  (println "set-certificate-status! on " certname " with desired state: " desired-state))
+
+; TODO implement
+(defn certificate-exists?
+  "Does the certificate specified by 'certname' exist?"
+  [certname]
+  (not (= certname "doesnotexist")))
+
+; TODO implement
+(defn delete-certificate!
+  "Delete the certificate specified by 'certname'."
+  [certname]
+  (println "deleting certificate for " certname))

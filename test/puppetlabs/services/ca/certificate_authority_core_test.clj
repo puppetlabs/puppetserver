@@ -171,3 +171,85 @@
             (is (= 400 (:status response)))
             (is (= "CSR subject contains a wildcard, which is not allowed: foo*bar"
                    (:body response)))))))))
+
+(def test-compojure-app
+  (compojure-app settings "42.42.42"))
+
+(defn body-stream
+  [s]
+  (io/input-stream (.getBytes s)))
+
+(deftest certificate-status-test
+
+  (testing "The /certificate_status endpoint"
+    (testing "GET"
+      (let [request {:uri "/production/certificate_status/myagent"
+                     :request-method :get
+                     :content-type "application/json"}
+             response (test-compojure-app request)]
+        (is (= 200 (:status response)))
+        (is (= "get-certificate-status on certname: myagent" (:body response)))))
+
+    (testing "PUT"
+      (testing "signing a cert"
+        (let [request {:uri "/production/certificate_status/myagent"
+                       :request-method :put
+                       :content-type "application/json"
+                       :body (body-stream "{\"desired_state\":\"signed\"}")}
+              response (test-compojure-app request)]
+          (is (= 204 (:status response))
+              (str "response was: " response))))
+
+      (testing "revoking a cert"
+        (let [request {:uri "/production/certificate_status/myagent"
+                       :request-method :put
+                       :content-type "application/json"
+                       :body (body-stream "{\"desired_state\":\"revoked\"}")}
+              response (test-compojure-app request)]
+          (is (= 204 (:status response))
+              (str "response was: " response))))
+
+      (testing "no body results in a 400"
+        (let [request {:uri "/production/certificate_status/myagent"
+                       :request-method :put
+                       :content-type "application/json"}
+              response (test-compojure-app request)]
+          (is (= 400 (:status response))
+              (str "response was: " response))))
+
+      (testing "invalid cert status results in a 400"
+        (let [request {:uri "/production/certificate_status/myagent"
+                       :request-method :put
+                       :content-type "application/json"
+                       :body (body-stream "{\"desired_state\":\"bogus\"}")}
+              response (test-compojure-app request)]
+          (is (= 400 (:status response))
+              (str "response was: " response)))))
+
+    (testing "DELETE"
+      (let [request {:uri "/production/certificate_status/myagent"
+                     :request-method :delete
+                     :content-type "application/json"}
+             response (test-compojure-app request)]
+        (is (= 204 (:status response)))))
+
+    (testing "returns a 501 when responding to a request without a 'Content-Type' header"
+      (let [request {:uri "/production/certificate_status/myagent"}
+            response (test-compojure-app request)]
+        (is (= 501 (:status response)))))
+
+    ; TODO - fix this after 'certificate-exists?' is implemented
+    (testing "returns a 404 when a non-existent certname is given"
+      (let [request {:uri "/production/certificate_status/doesnotexist"
+                     :request-method :get
+                     :content-type "application/json"}
+            response (test-compojure-app request)]
+        (is (= 404 (:status response))
+            (str "response was: " response)))))
+
+  (testing "GET to /certificate_statuses"
+      (let [response (test-compojure-app
+                       {:uri            "/production/certificate_statuses/thisisirrelevant"
+                        :request-method :get})]
+        (is (= 200 (:status response)))
+        (is (= "get-certificate-statuses called" (:body response))))))

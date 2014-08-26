@@ -34,3 +34,10 @@
     (let [resp (handler req)]
       (log/trace "Computed response:" resp)
       resp)))
+
+(defn json-request?
+  "Does the given request contain JSON, according to its 'Content-Type' header?
+  This is copied directly out of ring.middleware.json"
+  [request]
+  (if-let [type (:content-type request)]
+    (not (empty? (re-find #"^application/(.+\+)?json" type)))))
