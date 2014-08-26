@@ -433,9 +433,9 @@
                 :critical false
                 :value    (str value)})
              ext-req))
-      (catch Exception _
+      (catch Exception e
         (throw (Exception.
-                 (str "There was a problem parsing " csr-attributes-file)))))))
+                 (str "There was a problem parsing " csr-attributes-file) e))))))
 
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
