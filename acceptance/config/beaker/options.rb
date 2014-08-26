@@ -1,5 +1,7 @@
 {
   :forge_host => 'forge-aio01-petest.puppetlabs.com',
+  :is_puppetserver => true,
+  :is_jvm_puppet => true,
   "service-wait" => true,
   "service-prefix" => 'service ',
   "service-num-retries" => 1500,
