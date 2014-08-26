@@ -755,8 +755,8 @@
                           :csr-attributes
                           (str masterdir "/insecure_csr_attributes.yaml"))]
         (is (thrown-with-slingshot?
-              {:type    :disallowed-extension,
-               :message "CSR has request extensions that are not permitted: 1.2.3.4"}
+              {:type    :disallowed-extension
+               :message "Found extensions that are not permitted: 1.2.3.4"}
               (create-master-extensions subject subject-pub issuer-pub config)))))
 
     (testing "invalid DNS alt names are rejected"

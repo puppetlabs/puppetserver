@@ -350,6 +350,7 @@
   "Validate the CSR or certificate's subject name.  The subject name must:
     * match the hostname specified in the HTTP request (the `subject` parameter)
     * not contain any non-printable characters or slashes
+    * not contain any capital letters
     * not contain the wildcard character (*)"
   [hostname :- schema/Str
    subject :- schema/Str]
@@ -736,17 +737,6 @@
     (or
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
-
-(schema/defn validate-extensions!
-  "Throws an error if the extensions list contains any invalid extensions,
-  according to `allowed-extension?`"
-  [extensions :- (schema/pred utils/extension-list?)]
-  (let [bad-extensions (remove allowed-extension? extensions)]
-    (when-not (empty? bad-extensions)
-      (let [bad-extension-oids (map :oid bad-extensions)]
-        (sling/throw+ {:type    :disallowed-extension
-                       :message (str "CSR has request extensions that are not permitted: "
-                                     (str/join ", " bad-extension-oids))})))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
