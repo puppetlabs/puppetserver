@@ -51,8 +51,20 @@
    :signeddir             schema/Str
    :serial                schema/Str})
 
-(def CertState
-  (schema/enum :signed :revoked))
+(def DesiredCertState
+  "The pair of states that may be submitted to the certificate
+   status endpoint for signing and revoking certificates."
+  (schema/either :signed :revoked))
+
+(def CertStatus
+  "Various information about the state of a certificate or
+   certificate request that is provided by the certificate
+   status endpoint."
+  {:name          schema/Str
+   :state         (schema/enum :requested :signed :revoked)
+   :dns_alt_names [schema/Str]
+   :fingerprint   schema/Str
+   :fingerprints  {schema/Keyword schema/Str}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -833,31 +845,83 @@
                             (:signeddir ca-settings)
                             (:ca-ttl ca-settings))))))
 
-; TODO implement
-(defn get-certificate-status
-  [certname]
-  {:msg "you called get-certificate-status.  hi!"
-   :certname certname})
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; certificate_status endpoint
+
+;; TODO docs
+(defn certificate-state
+  [cert-or-csr cacrl]
+  (if (utils/certificate-request? cert-or-csr)
+    :requested
+    (if (utils/revoked? (utils/pem->crl cacrl) cert-or-csr)
+      :revoked
+      :signed)))
+
+;; TODO docs
+(defn dns-alt-names
+  [cert-or-csr]
+  (mapv (partial str "DNS:")
+        (utils/get-subject-dns-alt-names cert-or-csr)))
+
+;; TODO docs
+(defn fingerprint
+  [cert-or-csr algorithm]
+  (->> (utils/fingerprint cert-or-csr algorithm)
+       (partition 2)
+       (map (partial apply str))
+       (str/join ":")
+       (str/upper-case)))
+
+;; TODO docs
+(schema/defn ^:always-validate
+  get-certificate-status :- CertStatus
+  [{:keys [csrdir signeddir cacrl]} :- CaSettings
+   subject :- schema/Str]
+  (let [cert-or-csr         (if (fs/exists? (path-to-cert signeddir subject))
+                              (utils/pem->cert (path-to-cert signeddir subject))
+                              (utils/pem->csr (path-to-cert-request csrdir subject)))
+        default-fingerprint (fingerprint cert-or-csr "SHA-256")]
+    {:name          subject
+     :state         (certificate-state cert-or-csr cacrl)
+     :dns_alt_names (dns-alt-names cert-or-csr)
+     :fingerprint   default-fingerprint
+     :fingerprints  {:SHA1    (fingerprint cert-or-csr "SHA-1")
+                     :SHA256  default-fingerprint
+                     :SHA512  (fingerprint cert-or-csr "SHA-512")
+                     :default default-fingerprint}}))
+
+;; TODO docs
+(schema/defn ^:always-validate
+  get-certificate-statuses :- [CertStatus]
+  [{:keys [csrdir signeddir] :as settings} :- CaSettings]
+  (let [path->subject #(let [name (.getName %)]
+                         (.substring name 0 (- (count name) 4)))
+        pem-pattern   #"^.+\.pem$"
+        all-subjects  (map path->subject
+                           (concat (fs/find-files csrdir pem-pattern)
+                                   (fs/find-files signeddir pem-pattern)))]
+    (map (partial get-certificate-status settings) all-subjects)))
 
 ; TODO implement
-(defn get-certificate-statuses
-  []
-  {:msg "you called get-certificate-statuses.  hi!"})
+(schema/defn ^:always-validate
+  set-certificate-status!
+  [subject :- schema/Str
+   desired-state :- DesiredCertState
+   settings :- CaSettings]
+  (println "set-certificate-status! on " subject " with desired state: " desired-state))
+
+(schema/defn ^:always-validate
+  certificate-exists? :- schema/Bool
+  "Do we have a CSR or certificate for the given subject?"
+  [subject :- schema/Str
+   {:keys [csrdir signeddir]} :- CaSettings]
+  (or (fs/exists? (path-to-cert signeddir subject))
+      (fs/exists? (path-to-cert-request csrdir subject))))
 
 ; TODO implement
-(schema/defn set-certificate-status!
-  [certname :- schema/Str
-   desired-state :- CertState]
-  (println "set-certificate-status! on " certname " with desired state: " desired-state))
-
-; TODO implement
-(defn certificate-exists?
-  "Does the certificate specified by 'certname' exist?"
-  [certname]
-  (not (= certname "doesnotexist")))
-
-; TODO implement
-(defn delete-certificate!
-  "Delete the certificate specified by 'certname'."
-  [certname]
-  (println "deleting certificate for " certname))
+(schema/defn ^:always-validate
+  delete-certificate!
+  "Delete the certificate specified by 'subject'."
+  [subject :- schema/Str
+   settings :- CaSettings]
+  (println "deleting certificate for " subject))
