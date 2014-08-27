@@ -75,6 +75,8 @@
   [certname]
   :allowed-methods [:get :put :delete]
 
+  :available-media-types ["application/json"]
+
   :delete! (fn [context]
              (ca/delete-certificate! certname))
 
@@ -103,8 +105,14 @@
                            (ringutils/json-request? (get context :request))))
 
 (liberator/defresource certificate-statuses
+  :allowed-methods [:get]
+
+  :available-media-types ["application/json"]
+
+  :handle-exception utils/exception-handler
+
   :handle-ok (fn [context]
-               (ca/get-certificate-status)))
+               (ca/get-certificate-statuses)))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
@@ -113,7 +121,7 @@
       (ANY "/certificate_status/:certname" [certname]
         (certificate-status certname))
       (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
-           certificate-statuses)
+         certificate-statuses)
       (GET "/certificate/:subject" [subject]
         (handle-get-certificate subject ca-settings))
       (compojure/context "/certificate_request/:subject" [subject]

@@ -828,11 +828,14 @@
 
 ; TODO implement
 (defn get-certificate-status
-  ([] (get-certificate-status nil))
-  ([certname]
-   (if certname
-     (str "get-certificate-status on certname: " certname)
-     "get-certificate-statuses called")))
+  [certname]
+  {:msg "you called get-certificate-status.  hi!"
+   :certname certname})
+
+; TODO implement
+(defn get-certificate-statuses
+  []
+  {:msg "you called get-certificate-statuses.  hi!"})
 
 ; TODO implement
 (schema/defn set-certificate-status!
