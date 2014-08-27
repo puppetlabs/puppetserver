@@ -7,6 +7,7 @@
             [clojure.test :refer :all]
             [clojure.java.io :as io]
             [ring.mock.request :as mock]
+            [cheshire.core :as json]
             [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -185,9 +186,11 @@
       (let [request {:uri "/production/certificate_status/myagent"
                      :request-method :get
                      :content-type "application/json"}
-             response (test-compojure-app request)]
+             response (test-compojure-app request)
+             expected-response-body {:msg      "you called get-certificate-status.  hi!"
+                                     :certname "myagent"}]
         (is (= 200 (:status response)))
-        (is (= "get-certificate-status on certname: myagent" (:body response)))))
+        (is (= expected-response-body (json/parse-string (:body response) true)))))
 
     (testing "PUT"
       (testing "signing a cert"
@@ -248,7 +251,10 @@
 
   (testing "GET to /certificate_statuses"
       (let [response (test-compojure-app
-                       {:uri            "/production/certificate_statuses/thisisirrelevant"
-                        :request-method :get})]
-        (is (= 200 (:status response)))
-        (is (= "get-certificate-statuses called" (:body response))))))
+                       {:uri "/production/certificate_statuses/thisisirrelevant"
+                        :request-method :get
+                        :content-type "application/json"})
+            expected-response-body {:msg "you called get-certificate-statuses.  hi!"}]
+        (is (= 200 (:status response))
+            (str "response was: " response))
+        (is (= expected-response-body (json/parse-string (:body response) true))))))
