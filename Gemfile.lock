@@ -1,16 +1,8 @@
-GEM
-  remote: https://rubygems.org/
+GIT
+  remote: git@github.com:waynr/beaker.git
+  revision: fe77e9b0c66b77800aed4e39c79bbd1ed5ead3ee
+  ref: fe77e9
   specs:
-    CFPropertyList (2.2.8)
-    addressable (2.3.6)
-    archive-tar-minitar (0.5.2)
-    autoparse (0.3.3)
-      addressable (>= 2.3.1)
-      extlib (>= 0.9.15)
-      multi_json (>= 1.0.0)
-    aws-sdk (1.42.0)
-      json (~> 1.4)
-      nokogiri (>= 1.4.4)
     beaker (1.17.5)
       aws-sdk (= 1.42.0)
       blimpy (~> 0.6)
@@ -26,6 +18,20 @@ GEM
       nokogiri (~> 1.5.10)
       rbvmomi (= 1.8.1)
       unf (~> 0.1)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    CFPropertyList (2.2.8)
+    addressable (2.3.6)
+    archive-tar-minitar (0.5.2)
+    autoparse (0.3.3)
+      addressable (>= 2.3.1)
+      extlib (>= 0.9.15)
+      multi_json (>= 1.0.0)
+    aws-sdk (1.42.0)
+      json (~> 1.4)
+      nokogiri (>= 1.4.4)
     blimpy (0.6.7)
       fog
       minitar
@@ -127,6 +133,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  beaker (~> 1.17)
+  beaker!
   rake
   rspec
