@@ -708,14 +708,18 @@
    {:type    :duplicate-cert
     :message <specific error message>}"
   [csr :- (schema/pred utils/certificate-request?)
-   {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
-  ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
-  ;;              instead of "signed certificate" if the cert has been revoked
+   {:keys [allow-duplicate-certs cacrl csrdir signeddir]} :- CaSettings]
   (let [subject (get-csr-subject csr)
-        existing-cert? (fs/exists? (path-to-cert signeddir subject))
+        cert (path-to-cert signeddir subject)
+        existing-cert? (fs/exists? cert)
         existing-csr? (fs/exists? (path-to-cert-request csrdir subject))]
     (when (or existing-cert? existing-csr?)
-      (let [status (if existing-cert? "signed" "requested")]
+      (let [status (if existing-cert?
+                     (if (utils/revoked?
+                           (utils/pem->crl cacrl) (utils/pem->cert cert))
+                       "revoked"
+                       "signed")
+                     "requested")]
         (if allow-duplicate-certs
           (log/info
             (str subject " already has a " status " certificate; new certificate will overwrite it"))

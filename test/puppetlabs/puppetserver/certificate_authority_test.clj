@@ -631,6 +631,13 @@
                :message "localhost already has a signed certificate; ignoring certificate request"}
               (process-csr-submission! "localhost" csr settings)))))
 
+    (testing "even if the certificate has been revoked"
+      (let [csr (io/input-stream "dev-resources/revoked-agent-csr.pem")]
+        (is (thrown-with-slingshot?
+              {:type    :duplicate-cert
+               :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
+              (process-csr-submission! "revoked-agent" csr settings)))))
+
     (testing "unless $allow-duplicate-certs is true"
       (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
             csr-path (path-to-cert-request (:csrdir settings) "localhost")
