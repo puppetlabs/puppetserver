@@ -625,20 +625,29 @@
           (fs/delete cert-path))))
 
     (testing "throws an exception if a certificate already exists for that subject"
-      (is (thrown-with-slingshot?
-           {:type    :duplicate-cert
-            :message "localhost already has a signed certificate; ignoring certificate request"}
-           (process-csr-submission! "localhost" (csr-stream "test-agent") settings)))
+      (let [csr (io/input-stream "dev-resources/localhost-csr.pem")]
+        (is (thrown-with-slingshot?
+              {:type    :duplicate-cert
+               :message "localhost already has a signed certificate; ignoring certificate request"}
+              (process-csr-submission! "localhost" csr settings)))))
 
-      (testing "unless $allow-duplicate-certs is true"
-        (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
-              csr-path (path-to-cert-request (:csrdir settings) "localhost")]
-          (logutils/with-test-logging
-            (is (false? (fs/exists? csr-path)))
-            (process-csr-submission! "localhost" (csr-stream "test-agent") settings)
-            (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
-            (is (true? (fs/exists? csr-path))))
-          (fs/delete csr-path))))))
+    (testing "even if the certificate has been revoked"
+      (let [csr (io/input-stream "dev-resources/revoked-agent-csr.pem")]
+        (is (thrown-with-slingshot?
+              {:type    :duplicate-cert
+               :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
+              (process-csr-submission! "revoked-agent" csr settings)))))
+
+    (testing "unless $allow-duplicate-certs is true"
+      (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
+            csr-path (path-to-cert-request (:csrdir settings) "localhost")
+            csr      (io/input-stream "dev-resources/localhost-csr.pem")]
+        (logutils/with-test-logging
+          (is (false? (fs/exists? csr-path)))
+          (process-csr-submission! "localhost" csr settings)
+          (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
+          (is (true? (fs/exists? csr-path))))
+        (fs/delete csr-path)))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)

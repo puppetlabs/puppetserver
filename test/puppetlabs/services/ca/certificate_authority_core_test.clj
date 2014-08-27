@@ -76,10 +76,10 @@
 
     (testing "when autosign results in false"
       (doseq [value [false
-                     "dev-resources/config/master/conf/ruby-autosign-executable"
+                     "dev-resources/config/master/conf/ruby-autosign-executable-false"
                      "dev-resources/config/master/conf/autosign-whitelist.conf"]]
         (let [settings      (assoc settings :autosign value)
-              csr-stream    (io/input-stream csr-path)
+              csr-stream    (io/input-stream "./dev-resources/foo-agent-csr.pem")
               expected-path (ca/path-to-cert-request csrdir "foo-agent")]
 
           (testing "it writes the CSR to disk and returns a

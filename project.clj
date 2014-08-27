@@ -22,7 +22,7 @@
                  [com.github.jnr/jffi "1.2.7"]
                  [com.github.jnr/jffi "1.2.7" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
-                 [clj-time "0.5.1"]
+                 [clj-time "0.5.1" :exclusions [joda-time]]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
                  [ring/ring-json "0.3.1"]

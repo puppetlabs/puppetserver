@@ -707,22 +707,25 @@
    The exception map will look like:
    {:type    :duplicate-cert
     :message <specific error message>}"
-  [subject :- schema/Str
-   {:keys [allow-duplicate-certs csrdir signeddir]} :- CaSettings]
-  ;; TODO PE-5084 In the error messages below we should say "revoked certificate"
-  ;;              instead of "signed certificate" if the cert has been revoked
-  (if (fs/exists? (path-to-cert signeddir subject))
-    (if allow-duplicate-certs
-      (log/info (str subject " already has a signed certificate; new certificate will overwrite it"))
-      (sling/throw+
-       {:type    :duplicate-cert
-        :message (str subject " already has a signed certificate; ignoring certificate request")})))
-  (if (fs/exists? (path-to-cert-request csrdir subject))
-    (if allow-duplicate-certs
-      (log/info (str subject " already has a requested certificate; new certificate will overwrite it"))
-      (sling/throw+
-       {:type    :duplicate-cert
-        :message (str subject " already has a requested certificate; ignoring certificate request")}))))
+  [csr :- (schema/pred utils/certificate-request?)
+   {:keys [allow-duplicate-certs cacrl csrdir signeddir]} :- CaSettings]
+  (let [subject (get-csr-subject csr)
+        cert (path-to-cert signeddir subject)
+        existing-cert? (fs/exists? cert)
+        existing-csr? (fs/exists? (path-to-cert-request csrdir subject))]
+    (when (or existing-cert? existing-csr?)
+      (let [status (if existing-cert?
+                     (if (utils/revoked?
+                           (utils/pem->crl cacrl) (utils/pem->cert cert))
+                       "revoked"
+                       "signed")
+                     "requested")]
+        (if allow-duplicate-certs
+          (log/info
+            (str subject " already has a " status " certificate; new certificate will overwrite it"))
+          (sling/throw+
+            {:type    :duplicate-cert
+             :message (str subject " already has a " status " certificate; ignoring certificate request")}))))))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -744,12 +747,14 @@
 
 (schema/defn validate-csr!
   "Perform all policy checks against the provided certificate signing request. "
-  [csr     :- (schema/pred utils/certificate-request?)
-   subject :- schema/Str]
+  [csr      :- (schema/pred utils/certificate-request?)
+   subject  :- schema/Str
+   settings :- CaSettings]
   ; These validations must happen in this order
   ; if we are to behave exactly like the ruby CA.
   (let [extensions  (utils/get-extensions csr)
         csr-subject (get-csr-subject csr)]
+    (validate-duplicate-cert-policy! csr settings)
     (validate-extensions! extensions)
     (validate-subject! subject csr-subject)
     (validate-csr-signature! csr)))
@@ -762,15 +767,14 @@
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path] :as settings} :- CaSettings]
-  (validate-duplicate-cert-policy! subject settings)
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
+      (validate-csr! csr subject settings)
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (do (validate-csr! csr subject)
-            (autosign-certificate-request! subject csr settings))
+        (autosign-certificate-request! subject csr settings)
         (save-certificate-request! subject csr csrdir)))))
 
 (schema/defn ^:always-validate
