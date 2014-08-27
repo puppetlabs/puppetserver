@@ -355,9 +355,9 @@
     (testing "cacrl"
       (let [crl (-> settings :cacrl utils/pem->crl)]
         (assert-issuer crl "CN=test ca")
-        (testing "has at least one expected extension - crl number"
-          (let [crl-number (utils/get-extension-value crl "2.5.29.20")]
-            (is (= 0 crl-number))))))
+        (testing "has CRLNumber and AuthorityKeyIdentifier extensions"
+          (is (not (nil? (utils/get-extension-value crl utils/crl-number-oid))))
+          (is (not (nil? (utils/get-extension-value crl utils/authority-key-identifier-oid)))))))
 
     (testing "cacert"
       (let [cert (-> settings :cacert utils/pem->cert)]
@@ -793,19 +793,6 @@
                            {:oid      "2.5.29.14"
                             :critical false
                             :value    subject-pub}]]
-        (is (= (set exts) (set exts-expected)))))
-
-    (testing "basic extensions are created for a CRL"
-      (let [crl-num       0
-            exts          (create-crl-extensions issuer-pub)
-            exts-expected [{:oid      "2.5.29.35"
-                            :critical false
-                            :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
-                                       :serial-number nil}}
-                           {:oid      "2.5.29.20"
-                            :critical false
-                            :value    (biginteger crl-num)}]]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "trusted fact extensions are properly unfiltered"
