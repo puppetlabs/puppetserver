@@ -71,10 +71,6 @@
       (merge {:webserver
                {:ssl-host     "0.0.0.0"
                 :ssl-port     port
-                :ssl-cert     "./dev-resources/config/master/conf/ssl/certs/localhost.pem"
-                :ssl-key      "./dev-resources/config/master/conf/ssl/private_keys/localhost.pem"
-                :ssl-ca-cert  "./dev-resources/config/master/conf/ssl/certs/ca.pem"
-                :ssl-crl-path "./dev-resources/config/master/conf/ssl/crl.pem"
                 :client-auth  "need"}}
              (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))
       (testing (str "Simple request to puppet server succeeds when the client "
