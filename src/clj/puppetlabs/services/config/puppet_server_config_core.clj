@@ -12,9 +12,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config
 
-(def puppet-config-keys
+(def puppet-config-keys-which-require-a-non-nil-value
   "The configuration values which, instead of being configured through
-  Trapperkeeper's normal configuration service, are read from JRubyPuppet."
+  Trapperkeeper's normal configuration service, are read from JRubyPuppet
+  and which are required to have a non-nil value."
   #{:allow-duplicate-certs
     :autosign
     :cacert
@@ -36,6 +37,16 @@
     :requestdir
     :dns-alt-names
     :csr-attributes})
+
+(def puppet-config-keys-which-can-have-a-nil-value
+  "The configuration values which, instead of being configured through
+  Trapperkeeper's normal configuration service, are read from JRubyPuppet
+  and which can have a nil value."
+  #{:ssl-server-ca-auth})
+
+(def puppet-config-keys
+  (set/union puppet-config-keys-which-require-a-non-nil-value
+             puppet-config-keys-which-can-have-a-nil-value))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers
@@ -68,12 +79,13 @@
 
 (def Config
   "Represents valid configuration data from Puppet.  Ensures that
-    * all config keys are present in the map,
-      and there is a non-nil value for each key.
+    * all config keys are present in the map
+    * a non-nil value is present for any applicable keys
     * :puppet-version is present."
-  (assoc
-    (zipmap puppet-config-keys (repeat Object))
-    :puppet-version String))
+  (-> (zipmap puppet-config-keys-which-require-a-non-nil-value (repeat Object))
+      (merge (zipmap puppet-config-keys-which-can-have-a-nil-value
+                     (repeat schema/Any)))
+      (assoc :puppet-version String)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; public API
@@ -102,9 +114,13 @@
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."
   [override-webserver-settings! puppet-config]
-  (let [{:keys [hostcert cacert cacrl hostprivkey] :as settings} puppet-config]
+  (let [{:keys [hostcert cacert cacrl hostprivkey ssl-server-ca-auth]
+         :as   settings}
+        puppet-config]
     (log/info "Initializing webserver settings: " settings)
     (override-webserver-settings! {:ssl-cert     hostcert
                                    :ssl-key      hostprivkey
-                                   :ssl-ca-cert  cacert
+                                   :ssl-ca-cert  (if ssl-server-ca-auth
+                                                   ssl-server-ca-auth
+                                                   cacert)
                                    :ssl-crl-path cacrl})))
