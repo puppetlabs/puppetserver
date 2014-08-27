@@ -39,6 +39,8 @@
     (compojure/PUT "/report/*" request
                    (request-handler environment request))
     (compojure/GET "/resource_type/*" request
+                   (request-handler environment request))
+    (compojure/GET "/resource_types/*" request
                    (request-handler environment request))))
 
 (defn root-routes
