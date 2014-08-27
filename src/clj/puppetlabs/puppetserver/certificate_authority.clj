@@ -831,8 +831,9 @@
   ([] (get-certificate-status nil))
   ([certname]
    (if certname
-     (str "get-certificate-status on certname: " certname)
-     "get-certificate-statuses called")))
+     {:msg      "you called get-certificate-status.  hi!"
+      :certname certname}
+     {:msg      "you called get-certificate-statuses.  hi!"})))
 
 ; TODO implement
 (schema/defn set-certificate-status!
