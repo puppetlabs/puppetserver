@@ -54,14 +54,14 @@
 (def DesiredCertState
   "The pair of states that may be submitted to the certificate
    status endpoint for signing and revoking certificates."
-  (schema/either :signed :revoked))
+  (schema/enum :signed :revoked))
 
 (def CertStatus
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
   {:name          schema/Str
-   :state         (schema/enum :requested :signed :revoked)
+   :state         (schema/enum "requested" "signed" "revoked")
    :dns_alt_names [schema/Str]
    :fingerprint   schema/Str
    :fingerprints  {schema/Keyword schema/Str}})
@@ -701,6 +701,7 @@
                                             (create-agent-extensions
                                              csr
                                              (utils/pem->public-key capub)))]
+    (log/debug (str "Signed certificate request for " subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
@@ -852,10 +853,10 @@
 (defn certificate-state
   [cert-or-csr cacrl]
   (if (utils/certificate-request? cert-or-csr)
-    :requested
+    "requested"
     (if (utils/revoked? (utils/pem->crl cacrl) cert-or-csr)
-      :revoked
-      :signed)))
+      "revoked"
+      "signed")))
 
 ;; TODO docs
 (defn dns-alt-names
@@ -902,19 +903,49 @@
                                    (fs/find-files signeddir pem-pattern)))]
     (map (partial get-certificate-status settings) all-subjects)))
 
-; TODO implement
+;; TODO docs
+(schema/defn sign-existing-csr!
+  [{:keys [csrdir] :as settings} :- CaSettings
+   subject :- schema/Str]
+  (let [csr-path (path-to-cert-request csrdir subject)]
+    (if-not (fs/exists? csr-path)
+      (log/errorf "Cannot sign host %s without a certificate request" subject)
+      (do
+        ;; TODO validate CSR policies and return an error somehow
+        (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
+        (fs/delete csr-path)
+        (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))))
+
+;; TODO docs
+(schema/defn revoke-existing-cert!
+  [{:keys [signeddir cacrl cakey capub]} :- CaSettings
+   subject :- schema/Str]
+  (let [cert-path (path-to-cert signeddir subject)]
+    (if-not (fs/exists? cert-path)
+      (log/errorf "Cannot revoke host %s without a signed certificate")
+      (let [serial  (-> cert-path utils/pem->cert utils/get-serial)
+            new-crl (utils/revoke (utils/pem->crl cacrl)
+                                  (utils/pem->private-key cakey)
+                                  (utils/pem->public-key capub)
+                                  serial)]
+        (utils/crl->pem! new-crl cacrl)
+        (log/debug "Revoked certificate with serial" serial)))))
+
+; TODO docs
 (schema/defn ^:always-validate
   set-certificate-status!
-  [subject :- schema/Str
-   desired-state :- DesiredCertState
-   settings :- CaSettings]
-  (println "set-certificate-status! on " subject " with desired state: " desired-state))
+  [settings :- CaSettings
+   subject :- schema/Str
+   desired-state :- DesiredCertState]
+  (if (= :signed desired-state)
+    (sign-existing-csr! settings subject)
+    (revoke-existing-cert! settings subject)))
 
 (schema/defn ^:always-validate
   certificate-exists? :- schema/Bool
   "Do we have a CSR or certificate for the given subject?"
-  [subject :- schema/Str
-   {:keys [csrdir signeddir]} :- CaSettings]
+  [{:keys [csrdir signeddir]} :- CaSettings
+   subject :- schema/Str]
   (or (fs/exists? (path-to-cert signeddir subject))
       (fs/exists? (path-to-cert-request csrdir subject))))
 
@@ -922,6 +953,6 @@
 (schema/defn ^:always-validate
   delete-certificate!
   "Delete the certificate specified by 'subject'."
-  [subject :- schema/Str
-   settings :- CaSettings]
+  [settings :- CaSettings
+   subject :- schema/Str]
   (println "deleting certificate for " subject))

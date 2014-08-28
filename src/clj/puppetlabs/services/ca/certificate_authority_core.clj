@@ -78,7 +78,7 @@
   :available-media-types ["application/json"]
 
   :delete! (fn [context]
-             (ca/delete-certificate! subject settings))
+             (ca/delete-certificate! settings subject))
 
   :exists? (fn [context]
              (ca/certificate-exists? settings subject))
@@ -86,7 +86,7 @@
   :handle-exception utils/exception-handler
 
   :handle-ok (fn [context]
-               (ca/get-certificate-status subject settings))
+               (ca/get-certificate-status settings subject))
 
   :malformed? (fn [context]
                 (when (= :put (get-in context [:request :request-method]))
@@ -98,7 +98,7 @@
 
   :put! (fn [context]
           (let [desired-state (get-desired-state context)]
-            (ca/set-certificate-status! subject desired-state settings)))
+            (ca/set-certificate-status! settings subject desired-state)))
 
   ; Requests must be JSON for us to handle them.
   :valid-content-header? (fn [context]
@@ -113,7 +113,7 @@
   :handle-exception utils/exception-handler
 
   :handle-ok (fn [context]
-               (ca/get-certificate-statuses settings))))
+               (ca/get-certificate-statuses settings)))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
@@ -122,7 +122,7 @@
       (ANY "/certificate_status/:subject" [subject]
         (certificate-status subject ca-settings))
       (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
-           (certificate-statuses ca-settings)))
+        (certificate-statuses ca-settings)))
       (GET "/certificate/:subject" [subject]
         (handle-get-certificate subject ca-settings))
       (compojure/context "/certificate_request/:subject" [subject]
@@ -131,7 +131,7 @@
         (PUT "/" {body :body}
           (handle-put-certificate-request! subject body ca-settings)))
       (GET "/certificate_revocation_list/:ignored-node-name" []
-        (handle-get-certificate-revocation-list ca-settings)))))
+        (handle-get-certificate-revocation-list ca-settings))))
 
 (defn wrap-with-puppet-version-header
   "Function that returns a middleware that adds an
