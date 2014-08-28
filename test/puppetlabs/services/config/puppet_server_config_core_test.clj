@@ -32,3 +32,29 @@
   (testing "validating a map with a nil value"
     (let [config-with-nil-value (zipmap puppet-config-keys (repeat nil))]
       (is (not (nil? (schema/check Config config-with-nil-value)))))))
+
+(deftest test-init-webserver!
+  (let [settings-passed      (atom nil)
+        override-fn          (fn [settings]
+                               (reset! settings-passed settings))
+        puppet-config        {:hostcert    "thehostcert"
+                              :cacert      "thecacert"
+                              :cacrl       "thecacrl"
+                              :hostprivkey "thehostprivkey"}
+        webserver-ssl-config {:ssl-cert     "thehostcert"
+                              :ssl-key      "thehostprivkey"
+                              :ssl-ca-cert  "thecacert"
+                              :ssl-crl-path "thecacrl"}]
+
+    (testing (str "no call made to override default webserver settings if "
+                  "ssl cert configuration already in webserver settings")
+      (init-webserver! override-fn webserver-ssl-config puppet-config)
+      (is (nil? @settings-passed)
+          "Unexpected settings passed into the override function"))
+
+    (testing (str "expected settings passed to override function when "
+                  "none already exist in webserver settings")
+      (reset! settings-passed nil)
+      (init-webserver! override-fn {} puppet-config)
+      (is (= webserver-ssl-config @settings-passed)
+          "Unexpected settings passed into the override function"))))
