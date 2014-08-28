@@ -170,7 +170,15 @@
                            "foo*bar" csr-stream settings)]
             (is (= 400 (:status response)))
             (is (= "Subject contains a wildcard, which is not allowed: foo*bar"
-                   (:body response)))))))))
+                   (:body response)))))))
+
+    (testing "a CSR w/ DNS alt-names gets a specific error response"
+      (let [csr (io/input-stream "dev-resources/hostwithaltnames.pem")
+            response (handle-put-certificate-request!
+                       "hostwithaltnames" csr settings)]
+        (is (= 400 (:status response)))
+        (is (= "CSR 'hostwithaltnames' contains subject alternative names altname1, altname2, altname3 which are disallowed. Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request."
+               (:body response)))))))
 
 (def test-compojure-app
   (compojure-app settings "42.42.42"))
