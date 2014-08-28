@@ -900,7 +900,7 @@
     (if-not (fs/exists? csr-path)
       (log/errorf "Cannot sign host %s without a certificate request" subject)
       (do
-        ;; TODO validate CSR policies and return an error somehow
+        ;; TODO PE-5704 validate CSR policies and return an error somehow
         (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
         (fs/delete csr-path)
         (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))))
@@ -911,14 +911,14 @@
    subject :- schema/Str]
   (let [cert-path (path-to-cert signeddir subject)]
     (if-not (fs/exists? cert-path)
-      (log/errorf "Cannot revoke host %s without a signed certificate")
+      (log/errorf "Cannot revoke host %s without a signed certificate" subject)
       (let [serial  (-> cert-path utils/pem->cert utils/get-serial)
             new-crl (utils/revoke (utils/pem->crl cacrl)
                                   (utils/pem->private-key cakey)
                                   (utils/pem->public-key capub)
                                   serial)]
         (utils/crl->pem! new-crl cacrl)
-        (log/debug "Revoked certificate with serial" serial)))))
+        (log/debugf "Revoked %s certificate with serial %d" subject serial)))))
 
 ; TODO docs
 (schema/defn ^:always-validate
@@ -938,10 +938,17 @@
   (or (fs/exists? (path-to-cert signeddir subject))
       (fs/exists? (path-to-cert-request csrdir subject))))
 
-; TODO implement
+;; TODO docs
 (schema/defn ^:always-validate
   delete-certificate!
-  "Delete the certificate specified by 'subject'."
-  [settings :- CaSettings
+  "Delete the certificate and/or CSR for the given subject."
+  [{:keys [csrdir signeddir]} :- CaSettings
    subject :- schema/Str]
-  (println "deleting certificate for " subject))
+  (let [cert (path-to-cert signeddir subject)
+        csr  (path-to-cert-request csrdir subject)]
+    (when (fs/exists? cert)
+      (fs/delete cert)
+      (log/debug "Deleted certificate for" subject))
+    (when (fs/exists? csr)
+      (fs/delete csr)
+      (log/debug "Deleted certificate request for" subject))))
