@@ -77,6 +77,8 @@
 
   :available-media-types ["application/json"]
 
+  :can-put-to-missing? false
+
   :delete! (fn [context]
              (ca/delete-certificate! settings subject))
 
@@ -93,16 +95,17 @@
                   (let [state (get-desired-state context)]
                     (schema/check ca/DesiredCertState state))))
 
-  ; Never return a 201, we're not creating a new cert or anything like that.
+  :handle-malformed (fn [context]
+                      (if (ringutils/json-request? (get context :request))
+                        "Bad Request."
+                        "Request headers must include 'Content-Type: application/json'."))
+
+  ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
 
   :put! (fn [context]
           (let [desired-state (get-desired-state context)]
-            (ca/set-certificate-status! settings subject desired-state)))
-
-  ; Requests must be JSON for us to handle them.
-  :valid-content-header? (fn [context]
-                           (ringutils/json-request? (get context :request))))
+            (ca/set-certificate-status! settings subject desired-state))))
 
 (liberator/defresource certificate-statuses
   [settings]
