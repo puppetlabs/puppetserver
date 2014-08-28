@@ -1,6 +1,7 @@
 (ns puppetlabs.services.ca.certificate-authority-core-test
   (:require [puppetlabs.services.ca.certificate-authority-core :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+            [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
@@ -14,11 +15,12 @@
 
 (def cadir "./dev-resources/config/master/conf/ssl/ca")
 
-(defn settings
-  ([] (settings cadir))
+(defn ca-settings
+  ([] (ca-settings cadir))
   ([cadir]
      {:allow-duplicate-certs true
       :autosign              true
+      :ca-ttl                100
       :ca-name               "Puppet CA: localhost"
       :cacert                (str cadir "/ca_crt.pem")
       :cacrl                 (str cadir "/ca_crl.pem")
@@ -26,10 +28,8 @@
       :capub                 (str cadir "/ca_pub.pem")
       :signeddir             (str cadir "/signed")
       :csrdir                (str cadir "/requests")
-      :ca-ttl                100
-      :serial                (doto (str (ks/temp-file))
-                               (ca/initialize-serial-file!))
-      :cert-inventory        (str (ks/temp-file))
+      :serial                (str cadir "/serial")
+      :cert-inventory        (str cadir "/inventory.txt")
       :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]}))
 
 (deftest crl-endpoint-test
@@ -44,7 +44,7 @@
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"
-          ring-app (compojure-app (settings) version-number)
+          ring-app (compojure-app (ca-settings) version-number)
           ;; we can just GET the /CRL endpoint, so that's an easy test here.
           request (mock/request :get
                                 "/production/certificate_revocation_list/mynode")
@@ -52,7 +52,10 @@
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [settings  (settings)
+  (let [settings  (assoc (ca-settings)
+                    :serial (doto (str (ks/temp-file))
+                              (ca/initialize-serial-file!))
+                    :cert-inventory (str (ks/temp-file)))
         csr-path  (ca/path-to-cert-request (:csrdir settings) "test-agent")]
     (logutils/with-test-logging
       (testing "when autosign results in true"
@@ -130,7 +133,7 @@
                                 "meow" csr-stream settings)]
           (is (= 400 (:status response)))
           (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.9"
-                 (:body response)))))
+                 (:body response))))
 
         (let [csr-with-bad-ext "dev-resources/woof-bad-extensions.pem"
               csr-stream       (io/input-stream csr-with-bad-ext)
@@ -138,42 +141,43 @@
                                 "woof" csr-stream settings)]
           (is (= 400 (:status response)))
           (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.0, 1.9.9.9.9.9.1"
-                 (:body response))))))
+                 (:body response)))))
 
       (testing "when the CSR subject contains invalid characters, the response is a 400"
-        ;; These test cases are lifted out of the puppet spec tests.
-        (let [bad-csrs #{{:subject "super/bad"
-                          :csr     "dev-resources/bad-subject-name-1.pem"}
+          ;; These test cases are lifted out of the puppet spec tests.
+          (let [bad-csrs #{{:subject "super/bad"
+                            :csr     "dev-resources/bad-subject-name-1.pem"}
 
-                         {:subject "not\neven\tkind\rof"
-                          :csr     "dev-resources/bad-subject-name-2.pem"}
+                           {:subject "not\neven\tkind\rof"
+                            :csr     "dev-resources/bad-subject-name-2.pem"}
 
-                         {:subject "hidden\b\b\b\b\b\bmessage"
-                          :csr     "dev-resources/bad-subject-name-3.pem"}}]
+                           {:subject "hidden\b\b\b\b\b\bmessage"
+                            :csr     "dev-resources/bad-subject-name-3.pem"}}]
 
-          (doseq [{:keys [subject csr]} bad-csrs]
-            (let [csr-stream (io/input-stream csr)
-                  response   (handle-put-certificate-request!
-                              subject csr-stream settings)]
+            (doseq [{:keys [subject csr]} bad-csrs]
+              (let [csr-stream (io/input-stream csr)
+                    response   (handle-put-certificate-request!
+                                subject csr-stream settings)]
+                (is (= 400 (:status response)))
+                (is (= "Subject contains unprintable or non-ASCII characters"
+                       (:body response))))))
+
+          (testing "no wildcards allowed"
+            (let [csr-with-wildcard "dev-resources/bad-subject-name-wildcard.pem"
+                  csr-stream        (io/input-stream csr-with-wildcard)
+                  response          (handle-put-certificate-request!
+                                     "foo*bar" csr-stream settings)]
               (is (= 400 (:status response)))
-              (is (= "Subject contains unprintable or non-ASCII characters"
-                     (:body response))))))
-
-        (testing "no wildcards allowed"
-          (let [csr-with-wildcard "dev-resources/bad-subject-name-wildcard.pem"
-                csr-stream        (io/input-stream csr-with-wildcard)
-                response          (handle-put-certificate-request!
-                                   "foo*bar" csr-stream settings)]
-            (is (= 400 (:status response)))
-            (is (= "Subject contains a wildcard, which is not allowed: foo*bar"
-                   (:body response)))))))
+              (is (= "Subject contains a wildcard, which is not allowed: foo*bar"
+                     (:body response)))))))))
 
 (defn body-stream
   [s]
   (io/input-stream (.getBytes s)))
 
 (deftest certificate-status-test
-  (let [test-compojure-app   (compojure-app (settings) "42.42.42")
+  (let [settings             (ca-settings)
+        test-compojure-app   (compojure-app settings "42.42.42")
         localhost-status     {:dns_alt_names ["DNS:djroomba.vpn.puppetlabs.net"
                                               "DNS:localhost"
                                               "DNS:puppet"
@@ -184,26 +188,26 @@
                                               :SHA512 "58:22:32:60:CE:E7:E9:C9:CB:6A:01:52:81:ED:24:D4:69:8E:9E:CF:D8:A7:4E:6E:B5:C7:E7:18:59:5F:81:4C:93:11:77:E6:F0:40:70:5B:9C:9D:BE:22:A6:61:0B:F9:46:70:43:09:58:7E:6B:B7:5B:D9:6A:54:36:09:53:F9"
                                               :default "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"}
                               :name          "localhost"
-                              :state         :signed}
+                              :state         "signed"}
         test-agent-status    {:dns_alt_names []
-                              :fingerprint "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
-                              :fingerprints {:SHA1 "EB:3D:7B:9C:85:3E:56:7A:3E:9D:1B:C4:7A:21:5A:91:F5:00:4D:9D"
+                              :fingerprint   "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
+                              :fingerprints  {:SHA1 "EB:3D:7B:9C:85:3E:56:7A:3E:9D:1B:C4:7A:21:5A:91:F5:00:4D:9D"
                                               :SHA256 "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
                                               :SHA512 "80:C5:EE:B7:A5:FB:5E:53:7C:51:3A:A0:78:AF:CD:E3:7C:BA:B1:D6:BB:BD:61:9E:A0:2E:D2:12:3C:D8:6E:8D:86:7C:FC:FB:4C:6B:1D:15:63:02:19:D2:F8:49:7D:1A:11:78:07:31:23:22:36:61:0C:D8:E9:F4:97:0B:67:47"
                                               :default "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"}
-                              :name "test-agent"
-                              :state :requested}
+                              :name          "test-agent"
+                              :state         "requested"}
         revoked-agent-status {:dns_alt_names ["DNS:BAR"
-                                               "DNS:Baz4"
-                                               "DNS:foo"
-                                               "DNS:revoked-agent"]
-                              :fingerprint "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
-                              :fingerprints {:SHA1 "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
+                                              "DNS:Baz4"
+                                              "DNS:foo"
+                                              "DNS:revoked-agent"]
+                              :fingerprint   "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
+                              :fingerprints  {:SHA1 "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
                                               :SHA256 "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
                                               :SHA512 "1A:E3:12:14:81:50:38:19:3C:C6:42:4B:BB:09:16:0C:B1:8A:3C:EB:8C:64:9C:88:46:C6:7E:35:5E:11:0C:7A:CC:B2:47:A2:EB:57:63:5C:48:68:22:57:62:A1:46:64:B4:56:29:47:A5:46:F4:BD:9B:45:77:19:91:0B:35:39"
                                               :default "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"}
-                              :name "revoked-agent"
-                              :state :revoked}]
+                              :name          "revoked-agent"
+                              :state         "revoked"}]
 
     (testing "The /certificate_status endpoint"
       (testing "GET"
@@ -219,40 +223,49 @@
               (is (= status (json/parse-string (:body response) true)))))))
 
       (testing "PUT"
-        (testing "signing a cert"
-          (let [request {:uri "/production/certificate_status/myagent"
-                         :request-method :put
-                         :content-type "application/json"
-                         :body (body-stream "{\"desired_state\":\"signed\"}")}
-                response (test-compojure-app request)]
-            (is (= 204 (:status response))
-                (str "response was: " response))))
+        (let [tmp-ssldir         (ks/temp-dir)
+              _                  (fs/copy-dir cadir tmp-ssldir)
+              settings           (ca-settings (str tmp-ssldir "/ca"))
+              test-compojure-app (compojure-app settings "42.42.42")]
+          (testing "signing a cert"
+            (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+              (is (false? (fs/exists? signed-cert-path)))
+              (let [response (test-compojure-app
+                              {:uri "/production/certificate_status/test-agent"
+                               :request-method :put
+                               :content-type "application/json"
+                               :body (body-stream "{\"desired_state\":\"signed\"}")})]
+                (is (true? (fs/exists? signed-cert-path)))
+                (is (= 204 (:status response)))))
 
-        (testing "revoking a cert"
-          (let [request {:uri "/production/certificate_status/myagent"
-                         :request-method :put
-                         :content-type "application/json"
-                         :body (body-stream "{\"desired_state\":\"revoked\"}")}
-                response (test-compojure-app request)]
-            (is (= 204 (:status response))
-                (str "response was: " response))))
+            (testing "that is invalid"
+              (println "TODO check status 400 Bad Request and body with invalid CSR message")))
 
-        (testing "no body results in a 400"
-          (let [request {:uri "/production/certificate_status/myagent"
-                         :request-method :put
-                         :content-type "application/json"}
-                response (test-compojure-app request)]
-            (is (= 400 (:status response))
-                (str "response was: " response))))
+          (testing "revoking a cert"
+            (let [cert (utils/pem->cert (ca/path-to-cert (:signeddir settings) "localhost"))]
+              (is (false? (utils/revoked? (utils/pem->crl (:cacrl settings)) cert)))
+              (let [response (test-compojure-app
+                              {:uri "/production/certificate_status/localhost"
+                               :request-method :put
+                               :content-type "application/json"
+                               :body (body-stream "{\"desired_state\":\"revoked\"}")})]
+                (is (true? (utils/revoked? (utils/pem->crl (:cacrl settings)) cert)))
+                (is (= 204 (:status response))))))
 
-        (testing "invalid cert status results in a 400"
-          (let [request {:uri "/production/certificate_status/myagent"
-                         :request-method :put
-                         :content-type "application/json"
-                         :body (body-stream "{\"desired_state\":\"bogus\"}")}
-                response (test-compojure-app request)]
-            (is (= 400 (:status response))
-                (str "response was: " response)))))
+          (testing "no body results in a 400"
+            (let [request {:uri "/production/certificate_status/myagent"
+                           :request-method :put
+                           :content-type "application/json"}
+                  response (test-compojure-app request)]
+              (is (= 400 (:status response)))))
+
+          (testing "invalid cert status results in a 400"
+            (let [request {:uri "/production/certificate_status/myagent"
+                           :request-method :put
+                           :content-type "application/json"
+                           :body (body-stream "{\"desired_state\":\"bogus\"}")}
+                  response (test-compojure-app request)]
+              (is (= 400 (:status response)))))))
 
       (testing "DELETE"
         (let [request {:uri "/production/certificate_status/myagent"
@@ -266,14 +279,12 @@
               response (test-compojure-app request)]
           (is (= 501 (:status response)))))
 
-      ;; TODO - fix this after 'certificate-exists?' is implemented
       (testing "returns a 404 when a non-existent certname is given"
         (let [request {:uri "/production/certificate_status/doesnotexist"
                        :request-method :get
                        :content-type "application/json"}
               response (test-compojure-app request)]
-          (is (= 404 (:status response))
-              (str "response was: " response)))))
+          (is (= 404 (:status response))))))
 
     (testing "GET to /certificate_statuses"
         (testing "returns the status of all certs & CSRs"
