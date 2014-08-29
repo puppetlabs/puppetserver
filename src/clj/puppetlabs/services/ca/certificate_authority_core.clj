@@ -72,39 +72,43 @@
 
 ; TODO - need to test this against the console + `puppet certificate`.  Issues w/ headers? (Accept / Content-Type, JSON vs. PSON?)
 (liberator/defresource certificate-status
-  [certname]
+  [subject settings]
   :allowed-methods [:get :put :delete]
 
   :available-media-types ["application/json"]
 
+  :can-put-to-missing? false
+
   :delete! (fn [context]
-             (ca/delete-certificate! certname))
+             (ca/delete-certificate! settings subject))
 
   :exists? (fn [context]
-             (ca/certificate-exists? certname))
+             (ca/certificate-exists? settings subject))
 
   :handle-exception utils/exception-handler
 
   :handle-ok (fn [context]
-               (ca/get-certificate-status certname))
+               (ca/get-certificate-status settings subject))
 
   :malformed? (fn [context]
                 (when (= :put (get-in context [:request :request-method]))
                   (let [state (get-desired-state context)]
-                    (schema/check ca/CertState state))))
+                    (schema/check ca/DesiredCertState state))))
 
-  ; Never return a 201, we're not creating a new cert or anything like that.
+  :handle-malformed (fn [context]
+                      (if (ringutils/json-request? (get context :request))
+                        "Bad Request."
+                        "Request headers must include 'Content-Type: application/json'."))
+
+  ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
 
   :put! (fn [context]
           (let [desired-state (get-desired-state context)]
-            (ca/set-certificate-status! certname desired-state)))
-
-  ; Requests must be JSON for us to handle them.
-  :valid-content-header? (fn [context]
-                           (ringutils/json-request? (get context :request))))
+            (ca/set-certificate-status! settings subject desired-state))))
 
 (liberator/defresource certificate-statuses
+  [settings]
   :allowed-methods [:get]
 
   :available-media-types ["application/json"]
@@ -112,16 +116,16 @@
   :handle-exception utils/exception-handler
 
   :handle-ok (fn [context]
-               (ca/get-certificate-statuses)))
+               (ca/get-certificate-statuses settings)))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
   (compojure/context "/:environment" [environment]
     (compojure/routes
-      (ANY "/certificate_status/:certname" [certname]
-        (certificate-status certname))
+      (ANY "/certificate_status/:subject" [subject]
+        (certificate-status subject ca-settings))
       (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
-         certificate-statuses)
+        (certificate-statuses ca-settings)))
       (GET "/certificate/:subject" [subject]
         (handle-get-certificate subject ca-settings))
       (compojure/context "/certificate_request/:subject" [subject]
@@ -130,7 +134,7 @@
         (PUT "/" {body :body}
           (handle-put-certificate-request! subject body ca-settings)))
       (GET "/certificate_revocation_list/:ignored-node-name" []
-        (handle-get-certificate-revocation-list ca-settings)))))
+        (handle-get-certificate-revocation-list ca-settings))))
 
 (defn wrap-with-puppet-version-header
   "Function that returns a middleware that adds an
@@ -143,11 +147,27 @@
       (when response
         (rr/header response "X-Puppet-Version" version)))))
 
+(defn treat-pson-as-json
+  "For requests with a Content-type of 'text/pson', replaces the Content-type
+   with 'application/json'.
+
+   This is necessary because some of the clients of this ring application,
+   namely the PE Console, still send 'Content-Type: text/pson'.  Once this
+   is no longer true, this function can and should be deleted."
+  [handler]
+  (fn [request]
+    (let [content-type (:content-type request)
+          request (if (and content-type (= "text/pson" (.trim content-type)))
+                    (assoc request :content-type "application/json")
+                    request)]
+      (handler request))))
+
 (schema/defn ^:always-validate
   compojure-app
   [ca-settings :- ca/CaSettings
-   puppet-version :- String]
+   puppet-version :- schema/Str]
   (-> (routes ca-settings)
       (json/wrap-json-body {:keywords? true})
+      (treat-pson-as-json)
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
