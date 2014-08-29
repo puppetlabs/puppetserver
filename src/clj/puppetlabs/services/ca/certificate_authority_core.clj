@@ -8,6 +8,7 @@
             [schema.core :as schema]
             [compojure.core :as compojure :refer [GET ANY PUT]]
             [liberator.core :as liberator]
+            [liberator.representation :as representation]
             [ring.middleware.json :as json]
             [ring.util.response :as rr]))
 
@@ -70,7 +71,6 @@
   [context]
   (keyword (get-in context [:request :body :desired_state])))
 
-; TODO - need to test this against the console + `puppet certificate`.  Issues w/ headers? (Accept / Content-Type, JSON vs. PSON?)
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
@@ -86,6 +86,24 @@
              (ca/certificate-exists? settings subject))
 
   :handle-exception utils/exception-handler
+
+  :handle-not-implemented (fn [context]
+                            (when (= :put (get-in context [:request :request-method]))
+                              ; We've landed here because :exists? returned false,
+                              ; and we have set `:can-put-to-missing? false`
+                              ; above.  This happens when a request comes in
+                              ; with an invalid hostname/subject specified in
+                              ; in the URL; liberator is pushing us towards a
+                              ; 501 here, but instead we want to return a 404.
+                              ; There seems to be some disagreement as to which
+                              ; makes the most sense in general - see
+                              ; https://github.com/clojure-liberator/liberator/pull/120
+                              ; ... but in our case, a 404 definitely makes
+                              ; more sense.
+                              (-> "Invalid certificate subject."
+                                  (representation/as-response context)
+                                  (assoc :status 404)
+                                  (representation/ring-response))))
 
   :handle-ok (fn [context]
                (ca/get-certificate-status settings subject))

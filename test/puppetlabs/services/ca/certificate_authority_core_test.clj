@@ -303,13 +303,14 @@
                 response (test-app request)]
             (is (= 400 (:status response)))))
 
-        (testing "returns a 501 when a non-existent certname is given"
+        (testing "returns a 404 when a non-existent certname is given"
           (let [request {:uri "/production/certificate_status/doesnotexist"
                          :request-method :put
                          :content-type "application/json"
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
-            (is (= 501 (:status response))))))
+            (is (= 404 (:status response)))
+            (is (= "Invalid certificate subject." (:body response))))))
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]
