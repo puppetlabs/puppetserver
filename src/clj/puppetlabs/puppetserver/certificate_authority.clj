@@ -51,7 +51,7 @@
    :signeddir             schema/Str
    :serial                schema/Str})
 
-(def DesiredCertState
+(def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
    status endpoint for signing and revoking certificates."
   (schema/enum :signed :revoked))
@@ -60,7 +60,7 @@
   "The list of states a certificate may be in."
   (schema/enum "requested" "signed" "revoked"))
 
-(def CertStatus
+(def CertificateStatusResult
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
@@ -874,7 +874,7 @@
        (str/join ":")
        (str/upper-case)))
 
-(schema/defn ^:always-validate get-certificate-status :- CertStatus
+(schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
    The status includes the state of the certificate (signed, revoked, requested),
    DNS alt names, and several different fingerprint hashes of the certificate."
@@ -893,7 +893,7 @@
                      :SHA512  (fingerprint cert-or-csr "SHA-512")
                      :default default-fingerprint}}))
 
-(schema/defn ^:always-validate get-certificate-statuses :- [CertStatus]
+(schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir] :as settings} :- CaSettings]
   (let [path->subject #(let [name (.getName %)]
@@ -937,7 +937,7 @@
   "Sign or revoke the certificate for the given subject."
   [settings :- CaSettings
    subject :- schema/Str
-   desired-state :- DesiredCertState]
+   desired-state :- DesiredCertificateState]
   (if (= :signed desired-state)
     (sign-existing-csr! settings subject)
     (revoke-existing-cert! settings subject)))
