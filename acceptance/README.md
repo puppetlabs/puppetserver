@@ -28,7 +28,7 @@ This will not use Vagrant or a Rakefile, but instead a local pre-installed VM an
 
 You'll need to provide a couple environment variables that specify which build of puppet-server to install and test against.
 
-1. Go to http://builds.puppetlabs.lan/puppet-server
+1. Go to http://builds.puppetlabs.lan/puppetserver/
 2. Scroll down to the most recent build at the bottom
    - This will look like: 0.1.4.SNAPSHOT.2014.05.15T1118
 3. Copy the text (not the link address) - this will be ```PACKAGE_BUILD_VERSION```
