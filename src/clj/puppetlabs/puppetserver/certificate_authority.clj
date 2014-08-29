@@ -744,6 +744,18 @@
       {:type    :invalid-signature
        :message "CSR contains a public key that does not correspond to the signing key"})))
 
+(schema/defn ensure-no-dns-alt-names!
+  "Throws an exception if the CSR contains DNS alt-names."
+  [csr :- (schema/pred utils/certificate-request?)]
+  (let [subject (get-csr-subject csr)]
+    (when-let [dns-alt-names (utils/get-subject-dns-alt-names csr)]
+      (sling/throw+
+        {:type    :disallowed-extension
+         :message (str "CSR '" subject "' contains subject alternative names "
+                       (str/join ", " dns-alt-names)
+                       " which are disallowed. Use `puppet cert --allow-dns-alt-names sign " subject
+                       "` to sign this request.")}))))
+
 (schema/defn validate-csr!
   "Perform all policy checks against the provided certificate signing request. "
   [csr      :- (schema/pred utils/certificate-request?)
@@ -754,6 +766,7 @@
   (let [extensions  (utils/get-extensions csr)
         csr-subject (get-csr-subject csr)]
     (validate-duplicate-cert-policy! csr settings)
+    (ensure-no-dns-alt-names! csr)
     (validate-extensions! extensions)
     (validate-subject! subject csr-subject)
     (validate-csr-signature! csr)))
