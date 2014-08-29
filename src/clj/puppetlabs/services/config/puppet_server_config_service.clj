@@ -26,8 +26,8 @@
                             jruby-service
                             pool-descriptor)]
         (log/debugf
-          (str "Initializing with the following settings from core Puppet:\n"
-                         (ks/pprint-to-string puppet-config)))
+          "Initializing with the following settings from core Puppet:\n%s"
+          (ks/pprint-to-string puppet-config))
         (core/init-webserver! override-webserver-settings!
                               (get-in tk-config [:webserver])
                               puppet-config)

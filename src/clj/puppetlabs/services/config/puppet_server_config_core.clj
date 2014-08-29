@@ -102,12 +102,14 @@
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."
   [override-webserver-settings! webserver-settings puppet-config]
-  (let [{:keys [hostcert cacert cacrl hostprivkey]} puppet-config]
-    (if (:ssl-cert webserver-settings)
-      (log/info "Initializing webserver settings from defaults")
+  (let [{:keys [hostcert cacert cacrl hostprivkey]} puppet-config
+        overrides {:ssl-cert     hostcert
+                   :ssl-key      hostprivkey
+                   :ssl-ca-cert  cacert
+                   :ssl-crl-path cacrl}]
+    (if (some #((key %) webserver-settings) overrides)
+      (log/info
+        "Not overriding webserver settings with values from core Puppet")
       (do
         (log/info "Initializing webserver settings from core Puppet")
-        (override-webserver-settings! {:ssl-cert     hostcert
-                                       :ssl-key      hostprivkey
-                                       :ssl-ca-cert  cacert
-                                       :ssl-crl-path cacrl})))))
+        (override-webserver-settings! overrides)))))
