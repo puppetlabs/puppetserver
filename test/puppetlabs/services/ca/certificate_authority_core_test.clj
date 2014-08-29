@@ -330,4 +330,21 @@
         (testing "returns a 404 when a non-existent certname is given"
           (is (= 404 (:status (test-app
                                {:uri "/production/certificate_status/doesnotexist"
-                                :request-method :delete})))))))))
+                                :request-method :delete}))))))))
+
+  (testing "stupid PSON"
+    (let [tmp-ssldir (ks/temp-dir)
+          _          (fs/copy-dir cadir tmp-ssldir)
+          settings   (ca-settings (str tmp-ssldir "/ca"))
+          test-app   (compojure-app settings "42.42.42")]
+
+      (testing "signing a cert w/ a 'Content-Type: text/pson' header"
+        (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+          (is (false? (fs/exists? signed-cert-path)))
+          (let [response (test-app
+                           {:uri            "/production/certificate_status/test-agent"
+                            :request-method :put
+                            :content-type   "text/pson"
+                            :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+            (is (true? (fs/exists? signed-cert-path)))
+            (is (= 204 (:status response)))))))))

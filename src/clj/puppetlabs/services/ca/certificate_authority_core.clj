@@ -147,11 +147,27 @@
       (when response
         (rr/header response "X-Puppet-Version" version)))))
 
+(defn treat-pson-as-json
+  "For requests with a Content-type of 'text/pson', replaces the Content-type
+   with 'application/json'.
+
+   This is necessary because some of the clients of this ring application,
+   namely the PE Console, still send 'Content-Type: text/pson'.  Once this
+   is no longer true, this function can and should be deleted."
+  [handler]
+  (fn [request]
+    (let [content-type (:content-type request)
+          request (if (and content-type (= "text/pson" (.trim content-type)))
+                    (assoc request :content-type "application/json")
+                    request)]
+      (handler request))))
+
 (schema/defn ^:always-validate
   compojure-app
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
       (json/wrap-json-body {:keywords? true})
+      (treat-pson-as-json)
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
