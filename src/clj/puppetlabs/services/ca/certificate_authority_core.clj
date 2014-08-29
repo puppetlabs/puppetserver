@@ -79,51 +79,55 @@
 
   :can-put-to-missing? false
 
-  :delete! (fn [context]
-             (ca/delete-certificate! settings subject))
+  :delete!
+  (fn [context]
+    (ca/delete-certificate! settings subject))
 
-  :exists? (fn [context]
-             (ca/certificate-exists? settings subject))
+  :exists?
+  (fn [context]
+    (ca/certificate-exists? settings subject))
 
   :handle-exception utils/exception-handler
 
-  :handle-not-implemented (fn [context]
-                            (when (= :put (get-in context [:request :request-method]))
-                              ; We've landed here because :exists? returned false,
-                              ; and we have set `:can-put-to-missing? false`
-                              ; above.  This happens when a request comes in
-                              ; with an invalid hostname/subject specified in
-                              ; in the URL; liberator is pushing us towards a
-                              ; 501 here, but instead we want to return a 404.
-                              ; There seems to be some disagreement as to which
-                              ; makes the most sense in general - see
-                              ; https://github.com/clojure-liberator/liberator/pull/120
-                              ; ... but in our case, a 404 definitely makes
-                              ; more sense.
-                              (-> "Invalid certificate subject."
-                                  (representation/as-response context)
-                                  (assoc :status 404)
-                                  (representation/ring-response))))
+  :handle-not-implemented
+  (fn [context]
+    (when (= :put (get-in context [:request :request-method]))
+      ; We've landed here because :exists? returned false, and we have set
+      ; `:can-put-to-missing? false` above.  This happens when
+      ; a request comes in with an invalid hostname/subject specified in
+      ; in the URL; liberator is pushing us towards a 501 here, but instead
+      ; we want to return a 404.  There seems to be some disagreement as to
+      ; which makes the most sense in general - see
+      ; https://github.com/clojure-liberator/liberator/pull/120
+      ; ... but in our case, a 404 definitely makes more sense.
+      (-> "Invalid certificate subject."
+          (representation/as-response context)
+          (assoc :status 404)
+          (representation/ring-response))))
 
-  :handle-ok (fn [context]
-               (ca/get-certificate-status settings subject))
+  :handle-ok
+  (fn [context]
+    (ca/get-certificate-status settings subject))
 
-  :malformed? (fn [context]
-                (when (= :put (get-in context [:request :request-method]))
-                  (let [state (get-desired-state context)]
-                    (schema/check ca/DesiredCertificateState state))))
+  :malformed?
+  (fn [context]
+    (when (= :put (get-in context [:request :request-method]))
+      (let [state (get-desired-state context)]
+        (schema/check ca/DesiredCertState state))))
 
-  :handle-malformed (fn [context]
-                      (if (ringutils/json-request? (get context :request))
-                        "Bad Request."
-                        "Request headers must include 'Content-Type: application/json'."))
+  :handle-malformed
+  (fn [context]
+    (if (ringutils/json-request? (get context :request))
+      "Bad Request."
+      "Request headers must include 'Content-Type: application/json'."))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
 
-  :put! (fn [context]
-          (let [desired-state (get-desired-state context)]
-            (ca/set-certificate-status! settings subject desired-state))))
+  :put!
+  (fn [context]
+    (let [desired-state (get-desired-state context)]
+      (ca/set-certificate-status! settings subject desired-state))))
 
 (liberator/defresource certificate-statuses
   [settings]
@@ -133,8 +137,9 @@
 
   :handle-exception utils/exception-handler
 
-  :handle-ok (fn [context]
-               (ca/get-certificate-statuses settings)))
+  :handle-ok
+  (fn [context]
+    (ca/get-certificate-statuses settings)))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
