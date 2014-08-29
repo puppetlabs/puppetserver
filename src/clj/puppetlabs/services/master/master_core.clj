@@ -32,6 +32,12 @@
                    (request-handler environment request))
     (compojure/GET "/file_metadata/*" request
                    (request-handler environment request))
+    (compojure/GET "/file_bucket_file/*" request
+                   (request-handler environment request))
+    (compojure/PUT "/file_bucket_file/*" request
+                   (request-handler environment request))
+    (compojure/HEAD "/file_bucket_file/*" request
+                   (request-handler environment request))
     (compojure/GET "/catalog/*" request
                    (request-handler environment request))
     (compojure/POST "/catalog/*" request

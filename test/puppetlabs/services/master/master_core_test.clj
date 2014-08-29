@@ -20,9 +20,13 @@
                    "file_content"
                    "file_metadatas"
                    "file_metadata"
-                   "resource_type"]
+                   "file_bucket_file"
+                   "resource_type"
+                   "resource_types"]
              :post ["catalog"]
-             :put ["report"]}
+             :put ["file_bucket_file"
+                   "report"]
+             :head ["file_bucket_file"]}
             path paths]
       (let [resp (request method (str "/foo/" path "/bar"))]
         (is (= 200 (:status resp))
