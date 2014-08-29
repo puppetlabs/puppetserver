@@ -56,15 +56,25 @@
    status endpoint for signing and revoking certificates."
   (schema/enum :signed :revoked))
 
+(def CertificateState
+  "The list of states a certificate may be in."
+  (schema/enum "requested" "signed" "revoked"))
+
 (def CertStatus
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
   {:name          schema/Str
-   :state         (schema/enum "requested" "signed" "revoked")
+   :state         CertificateState
    :dns_alt_names [schema/Str]
    :fingerprint   schema/Str
    :fingerprints  {schema/Keyword schema/Str}})
+
+(def Certificate
+  (schema/pred utils/certificate?))
+
+(def CertificateRequest
+  (schema/pred utils/certificate-request?))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -171,14 +181,14 @@
     (str/join "\n" missing-files))))
 
 ; TODO - PE-5529 - these should be moved to jvm-c-a.
-(schema/defn get-subject :- String
-  [cert :- (schema/pred utils/certificate?)]
+(schema/defn get-subject :- schema/Str
+  [cert :- Certificate]
   (-> cert
       (.getSubjectX500Principal)
       (.getName)))
 
-(schema/defn get-csr-subject :- String
-  [csr :- (schema/pred utils/certificate-request?)]
+(schema/defn get-csr-subject :- schema/Str
+  [csr :- CertificateRequest]
   (-> csr
       (.getSubject)
       (.toString)
@@ -261,7 +271,7 @@
     * $NB = The 'not before' field of the cert, as a date/timestamp in UTC.
     * $NA = The 'not after' field of the cert, as a date/timestamp in UTC.
     * $S  = The distinguished name of the cert's subject."
-  [cert :- (schema/pred utils/certificate?)
+  [cert :- Certificate
    inventory-file :- schema/Str]
   (let [serial-number (->> cert
                            (.getSerialNumber)
@@ -480,7 +490,7 @@
    ca-name :- schema/Str
    ca-private-key :- (schema/pred utils/private-key?)
    ca-public-key :- (schema/pred utils/public-key?)
-   ca-cert :- (schema/pred utils/certificate?)
+   ca-cert :- Certificate
    keylength :- schema/Int
    serial-file :- schema/Str
    inventory-file :- schema/Str
@@ -660,14 +670,12 @@
         (whitelist-matches? autosign subject))
       false)))
 
-(defn create-agent-extensions
+(schema/defn create-agent-extensions :- (schema/pred utils/extension-list?)
   "Given a certificate signing request, generate a list of extensions that
   should be signed onto the certificate. This includes a base set of standard
   extensions in addition to any valid extensions found on the signing request."
-  [csr capub]
-  {:pre [(utils/certificate-request? csr)
-         (utils/public-key? capub)]
-   :post [(utils/extension-list? %)]}
+  [csr :- CertificateRequest
+   capub :- (schema/pred utils/public-key?)]
   (let [subj-pub-key (utils/get-public-key csr)
         csr-ext-list (utils/get-extensions csr)
         base-ext-list [(utils/netscape-comment
@@ -689,7 +697,7 @@
   "Given a subject name, their certificate request, and the CA settings
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
-   csr :- (schema/pred utils/certificate-request?)
+   csr :- CertificateRequest
    {:keys [cacert capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [validity    (cert-validity-dates ca-ttl)
         signed-cert (utils/sign-certificate (get-subject (utils/pem->cert cacert))
@@ -702,7 +710,7 @@
                                             (create-agent-extensions
                                              csr
                                              (utils/pem->public-key capub)))]
-    (log/debug (str "Signed certificate request for " subject))
+    (log/debug "Signed certificate request for" subject)
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
@@ -710,7 +718,7 @@
   save-certificate-request!
   "Write the subject's certificate request to disk under the CSR directory."
   [subject :- schema/Str
-   csr :- (schema/pred utils/certificate-request?)
+   csr :- CertificateRequest
    csrdir :- schema/Str]
   (utils/obj->pem! csr (path-to-cert-request csrdir subject)))
 
@@ -720,7 +728,7 @@
    The exception map will look like:
    {:type    :duplicate-cert
     :message <specific error message>}"
-  [csr :- (schema/pred utils/certificate-request?)
+  [csr :- CertificateRequest
    {:keys [allow-duplicate-certs cacrl csrdir signeddir]} :- CaSettings]
   (let [subject (get-csr-subject csr)
         cert (path-to-cert signeddir subject)
@@ -752,15 +760,15 @@
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
   See `signature-valid?` for more detail."
-  [certificate-request :- (schema/pred utils/certificate-request?)]
+  [certificate-request :- CertificateRequest]
   (when-not (utils/signature-valid? certificate-request)
     (sling/throw+
       {:type    :invalid-signature
        :message "CSR contains a public key that does not correspond to the signing key"})))
 
 (schema/defn validate-csr!
-  "Perform all policy checks against the provided certificate signing request. "
-  [csr      :- (schema/pred utils/certificate-request?)
+  "Perform all policy checks against the provided certificate signing request."
+  [csr      :- CertificateRequest
    subject  :- schema/Str
    settings :- CaSettings]
   ; These validations must happen in this order
@@ -838,33 +846,38 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint
 
-;; TODO docs
-(defn certificate-state
-  [cert-or-csr cacrl]
+(schema/defn certificate-state :- CertificateState
+  "Determine the state a certificate is in."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+   cacrl :- schema/Str]
   (if (utils/certificate-request? cert-or-csr)
     "requested"
     (if (utils/revoked? (utils/pem->crl cacrl) cert-or-csr)
       "revoked"
       "signed")))
 
-;; TODO docs
-(defn dns-alt-names
-  [cert-or-csr]
+(schema/defn dns-alt-names :- [schema/Str]
+  "Get the list of DNS alt names on the provided certificate or CSR.
+   Each name will be prepended with 'DNS:'."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
-;; TODO docs
-(defn fingerprint
-  [cert-or-csr algorithm]
+(schema/defn fingerprint :- schema/Str
+  "Calculate the hash of the certificate or CSR using the given
+   algorithm, which must be one of SHA-1, SHA-256, or SHA-512."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)
+   algorithm :- schema/Str]
   (->> (utils/fingerprint cert-or-csr algorithm)
        (partition 2)
        (map (partial apply str))
        (str/join ":")
        (str/upper-case)))
 
-;; TODO docs
-(schema/defn ^:always-validate
-  get-certificate-status :- CertStatus
+(schema/defn ^:always-validate get-certificate-status :- CertStatus
+  "Get the status of the subject's certificate or certificate request.
+   The status includes the state of the certificate (signed, revoked, requested),
+   DNS alt names, and several different fingerprint hashes of the certificate."
   [{:keys [csrdir signeddir cacrl]} :- CaSettings
    subject :- schema/Str]
   (let [cert-or-csr         (if (fs/exists? (path-to-cert signeddir subject))
@@ -880,9 +893,8 @@
                      :SHA512  (fingerprint cert-or-csr "SHA-512")
                      :default default-fingerprint}}))
 
-;; TODO docs
-(schema/defn ^:always-validate
-  get-certificate-statuses :- [CertStatus]
+(schema/defn ^:always-validate get-certificate-statuses :- [CertStatus]
+  "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir] :as settings} :- CaSettings]
   (let [path->subject #(let [name (.getName %)]
                          (.substring name 0 (- (count name) 4)))
@@ -892,8 +904,8 @@
                                    (fs/find-files signeddir pem-pattern)))]
     (map (partial get-certificate-status settings) all-subjects)))
 
-;; TODO docs
 (schema/defn sign-existing-csr!
+  "Sign the subject's certificate request."
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
@@ -905,8 +917,9 @@
         (fs/delete csr-path)
         (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))))
 
-;; TODO docs
 (schema/defn revoke-existing-cert!
+  "Revoke the subject's certificate. Note this does not destroy the certificate.
+   The certificate will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacrl cakey capub]} :- CaSettings
    subject :- schema/Str]
   (let [cert-path (path-to-cert signeddir subject)]
@@ -920,9 +933,8 @@
         (utils/crl->pem! new-crl cacrl)
         (log/debugf "Revoked %s certificate with serial %d" subject serial)))))
 
-; TODO docs
-(schema/defn ^:always-validate
-  set-certificate-status!
+(schema/defn ^:always-validate set-certificate-status!
+  "Sign or revoke the certificate for the given subject."
   [settings :- CaSettings
    subject :- schema/Str
    desired-state :- DesiredCertState]
@@ -930,18 +942,16 @@
     (sign-existing-csr! settings subject)
     (revoke-existing-cert! settings subject)))
 
-(schema/defn ^:always-validate
-  certificate-exists? :- schema/Bool
+(schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a CSR or certificate for the given subject?"
   [{:keys [csrdir signeddir]} :- CaSettings
    subject :- schema/Str]
   (or (fs/exists? (path-to-cert signeddir subject))
       (fs/exists? (path-to-cert-request csrdir subject))))
 
-;; TODO docs
-(schema/defn ^:always-validate
-  delete-certificate!
-  "Delete the certificate and/or CSR for the given subject."
+(schema/defn ^:always-validate delete-certificate!
+  "Delete the certificate and/or CSR for the given subject.
+   Note this does not revoke the certificate."
   [{:keys [csrdir signeddir]} :- CaSettings
    subject :- schema/Str]
   (let [cert (path-to-cert signeddir subject)
