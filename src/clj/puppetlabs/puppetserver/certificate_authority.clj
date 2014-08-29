@@ -465,7 +465,6 @@
   Any existing files will be replaced."
   [settings :- MasterSettings
    master-certname :- schema/Str
-   ca-name :- schema/Str
    ca-private-key :- (schema/pred utils/private-key?)
    ca-public-key :- (schema/pred utils/public-key?)
    ca-cert :- (schema/pred utils/certificate?)
@@ -487,9 +486,9 @@
                                                settings)
         private-key  (utils/get-private-key keypair)
         x500-name    (utils/cn master-certname)
-        ca-x500-name (utils/cn ca-name)
         validity     (cert-validity-dates ca-ttl)
-        hostcert     (utils/sign-certificate ca-x500-name ca-private-key
+        hostcert     (utils/sign-certificate (get-subject ca-cert)
+                                             ca-private-key
                                              (next-serial-number! serial-file)
                                              (:not-before validity)
                                              (:not-after validity)
@@ -812,7 +811,6 @@
         (log/info "Master already initialized for SSL")
         (initialize-master! master-settings
                             master-certname
-                            (:ca-name ca-settings)
                             (utils/pem->private-key (:cakey ca-settings))
                             (utils/pem->public-key (:capub ca-settings))
                             (utils/pem->cert (:cacert ca-settings))

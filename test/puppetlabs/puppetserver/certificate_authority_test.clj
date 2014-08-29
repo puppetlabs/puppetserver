@@ -393,7 +393,7 @@
         signeddir       (str (ks/temp-dir))
         capubkey        (utils/pem->public-key capub)]
 
-    (initialize-master! master-settings "master" "Puppet CA: localhost"
+    (initialize-master! master-settings "master"
                         (utils/pem->private-key cakey)
                         capubkey
                         (utils/pem->cert cacert)
