@@ -18,7 +18,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
 
-(def masterdir "./dev-resources/config/master/conf")
+(def test-resources-dir "./dev-resources/puppetlabs/puppetserver/certificate_authority_test")
+(def masterdir (str test-resources-dir "/master/conf"))
 (def ssldir (str masterdir "/ssl"))
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
@@ -27,6 +28,26 @@
 (def cacrl (str cadir "/ca_crl.pem"))
 (def csrdir (str cadir "/requests"))
 (def signeddir (str cadir "/signed"))
+(def test-pems-dir (str test-resources-dir "/pems"))
+(def autosign-confs-dir (str test-resources-dir "/autosign_confs"))
+(def autosign-exes-dir (str test-resources-dir "/autosign_exes"))
+(def csr-attributes-dir (str test-resources-dir "/csr_attributes"))
+
+(defn test-pem-file
+  [pem-file-name]
+  (str test-pems-dir "/" pem-file-name))
+
+(defn autosign-conf-file
+  [autosign-conf-file-name]
+  (str autosign-confs-dir "/" autosign-conf-file-name))
+
+(defn autosign-exe-file
+  [autosign-exe-file-name]
+  (str autosign-exes-dir "/" autosign-exe-file-name))
+
+(defn csr-attributes-file
+  [csr-attributes-file-name]
+  (str csr-attributes-dir "/" csr-attributes-file-name))
 
 (defn ca-test-settings
   "CA configuration settings with defaults appropriate for testing.
@@ -219,16 +240,16 @@
                                         "qux")]
           (assert-autosign whitelist "foo")
           (logutils/with-log-output logs
-            (assert-no-autosign whitelist invalid-line)
-            (is (logutils/logs-matching
-                  (re-pattern (format "Invalid pattern '%s' found in %s"
-                                      invalid-line whitelist))
-                  @logs))
-            (assert-autosign whitelist "qux")))))
+                                    (assert-no-autosign whitelist invalid-line)
+                                    (is (logutils/logs-matching
+                                          (re-pattern (format "Invalid pattern '%s' found in %s"
+                                                              invalid-line whitelist))
+                                          @logs))
+                                    (assert-autosign whitelist "qux")))))
 
     (testing "sample file that covers everything"
       (logutils/with-test-logging
-        (doto "dev-resources/config/master/conf/autosign-whitelist.conf"
+        (doto (autosign-conf-file "autosign-whitelist.conf")
           (assert-no-autosign "aaa")
           (assert-autosign "bbb123")
           (assert-autosign "one_2.red")
@@ -236,56 +257,55 @@
           (assert-no-autosign "black.white")
           (assert-no-autosign "coffee")
           (assert-no-autosign "coffee#tea")
-          (assert-autosign "qux")))))
+          (assert-autosign "qux"))))))
 
-  (testing "executable"
-    (testing "ruby script"
-      (let [executable      "dev-resources/config/master/conf/ruby-autosign-executable"
-            csr-fn          #(csr-stream "test-agent")
-            ruby-load-path  ["ruby/puppet/lib" "ruby/facter/lib"]]
+(deftest autosign-csr?-ruby-exe-test
+  (let [executable (autosign-exe-file "ruby-autosign-executable")
+        csr-fn #(csr-stream "test-agent")
+        ruby-load-path ["ruby/puppet/lib" "ruby/facter/lib"]]
 
-        (testing "stdout and stderr are copied to master's log at debug level"
-          (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
-            (is (logged? #"print to stdout" :debug))
-            (is (logged? #"print to stderr" :debug))))
+    (testing "stdout and stderr are copied to master's log at debug level"
+      (logutils/with-test-logging
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (is (logged? #"print to stdout" :debug))
+        (is (logged? #"print to stderr" :debug))))
 
-        (testing "Ruby load path is configured and contains Puppet"
-          (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
-            (is (logged? #"Ruby load path configured properly"))))
+    (testing "Ruby load path is configured and contains Puppet"
+      (logutils/with-test-logging
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (is (logged? #"Ruby load path configured properly"))))
 
-        (testing "subject is passed as argument and CSR is provided on stdin"
-          (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
-            (is (logged? #"subject: test-agent"))
-            (is (logged? #"CSR for: test-agent"))))
+    (testing "subject is passed as argument and CSR is provided on stdin"
+      (logutils/with-test-logging
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (is (logged? #"subject: test-agent"))
+        (is (logged? #"CSR for: test-agent"))))
 
-        (testing "only exit code 0 results in autosigning"
-          (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)))
-            (is (false? (autosign-csr? executable "foo" (csr-fn) ruby-load-path)))))))
+    (testing "only exit code 0 results in autosigning"
+      (logutils/with-test-logging
+        (is (true? (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)))
+        (is (false? (autosign-csr? executable "foo" (csr-fn) ruby-load-path)))))))
 
-    (testing "bash script"
-      (let [executable "dev-resources/config/master/conf/bash-autosign-executable"
-            csr-fn     #(csr-stream "test-agent")]
+(deftest autosign-csr?-bash-exe-test
+  (let [executable (autosign-exe-file "bash-autosign-executable")
+        csr-fn #(csr-stream "test-agent")]
 
-        (testing "stdout and stderr are copied to master's log at debug level"
-          (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) [])
-            (is (logged? #"print to stdout" :debug))
-            (is (logged? #"print to stderr" :debug))))
+    (testing "stdout and stderr are copied to master's log at debug level"
+      (logutils/with-test-logging
+        (autosign-csr? executable "test-agent" (csr-fn) [])
+        (is (logged? #"print to stdout" :debug))
+        (is (logged? #"print to stderr" :debug))))
 
-        (testing "subject is passed as argument and CSR is provided on stdin"
-          (logutils/with-test-logging
-            (autosign-csr? executable "test-agent" (csr-fn) [])
-            (is (logged? #"subject: test-agent"))
-            (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
+    (testing "subject is passed as argument and CSR is provided on stdin"
+      (logutils/with-test-logging
+        (autosign-csr? executable "test-agent" (csr-fn) [])
+        (is (logged? #"subject: test-agent"))
+        (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
 
-        (testing "only exit code 0 results in autosigning"
-          (logutils/with-test-logging
-            (is (true? (autosign-csr? executable "test-agent" (csr-fn) [])))
-            (is (false? (autosign-csr? executable "foo" (csr-fn) [])))))))))
+    (testing "only exit code 0 results in autosigning"
+      (logutils/with-test-logging
+        (is (true? (autosign-csr? executable "test-agent" (csr-fn) [])))
+        (is (false? (autosign-csr? executable "foo" (csr-fn) [])))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
@@ -625,14 +645,14 @@
           (fs/delete cert-path))))
 
     (testing "throws an exception if a certificate already exists for that subject"
-      (let [csr (io/input-stream "dev-resources/localhost-csr.pem")]
+      (let [csr (io/input-stream (test-pem-file "localhost-csr.pem"))]
         (is (thrown-with-slingshot?
               {:type    :duplicate-cert
                :message "localhost already has a signed certificate; ignoring certificate request"}
               (process-csr-submission! "localhost" csr settings)))))
 
     (testing "even if the certificate has been revoked"
-      (let [csr (io/input-stream "dev-resources/revoked-agent-csr.pem")]
+      (let [csr (io/input-stream (test-pem-file "revoked-agent-csr.pem"))]
         (is (thrown-with-slingshot?
               {:type    :duplicate-cert
                :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
@@ -641,7 +661,7 @@
     (testing "unless $allow-duplicate-certs is true"
       (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
             csr-path (path-to-cert-request (:csrdir settings) "localhost")
-            csr      (io/input-stream "dev-resources/localhost-csr.pem")]
+            csr      (io/input-stream (test-pem-file "localhost-csr.pem"))]
         (logutils/with-test-logging
           (is (false? (fs/exists? csr-path)))
           (process-csr-submission! "localhost" csr settings)
@@ -712,8 +732,9 @@
 
     (testing "additional extensions are created for a master"
       (let [dns-alt-names "onefish,twofish"
-            settings      (assoc (master-test-settings)
-                                 :dns-alt-names dns-alt-names)
+            settings      (-> (master-test-settings)
+                              (assoc :dns-alt-names dns-alt-names)
+                              (assoc :csr-attributes (csr-attributes-file "csr_attributes.yaml")))
             exts          (create-master-extensions subject
                                                     subject-pub
                                                     issuer-pub
@@ -765,7 +786,7 @@
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
       (let [config (assoc (master-test-settings)
                           :csr-attributes
-                          (str masterdir "/insecure_csr_attributes.yaml"))]
+                          (csr-attributes-file "insecure_csr_attributes.yaml"))]
         (is (thrown-with-slingshot?
               {:type    :disallowed-extension
                :message "Found extensions that are not permitted: 1.2.3.4"}

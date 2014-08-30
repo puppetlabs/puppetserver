@@ -4,7 +4,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all
-                                                                :as core]))
+             :as core]
+            [puppetlabs.services.jruby.testutils :as jruby-testutils]))
 
 (deftest create-jruby-instance-test
 
@@ -36,8 +37,8 @@
 (deftest jruby-env-vars
   (testing "the environment used by the JRuby interpreters"
     (let [jruby-interpreter (create-scripting-container
-                              ["./ruby/puppet/lib" "./ruby/facter/lib"]
-                              "./scratch/jruby-gems")
+                              jruby-testutils/ruby-load-path
+                              jruby-testutils/gem-home)
           jruby-env (.runScriptlet jruby-interpreter "ENV")]
 
       ; $HOME and $PATH are left in by `jruby-puppet-env`

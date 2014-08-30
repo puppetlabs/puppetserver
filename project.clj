@@ -51,7 +51,8 @@
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
 
-  :profiles {:dev {:dependencies  [[org.clojure/tools.namespace "0.2.4"]
+  :profiles {:dev {:source-paths  ["dev"]
+                   :dependencies  [[org.clojure/tools.namespace "0.2.4"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
@@ -63,8 +64,7 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
-  :aliases {"go" ["trampoline" "run" "--config" "./dev-resources/puppet-server.conf" "--bootstrap-config" "./dev-resources/bootstrap.cfg"]
-            "gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev-resources/puppet-server.conf"]}
+  :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev-resources/puppet-server.conf"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]

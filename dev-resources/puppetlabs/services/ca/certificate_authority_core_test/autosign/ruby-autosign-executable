@@ -1,0 +1,33 @@
+#!/usr/bin/env ruby
+
+begin
+  require 'rubygems'
+  require 'puppet'
+  require 'puppet/ssl/certificate_request'
+  STDOUT.puts 'Ruby load path configured properly'
+rescue LoadError
+  STDERR.puts 'Ruby load path not configured'
+end
+
+STDOUT.puts 'print to stdout'
+STDERR.puts 'print to stderr'
+
+subject = ARGV.pop
+if subject
+  STDOUT.puts "subject: #{subject}"
+else
+  STDERR.puts 'subject argument missing'
+end
+
+csr = Puppet::SSL::CertificateRequest.from_s(STDIN.read)
+if csr
+  STDOUT.puts "CSR for: #{csr.name}"
+else
+  STDERR.puts 'CSR must be provided on stdin'
+end
+
+if subject == csr.name
+  exit 0
+else
+  exit 1
+end

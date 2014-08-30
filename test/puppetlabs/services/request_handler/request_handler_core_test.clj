@@ -7,7 +7,7 @@
 (deftest get-cert-common-name-test
   (testing (str "expected common name can be extracted from the certificate on "
                 "a request")
-    (let [cert    (-> "./dev-resources/config/master/conf/ssl/certs/localhost.pem"
+    (let [cert    (-> "./dev-resources/puppetlabs/services/request_handler/request_handler_core_test/localhost.pem"
                       cert-utils/pem->certs
                       first)
           request {:ssl-client-cert cert}]

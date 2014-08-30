@@ -13,7 +13,18 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(def cadir "./dev-resources/config/master/conf/ssl/ca")
+(def test-resources-dir "./dev-resources/puppetlabs/services/ca/certificate_authority_core_test")
+(def cadir (str test-resources-dir "/master/conf/ssl/ca"))
+(def test-pems-dir (str test-resources-dir "/pems"))
+(def autosign-files-dir (str test-resources-dir "/autosign"))
+
+(defn test-pem-file
+  [pem-file-name]
+  (str test-pems-dir "/" pem-file-name))
+
+(defn test-autosign-file
+   [autosign-file-name]
+   (str autosign-files-dir "/" autosign-file-name))
 
 (defn ca-settings
   ([] (ca-settings cadir))
@@ -35,7 +46,7 @@
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
     (let [response (handle-get-certificate-revocation-list
-                     {:cacrl "./dev-resources/config/master/conf/ssl/crl.pem"})]
+                     {:cacrl (test-pem-file "crl.pem")})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
@@ -60,8 +71,8 @@
     (logutils/with-test-logging
       (testing "when autosign results in true"
         (doseq [value [true
-                       "dev-resources/config/master/conf/ruby-autosign-executable"
-                       "dev-resources/config/master/conf/autosign-whitelist.conf"]]
+                       (test-autosign-file "ruby-autosign-executable")
+                       (test-autosign-file "autosign-whitelist.conf")]]
           (let [settings      (assoc settings :autosign value)
                 csr-stream    (io/input-stream csr-path)
                 expected-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -80,10 +91,10 @@
 
       (testing "when autosign results in false"
         (doseq [value [false
-                       "dev-resources/config/master/conf/ruby-autosign-executable-false"
-                       "dev-resources/config/master/conf/autosign-whitelist.conf"]]
+                       (test-autosign-file "ruby-autosign-executable-false")
+                       (test-autosign-file "autosign-whitelist.conf")]]
           (let [settings      (assoc settings :autosign value)
-                csr-stream    (io/input-stream "./dev-resources/foo-agent-csr.pem")
+                csr-stream    (io/input-stream (test-pem-file "foo-agent-csr.pem"))
                 expected-path (ca/path-to-cert-request (:csrdir settings) "foo-agent")]
 
             (testing "it writes the CSR to disk and returns a
@@ -118,7 +129,7 @@
                (:body response)))))
 
       (testing "when the public key on the CSR is bogus, the response is a 400"
-        (let [csr-with-bad-public-key "dev-resources/luke.madstop.com-bad-public-key.pem"
+        (let [csr-with-bad-public-key (test-pem-file "luke.madstop.com-bad-public-key.pem")
               csr-stream              (io/input-stream csr-with-bad-public-key)
               response                (handle-put-certificate-request!
                                        "luke.madstop.com" csr-stream settings)]
@@ -127,7 +138,7 @@
                  (:body response)))))
 
       (testing "when the CSR has disallowed extensions on it, the response is a 400"
-        (let [csr-with-bad-ext "dev-resources/meow-bad-extension.pem"
+        (let [csr-with-bad-ext (test-pem-file "meow-bad-extension.pem")
               csr-stream       (io/input-stream csr-with-bad-ext)
               response         (handle-put-certificate-request!
                                 "meow" csr-stream settings)]
@@ -135,7 +146,7 @@
           (is (= "Found extensions that are not permitted: 1.9.9.9.9.9.9"
                  (:body response))))
 
-        (let [csr-with-bad-ext "dev-resources/woof-bad-extensions.pem"
+        (let [csr-with-bad-ext (test-pem-file "woof-bad-extensions.pem")
               csr-stream       (io/input-stream csr-with-bad-ext)
               response         (handle-put-certificate-request!
                                 "woof" csr-stream settings)]
@@ -146,13 +157,13 @@
       (testing "when the CSR subject contains invalid characters, the response is a 400"
         ;; These test cases are lifted out of the puppet spec tests.
         (let [bad-csrs #{{:subject "super/bad"
-                          :csr     "dev-resources/bad-subject-name-1.pem"}
+                          :csr     (test-pem-file "bad-subject-name-1.pem")}
 
                          {:subject "not\neven\tkind\rof"
-                          :csr     "dev-resources/bad-subject-name-2.pem"}
+                          :csr     (test-pem-file "bad-subject-name-2.pem")}
 
                          {:subject "hidden\b\b\b\b\b\bmessage"
-                          :csr     "dev-resources/bad-subject-name-3.pem"}}]
+                          :csr     (test-pem-file "bad-subject-name-3.pem")}}]
 
           (doseq [{:keys [subject csr]} bad-csrs]
             (let [csr-stream (io/input-stream csr)
@@ -163,7 +174,7 @@
                      (:body response)))))))
 
       (testing "no wildcards allowed"
-        (let [csr-with-wildcard "dev-resources/bad-subject-name-wildcard.pem"
+        (let [csr-with-wildcard (test-pem-file "bad-subject-name-wildcard.pem")
               csr-stream        (io/input-stream csr-with-wildcard)
               response          (handle-put-certificate-request!
                                  "foo*bar" csr-stream settings)]
@@ -172,7 +183,7 @@
                  (:body response)))))
 
       (testing "a CSR w/ DNS alt-names gets a specific error response"
-        (let [csr (io/input-stream "dev-resources/hostwithaltnames.pem")
+        (let [csr (io/input-stream (test-pem-file "hostwithaltnames.pem"))
               response (handle-put-certificate-request!
                         "hostwithaltnames" csr settings)]
           (is (= 400 (:status response)))
@@ -230,7 +241,7 @@
             (let [response (test-app
                             {:uri (str "/production/certificate_status/" subject)
                              :request-method :get})]
-              (is (= 200 (:status response)))
+              (is (= 200 (:status response)) (str "Error requesting status for " subject))
               (is (= status (json/parse-string (:body response) true))))))
 
         (testing "returns a 404 when a non-existent certname is given"

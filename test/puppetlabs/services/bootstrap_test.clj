@@ -28,10 +28,10 @@
 (use-fixtures :each logging/reset-logging-config-after-test)
 
 (def dev-config-file
-  "./dev-resources/puppet-server.conf")
+  "./dev/sample-configs/puppet-server.sample.conf")
 
 (def dev-bootstrap-file
-  "./dev-resources/bootstrap.cfg")
+  "./dev/bootstrap.cfg")
 
 (def puppet-server-service-stack
   [jetty-service/jetty9-service
@@ -61,40 +61,3 @@
       (if-not (= (.getMessage e) "Connection reset by peer")
         (throw e))))
   nil)
-
-(deftest test-app-startup-against-crls
-  (let [port     8081
-        test-url (str "https://localhost:" port "/production/node/localhost")]
-    (tk-bootstrap-testutils/with-app-with-config
-      app
-      puppet-server-service-stack
-      (merge {:webserver
-               {:ssl-host     "0.0.0.0"
-                :ssl-port     port
-                :client-auth  "need"}}
-             (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))
-      (testing (str "Simple request to puppet server succeeds when the client "
-                    "certificate's serial number is not in the server's CRL.")
-        (let [response
-               (tk-webserver-testutils/http-get
-                 test-url
-                 {:ssl-cert
-                   "./dev-resources/config/master/conf/ssl/certs/localhost.pem"
-                  :ssl-key
-                   "./dev-resources/config/master/conf/ssl/private_keys/localhost.pem"
-                  :ssl-ca-cert
-                   "./dev-resources/config/master/conf/ssl/certs/ca.pem"
-                  :headers {"Accept" "pson"}})]
-          (is (= (:status response) 200))))
-      (testing (str "Simple request to puppet server fails when the client "
-                    "certificate's serial number is in the server's CRL.")
-        (validate-connection-failure
-          #(tk-webserver-testutils/http-get
-            test-url
-            {:ssl-cert
-              "./dev-resources/config/master/conf/ssl/certs/localhost-compromised.pem"
-             :ssl-key
-              "./dev-resources/config/master/conf/ssl/private_keys/localhost-compromised.pem"
-             :ssl-ca-cert
-              "./dev-resources/config/master/conf/ssl/certs/ca.pem"
-             :headers {"Accept" "pson"}}))))))
