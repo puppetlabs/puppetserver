@@ -8,19 +8,18 @@
   "Parses the command-line arguments using `puppetlabs.kitchensink.core/cli!`.
       --config <config file or directory>"
   [cli-args]
-  ;; TODO: schema
   (let [specs       [["-c" "--config CONFIG-PATH"
                       (str "Path to a configuration file or directory of configuration files. "
                            "See the documentation for a list of supported file types.")]]
         required    [:config]]
     (ks/cli! cli-args specs required)))
 
-(defn run
+(defn run!
   [config args]
-  (let [sc      (ScriptingContainer.)]
-    (.setArgv sc (into-array String args))
-    (.setEnvironment sc (hash-map "GEM_HOME" (get-in config [:jruby-puppet :gem-home])))
-    (.runScriptlet sc "load 'META-INF/jruby.home/bin/gem'")))
+  (doto (ScriptingContainer.)
+    (.setArgv (into-array String args))
+    (.setEnvironment (hash-map "GEM_HOME" (get-in config [:jruby-puppet :gem-home])))
+    (.runScriptlet "load 'META-INF/jruby.home/bin/gem'")))
 
 (defn load-tk-config
   [cli-data]
@@ -36,7 +35,7 @@
   (try+
     (let [[config extra-args help] (-> (or args '())
                                        (parse-cli-args!))]
-      (run (load-tk-config config) extra-args))
+      (run! (load-tk-config config) extra-args))
     (catch map? m
       (println (:message m))
       (case (ks/without-ns (:type m))
