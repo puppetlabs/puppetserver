@@ -1,27 +1,18 @@
-puppet-server
-=============
+# Puppet Server
 
-# To run the server:
+Puppet Server is the next-generation application for managing Puppet agents.
+It is the platform that will carry Puppet's server-side components to a more
+distributed, service-oriented architecture.  It has been built on top of the
+same technologies that have made PuppetDB successful, and will allow us to make
+great leaps forward in performance, scalability, advanced metrics collection,
+and fine-grained control over the Ruby runtime.
 
-  * Update the git submodules located in `./ruby`
-    * `git submodule init`
-    * `git submodule update`
-  * in the REPL:
-    * load the namespace `puppetlabs.puppet-server.testutils.repl`
-    * `(go)`
-  * or, from the command line:
+Installation
+-----
 
-```sh
-    lein run --config dev-resources/puppet-server.conf
-```
+* [Installing Puppet Server from Packages](./documentation/install_from_packages.markdown)
 
-# Run the agent against puppet-server:
+Developer Documentation
+-----
 
-```sh
-    bin/run-agent.sh
-```
-
-# Unit Tests
-
-* Clojure unit tests: `lein test`
-* Ruby spec tests: `rake spec`
+* [Running Puppet Server From Source](./documentation/dev_running_from_source.markdown)
