@@ -795,8 +795,7 @@
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
-   Throws an exception if allow-duplicate-certs is false and there
-   already exists a certificate or CSR for the subject."
+   Throws a slingshot exception if the CSR is invalid."
   [subject :- schema/Str
    certificate-request :- InputStream
    {:keys [autosign csrdir ruby-load-path] :as settings} :- CaSettings]
@@ -805,10 +804,12 @@
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
-      (validate-csr! csr subject settings)
       (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (autosign-certificate-request! subject csr settings)
-        (save-certificate-request! subject csr csrdir)))))
+        (do (validate-csr! csr subject settings)
+            (autosign-certificate-request! subject csr settings))
+        (do (validate-subject! subject (get-csr-subject csr))
+            (validate-duplicate-cert-policy! csr settings)
+            (save-certificate-request! subject csr csrdir))))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
