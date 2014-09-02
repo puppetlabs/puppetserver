@@ -32,3 +32,46 @@
   (testing "validating a map with a nil value"
     (let [config-with-nil-value (zipmap puppet-config-keys (repeat nil))]
       (is (not (nil? (schema/check Config config-with-nil-value)))))))
+
+(deftest test-init-webserver!
+  (let [settings-passed      (atom nil)
+        override-fn          (fn [settings]
+                               (reset! settings-passed settings))
+        puppet-config        {:hostcert    "thehostcert"
+                              :cacert      "thecacert"
+                              :cacrl       "thecacrl"
+                              :hostprivkey "thehostprivkey"}
+        init-webserver-fn    (fn [webserver-settings]
+                               (reset! settings-passed nil)
+                               (init-webserver! override-fn
+                                                webserver-settings
+                                                puppet-config)
+                               @settings-passed)
+        webserver-ssl-config {:ssl-cert     "thehostcert"
+                              :ssl-key      "thehostprivkey"
+                              :ssl-ca-cert  "thecacert"
+                              :ssl-crl-path "thecacrl"}]
+
+    (testing (str "no call made to override default webserver settings if "
+                  "full ssl cert configuration already in webserver settings")
+      (is (nil? (init-webserver-fn webserver-ssl-config))
+          "Override function unexpectedly called with non-nil args"))
+
+    (testing (str "no call made to override default webserver settings if "
+                  "at least one overridable setting already in webserver "
+                  "settings")
+      (doseq [[setting-key setting-value] webserver-ssl-config]
+        (let [map-with-one-overridable-setting {setting-key setting-value}]
+          (is (nil? (init-webserver-fn map-with-one-overridable-setting))
+              (str "Override function unexpectedly called with non-nil args "
+                   "for " map-with-one-overridable-setting)))))
+
+    (testing (str "expected settings passed to override function when "
+                  "no overridable ones already exist in webserver settings")
+      (is (= webserver-ssl-config (init-webserver-fn {}))
+          "Unexpected settings passed into the override function"))
+
+    (testing (str "expected settings passed to override function when "
+                  "no overridable ones already exist in webserver settings")
+      (is (= webserver-ssl-config (init-webserver-fn {:x-non-overridable true}))
+          "Unexpected settings passed into the override function"))))

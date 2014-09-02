@@ -261,7 +261,7 @@
   "Sequentially fill each pool with new JRubyPuppet instances."
   [context :- PoolContext]
   (let [config (:config context)]
-    (log/debugf (str "Intializing JRubyPuppet instances with the following settings:\n"
+    (log/debugf (str "Initializing JRubyPuppet instances with the following settings:\n"
                      (ks/pprint-to-string config)))
     (doseq [{:keys [environment pool]} (vals @(:pools context))]
       (try

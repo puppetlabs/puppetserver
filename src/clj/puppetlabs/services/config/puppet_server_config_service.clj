@@ -2,7 +2,9 @@
        "Implementation of the PuppetServerConfigService."}
     puppetlabs.services.config.puppet-server-config-service
 
-  (:require [puppetlabs.trapperkeeper.core :as tk]
+  (:require [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.protocols.puppet-server-config
              :refer [PuppetServerConfigService]]
             [puppetlabs.services.config.puppet-server-config-core :as core]
@@ -17,17 +19,20 @@
   (init
     [this context]
     (let [tk-config (get-config)]
-      (core/validate-tk-config! tk-config))
-
-    (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
-          pool-descriptor (get-default-pool-descriptor)
-          puppet-config (core/get-puppet-config
-                          jruby-service
-                          pool-descriptor)]
-      (core/init-webserver! override-webserver-settings!
-                            puppet-config)
-      (assoc context :puppet-config
-                     {:puppet-server puppet-config})))
+      (core/validate-tk-config! tk-config)
+      (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
+            pool-descriptor (get-default-pool-descriptor)
+            puppet-config (core/get-puppet-config
+                            jruby-service
+                            pool-descriptor)]
+        (log/debugf
+          "Initializing with the following settings from core Puppet:\n%s"
+          (ks/pprint-to-string puppet-config))
+        (core/init-webserver! override-webserver-settings!
+                              (get-in tk-config [:webserver])
+                              puppet-config)
+        (assoc context :puppet-config
+                       {:puppet-server puppet-config}))))
 
   (get-config
     [this]
