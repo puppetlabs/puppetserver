@@ -329,7 +329,23 @@
                     (ks/pprint-to-string response))
                 (is (= (:body response)
                        "Cannot revoke certificate for host test-agent - no certificate exists on disk")
-                    (ks/pprint-to-string response)))))))
+                    (ks/pprint-to-string response))))
+
+            (testing "trying to sign a cert that's already signed is a 204"
+              (let [request {:uri            "/production/certificate_status/localhost"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"signed\"}")}
+                    response (test-app request)]
+                (is (= 204 (:status response)))))
+
+            (testing "trying to revoke a cert that's already revoked is a 204"
+              (let [request {:uri            "/production/certificate_status/revoked-agent"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"revoked\"}")}
+                    response (test-app request)]
+                (is (= 204 (:status response))))))))
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]
