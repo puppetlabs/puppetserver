@@ -99,8 +99,6 @@ module PuppetServerExtensions
       with_puppet_running_on(master, "main" => { "autosign" => true, "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
         hosts.each do |host|
-          next if host['roles'].include? 'master'
-
           step "Agents: Run agent --test first time to gen CSR"
           on host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0]
         end
