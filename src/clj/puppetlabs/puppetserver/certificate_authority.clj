@@ -907,10 +907,8 @@
 (schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir] :as settings} :- CaSettings]
-  (let [path->subject #(let [name (.getName %)]
-                         (.substring name 0 (- (count name) 4)))
-        pem-pattern   #"^.+\.pem$"
-        all-subjects  (map path->subject
+  (let [pem-pattern   #"^.+\.pem$"
+        all-subjects  (map #(fs/base-name % ".pem")
                            (concat (fs/find-files csrdir pem-pattern)
                                    (fs/find-files signeddir pem-pattern)))]
     (map (partial get-certificate-status settings) all-subjects)))
