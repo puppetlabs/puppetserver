@@ -647,7 +647,48 @@
           (process-csr-submission! "localhost" csr settings)
           (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
           (is (true? (fs/exists? csr-path))))
-        (fs/delete csr-path)))))
+        (fs/delete csr-path)))
+
+    (testing "CSR validation policies"
+      (testing "when autosign is false"
+        (let [settings (assoc settings :autosign false)]
+          (testing "subject policies are checked"
+            (let [path (path-to-cert-request (:csrdir settings) "foo")
+                  csr  (io/input-stream "dev-resources/hostwithaltnames.pem")]
+              (testing "subject-hostname mismatch"
+                (is (false? (fs/exists? path)))
+                (is (thrown-with-slingshot?
+                     {:type :hostname-mismatch
+                      :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+                     (process-csr-submission! "foo" csr settings)))
+                (is (false? (fs/exists? path))))
+
+              (testing "invalid subject name"
+                (let [path (path-to-cert-request (:csrdir settings) "super/bad")
+                      csr  (io/input-stream "dev-resources/bad-subject-name-1.pem")]
+                  (is (false? (fs/exists? path)))
+                  (is (thrown-with-slingshot?
+                       {:type :invalid-subject-name
+                        :message "Subject contains unprintable or non-ASCII characters"}
+                       (process-csr-submission! "super/bad" csr settings)))
+                  (is (false? (fs/exists? path)))))))
+
+          (testing "but other policies are not checked"
+            (testing "DNS alt names"
+              (let [path (path-to-cert-request (:csrdir settings) "hostwithaltnames")
+                    csr  (io/input-stream "dev-resources/hostwithaltnames.pem")]
+                (is (false? (fs/exists? path)))
+                (process-csr-submission! "hostwithaltnames" csr settings)
+                (is (true? (fs/exists? path)))
+                (fs/delete path)))
+
+            (testing "illegal extensions"
+              (let [path (path-to-cert-request (:csrdir settings) "meow")
+                    csr  (io/input-stream "dev-resources/meow-bad-extension.pem")]
+                (is (false? (fs/exists? path)))
+                (process-csr-submission! "meow" csr settings)
+                (is (true? (fs/exists? path)))
+                (fs/delete path)))))))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)
