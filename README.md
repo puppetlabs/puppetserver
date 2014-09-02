@@ -6,6 +6,8 @@ puppet-server
   * Update the git submodules located in `./ruby`
     * `git submodule init`
     * `git submodule update`
+  * Create the required scratch directories in `./scratch`
+    * `bin/init-scratch.sh`
   * in the REPL:
     * load the namespace `puppetlabs.puppet-server.testutils.repl`
     * `(go)`
