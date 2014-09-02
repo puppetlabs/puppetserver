@@ -310,7 +310,26 @@
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
             (is (= 404 (:status response)))
-            (is (= "Invalid certificate subject." (:body response))))))
+            (is (= "Invalid certificate subject." (:body response)))))
+
+        (testing "Additional error handling on PUT requests"
+          (let [tmp-ssldir  (ks/temp-dir)
+                _           (fs/copy-dir cadir tmp-ssldir)
+                settings    (ca-settings (str tmp-ssldir "/ca"))
+                test-app    (compojure-app settings "42.42.42")]
+
+            (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
+              (let [request {:uri            "/production/certificate_status/test-agent"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"revoked\"}")}
+                    response (test-app request)]
+
+                (is (= 409 (:status response))
+                    (ks/pprint-to-string response))
+                (is (= (:body response)
+                       "Cannot revoke certificate for host test-agent - no certificate exists on disk")
+                    (ks/pprint-to-string response)))))))
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]

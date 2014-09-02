@@ -9,6 +9,7 @@
             [compojure.core :as compojure :refer [GET ANY PUT]]
             [liberator.core :as liberator]
             [liberator.representation :as representation]
+            [liberator.dev :as liberator-dev]
             [ring.middleware.json :as json]
             [ring.util.response :as rr]))
 
@@ -79,13 +80,27 @@
 
   :can-put-to-missing? false
 
+  :conflict?
+  (fn [context]
+    (let [desired-state (get-desired-state context)]
+      (when (= :revoked desired-state)
+        ; A signed cert must exist if we are to revoke it.
+        (not (ca/certificate-exists? settings subject)))))
+
   :delete!
   (fn [context]
     (ca/delete-certificate! settings subject))
 
   :exists?
   (fn [context]
-    (ca/certificate-exists? settings subject))
+    (or
+      (ca/certificate-exists? settings subject)
+      (ca/csr-exists? settings subject)))
+
+  :handle-conflict
+  (fn [context]
+    (str "Cannot revoke certificate for host " subject
+         " - no certificate exists on disk"))
 
   :handle-exception utils/exception-handler
 
@@ -94,7 +109,7 @@
     (when (= :put (get-in context [:request :request-method]))
       ; We've landed here because :exists? returned false, and we have set
       ; `:can-put-to-missing? false` above.  This happens when
-      ; a request comes in with an invalid hostname/subject specified in
+      ; a PUT request comes in with an invalid hostname/subject specified in
       ; in the URL; liberator is pushing us towards a 501 here, but instead
       ; we want to return a 404.  There seems to be some disagreement as to
       ; which makes the most sense in general - see
@@ -112,8 +127,8 @@
   :malformed?
   (fn [context]
     (when (= :put (get-in context [:request :request-method]))
-      (let [state (get-desired-state context)]
-        (schema/check ca/DesiredCertificateState state))))
+      (let [desired-state (get-desired-state context)]
+        (schema/check ca/DesiredCertificateState desired-state))))
 
   :handle-malformed
   (fn [context]
@@ -190,6 +205,7 @@
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
+      ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
       (json/wrap-json-body {:keywords? true})
       (treat-pson-as-json)
       (wrap-with-puppet-version-header puppet-version)

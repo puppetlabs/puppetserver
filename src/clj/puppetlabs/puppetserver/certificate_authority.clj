@@ -931,16 +931,14 @@
    The certificate will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacrl cakey capub]} :- CaSettings
    subject :- schema/Str]
-  (let [cert-path (path-to-cert signeddir subject)]
-    (if-not (fs/exists? cert-path)
-      (log/errorf "Cannot revoke host %s without a signed certificate" subject)
-      (let [serial  (-> cert-path utils/pem->cert utils/get-serial)
-            new-crl (utils/revoke (utils/pem->crl cacrl)
-                                  (utils/pem->private-key cakey)
-                                  (utils/pem->public-key capub)
-                                  serial)]
-        (utils/crl->pem! new-crl cacrl)
-        (log/debugf "Revoked %s certificate with serial %d" subject serial)))))
+  (let [cert-path (path-to-cert signeddir subject)
+        serial (-> cert-path utils/pem->cert utils/get-serial)
+        new-crl (utils/revoke (utils/pem->crl cacrl)
+                              (utils/pem->private-key cakey)
+                              (utils/pem->public-key capub)
+                              serial)]
+    (utils/crl->pem! new-crl cacrl)
+    (log/debugf "Revoked %s certificate with serial %d" subject serial)))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
@@ -952,11 +950,16 @@
     (revoke-existing-cert! settings subject)))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
-  "Do we have a CSR or certificate for the given subject?"
-  [{:keys [csrdir signeddir]} :- CaSettings
+  "Do we have a certificate for the given subject?"
+  [{:keys [signeddir]} :- CaSettings
    subject :- schema/Str]
-  (or (fs/exists? (path-to-cert signeddir subject))
-      (fs/exists? (path-to-cert-request csrdir subject))))
+  (fs/exists? (path-to-cert signeddir subject)))
+
+(schema/defn ^:always-validate csr-exists? :- schema/Bool
+  "Do we have a CSR for the given subject?"
+  [{:keys [csrdir]} :- CaSettings
+   subject :- schema/Str]
+  (fs/exists? (path-to-cert-request csrdir subject)))
 
 (schema/defn ^:always-validate delete-certificate!
   "Delete the certificate and/or CSR for the given subject.
