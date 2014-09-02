@@ -113,7 +113,7 @@
   (fn [context]
     (when (= :put (get-in context [:request :request-method]))
       (let [state (get-desired-state context)]
-        (schema/check ca/DesiredCertState state))))
+        (schema/check ca/DesiredCertificateState state))))
 
   :handle-malformed
   (fn [context]
