@@ -143,11 +143,9 @@
       "Request headers must include 'Content-Type: application/json'."
 
       (invalid-state-requested? context)
-      (do
-        (println "Invalid state detected: " (get-desired-state context))
-        (str "State " (name (get-desired-state context))
-             " invalid; Must specify desired state of 'signed' or 'revoked' for host "
-             subject "."))
+      (let [desired-state (get-desired-state context)]
+        (format "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
+                (name desired-state) subject))
 
       :else
       "Bad Request."))
