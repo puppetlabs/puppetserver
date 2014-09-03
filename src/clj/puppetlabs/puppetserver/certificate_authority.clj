@@ -918,13 +918,10 @@
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    (if-not (fs/exists? csr-path)
-      (log/errorf "Cannot sign host %s without a certificate request" subject)
-      (do
-        ;; TODO PE-5704 validate CSR policies and return an error somehow
-        (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
-        (fs/delete csr-path)
-        (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))))
+    ;; TODO PE-5704 validate CSR policies and return an error somehow
+    (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
+    (fs/delete csr-path)
+    (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))
 
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.

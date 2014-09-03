@@ -89,9 +89,14 @@
   :conflict?
   (fn [context]
     (let [desired-state (get-desired-state context)]
-      (when (= :revoked desired-state)
+      (case desired-state
+        :revoked
         ; A signed cert must exist if we are to revoke it.
-        (not (ca/certificate-exists? settings subject)))))
+        (not (ca/certificate-exists? settings subject))
+
+        :signed
+        ; A CSR must exist if we are to sign it.
+        (not (ca/csr-exists? settings subject)))))
 
   :delete!
   (fn [context]
@@ -105,8 +110,15 @@
 
   :handle-conflict
   (fn [context]
-    (str "Cannot revoke certificate for host " subject
-         " - no certificate exists on disk"))
+    (let [desired-state (get-desired-state context)]
+      (case desired-state
+        :revoked
+        (str "Cannot revoke certificate for host " subject
+             " - no certificate exists on disk.")
+
+        :signed
+        (str "Cannot sign certificate for host " subject
+             " - no certificate signing request exists on disk."))))
 
   :handle-exception utils/exception-handler
 
