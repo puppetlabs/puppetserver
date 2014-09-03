@@ -673,42 +673,45 @@
       (testing "when autosign is false"
         (let [settings (assoc settings :autosign false)]
           (testing "subject policies are checked"
-            (let [path (path-to-cert-request (:csrdir settings) "foo")
-                  csr  (io/input-stream "dev-resources/hostwithaltnames.pem")]
-              (testing "subject-hostname mismatch"
-                (is (false? (fs/exists? path)))
-                (is (thrown-with-slingshot?
-                     {:type :hostname-mismatch
-                      :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
-                     (process-csr-submission! "foo" csr settings)))
-                (is (false? (fs/exists? path))))
-
-              (testing "invalid subject name"
-                (let [path (path-to-cert-request (:csrdir settings) "super/bad")
-                      csr  (io/input-stream "dev-resources/bad-subject-name-1.pem")]
+            (doseq [[policy subject csr-file exception]
+                    [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
+                      {:type :hostname-mismatch
+                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                     ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains unprintable or non-ASCII characters"}]
+                     ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (str "dev-resources/" csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown-with-slingshot?
-                       {:type :invalid-subject-name
-                        :message "Subject contains unprintable or non-ASCII characters"}
-                       (process-csr-submission! "super/bad" csr settings)))
+                  (is (thrown-with-slingshot? exception (process-csr-submission! subject csr settings)))
                   (is (false? (fs/exists? path)))))))
 
-          (testing "but other policies are not checked"
-            (testing "DNS alt names"
-              (let [path (path-to-cert-request (:csrdir settings) "hostwithaltnames")
-                    csr  (io/input-stream "dev-resources/hostwithaltnames.pem")]
-                (is (false? (fs/exists? path)))
-                (process-csr-submission! "hostwithaltnames" csr settings)
-                (is (true? (fs/exists? path)))
-                (fs/delete path)))
+          (testing "extension & key policies are not checked"
+            (doseq [[policy subject csr-file]
+                    [["subject alt name extension" "hostwithaltnames" "hostwithaltnames.pem"]
+                     ["unknown extension" "meow" "meow-bad-extension.pem"]
+                     ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (str "dev-resources/" csr-file))]
+                  (is (false? (fs/exists? path)))
+                  (process-csr-submission! subject csr settings)
+                  (is (true? (fs/exists? path)))
+                  (fs/delete path)))))))
 
-            (testing "illegal extensions"
-              (let [path (path-to-cert-request (:csrdir settings) "meow")
-                    csr  (io/input-stream "dev-resources/meow-bad-extension.pem")]
-                (is (false? (fs/exists? path)))
-                (process-csr-submission! "meow" csr settings)
-                (is (true? (fs/exists? path)))
-                (fs/delete path)))))))))
+      (testing "when autosign is true, all policies are checked"
+        (testing "CSR will not be saved when"
+          (testing "subject-hostname mismatch")
+          (testing "subject contains invalid characters")
+          (testing "subject contains wildcard character"))
+        (testing "CSR will be saved when"
+          (testing "subject alt name exention exists")
+          (testing "unknown extension exists")
+          (testing "public-private key mismatch"))))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)
