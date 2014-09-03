@@ -72,6 +72,12 @@
   [context]
   (keyword (get-in context [:request :body :desired_state])))
 
+(defn invalid-state-requested?
+  [context]
+  (when (= :put (get-in context [:request :request-method]))
+    (when-let [desired-state (get-desired-state context)]
+      (not (contains? #{:signed :revoked} desired-state)))))
+
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
@@ -132,9 +138,19 @@
 
   :handle-malformed
   (fn [context]
-    (if (ringutils/json-request? (get context :request))
-      "Bad Request."
-      "Request headers must include 'Content-Type: application/json'."))
+    (cond
+      (not (ringutils/json-request? (get context :request)))
+      "Request headers must include 'Content-Type: application/json'."
+
+      (invalid-state-requested? context)
+      (do
+        (println "Invalid state detected: " (get-desired-state context))
+        (str "State " (name (get-desired-state context))
+             " invalid; Must specify desired state of 'signed' or 'revoked' for host "
+             subject "."))
+
+      :else
+      "Bad Request."))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false

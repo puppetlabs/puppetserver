@@ -301,7 +301,9 @@
                           :content-type "application/json"
                           :body (body-stream "{\"desired_state\":\"bogus\"}")}
                 response (test-app request)]
-            (is (= 400 (:status response)))))
+            (is (= 400 (:status response)))
+            (is (= (:body response)
+                   "State bogus invalid; Must specify desired state of 'signed' or 'revoked' for host test-agent."))))
 
         (testing "returns a 404 when a non-existent certname is given"
           (let [request {:uri "/production/certificate_status/doesnotexist"
