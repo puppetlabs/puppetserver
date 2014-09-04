@@ -14,22 +14,6 @@
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Internal
-
-(defn bad-request?
-  "Given a map (thrown via slingshot), should it result in a
-  HTTP 400 (bad request) response being sent back to the client?"
-  [x]
-  (when (map? x)
-    (let [type (:type x)
-          expected-types #{:disallowed-extension
-                           :duplicate-cert
-                           :hostname-mismatch
-                           :invalid-signature
-                           :invalid-subject-name}]
-      (contains? expected-types type))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
 (defn handle-get-certificate
@@ -53,8 +37,9 @@
   (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch bad-request? {:keys [message]}
+    (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
+      ;; Respond to all CSR validation faliures with a 400
       (-> (rr/response message)
           (rr/status 400)
           (rr/content-type "text/plain")))))
@@ -91,12 +76,25 @@
     (let [desired-state (get-desired-state context)]
       (case desired-state
         :revoked
-        ; A signed cert must exist if we are to revoke it.
-        (not (ca/certificate-exists? settings subject))
+        ;; A signed cert must exist if we are to revoke it.
+        (when-not (ca/certificate-exists? settings subject)
+          [true
+           {::conflict
+             (str "Cannot revoke certificate for host " subject
+                  " - no certificate exists on disk.")}])
 
         :signed
-        ; A CSR must exist if we are to sign it.
-        (not (ca/csr-exists? settings subject)))))
+        (or
+          ;; A CSR must exist if we are to sign it.
+          (when-not (ca/csr-exists? settings subject)
+            [true
+             {::conflict (str "Cannot sign certificate for host " subject
+                              " - no certificate signing request exists on disk.")}])
+
+          ;; And the CSR must be valid.
+          (when-let [error-message (ca/csr-invalid? settings subject)]
+            [true
+             {::conflict error-message}])))))
 
   :delete!
   (fn [context]
@@ -110,15 +108,7 @@
 
   :handle-conflict
   (fn [context]
-    (let [desired-state (get-desired-state context)]
-      (case desired-state
-        :revoked
-        (str "Cannot revoke certificate for host " subject
-             " - no certificate exists on disk.")
-
-        :signed
-        (str "Cannot sign certificate for host " subject
-             " - no certificate signing request exists on disk."))))
+    (::conflict context))
 
   :handle-exception utils/exception-handler
 
