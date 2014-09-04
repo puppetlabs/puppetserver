@@ -8,6 +8,8 @@
             [schema.core :as schema]
             [compojure.core :as compojure :refer [GET ANY PUT]]
             [liberator.core :as liberator]
+            [liberator.representation :as representation]
+            [liberator.dev :as liberator-dev]
             [ring.middleware.json :as json]
             [ring.util.response :as rr]))
 
@@ -70,7 +72,12 @@
   [context]
   (keyword (get-in context [:request :body :desired_state])))
 
-; TODO - need to test this against the console + `puppet certificate`.  Issues w/ headers? (Accept / Content-Type, JSON vs. PSON?)
+(defn invalid-state-requested?
+  [context]
+  (when (= :put (get-in context [:request :request-method]))
+    (when-let [desired-state (get-desired-state context)]
+      (not (contains? #{:signed :revoked} desired-state)))))
+
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
@@ -79,33 +86,89 @@
 
   :can-put-to-missing? false
 
-  :delete! (fn [context]
-             (ca/delete-certificate! settings subject))
+  :conflict?
+  (fn [context]
+    (let [desired-state (get-desired-state context)]
+      (case desired-state
+        :revoked
+        ; A signed cert must exist if we are to revoke it.
+        (not (ca/certificate-exists? settings subject))
 
-  :exists? (fn [context]
-             (ca/certificate-exists? settings subject))
+        :signed
+        ; A CSR must exist if we are to sign it.
+        (not (ca/csr-exists? settings subject)))))
+
+  :delete!
+  (fn [context]
+    (ca/delete-certificate! settings subject))
+
+  :exists?
+  (fn [context]
+    (or
+      (ca/certificate-exists? settings subject)
+      (ca/csr-exists? settings subject)))
+
+  :handle-conflict
+  (fn [context]
+    (let [desired-state (get-desired-state context)]
+      (case desired-state
+        :revoked
+        (str "Cannot revoke certificate for host " subject
+             " - no certificate exists on disk.")
+
+        :signed
+        (str "Cannot sign certificate for host " subject
+             " - no certificate signing request exists on disk."))))
 
   :handle-exception utils/exception-handler
 
-  :handle-ok (fn [context]
-               (ca/get-certificate-status settings subject))
+  :handle-not-implemented
+  (fn [context]
+    (when (= :put (get-in context [:request :request-method]))
+      ; We've landed here because :exists? returned false, and we have set
+      ; `:can-put-to-missing? false` above.  This happens when
+      ; a PUT request comes in with an invalid hostname/subject specified in
+      ; in the URL; liberator is pushing us towards a 501 here, but instead
+      ; we want to return a 404.  There seems to be some disagreement as to
+      ; which makes the most sense in general - see
+      ; https://github.com/clojure-liberator/liberator/pull/120
+      ; ... but in our case, a 404 definitely makes more sense.
+      (-> "Invalid certificate subject."
+          (representation/as-response context)
+          (assoc :status 404)
+          (representation/ring-response))))
 
-  :malformed? (fn [context]
-                (when (= :put (get-in context [:request :request-method]))
-                  (let [state (get-desired-state context)]
-                    (schema/check ca/DesiredCertificateState state))))
+  :handle-ok
+  (fn [context]
+    (ca/get-certificate-status settings subject))
 
-  :handle-malformed (fn [context]
-                      (if (ringutils/json-request? (get context :request))
-                        "Bad Request."
-                        "Request headers must include 'Content-Type: application/json'."))
+  :malformed?
+  (fn [context]
+    (when (= :put (get-in context [:request :request-method]))
+      (let [desired-state (get-desired-state context)]
+        (schema/check ca/DesiredCertificateState desired-state))))
+
+  :handle-malformed
+  (fn [context]
+    (cond
+      (not (ringutils/json-request? (get context :request)))
+      "Request headers must include 'Content-Type: application/json'."
+
+      (invalid-state-requested? context)
+      (let [desired-state (get-desired-state context)]
+        (format "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
+                (name desired-state) subject))
+
+      :else
+      "Bad Request."))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
 
-  :put! (fn [context]
-          (let [desired-state (get-desired-state context)]
-            (ca/set-certificate-status! settings subject desired-state))))
+  :put!
+  (fn [context]
+    (let [desired-state (get-desired-state context)]
+      (ca/set-certificate-status! settings subject desired-state))))
 
 (liberator/defresource certificate-statuses
   [settings]
@@ -115,8 +178,9 @@
 
   :handle-exception utils/exception-handler
 
-  :handle-ok (fn [context]
-               (ca/get-certificate-statuses settings)))
+  :handle-ok
+  (fn [context]
+    (ca/get-certificate-statuses settings)))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
@@ -147,11 +211,31 @@
       (when response
         (rr/header response "X-Puppet-Version" version)))))
 
+(defn treat-pson-as-json
+  "For requests with a Content-type of 'text/pson', replaces the Content-type
+   with 'application/json'.
+
+   This is necessary because some of the clients of this ring application,
+   namely the PE Console, still send 'Content-Type: text/pson'.  Once this
+   is no longer true, this function can and should be deleted."
+  [handler]
+  (fn [request]
+    (let [content-type (:content-type request)
+          pson? (when content-type
+                  (or (= (.trim content-type) "text/pson")
+                      (= (.trim content-type) "pson")))
+          request (if pson?
+                    (assoc request :content-type "application/json")
+                    request)]
+      (handler request))))
+
 (schema/defn ^:always-validate
   compojure-app
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
+      ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
       (json/wrap-json-body {:keywords? true})
+      (treat-pson-as-json)
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))

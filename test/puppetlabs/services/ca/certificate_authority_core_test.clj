@@ -301,15 +301,54 @@
                           :content-type "application/json"
                           :body (body-stream "{\"desired_state\":\"bogus\"}")}
                 response (test-app request)]
-            (is (= 400 (:status response)))))
+            (is (= 400 (:status response)))
+            (is (= (:body response)
+                   "State bogus invalid; Must specify desired state of 'signed' or 'revoked' for host test-agent."))))
 
-        (testing "returns a 501 when a non-existent certname is given"
+        (testing "returns a 404 when a non-existent certname is given"
           (let [request {:uri "/production/certificate_status/doesnotexist"
                          :request-method :put
                          :content-type "application/json"
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
-            (is (= 501 (:status response))))))
+            (is (= 404 (:status response)))
+            (is (= "Invalid certificate subject." (:body response)))))
+
+        (testing "Additional error handling on PUT requests"
+          (let [tmp-ssldir  (ks/temp-dir)
+                _           (fs/copy-dir cadir tmp-ssldir)
+                settings    (ca-settings (str tmp-ssldir "/ca"))
+                test-app    (compojure-app settings "42.42.42")]
+
+            (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
+              (let [request {:uri            "/production/certificate_status/test-agent"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"revoked\"}")}
+                    response (test-app request)]
+
+                (is (= 409 (:status response))
+                    (ks/pprint-to-string response))
+                (is (= (:body response)
+                       "Cannot revoke certificate for host test-agent - no certificate exists on disk.")
+                    (ks/pprint-to-string response))))
+
+            (testing "trying to sign a cert that's already signed is a 409"
+              (let [request {:uri            "/production/certificate_status/localhost"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"signed\"}")}
+                    response (test-app request)]
+                (is (= 409 (:status response)))
+                (is (= (:body response) "Cannot sign certificate for host localhost - no certificate signing request exists on disk."))))
+
+            (testing "trying to revoke a cert that's already revoked is a 204"
+              (let [request {:uri            "/production/certificate_status/revoked-agent"
+                             :request-method :put
+                             :content-type   "application/json"
+                             :body           (body-stream "{\"desired_state\":\"revoked\"}")}
+                    response (test-app request)]
+                (is (= 204 (:status response))))))))
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]
@@ -330,4 +369,36 @@
         (testing "returns a 404 when a non-existent certname is given"
           (is (= 404 (:status (test-app
                                {:uri "/production/certificate_status/doesnotexist"
-                                :request-method :delete})))))))))
+                                :request-method :delete}))))))))
+
+  (testing "a signing request w/ a 'text/pson' content-type succeeds"
+    (let [tmp-ssldir (ks/temp-dir)
+          _          (fs/copy-dir cadir tmp-ssldir)
+          settings   (ca-settings (str tmp-ssldir "/ca"))
+          test-app   (compojure-app settings "42.42.42")]
+
+      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+        (is (false? (fs/exists? signed-cert-path)))
+        (let [response (test-app
+                         {:uri            "/production/certificate_status/test-agent"
+                          :request-method :put
+                          :content-type   "text/pson"
+                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+          (is (true? (fs/exists? signed-cert-path)))
+          (is (= 204 (:status response)))))))
+
+  (testing "a signing request w/ a 'pson' content-type succeeds"
+    (let [tmp-ssldir (ks/temp-dir)
+          _          (fs/copy-dir cadir tmp-ssldir)
+          settings   (ca-settings (str tmp-ssldir "/ca"))
+          test-app   (compojure-app settings "42.42.42")]
+
+      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+        (is (false? (fs/exists? signed-cert-path)))
+        (let [response (test-app
+                         {:uri            "/production/certificate_status/test-agent"
+                          :request-method :put
+                          :content-type   "pson"
+                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+          (is (true? (fs/exists? signed-cert-path)))
+          (is (= 204 (:status response))))))))
