@@ -73,6 +73,7 @@
     * :master-var-dir - path to the puppetmaster' var dir;
                         if not specified, will use the puppet default."
   {:ruby-load-path [schema/Str]
+   :gem-home schema/Str
    (schema/optional-key :master-conf-dir) schema/Str
    (schema/optional-key :master-var-dir) schema/Str
    :jruby-pools [PoolDefinition]})
@@ -109,30 +110,32 @@
 
 (defn empty-scripting-container
   "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
-  [ruby-load-path]
+  [ruby-load-path gem-home]
   {:pre [(sequential? ruby-load-path)
-         (every? string? ruby-load-path)]
+         (every? string? ruby-load-path)
+         (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
   (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
     (.setLoadPaths (cons ruby-code-dir
                          (map fs/absolute-path ruby-load-path)))
     (.setCompatVersion (CompatVersion/RUBY1_9))
     (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    (.setEnvironment jruby-puppet-env)))
+    (.setEnvironment (merge {"GEM_HOME" gem-home} jruby-puppet-env))))
 
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
   puppet and facter code inside it."
-  [ruby-load-path]
+  [ruby-load-path gem-home]
   {:pre [(sequential? ruby-load-path)
-         (every? string? ruby-load-path)]
+         (every? string? ruby-load-path)
+         (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
   ;; for information on other legal values for `LocalContextScope`, there
   ;; is some documentation available in the JRuby source code; e.g.:
   ;; https://github.com/jruby/jruby/blob/1.7.11/core/src/main/java/org/jruby/embed/LocalContextScope.java#L58
   ;; I'm convinced that this is the safest and most reasonable value
   ;; to use here, but we could potentially explore optimizations in the future.
-  (doto (empty-scripting-container ruby-load-path)
+  (doto (empty-scripting-container ruby-load-path gem-home)
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate create-jruby-instance :- JRubyPuppet
@@ -140,11 +143,11 @@
   for the contents of `config`."
   [config :- PoolConfig
    profiler :- (schema/maybe PuppetProfiler)]
-  (let [{:keys [ruby-load-path master-conf-dir master-var-dir]} config]
+  (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
-    (let [scripting-container (create-scripting-container ruby-load-path)
+    (let [scripting-container (create-scripting-container ruby-load-path gem-home)
           ruby-puppet-class   (.runScriptlet scripting-container "Puppet::Server::Master")
           jruby-config        (HashMap.)]
       (when master-conf-dir
@@ -184,6 +187,13 @@
   (doseq [pool (:jruby-pools config)]
     (when (> (pools-matching-environment config (:environment pool)) 1)
       (throw (IllegalArgumentException. "Two or more JRuby pools were found with same environment.")))))
+
+(defn verify-config-found!
+  [config]
+  (if (or (not (map? config))
+          (empty? config))
+    (throw (IllegalArgumentException. (str "No configuration data found.  Perhaps "
+                                           "you did not specify the --config option?")))))
 
 (schema/defn ^:always-validate
   validate-config!

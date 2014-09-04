@@ -41,6 +41,7 @@
 
   (testing "config with no production environment fails"
     (let [no-default-env { :ruby-load-path    ["./ruby/puppet/lib"]
+                           :gem-home          "./scratch/jruby-gems"
                            :jruby-pools       [{:environment "notdefault"
                                                 :size 1}]}]
       (is (thrown? IllegalArgumentException

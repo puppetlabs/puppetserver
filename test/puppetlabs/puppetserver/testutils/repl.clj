@@ -26,7 +26,8 @@
                 {:global {:logging-config "./dev-resources/logback-dev.xml"}
                  :os-settings {:ruby-load-path ["./ruby/puppet/lib"
                                                 "./ruby/facter/lib"]}
-                 :jruby-puppet { :jruby-pools  [{:environment "production"
+                 :jruby-puppet { :gem-home "./scratch/jruby-gems"
+                                 :jruby-pools  [{:environment "production"
                                                  :size 1}]
                                  :master-conf-dir conf-dir}
                  :webserver {:client-auth "want"

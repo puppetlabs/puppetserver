@@ -20,6 +20,7 @@
     [this context]
     (let [config (-> (get-in-config [:jruby-puppet])
                      (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path])))]
+      (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config (get-profiler))
             default-pool-descriptor (core/extract-default-pool-descriptor config)]

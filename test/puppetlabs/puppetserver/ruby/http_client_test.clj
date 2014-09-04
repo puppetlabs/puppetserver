@@ -11,7 +11,9 @@
 
 (deftest test-ruby-http-client
   (jetty9/with-test-webserver ring-app port
-    (let [sc (jruby-puppet/empty-scripting-container ["./ruby/puppet/lib" "./ruby/facter/lib"])]
+    (let [sc (jruby-puppet/empty-scripting-container
+               ["./ruby/puppet/lib" "./ruby/facter/lib"]
+               "./scratch/jruby-gems")]
       (.runScriptlet sc "require 'puppet/server/http_client'")
       (is (= "hi" (.runScriptlet
                     sc
