@@ -371,19 +371,34 @@
                                {:uri "/production/certificate_status/doesnotexist"
                                 :request-method :delete}))))))))
 
-  (testing "stupid PSON"
+  (testing "a signing request w/ a 'text/pson' content-type succeeds"
     (let [tmp-ssldir (ks/temp-dir)
           _          (fs/copy-dir cadir tmp-ssldir)
           settings   (ca-settings (str tmp-ssldir "/ca"))
           test-app   (compojure-app settings "42.42.42")]
 
-      (testing "signing a cert w/ a 'Content-Type: text/pson' header"
-        (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
-          (is (false? (fs/exists? signed-cert-path)))
-          (let [response (test-app
-                           {:uri            "/production/certificate_status/test-agent"
-                            :request-method :put
-                            :content-type   "text/pson"
-                            :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-            (is (true? (fs/exists? signed-cert-path)))
-            (is (= 204 (:status response)))))))))
+      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+        (is (false? (fs/exists? signed-cert-path)))
+        (let [response (test-app
+                         {:uri            "/production/certificate_status/test-agent"
+                          :request-method :put
+                          :content-type   "text/pson"
+                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+          (is (true? (fs/exists? signed-cert-path)))
+          (is (= 204 (:status response)))))))
+
+  (testing "a signing request w/ a 'pson' content-type succeeds"
+    (let [tmp-ssldir (ks/temp-dir)
+          _          (fs/copy-dir cadir tmp-ssldir)
+          settings   (ca-settings (str tmp-ssldir "/ca"))
+          test-app   (compojure-app settings "42.42.42")]
+
+      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+        (is (false? (fs/exists? signed-cert-path)))
+        (let [response (test-app
+                         {:uri            "/production/certificate_status/test-agent"
+                          :request-method :put
+                          :content-type   "pson"
+                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+          (is (true? (fs/exists? signed-cert-path)))
+          (is (= 204 (:status response))))))))

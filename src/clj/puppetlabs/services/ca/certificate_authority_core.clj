@@ -221,7 +221,10 @@
   [handler]
   (fn [request]
     (let [content-type (:content-type request)
-          request (if (and content-type (= "text/pson" (.trim content-type)))
+          pson? (when content-type
+                  (or (= (.trim content-type) "text/pson")
+                      (= (.trim content-type) "pson")))
+          request (if pson?
                     (assoc request :content-type "application/json")
                     request)]
       (handler request))))
