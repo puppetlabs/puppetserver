@@ -108,10 +108,33 @@ module PuppetServerExtensions
   end
 
   def puppet_server_collect_data(host, relative_path)
+    variant, version, _, _ = master['platform'].to_array
+
+    # This is an ugly hack to accomodate the difficulty around getting systemd
+    # to output the daemon's standard out to the same place that the init
+    # scripts typically do.
+    use_journalctl = false
+    case variant
+    when /^fedora$/
+      if version.to_i >= 15
+        use_journalctl = true
+      end
+    when /^(el|centos)$/
+      if version.to_i >= 7
+        use_journalctl = true
+      end
+    end
+
     destination = File.join("./log/latest/puppetserver/", relative_path)
     FileUtils.mkdir_p(destination)
     scp_from master, "/var/log/puppetserver/puppetserver.log", destination
-    scp_from master, "/var/log/puppetserver/puppetserver-daemon.log", destination
+    if use_journalctl
+      puppetserver_daemon_log = on(master, "journalctl -u puppetserver").stdout.strip
+      destination = File.join(destination, "puppetserver-daemon.log")
+      File.open(destination, 'w') {|file| file.puts puppetserver_daemon_log }
+    else
+      scp_from master, "/var/log/puppetserver/puppetserver-daemon.log", destination
+    end
   end
 
   def install_puppet_server (host, puppet_server_name='puppetserver', make_env={})
