@@ -273,10 +273,7 @@
                              :content-type "application/json"
                              :body (body-stream "{\"desired_state\":\"signed\"}")})]
               (is (true? (fs/exists? signed-cert-path)))
-              (is (= 204 (:status response)))))
-
-          (testing "that is invalid"
-            (println "TODO PE-5704 check status 400 Bad Request and body with invalid CSR message")))
+              (is (= 204 (:status response))))))
 
         (testing "revoking a cert"
           (let [cert (utils/pem->cert (ca/path-to-cert (:signeddir settings) "localhost"))]
@@ -413,3 +410,34 @@
                           :body           (body-stream "{\"desired_state\":\"signed\"}")})]
           (is (true? (fs/exists? signed-cert-path)))
           (is (= 204 (:status response))))))))
+
+(deftest cert-status-invalid-csrs
+  (testing "Asking /certificate_status to sign invalid CSRs"
+    (let [settings  (assoc (ca-settings)
+                      :csrdir (str test-resources-dir "/alternate-csrdir"))
+          test-app (compojure-app settings "42.42.42")]
+
+      (testing "one example - a CSR with DNS alt-names"
+        (let [request {:uri            "/production/certificate_status/hostwithaltnames"
+                       :request-method :put
+                       :content-type   "application/json"
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")}
+              response (test-app request)]
+          (is (= 409 (:status response))
+              (ks/pprint-to-string response))
+          (is (= (:body response)
+                 (str "CSR 'hostwithaltnames' contains subject alternative names "
+                      "altname1, altname2, altname3 which are disallowed. Use "
+                      "`puppet cert --allow-dns-alt-names sign hostwithaltnames` "
+                      "to sign this request.")))))
+
+      (testing "another example - a CSR with an invalid subject anme"
+        (let [request {:uri            "/production/certificate_status/meow"
+                       :request-method :put
+                       :content-type   "application/json"
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")}
+              response (test-app request)]
+          (is (= 409 (:status response))
+              (ks/pprint-to-string response))
+          (is (= (:body response)
+                 "Found extensions that are not permitted: 1.9.9.9.9.9.9")))))))
