@@ -95,7 +95,7 @@ module PuppetServerExtensions
 
     step "Server: Start Puppet Server"
       old_retries = master['master-start-curl-retries']
-      master['master-start-curl-retries'] = 1500
+      master['master-start-curl-retries'] = 480
       with_puppet_running_on(master, "main" => { "autosign" => true, "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
 
         hosts.each do |host|
