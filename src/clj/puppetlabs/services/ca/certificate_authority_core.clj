@@ -5,12 +5,13 @@
             [puppetlabs.puppetserver.liberator-utils :as utils]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
+            [clojure.java.io :as io]
             [schema.core :as schema]
+            [cheshire.core :as cheshire]
             [compojure.core :as compojure :refer [GET ANY PUT]]
             [liberator.core :as liberator]
             [liberator.representation :as representation]
             [liberator.dev :as liberator-dev]
-            [ring.middleware.json :as json]
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -53,9 +54,28 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 
+(defn try-to-parse
+  [body]
+  (try
+    (cheshire/parse-stream (io/reader body) true)
+    (catch Exception e
+      (log/debug e))))
+
+(defn malformed
+  "Returns a value indicating to liberator that the request is malformed,
+  with the given error message assoc'ed into the context."
+  [message]
+  [true {::malformed message}])
+
+(defn conflict
+  "Returns a value indicating to liberator that the request is is conflict
+  with the server, with the given error message assoc'ed into the context."
+  [message]
+  [true {::conflict message}])
+
 (defn get-desired-state
   [context]
-  (keyword (get-in context [:request :body :desired_state])))
+  (keyword (get-in context [::json-body :desired_state])))
 
 (defn invalid-state-requested?
   [context]
@@ -78,23 +98,19 @@
         :revoked
         ;; A signed cert must exist if we are to revoke it.
         (when-not (ca/certificate-exists? settings subject)
-          [true
-           {::conflict
-             (str "Cannot revoke certificate for host " subject
-                  " - no certificate exists on disk.")}])
+          (conflict (str "Cannot revoke certificate for host " subject
+                         " - no certificate exists on disk.")))
 
         :signed
         (or
           ;; A CSR must exist if we are to sign it.
           (when-not (ca/csr-exists? settings subject)
-            [true
-             {::conflict (str "Cannot sign certificate for host " subject
-                              " - no certificate signing request exists on disk.")}])
+            (conflict (str "Cannot sign certificate for host " subject
+                           " - no certificate signing request exists on disk.")))
 
           ;; And the CSR must be valid.
           (when-let [error-message (ca/csr-invalid? settings subject)]
-            [true
-             {::conflict error-message}])))))
+            (conflict error-message))))))
 
   :delete!
   (fn [context]
@@ -135,21 +151,22 @@
   :malformed?
   (fn [context]
     (when (= :put (get-in context [:request :request-method]))
-      (let [desired-state (get-desired-state context)]
-        (schema/check ca/DesiredCertificateState desired-state))))
+      (if-let [body (get-in context [:request :body])]
+        (if-let [json-body (try-to-parse body)]
+          (let [desired-state (keyword (:desired_state json-body))]
+            (if (schema/check ca/DesiredCertificateState desired-state)
+              (malformed
+                (format
+                  "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
+                  (name desired-state) subject))
+              [false {::json-body json-body}]))
+          (malformed "Request body is not JSON."))
+        (malformed "Empty request body."))))
 
   :handle-malformed
   (fn [context]
-    (cond
-      (not (ringutils/json-request? (get context :request)))
-      "Request headers must include 'Content-Type: application/json'."
-
-      (invalid-state-requested? context)
-      (let [desired-state (get-desired-state context)]
-        (format "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
-                (name desired-state) subject))
-
-      :else
+    (if-let [message (::malformed context)]
+      message
       "Bad Request."))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
@@ -201,31 +218,11 @@
       (when response
         (rr/header response "X-Puppet-Version" version)))))
 
-(defn treat-pson-as-json
-  "For requests with a Content-type of 'text/pson', replaces the Content-type
-   with 'application/json'.
-
-   This is necessary because some of the clients of this ring application,
-   namely the PE Console, still send 'Content-Type: text/pson'.  Once this
-   is no longer true, this function can and should be deleted."
-  [handler]
-  (fn [request]
-    (let [content-type (:content-type request)
-          pson? (when content-type
-                  (or (= (.trim content-type) "text/pson")
-                      (= (.trim content-type) "pson")))
-          request (if pson?
-                    (assoc request :content-type "application/json")
-                    request)]
-      (handler request))))
-
 (schema/defn ^:always-validate
   compojure-app
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-      (json/wrap-json-body {:keywords? true})
-      (treat-pson-as-json)
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
