@@ -199,6 +199,13 @@
   [s]
   (not= s (.toLowerCase s)))
 
+(schema/defn dns-alt-names :- [schema/Str]
+  "Get the list of DNS alt names on the provided certificate or CSR.
+   Each name will be prepended with 'DNS:'."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (mapv (partial str "DNS:")
+        (utils/get-subject-dns-alt-names cert-or-csr)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -741,11 +748,10 @@
                        "signed")
                      "requested")]
         (if allow-duplicate-certs
-          (log/info
-            (str subject " already has a " status " certificate; new certificate will overwrite it"))
+          (log/infof "%s already has a %s certificate; new certificate will overwrite it" subject status)
           (sling/throw+
             {:type    :duplicate-cert
-             :message (str subject " already has a " status " certificate; ignoring certificate request")}))))))
+             :message (format "%s already has a %s certificate; ignoring certificate request" subject status)}))))))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -767,30 +773,14 @@
 
 (schema/defn ensure-no-dns-alt-names!
   "Throws an exception if the CSR contains DNS alt-names."
-  [csr :- (schema/pred utils/certificate-request?)]
-  (let [subject (get-csr-subject csr)]
-    (when-let [dns-alt-names (utils/get-subject-dns-alt-names csr)]
+  [csr :- CertificateRequest]
+  (when-let [dns-alt-names (not-empty (dns-alt-names csr))]
+    (let [subject (get-csr-subject csr)]
       (sling/throw+
-        {:type    :disallowed-extension
-         :message (str "CSR '" subject "' contains subject alternative names "
-                       (str/join ", " dns-alt-names)
-                       " which are disallowed. Use `puppet cert --allow-dns-alt-names sign " subject
-                       "` to sign this request.")}))))
-
-(schema/defn validate-csr!
-  "Perform all policy checks against the provided certificate signing request."
-  [csr      :- CertificateRequest
-   subject  :- schema/Str
-   settings :- CaSettings]
-  ; These validations must happen in this order
-  ; if we are to behave exactly like the ruby CA.
-  (let [extensions  (utils/get-extensions csr)
-        csr-subject (get-csr-subject csr)]
-    (validate-duplicate-cert-policy! csr settings)
-    (ensure-no-dns-alt-names! csr)
-    (validate-extensions! extensions)
-    (validate-subject! subject csr-subject)
-    (validate-csr-signature! csr)))
+       {:type    :disallowed-extension
+        :message (format (str "CSR '%s' contains subject alternative names (%s), which are disallowed. "
+                              "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
+                         subject (str/join ", " dns-alt-names) subject)}))))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -804,12 +794,15 @@
                               ByteArrayInputStream.)]
     (let [csr (utils/pem->csr byte-stream)
           csr-stream (doto byte-stream .reset)]
-      (if (autosign-csr? autosign subject csr-stream ruby-load-path)
-        (do (validate-csr! csr subject settings)
-            (autosign-certificate-request! subject csr settings))
-        (do (validate-subject! subject (get-csr-subject csr))
-            (validate-duplicate-cert-policy! csr settings)
-            (save-certificate-request! subject csr csrdir))))))
+      (validate-duplicate-cert-policy! csr settings)
+      (validate-subject! subject (get-csr-subject csr))
+      (save-certificate-request! subject csr csrdir)
+      (when (autosign-csr? autosign subject csr-stream ruby-load-path)
+        (ensure-no-dns-alt-names! csr)
+        (validate-extensions! (utils/get-extensions csr))
+        (validate-csr-signature! csr)
+        (autosign-certificate-request! subject csr settings)
+        (fs/delete (path-to-cert-request csrdir subject))))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
@@ -867,13 +860,6 @@
     (if (utils/revoked? (utils/pem->crl cacrl) cert-or-csr)
       "revoked"
       "signed")))
-
-(schema/defn dns-alt-names :- [schema/Str]
-  "Get the list of DNS alt names on the provided certificate or CSR.
-   Each name will be prepended with 'DNS:'."
-  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
-  (mapv (partial str "DNS:")
-        (utils/get-subject-dns-alt-names cert-or-csr)))
 
 (schema/defn fingerprint :- schema/Str
   "Calculate the hash of the certificate or CSR using the given
