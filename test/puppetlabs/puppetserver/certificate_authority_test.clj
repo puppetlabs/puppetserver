@@ -699,7 +699,7 @@
                        :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
-                      csr  (io/input-stream (str "dev-resources/" csr-file))]
+                      csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
                   (is (thrown-with-slingshot? exception (process-csr-submission! subject csr settings)))
                   (is (false? (fs/exists? path)))))))
@@ -711,7 +711,7 @@
                      ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
-                      csr  (io/input-stream (str "dev-resources/" csr-file))]
+                      csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
                   (process-csr-submission! subject csr settings)
                   (is (true? (fs/exists? path)))
@@ -732,7 +732,7 @@
                        :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
-                      csr  (io/input-stream (str "dev-resources/" csr-file))]
+                      csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
                   (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
                   (is (false? (fs/exists? path)))))))
@@ -752,7 +752,7 @@
                        :message "CSR contains a public key that does not correspond to the signing key"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
-                      csr  (io/input-stream (str "dev-resources/" csr-file))]
+                      csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
                   (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
                   (is (true? (fs/exists? path)))
@@ -767,7 +767,7 @@
                   :message "test-agent already has a requested certificate; ignoring certificate request"}
                  (process-csr-submission! "not-test-agent" csr-with-mismatched-name settings)))))
         (testing "subject policies checked before extension & key policies"
-          (let [csr-with-disallowed-alt-names (io/input-stream "dev-resources/hostwithaltnames.pem")]
+          (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
             (is (thrown-with-slingshot?
                  {:type :hostname-mismatch
                   :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
