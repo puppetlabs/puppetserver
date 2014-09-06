@@ -7,6 +7,10 @@
              :as core]
             [puppetlabs.services.jruby.testutils :as jruby-testutils]))
 
+(use-fixtures :once
+              (jruby-testutils/with-puppet-conf
+                "./dev-resources/puppetlabs/services/jruby/jruby_interpreter_test/puppet.conf"))
+
 (deftest create-jruby-instance-test
 
   (testing "Var dir is not required."

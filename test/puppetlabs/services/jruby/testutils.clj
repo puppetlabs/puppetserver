@@ -1,7 +1,8 @@
 (ns puppetlabs.services.jruby.testutils
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
+            [me.raynes.fs :as fs]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -13,6 +14,22 @@
 (def conf-dir "./target/master-conf")
 
 (def gem-home "./target/jruby-gem-home")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; JRubyPuppet Test fixtures
+
+(defn with-puppet-conf
+  "This function returns a test fixture that will copy a specified puppet.conf
+  file into the appropriate location for testing, and then delete it after the
+  tests have completed."
+  [puppet-conf-file]
+  (let [target-path (fs/file conf-dir "puppet.conf")]
+    (fn [f]
+      (fs/copy+ puppet-conf-file target-path)
+      (try
+        (f)
+        (finally
+          (fs/delete target-path))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
