@@ -25,7 +25,6 @@
                  [clj-time "0.5.1" :exclusions [joda-time]]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
-                 [ring/ring-json "0.3.1"]
                  [me.raynes/fs "1.4.5"]
                  [prismatic/schema "0.2.2"]
                  [commons-lang "2.6"]

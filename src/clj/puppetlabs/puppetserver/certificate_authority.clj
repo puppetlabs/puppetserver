@@ -958,6 +958,30 @@
    subject :- schema/Str]
   (fs/exists? (path-to-cert-request csrdir subject)))
 
+(defn csr-validation-failure?
+  "Does the given object represent a CSR validation failure?
+  (thrown from one of the CSR validate-* function, using slingshot)"
+  [x]
+  (when (map? x)
+    (let [type (:type x)
+          expected-types #{:disallowed-extension
+                           :duplicate-cert
+                           :hostname-mismatch
+                           :invalid-signature
+                           :invalid-subject-name}]
+      (contains? expected-types type))))
+
+(schema/defn csr-invalid?
+  "Is the CSR for the given subject valid?  Assumes existence of the CSR on disk.
+  If the CSR is invalid, returns a user-facing message."
+  [{:keys [csrdir] :as settings} :- CaSettings
+   subject :- schema/Str]
+  (let [csr (utils/pem->csr (path-to-cert-request csrdir subject))]
+    (sling/try+
+      (validate-csr! csr subject settings)
+      (catch csr-validation-failure? {:keys [message]}
+        message))))
+
 (schema/defn ^:always-validate delete-certificate!
   "Delete the certificate and/or CSR for the given subject.
    Note this does not revoke the certificate."
