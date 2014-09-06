@@ -56,7 +56,7 @@ Step 4b: Run the server from the clojure REPL
 
 Running the server inside of the clojure REPL allows you to make changes to the
 source code and reload the server without having to restart the entire JVM.  It
-can be much faster than running for the command line, when you are doing iterative
+can be much faster than running from the command line, when you are doing iterative
 development.  To start the server from the REPL, run the following:
 
     $ lein repl
