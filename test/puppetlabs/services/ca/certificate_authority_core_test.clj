@@ -270,13 +270,10 @@
             (let [response (test-app
                             {:uri "/production/certificate_status/test-agent"
                              :request-method :put
-                             :content-type "application/json"
                              :body (body-stream "{\"desired_state\":\"signed\"}")})]
               (is (true? (fs/exists? signed-cert-path)))
-              (is (= 204 (:status response)))))
-
-          (testing "that is invalid"
-            (println "TODO PE-5704 check status 400 Bad Request and body with invalid CSR message")))
+              (is (= 204 (:status response))
+                  (ks/pprint-to-string response)))))
 
         (testing "revoking a cert"
           (let [cert (utils/pem->cert (ca/path-to-cert (:signeddir settings) "localhost"))]
@@ -284,32 +281,28 @@
             (let [response (test-app
                             {:uri "/production/certificate_status/localhost"
                              :request-method :put
-                             :content-type "application/json"
                              :body (body-stream "{\"desired_state\":\"revoked\"}")})]
               (is (true? (utils/revoked? (utils/pem->crl (:cacrl settings)) cert)))
               (is (= 204 (:status response))))))
 
-        (testing "returns a 400 with meaningful message body when responding
-                  to a request without a 'Content-Type' header"
-          (let [request  {:uri "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :body (body-stream "{\"desired_state\":\"revoked\"}")}
-                response (test-app request)]
-            (is (= 400 (:status response)))
-            (is (= "Request headers must include 'Content-Type: application/json'."
-                   (:body response)))))
-
         (testing "no body results in a 400"
           (let [request  {:uri "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :content-type "application/json"}
+                          :request-method :put}
                 response (test-app request)]
-            (is (= 400 (:status response)))))
+            (is (= 400 (:status response)))
+            (is (= (:body response) "Empty request body."))))
+
+        (testing "a body that isn't JSON results in a 400"
+          (let [request  {:body (body-stream "this is not JSON")
+                          :uri "/production/certificate_status/test-agent"
+                          :request-method :put}
+                response (test-app request)]
+            (is (= 400 (:status response)))
+            (is (= (:body response) "Request body is not JSON."))))
 
         (testing "invalid cert status results in a 400"
           (let [request  {:uri "/production/certificate_status/test-agent"
                           :request-method :put
-                          :content-type "application/json"
                           :body (body-stream "{\"desired_state\":\"bogus\"}")}
                 response (test-app request)]
             (is (= 400 (:status response)))
@@ -319,7 +312,6 @@
         (testing "returns a 404 when a non-existent certname is given"
           (let [request {:uri "/production/certificate_status/doesnotexist"
                          :request-method :put
-                         :content-type "application/json"
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
             (is (= 404 (:status response)))
@@ -334,7 +326,6 @@
             (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
               (let [request {:uri            "/production/certificate_status/test-agent"
                              :request-method :put
-                             :content-type   "application/json"
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
 
@@ -347,7 +338,6 @@
             (testing "trying to sign a cert that's already signed is a 409"
               (let [request {:uri            "/production/certificate_status/localhost"
                              :request-method :put
-                             :content-type   "application/json"
                              :body           (body-stream "{\"desired_state\":\"signed\"}")}
                     response (test-app request)]
                 (is (= 409 (:status response)))
@@ -356,7 +346,6 @@
             (testing "trying to revoke a cert that's already revoked is a 204"
               (let [request {:uri            "/production/certificate_status/revoked-agent"
                              :request-method :put
-                             :content-type   "application/json"
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
                 (is (= 204 (:status response))))))))
@@ -413,3 +402,32 @@
                           :body           (body-stream "{\"desired_state\":\"signed\"}")})]
           (is (true? (fs/exists? signed-cert-path)))
           (is (= 204 (:status response))))))))
+
+(deftest cert-status-invalid-csrs
+  (testing "Asking /certificate_status to sign invalid CSRs"
+    (let [settings  (assoc (ca-settings)
+                      :csrdir (str test-resources-dir "/alternate-csrdir"))
+          test-app (compojure-app settings "42.42.42")]
+
+      (testing "one example - a CSR with DNS alt-names"
+        (let [request {:uri            "/production/certificate_status/hostwithaltnames"
+                       :request-method :put
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")}
+              response (test-app request)]
+          (is (= 409 (:status response))
+              (ks/pprint-to-string response))
+          (is (= (:body response)
+                 (str "CSR 'hostwithaltnames' contains subject alternative names "
+                      "altname1, altname2, altname3 which are disallowed. Use "
+                      "`puppet cert --allow-dns-alt-names sign hostwithaltnames` "
+                      "to sign this request.")))))
+
+      (testing "another example - a CSR with an invalid subject anme"
+        (let [request {:uri            "/production/certificate_status/meow"
+                       :request-method :put
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")}
+              response (test-app request)]
+          (is (= 409 (:status response))
+              (ks/pprint-to-string response))
+          (is (= (:body response)
+                 "Found extensions that are not permitted: 1.9.9.9.9.9.9")))))))
