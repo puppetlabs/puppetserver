@@ -4,6 +4,10 @@
             [puppetlabs.services.jruby.testutils :as testutils]
             [schema.core :as schema]))
 
+(use-fixtures :once
+              (testutils/with-puppet-conf
+                "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
+
 (deftest test-puppet-config-values
   (let [jruby-puppet (testutils/create-jruby-instance)]
 

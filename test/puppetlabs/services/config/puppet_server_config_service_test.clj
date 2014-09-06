@@ -22,6 +22,9 @@
   (merge (jruby-testutils/jruby-puppet-tk-config-with-prod-env)
          {:webserver    {:port 8081}}))
 
+(def test-resources-dir
+  "./dev-resources/puppetlabs/services/config/puppet_server_config_service_test")
+
 (defn valid-semver-number? [v]
   (re-matches #"[0-9]\.[0-9]\.[0-9]" v))
 
@@ -29,14 +32,18 @@
   (tk-testutils/with-app-with-config
     app
     service-and-deps
-    (assoc required-config :my-config {:foo "bar"})
+    (-> required-config
+        (assoc :my-config {:foo "bar"})
+        (assoc-in [:jruby-puppet :master-conf-dir] (str test-resources-dir "/master/conf")))
     (testing "Basic puppet-server config service function usage"
 
       (let [service (tk-app/get-service app :PuppetServerConfigService)
             service-config (get-config service)]
 
-        (is (= (:jruby-puppet service-config)
-               (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))))
+        (is (= (-> (:jruby-puppet service-config)
+                   (dissoc :master-conf-dir))
+               (-> (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))
+                   (dissoc :master-conf-dir))))
         (is (= (:os-settings service-config)
                (:os-settings (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))))
         (is (= (:webserver service-config) {:port 8081}))

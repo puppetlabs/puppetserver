@@ -3,7 +3,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all :as core]
-            [puppetlabs.services.jruby.testutils :as testutils]))
+            [puppetlabs.services.jruby.testutils :as testutils]
+            [puppetlabs.services.jruby.testutils :as jruby-testutils]))
 
 (use-fixtures :each testutils/mock-jruby-fixture)
 
@@ -40,8 +41,8 @@
                             (validate-config! malformed-config)))))
 
   (testing "config with no production environment fails"
-    (let [no-default-env { :ruby-load-path    ["./ruby/puppet/lib"]
-                           :gem-home          "./scratch/jruby-gems"
+    (let [no-default-env { :ruby-load-path    jruby-testutils/ruby-load-path
+                           :gem-home          jruby-testutils/gem-home
                            :jruby-pools       [{:environment "notdefault"
                                                 :size 1}]}]
       (is (thrown? IllegalArgumentException
