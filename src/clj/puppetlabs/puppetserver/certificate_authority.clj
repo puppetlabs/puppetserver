@@ -782,20 +782,6 @@
                               "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
                          subject (str/join ", " dns-alt-names) subject)}))))
 
-(schema/defn validate-csr!
-  "Perform all policy checks against the provided certificate signing request."
-  [csr :- CertificateRequest
-   subject :- schema/Str
-   settings :- CaSettings]
-  ;; These validations must happen in this order
-  ;; if we are to behave exactly like the ruby CA.
-  (let [extensions  (utils/get-extensions csr)
-        csr-subject (get-csr-subject csr)]
-    (validate-duplicate-cert-policy! csr settings)
-    (validate-subject! subject csr-subject)
-    (ensure-no-dns-alt-names! csr)
-    (validate-extensions! extensions)
-    (validate-csr-signature! csr)))
 
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
@@ -973,14 +959,24 @@
                            :invalid-subject-name}]
       (contains? expected-types type))))
 
-(schema/defn csr-invalid?
-  "Is the CSR for the given subject valid?  Assumes existence of the CSR on disk.
-  If the CSR is invalid, returns a user-facing message."
+(schema/defn validate-csr
+  "Validates the CSR (on disk) for the specified subject.
+  Assumes existence of the CSR on disk.
+  If the CSR is invalid, returns a user-facing message. Otherwise, returns nil."
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str]
-  (let [csr (utils/pem->csr (path-to-cert-request csrdir subject))]
+  (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
+        csr-subject (get-csr-subject csr)
+        extensions  (utils/get-extensions csr)]
     (sling/try+
-      (validate-csr! csr subject settings)
+      ;; Matching the order of validations here with
+      ;; 'process-csr-submission!' when autosigning
+      (validate-duplicate-cert-policy! csr settings)
+      (validate-subject! subject csr-subject)
+      (ensure-no-dns-alt-names! csr)
+      (validate-extensions! extensions)
+      (validate-csr-signature! csr)
+
       (catch csr-validation-failure? {:keys [message]}
         message))))
 

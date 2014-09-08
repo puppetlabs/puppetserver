@@ -114,7 +114,7 @@
                            " - no certificate signing request exists on disk.")))
 
           ;; And the CSR must be valid.
-          (when-let [error-message (ca/csr-invalid? settings subject)]
+          (when-let [error-message (ca/validate-csr settings subject)]
             (conflict error-message))))))
 
   :delete!
