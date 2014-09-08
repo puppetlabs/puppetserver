@@ -425,7 +425,7 @@
                       "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` "
                       "to sign this request.")))))
 
-      (testing "another example - a CSR with an invalid subject anme"
+      (testing "another example - a CSR with an invalid extension"
         (let [request {:uri            "/production/certificate_status/meow"
                        :request-method :put
                        :body           (body-stream "{\"desired_state\":\"signed\"}")}

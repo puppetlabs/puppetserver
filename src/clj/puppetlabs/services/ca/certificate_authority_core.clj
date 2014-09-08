@@ -40,7 +40,7 @@
     (rr/content-type (rr/response nil) "text/plain")
     (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
-      ;; Respond to all CSR validation faliures with a 400
+      ;; Respond to all CSR validation failures with a 400
       (-> (rr/response message)
           (rr/status 400)
           (rr/content-type "text/plain")))))
