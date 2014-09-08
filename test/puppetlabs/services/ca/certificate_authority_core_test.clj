@@ -421,8 +421,8 @@
               (ks/pprint-to-string response))
           (is (= (:body response)
                  (str "CSR 'hostwithaltnames' contains subject alternative names "
-                      "altname1, altname2, altname3 which are disallowed. Use "
-                      "`puppet cert --allow-dns-alt-names sign hostwithaltnames` "
+                      "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                      "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` "
                       "to sign this request.")))))
 
       (testing "another example - a CSR with an invalid subject anme"

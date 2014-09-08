@@ -782,6 +782,21 @@
                               "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
                          subject (str/join ", " dns-alt-names) subject)}))))
 
+(schema/defn validate-csr!
+  "Perform all policy checks against the provided certificate signing request."
+  [csr :- CertificateRequest
+   subject :- schema/Str
+   settings :- CaSettings]
+  ;; These validations must happen in this order
+  ;; if we are to behave exactly like the ruby CA.
+  (let [extensions  (utils/get-extensions csr)
+        csr-subject (get-csr-subject csr)]
+    (validate-duplicate-cert-policy! csr settings)
+    (validate-subject! subject csr-subject)
+    (ensure-no-dns-alt-names! csr)
+    (validate-extensions! extensions)
+    (validate-csr-signature! csr)))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
