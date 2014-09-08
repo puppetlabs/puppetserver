@@ -83,6 +83,11 @@
     (when-let [desired-state (get-desired-state context)]
       (not (contains? #{:signed :revoked} desired-state)))))
 
+(defn content-type-valid?
+  [context]
+  (contains? #{"application/json" "text/pson" "pson" nil}
+             (get-in context [:request :headers "content-type"])))
+
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
@@ -168,6 +173,12 @@
     (if-let [message (::malformed context)]
       message
       "Bad Request."))
+
+  :known-content-type?
+  (fn [context]
+    (if (= :put (get-in context [:request :request-method]))
+      (content-type-valid? context)
+      true))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
