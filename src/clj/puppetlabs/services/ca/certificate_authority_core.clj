@@ -40,7 +40,7 @@
     (rr/content-type (rr/response nil) "text/plain")
     (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
-      ;; Respond to all CSR validation faliures with a 400
+      ;; Respond to all CSR validation failures with a 400
       (-> (rr/response message)
           (rr/status 400)
           (rr/content-type "text/plain")))))
@@ -83,6 +83,11 @@
     (when-let [desired-state (get-desired-state context)]
       (not (contains? #{:signed :revoked} desired-state)))))
 
+(defn content-type-valid?
+  [context]
+  (contains? #{"application/json" "text/pson" "pson" nil}
+             (get-in context [:request :headers "content-type"])))
+
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
@@ -109,7 +114,7 @@
                            " - no certificate signing request exists on disk.")))
 
           ;; And the CSR must be valid.
-          (when-let [error-message (ca/csr-invalid? settings subject)]
+          (when-let [error-message (ca/validate-csr settings subject)]
             (conflict error-message))))))
 
   :delete!
@@ -168,6 +173,12 @@
     (if-let [message (::malformed context)]
       message
       "Bad Request."))
+
+  :known-content-type?
+  (fn [context]
+    (if (= :put (get-in context [:request :request-method]))
+      (content-type-valid? context)
+      true))
 
   ;; Never return a 201, we're not creating a new cert or anything like that.
   :new? false
