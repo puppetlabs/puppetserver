@@ -63,22 +63,21 @@
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [settings  (assoc (ca-settings)
-                    :serial (doto (str (ks/temp-file))
-                              (ca/initialize-serial-file!))
-                    :cert-inventory (str (ks/temp-file)))
-        csr-path  (ca/path-to-cert-request (:csrdir settings) "test-agent")]
+  (let [tmp-ssldir (ks/temp-dir)
+        _          (fs/copy-dir cadir tmp-ssldir)
+        settings   (ca-settings (str tmp-ssldir "/ca"))
+        static-csr (ca/path-to-cert-request (str cadir "/requests") "test-agent")]
     (logutils/with-test-logging
       (testing "when autosign results in true"
         (doseq [value [true
                        (test-autosign-file "ruby-autosign-executable")
                        (test-autosign-file "autosign-whitelist.conf")]]
           (let [settings      (assoc settings :autosign value)
-                csr-stream    (io/input-stream csr-path)
+                csr-stream    (io/input-stream static-csr)
                 expected-path (ca/path-to-cert (:signeddir settings) "test-agent")]
 
             (testing "it signs the CSR, writes the certificate to disk, and
-                    returns a 200 response with empty plaintext body"
+                      returns a 200 response with empty plaintext body"
               (try
                 (is (false? (fs/exists? expected-path)))
                 (let [response (handle-put-certificate-request! "test-agent" csr-stream settings)]
@@ -111,17 +110,19 @@
                   (fs/delete expected-path)))))))
 
       (testing "when $allow-duplicate-certs is false and we receive a new CSR,
-              return a 400 response and error message"
+                return a 400 response and error message"
         (let [settings   (assoc settings :allow-duplicate-certs false)
-              csr-stream (io/input-stream csr-path)
-              response   (handle-put-certificate-request! "test-agent" csr-stream settings)]
-          (is (logged? #"ignoring certificate request" :error))
-          (is (= 400 (:status response)))
-          (is (true? (.contains (:body response) "ignoring certificate request")))))
+              csr-stream (io/input-stream static-csr)]
+          ;; Put the duplicate in place
+          (fs/copy static-csr (ca/path-to-cert-request (:csrdir settings) "test-agent"))
+          (let [response (handle-put-certificate-request! "test-agent" csr-stream settings)]
+            (is (logged? #"ignoring certificate request" :error))
+            (is (= 400 (:status response)))
+            (is (true? (.contains (:body response) "ignoring certificate request"))))))
 
       (testing "when the subject CN on a CSR does not match the hostname specified
-            in the URL, the response is a 400"
-        (let [csr-stream (io/input-stream csr-path)
+                in the URL, the response is a 400"
+        (let [csr-stream (io/input-stream static-csr)
               response   (handle-put-certificate-request! "NOT-test-agent" csr-stream settings)]
           (is (= 400 (:status response)))
           (is (re-matches
@@ -187,8 +188,10 @@
               response (handle-put-certificate-request!
                         "hostwithaltnames" csr settings)]
           (is (= 400 (:status response)))
-          (is (= "CSR 'hostwithaltnames' contains subject alternative names altname1, altname2, altname3 which are disallowed. Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request."
-                 (:body response))))))))
+          (is (= (:body response)
+                 (str "CSR 'hostwithaltnames' contains subject alternative names "
+                      "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                      "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request."))))))))
 
 (defn body-stream
   [s]
@@ -418,8 +421,8 @@
               (ks/pprint-to-string response))
           (is (= (:body response)
                  (str "CSR 'hostwithaltnames' contains subject alternative names "
-                      "altname1, altname2, altname3 which are disallowed. Use "
-                      "`puppet cert --allow-dns-alt-names sign hostwithaltnames` "
+                      "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                      "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` "
                       "to sign this request.")))))
 
       (testing "another example - a CSR with an invalid subject anme"

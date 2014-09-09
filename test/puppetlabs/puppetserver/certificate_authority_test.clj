@@ -126,13 +126,18 @@
   (testing subject
     (is (false? (autosign-csr? whitelist subject empty-stream [])))))
 
-(defmacro thrown-with-slingshot?
-  [expected-map f]
-  `(sling/try+
-    ~f
-    false
-    (catch map? actual-map#
-      (= actual-map# ~expected-map))))
+(defmethod assert-expr 'thrown-with-slingshot? [msg form]
+  (let [expected (nth form 1)
+        body     (nthnext form 2)]
+    `(sling/try+
+      ~@body
+      (do-report {:type :fail :message ~msg :expected ~expected :actual nil})
+      (catch map? actual#
+        (do-report {:type (if (= actual# ~expected) :pass :fail)
+                    :message ~msg
+                    :expected ~expected
+                    :actual actual#})
+        actual#))))
 
 (defn contains-ext?
   "Does the provided extension list contain an extensions with the given OID."
@@ -240,12 +245,12 @@
                                         "qux")]
           (assert-autosign whitelist "foo")
           (logutils/with-log-output logs
-                                    (assert-no-autosign whitelist invalid-line)
-                                    (is (logutils/logs-matching
-                                          (re-pattern (format "Invalid pattern '%s' found in %s"
-                                                              invalid-line whitelist))
-                                          @logs))
-                                    (assert-autosign whitelist "qux")))))
+            (assert-no-autosign whitelist invalid-line)
+            (is (logutils/logs-matching
+                 (re-pattern (format "Invalid pattern '%s' found in %s"
+                                     invalid-line whitelist))
+                 @logs))
+            (assert-autosign whitelist "qux")))))
 
     (testing "sample file that covers everything"
       (logutils/with-test-logging
@@ -624,50 +629,149 @@
             "2019-02-14T18:09:07UTC"
             "/CN=localhost"))))))
 
+(deftest allow-duplicate-certs-test
+  (let [tmp-ssldir (ks/temp-dir)
+        _          (fs/copy-dir cadir tmp-ssldir)
+        settings   (-> (str tmp-ssldir "/ca")
+                       (ca-test-settings)
+                       (assoc :autosign false))]
+    (testing "when false"
+      (let [settings (assoc settings :allow-duplicate-certs false)]
+        (testing "throws exception if CSR already exists"
+          (is (thrown-with-slingshot?
+               {:type :duplicate-cert
+                :message "test-agent already has a requested certificate; ignoring certificate request"}
+               (process-csr-submission! "test-agent" (csr-stream "test-agent") settings))))
+
+        (testing "throws exception if certificate already exists"
+          (is (thrown-with-slingshot?
+               {:type :duplicate-cert
+                :message "localhost already has a signed certificate; ignoring certificate request"}
+               (process-csr-submission! "localhost"
+                                        (io/input-stream (test-pem-file "localhost-csr.pem"))
+                                        settings)))
+          (is (thrown-with-slingshot?
+               {:type :duplicate-cert
+                :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
+               (process-csr-submission! "revoked-agent"
+                                        (io/input-stream (test-pem-file "revoked-agent-csr.pem"))
+                                        settings))))))
+
+    (testing "when true"
+      (let [settings (assoc settings :allow-duplicate-certs true)]
+        (testing "new CSR overwrites existing one"
+          (let [csr-path (path-to-cert-request (:csrdir settings) "test-agent")
+                csr      (ByteArrayInputStream. (.getBytes (slurp csr-path)))]
+            (spit csr-path "should be overwritten")
+            (logutils/with-test-logging
+              (process-csr-submission! "test-agent" csr settings)
+              (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
+              (is (not= "should be overwritten" (slurp csr-path))
+                  "Existing CSR was not overwritten"))))
+
+        (testing "new certificate overwrites existing one"
+          (let [settings  (assoc settings :autosign true)
+                cert-path (path-to-cert (:signeddir settings) "localhost")
+                old-cert  (slurp cert-path)
+                csr       (io/input-stream (test-pem-file "localhost-csr.pem"))]
+            (logutils/with-test-logging
+              (process-csr-submission! "localhost" csr settings)
+              (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
+              (is (not= old-cert (slurp cert-path)) "Existing certificate was not overwritten"))))))))
+
 (deftest process-csr-submission!-test
   (let [settings (assoc (ca-test-settings)
                    :serial (tmp-serial-file!)
                    :cert-inventory (str (ks/temp-file)))]
-    (testing "throws an exception if a CSR already exists for that subject"
-      (is (thrown-with-slingshot?
-           {:type    :duplicate-cert
-            :message "test-agent already has a requested certificate; ignoring certificate request"}
-           (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)))
+    (testing "CSR validation policies"
+      (testing "when autosign is false"
+        (let [settings (assoc settings :autosign false)]
+          (testing "subject policies are checked"
+            (doseq [[policy subject csr-file exception]
+                    [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
+                      {:type :hostname-mismatch
+                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                     ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains unprintable or non-ASCII characters"}]
+                     ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (test-pem-file csr-file))]
+                  (is (false? (fs/exists? path)))
+                  (is (thrown-with-slingshot? exception (process-csr-submission! subject csr settings)))
+                  (is (false? (fs/exists? path)))))))
 
-      (testing "unless $allow-duplicate-certs is true"
-        (let [settings  (assoc settings :allow-duplicate-certs true)
-              cert-path (path-to-cert (:signeddir settings) "test-agent")]
-          (logutils/with-test-logging
-            (is (false? (fs/exists? cert-path)))
-            (process-csr-submission! "test-agent" (csr-stream "test-agent") settings)
-            (is (logged? #"test-agent already has a requested certificate; new certificate will overwrite it" :info))
-            (is (true? (fs/exists? cert-path))))
-          (fs/delete cert-path))))
+          (testing "extension & key policies are not checked"
+            (doseq [[policy subject csr-file]
+                    [["subject alt name extension" "hostwithaltnames" "hostwithaltnames.pem"]
+                     ["unknown extension" "meow" "meow-bad-extension.pem"]
+                     ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (test-pem-file csr-file))]
+                  (is (false? (fs/exists? path)))
+                  (process-csr-submission! subject csr settings)
+                  (is (true? (fs/exists? path)))
+                  (fs/delete path)))))))
 
-    (testing "throws an exception if a certificate already exists for that subject"
-      (let [csr (io/input-stream (test-pem-file "localhost-csr.pem"))]
-        (is (thrown-with-slingshot?
-              {:type    :duplicate-cert
-               :message "localhost already has a signed certificate; ignoring certificate request"}
-              (process-csr-submission! "localhost" csr settings)))))
+      (testing "when autosign is true, all policies are checked, and"
+        (let [settings (assoc settings :autosign true)]
+          (testing "CSR will not be saved when"
+            (doseq [[policy subject csr-file expected]
+                    [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
+                      {:type :hostname-mismatch
+                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                     ["subject contains invalid characters" "super/bad" "bad-subject-name-1.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains unprintable or non-ASCII characters"}]
+                     ["subject contains wildcard character" "foo*bar" "bad-subject-name-wildcard.pem"
+                      {:type :invalid-subject-name
+                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (test-pem-file csr-file))]
+                  (is (false? (fs/exists? path)))
+                  (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
+                  (is (false? (fs/exists? path)))))))
 
-    (testing "even if the certificate has been revoked"
-      (let [csr (io/input-stream (test-pem-file "revoked-agent-csr.pem"))]
-        (is (thrown-with-slingshot?
-              {:type    :duplicate-cert
-               :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
-              (process-csr-submission! "revoked-agent" csr settings)))))
+          (testing "CSR will be saved when"
+            (doseq [[policy subject csr-file expected]
+                    [["subject alt name extension exists" "hostwithaltnames" "hostwithaltnames.pem"
+                      {:type :disallowed-extension
+                       :message (str "CSR 'hostwithaltnames' contains subject alternative names "
+                                     "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                                     "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request.")}]
+                     ["unknown extension exists" "meow" "meow-bad-extension.pem"
+                      {:type :disallowed-extension
+                       :message "Found extensions that are not permitted: 1.9.9.9.9.9.9"}]
+                     ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"
+                      {:type :invalid-signature
+                       :message "CSR contains a public key that does not correspond to the signing key"}]]]
+              (testing policy
+                (let [path (path-to-cert-request (:csrdir settings) subject)
+                      csr  (io/input-stream (test-pem-file csr-file))]
+                  (is (false? (fs/exists? path)))
+                  (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
+                  (is (true? (fs/exists? path)))
+                  (fs/delete path)))))))
 
-    (testing "unless $allow-duplicate-certs is true"
-      (let [settings (assoc settings :allow-duplicate-certs true :autosign false)
-            csr-path (path-to-cert-request (:csrdir settings) "localhost")
-            csr      (io/input-stream (test-pem-file "localhost-csr.pem"))]
-        (logutils/with-test-logging
-          (is (false? (fs/exists? csr-path)))
-          (process-csr-submission! "localhost" csr settings)
-          (is (logged? #"localhost already has a signed certificate; new certificate will overwrite it" :info))
-          (is (true? (fs/exists? csr-path))))
-        (fs/delete csr-path)))))
+      (testing "order of validations"
+        (testing "duplicates checked before subject policies"
+          (let [settings (assoc settings :allow-duplicate-certs false)
+                csr-with-mismatched-name (csr-stream "test-agent")]
+            (is (thrown-with-slingshot?
+                 {:type :duplicate-cert
+                  :message "test-agent already has a requested certificate; ignoring certificate request"}
+                 (process-csr-submission! "not-test-agent" csr-with-mismatched-name settings)))))
+        (testing "subject policies checked before extension & key policies"
+          (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
+            (is (thrown-with-slingshot?
+                 {:type :hostname-mismatch
+                  :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+                 (process-csr-submission! "foo" csr-with-disallowed-alt-names settings)))))))))
 
 (deftest cert-signing-extension-test
   (let [issuer-keys  (utils/generate-key-pair 512)
