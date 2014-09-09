@@ -74,6 +74,8 @@ class Puppet::Server::Master
 
     Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
 
+    configure_indirector_routes()
+
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     # Tell Puppet's network layer which routes we are willing handle - which is
@@ -224,4 +226,17 @@ class Puppet::Server::Master
     require 'puppet/util/instrumentation'
     Puppet::Util::Instrumentation.init
   end
+
+  def configure_indirector_routes
+    # The following lines were copied for the most part from the
+    # configure_indirector_routes() method in the Puppet::Application class from
+    # .../lib/puppet/application.rb in core Ruby Puppet code.
+    route_file = Puppet[:route_file]
+    if Puppet::FileSystem.exist?(route_file)
+      routes = YAML.load_file(route_file)
+      application_routes = routes["master"]
+      Puppet::Indirector.configure_routes(application_routes) if application_routes
+    end
+  end
+
 end
