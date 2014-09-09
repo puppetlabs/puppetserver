@@ -83,16 +83,31 @@
     (when-let [desired-state (get-desired-state context)]
       (not (contains? #{:signed :revoked} desired-state)))))
 
+(def media-types
+  #{"application/json" "text/pson" "pson"})
+
 (defn content-type-valid?
   [context]
-  (contains? #{"application/json" "text/pson" "pson" nil}
-             (get-in context [:request :headers "content-type"])))
+  (let [content-type (get-in context [:request :headers "content-type"])]
+    (or
+      (nil? content-type)
+      (media-types content-type))))
+
+(defn as-json-or-pson
+  "This is a stupid hack because of PSON.  We shouldn't have to do this, but
+  liberator does not know how to serialize a map as PSON (as it does with JSON),
+  so we have to tell it how."
+  [x context]
+  (-> (cheshire/generate-string x)
+      (representation/as-response context)
+      (assoc :status 200)
+      (representation/ring-response)))
 
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
 
-  :available-media-types ["application/json"]
+  :available-media-types media-types
 
   :can-put-to-missing? false
 
@@ -151,7 +166,8 @@
 
   :handle-ok
   (fn [context]
-    (ca/get-certificate-status settings subject))
+    (-> (ca/get-certificate-status settings subject)
+        (as-json-or-pson context)))
 
   :malformed?
   (fn [context]
@@ -192,13 +208,15 @@
   [settings]
   :allowed-methods [:get]
 
-  :available-media-types ["application/json"]
+  :available-media-types media-types
 
   :handle-exception utils/exception-handler
 
   :handle-ok
   (fn [context]
-    (ca/get-certificate-statuses settings)))
+    (->
+      (ca/get-certificate-statuses settings)
+      (as-json-or-pson context))))
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
