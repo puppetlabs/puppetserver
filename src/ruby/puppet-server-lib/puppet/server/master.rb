@@ -99,7 +99,7 @@ class Puppet::Server::Master
 
     body = response[:body]
     body_to_return =
-        if body.is_a? String
+        if body.is_a? String or body.nil?
           body
         elsif body.is_a? IO
           body.to_inputstream
