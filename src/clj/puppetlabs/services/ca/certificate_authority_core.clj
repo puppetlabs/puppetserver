@@ -6,6 +6,7 @@
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clojure.string :as string]
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [compojure.core :as compojure :refer [GET ANY PUT]]
@@ -98,10 +99,17 @@
   liberator does not know how to serialize a map as PSON (as it does with JSON),
   so we have to tell it how."
   [x context]
-  (-> (cheshire/generate-string x)
-      (representation/as-response context)
-      (assoc :status 200)
-      (representation/ring-response)))
+  (let [context-with-media-type (if (string/blank? (get-in context
+                                                           [:representation
+                                                            :media-type]))
+                                  (assoc-in context
+                                            [:representation :media-type]
+                                            "text/pson")
+                                  context)]
+    (-> (cheshire/generate-string x)
+        (representation/as-response context-with-media-type)
+        (assoc :status 200)
+        (representation/ring-response))))
 
 (liberator/defresource certificate-status
   [subject settings]
