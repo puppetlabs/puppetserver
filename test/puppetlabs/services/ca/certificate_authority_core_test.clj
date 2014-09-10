@@ -251,7 +251,34 @@
           (let [request {:uri "/production/certificate_status/doesnotexist"
                          :request-method :get}
                 response (test-app request)]
-            (is (= 404 (:status response))))))
+            (is (= 404 (:status response)))))
+
+        (testing "honors 'Accept: pson' header"
+          (let [request {:uri "/production/certificate_status/localhost"
+                         :request-method :get
+                         :headers {"accept" "pson"}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
+
+        (testing "honors 'Accept: text/pson' header"
+          (let [request {:uri "/production/certificate_status/localhost"
+                         :request-method :get
+                         :headers {"accept" "text/pson"}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
+
+        (testing "honors 'Accept: application/json' header"
+          (let [request {:uri "/production/certificate_status/localhost"
+                         :request-method :get
+                         :headers {"accept" "application/json"}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json")))))
 
       (testing "GET /certificate_statuses"
         (let [response (test-app
@@ -259,7 +286,37 @@
                          :request-method :get})]
           (is (= 200 (:status response)))
           (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))))
+                 (set (json/parse-string (:body response) true)))))
+
+        (testing "with 'Accept: pson'"
+          (let [response (test-app
+                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                         :request-method :get
+                         :headers {"accept" "pson"}})]
+          (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+          (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true))))))
+
+        (testing "with 'Accept: text/pson'"
+          (let [response (test-app
+                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                         :request-method :get
+                         :headers {"accept" "text/pson"}})]
+          (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+          (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true))))))
+
+        (testing "with 'Accept: application/json'"
+          (let [response (test-app
+                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                         :request-method :get
+                         :headers {"accept" "application/json"}})]
+          (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
+          (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
     (let [tmp-ssldir (ks/temp-dir)
