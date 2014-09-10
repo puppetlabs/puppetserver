@@ -84,7 +84,7 @@
       (not (contains? #{:signed :revoked} desired-state)))))
 
 (def media-types
-  #{"application/json" "text/pson" "pson"})
+  #{"application/json" "text/pson"})
 
 (defn content-type-valid?
   [context]
