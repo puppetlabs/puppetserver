@@ -251,7 +251,25 @@
           (let [request {:uri "/production/certificate_status/doesnotexist"
                          :request-method :get}
                 response (test-app request)]
-            (is (= 404 (:status response))))))
+            (is (= 404 (:status response)))))
+
+        (testing "honors 'Accept: text/pson' header"
+          (let [request {:uri "/production/certificate_status/localhost"
+                         :request-method :get
+                         :headers {"accept" "text/pson"}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
+
+        (testing "honors 'Accept: application/json' header"
+          (let [request {:uri "/production/certificate_status/localhost"
+                         :request-method :get
+                         :headers {"accept" "application/json"}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json")))))
 
       (testing "GET /certificate_statuses"
         (let [response (test-app
@@ -259,7 +277,27 @@
                          :request-method :get})]
           (is (= 200 (:status response)))
           (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))))
+                 (set (json/parse-string (:body response) true)))))
+
+        (testing "with 'Accept: text/pson'"
+          (let [response (test-app
+                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                         :request-method :get
+                         :headers {"accept" "text/pson"}})]
+          (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+          (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true))))))
+
+        (testing "with 'Accept: application/json'"
+          (let [response (test-app
+                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                         :request-method :get
+                         :headers {"accept" "application/json"}})]
+          (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
+          (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
     (let [tmp-ssldir (ks/temp-dir)
@@ -402,22 +440,6 @@
                          {:uri            "/production/certificate_status/test-agent"
                           :request-method :put
                           :headers        {"content-type" "text/pson"}
-                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-          (is (true? (fs/exists? signed-cert-path)))
-          (is (= 204 (:status response)))))))
-
-  (testing "a signing request w/ a 'pson' content-type succeeds"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
-
-      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
-        (is (false? (fs/exists? signed-cert-path)))
-        (let [response (test-app
-                         {:uri            "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :headers        {"content-type" "pson"}
                           :body           (body-stream "{\"desired_state\":\"signed\"}")})]
           (is (true? (fs/exists? signed-cert-path)))
           (is (= 204 (:status response)))))))
