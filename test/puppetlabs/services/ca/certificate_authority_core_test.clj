@@ -267,7 +267,8 @@
                          :headers {"accept" "text/pson"}}
                 response (test-app request)]
             (is (= 200 (:status response))
-                (ks/pprint-to-string response)))))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson")))))
 
       (testing "GET /certificate_statuses"
         (let [response (test-app
@@ -292,6 +293,7 @@
                          :request-method :get
                          :headers {"accept" "text/pson"}})]
           (is (= 200 (:status response)))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
           (is (= #{localhost-status test-agent-status revoked-agent-status}
                  (set (json/parse-string (:body response) true)))))))))
 
