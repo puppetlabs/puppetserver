@@ -297,13 +297,12 @@
   (.size (:pool (get-pool-data-by-descriptor context descriptor))))
 
 (schema/defn ^:always-validate
-  borrow-from-pool
+  borrow-from-pool :- JRubyPuppet
   "Borrows a JRubyPuppet interpreter from the pool which matches the provided
   pool-descriptor. If there are no instances left in the pool then this function
   will block until there is one available."
   [context :- PoolContext
    descriptor :- PoolDescriptor]
-  {:post [(instance? JRubyPuppet %)]}
   (let [{:keys [pool]}   (get-pool-data-by-descriptor context descriptor)
         instance  (.take pool)]
     (validate-instance-from-pool! instance pool)))
@@ -338,6 +337,7 @@
     (.put (:pool pool-data) instance)))
 
 (schema/defn ^:always-validate
+  ;; TODO: remove this
   extract-default-pool-descriptor :- PoolDescriptor
   "Extract the default pool descriptor, based on the service configuration.
   The default pool descriptor is simply the first one that appears in the

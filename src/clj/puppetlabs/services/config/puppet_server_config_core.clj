@@ -92,10 +92,10 @@
 (schema/defn ^:always-validate
   get-puppet-config :- Config
   "Returns all of the configuration values for puppet-server from JRubyPuppet."
-  [jruby-service pool-descriptor]
+  [jruby-service]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet
-    jruby-puppet jruby-service pool-descriptor
+    jruby-puppet jruby-service
     (let [config (get-puppet-config* jruby-puppet)]
       (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
 

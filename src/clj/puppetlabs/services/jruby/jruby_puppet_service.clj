@@ -5,6 +5,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]))
 
+(def default-desc {:environment :production})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -22,40 +24,33 @@
                      (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path])))]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
-      (let [pool-context (core/create-pool-context config (get-profiler))
-            default-pool-descriptor (core/extract-default-pool-descriptor config)]
+      (let [pool-context (core/create-pool-context config (get-profiler))]
         (future
           (shutdown-on-error
             (tk-services/service-id this)
             #(core/prime-pools! pool-context)))
 
-        (assoc context :pool-context pool-context
-                       :default-pool-descriptor default-pool-descriptor))))
+        (assoc context :pool-context pool-context))))
 
   (borrow-instance
-    [this pool-desc]
+    [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool pool-context pool-desc)))
+      (core/borrow-from-pool pool-context default-desc)))
 
   (borrow-instance
-    [this pool-desc timeout]
+    [this timeout]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context pool-desc timeout)))
+      (core/borrow-from-pool-with-timeout pool-context default-desc timeout)))
 
   (return-instance
-    [this pool-desc jruby-instance]
+    [this jruby-instance]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/return-to-pool pool-context pool-desc jruby-instance)))
+      (core/return-to-pool pool-context default-desc jruby-instance)))
 
   (free-instance-count
-    [this pool-desc]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/free-instance-count pool-context pool-desc)))
-
-  (get-default-pool-descriptor
     [this]
-    (-> (tk-services/service-context this)
-        (:default-pool-descriptor))))
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/free-instance-count pool-context default-desc))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
@@ -65,11 +60,10 @@
     (with-jruby-puppet
       jruby-puppet
       jruby-service
-      pool-descriptor
       (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
-  [jruby-puppet jruby-service pool-descriptor & body]
-  `(let [~jruby-puppet (jruby/borrow-instance ~jruby-service ~pool-descriptor)]
+  [jruby-puppet jruby-service & body]
+  `(let [~jruby-puppet (jruby/borrow-instance ~jruby-service)]
      (try
        ~@body
        (finally
-         (jruby/return-instance ~jruby-service ~pool-descriptor ~jruby-puppet)))))
+         (jruby/return-instance ~jruby-service ~jruby-puppet)))))

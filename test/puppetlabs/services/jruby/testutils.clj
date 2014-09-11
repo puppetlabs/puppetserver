@@ -7,6 +7,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 
+;; TODO: remove this
 (def prod-pool-descriptor {:environment :production})
 
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])

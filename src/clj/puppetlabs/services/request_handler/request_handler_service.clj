@@ -10,28 +10,19 @@
   {:environment (keyword environment)})
 
 (defn- handle-request
-  [pool-descriptor request jruby-service]
-  (jruby/with-jruby-puppet jruby-puppet jruby-service pool-descriptor
+  [request jruby-service]
+  (jruby/with-jruby-puppet jruby-puppet jruby-service
     (core/handle-request request jruby-puppet)))
 
 (tk/defservice request-handler-service
                handler/RequestHandlerService
-               [[:JRubyPuppetService get-default-pool-descriptor]]
+               []
                (handle-request
                  [this request]
-                 (let [pool-descriptor (if-let [environment (:environment request)]
-                                         ;; TODO : This should later intelligently choose the pool
-                                         ;; TODO : descriptor based up on the environment of the req.
-                                         (get-default-pool-descriptor)
-                                         #_(environment->pool-descriptor environment)
-                                         (get-default-pool-descriptor))
-                       jruby-service (tk-services/get-service this :JRubyPuppetService)]
-                   (handle-request pool-descriptor request jruby-service)))
+                 (let [jruby-service (tk-services/get-service this :JRubyPuppetService)]
+                   (handle-request request jruby-service)))
 
                (handle-request
                  [this environment request]
-                 ;; TODO : This should later intelligently choose the pool
-                 ;; TODO : descriptor based up on the environment of the req.
-                 (let [pool-descriptor (get-default-pool-descriptor)
-                       jruby-service (tk-services/get-service this :JRubyPuppetService)]
-                   (handle-request pool-descriptor request jruby-service))))
+                 (let [jruby-service (tk-services/get-service this :JRubyPuppetService)]
+                   (handle-request request jruby-service))))

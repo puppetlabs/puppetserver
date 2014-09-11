@@ -13,18 +13,15 @@
 (tk/defservice puppet-server-config-service
   PuppetServerConfigService
   [[:ConfigService get-config get-in-config]
-   [:JRubyPuppetService get-default-pool-descriptor]
-   [:WebserverService override-webserver-settings!]]
+   [:WebserverService override-webserver-settings!]
+   [:JRubyPuppetService]]
 
   (init
     [this context]
     (let [tk-config (get-config)]
       (core/validate-tk-config! tk-config)
       (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
-            pool-descriptor (get-default-pool-descriptor)
-            puppet-config (core/get-puppet-config
-                            jruby-service
-                            pool-descriptor)]
+            puppet-config (core/get-puppet-config jruby-service)]
         (log/debugf
           "Initializing with the following settings from core Puppet:\n%s"
           (ks/pprint-to-string puppet-config))

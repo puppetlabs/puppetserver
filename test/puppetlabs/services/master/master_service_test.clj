@@ -38,7 +38,6 @@
               (jruby/with-jruby-puppet
                 jruby-puppet
                 jruby-service
-                (jruby-protocol/get-default-pool-descriptor jruby-service)
 
                 (letfn [(test-path!
                           [setting expected-path]
