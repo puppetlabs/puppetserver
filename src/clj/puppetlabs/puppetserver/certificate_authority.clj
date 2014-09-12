@@ -961,8 +961,11 @@
 
 (schema/defn validate-csr
   "Validates the CSR (on disk) for the specified subject.
-  Assumes existence of the CSR on disk.
-  If the CSR is invalid, returns a user-facing message. Otherwise, returns nil."
+   Assumes existence of the CSR on disk; duplicate CSR or
+   certificate policy will not be checked.
+
+   If the CSR is invalid, returns a user-facing message.
+   Otherwise, returns nil."
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
@@ -971,7 +974,6 @@
     (sling/try+
       ;; Matching the order of validations here with
       ;; 'process-csr-submission!' when autosigning
-      (validate-duplicate-cert-policy! csr settings)
       (validate-subject! subject csr-subject)
       (ensure-no-dns-alt-names! csr)
       (validate-extensions! extensions)

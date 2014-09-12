@@ -13,6 +13,9 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities
+
 (def test-resources-dir "./dev-resources/puppetlabs/services/ca/certificate_authority_core_test")
 (def cadir (str test-resources-dir "/master/conf/ssl/ca"))
 (def test-pems-dir (str test-resources-dir "/pems"))
@@ -43,6 +46,18 @@
       :cert-inventory        (str cadir "/inventory.txt")
       :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]}))
 
+(defn ca-sandbox
+  "Copy the static 'cadir' to a temporary directory and return
+   the 'ca-settings' map rooted at the temporary directory.
+   The directory will be deleted when the JVM exits."
+  []
+  (let [tmp-ssldir (ks/temp-dir)]
+    (fs/copy-dir cadir tmp-ssldir)
+    (ca-settings (str tmp-ssldir "/ca"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Tests
+
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint"
     (let [response (handle-get-certificate-revocation-list
@@ -63,9 +78,7 @@
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [tmp-ssldir (ks/temp-dir)
-        _          (fs/copy-dir cadir tmp-ssldir)
-        settings   (ca-settings (str tmp-ssldir "/ca"))
+  (let [settings   (ca-sandbox)
         static-csr (ca/path-to-cert-request (str cadir "/requests") "test-agent")]
     (logutils/with-test-logging
       (testing "when autosign results in true"
@@ -319,10 +332,8 @@
                  (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
+    (let [settings (ca-sandbox)
+          test-app (compojure-app settings "42.42.42")]
       (testing "PUT"
         (testing "signing a cert"
           (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -378,10 +389,8 @@
             (is (= "Invalid certificate subject." (:body response)))))
 
         (testing "Additional error handling on PUT requests"
-          (let [tmp-ssldir  (ks/temp-dir)
-                _           (fs/copy-dir cadir tmp-ssldir)
-                settings    (ca-settings (str tmp-ssldir "/ca"))
-                test-app    (compojure-app settings "42.42.42")]
+          (let [settings (ca-sandbox)
+                test-app (compojure-app settings "42.42.42")]
 
             (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
               (let [request {:uri            "/production/certificate_status/test-agent"
@@ -432,67 +441,55 @@
                                 :request-method :delete}))))))))
 
   (testing "a signing request w/ a 'application/json' content-type succeeds"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
-
-      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
-        (is (false? (fs/exists? signed-cert-path)))
-        (let [response (test-app
-                         {:uri            "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :headers        {"content-type" "application/json"}
-                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-          (is (true? (fs/exists? signed-cert-path)))
-          (is (= 204 (:status response)))))))
+    (let [settings         (ca-sandbox)
+          test-app         (compojure-app settings "42.42.42")
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri            "/production/certificate_status/test-agent"
+                       :request-method :put
+                       :headers        {"content-type" "application/json"}
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a 'text/pson' content-type succeeds"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
-
-      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
-        (is (false? (fs/exists? signed-cert-path)))
-        (let [response (test-app
-                         {:uri            "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :headers        {"content-type" "text/pson"}
-                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-          (is (true? (fs/exists? signed-cert-path)))
-          (is (= 204 (:status response)))))))
+    (let [settings         (ca-sandbox)
+          test-app         (compojure-app settings "42.42.42")
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri            "/production/certificate_status/test-agent"
+                       :request-method :put
+                       :headers        {"content-type" "text/pson"}
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a 'pson' content-type succeeds"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
-
-      (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
-        (is (false? (fs/exists? signed-cert-path)))
-        (let [response (test-app
-                         {:uri            "/production/certificate_status/test-agent"
-                          :request-method :put
-                          :headers        {"content-type" "pson"}
-                          :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-          (is (true? (fs/exists? signed-cert-path)))
-          (is (= 204 (:status response)))))))
+    (let [settings         (ca-sandbox)
+          test-app         (compojure-app settings "42.42.42")
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri            "/production/certificate_status/test-agent"
+                       :request-method :put
+                       :headers        {"content-type" "pson"}
+                       :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a bogus content-type header results in a HTTP 415"
-    (let [tmp-ssldir (ks/temp-dir)
-          _          (fs/copy-dir cadir tmp-ssldir)
-          settings   (ca-settings (str tmp-ssldir "/ca"))
-          test-app   (compojure-app settings "42.42.42")]
-
-      (let [response (test-app
-                       {:uri            "/production/certificate_status/test-agent"
-                        :request-method :put
-                        :headers        {"content-type" "bogus"}
-                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
-        (is (= 415 (:status response))
-            (ks/pprint-to-string response))
-        (is (= (:body response) "Unsupported media type."))))))
+    (let [settings (ca-sandbox)
+          test-app (compojure-app settings "42.42.42")
+          response (test-app
+                    {:uri            "/production/certificate_status/test-agent"
+                     :request-method :put
+                     :headers        {"content-type" "bogus"}
+                     :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+      (is (= 415 (:status response))
+          (ks/pprint-to-string response))
+      (is (= (:body response) "Unsupported media type.")))))
 
 (deftest cert-status-invalid-csrs
   (testing "Asking /certificate_status to sign invalid CSRs"
@@ -522,3 +519,19 @@
               (ks/pprint-to-string response))
           (is (= (:body response)
                  "Found extensions that are not permitted: 1.9.9.9.9.9.9")))))))
+
+(deftest cert-status-duplicate-certs
+  (testing "signing a certificate doesn't depend on $allow-duplicate-certs"
+    (doseq [bool [false true]]
+      (testing bool
+        (let [settings    (assoc (ca-sandbox) :allow-duplicate-certs bool)
+              test-app    (compojure-app settings "1.2.3.4")
+              signed-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+          (is (false? (fs/exists? signed-path)))
+          (let [response (test-app
+                          {:uri "/production/certificate_status/test-agent"
+                           :request-method :put
+                           :body (body-stream "{\"desired_state\":\"signed\"}")})]
+            (is (true? (fs/exists? signed-path)))
+            (is (= 204 (:status response))
+                (ks/pprint-to-string response))))))))
