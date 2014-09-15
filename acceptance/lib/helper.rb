@@ -83,7 +83,7 @@ module PuppetServerExtensions
     end
   end
 
-  def initialize_ssl
+  def puppetserver_initialize_ssl
     hostname = on(master, 'facter hostname').stdout.strip
     fqdn = on(master, 'facter fqdn').stdout.strip
 
