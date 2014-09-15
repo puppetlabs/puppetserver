@@ -1,2 +1,2 @@
 step "Validate Sign Cert." 
-  initialize_ssl # from lib/helper.rb
+  puppetserver_initialize_ssl # from lib/helper.rb
