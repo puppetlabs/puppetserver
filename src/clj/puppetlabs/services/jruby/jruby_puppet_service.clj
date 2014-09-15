@@ -5,8 +5,6 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]))
 
-(def default-desc {:environment :production})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -35,22 +33,22 @@
   (borrow-instance
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool pool-context default-desc)))
+      (core/borrow-from-pool pool-context)))
 
   (borrow-instance
     [this timeout]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context default-desc timeout)))
+      (core/borrow-from-pool-with-timeout pool-context timeout)))
 
   (return-instance
     [this jruby-instance]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/return-to-pool pool-context default-desc jruby-instance)))
+      (core/return-to-pool pool-context jruby-instance)))
 
   (free-instance-count
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/free-instance-count pool-context default-desc))))
+      (core/free-instance-count pool-context))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of

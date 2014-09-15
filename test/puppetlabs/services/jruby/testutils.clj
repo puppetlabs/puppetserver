@@ -7,9 +7,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 
-;; TODO: remove this
-(def prod-pool-descriptor {:environment :production})
-
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
 
 (def conf-dir "./target/master-conf")
@@ -36,59 +33,32 @@
 ;; JRubyPuppet Test util functions
 
 (defn jruby-puppet-tk-config
-  "Create a JRubyPuppet pool config which includes the provided list of pool
-  descriptions.  Suitable for use in bootstrapping trapperkeeper."
-  [pools-list]
-  {:os-settings {:ruby-load-path ruby-load-path}
-   :jruby-puppet {:gem-home        gem-home
-                  :master-conf-dir conf-dir
-                  :jruby-pools     pools-list}})
+  "Create a JRubyPuppet pool config with the given pool config.  Suitable for use
+  in bootstrapping trapperkeeper."
+  [pool-config]
+  {:os-settings  {:ruby-load-path ruby-load-path}
+   :jruby-puppet pool-config})
 
 (defn jruby-puppet-config
-  "Create a JRubyPuppet pool config which includes the provided list of pool
-  descriptions.  Suitable for use when calling jruby service functions directly."
-  [pools-list]
-  {:ruby-load-path  ruby-load-path
-   :gem-home        gem-home
-   :master-conf-dir conf-dir
-   :jruby-pools     pools-list})
+  "Create a JRubyPuppet pool config. If `pool-size` is provided then the
+  JRubyPuppet pool size with be included with the config, otherwise no size
+  will be specified."
+  ([]
+   {:ruby-load-path  ruby-load-path
+    :gem-home        gem-home
+    :master-conf-dir conf-dir})
+  ([pool-size]
+   (assoc (jruby-puppet-config) :max-instances pool-size)))
 
 (def default-config-no-size
-  (jruby-puppet-config [{:environment "production"}]))
+  (jruby-puppet-config))
 
 (def default-profiler
   nil)
 
-(defn jruby-puppet-config-with-prod-env
-  "Create some settings used for creating a JRubyPuppet pool via
-  `create-jruby-pool`.  Suitable for use when calling jruby service functions
-  directly."
-  ([] (jruby-puppet-config-with-prod-env 1))
-  ([size]
-   (jruby-puppet-config [{:environment "production"
-                          :size        size}])))
-
-(defn jruby-puppet-tk-config-with-prod-env
-  "Create some settings used for creating a JRubyPuppet pool via
-  `create-jruby-pool`.  Suitable for use in bootstrapping trapperkeeper."
-  ([] (jruby-puppet-tk-config-with-prod-env 1))
-  ([size]
-   (jruby-puppet-tk-config [{:environment "production"
-                             :size        size}])))
-
-
-(defn jruby-puppet-config-with-prod-test-env
-  "Create a settings structure which contains a `production` environment of a
-  given size as well as an environment named `test` of a given size."
-  [prod-size test-size]
-  (jruby-puppet-config [{:environment "production"
-                         :size prod-size}
-                        {:environment "test"
-                         :size test-size}]))
-
 (defn create-jruby-instance
   ([]
-   (create-jruby-instance (jruby-puppet-config-with-prod-env 1)))
+   (create-jruby-instance (jruby-puppet-config 1)))
   ([config]
    (jruby-core/create-jruby-instance config default-profiler)))
 
@@ -96,9 +66,9 @@
   "Creates a mock implementation of the JRubyPuppet interface."
   [& _]
   (reify JRubyPuppet
-    (handleRequest [this request]
+    (handleRequest [_ _]
       (JRubyPuppetResponse. 0 nil nil nil))
-    (getSetting [this setting]
+    (getSetting [_ _]
       (Object.))))
 
 (defn mock-jruby-fixture

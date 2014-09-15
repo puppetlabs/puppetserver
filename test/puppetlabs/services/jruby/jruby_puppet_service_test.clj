@@ -16,7 +16,7 @@
 (use-fixtures :each testutils/mock-jruby-fixture)
 
 (def jruby-service-test-config
-  {:jruby-puppet (testutils/jruby-puppet-config-with-prod-env 1)})
+  {:jruby-puppet (testutils/jruby-puppet-config 1)})
 
 (deftest test-error-during-init
   (testing
@@ -50,7 +50,7 @@
         app
         [jruby-puppet-pooled-service
          profiler/puppet-profiler-service]
-        {:jruby-puppet (testutils/jruby-puppet-config-with-prod-env pool-size)}
+        {:jruby-puppet (testutils/jruby-puppet-config pool-size)}
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
               (mapv (fn [_] (jruby-protocol/borrow-instance service))
@@ -89,7 +89,6 @@
         (with-jruby-puppet
           jruby-puppet
           service
-          testutils/prod-pool-descriptor
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
         (is (= 1 (jruby-protocol/free-instance-count service)))))))
