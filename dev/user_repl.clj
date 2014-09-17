@@ -30,7 +30,8 @@
                               :master-conf-dir      jruby-testutils/conf-dir}
                :webserver    {:client-auth "want"
                               :ssl-host    "localhost"
-                              :ssl-port    8140}})))
+                              :ssl-port    8140}
+               :certificate-authority {:certificate-status {:client-whitelist []}}})))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 
