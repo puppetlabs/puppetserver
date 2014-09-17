@@ -55,7 +55,8 @@
    in dev-resources, unless a different `cadir` is provided."
   ([] (ca-test-settings cadir))
   ([cadir]
-     {:autosign              true
+     {:access-control        {:certificate-status {:client-whitelist []}}
+      :autosign              true
       :allow-duplicate-certs false
       :ca-name               "test ca"
       :ca-ttl                1

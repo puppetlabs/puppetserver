@@ -37,7 +37,8 @@
   in bootstrapping trapperkeeper."
   [pool-config]
   {:os-settings  {:ruby-load-path ruby-load-path}
-   :jruby-puppet pool-config})
+   :jruby-puppet pool-config
+   :certificate-authority {:certificate-status {:client-whitelist []}}})
 
 (defn jruby-puppet-config
   "Create a JRubyPuppet pool config. If `pool-size` is provided then the
