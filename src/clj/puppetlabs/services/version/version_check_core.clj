@@ -35,13 +35,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
-(defn schema-match
+(defn schema-match?
   [schema obj]
   (nil? (schema/check schema obj)))
 
 (schema/defn get-coords :- ProductCoords
   [product-name :- ProductName]
-  (condp schema-match product-name
+  (condp schema-match? product-name
     schema/Str {:group-id default-group-id
                 :artifact-id product-name}
     ProductCoords product-name))
@@ -53,7 +53,7 @@
   (version/get-version group-id artifact-id))
 
 (def version
-  "Get the version number of this PuppetDB installation."
+  "Get the version number of this installation."
   (memoize version*))
 
 (schema/defn ^:always-validate update-info :- (schema/maybe UpdateInfo)
