@@ -1008,3 +1008,10 @@
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:dns-name ["ahostname" "foo*bar"]}})))))
+
+(deftest config-test
+  (testing "throws meaningful user error when required config not found"
+    (is (thrown-with-msg?
+         IllegalStateException
+         #".*certificate-authority: \{ certificate-status: \{ client-whitelist: \[...] } }.*puppet-server.conf.*"
+         (config->ca-settings {})))))

@@ -36,7 +36,7 @@
 (def AccessControl
   "Defines which clients are allowed access to the various CA endpoints.
    Each endpoint has a sub-section containing the client whitelist.
-   Currently we only control access to the certificate_status endpoint."
+   Currently we only control access to the certificate_status(es) endpoints."
   {:certificate-status {:client-whitelist [schema/Str]}})
 
 (def CaSettings
@@ -635,8 +635,14 @@
 (schema/defn ^:always-validate
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
-  service return a map with of all the CA settings."
+   service return a map with of all the CA settings.
+   Throws an exception if any required configuration is not found."
   [{:keys [puppet-server os-settings certificate-authority]}]
+  (if-not certificate-authority
+    (throw (IllegalStateException.
+            (str "Missing required configuration for CA; "
+                 "certificate-authority: { certificate-status: { client-whitelist: [...] } } "
+                 "not found in puppet-server.conf"))))
   (-> (select-keys puppet-server (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path os-settings))
       (assoc :access-control certificate-authority)))
