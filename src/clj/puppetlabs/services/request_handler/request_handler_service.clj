@@ -16,9 +16,4 @@
                (handle-request
                  [this request]
                  (let [jruby-service (tk-services/get-service this :JRubyPuppetService)]
-                   (handle-request request jruby-service)))
-
-               (handle-request
-                 [this environment request]
-                 (let [jruby-service (tk-services/get-service this :JRubyPuppetService)]
                    (handle-request request jruby-service))))
