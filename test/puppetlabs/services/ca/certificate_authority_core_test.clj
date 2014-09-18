@@ -586,27 +586,28 @@
             (is (= "Forbidden." (:body response))))))))
 
   (testing "a request with a certificate that is on the whitelist is allowed"
-    (testing "certificate_status"
-      (let [settings (assoc (ca-settings)
-                       :access-control {:certificate-status
-                                        {:client-whitelist ["localhost"]}})
-            test-app (compojure-app settings "1.2.3.4")
-            response (test-app
-                      {:uri             "/production/certificate_status/test-agent"
-                       :request-method  :get
-                       :ssl-client-cert localhost-cert})]
-        (is (= 200 (:status response)))
-        (is (= test-agent-status (json/parse-string (:body response) true)))))
+    (doseq [whitelist [["localhost"] ["foo!" "localhost"]]]
+      (testing "certificate_status"
+        (let [settings (assoc (ca-settings)
+                         :access-control {:certificate-status
+                                          {:client-whitelist whitelist}})
+              test-app (compojure-app settings "1.2.3.4")
+              response (test-app
+                        {:uri             "/production/certificate_status/test-agent"
+                         :request-method  :get
+                         :ssl-client-cert localhost-cert})]
+          (is (= 200 (:status response)))
+          (is (= test-agent-status (json/parse-string (:body response) true)))))
 
-    (testing "certificate_statuses"
-      (let [settings (assoc (ca-settings)
-                       :access-control {:certificate-status
-                                        {:client-whitelist ["localhost"]}})
-            test-app (compojure-app settings "1.2.3.4")
-            response (test-app
-                      {:uri             "/production/certificate_statuses/all"
-                       :request-method  :get
-                       :ssl-client-cert localhost-cert})]
-        (is (= 200 (:status response)))
-        (is (= #{test-agent-status revoked-agent-status localhost-status}
-               (set (json/parse-string (:body response) true))))))))
+      (testing "certificate_statuses"
+        (let [settings (assoc (ca-settings)
+                         :access-control {:certificate-status
+                                          {:client-whitelist whitelist}})
+              test-app (compojure-app settings "1.2.3.4")
+              response (test-app
+                        {:uri             "/production/certificate_statuses/all"
+                         :request-method  :get
+                         :ssl-client-cert localhost-cert})]
+          (is (= 200 (:status response)))
+          (is (= #{test-agent-status revoked-agent-status localhost-status}
+                 (set (json/parse-string (:body response) true)))))))))
