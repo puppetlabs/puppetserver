@@ -19,7 +19,8 @@
    profiler/puppet-profiler-service])
 
 (def required-config
-  (merge (jruby-testutils/jruby-puppet-tk-config-with-prod-env)
+  (merge (jruby-testutils/jruby-puppet-tk-config
+           (jruby-testutils/jruby-puppet-config 1))
          {:webserver    {:port 8081}}))
 
 (def test-resources-dir
@@ -42,10 +43,12 @@
 
         (is (= (-> (:jruby-puppet service-config)
                    (dissoc :master-conf-dir))
-               (-> (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))
+               (-> (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config
+                                    (jruby-testutils/jruby-puppet-config 1)))
                    (dissoc :master-conf-dir))))
         (is (= (:os-settings service-config)
-               (:os-settings (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1))))
+               (:os-settings (jruby-testutils/jruby-puppet-tk-config
+                               (jruby-testutils/jruby-puppet-config 1)))))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
         (is (= (set (keys (:puppet-server service-config)))

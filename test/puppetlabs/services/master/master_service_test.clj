@@ -30,15 +30,16 @@
              request-handler-service
              profiler/puppet-profiler-service]
 
-            (-> (jruby-testutils/jruby-puppet-tk-config-with-prod-env 1)
-                (assoc-in [:jruby-puppet :master-conf-dir] "dev-resources/puppetlabs/services/master/conf")
+            (-> (jruby-testutils/jruby-puppet-tk-config
+                  (jruby-testutils/jruby-puppet-config 1))
+                (assoc-in [:jruby-puppet :master-conf-dir]
+                          "dev-resources/puppetlabs/services/master/conf")
                 (assoc :webserver {:port 8081}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet
                 jruby-puppet
                 jruby-service
-                (jruby-protocol/get-default-pool-descriptor jruby-service)
 
                 (letfn [(test-path!
                           [setting expected-path]
