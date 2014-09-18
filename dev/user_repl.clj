@@ -23,12 +23,11 @@
                request-handler-service
                puppet-server-config-service
                certificate-authority-service]
-              {:global       {:logging-config "./dev/logback-dev.xml"}
-               :os-settings  {:ruby-load-path jruby-testutils/ruby-load-path}
-               :jruby-puppet {:gem-home       jruby-testutils/gem-home
-                              :jruby-pools     [{:environment "production"
-                                                 :size        1}]
-                              :master-conf-dir jruby-testutils/conf-dir}
+              {:global       {:logging-config       "./dev/logback-dev.xml"}
+               :os-settings  {:ruby-load-path       jruby-testutils/ruby-load-path}
+               :jruby-puppet {:gem-home             jruby-testutils/gem-home
+                              :max-active-instances 1
+                              :master-conf-dir      jruby-testutils/conf-dir}
                :webserver    {:client-auth "want"
                               :ssl-host    "localhost"
                               :ssl-port    8140}})))

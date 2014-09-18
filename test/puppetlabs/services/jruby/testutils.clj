@@ -48,7 +48,7 @@
     :gem-home        gem-home
     :master-conf-dir conf-dir})
   ([pool-size]
-   (assoc (jruby-puppet-config) :max-instances pool-size)))
+   (assoc (jruby-puppet-config) :max-active-instances pool-size)))
 
 (def default-config-no-size
   (jruby-puppet-config))

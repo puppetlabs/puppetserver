@@ -58,14 +58,14 @@
     * :master-var-dir - path to the puppetmaster' var dir;
                         if not specified, will use the puppet default.
 
-    * :max-instances - The maximum number of JRubyPuppet instances that will
-                       be pooled. If not specified, the system's number of
-                       CPUs+2 will be used."
+    * :max-active-instances - The maximum number of JRubyPuppet instances that
+                              will be pooled. If not specified, the system's
+                              number of CPUs+2 will be used."
   {:ruby-load-path [schema/Str]
    :gem-home       schema/Str
    (schema/optional-key :master-conf-dir) schema/Str
    (schema/optional-key :master-var-dir) schema/Str
-   (schema/optional-key :max-instances) schema/Int})
+   (schema/optional-key :max-active-instances) schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -167,7 +167,7 @@
 (schema/defn ^:always-validate
   create-pool-from-config :- PoolState
   "Create a new PoolData based on the config input."
-  [{size :max-instances} :- PoolConfig]
+  [{size :max-active-instances} :- PoolConfig]
   (let [size (or size default-pool-size)]
     {:pool         (instantiate-free-pool size)
      :size         size
