@@ -58,7 +58,7 @@
     * :master-var-dir - path to the puppetmaster' var dir;
                         if not specified, will use the puppet default.
 
-    * :max-instances - The maximum number of JRubyPuppet isntances that will
+    * :max-instances - The maximum number of JRubyPuppet instances that will
                        be pooled. If not specified, the system's number of
                        CPUs+2 will be used."
   {:ruby-load-path [schema/Str]
@@ -218,10 +218,9 @@
     (try
       (let [count (.remainingCapacity pool)]
         (dotimes [i count]
-          (log/debugf "Priming JRubyPuppet for the instance %d of %d"
-                      (inc i) count)
+          (log/debugf "Priming JRubyPuppet instance %d of %d" (inc i) count)
           (.put pool (create-jruby-instance config (:profiler context)))
-          (log/infof "Finished creation the JRubyPuppet instance %d of %d"
+          (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      (inc i) count))
         (mark-as-initialized! context))
       (catch Exception e
