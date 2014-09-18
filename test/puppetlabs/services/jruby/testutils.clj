@@ -37,6 +37,8 @@
   in bootstrapping trapperkeeper."
   [pool-config]
   {:os-settings  {:ruby-load-path ruby-load-path}
+   :product     {:name "puppet-server"
+                 :update-server-url "http://localhost:11111"}
    :jruby-puppet pool-config
    :certificate-authority {:certificate-status {:client-whitelist []}}})
 

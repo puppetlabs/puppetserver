@@ -11,6 +11,7 @@
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.services.jruby.testutils :as jruby-testutils]
     [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+    [puppetlabs.services.version.version-check-service :as version-check-service]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [me.raynes.fs :as fs]))
 
@@ -28,7 +29,8 @@
              jruby/jruby-puppet-pooled-service
              jetty9-service
              request-handler-service
-             profiler/puppet-profiler-service]
+             profiler/puppet-profiler-service
+             version-check-service/version-check-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config 1))
