@@ -33,12 +33,19 @@
    :requestdir     schema/Str
    :csr-attributes schema/Str})
 
+(def AccessControl
+  "Defines which clients are allowed access to the various CA endpoints.
+   Each endpoint has a sub-section containing the client whitelist.
+   Currently we only control access to the certificate_status(es) endpoints."
+  {:certificate-status {:client-whitelist [schema/Str]}})
+
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:autosign              (schema/either schema/Str schema/Bool)
+  {:access-control        AccessControl
    :allow-duplicate-certs schema/Bool
+   :autosign              (schema/either schema/Str schema/Bool)
    :cacert                schema/Str
    :cacrl                 schema/Str
    :cakey                 schema/Str
@@ -133,7 +140,13 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings :autosign :ca-ttl :ca-name :ruby-load-path :allow-duplicate-certs))
+  (dissoc ca-settings
+          :access-control
+          :allow-duplicate-certs
+          :autosign
+          :ca-name
+          :ca-ttl
+          :ruby-load-path))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -622,10 +635,17 @@
 (schema/defn ^:always-validate
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
-  service return a map with of all the CA settings."
-  [{:keys [puppet-server os-settings]}]
+   service return a map with of all the CA settings.
+   Throws an exception if any required configuration is not found."
+  [{:keys [puppet-server os-settings certificate-authority]}]
+  (if-not certificate-authority
+    (throw (IllegalStateException.
+            (str "Missing required configuration for CA; "
+                 "certificate-authority: { certificate-status: { client-whitelist: [...] } } "
+                 "not found in puppet-server.conf"))))
   (-> (select-keys puppet-server (keys CaSettings))
-      (assoc :ruby-load-path (:ruby-load-path os-settings))))
+      (assoc :ruby-load-path (:ruby-load-path os-settings))
+      (assoc :access-control certificate-authority)))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings

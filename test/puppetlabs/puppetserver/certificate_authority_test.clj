@@ -55,7 +55,8 @@
    in dev-resources, unless a different `cadir` is provided."
   ([] (ca-test-settings cadir))
   ([cadir]
-     {:autosign              true
+     {:access-control        {:certificate-status {:client-whitelist []}}
+      :autosign              true
       :allow-duplicate-certs false
       :ca-name               "test ca"
       :ca-ttl                1
@@ -1007,3 +1008,10 @@
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:dns-name ["ahostname" "foo*bar"]}})))))
+
+(deftest config-test
+  (testing "throws meaningful user error when required config not found"
+    (is (thrown-with-msg?
+         IllegalStateException
+         #".*certificate-authority: \{ certificate-status: \{ client-whitelist: \[...] } }.*puppet-server.conf.*"
+         (config->ca-settings {})))))

@@ -1,6 +1,7 @@
 (ns puppetlabs.services.ca.certificate-authority-core
   (:import  [java.io InputStream])
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.certificate-authority.core :as ca-utils]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as utils]
             [slingshot.slingshot :as sling]
@@ -111,9 +112,47 @@
         (assoc :status 200)
         (representation/ring-response))))
 
+(defn get-subject
+  "Pull the common name of the subject off the certificate."
+  [certificate]
+  (-> certificate
+      (ca/get-subject)
+      (ca-utils/x500-name->CN)))
+
+(defn client-on-whitelist?
+  "Test if the certificate subject is on the certificate-status client whitelist."
+  [{:keys [access-control]} certificate]
+  (let [whitelist (-> access-control
+                      (get-in [:certificate-status :client-whitelist])
+                      (set))
+        client    (get-subject certificate)]
+    (contains? whitelist client)))
+
+(defn log-rejection
+  "Log a message to info stating that the client is not in the
+   certificate_status access control whitelist."
+  [certificate]
+  (let [subject (get-subject certificate)]
+    (log/info
+      (str "Client '" subject "' access to certificate_status rejected;\n"
+           "client not found in whitelist "
+           "certificate-authority: { certificate-status: { client-whitelist: [...] } }"))))
+
+(defn client-allowed-access?
+  "Determines if the client in the request is allowed to access the
+   certificate_status(es) endpoint based on the client whitelist."
+  [settings context]
+  (if-let [client-cert (get-in context [:request :ssl-client-cert])]
+    (if (client-on-whitelist? settings client-cert)
+      true
+      (do (log-rejection client-cert) false))
+    (log/info "Access to certificate_status rejected; no client certificate found")))
+
 (liberator/defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
+
+  :allowed? (partial client-allowed-access? settings)
 
   :available-media-types media-types
 
@@ -215,6 +254,8 @@
 (liberator/defresource certificate-statuses
   [settings]
   :allowed-methods [:get]
+
+  :allowed? (partial client-allowed-access? settings)
 
   :available-media-types media-types
 
