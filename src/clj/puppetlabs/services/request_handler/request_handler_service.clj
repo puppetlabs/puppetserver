@@ -5,10 +5,6 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [puppetlabs.trapperkeeper.services :as tk-services]))
 
-(defn- environment->pool-descriptor
-  [environment]
-  {:environment (keyword environment)})
-
 (defn- handle-request
   [request jruby-service]
   (jruby/with-jruby-puppet jruby-puppet jruby-service
