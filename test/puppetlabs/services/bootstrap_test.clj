@@ -3,22 +3,11 @@
            (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.testutils :refer [with-no-jvm-shutdown-hooks]]
-            [puppetlabs.services.config.puppet-server-config-service
-              :as puppet-server-config-service]
-            [puppetlabs.services.request-handler.request-handler-service
-              :as request-handler-service]
-            [puppetlabs.services.jruby.jruby-puppet-service
-              :as jruby-puppet-service]
             [puppetlabs.services.jruby.testutils :as jruby-testutils]
-            [puppetlabs.services.master.master-service
-              :as master-service]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
             [puppetlabs.trapperkeeper.config :as tk-config]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service
-              :as jetty-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap
               :as tk-bootstrap-testutils]
             [puppetlabs.trapperkeeper.testutils.webserver.common
@@ -32,14 +21,6 @@
 
 (def dev-bootstrap-file
   "./dev/bootstrap.cfg")
-
-(def puppet-server-service-stack
-  [jetty-service/jetty9-service
-   master-service/master-service
-   puppet-server-config-service/puppet-server-config-service
-   jruby-puppet-service/jruby-puppet-pooled-service
-   request-handler-service/request-handler-service
-   profiler/puppet-profiler-service])
 
 (deftest test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."

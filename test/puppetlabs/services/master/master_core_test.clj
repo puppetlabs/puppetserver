@@ -1,7 +1,10 @@
 (ns puppetlabs.services.master.master-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.services.master.master-core :refer :all]
-            [ring.mock.request :as mock]))
+            [ring.mock.request :as mock]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
