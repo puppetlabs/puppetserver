@@ -1,7 +1,7 @@
 (ns puppetlabs.services.version.version-check-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging with-test-logging]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.services.version.version-check-core :refer :all]
             [schema.test :as schema-test]
             [cheshire.core :as json]))
@@ -34,7 +34,6 @@
    :body "aaaaaaaaaaaaaaaaaaaaaaaaaa"})
 
 (deftest test-check-for-updates
-  (System/setProperty "foo.version" "0.0.1")
   (with-test-logging
     (jetty9/with-test-webserver update-available-app port
       (check-for-updates "foo" (format "http://localhost:%s" port))
