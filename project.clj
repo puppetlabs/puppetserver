@@ -9,14 +9,14 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/puppet-server "0.1.17-SNAPSHOT"
+(defproject puppetlabs/puppet-server "0.2.0-SNAPSHOT"
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
-                 [puppetlabs/http-client "0.2.5"]
+                 [puppetlabs/http-client "0.2.7"]
                  [org.jruby/jruby-core "1.7.15" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  [org.jruby/jruby-stdlib "1.7.15"]
                  [com.github.jnr/jffi "1.2.7"]
