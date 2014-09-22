@@ -7,6 +7,14 @@ same technologies that have made PuppetDB successful, and will allow us to make
 great leaps forward in performance, scalability, advanced metrics collection,
 and fine-grained control over the Ruby runtime.
 
+Issue Tracker
+-----
+
+Feature requests?  Found a bug?  Want to see what issues are currently in flight?  Please visit our Jira project:
+
+https://tickets.puppetlabs.com/browse/SERVER
+
+
 Installation
 -----
 
