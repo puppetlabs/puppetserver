@@ -14,7 +14,6 @@ Feature requests?  Found a bug?  Want to see what issues are currently in flight
 
 https://tickets.puppetlabs.com/browse/SERVER
 
-
 Installation
 -----
 
@@ -26,6 +25,24 @@ Developer Documentation
 * [Running Puppet Server From Source](./documentation/dev_running_from_source.markdown)
 * [Debugging and Gems](./documentation/dev_debugging.markdown)
 
+Known Issues
+-----
+
+#### Init script behavior on EL 5 and 6
+
+On EL5 and EL6, if the service is started by executing the init script directly
+while inside a directory that the puppetserver user doesn't have access to, the
+service will start, but log errors to /var/log/puppetserver/puppetserver-daemon.log
+that complain about:
+
+> Could not retrieve fact='hostname', resolution='<anonymous>': Failed while executing '/bin/hostname': Cannot run program "/bin/sh" (in directory "/root"): error=13, Permission denied
+
+The current workarounds for this issue are to use `service puppetserver start`
+instead of `/etc/init.d/puppetserver start` or to invoke the init script from a
+directory the puppetserver user will have access to (/usr/share/puppetserver is
+a good directory for this).
+
+This is captured in https://tickets.puppetlabs.com/browse/SERVER-3
 
 # Special thanks to
 
