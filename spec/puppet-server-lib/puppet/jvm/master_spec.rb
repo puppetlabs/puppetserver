@@ -14,7 +14,7 @@ describe Puppet::Server::Master do
   context "puppet version" do
     it "returns the correct puppet version number" do
       master = Puppet::Server::Master.new({}, nil)
-      master.puppetVersion.should == '3.7.0'
+      master.puppetVersion.should == '3.7.1'
     end
   end
 
