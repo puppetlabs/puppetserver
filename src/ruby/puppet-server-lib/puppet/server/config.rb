@@ -15,7 +15,7 @@ class Puppet::Server::Config
       @ssl_context = CertificateAuthority.pems_to_ssl_context(
           FileReader.new(Puppet[:hostcert]),
           FileReader.new(Puppet[:hostprivkey]),
-          FileReader.new(Puppet[:cacert]))
+          FileReader.new(Puppet[:localcacert]))
     end
     @ssl_context
   end
