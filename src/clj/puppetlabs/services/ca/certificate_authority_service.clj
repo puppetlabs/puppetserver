@@ -3,10 +3,12 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
+            [puppetlabs.services.protocols.ca :refer [CaService]]
             [compojure.core :as compojure]
             [me.raynes.fs :as fs]))
 
 (tk/defservice certificate-authority-service
+  CaService
   [[:PuppetServerConfigService get-config get-in-config]
    [:WebserverService add-ring-handler]]
   (init
