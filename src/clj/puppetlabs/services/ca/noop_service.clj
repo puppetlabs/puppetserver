@@ -6,5 +6,6 @@
             [puppetlabs.trapperkeeper.core :as tk]))
 
 (tk/defservice certificate-authority-noop-service
-  CaService)
+  CaService
+  [])
 
