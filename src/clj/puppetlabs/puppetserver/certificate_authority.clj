@@ -326,7 +326,7 @@
    (utils/subject-key-identifier
      ca-public-key false)])
 
-(schema/defn initialize-ca!
+(schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
   [ca-settings :- CaSettings
@@ -542,6 +542,21 @@
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert (path-to-cert signeddir master-certname))
     (utils/cert->pem! ca-cert (:localcacert settings))))
+
+(schema/defn init-master-ssl!
+  [settings :- MasterSettings
+   certname :- schema/Str
+   ca-settings :- CaSettings]
+  (initialize-master! settings
+                      certname
+                      (utils/pem->private-key (:cakey ca-settings))
+                      (utils/pem->public-key (:capub ca-settings))
+                      (utils/pem->cert (:cacert ca-settings))
+                      utils/default-key-length
+                      (:serial ca-settings)
+                      (:cert-inventory ca-settings)
+                      (:signeddir ca-settings)
+                      (:ca-ttl ca-settings)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
@@ -834,40 +849,22 @@
 
 (schema/defn ^:always-validate
   initialize!
-  "Given the CA settings, master file paths, and the master's certname,
-   prepare all necessary SSL files for the master and CA.
-   If all of the necessary SSL files exist, new ones will not be generated.
-   If only some are found (but others are missing), an exception is thrown."
-  ([ca-settings master-file-paths master-certname]
-    (initialize! ca-settings
-                 master-file-paths
-                 master-certname
-                 utils/default-key-length))
+  "Given the CA configuration settings and an optional keylength,
+   ensure that all required SSL files exist. If all files exist,
+   new ones will not be generated. If only some are found
+   (but others are missing), an exception is thrown."
+  ([ca-settings]
+     (initialize! ca-settings utils/default-key-length))
   ([ca-settings :- CaSettings
-    master-settings :- MasterSettings
-    master-certname :- schema/Str
     keylength :- schema/Int]
-    (let [required-ca-files     (vals (settings->cadir-paths ca-settings))
-          required-master-files (vals (settings->ssldir-paths master-settings))]
-      (if (every? fs/exists? required-ca-files)
-        (log/info "CA already initialized for SSL")
-        (let [{found   true
-               missing false} (group-by fs/exists? required-ca-files)]
-          (if (= required-ca-files missing)
-            (initialize-ca! ca-settings keylength)
-            (throw (partial-state-error found missing)))))
-      (if (every? fs/exists? required-master-files)
-        (log/info "Master already initialized for SSL")
-        (initialize-master! master-settings
-                            master-certname
-                            (utils/pem->private-key (:cakey ca-settings))
-                            (utils/pem->public-key (:capub ca-settings))
-                            (utils/pem->cert (:cacert ca-settings))
-                            keylength
-                            (:serial ca-settings)
-                            (:cert-inventory ca-settings)
-                            (:signeddir ca-settings)
-                            (:ca-ttl ca-settings))))))
+     (let [required-ca-files (vals (settings->cadir-paths ca-settings))]
+       (if (every? fs/exists? required-ca-files)
+         (log/info "CA already initialized for SSL")
+         (let [{found   true
+                missing false} (group-by fs/exists? required-ca-files)]
+           (if (= required-ca-files missing)
+             (generate-ssl-files! ca-settings keylength)
+             (throw (partial-state-error found missing))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint

@@ -8,7 +8,8 @@
 (defservice master-service
   [[:WebserverService add-ring-handler]
    [:PuppetServerConfigService get-config]
-   [:RequestHandlerService handle-request]]
+   [:RequestHandlerService handle-request]
+   CaService]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -18,10 +19,10 @@
          master-settings (ca/config->master-settings config)
          ca-settings     (ca/config->ca-settings config)]
 
-     ; TODO - https://tickets.puppetlabs.com/browse/PE-3929
-     ; The master needs to eventually get these files from the CA server
-     ; via http or git or something.
-     (ca/initialize! ca-settings master-settings master-certname)
+     ;; TODO - https://tickets.puppetlabs.com/browse/PE-3929
+     ;; The master needs to eventually get these files from the CA server
+     ;; via http or git or something.
+     (core/initialize-ssl! master-settings master-certname ca-settings)
 
      (log/info "Master Service adding a ring handler")
      (add-ring-handler

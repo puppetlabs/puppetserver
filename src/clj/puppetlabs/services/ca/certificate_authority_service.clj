@@ -16,6 +16,7 @@
    (let [path     ""
          settings (ca/config->ca-settings (get-config))
          puppet-version (get-in-config [:puppet-server :puppet-version])]
+     (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
       (compojure/context path [] (core/compojure-app settings puppet-version))

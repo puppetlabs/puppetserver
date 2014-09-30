@@ -2,7 +2,10 @@
   (:require [compojure.core :as compojure]
             [compojure.route :as route]
             [me.raynes.fs :as fs]
-            [puppetlabs.puppetserver.ringutils :as ringutils]))
+            [schema.core :as schema]
+            [clojure.tools.logging :as log]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.puppetserver.certificate-authority :as ca]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -89,3 +92,10 @@
   (-> (root-routes request-handler)
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))
+
+(defn initialize-ssl!
+  [settings certname ca-settings]
+  (let [required-master-files (vals (ca/settings->ssldir-paths settings))]
+    (if (every? fs/exists? required-master-files)
+      (log/info "Master already initialized for SSL")
+      (ca/init-master-ssl! settings certname ca-settings))))
