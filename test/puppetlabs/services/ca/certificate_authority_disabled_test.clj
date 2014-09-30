@@ -2,12 +2,10 @@
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
-            [puppetlabs.services.config.puppet-server-config-service :as config]
             [puppetlabs.services.jruby.testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as webserver]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]))
 
