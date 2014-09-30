@@ -44,6 +44,12 @@ a good directory for this).
 
 This is captured in https://tickets.puppetlabs.com/browse/SERVER-3
 
+## License
+
+Copyright © 2013 - 2014 Puppet Labs
+
+Distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0.html)
+
 # Special thanks to
 
 ## Cursive Clojure
