@@ -5,7 +5,8 @@
             [schema.core :as schema]
             [clojure.tools.logging :as log]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.puppetserver.certificate-authority :as ca]))
+            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.certificate-authority.core :as ca-utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -93,9 +94,17 @@
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))
 
-(defn initialize-ssl!
-  [settings certname ca-settings]
-  (let [required-master-files (vals (ca/settings->ssldir-paths settings))]
-    (if (every? fs/exists? required-master-files)
-      (log/info "Master already initialized for SSL")
-      (ca/init-master-ssl! settings certname ca-settings))))
+(schema/defn ^:always-validate initialize-ssl!
+  "Given configuration settings, certname, and CA settings, ensure all
+   necessary SSL files exist on disk by regenerating all of them if any
+   are found to be missing."
+  ([settings certname ca-settings]
+     (initialize-ssl! settings certname ca-settings ca-utils/default-key-length))
+  ([settings :- ca/MasterSettings
+    certname :- schema/Str
+    ca-settings :- ca/CaSettings
+    keylength :- schema/Int]
+     (let [required-master-files (vals (ca/settings->ssldir-paths settings))]
+       (if (every? fs/exists? required-master-files)
+         (log/info "Master already initialized for SSL")
+         (ca/initialize-master-ssl! settings certname ca-settings keylength)))))

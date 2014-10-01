@@ -495,68 +495,52 @@
                        (utils/subject-key-identifier
                          master-public-key false)]]
     (when alt-names-ext
-          (validate-dns-alt-names! alt-names-ext))
+      (validate-dns-alt-names! alt-names-ext))
     (when csr-attr-exts
-          (validate-extensions! csr-attr-exts))
-    (filter (complement nil?)
-            (concat base-ext-list [alt-names-ext] csr-attr-exts))))
+      (validate-extensions! csr-attr-exts))
+    (remove nil? (concat base-ext-list [alt-names-ext] csr-attr-exts))))
 
-(schema/defn initialize-master!
-  "Given the SSL directory file paths, master certname, and CA information,
-  generate and write to disk all of the necessary SSL files for the master.
-  Any existing files will be replaced."
+(schema/defn initialize-master-ssl!
+  "Given master configuration settings, certname, and CA settings,
+   generate and write to disk all of the necessary SSL files for
+   the master. Any existing files will be replaced."
   [settings :- MasterSettings
-   master-certname :- schema/Str
-   ca-private-key :- (schema/pred utils/private-key?)
-   ca-public-key :- (schema/pred utils/public-key?)
-   ca-cert :- Certificate
-   keylength :- schema/Int
-   serial-file :- schema/Str
-   inventory-file :- schema/Str
-   signeddir :- schema/Str
-   ca-ttl :- schema/Int]
+   certname :- schema/Str
+   ca-settings :- CaSettings
+   keylength :- schema/Int]
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
-  (let [keypair      (utils/generate-key-pair keylength)
-        public-key   (utils/get-public-key keypair)
-        extensions   (create-master-extensions master-certname
+  (let [ca-public-key  (utils/pem->public-key (:capub ca-settings))
+        ca-private-key (utils/pem->private-key (:cakey ca-settings))
+        ca-cert        (utils/pem->cert (:cacert ca-settings))
+        next-serial    (next-serial-number! (:serial ca-settings))
+        keypair        (utils/generate-key-pair keylength)
+        public-key     (utils/get-public-key keypair)
+        extensions     (create-master-extensions certname
+                                                 public-key
+                                                 ca-public-key
+                                                 settings)
+        private-key    (utils/get-private-key keypair)
+        x500-name      (utils/cn certname)
+        validity       (cert-validity-dates (:ca-ttl ca-settings))
+        hostcert       (utils/sign-certificate (get-subject ca-cert)
+                                               ca-private-key
+                                               next-serial
+                                               (:not-before validity)
+                                               (:not-after validity)
+                                               x500-name
                                                public-key
-                                               ca-public-key
-                                               settings)
-        private-key  (utils/get-private-key keypair)
-        x500-name    (utils/cn master-certname)
-        validity     (cert-validity-dates ca-ttl)
-        hostcert     (utils/sign-certificate (get-subject ca-cert)
-                                             ca-private-key
-                                             (next-serial-number! serial-file)
-                                             (:not-before validity)
-                                             (:not-after validity)
-                                             x500-name public-key
-                                             extensions)]
-    (write-cert-to-inventory! hostcert inventory-file)
+                                               extensions)]
+    (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
-    (utils/cert->pem! hostcert (path-to-cert signeddir master-certname))
+    (utils/cert->pem! hostcert
+                      (path-to-cert (:signeddir ca-settings) certname))
     (utils/cert->pem! ca-cert (:localcacert settings))))
-
-(schema/defn init-master-ssl!
-  [settings :- MasterSettings
-   certname :- schema/Str
-   ca-settings :- CaSettings]
-  (initialize-master! settings
-                      certname
-                      (utils/pem->private-key (:cakey ca-settings))
-                      (utils/pem->public-key (:capub ca-settings))
-                      (utils/pem->cert (:cacert ca-settings))
-                      utils/default-key-length
-                      (:serial ca-settings)
-                      (:cert-inventory ca-settings)
-                      (:signeddir ca-settings)
-                      (:ca-ttl ca-settings)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
@@ -923,7 +907,6 @@
   [{:keys [csrdir] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    ;; TODO PE-5704 validate CSR policies and return an error somehow
     (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
     (fs/delete csr-path)
     (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))

@@ -368,10 +368,10 @@
                   utils/pem->crl)]
       (assert-issuer crl "CN=Puppet CA: localhost"))))
 
-(deftest initialize-ca!-test
+(deftest initialize!-test
   (let [settings (ca-test-settings (ks/temp-dir))]
 
-    (initialize-ca! settings 512)
+    (initialize! settings 512)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->cadir-paths settings))]
@@ -404,140 +404,29 @@
         (is (utils/public-key? key))
         (is (= 512 (utils/keylength key)))))
 
-    (testing "Inventory file should have been created."
+    (testing "cert-inventory"
       (is (fs/exists? (:cert-inventory settings))))
 
-    (testing "Serial number file file should have been created."
-      (is (fs/exists? (:serial settings))))))
+    (testing "serial"
+      (is (fs/exists? (:serial settings))))
 
-(deftest initialize-master!-test
-  (let [ssldir          (ks/temp-dir)
-        master-settings (assoc (master-test-settings ssldir "master")
-                          :dns-alt-names "onefish,twofish")
-        serial          (tmp-serial-file!)
-        inventory       (str (ks/temp-file))
-        signeddir       (str (ks/temp-dir))
-        capubkey        (utils/pem->public-key capub)]
-
-    (initialize-master! master-settings "master"
-                        (utils/pem->private-key cakey)
-                        capubkey
-                        (utils/pem->cert cacert)
-                        512 serial inventory signeddir 1)
-
-    (testing "Generated SSL file"
-      (doseq [file (vals (settings->ssldir-paths master-settings))]
-        (testing file
-          (is (fs/exists? file)))))
-
-    (testing "hostcert"
-      (let [hostcert (-> master-settings :hostcert utils/pem->cert)]
-        (is (utils/certificate? hostcert))
-        (assert-subject hostcert "CN=master")
-        (assert-issuer hostcert "CN=Puppet CA: localhost")
-
-        (testing "has alt names extension"
-          (let [dns-alt-names (-> (utils/get-extension hostcert "2.5.29.17")
-                                  (get-in [:value :dns-name])
-                                  set)]
-            (is (= #{"master" "onefish" "twofish"} dns-alt-names)
-                "The Subject Alternative Names extension should contain the
-                  master's actual hostname and the hostnames in $dns-alt-names")))
-
-        (testing "is also saved in the CA's $signeddir"
-          (let [signedpath (path-to-cert signeddir "master")]
-            (is (fs/exists? signedpath))
-            (is (= hostcert (utils/pem->cert signedpath)))))))
-
-    (testing "localcacert"
-      (let [cacert (-> master-settings :localcacert utils/pem->cert)]
-        (is (utils/certificate? cacert))
-        (assert-subject cacert "CN=Puppet CA: localhost")
-        (assert-issuer cacert "CN=Puppet CA: localhost")))
-
-    (testing "hostprivkey"
-      (let [key (-> master-settings :hostprivkey utils/pem->private-key)]
-        (is (utils/private-key? key))
-        (is (= 512 (utils/keylength key)))))
-
-    (testing "hostpubkey"
-      (let [key (-> master-settings :hostpubkey utils/pem->public-key)]
-        (is (utils/public-key? key))
-        (is (= 512 (utils/keylength key)))))))
-
-(deftest initialize!-test
-  (let [ssldir          (ks/temp-dir)
-        ca-settings     (ca-test-settings (str ssldir "/ca"))
-        master-settings (master-test-settings ssldir "master")]
-
-    (testing "Generated SSL file"
-      (try
-        (initialize! ca-settings master-settings "master" 512)
-        (doseq [file (concat (vals (settings->cadir-paths ca-settings))
-                             (vals (settings->ssldir-paths master-settings)))]
-          (testing file
-            (is (fs/exists? file))))
-        (finally
-          (fs/delete-dir ssldir))))
-
-    (testing "Does not create new files if they all exist"
-      (let [directories [:csrdir :signeddir :requestdir :certdir]
-            all-files   (merge (settings->cadir-paths ca-settings)
-                               (settings->ssldir-paths master-settings))
-            no-dirs     (vals (apply dissoc all-files directories))]
-        (try
-          ;; Create the directory structure and dummy files by hand
-          (create-parent-directories! (vals all-files))
-          (doseq [d directories] (fs/mkdir (d all-files)))
-          (doseq [file no-dirs]
-            (spit file "unused content"))
-
-          (initialize! ca-settings master-settings "master" 512)
-
-          (doseq [file no-dirs]
-            (is (= "unused content" (slurp file))
-                "Existing file was replaced"))
-          (finally
-            (fs/delete-dir ssldir)))))
+    (testing "Does not replace files if they all exist"
+      (let [files (-> (settings->cadir-paths settings)
+                      (dissoc :csrdir :signeddir)
+                      (vals))]
+        (doseq [f files] (spit f "testable string"))
+        (initialize! settings 512)
+        (doseq [f files] (is (= "testable string" (slurp f))
+                             "File was replaced"))))
 
     (testing "Throws an exception if only some of the files exist"
+      (fs/delete-dir (:signeddir settings))
+      (fs/delete (:capub settings))
       (try
-        ;; Create all the files and directories, then delete some
-        (initialize! ca-settings master-settings "master" 512)
-        (fs/delete-dir (:signeddir ca-settings))
-        (fs/delete (:capub ca-settings))
-
-        ;; Verify exception is thrown with message that contains
-        ;; the paths for both the missing and found files
-        (initialize! ca-settings master-settings "master" 512)
+        (initialize! settings 512)
         (catch IllegalStateException e
-          (doseq [file (vals (settings->cadir-paths ca-settings))]
-            (is (true? (.contains (.getMessage e) file)))))
-
-        (finally
-          (fs/delete-dir ssldir))))
-
-    (testing "Keylength"
-      (doseq [[message f expected]
-              [["can be configured"
-                (partial initialize! ca-settings master-settings "master" 512)
-                512]
-               ["has a default value"
-                (partial initialize! ca-settings master-settings "master")
-                utils/default-key-length]]]
-        (testing message
-          (try
-            (f)
-            (is (= expected (-> ca-settings :cakey
-                                utils/pem->private-key utils/keylength)))
-            (is (= expected (-> ca-settings :capub
-                                utils/pem->public-key utils/keylength)))
-            (is (= expected (-> master-settings :hostprivkey
-                                utils/pem->private-key utils/keylength)))
-            (is (= expected (-> master-settings :hostpubkey
-                                utils/pem->public-key utils/keylength)))
-            (finally
-              (fs/delete-dir ssldir))))))))
+          (doseq [file (vals (settings->cadir-paths settings))]
+            (is (true? (.contains (.getMessage e) file)))))))))
 
 (deftest parse-serial-number-test
   (is (= (parse-serial-number "0001") 1))
