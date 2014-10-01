@@ -10,7 +10,7 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]))
 
 (def puppet-conf
-  "./dev-resources/puppetlabs/services/ca/certificate_authority_dissabled_test/master/conf/puppet.conf")
+  "./dev-resources/puppetlabs/services/ca/certificate_authority_disabled_test/master/conf/puppet.conf")
 
 (use-fixtures :each (jruby-testutils/with-puppet-conf puppet-conf))
 
