@@ -34,24 +34,7 @@ source code, not into the Ruby code that it is processing.  So, if you wish to
 debug the Ruby code directly, you'll need to install gems and take advantage of
 their capabilities (not unlike how you would debug Ruby code in the MRI interpreter).
 
-A few things to be aware of:
-
-* We take some care to isolate the Ruby load paths that are accessible to the
-  JRuby interpreter that is embedded in Puppet Server, so that it doesn't attempt
-  to load any gems or other code that you have installed on your system Ruby.
-  Therefore you have to use the `gem` command that we ship with Puppet Server
-  in order to install or remove gems for Puppet Server.
-* JRuby can not install or load gems that have native (C) extensions.  For most
-  popular native gems, there is a Java version available; often it is transparent
-  and simply attempting to install the gem will result in installation of the
-  Java version rather than the C version.  In other cases you may have to explicitly
-  request the Java version when you run the `gem install` command.
-
-If you're running Puppet Server from source, you can install and remove gems
-via `lein gem`.  (You'll need to pass the same `-c`/`--config` argument that you
-pass to `lein run.)  e.g.:
-
-    $ lein gem -c /path/to/puppet-server.conf list
+For more info on installing gems for Puppet Server, see [Puppet Server and Gems](./gems.markdown).
 
 ## `ruby-debug`
 
@@ -59,6 +42,10 @@ There are many gems available that provide various ways of debugging Ruby code
 depending on what version of Ruby and which Ruby interpreter you're running.
 One of the most common gems is `ruby-debug`, and there is a JRuby-compatible
 version available.  To install it for use in Puppet Server, run:
+
+    $ puppetserver gem install ruby-debug
+
+Or, if you're running puppetserver from source:
 
     $ lein gem -c /path/to/puppet-server.conf install ruby-debug
 
@@ -72,6 +59,10 @@ code):
 
 Pry is another popular gem for introspecting Ruby code.  It is compatible with
 JRuby, so you can install it via:
+
+    $ puppetserver gem install pry
+
+Or, if you're running puppetserver from source:
 
     $ lein gem -c /path/to/puppet-server.conf install pry
 
