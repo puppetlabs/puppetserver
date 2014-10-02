@@ -6,50 +6,12 @@
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.certificate-authority.core :as ca-utils]))
+            [puppetlabs.certificate-authority.core :as ca-utils]
+            [puppetlabs.services.ca.testutils :as ca-test-utils]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(defn master-test-settings
-  "Master configuration settings with defaults appropriate for testing.
-   All file and directory paths will be rooted at the provided `confdir`."
-  ([confdir] (master-test-settings confdir "localhost"))
-  ([confdir hostname]
-     (let [ssldir (str confdir "/ssl")]
-       {:certdir        (str ssldir "/certs")
-        :dns-alt-names  ""
-        :hostcert       (str ssldir "/certs/" hostname ".pem")
-        :hostprivkey    (str ssldir "/private_keys/" hostname ".pem")
-        :hostpubkey     (str ssldir "/public_keys/" hostname ".pem")
-        :localcacert    (str ssldir "/certs/ca.pem")
-        :requestdir     (str ssldir "/certificate_requests")
-        :csr-attributes (str confdir "/csr_attributes.yaml")})))
-
-(defn ca-test-settings
-  "CA configuration settings with defaults appropriate for testing.
-   All file and directory paths will be rooted at the static 'cadir'
-   in dev-resources, unless a different `cadir` is provided."
-  [cadir]
-  {:access-control        {:certificate-status {:client-whitelist []}}
-   :autosign              true
-   :allow-duplicate-certs false
-   :ca-name               "test ca"
-   :ca-ttl                1
-   :cacrl                 (str cadir "/ca_crl.pem")
-   :cacert                (str cadir "/ca_crt.pem")
-   :cakey                 (str cadir "/ca_key.pem")
-   :capub                 (str cadir "/ca_pub.pem")
-   :cert-inventory        (str cadir "/inventory.txt")
-   :csrdir                (str cadir "/requests")
-   :signeddir             (str cadir "/signed")
-   :serial                (str cadir "/serial")
-   :ruby-load-path        []})
-
-(defn assert-subject [o subject]
-  (is (= subject (-> o .getSubjectX500Principal .getName))))
-
-(defn assert-issuer [o issuer]
-  (is (= issuer (-> o .getIssuerX500Principal .getName))))
+(def resources-dir "dev-resources/puppetlabs/services/master/master_core_test")
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
@@ -82,16 +44,14 @@
                  ", path: "
                  path))))))
 
-(def resources-dir "dev-resources/puppetlabs/services/master/master_core_test")
-
 (deftest initialize-master!-test
   (let [confdir     (-> resources-dir
                         (fs/copy-dir (ks/temp-dir))
                         (str "/conf"))
         settings    (-> confdir
-                        (master-test-settings "master")
+                        (ca-test-utils/master-settings "master")
                         (assoc :dns-alt-names "onefish,twofish"))
-        ca-settings (ca-test-settings (str confdir "/ssl/ca"))]
+        ca-settings (ca-test-utils/ca-settings (str confdir "/ssl/ca"))]
 
     (initialize-ssl! settings "master" ca-settings 512)
 
@@ -103,8 +63,8 @@
     (testing "hostcert"
       (let [hostcert (-> settings :hostcert ca-utils/pem->cert)]
         (is (ca-utils/certificate? hostcert))
-        (assert-subject hostcert "CN=master")
-        (assert-issuer hostcert "CN=Puppet CA: localhost")
+        (ca-test-utils/assert-subject hostcert "CN=master")
+        (ca-test-utils/assert-issuer hostcert "CN=Puppet CA: localhost")
 
         (testing "has alt names extension"
           (let [dns-alt-names (ca-utils/get-subject-dns-alt-names hostcert)]
@@ -120,8 +80,8 @@
     (testing "localcacert"
       (let [cacert (-> settings :localcacert ca-utils/pem->cert)]
         (is (ca-utils/certificate? cacert))
-        (assert-subject cacert "CN=Puppet CA: localhost")
-        (assert-issuer cacert "CN=Puppet CA: localhost")))
+        (ca-test-utils/assert-subject cacert "CN=Puppet CA: localhost")
+        (ca-test-utils/assert-issuer cacert "CN=Puppet CA: localhost")))
 
     (testing "hostprivkey"
       (let [key (-> settings :hostprivkey ca-utils/pem->private-key)]

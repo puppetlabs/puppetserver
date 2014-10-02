@@ -3,6 +3,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.certificate-authority.core :as utils]
+            [puppetlabs.services.ca.testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :as sling]
             [schema.test :as schema-test]
@@ -19,8 +20,8 @@
 ;;; Test Data
 
 (def test-resources-dir "./dev-resources/puppetlabs/puppetserver/certificate_authority_test")
-(def masterdir (str test-resources-dir "/master/conf"))
-(def ssldir (str masterdir "/ssl"))
+(def confdir (str test-resources-dir "/master/conf"))
+(def ssldir (str confdir "/ssl"))
 (def cadir (str ssldir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
@@ -49,65 +50,14 @@
   [csr-attributes-file-name]
   (str csr-attributes-dir "/" csr-attributes-file-name))
 
-(defn ca-test-settings
-  "CA configuration settings with defaults appropriate for testing.
-   All file and directory paths will be rooted at the static 'cadir'
-   in dev-resources, unless a different `cadir` is provided."
-  ([] (ca-test-settings cadir))
-  ([cadir]
-     {:access-control        {:certificate-status {:client-whitelist []}}
-      :autosign              true
-      :allow-duplicate-certs false
-      :ca-name               "test ca"
-      :ca-ttl                1
-      :cacrl                 (str cadir "/ca_crl.pem")
-      :cacert                (str cadir "/ca_crt.pem")
-      :cakey                 (str cadir "/ca_key.pem")
-      :capub                 (str cadir "/ca_pub.pem")
-      :cert-inventory        (str cadir "/inventory.txt")
-      :csrdir                (str cadir "/requests")
-      :signeddir             (str cadir "/signed")
-      :serial                (str cadir "/serial")
-      :ruby-load-path        []}))
-
-(defn master-test-settings
-  "Master configuration settings with defaults appropriate for testing.
-   All file and directory paths will be rooted at the static 'ssldir'
-   in dev-resources, unless a different `ssldir` is provided."
-  ([] (master-test-settings ssldir "localhost"))
-  ([ssldir hostname]
-     {:certdir       (str ssldir "/certs")
-      :dns-alt-names ""
-      :hostcert      (str ssldir "/certs/" hostname ".pem")
-      :hostprivkey   (str ssldir "/private_keys/" hostname ".pem")
-      :hostpubkey    (str ssldir "/public_keys/" hostname ".pem")
-      :localcacert   (str ssldir "/certs/ca.pem")
-      :requestdir    (str ssldir "/certificate_requests")
-      :csr-attributes (str masterdir "/csr_attributes.yaml")}))
-
-(def ca-cert-subject
-  (-> cacert
-      utils/pem->cert
-      get-subject))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
-
-(defn assert-subject [o subject]
-  (is (= subject (-> o .getSubjectX500Principal .getName))))
-
-(defn assert-issuer [o issuer]
-  (is (= issuer (-> o .getIssuerX500Principal .getName))))
 
 (defn tmp-whitelist! [& lines]
   (let [whitelist (ks/temp-file)]
     (doseq [line lines]
       (spit whitelist (str line "\n") :append true))
     (str whitelist)))
-
-(defn tmp-serial-file! []
-  (doto (str (ks/temp-file))
-    initialize-serial-file!))
 
 (def empty-stream (ByteArrayInputStream. (.getBytes "")))
 
@@ -315,61 +265,55 @@
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"
-    (let [csr    (utils/pem->csr (path-to-cert-request csrdir "test-agent"))
-          path   (path-to-cert-request csrdir "foo")]
-      (try
-        (is (false? (fs/exists? path)))
-        (save-certificate-request! "foo" csr csrdir)
-        (is (true? (fs/exists? path)))
-        (is (= (get-certificate-request csrdir "foo")
-               (get-certificate-request csrdir "test-agent")))
-        (finally
-          (fs/delete path))))))
+    (let [csrdir   (:csrdir (testutils/ca-sandbox! cadir))
+          csr      (utils/pem->csr (path-to-cert-request csrdir "test-agent"))
+          path     (path-to-cert-request csrdir "foo")]
+      (is (false? (fs/exists? path)))
+      (save-certificate-request! "foo" csr csrdir)
+      (is (true? (fs/exists? path)))
+      (is (= (get-certificate-request csrdir "foo")
+             (get-certificate-request csrdir "test-agent"))))))
 
 (deftest autosign-certificate-request!-test
   (let [now                (time/epoch)
         two-years          (* 60 60 24 365 2)
-        settings           (assoc (ca-test-settings)
-                             :serial (tmp-serial-file!)
-                             :cert-inventory (str (ks/temp-file))
-                             :ca-ttl two-years)
-        csr                (utils/pem->csr (path-to-cert-request csrdir "test-agent"))
+        settings           (-> (testutils/ca-sandbox! cadir)
+                               (assoc :ca-ttl two-years))
+        csr                (-> (:csrdir settings)
+                               (path-to-cert-request "test-agent")
+                               (utils/pem->csr))
         expected-cert-path (path-to-cert (:signeddir settings) "test-agent")]
-    (try
-      ;; Fix the value of "now" so we can reliably test the dates
-      (time/do-at now
-       (autosign-certificate-request! "test-agent" csr settings))
+    ;; Fix the value of "now" so we can reliably test the dates
+    (time/do-at now
+      (autosign-certificate-request! "test-agent" csr settings))
 
-      (testing "requests are autosigned and saved to disk"
-        (is (fs/exists? expected-cert-path)))
+    (testing "requests are autosigned and saved to disk"
+      (is (fs/exists? expected-cert-path)))
 
-      (let [cert (utils/pem->cert expected-cert-path)]
-        (testing "The subject name on the agent's cert"
-          (assert-subject cert "CN=test-agent"))
+    (let [cert (utils/pem->cert expected-cert-path)]
+      (testing "The subject name on the agent's cert"
+        (testutils/assert-subject cert "CN=test-agent"))
 
-        (testing "The cert is issued by the name on the CA's cert"
-          (assert-issuer cert ca-cert-subject))
+      (testing "The cert is issued by the name on the CA's cert"
+        (testutils/assert-issuer cert "CN=Puppet CA: localhost"))
 
-        (testing "certificate has not-before/not-after dates based on $ca-ttl"
-          (let [not-before (time-coerce/from-date (.getNotBefore cert))
-                not-after (time-coerce/from-date (.getNotAfter cert))]
-            (testing "not-before is 1 day before now"
-              (is (= (time/minus now (time/days 1)) not-before)))
-            (testing "not-after is 2 years from now"
-              (is (= (time/plus now (time/years 2)) not-after))))))
-
-      (finally
-        (fs/delete expected-cert-path)))))
+      (testing "certificate has not-before/not-after dates based on $ca-ttl"
+        (let [not-before (time-coerce/from-date (.getNotBefore cert))
+              not-after (time-coerce/from-date (.getNotAfter cert))]
+          (testing "not-before is 1 day before now"
+            (is (= (time/minus now (time/days 1)) not-before)))
+          (testing "not-after is 2 years from now"
+            (is (= (time/plus now (time/years 2)) not-after))))))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
     (let [crl (-> (get-certificate-revocation-list cacrl)
                   StringReader.
                   utils/pem->crl)]
-      (assert-issuer crl "CN=Puppet CA: localhost"))))
+      (testutils/assert-issuer crl "CN=Puppet CA: localhost"))))
 
 (deftest initialize!-test
-  (let [settings (ca-test-settings (ks/temp-dir))]
+  (let [settings (testutils/ca-settings (ks/temp-dir))]
 
     (initialize! settings 512)
 
@@ -380,7 +324,7 @@
 
     (testing "cacrl"
       (let [crl (-> settings :cacrl utils/pem->crl)]
-        (assert-issuer crl "CN=test ca")
+        (testutils/assert-issuer crl "CN=test ca")
         (testing "has CRLNumber and AuthorityKeyIdentifier extensions"
           (is (not (nil? (utils/get-extension-value crl utils/crl-number-oid))))
           (is (not (nil? (utils/get-extension-value crl utils/authority-key-identifier-oid)))))))
@@ -388,8 +332,8 @@
     (testing "cacert"
       (let [cert (-> settings :cacert utils/pem->cert)]
         (is (utils/certificate? cert))
-        (assert-subject cert "CN=test ca")
-        (assert-issuer cert "CN=test ca")
+        (testutils/assert-subject cert "CN=test ca")
+        (testutils/assert-issuer cert "CN=test ca")
         (testing "has at least one expected extension - key usage"
           (let [key-usage (utils/get-extension-value cert "2.5.29.15")]
             (is (= #{:key-cert-sign :crl-sign} key-usage))))))
@@ -454,21 +398,21 @@
       (is (= (next-serial-number! serial-file) 3))
       (is (= "0004" (slurp serial-file))))))
 
-; If the locking is deleted from `next-serial-number!`, this test will hang,
-; which is not as nice as simply failing ...
-; This seems to happen due to a deadlock caused by concurrently reading and
-; writing to the same file (via `slurp` and `spit`)
+;; If the locking is deleted from `next-serial-number!`, this test will hang,
+;; which is not as nice as simply failing ...
+;; This seems to happen due to a deadlock caused by concurrently reading and
+;; writing to the same file (via `slurp` and `spit`)
 (deftest next-serial-number-threadsafety
   (testing "next-serial-number! is thread-safe and
             never returns a duplicate serial number"
     (let [serial-file (doto (str (ks/temp-file)) (spit "0001"))
           serials     (atom [])
 
-          ; spin off a new thread for each CPU
+          ;; spin off a new thread for each CPU
           promises    (for [_ (range (ks/num-cpus))]
                         (let [p (promise)]
                           (future
-                            ; get a bunch of serial numbers and keep track of them
+                            ;; get a bunch of serial numbers and keep track of them
                             (dotimes [_ 100]
                               (let [serial-number (next-serial-number! serial-file)]
                                 (swap! serials conj serial-number)))
@@ -520,11 +464,7 @@
             "/CN=localhost"))))))
 
 (deftest allow-duplicate-certs-test
-  (let [tmp-ssldir (ks/temp-dir)
-        _          (fs/copy-dir cadir tmp-ssldir)
-        settings   (-> (str tmp-ssldir "/ca")
-                       (ca-test-settings)
-                       (assoc :autosign false))]
+  (let [settings (assoc (testutils/ca-sandbox! cadir) :autosign false)]
     (testing "when false"
       (let [settings (assoc settings :allow-duplicate-certs false)]
         (testing "throws exception if CSR already exists"
@@ -570,9 +510,7 @@
               (is (not= old-cert (slurp cert-path)) "Existing certificate was not overwritten"))))))))
 
 (deftest process-csr-submission!-test
-  (let [settings (assoc (ca-test-settings)
-                   :serial (tmp-serial-file!)
-                   :cert-inventory (str (ks/temp-file)))]
+  (let [settings (testutils/ca-sandbox! cadir)]
     (testing "CSR validation policies"
       (testing "when autosign is false"
         (let [settings (assoc settings :autosign false)]
@@ -696,7 +634,7 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "basic extensions are created for a master"
-      (let [settings      (assoc (master-test-settings)
+      (let [settings      (assoc (testutils/master-settings confdir)
                             :csr-attributes "doesntexist")
             exts          (create-master-extensions subject
                                                     subject-pub
@@ -726,7 +664,7 @@
 
     (testing "additional extensions are created for a master"
       (let [dns-alt-names "onefish,twofish"
-            settings      (-> (master-test-settings)
+            settings      (-> (testutils/master-settings confdir)
                               (assoc :dns-alt-names dns-alt-names)
                               (assoc :csr-attributes (csr-attributes-file "csr_attributes.yaml")))
             exts          (create-master-extensions subject
@@ -778,7 +716,7 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
-      (let [config (assoc (master-test-settings)
+      (let [config (assoc (testutils/master-settings confdir)
                           :csr-attributes
                           (csr-attributes-file "insecure_csr_attributes.yaml"))]
         (is (thrown-with-slingshot?
@@ -792,7 +730,7 @@
               {:type    :invalid-alt-name
                :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
               (create-master-extensions subject subject-pub issuer-pub
-                                        (assoc (master-test-settings)
+                                        (assoc (testutils/master-settings confdir)
                                                :dns-alt-names dns-alt-names))))))
 
     (testing "basic extensions are created for a CA"
