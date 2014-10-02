@@ -32,7 +32,7 @@
           (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
             (jruby/with-jruby-puppet
               jruby-puppet jruby-service
-              (let [ssl-dir (str jruby-testutils/conf-dir "/ssl")]
+              (let [ssl-dir (str puppet-conf-dir "/ssl")]
                 (is (not (nil? (fs/list-dir ssl-dir))))
                 (is (empty? (fs/list-dir (str ssl-dir "/ca")))))))))
       (finally
