@@ -12,31 +12,29 @@
 (def puppet-conf-dir
   "./target/test/certificate_authority_disabled_test")
 
+(use-fixtures :each (jruby-testutils/with-puppet-conf-dir puppet-conf-dir))
+
 (deftest ca-disabled-files-test
   (testing "Ensure no certificates are generated when CA disabled service is enabled."
-    (try
-      (fs/mkdirs puppet-conf-dir)
-      (logutils/with-test-logging
-        (tk-testutils/with-app-with-config
-          app
+    (logutils/with-test-logging
+      (tk-testutils/with-app-with-config
+        app
 
-          [profiler/puppet-profiler-service
-           jruby/jruby-puppet-pooled-service
-           disabled/certificate-authority-disabled-service]
+        [profiler/puppet-profiler-service
+         jruby/jruby-puppet-pooled-service
+         disabled/certificate-authority-disabled-service]
 
-          (-> (jruby-testutils/jruby-puppet-tk-config
-                (jruby-testutils/jruby-puppet-config 1))
-              (assoc-in [:jruby-puppet :master-conf-dir]
-                        puppet-conf-dir))
+        (-> (jruby-testutils/jruby-puppet-tk-config
+              (jruby-testutils/jruby-puppet-config 1))
+            (assoc-in [:jruby-puppet :master-conf-dir]
+                      puppet-conf-dir))
 
-          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-            (jruby/with-jruby-puppet
-              jruby-puppet jruby-service
-              (let [ssl-dir (str puppet-conf-dir "/ssl")]
-                (is (not (nil? (fs/list-dir ssl-dir))))
-                (is (empty? (fs/list-dir (str ssl-dir "/ca")))))))))
-      (finally
-        (fs/delete-dir puppet-conf-dir)))))
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+          (jruby/with-jruby-puppet
+            jruby-puppet jruby-service
+            (let [ssl-dir (str puppet-conf-dir "/ssl")]
+              (is (not (nil? (fs/list-dir ssl-dir))))
+              (is (empty? (fs/list-dir (str ssl-dir "/ca")))))))))))
 
 
 
