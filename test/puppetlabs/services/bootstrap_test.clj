@@ -32,6 +32,7 @@
           (tk-internal/throw-app-error-if-exists!))))
     (is (true? true))))
 
+
 (defn validate-connection-failure
   [f]
   (try
