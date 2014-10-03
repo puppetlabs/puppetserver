@@ -1,6 +1,8 @@
 (ns puppetlabs.services.master.master-core
+  (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
             [compojure.route :as route]
+            [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -57,6 +59,27 @@
                        (v2_0-routes request-handler))
     (compojure/context "/:environment" [environment]
                        (legacy-routes request-handler))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Lifecycle Helper Functions
+
+(defn memory-check
+  "On Linux Distributions, parses the /proc/meminfo file to determine
+   the total amount of System RAM, and throws an exception if that
+   is less than 1.1 times the maximum heap size of the JVM. This is done
+   so that the JVM doesn't fail later due to an Out of Memory error."
+  []
+  (when (fs/exists? "/proc/meminfo")
+    (with-open [mem-info-file (FileInputStream. "/proc/meminfo")]
+      (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
+            mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                                (slurp mem-info-file))))
+            required-mem-size (* (/ 10.0 9.0) heap-size)]
+        (when (< mem-size required-mem-size)
+          (throw (Error.
+                   (str "Not enough RAM. Puppet Server requires at least "
+                        (int (/ required-mem-size 1024.0))
+                        "MB of RAM."))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
