@@ -16,29 +16,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test fixtures
 
-(defn with-puppet-conf-dir
-  "Returns a test fixture which creates an empty directory located at
-  puppet-conf-dir, then deletes it after all the tests have run."
-  [puppet-conf-dir]
-  (fn [f]
-    (fs/mkdirs puppet-conf-dir)
-    (try
-      (f)
-      (finally
-        (fs/delete-dir puppet-conf-dir)))))
-
 (defn with-puppet-conf
   "This function returns a test fixture that will copy a specified puppet.conf
-  file into the appropriate location for testing, and then delete it after the
-  tests have completed."
-  [puppet-conf-file]
-  (let [target-path (fs/file conf-dir "puppet.conf")]
-    (fn [f]
-      (fs/copy+ puppet-conf-file target-path)
-      (try
-        (f)
-        (finally
-          (fs/delete target-path))))))
+  file into the provided location for testing, and then delete it after the
+  tests have completed. If no destination dir is provided then the puppet.coonf
+  file is copied to the default location of './target/master-conf'."
+  ([puppet-conf-file]
+   (with-puppet-conf puppet-conf-file conf-dir))
+  ([puppet-conf-file dest-dir]
+   (let [target-path (fs/file dest-dir "puppet.conf")]
+     (fn [f]
+       (fs/copy+ puppet-conf-file target-path)
+       (try
+         (f)
+         (finally
+           (fs/delete target-path)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
