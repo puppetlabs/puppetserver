@@ -11,7 +11,7 @@
    [:RequestHandlerService handle-request]]
   (init
    [this context]
-   (core/memory-check)
+   (core/validate-memory-requirements!)
    (let [path            ""
          config          (get-config)
          master-certname (get-in config [:puppet-server :certname])
