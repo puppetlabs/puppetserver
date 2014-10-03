@@ -14,6 +14,9 @@ At start up, Puppet Server will read all of the `.conf` files found in the
 files that you will typically find in that directory, and a list of the settings
 that they support.
 
+*NOTE*: you will need to restart Puppet Server in order for changes to these
+settings to take effect.
+
 #### `global.conf`
 
 This file contains global configuration for the application.  Here is an
