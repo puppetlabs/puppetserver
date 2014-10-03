@@ -31,6 +31,7 @@
              jetty9-service
              request-handler-service
              profiler/puppet-profiler-service
+             version-check-service/version-check-service
              certificate-authority-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config

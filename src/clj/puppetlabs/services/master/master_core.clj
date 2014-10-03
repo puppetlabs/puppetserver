@@ -1,12 +1,7 @@
 (ns puppetlabs.services.master.master-core
   (:require [compojure.core :as compojure]
-            [compojure.route :as route]
             [me.raynes.fs :as fs]
-            [schema.core :as schema]
-            [clojure.tools.logging :as log]
-            [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.certificate-authority.core :as ca-utils]))
+            [puppetlabs.puppetserver.ringutils :as ringutils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing

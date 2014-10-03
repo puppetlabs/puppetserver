@@ -18,9 +18,6 @@
          certname (get-in config [:puppet-server :certname])
          settings (ca/config->master-settings config)]
 
-     ;; TODO - https://tickets.puppetlabs.com/browse/PE-3929
-     ;; The master needs to eventually get these files from the CA server
-     ;; via http or git or something.
      (initialize-master-ssl! settings certname)
 
      (log/info "Master Service adding a ring handler")
