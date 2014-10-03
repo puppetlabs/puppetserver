@@ -9,10 +9,15 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]))
 
-(def puppet-conf-dir
-  "./target/test/certificate_authority_disabled_test")
 
-(use-fixtures :each (jruby-testutils/with-puppet-conf-dir puppet-conf-dir))
+
+(def puppet-conf-dir "./target/ca-disabled-service-test")
+(def ssl-dir (fs/file puppet-conf-dir "ssl"))
+
+(use-fixtures
+  :each
+  (jruby-testutils/with-puppet-conf
+    "./dev-resources/puppetlabs/services/ca/certificate_authority_disabled_test/puppet.conf"))
 
 (deftest ca-disabled-files-test
   (testing "Ensure no certificates are generated when CA disabled service is enabled."
@@ -32,9 +37,8 @@
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
           (jruby/with-jruby-puppet
             jruby-puppet jruby-service
-            (let [ssl-dir (str puppet-conf-dir "/ssl")]
-              (is (not (nil? (fs/list-dir ssl-dir))))
-              (is (empty? (fs/list-dir (str ssl-dir "/ca")))))))))))
+            (is (not (nil? (fs/list-dir ssl-dir))))
+            (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))
 
 
 
