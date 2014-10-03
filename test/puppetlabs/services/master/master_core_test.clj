@@ -6,8 +6,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(def resources-dir "dev-resources/puppetlabs/services/master/master_core_test")
-
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
         app         (compojure-app handler)
