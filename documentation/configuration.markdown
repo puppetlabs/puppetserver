@@ -111,7 +111,7 @@ Puppet Server is built on top of our open-source Clojure application framework,
 [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper).  One of the features
 that Trapperkeeper provides is the ability to enable or disable individual
 services that an application provides.  In Puppet Server, you may use this
-feature to enable or disable the CA service, by modifying your `bootsrap.cfg` file
+feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file
 (usually located in `/etc/puppetserver/bootstrap.cfg`); in that file, you should
 see some lines that look like this:
 

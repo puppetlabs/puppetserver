@@ -1,7 +1,7 @@
 Known Issues
 =====
 
-For a list of all known issues, visit our [Issue Tracker]()
+For a list of all known issues, visit our [Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER).
 
 Here are a few specific issues that we're aware of that we are particularly
 interested in addressing in future releases:
