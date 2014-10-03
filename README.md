@@ -1,5 +1,9 @@
 # Puppet Server
 
+NOTE: This is a *preview* release; while it should function as a drop-in replacement
+for an existing Puppet Master in most cases, it is not recommended for use in
+production without thorough testing in a staging environment.
+
 Puppet Server is the next-generation application for managing Puppet agents.
 It is the platform that will carry Puppet's server-side components to a more
 distributed, service-oriented architecture.  It has been built on top of the
@@ -19,30 +23,19 @@ Installation
 
 * [Installing Puppet Server from Packages](./documentation/install_from_packages.markdown)
 
+Configuration, Known Issues, Etc.
+-----
+
+* [Puppet Server vs. Apache/Passenger Puppet Master](./documentation/puppetserver_vs_passenger.markdown)
+* [Puppet Server and Gems](./documentation/gems.markdown)
+* [Configuration](./documentation/configuration.markdown)
+* [Known Issues](./documentation/known_issues.markdown)
+
 Developer Documentation
 -----
 
 * [Running Puppet Server From Source](./documentation/dev_running_from_source.markdown)
-* [Debugging and Gems](./documentation/dev_debugging.markdown)
-
-Known Issues
------
-
-#### Init script behavior on EL 5 and 6
-
-On EL5 and EL6, if the service is started by executing the init script directly
-while inside a directory that the puppetserver user doesn't have access to, the
-service will start, but log errors to /var/log/puppetserver/puppetserver-daemon.log
-that complain about:
-
-> Could not retrieve fact='hostname', resolution='<anonymous>': Failed while executing '/bin/hostname': Cannot run program "/bin/sh" (in directory "/root"): error=13, Permission denied
-
-The current workarounds for this issue are to use `service puppetserver start`
-instead of `/etc/init.d/puppetserver start` or to invoke the init script from a
-directory the puppetserver user will have access to (/usr/share/puppetserver is
-a good directory for this).
-
-This is captured in https://tickets.puppetlabs.com/browse/SERVER-3
+* [Debugging](./documentation/dev_debugging.markdown)
 
 ## License
 
