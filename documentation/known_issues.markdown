@@ -38,6 +38,13 @@ Foreman), there can be compatibility issues between the JVM HTTPS client and
 certain server HTTPS implementations (e.g. very recent versions of Apache mod_ssl).
 See the linked ticket for known workarounds.
 
+Uberjar Leiningen Version Issues
+-----
+If you try to build an uberjar on your own, you will need to use leiningen 2.4.3
+or later.  Earlier versions of leiningen will fail to include some of JRuby's
+dependencies in the uberjar, which can cause failures that say
+`Puppet::Error: Cannot determine basic system flavour` on startup.
+
 OpenBSD JRuby Compatibility Issues
 -----
 
