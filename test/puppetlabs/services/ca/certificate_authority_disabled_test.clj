@@ -15,9 +15,10 @@
 (def ssl-dir (fs/file puppet-conf-dir "ssl"))
 
 (use-fixtures
-  :each
+  :once
   (jruby-testutils/with-puppet-conf
-    "./dev-resources/puppetlabs/services/ca/certificate_authority_disabled_test/puppet.conf"))
+    "./dev-resources/puppetlabs/services/ca/certificate_authority_disabled_test/puppet.conf"
+    puppet-conf-dir))
 
 (deftest ca-disabled-files-test
   (testing "Ensure no certificates are generated when CA disabled service is enabled."
