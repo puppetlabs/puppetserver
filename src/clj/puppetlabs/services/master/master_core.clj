@@ -93,18 +93,3 @@
   (-> (root-routes request-handler)
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))
-
-(schema/defn ^:always-validate initialize-ssl!
-  "Given configuration settings, certname, and CA settings, ensure all
-   necessary SSL files exist on disk by regenerating all of them if any
-   are found to be missing."
-  ([settings certname ca-settings]
-     (initialize-ssl! settings certname ca-settings ca-utils/default-key-length))
-  ([settings :- ca/MasterSettings
-    certname :- schema/Str
-    ca-settings :- ca/CaSettings
-    keylength :- schema/Int]
-     (let [required-master-files (vals (ca/settings->ssldir-paths settings))]
-       (if (every? fs/exists? required-master-files)
-         (log/info "Master already initialized for SSL")
-         (ca/initialize-master-ssl! settings certname ca-settings keylength)))))

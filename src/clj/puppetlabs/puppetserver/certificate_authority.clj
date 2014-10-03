@@ -500,7 +500,7 @@
       (validate-extensions! csr-attr-exts))
     (remove nil? (concat base-ext-list [alt-names-ext] csr-attr-exts))))
 
-(schema/defn initialize-master-ssl!
+(schema/defn generate-master-ssl-files!
   "Given master configuration settings, certname, and CA settings,
    generate and write to disk all of the necessary SSL files for
    the master. Any existing files will be replaced."
@@ -541,6 +541,21 @@
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))
     (utils/cert->pem! ca-cert (:localcacert settings))))
+
+(schema/defn ^:always-validate initialize-master-ssl!
+  "Given configuration settings, certname, and CA settings, ensure all
+   necessary SSL files exist on disk by regenerating all of them if any
+   are found to be missing."
+  ([settings certname ca-settings]
+     (initialize-master-ssl! settings certname ca-settings utils/default-key-length))
+  ([settings :- MasterSettings
+    certname :- schema/Str
+    ca-settings :- CaSettings
+    keylength :- schema/Int]
+     (let [required-master-files (vals (settings->ssldir-paths settings))]
+       (if (every? fs/exists? required-master-files)
+         (log/info "Master already initialized for SSL")
+         (generate-master-ssl-files! settings certname ca-settings keylength)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign

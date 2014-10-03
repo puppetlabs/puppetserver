@@ -372,6 +372,61 @@
           (doseq [file (vals (settings->cadir-paths settings))]
             (is (true? (.contains (.getMessage e) file)))))))))
 
+(deftest initialize-master-ssl!-test
+  (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+        settings    (-> (testutils/master-settings tmp-confdir "master")
+                        (assoc :dns-alt-names "onefish,twofish"))
+        ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
+
+    (initialize-master-ssl! settings "master" ca-settings 512)
+
+    (testing "Generated SSL file"
+      (doseq [file (vals (settings->ssldir-paths settings))]
+        (testing file
+          (is (fs/exists? file)))))
+
+    (testing "hostcert"
+      (let [hostcert (-> settings :hostcert utils/pem->cert)]
+        (is (utils/certificate? hostcert))
+        (testutils/assert-subject hostcert "CN=master")
+        (testutils/assert-issuer hostcert "CN=Puppet CA: localhost")
+
+        (testing "has alt names extension"
+          (let [dns-alt-names (utils/get-subject-dns-alt-names hostcert)]
+            (is (= #{"master" "onefish" "twofish"} (set dns-alt-names))
+                "The Subject Alternative Names extension should contain the
+                 master's actual hostname and the hostnames in $dns-alt-names")))
+
+        (testing "is also saved in the CA's $signeddir"
+          (let [signedpath (path-to-cert (:signeddir ca-settings) "master")]
+            (is (fs/exists? signedpath))
+            (is (= hostcert (utils/pem->cert signedpath)))))))
+
+    (testing "localcacert"
+      (let [cacert (-> settings :localcacert utils/pem->cert)]
+        (is (utils/certificate? cacert))
+        (testutils/assert-subject cacert "CN=Puppet CA: localhost")
+        (testutils/assert-issuer cacert "CN=Puppet CA: localhost")))
+
+    (testing "hostprivkey"
+      (let [key (-> settings :hostprivkey utils/pem->private-key)]
+        (is (utils/private-key? key))
+        (is (= 512 (utils/keylength key)))))
+
+    (testing "hostpubkey"
+      (let [key (-> settings :hostpubkey utils/pem->public-key)]
+        (is (utils/public-key? key))
+        (is (= 512 (utils/keylength key)))))
+
+    (testing "Does not replace files if they all exist"
+      (let [files (-> (settings->ssldir-paths settings)
+                      (dissoc :certdir :requestdir)
+                      (vals))]
+        (doseq [f files] (spit f "testable string"))
+        (initialize-master-ssl! settings "master" ca-settings 512)
+        (doseq [f files] (is (= "testable string" (slurp f))
+                             "File was replaced"))))))
+
 (deftest parse-serial-number-test
   (is (= (parse-serial-number "0001") 1))
   (is (= (parse-serial-number "0010") 16))
