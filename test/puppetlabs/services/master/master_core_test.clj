@@ -24,7 +24,8 @@
                    "file_metadata"
                    "file_bucket_file"
                    "resource_type"
-                   "resource_types"]
+                   "resource_types"
+                   "facts_search"]
              :post ["catalog"]
              :put ["file_bucket_file"
                    "report"]
