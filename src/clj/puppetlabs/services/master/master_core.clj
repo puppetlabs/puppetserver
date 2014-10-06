@@ -1,5 +1,4 @@
 (ns puppetlabs.services.master.master-core
-  (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
             [compojure.route :as route]
             [me.raynes.fs :as fs]
