@@ -4,6 +4,11 @@ NOTE: This is a *preview* release; while it should function as a drop-in replace
 for an existing Puppet Master in most cases, it is not recommended for use in
 production without thorough testing in a staging environment.
 
+NOTE: Puppet Server depends on Puppet 3.7.1+, so be aware that if you decide to
+install it on a system where you are currently running an Apache/Passenger master
+with an older version of Puppet, package installation will include an upgrade to
+Puppet itself.
+
 Puppet Server is the next-generation application for managing Puppet agents.
 It is the platform that will carry Puppet's server-side components to a more
 distributed, service-oriented architecture.  It has been built on top of the
