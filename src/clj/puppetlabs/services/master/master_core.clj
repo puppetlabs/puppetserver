@@ -72,7 +72,7 @@
     (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
           mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
                                               (slurp "/proc/meminfo"))))
-          required-mem-size (* (/ 10.0 9.0) heap-size)]
+          required-mem-size (/ heap-size 0.9)]
       (when (< mem-size required-mem-size)
         (throw (Error.
                  (str "Not enough RAM. Puppet Server requires at least "
