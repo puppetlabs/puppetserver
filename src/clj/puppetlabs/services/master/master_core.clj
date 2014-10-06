@@ -70,6 +70,11 @@
    so that the JVM doesn't fail later due to an Out of Memory error."
   []
   (when (fs/exists? "/proc/meminfo")
+    ; Due to OpenJDK Issue JDK-7132461
+    ; (https://bugs.openjdk.java.net/browse/JDK-7132461),
+    ; we have to open and slurp a FileInputStream object rather than
+    ; slurping the file directly, since directly slurping the file
+    ; causes a call to be made to FileInputStream.available().
     (with-open [mem-info-file (FileInputStream. "/proc/meminfo")]
       (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
             mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
