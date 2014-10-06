@@ -419,7 +419,7 @@
                 (is (= 409 (:status response))
                     (ks/pprint-to-string response))
                 (is (= (:body response)
-                       "Cannot revoke certificate for host test-agent - no certificate exists on disk.")
+                       "Cannot revoke certificate for host test-agent without a signed certificate")
                     (ks/pprint-to-string response))))
 
             (testing "trying to sign a cert that's already signed is a 409"
@@ -428,7 +428,8 @@
                              :body           (body-stream "{\"desired_state\":\"signed\"}")}
                     response (test-app request)]
                 (is (= 409 (:status response)))
-                (is (= (:body response) "Cannot sign certificate for host localhost - no certificate signing request exists on disk."))))
+                (is (= (:body response)
+                       "Cannot sign certificate for host localhost without a certificate request"))))
 
             (testing "trying to revoke a cert that's already revoked is a 204"
               (let [request {:uri            "/production/certificate_status/revoked-agent"

@@ -165,15 +165,15 @@
         :revoked
         ;; A signed cert must exist if we are to revoke it.
         (when-not (ca/certificate-exists? settings subject)
-          (conflict (str "Cannot revoke certificate for host " subject
-                         " - no certificate exists on disk.")))
+          (conflict (str "Cannot revoke certificate for host "
+                         subject " without a signed certificate")))
 
         :signed
         (or
           ;; A CSR must exist if we are to sign it.
           (when-not (ca/csr-exists? settings subject)
-            (conflict (str "Cannot sign certificate for host " subject
-                           " - no certificate signing request exists on disk.")))
+            (conflict (str "Cannot sign certificate for host "
+                           subject " without a certificate request")))
 
           ;; And the CSR must be valid.
           (when-let [error-message (ca/validate-csr settings subject)]
