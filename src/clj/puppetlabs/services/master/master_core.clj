@@ -1,4 +1,5 @@
 (ns puppetlabs.services.master.master-core
+  (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
             [compojure.route :as route]
             [me.raynes.fs :as fs]
@@ -75,15 +76,21 @@
    so that the JVM doesn't fail later due to an Out of Memory error."
   []
   (when (fs/exists? "/proc/meminfo")
-    (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
-          mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
-                                              (slurp "/proc/meminfo"))))
-          required-mem-size (/ heap-size 0.9)]
-      (when (< mem-size required-mem-size)
-        (throw (Error.
-                 (str "Not enough RAM. Puppet Server requires at least "
-                      (int (/ required-mem-size 1024.0))
-                      "MB of RAM.")))))))
+    ; Due to OpenJDK Issue JDK-7132461
+    ; (https://bugs.openjdk.java.net/browse/JDK-7132461),
+    ; we have to open and slurp a FileInputStream object rather than
+    ; slurping the file directly, since directly slurping the file
+    ; causes a call to be made to FileInputStream.available().
+    (with-open [mem-info-file (FileInputStream. "/proc/meminfo")]
+      (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
+            mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                                (slurp mem-info-file))))
+            required-mem-size (/ heap-size 0.9)]
+        (when (< mem-size required-mem-size)
+          (throw (Error.
+                   (str "Not enough RAM. Puppet Server requires at least "
+                        (int (/ required-mem-size 1024.0))
+                        "MB of RAM."))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
