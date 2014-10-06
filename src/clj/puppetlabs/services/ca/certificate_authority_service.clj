@@ -13,11 +13,17 @@
    [:WebserverService add-ring-handler]]
   (init
    [this context]
-   (let [path     ""
-         settings (ca/config->ca-settings (get-config))
+   (let [path           ""
+         settings       (ca/config->ca-settings (get-config))
          puppet-version (get-in-config [:puppet-server :puppet-version])]
+     (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
       (compojure/context path [] (core/compojure-app settings puppet-version))
       path))
-   context))
+   context)
+
+  (initialize-master-ssl!
+   [this master-settings certname]
+   (let [settings (ca/config->ca-settings (get-config))]
+     (ca/initialize-master-ssl! master-settings certname settings))))

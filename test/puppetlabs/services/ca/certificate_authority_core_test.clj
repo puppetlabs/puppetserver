@@ -7,6 +7,7 @@
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.services.ca.testutils :as testutils]
             [puppetlabs.services.ca.certificate-authority-core :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [ring.mock.request :as mock]
@@ -19,6 +20,7 @@
 
 (def test-resources-dir "./dev-resources/puppetlabs/services/ca/certificate_authority_core_test")
 (def cadir (str test-resources-dir "/master/conf/ssl/ca"))
+(def csrdir (str cadir "/requests"))
 (def test-pems-dir (str test-resources-dir "/pems"))
 (def autosign-files-dir (str test-resources-dir "/autosign"))
 
@@ -42,33 +44,6 @@
     (-> request
         (assoc :ssl-client-cert localhost-cert)
         (app))))
-
-(defn ca-settings
-  ([] (ca-settings cadir))
-  ([cadir]
-     {:access-control        {:certificate-status {:client-whitelist ["localhost"]}}
-      :allow-duplicate-certs true
-      :autosign              true
-      :ca-ttl                100
-      :ca-name               "Puppet CA: localhost"
-      :cacert                (str cadir "/ca_crt.pem")
-      :cacrl                 (str cadir "/ca_crl.pem")
-      :cakey                 (str cadir "/ca_key.pem")
-      :capub                 (str cadir "/ca_pub.pem")
-      :signeddir             (str cadir "/signed")
-      :csrdir                (str cadir "/requests")
-      :serial                (str cadir "/serial")
-      :cert-inventory        (str cadir "/inventory.txt")
-      :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]}))
-
-(defn ca-sandbox!
-  "Copy the static 'cadir' to a temporary directory and return
-   the 'ca-settings' map rooted at the temporary directory.
-   The directory will be deleted when the JVM exits."
-  []
-  (let [tmp-ssldir (ks/temp-dir)]
-    (fs/copy-dir cadir tmp-ssldir)
-    (ca-settings (str tmp-ssldir "/ca"))))
 
 (defn body-stream
   [s]
@@ -125,7 +100,7 @@
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"
-          ring-app (compojure-app (ca-settings) version-number)
+          ring-app (compojure-app (testutils/ca-settings cadir) version-number)
           ;; we can just GET the /CRL endpoint, so that's an easy test here.
           request (mock/request :get
                                 "/production/certificate_revocation_list/mynode")
@@ -133,7 +108,8 @@
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-put-certificate-request!-test
-  (let [settings   (ca-sandbox!)
+  (let [settings   (assoc (testutils/ca-sandbox! cadir)
+                     :allow-duplicate-certs true)
         static-csr (ca/path-to-cert-request (str cadir "/requests") "test-agent")]
     (logutils/with-test-logging
       (testing "when autosign results in true"
@@ -263,7 +239,7 @@
 
 (deftest certificate-status-test
   (testing "read requests"
-    (let [test-app (-> (compojure-app (ca-settings) "42.42.42")
+    (let [test-app (-> (compojure-app (testutils/ca-settings cadir) "42.42.42")
                        (wrap-with-ssl-client-cert))]
       (testing "GET /certificate_status"
         (doseq [[subject status] [["localhost" localhost-status]
@@ -348,7 +324,7 @@
                  (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
-    (let [settings (ca-sandbox!)
+    (let [settings (testutils/ca-sandbox! cadir)
           test-app (-> (compojure-app settings "42.42.42")
                        (wrap-with-ssl-client-cert))]
       (testing "PUT"
@@ -406,7 +382,7 @@
             (is (= "Invalid certificate subject." (:body response)))))
 
         (testing "Additional error handling on PUT requests"
-          (let [settings (ca-sandbox!)
+          (let [settings (testutils/ca-sandbox! cadir)
                 test-app (-> (compojure-app settings "42.42.42")
                              (wrap-with-ssl-client-cert))]
 
@@ -439,7 +415,7 @@
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]
-          (fs/copy (ca/path-to-cert-request (:csrdir (ca-settings)) "test-agent") csr)
+          (fs/copy (ca/path-to-cert-request csrdir "test-agent") csr)
           (is (true? (fs/exists? csr)))
           (is (= 204 (:status (test-app
                                {:uri "/production/certificate_status/test-agent"
@@ -459,7 +435,7 @@
                                 :request-method :delete}))))))))
 
   (testing "a signing request w/ a 'application/json' content-type succeeds"
-    (let [settings         (ca-sandbox!)
+    (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (compojure-app settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -473,7 +449,7 @@
         (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a 'text/pson' content-type succeeds"
-    (let [settings         (ca-sandbox!)
+    (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (compojure-app settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -487,7 +463,7 @@
         (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a 'pson' content-type succeeds"
-    (let [settings         (ca-sandbox!)
+    (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (compojure-app settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -501,7 +477,7 @@
         (is (= 204 (:status response))))))
 
   (testing "a signing request w/ a bogus content-type header results in a HTTP 415"
-    (let [settings (ca-sandbox!)
+    (let [settings (testutils/ca-sandbox! cadir)
           test-app (-> (compojure-app settings "42.42.42")
                        (wrap-with-ssl-client-cert))
           response (test-app
@@ -515,7 +491,7 @@
 
 (deftest cert-status-invalid-csrs
   (testing "Asking /certificate_status to sign invalid CSRs"
-    (let [settings  (assoc (ca-settings)
+    (let [settings  (assoc (testutils/ca-settings cadir)
                       :csrdir (str test-resources-dir "/alternate-csrdir"))
           test-app (-> (compojure-app settings "42.42.42")
                        (wrap-with-ssl-client-cert))]
@@ -547,7 +523,8 @@
   (testing "signing a certificate doesn't depend on $allow-duplicate-certs"
     (doseq [bool [false true]]
       (testing bool
-        (let [settings    (assoc (ca-sandbox!) :allow-duplicate-certs bool)
+        (let [settings    (assoc (testutils/ca-sandbox! cadir)
+                            :allow-duplicate-certs bool)
               test-app    (-> (compojure-app settings "1.2.3.4")
                               (wrap-with-ssl-client-cert))
               signed-path (ca/path-to-cert (:signeddir settings) "test-agent")]
@@ -562,7 +539,7 @@
 
 (deftest cert-status-access-control
   (testing "a request with no certificate is rejected with 403 Forbidden"
-    (let [test-app (compojure-app (ca-settings) "1.2.3.4")]
+    (let [test-app (compojure-app (testutils/ca-settings cadir) "1.2.3.4")]
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
@@ -572,7 +549,7 @@
             (is (= "Forbidden." (:body response))))))))
 
   (testing "a request with a certificate not on the whitelist is rejected"
-    (let [settings (assoc (ca-settings)
+    (let [settings (assoc (testutils/ca-settings cadir)
                      :access-control {:certificate-status
                                       {:client-whitelist []}})
           test-app (compojure-app settings "1.2.3.4")]
@@ -588,7 +565,7 @@
   (testing "a request with a certificate that is on the whitelist is allowed"
     (doseq [whitelist [["localhost"] ["foo!" "localhost"]]]
       (testing "certificate_status"
-        (let [settings (assoc (ca-settings)
+        (let [settings (assoc (testutils/ca-settings cadir)
                          :access-control {:certificate-status
                                           {:client-whitelist whitelist}})
               test-app (compojure-app settings "1.2.3.4")
@@ -600,7 +577,7 @@
           (is (= test-agent-status (json/parse-string (:body response) true)))))
 
       (testing "certificate_statuses"
-        (let [settings (assoc (ca-settings)
+        (let [settings (assoc (testutils/ca-settings cadir)
                          :access-control {:certificate-status
                                           {:client-whitelist whitelist}})
               test-app (compojure-app settings "1.2.3.4")
