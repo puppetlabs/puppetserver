@@ -48,6 +48,12 @@
     (compojure/GET "/resource_type/*" request
                    (request-handler request))
     (compojure/GET "/resource_types/*" request
+                   (request-handler request))
+
+    ;; TODO: when we get rid of the legacy dashboard after 3.4, we should remove
+    ;; this endpoint as well.  It makes more sense for this type of query to be
+    ;; directed to PuppetDB.
+    (compojure/GET "/facts_search/*" request
                    (request-handler request))))
 
 (defn root-routes
