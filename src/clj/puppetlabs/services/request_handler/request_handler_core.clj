@@ -27,11 +27,12 @@
 (defn config->request-handler-settings
   "Given an entire Puppet Server configuration map, return only those keys
   which are required by the request handler service."
-  [{:keys [puppet-server]}]
-  {:ssl-client-verify-header (unmunge-http-header-name
+  [{:keys [puppet-server global]}]
+  {:allow-header-cert-info   (true? (:allow-header-cert-info global))
+   :ssl-client-verify-header (unmunge-http-header-name
                                (:ssl-client-verify-header puppet-server))
-   :ssl-client-header (unmunge-http-header-name
-                        (:ssl-client-header puppet-server))})
+   :ssl-client-header        (unmunge-http-header-name
+                               (:ssl-client-header puppet-server))})
 
 (defn get-cert-common-name
   "Given a request, return the Common Name from the client certificate subject."
@@ -104,20 +105,25 @@
         header as well as the authentication status of the CN, and no
         certificate wil be available."
   [config request]
-  (let [headers   (:headers request)
-        jruby-req {:uri            (:uri request)
-                   :params         (:params request)
-                   :remote-addr    (:remote-addr request)
-                   :headers        headers
-                   :body           (:body-string request)
-                   :request-method (-> (:request-method request)
-                                       name
-                                       string/upper-case)}]
-    (if-let [header-dn (get headers (:ssl-client-header config))]
+  (let [headers     (:headers request)
+        jruby-req   {:uri            (:uri request)
+                     :params         (:params request)
+                     :remote-addr    (:remote-addr request)
+                     :headers        headers
+                     :body           (:body-string request)
+                     :request-method (-> (:request-method request)
+                                         name
+                                         string/upper-case)}
+        header-dn   (get headers (:ssl-client-header config))
+        header-auth (get headers (:ssl-client-verify-header config))]
+    (when (and header-dn (not (:allow-header-cert-info config)))
+      (log/warn "The HTTP header " (:ssl-client-header config) " was specified,"
+                "but the Puppet Server global config option allow-header-cert-info"
+                "was either not set, or was set to false. This header will be ignored."))
+    (if (and (:allow-header-cert-info config) header-dn)
       (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
                        :client-cert    nil
-                       :authenticated  (= "SUCCESS"
-                                          (get headers (:ssl-client-verify-header config)))})
+                       :authenticated  (= "SUCCESS" header-auth)})
       (conj jruby-req {:client-cert    (:ssl-client-cert request)
                        :client-cert-cn (get-cert-common-name request)
                        :authenticated  true}))))
