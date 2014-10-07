@@ -368,6 +368,7 @@
       (fs/delete (:capub settings))
       (try
         (initialize! settings 512)
+        (is false "No exception thrown")
         (catch IllegalStateException e
           (doseq [file (vals (settings->cadir-paths settings))]
             (is (true? (.contains (.getMessage e) file)))))))))
@@ -425,7 +426,19 @@
         (doseq [f files] (spit f "testable string"))
         (initialize-master-ssl! settings "master" ca-settings 512)
         (doseq [f files] (is (= "testable string" (slurp f))
-                             "File was replaced"))))))
+                             "File was replaced"))))
+
+    (testing "Throws an exception if only some of the files exist"
+      (doseq [file required-master-files]
+        (testing file
+          (let [path (get settings file)
+                copy (fs/copy path (ks/temp-file))]
+            (fs/delete path)
+            (is (thrown-with-msg?
+                 IllegalStateException
+                 (re-pattern (str "Missing:\n" path))
+                 (initialize-master-ssl! settings "master" ca-settings 512)))
+            (fs/copy copy path)))))))
 
 (deftest parse-serial-number-test
   (is (= (parse-serial-number "0001") 1))
