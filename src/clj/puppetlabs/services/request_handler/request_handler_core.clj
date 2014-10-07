@@ -7,11 +7,31 @@
             [clojure.string :as string]
             [clojure.walk :as walk]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.certificate-authority.core :as ssl]
             [ring.middleware.params :as ring-params]
-            [ring.middleware.nested-params :as ring-nested-params]))
+            [ring.middleware.nested-params :as ring-nested-params]
+            [clojure.string :as str]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(defn unmunge-http-header-name
+  [setting]
+  "Given the value of a Puppet setting which contains a munged HTTP header name,
+  convert it to the actual header name in all lower-case."
+  (->> (string/split setting #"_")
+       rest
+       (string/join "-")
+       string/lower-case))
+
+(defn config->request-handler-settings
+  "Given an entire Puppet Server configuration map, return only those keys
+  which are required by the request handler service."
+  [{:keys [puppet-server]}]
+  {:ssl-client-verify-header (unmunge-http-header-name
+                               (:ssl-client-verify-header puppet-server))
+   :ssl-client-header (unmunge-http-header-name
+                        (:ssl-client-header puppet-server))})
 
 (defn get-cert-common-name
   "Given a request, return the Common Name from the client certificate subject."
@@ -78,19 +98,29 @@
         performance and memory usage, but we have to ship this thing over to
         JRuby, so I don't think there's any way around this.
       * It also extracts the name of the SSL client cert and includes that
-        in the map it returns, because it's needed by the ruby layer."
-  [request]
-  { :uri            (:uri request)
-    :params         (:params request)
-    :remote-addr    (:remote-addr request)
-    :headers        (:headers request)
-    :body           (:body-string request)
-    :client-cert    (:ssl-client-cert request)
-    :client-cert-cn (get-cert-common-name request)
-    :request-method (->
-                      (:request-method request)
-                      name
-                      string/upper-case)})
+        in the map it returns, because it's needed by the ruby layer. It is
+        possible that the HTTPS termination has happened external to Puppet
+        Server, if so then the CN will be provided by user-specified HTTP
+        header as well as the authentication status of the CN, and no
+        certificate wil be available."
+  [config request]
+  (let [headers   (:headers request)
+        jruby-req {:uri            (:uri request)
+                   :params         (:params request)
+                   :remote-addr    (:remote-addr request)
+                   :headers        headers
+                   :body           (:body-string request)
+                   :request-method (-> (:request-method request)
+                                       name
+                                       string/upper-case)}]
+    (if-let [header-dn (get headers (:ssl-client-header config))]
+      (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
+                       :client-cert    nil
+                       :authenticated  (= "SUCCESS"
+                                          (get headers (:ssl-client-verify-header config)))})
+      (conj jruby-req {:client-cert    (:ssl-client-cert request)
+                       :client-cert-cn (get-cert-common-name request)
+                       :authenticated  true}))))
 
 (defn make-request-mutable
   [request]
@@ -101,10 +131,10 @@
 ;;; Public
 
 (defn handle-request
-  [request jruby-instance]
+  [request jruby-instance config]
   (->> request
        wrap-params-for-jruby
-       as-jruby-request
+       (as-jruby-request config)
        clojure.walk/stringify-keys
        make-request-mutable
        (.handleRequest jruby-instance)

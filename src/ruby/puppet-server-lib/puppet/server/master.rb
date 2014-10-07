@@ -174,13 +174,11 @@ class Puppet::Server::Master
       result[:ip] = ip
     end
 
-    # If they have a certificate (which will almost always be true)
-    # then we get the hostname from the cert, instead of via IP
-    # info
+    # If a CN was provided then use that instead of IP info
     result[:authenticated] = false
     if cn = request["client-cert-cn"]
       result[:node] = cn
-      result[:authenticated] = true
+      result[:authenticated] = request["authenticated"]
     else
       result[:node] = resolve_node(result)
     end
