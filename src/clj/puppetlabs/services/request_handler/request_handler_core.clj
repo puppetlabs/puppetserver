@@ -27,8 +27,8 @@
 (defn config->request-handler-settings
   "Given an entire Puppet Server configuration map, return only those keys
   which are required by the request handler service."
-  [{:keys [puppet-server global]}]
-  {:allow-header-cert-info   (true? (:allow-header-cert-info global))
+  [{:keys [puppet-server master]}]
+  {:allow-header-cert-info   (true? (:allow-header-cert-info master))
    :ssl-client-verify-header (unmunge-http-header-name
                                (:ssl-client-verify-header puppet-server))
    :ssl-client-header        (unmunge-http-header-name

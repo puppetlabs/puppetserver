@@ -9,7 +9,7 @@
   (core/config->request-handler-settings
     {:puppet-server {:ssl-client-verify-header "HTTP_X_CLIENT_VERIFY"
                      :ssl-client-header        "HTTP_X_CLIENT_DN"}
-     :global        {:allow-header-cert-info allow-header-certs}}))
+     :master        {:allow-header-cert-info allow-header-certs}}))
 
 (deftest get-cert-common-name-test
   (testing (str "expected common name can be extracted from the certificate on "
