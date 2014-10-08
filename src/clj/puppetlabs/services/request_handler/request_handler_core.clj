@@ -124,9 +124,11 @@
       (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
                        :client-cert    nil
                        :authenticated  (= "SUCCESS" header-auth)})
-      (conj jruby-req {:client-cert    (:ssl-client-cert request)
-                       :client-cert-cn (get-cert-common-name request)
-                       :authenticated  true}))))
+      (let [cert (:ssl-client-cert request)
+            cn (get-cert-common-name request)]
+        (conj jruby-req {:client-cert    cert
+                         :client-cert-cn cn
+                         :authenticated  (not (nil? cn))})))))
 
 (defn make-request-mutable
   [request]
