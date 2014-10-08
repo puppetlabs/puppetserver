@@ -101,9 +101,9 @@
       * It also extracts the name of the SSL client cert and includes that
         in the map it returns, because it's needed by the ruby layer. It is
         possible that the HTTPS termination has happened external to Puppet
-        Server, if so then the CN will be provided by user-specified HTTP
+        Server, if so then the DN will be provided by user-specified HTTP
         header as well as the authentication status of the CN, and no
-        certificate wil be available."
+        certificate will be available."
   [config request]
   (let [headers     (:headers request)
         jruby-req   {:uri            (:uri request)
