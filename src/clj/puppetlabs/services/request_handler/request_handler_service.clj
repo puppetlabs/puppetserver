@@ -6,14 +6,15 @@
             [puppetlabs.trapperkeeper.services :as tk-services]))
 
 (defn- handle-request
-  [request jruby-service]
+  [request jruby-service config]
   (jruby/with-jruby-puppet jruby-puppet jruby-service
-    (core/handle-request request jruby-puppet)))
+    (core/handle-request request jruby-puppet config)))
 
 (tk/defservice request-handler-service
                handler/RequestHandlerService
-               []
+               [[:PuppetServerConfigService get-config]]
                (handle-request
                  [this request]
-                 (let [jruby-service (tk-services/get-service this :JRubyPuppetService)]
-                   (handle-request request jruby-service))))
+                 (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
+                       config (core/config->request-handler-settings (get-config))]
+                   (handle-request request jruby-service config))))
