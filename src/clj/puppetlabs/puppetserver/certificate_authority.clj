@@ -124,6 +124,10 @@
   "The set of SSL files that are required on the master."
   [:hostprivkey :hostcert :localcacert])
 
+(def required-ca-files
+  "The set of SSL related files that are required on the CA."
+  [:cacert :cacrl :cakey :cert-inventory :serial])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -859,23 +863,34 @@
   [cacrl :- schema/Str]
   (slurp cacrl))
 
+(schema/defn ensure-directories-exist!
+  "Create any directories used by the CA if they don't already exist."
+  [settings :- CaSettings]
+  (doseq [dir [:csrdir :signeddir]]
+    (let [path (get settings dir)]
+      (when-not (fs/exists? path)
+        (ks/mkdirs! path)))))
+
 (schema/defn ^:always-validate
   initialize!
   "Given the CA configuration settings and an optional keylength,
    ensure that all required SSL files exist. If all files exist,
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
-  ([ca-settings]
-     (initialize! ca-settings utils/default-key-length))
-  ([ca-settings :- CaSettings
+  ([settings]
+     (initialize! settings utils/default-key-length))
+  ([settings :- CaSettings
     keylength :- schema/Int]
-     (let [required-ca-files (vals (settings->cadir-paths ca-settings))]
-       (if (every? fs/exists? required-ca-files)
+     (ensure-directories-exist! settings)
+     (let [required-files (-> (settings->cadir-paths settings)
+                              (select-keys required-ca-files)
+                              (vals))]
+       (if (every? fs/exists? required-files)
          (log/info "CA already initialized for SSL")
          (let [{found   true
-                missing false} (group-by fs/exists? required-ca-files)]
-           (if (= required-ca-files missing)
-             (generate-ssl-files! ca-settings keylength)
+                missing false} (group-by fs/exists? required-files)]
+           (if (= required-files missing)
+             (generate-ssl-files! settings keylength)
              (throw (partial-state-error "CA" found missing))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

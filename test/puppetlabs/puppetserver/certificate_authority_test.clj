@@ -361,17 +361,32 @@
         (doseq [f files] (spit f "testable string"))
         (initialize! settings 512)
         (doseq [f files] (is (= "testable string" (slurp f))
-                             "File was replaced"))))
+                             "File was replaced"))))))
 
-    (testing "Throws an exception if only some of the files exist"
-      (fs/delete-dir (:signeddir settings))
+(deftest ca-fail-fast-test
+  (testing "Directories not required but are created if absent"
+    (doseq [dir [:signeddir :csrdir]]
+      (testing dir
+        (let [settings (testutils/ca-sandbox! cadir)]
+          (fs/delete-dir (get settings dir))
+          (is (nil? (initialize! settings 512)))
+          (is (true? (fs/exists? (get settings dir))))))))
+
+  (testing "CA public key not required"
+    (let [settings (testutils/ca-sandbox! cadir)]
       (fs/delete (:capub settings))
-      (try
-        (initialize! settings 512)
-        (is false "No exception thrown")
-        (catch IllegalStateException e
-          (doseq [file (vals (settings->cadir-paths settings))]
-            (is (true? (.contains (.getMessage e) file)))))))))
+      (is (nil? (initialize! settings 512)))))
+
+  (testing "Exception is thrown when required file is missing"
+    (doseq [file required-ca-files]
+      (testing file
+        (let [settings (testutils/ca-sandbox! cadir)
+              path     (get settings file)]
+          (fs/delete path)
+          (is (thrown-with-msg?
+               IllegalStateException
+               (re-pattern (str "Missing:\n" path))
+               (initialize! settings 512))))))))
 
 (deftest initialize-master-ssl!-test
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
@@ -428,7 +443,7 @@
         (doseq [f files] (is (= "testable string" (slurp f))
                              "File was replaced"))))
 
-    (testing "Throws an exception if only some of the files exist"
+    (testing "Throws an exception if required file is missing"
       (doseq [file required-master-files]
         (testing file
           (let [path (get settings file)
