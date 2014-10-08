@@ -121,9 +121,14 @@
                 "but the Puppet Server global config option allow-header-cert-info"
                 "was either not set, or was set to false. This header will be ignored."))
     (if (and (:allow-header-cert-info config) header-dn)
-      (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
-                       :client-cert    nil
-                       :authenticated  (= "SUCCESS" header-auth)})
+      (try
+        (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
+                         :client-cert    nil
+                         :authenticated  (= "SUCCESS" header-auth)})
+        (catch AssertionError _
+          (conj jruby-req {:client-cert-cn nil
+                           :client-cert    nil
+                           :authenticated  false})))
       (let [cert (:ssl-client-cert request)
             cn (get-cert-common-name request)]
         (conj jruby-req {:client-cert    cert

@@ -112,12 +112,14 @@
       (is (nil? (get req :client-cert)))))
 
   (testing "a malformed DN string fails"
-    (is (thrown? AssertionError
-                 (core/as-jruby-request
-                   (puppet-server-config true)
-                   {:request-method :GET
-                    :headers        {"x-client-verify" "SUCCESS"
-                                     "x-client-dn"     "invalid-dn"}}))))
+    (let [req (core/as-jruby-request
+                (puppet-server-config true)
+                {:request-method :GET
+                 :headers        {"x-client-verify" "SUCCESS"
+                                  "x-client-dn"     "invalid-dn"}})]
+      (is (not (get req :authenticated)))
+      (is (nil? (get req :client-cert)))
+      (is (nil? (get req :client-cert-cn)))))
 
   (testing "Setting the auth header to somethign other than 'SUCCESS' fails"
     (let [req (core/as-jruby-request
