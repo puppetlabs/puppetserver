@@ -2,6 +2,7 @@ require 'puppet'
 require 'puppet/server'
 require 'puppet/server/config'
 require 'net/http'
+require 'base64'
 
 require 'java'
 java_import com.puppetlabs.http.client.SyncHttpClient
@@ -25,7 +26,21 @@ class Puppet::Server::HttpClient
     @protocol = @use_ssl ? "https" : "http"
   end
 
-  def post(url, body, headers)
+  def post(url, body, headers, options = {})
+
+    # If credentials were supplied for HTTP basic auth, add them into the headers.
+    # This is based on the code in lib/puppet/reports/http.rb.
+    credentials = options[:basic_auth]
+    if credentials
+      if headers["Authorization"]
+        raise "Existing 'Authorization' header conflicts with supplied HTTP basic auth credentials."
+      end
+
+      # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
+      headers["Authorization"] =
+          "Basic: #{Base64.encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
+    end
+
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
