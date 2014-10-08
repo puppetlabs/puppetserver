@@ -121,7 +121,7 @@
       (is (nil? (get req :client-cert)))
       (is (nil? (get req :client-cert-cn)))))
 
-  (testing "Setting the auth header to somethign other than 'SUCCESS' fails"
+  (testing "Setting the auth header to something other than 'SUCCESS' fails"
     (let [req (core/as-jruby-request
                 (puppet-server-config true)
                 {:request-method :GET
