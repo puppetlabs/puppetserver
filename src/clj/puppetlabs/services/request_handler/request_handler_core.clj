@@ -9,8 +9,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as ssl]
             [ring.middleware.params :as ring-params]
-            [ring.middleware.nested-params :as ring-nested-params]
-            [clojure.string :as str]))
+            [ring.middleware.nested-params :as ring-nested-params]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
