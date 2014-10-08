@@ -120,6 +120,14 @@
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
+(def required-master-files
+  "The set of SSL files that are required on the master."
+  [:hostprivkey :hostcert :localcacert])
+
+(def required-ca-files
+  "The set of SSL related files that are required on the CA."
+  [:cacert :cacrl :cakey :cert-inventory :serial])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -179,17 +187,20 @@
     (IOUtils/copy input-stream os)
     (.toByteArray os)))
 
-(defn partial-state-error
+(schema/defn partial-state-error :- Exception
   "Construct an exception appropriate for the end-user to signify that there
-   are missing SSL files and the CA cannot start until action is taken."
-  [found-files missing-files]
+   are missing SSL files and the master or CA cannot start until action is taken."
+  [master-or-ca :- schema/Str
+   found-files :- [schema/Str]
+   missing-files :- [schema/Str]]
   (IllegalStateException.
    (format
-    (str "Cannot initialize CA with partial state; need all files or none.\n"
+    (str "Cannot initialize %s with partial state; need all files or none.\n"
          "Found:\n"
          "%s\n"
          "Missing:\n"
          "%s\n")
+    master-or-ca
     (str/join "\n" found-files)
     (str/join "\n" missing-files))))
 
@@ -552,10 +563,16 @@
     certname :- schema/Str
     ca-settings :- CaSettings
     keylength :- schema/Int]
-     (let [required-master-files (vals (settings->ssldir-paths settings))]
-       (if (every? fs/exists? required-master-files)
+     (let [required-files (-> (settings->ssldir-paths settings)
+                              (select-keys required-master-files)
+                              (vals))]
+       (if (every? fs/exists? required-files)
          (log/info "Master already initialized for SSL")
-         (generate-master-ssl-files! settings certname ca-settings keylength)))))
+         (let [{found   true
+                missing false} (group-by fs/exists? required-files)]
+           (if (= required-files missing)
+             (generate-master-ssl-files! settings certname ca-settings keylength)
+             (throw (partial-state-error "master" found missing))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
@@ -846,24 +863,35 @@
   [cacrl :- schema/Str]
   (slurp cacrl))
 
+(schema/defn ensure-directories-exist!
+  "Create any directories used by the CA if they don't already exist."
+  [settings :- CaSettings]
+  (doseq [dir [:csrdir :signeddir]]
+    (let [path (get settings dir)]
+      (when-not (fs/exists? path)
+        (ks/mkdirs! path)))))
+
 (schema/defn ^:always-validate
   initialize!
   "Given the CA configuration settings and an optional keylength,
    ensure that all required SSL files exist. If all files exist,
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
-  ([ca-settings]
-     (initialize! ca-settings utils/default-key-length))
-  ([ca-settings :- CaSettings
+  ([settings]
+     (initialize! settings utils/default-key-length))
+  ([settings :- CaSettings
     keylength :- schema/Int]
-     (let [required-ca-files (vals (settings->cadir-paths ca-settings))]
-       (if (every? fs/exists? required-ca-files)
+     (ensure-directories-exist! settings)
+     (let [required-files (-> (settings->cadir-paths settings)
+                              (select-keys required-ca-files)
+                              (vals))]
+       (if (every? fs/exists? required-files)
          (log/info "CA already initialized for SSL")
          (let [{found   true
-                missing false} (group-by fs/exists? required-ca-files)]
-           (if (= required-ca-files missing)
-             (generate-ssl-files! ca-settings keylength)
-             (throw (partial-state-error found missing))))))))
+                missing false} (group-by fs/exists? required-files)]
+           (if (= required-files missing)
+             (generate-ssl-files! settings keylength)
+             (throw (partial-state-error "CA" found missing))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint
