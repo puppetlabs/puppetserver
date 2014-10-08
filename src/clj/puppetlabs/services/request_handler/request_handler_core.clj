@@ -120,11 +120,13 @@
                 "but the Puppet Server global config option allow-header-cert-info"
                 "was either not set, or was set to false. This header will be ignored."))
     (if (and (:allow-header-cert-info config) header-dn)
-      (try
+      (if (ssl/valid-x500-name? header-dn)
         (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
                          :client-cert    nil
                          :authenticated  (= "SUCCESS" header-auth)})
-        (catch AssertionError _
+        (do
+          (log/errorf "The DN '%s' provided by the HTTP header '%s' is malformed."
+                      header-dn (:ssl-client-header config))
           (conj jruby-req {:client-cert-cn nil
                            :client-cert    nil
                            :authenticated  false})))
