@@ -3,8 +3,17 @@ Known Issues
 
 For a list of all known issues, visit our [Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER).
 
-Here are a few specific issues that we're aware of that we are particularly
-interested in addressing in future releases:
+Here are a few specific issues that we're aware of that may affect certain users:
+
+Ruby 1.8 vs Ruby 1.9
+-----
+
+Puppet Server uses an embedded JRuby interpreter to execute Ruby code.  This
+interpreter is compatible with Ruby 1.9.  Therefore, if you are installing
+Puppet Server on an existing system where you've been using Ruby 1.8, there may
+be language features that you're using in your modules whose behavior will change
+slightly.  Generally speaking this should not affect any of the core Puppet ruby
+code, which is tested against both versions of Ruby.
 
 SSL Termination
 -----
