@@ -35,7 +35,9 @@
     :signeddir
     :requestdir
     :dns-alt-names
-    :csr-attributes})
+    :csr-attributes
+    :ssl-client-header
+    :ssl-client-verify-header})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers

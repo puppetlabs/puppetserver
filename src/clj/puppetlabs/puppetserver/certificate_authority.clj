@@ -43,20 +43,20 @@
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:access-control        AccessControl
-   :allow-duplicate-certs schema/Bool
-   :autosign              (schema/either schema/Str schema/Bool)
-   :cacert                schema/Str
-   :cacrl                 schema/Str
-   :cakey                 schema/Str
-   :capub                 schema/Str
-   :ca-name               schema/Str
-   :ca-ttl                schema/Int
-   :cert-inventory        schema/Str
-   :csrdir                schema/Str
-   :ruby-load-path        [schema/Str]
-   :signeddir             schema/Str
-   :serial                schema/Str})
+  {:access-control           AccessControl
+   :allow-duplicate-certs    schema/Bool
+   :autosign                 (schema/either schema/Str schema/Bool)
+   :cacert                   schema/Str
+   :cacrl                    schema/Str
+   :cakey                    schema/Str
+   :capub                    schema/Str
+   :ca-name                  schema/Str
+   :ca-ttl                   schema/Int
+   :cert-inventory           schema/Str
+   :csrdir                   schema/Str
+   :ruby-load-path           [schema/Str]
+   :signeddir                schema/Str
+   :serial                   schema/Str})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate

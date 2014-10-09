@@ -64,6 +64,20 @@ profiler: {
 }
 ```
 
+#### `master.conf`
+
+Contains options which change the behavior of the Pupper Master functionality
+of Puppet Server.
+
+```
+master: {
+    # Allows the `ssl_client_header` and `ssl_client_verify_header` options set
+    # in puppet.conf to work. These headers will be ignored unless this line 
+    # is uncommented.
+    # allow-header-cert-info: true
+}
+```
+
 #### `ca.conf`
 
 This file contains settings related to the Certificate Authority service:

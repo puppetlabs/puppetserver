@@ -4,6 +4,13 @@
             [puppetlabs.certificate-authority.core :as cert-utils]
             [clojure.test :refer :all]))
 
+(defn puppet-server-config
+  [allow-header-certs]
+  (core/config->request-handler-settings
+    {:puppet-server {:ssl-client-verify-header "HTTP_X_CLIENT_VERIFY"
+                     :ssl-client-header        "HTTP_X_CLIENT_DN"}
+     :master        {:allow-header-cert-info allow-header-certs}}))
+
 (deftest get-cert-common-name-test
   (testing (str "expected common name can be extracted from the certificate on "
                 "a request")
@@ -72,3 +79,54 @@
           "Unexpected params in wrapped request")
       (is (= body-string-from-utf16 (:body-string wrapped-request))
           "Unexpected body string in wrapped request"))))
+
+(deftest unmunge-header-name-works
+  (testing "Umunging a puppet.conf http header named works as expected"
+    (is (= (core/unmunge-http-header-name "HTTP_X_CLIENT_VERIFY")
+           "x-client-verify"))
+    (is (= (core/unmunge-http-header-name "HTTP_X_CLIENT_DN")
+           "x-client-dn"))))
+
+(deftest cert-info-in-headers
+  "In the case where Puppet Server is running under HTTP with an upstream HTTPS
+  terminator, the cert's CN and authenticated status will be provided as HTTP
+  headers."
+  (testing "providing headers but not the pupper server config won't work."
+    (let [req (core/as-jruby-request
+                (puppet-server-config false)
+                {:request-method :GET
+                 :headers        {"x-client-verify" "SUCCESS"
+                                  "x-client-dn"     "CN=puppet"}})]
+      (is (not  (get req :authenticated)))
+      (is (nil? (get req :client-cert-cn)))
+      (is (nil? (get req :client-cer)))))
+
+  (testing "providing headers and allow-header-cert-info to true works"
+    (let [req (core/as-jruby-request
+                (puppet-server-config true)
+                {:request-method :GET
+                 :headers        {"x-client-verify" "SUCCESS"
+                                  "x-client-dn"     "CN=puppet"}})]
+      (is (get req :authenticated))
+      (is (= "puppet" (get req :client-cert-cn)))
+      (is (nil? (get req :client-cert)))))
+
+  (testing "a malformed DN string fails"
+    (let [req (core/as-jruby-request
+                (puppet-server-config true)
+                {:request-method :GET
+                 :headers        {"x-client-verify" "SUCCESS"
+                                  "x-client-dn"     "invalid-dn"}})]
+      (is (not (get req :authenticated)))
+      (is (nil? (get req :client-cert)))
+      (is (nil? (get req :client-cert-cn)))))
+
+  (testing "Setting the auth header to something other than 'SUCCESS' fails"
+    (let [req (core/as-jruby-request
+                (puppet-server-config true)
+                {:request-method :GET
+                 :headers        {"x-client-verify" "fail"
+                                  "x-client-dn"     "CN=puppet"}})]
+      (is (not (get req :authenticated)))
+      (is (= "puppet" (get req :client-cert-cn)))
+      (is (nil? (get req :client-cert))))))
