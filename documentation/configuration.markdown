@@ -72,9 +72,9 @@ of Puppet Server.
 ```
 master: {
     # Allows the `ssl_client_header` and `ssl_client_verify_header` options set
-    # in puppet.conf to work. These headers will be ignored unless this is set
-    # to true
-    allow-header-cert-info: false
+    # in puppet.conf to work. These headers will be ignored unless this line 
+    # is uncommented.
+    # allow-header-cert-info: true
 }
 ```
 
