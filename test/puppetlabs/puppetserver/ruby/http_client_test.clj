@@ -49,17 +49,17 @@
     (let [scripting-container (create-scripting-container port)]
       (testing "no credentials"
         (.runScriptlet scripting-container "response = c.post('/', 'foo', {})")
-        (is (= "Net::HTTPUnauthorized" (.runScriptlet scripting-container "response.class.to_s")))
+        (is (= "401" (.runScriptlet scripting-container "response.code")))
         (is (= "access denied" (.runScriptlet scripting-container "response.body"))))
 
       (testing "valid credentials"
         (let [auth "{ :basic_auth => { :user => 'foo', :password => 'bar' }}"]
           (.runScriptlet scripting-container (format "response = c.post('/', 'foo', {}, %s)" auth)))
-        (is (= "Net::HTTPOK" (.runScriptlet scripting-container "response.class.to_s")))
+        (is (= "200" (.runScriptlet scripting-container "response.code")))
         (is (= "hi" (.runScriptlet scripting-container "response.body"))))
 
-      (testing "invvalid credentials"
+      (testing "invalid credentials"
         (let [auth "{ :basic_auth => { :user => 'foo', :password => 'baz' }}"]
           (.runScriptlet scripting-container (format "response = c.post('/', 'foo', {}, %s)" auth)))
-        (is (= "Net::HTTPUnauthorized" (.runScriptlet scripting-container "response.class.to_s")))
+        (is (= "401" (.runScriptlet scripting-container "response.code")))
         (is (= "access denied" (.runScriptlet scripting-container "response.body")))))))
