@@ -38,7 +38,7 @@ class Puppet::Server::HttpClient
 
       # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
       headers["Authorization"] =
-          "Basic: #{Base64.encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
+          "Basic #{Base64.strict_encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
     end
 
     request_options = RequestOptions.new(build_url(url))
