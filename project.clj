@@ -59,6 +59,7 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
+                                   [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}

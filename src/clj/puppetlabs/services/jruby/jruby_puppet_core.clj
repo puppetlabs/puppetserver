@@ -88,6 +88,15 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
+(defn prep-scripting-container
+  [scripting-container ruby-load-path gem-home]
+  (doto scripting-container
+    (.setLoadPaths (cons ruby-code-dir
+                         (map fs/absolute-path ruby-load-path)))
+    (.setCompatVersion (CompatVersion/RUBY1_9))
+    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+    (.setEnvironment (merge {"GEM_HOME" gem-home} jruby-puppet-env))))
+
 (defn empty-scripting-container
   "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
   [ruby-load-path gem-home]
@@ -95,12 +104,8 @@
          (every? string? ruby-load-path)
          (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
-  (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-    (.setLoadPaths (cons ruby-code-dir
-                         (map fs/absolute-path ruby-load-path)))
-    (.setCompatVersion (CompatVersion/RUBY1_9))
-    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    (.setEnvironment (merge {"GEM_HOME" gem-home} jruby-puppet-env))))
+  (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+      (prep-scripting-container ruby-load-path gem-home)))
 
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
