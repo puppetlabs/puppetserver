@@ -19,5 +19,5 @@
 (deftest test-stderr
   (is (thrown-with-msg?
         RuntimeException
-        #"ExecutionStub failure: ls: /this/path/does/not/exist: No such file or directory"
+        #"ExecutionStub failure: ls: .* /this/path/does/not/exist: No such file or directory"
         (execute-ls "/this/path/does/not/exist"))))
