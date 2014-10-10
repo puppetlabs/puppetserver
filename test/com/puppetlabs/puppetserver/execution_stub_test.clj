@@ -15,3 +15,9 @@
     (is (= "" (execute-ls temp-dir)))
     (ExecutionStubImpl/executeCommand (str "touch " temp-dir "/foo"))
     (is (= "foo" (execute-ls temp-dir)))))
+
+(deftest test-stderr
+  (is (thrown-with-msg?
+        RuntimeException
+        #"ExecutionStub failure: ls: /this/path/does/not/exist: No such file or directory"
+        (execute-ls "/this/path/does/not/exist"))))
