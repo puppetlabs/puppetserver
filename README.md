@@ -9,6 +9,13 @@ install it on a system where you are currently running an Apache/Passenger maste
 with an older version of Puppet, package installation will include an upgrade to
 Puppet itself.
 
+NOTE: Puppet Server uses an embedded JRuby interpreter to execute Ruby code.  This
+interpreter is compatible with Ruby 1.9.  Therefore, if you are installing
+Puppet Server on an existing system where you've been using Ruby 1.8, there may
+be language features that you're using in your modules whose behavior will change
+slightly.  Generally speaking this should not affect any of the core Puppet ruby
+code, which is tested against both versions of Ruby.
+
 Puppet Server is the next-generation application for managing Puppet agents.
 It is the platform that will carry Puppet's server-side components to a more
 distributed, service-oriented architecture.  It has been built on top of the
