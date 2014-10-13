@@ -388,12 +388,42 @@
                (re-pattern (str "Missing:\n" path))
                (initialize! settings 512))))))))
 
+(deftest retrieve-ca-cert!-test
+  (testing "CA file copied when it doesn't already exist"
+    (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+          settings    (testutils/master-settings tmp-confdir)
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))
+          cacert      (:cacert ca-settings)
+          localcacert (:localcacert settings)
+          cacert-text (slurp cacert)]
+
+      (testing "Copied cacert to localcacert when localcacert not present"
+        (retrieve-ca-cert! cacert localcacert)
+        (is (= (slurp localcacert) cacert-text)
+            (str "Unexpected content for localcacert: " localcacert)))
+
+      (testing "Copied cacert to localcacert when different localcacert present"
+        (spit (:localcacert settings) "12345")
+        (retrieve-ca-cert! cacert localcacert)
+        (is (= (slurp localcacert) cacert-text)
+            (str "Unexpected content for localcacert: " localcacert)))
+
+      (testing "Throws exception if no localcacert and no cacert to copy"
+        (fs/delete localcacert)
+        (let [copy (fs/copy cacert (ks/temp-file))]
+          (fs/delete cacert)
+          (is (thrown? IllegalStateException
+                       (retrieve-ca-cert! cacert localcacert))
+              "No exception thrown even though no file existed for copying")
+          (fs/copy copy cacert))))))
+
 (deftest initialize-master-ssl!-test
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
         settings    (-> (testutils/master-settings tmp-confdir "master")
                         (assoc :dns-alt-names "onefish,twofish"))
         ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
 
+    (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
     (initialize-master-ssl! settings "master" ca-settings 512)
 
     (testing "Generated SSL file"
@@ -417,12 +447,6 @@
           (let [signedpath (path-to-cert (:signeddir ca-settings) "master")]
             (is (fs/exists? signedpath))
             (is (= hostcert (utils/pem->cert signedpath)))))))
-
-    (testing "localcacert"
-      (let [cacert (-> settings :localcacert utils/pem->cert)]
-        (is (utils/certificate? cacert))
-        (testutils/assert-subject cacert "CN=Puppet CA: localhost")
-        (testutils/assert-issuer cacert "CN=Puppet CA: localhost")))
 
     (testing "hostprivkey"
       (let [key (-> settings :hostprivkey utils/pem->private-key)]
