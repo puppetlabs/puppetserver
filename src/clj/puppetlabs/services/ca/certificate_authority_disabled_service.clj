@@ -10,5 +10,9 @@
   CaService
   []
   (initialize-master-ssl!
-   [this master-settings certname]
-   (log/info "CA disabled; ignoring SSL initialization for Master")))
+    [this master-settings certname]
+    (log/info "CA disabled; ignoring SSL initialization for Master"))
+
+  (retrieve-ca-cert!
+    [this localcacert]
+    (log/info "CA disabled; ignoring retrieval of CA cert")))

@@ -2,4 +2,5 @@
 
 (defprotocol CaService
   "Describes the functionality of the CA service."
-  (initialize-master-ssl! [this master-settings certname]))
+  (initialize-master-ssl! [this master-settings certname])
+  (retrieve-ca-cert! [this master-settings]))

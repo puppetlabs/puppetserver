@@ -26,4 +26,9 @@
   (initialize-master-ssl!
    [this master-settings certname]
    (let [settings (ca/config->ca-settings (get-config))]
-     (ca/initialize-master-ssl! master-settings certname settings))))
+     (ca/initialize-master-ssl! master-settings certname settings)))
+
+  (retrieve-ca-cert!
+    [this localcacert]
+    (ca/retrieve-ca-cert! (get-in-config [:puppet-server :cacert])
+                          localcacert)))

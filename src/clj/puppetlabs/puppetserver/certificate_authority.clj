@@ -122,7 +122,7 @@
 
 (def required-master-files
   "The set of SSL files that are required on the master."
-  [:hostprivkey :hostcert :localcacert])
+  [:hostprivkey :hostcert])
 
 (def required-ca-files
   "The set of SSL related files that are required on the CA."
@@ -550,8 +550,7 @@
     (utils/key->pem! private-key (:hostprivkey settings))
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert
-                      (path-to-cert (:signeddir ca-settings) certname))
-    (utils/cert->pem! ca-cert (:localcacert settings))))
+                      (path-to-cert (:signeddir ca-settings) certname))))
 
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
@@ -573,6 +572,25 @@
            (if (= required-files missing)
              (generate-master-ssl-files! settings certname ca-settings keylength)
              (throw (partial-state-error "master" found missing))))))))
+
+(schema/defn ^:always-validate retrieve-ca-cert!
+  "Given configuration settings and CA settings, ensure a local copy of the CA
+  cert is available on disk.  cacert is the base CA cert file to copy from and
+  localcacert is where that the CA cert file should be copied to."
+  ([cacert :- schema/Str
+    localcacert :- schema/Str]
+   (if (fs/exists? cacert)
+     (do
+       (ks/mkdirs! (fs/parent localcacert))
+       (fs/copy cacert localcacert))
+     (if-not (fs/exists? localcacert)
+       (throw (IllegalStateException.
+                (str ":localcacert ("
+                     localcacert
+                     ") could not "
+                     "be found and no file at :cacert ("
+                     cacert
+                     ") to copy it from")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
