@@ -16,7 +16,7 @@ public class ExecutionStubImpl {
      * @throws InterruptedException
      * @throws IOException
      */
-    public static Object[] executeCommand(String command)
+    public static ExecutionStubResult executeCommand(String command)
             throws InterruptedException, IOException {
 
         // This is adapted from
@@ -35,7 +35,7 @@ public class ExecutionStubImpl {
                 output.append(line).append("\n");
             }
 
-            return new Object[] {output.toString(), p.exitValue()};
+            return new ExecutionStubResult(output.toString(), p.exitValue());
         } finally {
             reader.close();
         }

@@ -90,8 +90,7 @@ class Puppet::Server::Master
         command = command.join(" ")
       end
 
-      # options is currently ignored
-      # TODO - pending current e-mail discussion, file a JIRA for this
+      # TODO - options is currently ignored - https://tickets.puppetlabs.com/browse/SERVER-74
 
       # We're going to handle STDIN/STDOUT/STDERR in java, so we don't need
       # them here.  However, Puppet::Util::Execution.execute doesn't close them
@@ -103,8 +102,8 @@ class Puppet::Server::Master
   end
 
   def self.execute(command)
-    output, exit_code = ExecutionStubImpl.executeCommand(command)
-    Puppet::Util::Execution::ProcessOutput.new(output, exit_code)
+    result = ExecutionStubImpl.executeCommand(command)
+    Puppet::Util::Execution::ProcessOutput.new(result.getOutput, result.getExitCode)
   end
 
   def handleRequest(request)
