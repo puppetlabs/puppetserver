@@ -2,4 +2,4 @@
 
 ${JAVA_BIN} -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
     clojure.main -m puppetlabs.puppetserver.cli.gem \
-    --config ${CONFIG} "$@"
+    --config ${CONFIG} -- "$@"
