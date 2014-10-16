@@ -236,4 +236,4 @@
                                             {}
                                             {})]
           (is (= 400 (:status response)) "Unexpected response status")
-          (is (= bad-message) "Unexpected response body"))))))
+          (is (= bad-message (:body response)) "Unexpected response body"))))))
