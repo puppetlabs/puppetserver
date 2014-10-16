@@ -123,13 +123,14 @@
                            (throw-bad-request
                              (str "Unable to URL decode the x-client-cert header: "
                                   (.getMessage e)))))]
-      (let [cert-objs (try
-                        (ssl/pem->certs (StringReader. decoded-cert))
-                        (catch Exception e
-                          (throw-bad-request
-                            (str "Unable to parse x-client-cert into certificate: "
-                                 (.getMessage e)))))]
-        (if (= (count cert-objs) 0)
+      (let [cert-objs (with-open [reader (StringReader. decoded-cert)]
+                        (try
+                          (ssl/pem->certs reader)
+                          (catch Exception e
+                            (throw-bad-request
+                              (str "Unable to parse x-client-cert into certificate: "
+                                   (.getMessage e))))))]
+        (if (empty? cert-objs)
           (throw-bad-request "No certs found in PEM read from x-client-cert")
           (first cert-objs))))))
 
@@ -141,10 +142,9 @@
         header-dn-val    (get headers header-dn-name)
         header-auth-name (:ssl-client-verify-header config)
         header-auth-val  (get headers header-auth-name)
-        header-cert-val  (get headers "x-client-cert")
-        allow-header-cert-info (:allow-header-cert-info config)]
-    (if allow-header-cert-info
-      (-> (conj request
+        header-cert-val  (get headers "x-client-cert")]
+    (if (:allow-header-cert-info config)
+      (-> (merge request
                 (header-auth-info header-dn-name
                                   header-dn-val
                                   header-auth-val))
