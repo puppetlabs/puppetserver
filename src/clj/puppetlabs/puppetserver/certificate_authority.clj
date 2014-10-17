@@ -37,7 +37,9 @@
   "Defines which clients are allowed access to the various CA endpoints.
    Each endpoint has a sub-section containing the client whitelist.
    Currently we only control access to the certificate_status(es) endpoints."
-  {:certificate-status {:client-whitelist [schema/Str]}})
+  {:certificate-status
+   {(schema/optional-key :authorization-required) schema/Bool
+    :client-whitelist                             [schema/Str]}})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
