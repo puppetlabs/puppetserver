@@ -1,10 +1,13 @@
 package com.puppetlabs.puppetserver;
 
-import java.io.BufferedReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
 
 public class ExecutionStubImpl {
+
+    private static final Logger log = LoggerFactory.getLogger(ExecutionStubImpl.class);
 
     /**
      * Executes the given command in a separate process.
@@ -19,25 +22,13 @@ public class ExecutionStubImpl {
     public static ExecutionStubResult executeCommand(String command)
             throws InterruptedException, IOException {
 
-        // This is adapted from
-        // http://www.mkyong.com/java/how-to-execute-shell-command-from-java/
+        ProcessWrapper wrapper = new ProcessWrapper(Runtime.getRuntime().exec(command));
 
-        StringBuilder output = new StringBuilder();
-
-        Process p = Runtime.getRuntime().exec(command);
-        p.waitFor();
-
-        BufferedReader reader =
-                new BufferedReader(new InputStreamReader(p.getInputStream()));
-        try {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                output.append(line).append("\n");
-            }
-
-            return new ExecutionStubResult(output.toString(), p.exitValue());
-        } finally {
-            reader.close();
+        String stdErr = wrapper.getErrorString();
+        if ( ! stdErr.isEmpty() ) {
+            log.warn("Executed an external process which logged to STDERR: " + stdErr);
         }
+
+        return new ExecutionStubResult(wrapper.getOutputString(), wrapper.getExitCode());
     }
 }
