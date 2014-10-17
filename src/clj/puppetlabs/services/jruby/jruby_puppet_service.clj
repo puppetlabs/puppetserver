@@ -60,8 +60,9 @@
       jruby-service
       (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
   [jruby-puppet jruby-service & body]
-  `(let [~jruby-puppet (jruby/borrow-instance ~jruby-service)]
+  `(let [pool-instance# (jruby/borrow-instance ~jruby-service)
+         ~jruby-puppet  (:jruby-puppet pool-instance#)]
      (try
        ~@body
        (finally
-         (jruby/return-instance ~jruby-service ~jruby-puppet)))))
+         (jruby/return-instance ~jruby-service pool-instance#)))))

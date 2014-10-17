@@ -14,18 +14,20 @@
 (deftest create-jruby-instance-test
 
   (testing "Var dir is not required."
-    (let [config  {:ruby-load-path  testutils/ruby-load-path
-                   :gem-home        testutils/gem-home
-                   :master-conf-dir testutils/conf-dir}
-          jruby   (create-jruby-instance config testutils/default-profiler)
-          var-dir (.getSetting jruby "vardir")]
+    (let [config        {:ruby-load-path  testutils/ruby-load-path
+                         :gem-home        testutils/gem-home
+                         :master-conf-dir testutils/conf-dir}
+          pool-instance (create-pool-instance config testutils/default-profiler)
+          jruby-puppet  (:jruby-puppet pool-instance)
+          var-dir       (.getSetting jruby-puppet "vardir")]
       (is (not (nil? var-dir)))))
 
   (testing "Settings from Ruby Puppet are available"
     (let [temp-dir      (.getAbsolutePath (ks/temp-dir))
           config        (assoc (testutils/jruby-puppet-config)
                           :master-var-dir temp-dir)
-          jruby-puppet  (testutils/create-jruby-instance config)]
+          pool-instance (testutils/create-pool-instance config)
+          jruby-puppet  (:jruby-puppet pool-instance)]
       (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
       (is (= 8140 (.getSetting jruby-puppet "masterport")))
       (is (= false (.getSetting jruby-puppet "onetime")))

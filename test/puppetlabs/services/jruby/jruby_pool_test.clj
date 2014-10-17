@@ -6,7 +6,7 @@
             [puppetlabs.services.jruby.testutils :as testutils]
             [puppetlabs.services.jruby.testutils :as jruby-testutils]))
 
-(use-fixtures :each testutils/mock-jruby-fixture)
+(use-fixtures :each testutils/mock-pool-instance-fixture)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Private
@@ -74,7 +74,7 @@
         config    (testutils/jruby-puppet-config pool-size)
         pool      (create-pool-context config testutils/default-profiler)
         err-msg   (re-pattern "Unable to borrow JRuby instance from pool")]
-    (with-redefs [core/create-jruby-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
+    (with-redefs [core/create-pool-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (prime-pools! pool))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
