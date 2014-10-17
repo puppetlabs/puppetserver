@@ -9,10 +9,18 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as ssl]
             [ring.middleware.params :as ring-params]
-            [ring.middleware.nested-params :as ring-nested-params]))
+            [ring.middleware.nested-params :as ring-nested-params]
+            [ring.util.codec :as ring-codec]
+            [ring.util.response :as ring-response]
+            [slingshot.slingshot :as sling]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(def header-client-cert-name
+  "Name of the HTTP header through which a client certificate can be passed
+  for a request"
+  "x-client-cert")
 
 (defn unmunge-http-header-name
   [setting]
@@ -35,8 +43,8 @@
 
 (defn get-cert-common-name
   "Given a request, return the Common Name from the client certificate subject."
-  [request]
-  (if-let [cert (:ssl-client-cert request)]
+  [ssl-client-cert]
+  (if-let [cert ssl-client-cert]
     (if-let [cert-dn (-> cert .getSubjectX500Principal .getName)]
       (if-let [cert-cn (ks/cn-for-dn cert-dn)]
         cert-cn
@@ -90,6 +98,108 @@
           ; string and/or form body.
           ring-params/params-request)))
 
+(def unauthenticated-client-info
+  "Return a map with default info for an unauthenticated client"
+  {:client-cert-cn nil
+   :authenticated  false})
+
+(defn header-auth-info
+  "Return a map with authentication info based on header content"
+  [header-dn-name header-dn-val header-auth-val]
+  (if (ssl/valid-x500-name? header-dn-val)
+    {:client-cert-cn (ssl/x500-name->CN header-dn-val)
+     :authenticated  (= "SUCCESS" header-auth-val)}
+    (do
+      (if-not (nil? header-dn-val)
+        (log/errorf "The DN '%s' provided by the HTTP header '%s' is malformed."
+                    header-dn-val header-dn-name))
+      unauthenticated-client-info)))
+
+(defn throw-bad-request!
+  "Throw a ::bad-request type slingshot error with the supplied message"
+  [message]
+  (sling/throw+ {:type ::bad-request
+                 :message message}))
+
+(defn header-cert->pem
+  "Convert the header cert value into a PEM string"
+  [header-cert]
+  (try
+    (ring-codec/url-decode header-cert)
+    (catch Exception e
+      (throw-bad-request!
+        (str "Unable to URL decode the "
+             header-client-cert-name
+             " header: "
+             (.getMessage e))))))
+
+(defn pem->certs
+  "Convert a pem string into certificate objects"
+  [pem]
+  (with-open [reader (StringReader. pem)]
+    (try
+      (ssl/pem->certs reader)
+      (catch Exception e
+        (throw-bad-request!
+          (str "Unable to parse "
+               header-client-cert-name
+               " into certificate: "
+               (.getMessage e)))))))
+
+(defn header-cert
+  "Return an X509Certificate or nil from a string encoded for transmission
+  in an HTTP header."
+  [header-cert-val]
+  (if header-cert-val
+    (let [pem        (header-cert->pem header-cert-val)
+          certs      (pem->certs pem)
+          cert-count (count certs)]
+      (condp = cert-count
+        0 (throw-bad-request!
+            (str "No certs found in PEM read from " header-client-cert-name))
+        1 (first certs)
+        (throw-bad-request!
+          (str "Only 1 PEM should be supplied for "
+               header-client-cert-name
+               " but "
+               cert-count
+               " found"))))))
+
+(defn auth-maybe-with-client-header-info
+  "Return authentication info based on client headers"
+  [config headers]
+  (let [header-dn-name   (:ssl-client-header config)
+        header-dn-val    (get headers header-dn-name)
+        header-auth-name (:ssl-client-verify-header config)
+        header-auth-val  (get headers header-auth-name)
+        header-cert-val  (get headers header-client-cert-name)]
+    (if (:allow-header-cert-info config)
+      (-> (header-auth-info header-dn-name
+                            header-dn-val
+                            header-auth-val)
+          (assoc :client-cert (header-cert header-cert-val)))
+      (do
+        (doseq [[header-name header-val] {header-dn-name           header-dn-val
+                                          header-auth-name         header-auth-val
+                                          header-client-cert-name  header-cert-val}]
+          (if header-val
+            (log/warn "The HTTP header" header-name "was specified,"
+                      "but the master config option allow-header-cert-info"
+                      "was either not set, or was set to false."
+                      "This header will be ignored.")))
+        unauthenticated-client-info))))
+
+(defn auth-maybe-with-ssl-info
+  "Merge information from the SSL client cert into the jruby request if
+  available and information was not expected to be provided via client headers"
+  [config ssl-client-cert request]
+  (if (:allow-header-cert-info config)
+    request
+    (let [cn   (get-cert-common-name ssl-client-cert)]
+      (merge request {:client-cert    ssl-client-cert
+                      :client-cert-cn cn
+                      :authenticated  (not (nil? cn))}))))
+
 (defn as-jruby-request
   "Given a ring HTTP request, return a new map that contains all of the data
    needed by the ruby HTTP layer to process it.  This function does a couple
@@ -97,59 +207,54 @@
       * It reads the entire request body into memory.  This is not ideal for
         performance and memory usage, but we have to ship this thing over to
         JRuby, so I don't think there's any way around this.
-      * It also extracts the name of the SSL client cert and includes that
-        in the map it returns, because it's needed by the ruby layer. It is
+      * It also extracts the client DN and certificate and includes that
+        in the map it returns, because it's needed by the ruby layer.  It is
         possible that the HTTPS termination has happened external to Puppet
-        Server, if so then the DN will be provided by user-specified HTTP
-        header as well as the authentication status of the CN, and no
-        certificate will be available."
+        Server.  If so, then the DN, authentication status, and, optionally, the
+        certificate will be provided by HTTP headers."
   [config request]
-  (let [headers     (:headers request)
-        jruby-req   {:uri            (:uri request)
-                     :params         (:params request)
-                     :remote-addr    (:remote-addr request)
-                     :headers        headers
-                     :body           (:body-string request)
-                     :request-method (-> (:request-method request)
-                                         name
-                                         string/upper-case)}
-        header-dn   (get headers (:ssl-client-header config))
-        header-auth (get headers (:ssl-client-verify-header config))]
-    (when (and header-dn (not (:allow-header-cert-info config)))
-      (log/warn "The HTTP header " (:ssl-client-header config) " was specified,"
-                "but the Puppet Server global config option allow-header-cert-info"
-                "was either not set, or was set to false. This header will be ignored."))
-    (if (and (:allow-header-cert-info config) header-dn)
-      (if (ssl/valid-x500-name? header-dn)
-        (conj jruby-req {:client-cert-cn (ssl/x500-name->CN header-dn)
-                         :client-cert    nil
-                         :authenticated  (= "SUCCESS" header-auth)})
-        (do
-          (log/errorf "The DN '%s' provided by the HTTP header '%s' is malformed."
-                      header-dn (:ssl-client-header config))
-          (conj jruby-req {:client-cert-cn nil
-                           :client-cert    nil
-                           :authenticated  false})))
-      (let [cert (:ssl-client-cert request)
-            cn (get-cert-common-name request)]
-        (conj jruby-req {:client-cert    cert
-                         :client-cert-cn cn
-                         :authenticated  (not (nil? cn))})))))
+  (let [headers   (:headers request)
+        jruby-req {:uri            (:uri request)
+                   :params         (:params request)
+                   :remote-addr    (:remote-addr request)
+                   :headers        headers
+                   :body           (:body-string request)
+                   :request-method (-> (:request-method request)
+                                       name
+                                       string/upper-case)}]
+    (merge jruby-req
+           (->> (auth-maybe-with-client-header-info config
+                                                    headers)
+                (auth-maybe-with-ssl-info config
+                                          (:ssl-client-cert request))))))
 
 (defn make-request-mutable
   [request]
   "Make the request mutable.  This is required by the ruby layer."
   (HashMap. request))
 
+(defn bad-request?
+  [x]
+  "Determine if the supplied slingshot message is for a 'bad request'"
+  (when (map? x)
+    (= (:type x)
+       :puppetlabs.services.request-handler.request-handler-core/bad-request)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn handle-request
   [request jruby-instance config]
-  (->> request
-       wrap-params-for-jruby
-       (as-jruby-request config)
-       clojure.walk/stringify-keys
-       make-request-mutable
-       (.handleRequest jruby-instance)
-       response->map))
+  (sling/try+
+    (->> request
+         wrap-params-for-jruby
+         (as-jruby-request config)
+         clojure.walk/stringify-keys
+         make-request-mutable
+         (.handleRequest jruby-instance)
+         response->map)
+    (catch bad-request? {:keys [message]}
+      (log/errorf "Error 400 on SERVER at %s: %s" (:uri request) message)
+      (-> (ring-response/response message)
+          (ring-response/status 400)
+          (ring-response/content-type "text/plain")))))
