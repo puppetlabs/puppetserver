@@ -114,9 +114,9 @@
   (let [single-cert-url-encoded (-> (str test-resources-dir "/localhost.pem")
                                     slurp
                                     ring-codec/url-encode)
-        chain-cert-url-encoded (-> (str test-resources-dir "/master-with-all-cas.pem")
-                                   slurp
-                                   ring-codec/url-encode)]
+        second-cert-url-encoded (-> (str test-resources-dir "/master.pem")
+                                    slurp
+                                    ring-codec/url-encode)]
 
     (testing "providing headers but not the puppet server config won't work."
       (let [req (core/as-jruby-request
@@ -161,17 +161,7 @@
         (is (= "puppet" (get req :client-cert-cn)))
         (is (nil? (get req :client-cert)))))
 
-    (testing "first header cert from chain used when allow-header-cert-info true"
-      (let [req (core/as-jruby-request
-                  (puppet-server-config true)
-                  {:request-method :GET
-                   :headers        {"x-client-verify" "SUCCESS"
-                                    "x-client-dn"     "CN=puppet"
-                                    "x-client-cert"   chain-cert-url-encoded}})]
-        (is (= "CN=master1.example.org"
-               (cert-authority/get-subject (get req :client-cert))))))
-
-    (testing "cert from ssl used when none in header and allow-header-cert-info true"
+    (testing "cert and cn from header used and not from SSL cert when allow-header-cert-info true"
       (let [cert (cert-utils/pem->cert
                    (str test-resources-dir "/localhost.pem"))
             req (core/as-jruby-request
@@ -179,10 +169,14 @@
                   {:request-method  :GET
                    :ssl-client-cert cert
                    :headers         {"x-client-verify" "SUCCESS"
-                                     "x-client-dn"     "CN=puppet"}})]
-        (is (identical? cert (get req :client-cert)))))
+                                     "x-client-dn"     "CN=puppet"
+                                     "x-client-cert"    second-cert-url-encoded}})]
+        (is (get req :authenticated))
+        (is (= "puppet" (get req :client-cert-cn)))
+        (is (= "CN=master1.example.org"
+               (cert-authority/get-subject (get req :client-cert))))))
 
-    (testing "cert info from ssl used when allow-header-cert-info false"
+    (testing "cert and cn from ssl used when allow-header-cert-info false"
       (let [cert (cert-utils/pem->cert
                    (str test-resources-dir "/localhost.pem"))
             req (core/as-jruby-request
@@ -191,7 +185,7 @@
                    :ssl-client-cert cert
                    :headers         {"x-client-verify" "SUCCESS"
                                      "x-client-dn"     "CN=puppet"
-                                     "x-client-cert"   chain-cert-url-encoded}})]
+                                     "x-client-cert"   second-cert-url-encoded}})]
         (is (get req :authenticated))
         (is (= "localhost" (get req :client-cert-cn)))
         (is (identical? cert (get req :client-cert)))))))
@@ -214,7 +208,14 @@
     (is (thrown+? [:type    :puppetlabs.services.request-handler.request-handler-core/bad-request
                    :message "No certs found in PEM read from x-client-cert"]
                   (jruby-request-with-client-cert-header
-                    "NOCERTSHERE")))))
+                    "NOCERTSHERE"))))
+  (testing "More than 1 certificate in content"
+    (is (thrown+? [:type    :puppetlabs.services.request-handler.request-handler-core/bad-request
+                   :message "Only 1 PEM should be supplied for x-client-cert but 3 found"]
+                  (jruby-request-with-client-cert-header
+                    (-> (str test-resources-dir "/master-with-all-cas.pem")
+                        slurp
+                        ring-codec/url-encode))))))
 
 (deftest handle-request-test
   (testing "slingshot bad requests translated to ring response"
