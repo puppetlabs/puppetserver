@@ -98,6 +98,11 @@
           ; string and/or form body.
           ring-params/params-request)))
 
+(def unauthenticated-client-info
+  "Return a map with default info for an unauthenticated client"
+  {:client-cert-cn nil
+   :authenticated  false})
+
 (defn header-auth-info
   "Return a map with authentication info based on header content"
   [header-dn-name header-dn-val header-auth-val]
@@ -108,8 +113,7 @@
       (if-not (nil? header-dn-val)
         (log/errorf "The DN '%s' provided by the HTTP header '%s' is malformed."
                     header-dn-val header-dn-name))
-      {:client-cert-cn nil
-       :authenticated  false})))
+      unauthenticated-client-info)))
 
 (defn throw-bad-request!
   "Throw a ::bad-request type slingshot error with the supplied message"
@@ -147,27 +151,32 @@
   in an HTTP header."
   [header-cert-val]
   (if header-cert-val
-    (let [pem   (header-cert->pem header-cert-val)
-          certs (pem->certs pem)]
-      (if (empty? certs)
+    (let [pem        (header-cert->pem header-cert-val)
+          certs      (pem->certs pem)
+          cert-count (count certs)]
+      (condp = cert-count
+        0 (throw-bad-request!
+            (str "No certs found in PEM read from " header-client-cert-name))
+        1 (first certs)
         (throw-bad-request!
-          (str "No certs found in PEM read from " header-client-cert-name))
-        (first certs)))))
+          (str "Only 1 PEM should be supplied for "
+               header-client-cert-name
+               " but "
+               cert-count
+               " found"))))))
 
-(defn jruby-request-maybe-with-client-header-info
-  "Merge client header authentication info into a jruby request if allowed
-  and available"
-  [config request headers]
+(defn auth-maybe-with-client-header-info
+  "Return authentication info based on client headers"
+  [config headers]
   (let [header-dn-name   (:ssl-client-header config)
         header-dn-val    (get headers header-dn-name)
         header-auth-name (:ssl-client-verify-header config)
         header-auth-val  (get headers header-auth-name)
         header-cert-val  (get headers header-client-cert-name)]
     (if (:allow-header-cert-info config)
-      (-> (merge request
-                (header-auth-info header-dn-name
-                                  header-dn-val
-                                  header-auth-val))
+      (-> (header-auth-info header-dn-name
+                            header-dn-val
+                            header-auth-val)
           (assoc :client-cert (header-cert header-cert-val)))
       (do
         (doseq [[header-name header-val] {header-dn-name           header-dn-val
@@ -178,22 +187,18 @@
                       "but the master config option allow-header-cert-info"
                       "was either not set, or was set to false."
                       "This header will be ignored.")))
-        request))))
+        unauthenticated-client-info))))
 
-(defn jruby-request-maybe-with-ssl-info
+(defn auth-maybe-with-ssl-info
   "Merge information from the SSL client cert into the jruby request if
-  available and if information was not already placed there, i.e., if
-  supplied from HTTP X-headers"
-  [request ssl-client-cert]
-  (if (and ssl-client-cert (nil? (:client-cert request)))
-    (let [req-with-ssl-cert (assoc request :client-cert ssl-client-cert)]
-      (if (nil? (:client-cert-cn request))
-        (let [cn (get-cert-common-name ssl-client-cert)]
-          (merge req-with-ssl-cert
-                 {:client-cert-cn cn
-                  :authenticated  (not (nil? cn))}))
-        req-with-ssl-cert))
-    request))
+  available and information was not expected to be provided via client headers"
+  [config ssl-client-cert request]
+  (if (:allow-header-cert-info config)
+    request
+    (let [cn   (get-cert-common-name ssl-client-cert)]
+      (merge request {:client-cert    ssl-client-cert
+                      :client-cert-cn cn
+                      :authenticated  (not (nil? cn))}))))
 
 (defn as-jruby-request
   "Given a ring HTTP request, return a new map that contains all of the data
@@ -217,8 +222,11 @@
                    :request-method (-> (:request-method request)
                                        name
                                        string/upper-case)}]
-    (-> (jruby-request-maybe-with-client-header-info config jruby-req headers)
-        (jruby-request-maybe-with-ssl-info (:ssl-client-cert request)))))
+    (merge jruby-req
+           (->> (auth-maybe-with-client-header-info config
+                                                    headers)
+                (auth-maybe-with-ssl-info config
+                                          (:ssl-client-cert request))))))
 
 (defn make-request-mutable
   [request]
