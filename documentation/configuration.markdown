@@ -88,6 +88,12 @@ certificate-authority: {
 
     # settings for the certificate_status HTTP endpoint
     certificate-status: {
+    
+        # (optional) Whether a client certificate is required to access
+        # the certificate status endpoints. A 'false' value will allow
+        # plaintext access and the client-whitelist will be ignored.
+        # Defaults to 'true'.
+        authorization-required: true
 
         # this setting contains a list of client certnames who are whitelisted to
         # have access to the certificate_status endpoint.  Any requests made to

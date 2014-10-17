@@ -588,4 +588,26 @@
                          :ssl-client-cert localhost-cert})]
           (is (= 200 (:status response)))
           (is (= #{test-agent-status revoked-agent-status localhost-status}
+                 (set (json/parse-string (:body response) true))))))))
+
+  (testing "access control can be disabled"
+    (let [settings (assoc (testutils/ca-settings cadir)
+                     :access-control {:certificate-status
+                                      {:authorization-required false
+                                       :client-whitelist []}})
+          test-app (compojure-app settings "1.2.3.4")]
+
+      (testing "certificate_status"
+        (let [response (test-app
+                        {:uri            "/production/certificate_status/test-agent"
+                         :request-method :get})]
+          (is (= 200 (:status response)))
+          (is (= test-agent-status (json/parse-string (:body response) true)))))
+
+      (testing "certificate_statuses"
+        (let [response (test-app
+                        {:uri            "/production/certificate_statuses/all"
+                         :request-method :get})]
+          (is (= 200 (:status response)))
+          (is (= #{test-agent-status revoked-agent-status localhost-status}
                  (set (json/parse-string (:body response) true)))))))))

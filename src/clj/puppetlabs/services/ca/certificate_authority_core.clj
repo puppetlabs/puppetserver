@@ -140,13 +140,16 @@
 
 (defn client-allowed-access?
   "Determines if the client in the request is allowed to access the
-   certificate_status(es) endpoint based on the client whitelist."
+   certificate_status(es) endpoint based on the client whitelist and
+   whether authorization is required."
   [settings context]
-  (if-let [client-cert (get-in context [:request :ssl-client-cert])]
-    (if (client-on-whitelist? settings client-cert)
-      true
-      (do (log-rejection client-cert) false))
-    (log/info "Access to certificate_status rejected; no client certificate found")))
+  (if (get-in settings [:access-control :certificate-status :authorization-required] true)
+    (if-let [client-cert (get-in context [:request :ssl-client-cert])]
+      (if (client-on-whitelist? settings client-cert)
+        true
+        (do (log-rejection client-cert) false))
+      (log/info "Access to certificate_status rejected; no client certificate found"))
+    true))
 
 (liberator/defresource certificate-status
   [subject settings]
