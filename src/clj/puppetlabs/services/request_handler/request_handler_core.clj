@@ -17,6 +17,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
+(def header-client-cert-name
+  "Name of the HTTP header through which a client certificate can be passed
+  for a request"
+  "x-client-cert")
+
 (defn unmunge-http-header-name
   [setting]
   "Given the value of a Puppet setting which contains a munged HTTP header name,
@@ -106,33 +111,48 @@
       {:client-cert-cn nil
        :authenticated  false})))
 
-(defn throw-bad-request
-  "Throw a :bad-request type slingshot error with the supplied message"
+(defn throw-bad-request!
+  "Throw a ::bad-request type slingshot error with the supplied message"
   [message]
-  (sling/throw+ {:type :bad-request
+  (sling/throw+ {:type ::bad-request
                  :message message}))
+
+(defn header-cert->pem
+  "Convert the header cert value into a PEM string"
+  [header-cert]
+  (try
+    (ring-codec/url-decode header-cert)
+    (catch Exception e
+      (throw-bad-request!
+        (str "Unable to URL decode the "
+             header-client-cert-name
+             " header: "
+             (.getMessage e))))))
+
+(defn pem->certs
+  "Convert a pem string into certificate objects"
+  [pem]
+  (with-open [reader (StringReader. pem)]
+    (try
+      (ssl/pem->certs reader)
+      (catch Exception e
+        (throw-bad-request!
+          (str "Unable to parse "
+               header-client-cert-name
+               " into certificate: "
+               (.getMessage e)))))))
 
 (defn header-cert
   "Return an X509Certificate or nil from a string encoded for transmission
   in an HTTP header."
   [header-cert-val]
   (if header-cert-val
-    (let [decoded-cert (try
-                         (ring-codec/url-decode header-cert-val)
-                         (catch Exception e
-                           (throw-bad-request
-                             (str "Unable to URL decode the x-client-cert header: "
-                                  (.getMessage e)))))]
-      (let [cert-objs (with-open [reader (StringReader. decoded-cert)]
-                        (try
-                          (ssl/pem->certs reader)
-                          (catch Exception e
-                            (throw-bad-request
-                              (str "Unable to parse x-client-cert into certificate: "
-                                   (.getMessage e))))))]
-        (if (empty? cert-objs)
-          (throw-bad-request "No certs found in PEM read from x-client-cert")
-          (first cert-objs))))))
+    (let [pem   (header-cert->pem header-cert-val)
+          certs (pem->certs pem)]
+      (if (empty? certs)
+        (throw-bad-request!
+          (str "No certs found in PEM read from " header-client-cert-name))
+        (first certs)))))
 
 (defn jruby-request-maybe-with-client-header-info
   "Merge client header authentication info into a jruby request if allowed
@@ -142,7 +162,7 @@
         header-dn-val    (get headers header-dn-name)
         header-auth-name (:ssl-client-verify-header config)
         header-auth-val  (get headers header-auth-name)
-        header-cert-val  (get headers "x-client-cert")]
+        header-cert-val  (get headers header-client-cert-name)]
     (if (:allow-header-cert-info config)
       (-> (merge request
                 (header-auth-info header-dn-name
@@ -150,9 +170,9 @@
                                   header-auth-val))
           (assoc :client-cert (header-cert header-cert-val)))
       (do
-        (doseq [[header-name header-val] {header-dn-name   header-dn-val
-                                          header-auth-name header-auth-val
-                                          "x-client-cert"  header-cert-val}]
+        (doseq [[header-name header-val] {header-dn-name           header-dn-val
+                                          header-auth-name         header-auth-val
+                                          header-client-cert-name  header-cert-val}]
           (if header-val
             (log/warn "The HTTP header" header-name "was specified,"
                       "but the master config option allow-header-cert-info"
@@ -209,7 +229,8 @@
   [x]
   "Determine if the supplied slingshot message is for a 'bad request'"
   (when (map? x)
-    (= (:type x) :bad-request)))
+    (= (:type x)
+       :puppetlabs.services.request-handler.request-handler-core/bad-request)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

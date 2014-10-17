@@ -5,7 +5,8 @@
             [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [clojure.test :refer :all]
             [ring.util.codec :as ring-codec]
-            [slingshot.slingshot :as sling]))
+            [slingshot.slingshot :as sling]
+            [slingshot.test :refer :all]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -16,19 +17,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(defmethod assert-expr 'thrown-with-slingshot? [msg form]
-  (let [expected (nth form 1)
-        body (nthnext form 2)]
-    `(sling/try+
-       ~@body
-       (do-report {:type :fail :message ~msg :expected ~expected :actual nil})
-       (catch map? actual#
-         (do-report {:type     (if (= actual# ~expected) :pass :fail)
-                     :message  ~msg
-                     :expected ~expected
-                     :actual   actual#})
-         actual#))))
-
 (defn puppet-server-config
   [allow-header-certs]
   (core/config->request-handler-settings
@@ -36,14 +24,12 @@
                      :ssl-client-header        "HTTP_X_CLIENT_DN"}
      :master        {:allow-header-cert-info allow-header-certs}}))
 
-(defn validate-cert-decoding-failure
-  [message request-options]
-  (is (thrown-with-slingshot?
-        {:type    :bad-request
-         :message message}
-        (core/as-jruby-request
-          (puppet-server-config true)
-          (assoc request-options :request-method :GET)))))
+(defn jruby-request-with-client-cert-header
+  [cert]
+  (core/as-jruby-request
+    (puppet-server-config true)
+    {:request-method :GET
+     :headers {"x-client-cert" cert}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -214,23 +200,27 @@
   "A cert provided in the x-client-cert header that cannot be decoded into
   an X509Certificate object throws the expected failure"
   (testing "Improperly URL encoded content"
-    (validate-cert-decoding-failure
-      "Unable to URL decode the x-client-cert header: For input string: \"1%\""
-      {:headers {"x-client-cert" "%1%2"}}))
+    (is (thrown+? [:type    :puppetlabs.services.request-handler.request-handler-core/bad-request
+                   :message (str "Unable to URL decode the x-client-cert header: "
+                                 "For input string: \"1%\"")]
+                  (jruby-request-with-client-cert-header "%1%2"))))
   (testing "Bad certificate content"
-    (validate-cert-decoding-failure
-      "Unable to parse x-client-cert into certificate: -----END CERTIFICATE not found"
-      {:headers {"x-client-cert" "-----BEGIN%20CERTIFICATE-----%0AM"}}))
+    (is (thrown+? [:type    :puppetlabs.services.request-handler.request-handler-core/bad-request
+                   :message (str "Unable to parse x-client-cert into "
+                                 "certificate: -----END CERTIFICATE not found")]
+                  (jruby-request-with-client-cert-header
+                    "-----BEGIN%20CERTIFICATE-----%0AM"))))
   (testing "No certificate in content"
-    (validate-cert-decoding-failure
-      "No certs found in PEM read from x-client-cert"
-      {:headers {"x-client-cert" "NOCERTSHERE"}})))
+    (is (thrown+? [:type    :puppetlabs.services.request-handler.request-handler-core/bad-request
+                   :message "No certs found in PEM read from x-client-cert"]
+                  (jruby-request-with-client-cert-header
+                    "NOCERTSHERE")))))
 
 (deftest handle-request-test
   (testing "slingshot bad requests translated to ring response"
     (let [bad-message "it's real bad"]
       (with-redefs [core/as-jruby-request (fn [_ _]
-                                            (core/throw-bad-request
+                                            (core/throw-bad-request!
                                               bad-message))]
         (let [response (core/handle-request {:body (StringReader. "blah")}
                                             {}
