@@ -9,7 +9,8 @@
                 "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
 
 (deftest test-puppet-config-values
-  (let [jruby-puppet (testutils/create-jruby-instance)]
+  (let [pool-instance (testutils/create-pool-instance)
+        jruby-puppet  (:jruby-puppet pool-instance)]
 
     (testing "usage of get-puppet-config-value"
       (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
