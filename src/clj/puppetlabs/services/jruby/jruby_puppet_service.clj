@@ -19,7 +19,11 @@
   (init
     [this context]
     (let [config (-> (get-in-config [:jruby-puppet])
-                     (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path])))]
+                     (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
+                     (assoc :http-client-ssl-protocols
+                            (get-in-config [:http-client :ssl-protocols]))
+                     (assoc :http-client-cipher-suites
+                            (get-in-config [:http-client :cipher-suites])))]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config (get-profiler))]
