@@ -1,28 +1,34 @@
 package com.puppetlabs.puppetserver;
 
-import java.io.BufferedReader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
-import java.io.InputStreamReader;
 
 public class ExecutionStubImpl {
 
-    // This is copied from
-    // http://www.mkyong.com/java/how-to-execute-shell-command-from-java/
-    public static String executeCommand(String command)
+    private static final Logger log = LoggerFactory.getLogger(ExecutionStubImpl.class);
+
+    /**
+     * Executes the given command in a separate process.
+     *
+     * @param command the command to execute
+     * @return A 2-element array; the first element is the output of the process.
+     *      The second element is the exit code of the process.
+     *
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    public static ExecutionStubResult executeCommand(String command)
             throws InterruptedException, IOException {
 
-        StringBuilder output = new StringBuilder();
+        ProcessWrapper wrapper = new ProcessWrapper(Runtime.getRuntime().exec(command));
 
-        Process p = Runtime.getRuntime().exec(command);
-        p.waitFor();
-        BufferedReader reader =
-                new BufferedReader(new InputStreamReader(p.getInputStream()));
-
-        String line;
-        while ((line = reader.readLine()) != null) {
-            output.append(line).append("\n");
+        String stdErr = wrapper.getErrorString();
+        if ( ! stdErr.isEmpty() ) {
+            log.warn("Executed an external process which logged to STDERR: " + stdErr);
         }
 
-        return output.toString();
+        return new ExecutionStubResult(wrapper.getOutputString(), wrapper.getExitCode());
     }
 }
