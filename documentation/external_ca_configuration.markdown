@@ -21,7 +21,8 @@ negotiation with the Jetty webserver.  For this reason, it is no longer strictly
 required to configure the webserver to use an `X-Client-DN` request header for client
 authentication.  The use of an `X-Client-DN` request header is still supported
 for cases where SSL termination of client request needs to be done on an
-external server.  See [TBD Configuring X-Client Headers] (TBD) for details.
+external server.  See [External SSL Termination with Puppet Server]
+(./external_ssl_termination.markdown) for details.
 
 Disabling the Internal Puppet CA Service
 ----
@@ -62,14 +63,18 @@ webserver: {
   # Replace with the value of `puppet master --configprint hostcert`
   # Equivalent to 'SSLCertificateFile' Apache config setting
   ssl-cert    : /path/to/master.pem
+
   # Replace with the value of `puppet master --configprint hostprivkey`
   # Equivalent to 'SSLCertificateKeyFile' Apache config setting
   ssl-key     : /path/to/master.key
+
   # Replace with the value of `puppet master --configprint localcacert`
   # Equivalent to 'SSLCACertificateFile' Apache config setting
   ssl-ca-cert : /path/to/ca_bundle.pem
-  # Optional, equivalent to 'SSLCertificateChainFile' Apache config setting  
+
+  # Optional, equivalent to 'SSLCertificateChainFile' Apache config setting
   ssl-cert-chain : /path/to/ca_bundle.pem
+
   # Optional, equivalent to 'SSLCARevocationPath' Apache config setting
   ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
 }
