@@ -93,7 +93,7 @@
    :profiler   (schema/maybe PuppetProfiler)
    :pool-state PoolStateContainer})
 
-(def PoolInstance
+(def JRubyPuppetInstance
   "A map with objects pertaining to an individual entry in the JRubyPuppet pool."
   {:jruby-puppet JRubyPuppet
    :scripting-container ScriptingContainer})
@@ -137,7 +137,7 @@
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate
-  create-pool-instance :- PoolInstance
+  create-pool-instance :- JRubyPuppetInstance
   "Creates a new pool instance."
   [config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
@@ -209,7 +209,7 @@
   be available to other callers) and throws the poison pill's exception.
   Otherwise returns the instance that was passed in."
   [instance pool]
-  {:post [((some-fn nil? #(nil? (schema/check PoolInstance %))) %)]}
+  {:post [((some-fn nil? #(nil? (schema/check JRubyPuppetInstance %))) %)]}
   (when (instance? PoisonPill instance)
     (.put pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
@@ -265,7 +265,7 @@
   (.size (get-pool context)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool :- PoolInstance
+  borrow-from-pool :- JRubyPuppetInstance
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [context :- PoolContext]
@@ -274,7 +274,7 @@
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool-with-timeout :- (schema/maybe PoolInstance)
+  borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppetInstance)
   "Borrows a JRubyPuppet interpreter from the pool, like borrow-from-pool but a
   blocking timeout is provided. If an instance is available then it will be
   immediately returned to the caller, if not then this function will block
@@ -292,6 +292,6 @@
   return-to-pool
   "Return a borrowed pool instance to its free pool."
   [context :- PoolContext
-   instance :- PoolInstance]
+   instance :- JRubyPuppetInstance]
   (let [pool (get-pool context)]
     (.put pool instance)))
