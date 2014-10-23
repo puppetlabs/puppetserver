@@ -17,6 +17,17 @@ class Puppet::Server::HttpClient
       :redirect_limit => 10,
   }
 
+  # Store a java HashMap of settings related to the http client
+  def self.initialize_settings(settings)
+    @settings = settings.select { |k,v|
+      ["ssl_protocols", "cipher_suites"].include? k
+    }
+  end
+
+  def self.settings
+    @settings ||= {}
+  end
+
   def initialize(server, port, options = {})
     options = OPTION_DEFAULTS.merge(options)
 
@@ -27,7 +38,6 @@ class Puppet::Server::HttpClient
   end
 
   def post(url, body, headers, options = {})
-
     # If credentials were supplied for HTTP basic auth, add them into the headers.
     # This is based on the code in lib/puppet/reports/http.rb.
     credentials = options[:basic_auth]
@@ -59,12 +69,19 @@ class Puppet::Server::HttpClient
     ruby_response(response)
   end
 
-
   private
 
   def configure_ssl(request_options)
     return unless @use_ssl
     request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
+
+    settings = self.class.settings
+    if settings.has_key?("ssl_protocols")
+      request_options.set_ssl_protocols(settings["ssl_protocols"])
+    end
+    if settings.has_key?("cipher_suites")
+      request_options.set_ssl_cipher_suites(settings["cipher_suites"])
+    end
   end
 
   def remove_leading_slash(url)

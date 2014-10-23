@@ -30,7 +30,7 @@ class Puppet::Server::Master
   include Java::com.puppetlabs.puppetserver.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
-  def initialize(config, profiler)
+  def initialize(puppet_config, puppet_server_config, profiler)
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -40,7 +40,7 @@ class Puppet::Server::Master
     # `config` is a map whose keys are the names of the settings that we wish
     # to override, and whose values are the desired values for the settings.
     Puppet.initialize_settings(
-        config.reduce([]) do |acc, entry|
+        puppet_config.reduce([]) do |acc, entry|
           acc << "--#{entry[0]}" << entry[1]
         end
     )
@@ -76,6 +76,7 @@ class Puppet::Server::Master
 
     configure_indirector_routes()
 
+    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     # Tell Puppet's network layer which routes we are willing handle - which is
