@@ -2,14 +2,16 @@ External SSL termination with Puppet Server
 ====
 
 In network configurations which require external SSL termination, there are a 
-couple if differences between between how you would configure Apache/Passenger 
-and Puppet Server. 
+couple of differences between how you would configure Apache/Passenger and 
+Puppet Server. 
 
   * Open `config.d/master.conf` and add  `allow-header-cert-info: true` to the 
     `webserver` config block. See [Puppet Server Configuration](configuration.md) 
-    more info on the `master.conf` file. Without `allow-header-cert-info` set 
-    to true, none of the HTTP headers described bellow will be recognized by 
-    Puppet Server. 
+    for more info on the `master.conf` file. Without `allow-header-cert-info` set 
+    to true, none of the HTTP headers described below will be recognized by 
+    Puppet Server. Please note that if `allow-header-cert-info` is set to true, 
+    Puppet Server is in an incredibly vulnerbale state, and extra caution should
+    be taken to ensure it is absolutely not reachable by an untrusted network.
 
   * The `ssl_client_header` and `ssl_client_verify_header` options in the 
     `puppet.conf` file will now be enabled and work exactly as documented in
@@ -33,7 +35,7 @@ and Puppet Server.
     characters. 
     
   * In the event that the previously described HTTP headers are received while
-    Puppet Server is still configured to use HTTPS, then then header values will
-    override the subject name, authentication status, and the certificate
-    provided during the HTTPS handshake. 
+    Puppet Server is still configured to use HTTPS, then only the header values 
+    will be consulted to determine the subject name, authentication status, and 
+    the certificate itself.
     
