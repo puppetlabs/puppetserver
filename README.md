@@ -21,9 +21,9 @@ Puppet Server depends on Puppet 3.7.1 or later, so if you install it on a system
 ## Ruby and Puppet Server
 
 Puppet Server is compatible with Ruby 1.9. If you are installing
-Puppet Server on an existing system with Ruby 1.8, some language features in some modules might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby. 
+Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby. 
 
-To prevent Puppet Server's JRuby interpreter from loading gems or other code from your system Ruby, we've included a Puppet Server-specific `gem` command with this application. See [Puppet Server and Gems](./documentation/gems.markdown) for more information about gems and Puppet Server. 
+Puppet Server uses its own JRuby interpreter, which doesn't load gems or other code from your system Ruby. If you want Puppet Server to load any additional gems, use the Puppet Server-specific `gem` command to install them. See [Puppet Server and Gems](./documentation/gems.markdown) for more information about gems and Puppet Server. 
 
 ## Configuration
 
