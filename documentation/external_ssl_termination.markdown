@@ -30,9 +30,9 @@ Puppet Server.
     Apache and the Ruby Puppet process. This is not an option in Puppet Server,
     so instead the certificate must be passed to Puppet Server via an HTTP
     header. The header is `X-Client-Cert` and must contain the client's 
-    certificate in a single URI-encoded string. Note that URL encoding is not
-    sufficient, all space characters must be encoded as `%20` and not `+` 
-    characters. 
+    PEM-formatted (Base-64) certificate in a single URI-encoded string. Note 
+    that URL encoding is not sufficient, all space characters must be encoded as 
+    `%20` and not `+` characters. 
     
   * In the event that the previously described HTTP headers are received while
     Puppet Server is still configured to use HTTPS, then only the header values 
