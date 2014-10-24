@@ -6,7 +6,7 @@ couple of differences between how you would configure Apache/Passenger and
 Puppet Server. 
 
   * Open `config.d/master.conf` and add  `allow-header-cert-info: true` to the 
-    `webserver` config block. See [Puppet Server Configuration](configuration.md) 
+    `webserver` config block. See [Puppet Server Configuration](./configuration.markdown) 
     for more info on the `master.conf` file. Without `allow-header-cert-info` set 
     to true, none of the HTTP headers described below will be recognized by 
     Puppet Server. Please note that if `allow-header-cert-info` is set to true, 
