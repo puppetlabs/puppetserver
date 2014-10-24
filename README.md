@@ -30,8 +30,14 @@ Puppet Server uses its own JRuby interpreter, which doesn't load gems or other c
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
 up automatically. However, we have also introduced some new Puppet Server-specific settings---please see the [Configuration](./documentation/configuration.markdown) for details.
 
-* [External CA Configuration](./documentation/external_ca_configuration.markdown)
-* [External SSL Termination](./documentation/external_ssl_termination.markdown)
+### Certificate Authority Configuration
+
+Much of the existing documentation on [External CA Support for the Ruby Puppet Master](https://docs.puppetlabs.com/puppet/latest/reference/config_ssl_external_ca.html)
+still applies to using an external Certificate Authority in conjunction with Puppet Server. There are some  differences to bear in mind, however; see the [External CA Configuration](./documentation/external_ca_configuration.markdown) page for details.
+
+### SSL Configuration
+
+In network configurations that require external SSL termination, you need to do a few things differently in Puppet Server. Please see the [External SSL Termination](./documentation/external_ssl_termination.markdown) page for details.
 
 ## Known Issues
 
