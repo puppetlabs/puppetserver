@@ -51,3 +51,9 @@ Puppet Server runs on the JVM, and as a result, it takes a bit longer for the
 server to start up and be ready to accept HTTP connections as compared to the
 Apache/Passenger stack.  We see significant performance improvements after start up,
 but the initial start up is definitely a bit slower.
+
+External SSL Termination
+-----
+
+See [External SSL termination](external_ssl_termination.markdown) for details on
+how to get this working in Puppet Server.
