@@ -34,9 +34,9 @@ Puppet Server.
     that URL encoding is not sufficient, all space characters must be encoded as 
     `%20` and not `+` characters. 
     
-  * In the event that the previously described HTTP headers are received while
-    Puppet Server is still configured to use HTTPS, core Ruby Puppet application
-    code will only use the header values -- and not an SSL-layer client
+  * If the `allow-header-cert-info` setting is set to true, then, even if the
+    web server is hosting an HTTPS connection, core Ruby Puppet application code
+    will only use the client HTTP header values -- and not an SSL-layer client
     certificate -- to determine the client subject name, authentication status,
     and certificate.  This pertains to validation of the client via rules in
     the [auth.conf]
