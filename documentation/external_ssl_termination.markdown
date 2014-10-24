@@ -35,9 +35,19 @@ Puppet Server.
     `%20` and not `+` characters. 
     
   * In the event that the previously described HTTP headers are received while
-    Puppet Server is still configured to use HTTPS, then only the header values 
-    will be consulted to determine the subject name, authentication status, and 
-    the certificate itself. The HTTPS handshake will still need to take place
-    using a valid client certificate, but the certificate used during the 
-    handshake will be ignored.
+    Puppet Server is still configured to use HTTPS, core Ruby Puppet application
+    code will only use the header values -- and not an SSL-layer client
+    certificate -- to determine the client subject name, authentication status,
+    and certificate.  This pertains to validation of the client via rules in
+    the [auth.conf]
+    (https://docs.puppetlabs.com/guides/rest_auth_conf.html) file and any
+    [trusted facts]
+    (https://docs.puppetlabs.com/puppet/latest/reference/lang_facts_and_builtin_vars.html#trusted-facts)
+    extracted from certificate extensions.
+
+    If the `client-auth` setting in the `webserver`
+    config block is set to `need` or `want`, the Jetty webserver will validate
+    the client certificate against a certificate authority store.  Only the
+    SSL-layer client certificate -- and not a certificate in an `X-Client-Cert`
+    header -- will be validated against the certificate authority store.
     

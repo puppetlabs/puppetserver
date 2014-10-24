@@ -40,6 +40,7 @@ Configuration, Known Issues, Etc.
 
 * [Puppet Server vs. Apache/Passenger Puppet Master](./documentation/puppetserver_vs_passenger.markdown)
 * [External CA Configuration](./documentation/external_ca_configuration.markdown)
+* [External SSL Termination](./documentation/external_ssl_termination.markdown)
 * [Puppet Server and Gems](./documentation/gems.markdown)
 * [Configuration](./documentation/configuration.markdown)
 * [Known Issues](./documentation/known_issues.markdown)
