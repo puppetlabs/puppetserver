@@ -37,5 +37,7 @@ Puppet Server.
   * In the event that the previously described HTTP headers are received while
     Puppet Server is still configured to use HTTPS, then only the header values 
     will be consulted to determine the subject name, authentication status, and 
-    the certificate itself.
+    the certificate itself. The HTTPS handshake will still need to take place
+    using a valid client certificate, but the certificate used during the 
+    handshake will be ignored.
     
