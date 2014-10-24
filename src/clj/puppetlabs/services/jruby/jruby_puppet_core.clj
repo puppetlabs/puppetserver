@@ -43,7 +43,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
-(def PoolConfig
+(def JRubyPuppetConfig
   "Schema defining the config map for the JRubyPuppet pooling functions.
 
   The keys should have the following values:
@@ -53,19 +53,27 @@
     * :gem-home - The location that JRuby gems are stored
 
     * :master-conf-dir - file path to puppetmaster's conf dir;
-                         if not specified, will use the puppet default.
+        if not specified, will use the puppet default.
 
     * :master-var-dir - path to the puppetmaster' var dir;
-                        if not specified, will use the puppet default.
+        if not specified, will use the puppet default.
 
     * :max-active-instances - The maximum number of JRubyPuppet instances that
-                              will be pooled. If not specified, the system's
-                              number of CPUs+2 will be used."
+        will be pooled. If not specified, the system's
+        number of CPUs+2 will be used.
+
+    * :http-client-ssl-protocols - A list of legal SSL protocols that may be used
+        when https client requests are made.
+
+    * :http-client-cipher-suites - A list of legal SSL cipher suites that may
+        be used when https client requests are made."
   {:ruby-load-path [schema/Str]
    :gem-home       schema/Str
    (schema/optional-key :master-conf-dir) schema/Str
    (schema/optional-key :master-var-dir) schema/Str
-   (schema/optional-key :max-active-instances) schema/Int})
+   (schema/optional-key :max-active-instances) schema/Int
+   (schema/optional-key :http-client-ssl-protocols) [schema/Str]
+   (schema/optional-key :http-client-cipher-suites) [schema/Str]})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -81,9 +89,14 @@
 
 (def PoolContext
   "The data structure that stores all JRubyPuppet pools and the original configuration."
-  {:config     PoolConfig
+  {:config     JRubyPuppetConfig
    :profiler   (schema/maybe PuppetProfiler)
    :pool-state PoolStateContainer})
+
+(def JRubyPuppetInstance
+  "A map with objects pertaining to an individual entry in the JRubyPuppet pool."
+  {:jruby-puppet JRubyPuppet
+   :scripting-container ScriptingContainer})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -124,25 +137,36 @@
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate
-  create-jruby-instance :- JRubyPuppet
-  "Creates a new JRubyPuppet instance.  See the docs on `create-jruby-pool`
-  for the contents of `config`."
-  [config   :- PoolConfig
+  create-pool-instance :- JRubyPuppetInstance
+  "Creates a new pool instance."
+  [config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
-  (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir]} config]
+  (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
+                http-client-ssl-protocols http-client-cipher-suites]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
-    (let [scripting-container (create-scripting-container ruby-load-path gem-home)
-          ruby-puppet-class   (.runScriptlet scripting-container "Puppet::Server::Master")
-          jruby-config        (HashMap.)]
+    (let [scripting-container   (create-scripting-container ruby-load-path gem-home)
+          ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
+          puppet-config         (HashMap.)
+          puppet-server-config  (HashMap.)]
       (when master-conf-dir
-        (.put jruby-config "confdir" (fs/absolute-path master-conf-dir)))
+        (.put puppet-config "confdir" (fs/absolute-path master-conf-dir)))
       (when master-var-dir
-        (.put jruby-config "vardir" (fs/absolute-path master-var-dir)))
+        (.put puppet-config "vardir" (fs/absolute-path master-var-dir)))
+        
+      (when http-client-ssl-protocols
+        (.put puppet-server-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
+      (when http-client-cipher-suites
+        (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
 
-      (.callMethod scripting-container ruby-puppet-class "new"
-                   (into-array Object [jruby-config profiler]) JRubyPuppet))))
+      {:jruby-puppet (.callMethod scripting-container
+                                  ruby-puppet-class
+                                  "new"
+                                  (into-array Object
+                                              [puppet-config puppet-server-config profiler])
+                                              JRubyPuppet)
+       :scripting-container scripting-container})))
 
 (schema/defn ^:always-validate
   get-pool-state :- PoolState
@@ -172,7 +196,7 @@
 (schema/defn ^:always-validate
   create-pool-from-config :- PoolState
   "Create a new PoolData based on the config input."
-  [{size :max-active-instances} :- PoolConfig]
+  [{size :max-active-instances} :- JRubyPuppetConfig]
   (let [size (or size default-pool-size)]
     {:pool         (instantiate-free-pool size)
      :size         size
@@ -185,7 +209,7 @@
   be available to other callers) and throws the poison pill's exception.
   Otherwise returns the instance that was passed in."
   [instance pool]
-  {:post [((some-fn nil? #(instance? JRubyPuppet %)) %)]}
+  {:post [((some-fn nil? #(nil? (schema/check JRubyPuppetInstance %))) %)]}
   (when (instance? PoisonPill instance)
     (.put pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
@@ -224,7 +248,7 @@
       (let [count (.remainingCapacity pool)]
         (dotimes [i count]
           (log/debugf "Priming JRubyPuppet instance %d of %d" (inc i) count)
-          (.put pool (create-jruby-instance config (:profiler context)))
+          (.put pool (create-pool-instance config (:profiler context)))
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      (inc i) count))
         (mark-as-initialized! context))
@@ -241,7 +265,7 @@
   (.size (get-pool context)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool :- JRubyPuppet
+  borrow-from-pool :- JRubyPuppetInstance
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [context :- PoolContext]
@@ -250,7 +274,7 @@
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppet)
+  borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppetInstance)
   "Borrows a JRubyPuppet interpreter from the pool, like borrow-from-pool but a
   blocking timeout is provided. If an instance is available then it will be
   immediately returned to the caller, if not then this function will block
@@ -266,8 +290,8 @@
 
 (schema/defn ^:always-validate
   return-to-pool
-  "Return a borrowed JRubyPuppet instance to its free pool."
+  "Return a borrowed pool instance to its free pool."
   [context :- PoolContext
-   instance :- JRubyPuppet]
+   instance :- JRubyPuppetInstance]
   (let [pool (get-pool context)]
     (.put pool instance)))

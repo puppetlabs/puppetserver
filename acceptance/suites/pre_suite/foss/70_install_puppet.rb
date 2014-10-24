@@ -41,6 +41,7 @@ step "Run puppet as puppet user to prevent permissions errors later."
   user = master.puppet('master')['user']
   create_remote_file(master, manifest_path, manifest_content)
   on master, "chown #{user}:#{user} #{manifest_path}"
+  on master, "chown #{user}:#{user} #{herp_path}"
 
   on master, "su -s /bin/bash -c \"puppet apply #{manifest_path}\" #{user}"
 

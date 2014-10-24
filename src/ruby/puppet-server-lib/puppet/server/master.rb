@@ -30,7 +30,7 @@ class Puppet::Server::Master
   include Java::com.puppetlabs.puppetserver.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
-  def initialize(config, profiler)
+  def initialize(puppet_config, puppet_server_config, profiler)
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -40,7 +40,7 @@ class Puppet::Server::Master
     # `config` is a map whose keys are the names of the settings that we wish
     # to override, and whose values are the desired values for the settings.
     Puppet.initialize_settings(
-        config.reduce([]) do |acc, entry|
+        puppet_config.reduce([]) do |acc, entry|
           acc << "--#{entry[0]}" << entry[1]
         end
     )
@@ -49,7 +49,7 @@ class Puppet::Server::Master
     Puppet.settings.preferred_run_mode = :master
 
     Puppet::Server::Logger.init_logging
-    initialize_execution_stub
+    Puppet::Server::Master::initialize_execution_stub
 
     if profiler
       Puppet::Util::Profiler.add_profiler(Puppet::Server::JvmProfiler.new(profiler))
@@ -76,6 +76,7 @@ class Puppet::Server::Master
 
     configure_indirector_routes()
 
+    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     # Tell Puppet's network layer which routes we are willing handle - which is
@@ -84,10 +85,26 @@ class Puppet::Server::Master
               Puppet::Network::HTTP::API::V1.routes])
   end
 
-  def initialize_execution_stub
-    Puppet::Util::ExecutionStub.set do |command,options|
-      ExecutionStubImpl.executeCommand(command.join(" "))
+  def self.initialize_execution_stub
+    Puppet::Util::ExecutionStub.set do |command, options, stdin, stdout, stderr|
+      if command.is_a?(Array)
+        command = command.join(" ")
+      end
+
+      # TODO - options is currently ignored - https://tickets.puppetlabs.com/browse/SERVER-74
+
+      # We're going to handle STDIN/STDOUT/STDERR in java, so we don't need
+      # them here.  However, Puppet::Util::Execution.execute doesn't close them
+      # for us, so we have to do that now.
+      [stdin, stdout, stderr].each { |io| io.close rescue nil }
+
+      execute command
     end
+  end
+
+  def self.execute(command)
+    result = ExecutionStubImpl.executeCommand(command)
+    Puppet::Util::Execution::ProcessOutput.new(result.getOutput, result.getExitCode)
   end
 
   def handleRequest(request)
