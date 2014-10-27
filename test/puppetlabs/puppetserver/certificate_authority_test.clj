@@ -305,6 +305,31 @@
           (testing "not-after is 2 years from now"
             (is (= (time/plus now (time/years 2)) not-after))))))))
 
+(deftest autosign-without-capub
+  (testing "The CA public key file is not necessary to autosign"
+    (let [settings (testutils/ca-sandbox! cadir)
+          csr      (-> (:csrdir settings)
+                       (path-to-cert-request "test-agent")
+                       (utils/pem->csr))]
+      (fs/delete (:capub settings))
+      (autosign-certificate-request! "test-agent" csr settings)
+      (is (true? (fs/exists? (path-to-cert (:signeddir settings) "test-agent")))))))
+
+(deftest revoke-without-capub
+  (testing "The CA public key file is not necessary to revoke"
+    (let [settings (testutils/ca-sandbox! cadir)
+          cert     (-> (:signeddir settings)
+                       (path-to-cert "localhost")
+                       (utils/pem->cert))
+          revoked? (fn [cert]
+                     (-> (:cacrl settings)
+                         (utils/pem->crl)
+                         (utils/revoked? cert)))]
+      (fs/delete (:capub settings))
+      (is (false? (revoked? cert)))
+      (revoke-existing-cert! settings "localhost")
+      (is (true? (revoked? cert))))))
+
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
     (let [crl (-> (get-certificate-revocation-list cacrl)
