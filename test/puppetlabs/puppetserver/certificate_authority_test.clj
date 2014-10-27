@@ -307,13 +307,19 @@
 
 (deftest autosign-without-capub
   (testing "The CA public key file is not necessary to autosign"
-    (let [settings (testutils/ca-sandbox! cadir)
-          csr      (-> (:csrdir settings)
-                       (path-to-cert-request "test-agent")
-                       (utils/pem->csr))]
+    (let [settings  (testutils/ca-sandbox! cadir)
+          csr       (-> (:csrdir settings)
+                        (path-to-cert-request "test-agent")
+                        (utils/pem->csr))
+          cert-path (path-to-cert (:signeddir settings) "test-agent")]
       (fs/delete (:capub settings))
       (autosign-certificate-request! "test-agent" csr settings)
-      (is (true? (fs/exists? (path-to-cert (:signeddir settings) "test-agent")))))))
+      (is (true? (fs/exists? cert-path)))
+      (let [cert  (utils/pem->cert cert-path)
+            capub (-> (:cacert settings)
+                      (utils/pem->cert)
+                      (.getPublicKey))]
+        (is (nil? (.verify cert capub)))))))
 
 (deftest revoke-without-capub
   (testing "The CA public key file is not necessary to revoke"
