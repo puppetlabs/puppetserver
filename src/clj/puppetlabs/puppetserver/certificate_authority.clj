@@ -775,9 +775,10 @@
   from Puppet, auto-sign the request and write the certificate to disk."
   [subject :- schema/Str
    csr :- CertificateRequest
-   {:keys [cacert capub cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
+   {:keys [cacert cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [validity    (cert-validity-dates ca-ttl)
-        signed-cert (utils/sign-certificate (get-subject (utils/pem->cert cacert))
+        cacert      (utils/pem->cert cacert)
+        signed-cert (utils/sign-certificate (get-subject cacert)
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
                                             (:not-before validity)
@@ -786,7 +787,7 @@
                                             (utils/get-public-key csr)
                                             (create-agent-extensions
                                              csr
-                                             (utils/pem->public-key capub)))]
+                                             (.getPublicKey cacert)))]
     (log/debug "Signed certificate request for" subject)
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
@@ -977,13 +978,14 @@
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
    The certificate will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacrl cakey capub]} :- CaSettings
+  [{:keys [signeddir cacert cacrl cakey]} :- CaSettings
    subject :- schema/Str]
-  (let [cert-path (path-to-cert signeddir subject)
-        serial (-> cert-path utils/pem->cert utils/get-serial)
+  (let [serial  (-> (path-to-cert signeddir subject)
+                    (utils/pem->cert)
+                    (utils/get-serial))
         new-crl (utils/revoke (utils/pem->crl cacrl)
                               (utils/pem->private-key cakey)
-                              (utils/pem->public-key capub)
+                              (.getPublicKey (utils/pem->cert cacert))
                               serial)]
     (utils/crl->pem! new-crl cacrl)
     (log/debugf "Revoked %s certificate with serial %d" subject serial)))
