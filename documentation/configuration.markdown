@@ -66,14 +66,14 @@ profiler: {
 
 #### `master.conf`
 
-Contains options which change the behavior of the Pupper Master functionality
+Contains options which change the behavior of the Puppet Master functionality
 of Puppet Server.
 
 ```
 master: {
     # Allows the `ssl_client_header` and `ssl_client_verify_header` options set
-    # in puppet.conf to work. These headers will be ignored unless this line 
-    # is uncommented.
+    # in puppet.conf to work. These headers will be ignored unless 
+    # `allow-header-cert-info` is set to true.
     # allow-header-cert-info: true
 }
 ```

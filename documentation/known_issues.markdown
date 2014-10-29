@@ -15,19 +15,6 @@ be language features that you're using in your modules whose behavior will chang
 slightly.  Generally speaking this should not affect any of the core Puppet ruby
 code, which is tested against both versions of Ruby.
 
-SSL Termination
------
-
-[SERVER-18](https://tickets.puppetlabs.com/browse/SERVER-18): It's been brought
-to our attention that many users have configured their environments to handle
-SSL termination on a hardware load balancer.  In the Apache/Passenger Puppet
-Master stack, this situation was handled by supporting some custom HTTP headers
-where the client certificate information could be stored when the SSL was
-terminated, thus making it possible for Puppet to continue to perform authorization
-checks based on the client certificate data even when communicating via HTTP
-instead of HTTPS.  We do not yet support this, but intend to support it very soon.
-
-
 Config Reload
 -----
 

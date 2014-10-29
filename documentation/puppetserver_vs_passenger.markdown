@@ -51,3 +51,18 @@ Puppet Server runs on the JVM, and as a result, it takes a bit longer for the
 server to start up and be ready to accept HTTP connections as compared to the
 Apache/Passenger stack.  We see significant performance improvements after start up,
 but the initial start up is definitely a bit slower.
+
+External CA Configuration
+-----
+
+Puppet Server can be configured for use with an external CA instead of the
+internal Puppet CA.  There are a few differences around how this is done for
+Puppet Server as compared to an Apache/Passenger configuration.  See the
+[External CA Configuration](./external_ca_configuration.markdown) page for
+more details.
+
+External SSL Termination
+-----
+
+See [External SSL termination](external_ssl_termination.markdown) for details on
+how to get this working in Puppet Server.
