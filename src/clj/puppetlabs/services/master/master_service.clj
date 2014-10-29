@@ -26,4 +26,8 @@
      (add-ring-handler
       (compojure/context path [] (core/compojure-app handle-request))
       path))
-   context))
+   context)
+  (start
+    [this context]
+    (log/info "Puppet Server has successfully started and is now ready to handle requests")
+    context))
