@@ -185,6 +185,31 @@ EOF
 
   end
 
+  def puppet_apply_as_puppet_user
+    # When puppet apply is run for the first time, certain directories are
+    # created as the user owning the process. In order to avoid creating these
+    # directories as root (making them inaccessible to the puppet user) we must
+    # first run puppet apply as the puppet user whenever puppet is first
+    # installed.
+    manifest_path = master.tmpfile("puppetserver_manifest.pp")
+    herp_path = master.tmpfile("herp")
+
+    manifest_content = <<-EOS
+    file { "herp":
+      path => '#{herp_path}',
+      ensure => 'present',
+      content => 'derp',
+    }
+    EOS
+
+    user = master.puppet('master')['user']
+    create_remote_file(master, manifest_path, manifest_content)
+    on master, "chown #{user}:#{user} #{manifest_path}"
+    on master, "chown #{user}:#{user} #{herp_path}"
+
+    on master, "su -s /bin/bash -c \"puppet apply #{manifest_path}\" #{user}"
+  end
+
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)
