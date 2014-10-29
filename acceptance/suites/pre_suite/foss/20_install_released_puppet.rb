@@ -1,7 +1,9 @@
 # skip this step entirely unless we are running in :upgrade mode
 if (test_config[:puppetserver_install_mode] == :upgrade)
   step "Install released MRI Puppet for upgrade test" do
-    install_package master, 'puppet'
+    hosts.each do |host|
+      install_package host, 'puppet'
+    end
   end
 
   step "Run puppet as puppet user to prevent permissions errors later." do
