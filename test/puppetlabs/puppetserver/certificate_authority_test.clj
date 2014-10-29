@@ -797,7 +797,10 @@
                             :value    #{:digital-signature :key-encipherment}}
                            {:oid      "2.5.29.14"
                             :critical false
-                            :value    subject-pub}]]
+                            :value    subject-pub}
+                           {:oid      utils/subject-alt-name-oid
+                            :critical false
+                            :value    {:dns-name ["puppet" "subject"]}}]]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "additional extensions are created for a master"
@@ -980,3 +983,16 @@
          IllegalStateException
          #".*certificate-authority: \{ certificate-status: \{ client-whitelist: \[...] } }.*puppet-server.conf.*"
          (config->ca-settings {})))))
+
+(deftest default-master-dns-alt-names
+  (testing "Master certificate has default DNS alt names if none are specified"
+    (let [settings  (assoc (testutils/master-settings confdir)
+                      :dns-alt-names "")
+          pubkey    (-> (utils/generate-key-pair 512)
+                        (utils/get-public-key))
+          capubkey  (-> (utils/generate-key-pair 512)
+                        (utils/get-public-key))
+          alt-names (-> (create-master-extensions "master" pubkey capubkey settings)
+                        (utils/get-extension-value utils/subject-alt-name-oid)
+                        (:dns-name))]
+      (is (= #{"puppet" "master"} (set alt-names))))))

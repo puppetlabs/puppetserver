@@ -85,6 +85,9 @@
 (def CertificateRequest
   (schema/pred utils/certificate-request?))
 
+(def Extension
+  (schema/pred utils/extension?))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -386,15 +389,17 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn create-dns-alt-names-ext
+(schema/defn create-dns-alt-names-ext :- Extension
   "Given a hostname and a comma-separated list of DNS names, create a Subject
-  Alternative Names extension."
+   Alternative Names extension. If there are no alt names provided then
+   defaults will be used."
   [host-name :- schema/Str
    alt-names :- schema/Str]
-  (let [alt-names-list (split-hostnames alt-names)]
-    (when-not (empty? alt-names-list)
-      (utils/subject-dns-alt-names
-        (conj alt-names-list host-name) false))))
+  (let [alt-names-list    (split-hostnames alt-names)
+        default-alt-names ["puppet"]]
+    (if-not (empty? alt-names-list)
+      (utils/subject-dns-alt-names (conj alt-names-list host-name) false)
+      (utils/subject-dns-alt-names (conj default-alt-names host-name) false))))
 
 (schema/defn validate-subject!
   "Validate the CSR or certificate's subject name.  The subject name must:
@@ -430,7 +435,7 @@
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
   This logic is copied out of the ruby CA."
-  [extension :- (schema/pred utils/extension?)]
+  [extension :- Extension]
   (let [oid (:oid extension)]
     (or
       (utils/subtree-of? ppRegCertExt oid)
@@ -452,7 +457,7 @@
   a cert signed by this CA. This entails:
     * Only DNS alternative names are allowed, no other types
     * Each DNS name does not contain a wildcard character (*)"
-  [{value :value} :- (schema/pred utils/extension?)]
+  [{value :value} :- Extension]
   (let [name-types (keys value)
         names      (:dns-name value)]
     (when-not (and (= (count name-types) 1)
@@ -507,8 +512,7 @@
                            :digital-signature} true)
                        (utils/subject-key-identifier
                          master-public-key false)]]
-    (when alt-names-ext
-      (validate-dns-alt-names! alt-names-ext))
+    (validate-dns-alt-names! alt-names-ext)
     (when csr-attr-exts
       (validate-extensions! csr-attr-exts))
     (remove nil? (concat base-ext-list [alt-names-ext] csr-attr-exts))))
@@ -824,15 +828,6 @@
           (sling/throw+
             {:type    :duplicate-cert
              :message (format "%s already has a %s certificate; ignoring certificate request" subject status)}))))))
-
-(schema/defn allowed-extension?
-  "A predicate that answers if an extension is allowed or not.
-  This logic is copied out of the ruby CA."
-  [extension :- (schema/pred utils/extension?)]
-  (let [oid (:oid extension)]
-    (or
-      (utils/subtree-of? ppRegCertExt oid)
-      (utils/subtree-of? ppPrivCertExt oid))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
