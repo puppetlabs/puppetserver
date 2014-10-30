@@ -71,4 +71,9 @@
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]
+
+  ;; JRuby bundles the (un-exploded) BouncyCastle .jars.
+  ;; We don't want them in our uberjar,
+  ;; since we define our own dependency on BouncyCastle.
+  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )
