@@ -18,6 +18,9 @@
                  [puppetlabs/certificate-authority "0.6.0"]
                  [puppetlabs/http-client "0.3.1"]
                  [org.jruby/jruby-core "1.7.15" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
+                 ;; NOTE: jruby-stdlib packages some unexpected things inside
+                 ;; of its jar; please read the detailed notes above the
+                 ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.15"]
                  [com.github.jnr/jffi "1.2.7"]
                  [com.github.jnr/jffi "1.2.7" :classifier "native"]
@@ -72,8 +75,13 @@
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]
 
-  ;; JRuby bundles the (un-exploded) BouncyCastle .jars.
-  ;; We don't want them in our uberjar,
-  ;; since we define our own dependency on BouncyCastle.
-  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
+  ;; NOTE: jruby-stdlib packages some unexpected things inside
+  ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle
+  ;; jar into its META-INF directory.  This is highly undesirable
+  ;; for projects that already have a dependency on a different
+  ;; version of bouncycastle.  Therefore, when building uberjars,
+  ;; you should take care to exclude the things that you don't want
+  ;; in your final jar.  Here is an example of how you could exclude
+  ;; that from the final uberjar:
+  ;:uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )
