@@ -1,11 +1,21 @@
 require 'puppet'
 require 'puppet/server'
+require 'puppet/server/jvm_profiler'
+require 'puppet/server/http_client'
 
 require 'java'
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
 java_import java.io.FileReader
 
 class Puppet::Server::Config
+
+  def self.initialize_settings(puppet_server_config)
+    if puppet_server_config.has_key?("profiler")
+      @profiler = Puppet::Server::JvmProfiler.new(puppet_server_config["profiler"])
+
+    end
+    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
+  end
 
   def self.ssl_context
     # Initialize an SSLContext for use during HTTPS client requests.
@@ -18,5 +28,13 @@ class Puppet::Server::Config
           FileReader.new(Puppet[:localcacert]))
     end
     @ssl_context
+  end
+
+  def self.profiler
+    @profiler
+  end
+
+  def self.http_client_class
+    Puppet::Server::HttpClient
   end
 end

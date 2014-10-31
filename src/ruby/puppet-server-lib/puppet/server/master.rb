@@ -10,8 +10,6 @@ require 'puppet/util/profiler'
 require 'puppet/server'
 require 'puppet/server/config'
 require 'puppet/server/logger'
-require 'puppet/server/http_client'
-require 'puppet/server/jvm_profiler'
 require 'puppet/server/certificate'
 
 require 'java'
@@ -30,7 +28,7 @@ class Puppet::Server::Master
   include Java::com.puppetlabs.puppetserver.JRubyPuppet
   include Puppet::Network::HTTP::Handler
 
-  def initialize(puppet_config, puppet_server_config, profiler)
+  def initialize(puppet_config, puppet_server_config)
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -48,14 +46,14 @@ class Puppet::Server::Master
     # TODO: find out if this is actually the best way to set the run mode
     Puppet.settings.preferred_run_mode = :master
 
-    Puppet::Server::Logger.init_logging
-    Puppet::Server::Master::initialize_execution_stub
-
-    if profiler
-      Puppet::Util::Profiler.add_profiler(Puppet::Server::JvmProfiler.new(profiler))
+    Puppet::Server::Config.initialize_settings(puppet_server_config)
+    Puppet::Network::HttpPool.http_client_class = Puppet::Server::Config.http_client_class
+    if Puppet::Server::Config.profiler
+      Puppet::Util::Profiler.add_profiler(Puppet::Server::Config.profiler)
     end
 
-    Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
+    Puppet::Server::Logger.init_logging
+    Puppet::Server::Master::initialize_execution_stub
 
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
@@ -63,6 +61,8 @@ class Puppet::Server::Master
                :node_cache_terminus => :write_only_yaml,
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
+
+    Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
 
     reset_environment_context()
 
@@ -75,9 +75,6 @@ class Puppet::Server::Master
     Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
 
     configure_indirector_routes()
-
-    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
-    Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     # Tell Puppet's network layer which routes we are willing handle - which is
     # all of them.  This is copied directly out of the WEBrick handler.
