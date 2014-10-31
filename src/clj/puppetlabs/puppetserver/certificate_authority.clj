@@ -88,6 +88,9 @@
 (def Extension
   (schema/pred utils/extension?))
 
+(def CertificateRevocationList
+  (schema/pred utils/certificate-revocation-list?))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -915,10 +918,10 @@
 (schema/defn certificate-state :- CertificateState
   "Determine the state a certificate is in."
   [cert-or-csr :- (schema/either Certificate CertificateRequest)
-   cacrl :- schema/Str]
+   crl :- CertificateRevocationList]
   (if (utils/certificate-request? cert-or-csr)
     "requested"
-    (if (utils/revoked? (utils/pem->crl cacrl) cert-or-csr)
+    (if (utils/revoked? crl cert-or-csr)
       "revoked"
       "signed")))
 
@@ -933,18 +936,17 @@
        (str/join ":")
        (str/upper-case)))
 
-(schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
-  "Get the status of the subject's certificate or certificate request.
-   The status includes the state of the certificate (signed, revoked, requested),
-   DNS alt names, and several different fingerprint hashes of the certificate."
-  [{:keys [csrdir signeddir cacrl]} :- CaSettings
+(schema/defn get-certificate-status*
+  [signeddir :- schema/Str
+   csrdir :- schema/Str
+   crl :- CertificateRevocationList
    subject :- schema/Str]
   (let [cert-or-csr         (if (fs/exists? (path-to-cert signeddir subject))
                               (utils/pem->cert (path-to-cert signeddir subject))
                               (utils/pem->csr (path-to-cert-request csrdir subject)))
         default-fingerprint (fingerprint cert-or-csr "SHA-256")]
     {:name          subject
-     :state         (certificate-state cert-or-csr cacrl)
+     :state         (certificate-state cert-or-csr crl)
      :dns_alt_names (dns-alt-names cert-or-csr)
      :fingerprint   default-fingerprint
      :fingerprints  {:SHA1    (fingerprint cert-or-csr "SHA-1")
@@ -952,14 +954,24 @@
                      :SHA512  (fingerprint cert-or-csr "SHA-512")
                      :default default-fingerprint}}))
 
+(schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
+  "Get the status of the subject's certificate or certificate request.
+   The status includes the state of the certificate (signed, revoked, requested),
+   DNS alt names, and several different fingerprint hashes of the certificate."
+  [{:keys [csrdir signeddir cacrl]} :- CaSettings
+   subject :- schema/Str]
+  (let [crl (utils/pem->crl cacrl)]
+    (get-certificate-status* signeddir csrdir crl subject)))
+
 (schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
-  [{:keys [csrdir signeddir] :as settings} :- CaSettings]
-  (let [pem-pattern   #"^.+\.pem$"
+  [{:keys [csrdir signeddir cacrl]} :- CaSettings]
+  (let [crl           (utils/pem->crl cacrl)
+        pem-pattern   #"^.+\.pem$"
         all-subjects  (map #(fs/base-name % ".pem")
                            (concat (fs/find-files csrdir pem-pattern)
                                    (fs/find-files signeddir pem-pattern)))]
-    (map (partial get-certificate-status settings) all-subjects)))
+    (map (partial get-certificate-status* signeddir csrdir crl) all-subjects)))
 
 (schema/defn sign-existing-csr!
   "Sign the subject's certificate request."
