@@ -2,6 +2,7 @@ require 'puppet'
 require 'puppet/server'
 require 'puppet/server/jvm_profiler'
 require 'puppet/server/http_client'
+require 'puppet/server/execution'
 
 require 'java'
 java_import com.puppetlabs.certificate_authority.CertificateAuthority
@@ -21,7 +22,7 @@ class Puppet::Server::Config
     end
 
     Puppet::Server::Logger.init_logging
-    initialize_execution_stub
+    Puppet::Server::Execution.initialize_execution_stub
   end
 
   def self.ssl_context
@@ -36,29 +37,4 @@ class Puppet::Server::Config
     end
     @ssl_context
   end
-
-  private
-
-  def self.initialize_execution_stub
-    Puppet::Util::ExecutionStub.set do |command, options, stdin, stdout, stderr|
-      if command.is_a?(Array)
-        command = command.join(" ")
-      end
-
-      # TODO - options is currently ignored - https://tickets.puppetlabs.com/browse/SERVER-74
-
-      # We're going to handle STDIN/STDOUT/STDERR in java, so we don't need
-      # them here.  However, Puppet::Util::Execution.execute doesn't close them
-      # for us, so we have to do that now.
-      [stdin, stdout, stderr].each { |io| io.close rescue nil }
-
-      execute command
-    end
-  end
-
-  def self.execute(command)
-    result = ExecutionStubImpl.executeCommand(command)
-    Puppet::Util::Execution::ProcessOutput.new(result.getOutput, result.getExitCode)
-  end
-
 end

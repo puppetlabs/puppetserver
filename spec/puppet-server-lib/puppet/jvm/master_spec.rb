@@ -41,6 +41,4 @@ describe Puppet::Server::Master do
       Puppet::Util::Profiler.current.length.should == 1
     end
   end
-
-
 end
