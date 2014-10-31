@@ -1,5 +1,8 @@
 require 'puppet/server'
 
+require 'java'
+java_import com.puppetlabs.puppetserver.ExecutionStubImpl
+
 class Puppet::Server::Execution
   def self.initialize_execution_stub
     Puppet::Util::ExecutionStub.set do |command, options, stdin, stdout, stderr|

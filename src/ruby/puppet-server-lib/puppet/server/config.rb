@@ -1,7 +1,10 @@
-require 'puppet'
 require 'puppet/server'
+
+require 'puppet/network/http_pool'
+
 require 'puppet/server/jvm_profiler'
 require 'puppet/server/http_client'
+require 'puppet/server/logger'
 require 'puppet/server/execution'
 
 require 'java'
