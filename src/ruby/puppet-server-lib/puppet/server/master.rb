@@ -29,6 +29,15 @@ class Puppet::Server::Master
   include Puppet::Network::HTTP::Handler
 
   def initialize(puppet_config, puppet_server_config)
+    Puppet::Server::Master.initialize_puppet_server(puppet_server_config)
+    Puppet::Server::Master.initialize_puppet(puppet_config)
+    # Tell Puppet's network layer which routes we are willing handle - which is
+    # all of them.  This is copied directly out of the WEBrick handler.
+    register([Puppet::Network::HTTP::API::V2.routes,
+              Puppet::Network::HTTP::API::V1.routes])
+  end
+
+  def self.initialize_puppet(puppet_config)
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -45,15 +54,6 @@ class Puppet::Server::Master
     Puppet[:trace] = true
     # TODO: find out if this is actually the best way to set the run mode
     Puppet.settings.preferred_run_mode = :master
-
-    Puppet::Server::Config.initialize_settings(puppet_server_config)
-    Puppet::Network::HttpPool.http_client_class = Puppet::Server::Config.http_client_class
-    if Puppet::Server::Config.profiler
-      Puppet::Util::Profiler.add_profiler(Puppet::Server::Config.profiler)
-    end
-
-    Puppet::Server::Logger.init_logging
-    Puppet::Server::Master::initialize_execution_stub
 
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
@@ -76,10 +76,17 @@ class Puppet::Server::Master
 
     configure_indirector_routes()
 
-    # Tell Puppet's network layer which routes we are willing handle - which is
-    # all of them.  This is copied directly out of the WEBrick handler.
-    register([Puppet::Network::HTTP::API::V2.routes,
-              Puppet::Network::HTTP::API::V1.routes])
+  end
+
+  def self.initialize_puppet_server(puppet_server_config)
+    Puppet::Server::Config.initialize_settings(puppet_server_config)
+    Puppet::Network::HttpPool.http_client_class = Puppet::Server::Config.http_client_class
+    if Puppet::Server::Config.profiler
+      Puppet::Util::Profiler.add_profiler(Puppet::Server::Config.profiler)
+    end
+
+    Puppet::Server::Logger.init_logging
+    Puppet::Server::Master::initialize_execution_stub
   end
 
   def self.initialize_execution_stub
@@ -201,7 +208,7 @@ class Puppet::Server::Master
   end
 
   private
-  def reset_environment_context
+  def self.reset_environment_context
     # The following lines were copied for the most part from the run() method
     # in the Puppet::Application class from .../lib/puppet/application.rb
     # in core Ruby Puppet code.  The logic in the Puppet::Application class is
@@ -239,7 +246,7 @@ class Puppet::Server::Master
     Puppet::Util::Instrumentation.init
   end
 
-  def configure_indirector_routes
+  def self.configure_indirector_routes
     # The following lines were copied for the most part from the
     # configure_indirector_routes() method in the Puppet::Application class from
     # .../lib/puppet/application.rb in core Ruby Puppet code.
