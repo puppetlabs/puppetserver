@@ -60,11 +60,11 @@ class Puppet::Server::Master
     Puppet[setting]
   end
 
-  def run_mode()
-    Puppet.run_mode.name.to_s
-  end
-
   def puppetVersion()
     Puppet.version
+  end
+
+  def run_mode()
+    Puppet.run_mode.name.to_s
   end
 end
