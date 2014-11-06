@@ -7,9 +7,6 @@ same technologies that have made PuppetDB successful, allowing us to
 greatly improve performance, scalability, advanced metrics collection,
 and fine-grained control over the Ruby runtime.
 
-> **Warning**: This is a preview release. Although in most cases it should function as a drop-in replacement for an existing Puppet master, it is **not recommended for use in
-production** without thorough testing in a staging environment.
-
 While Puppet Server is meant to replace an existing
 Apache/Passenger Puppet master stack, there are a handful of differences
 due to changes in the underlying architecture. Please see [Puppet Server vs. Apache/Passenger Puppet Master](./documentation/puppetserver_vs_passenger.markdown) for details.
