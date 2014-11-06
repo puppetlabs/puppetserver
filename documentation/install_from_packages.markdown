@@ -26,7 +26,7 @@ Puppet Server is configured to use 2GB of RAM by default. If you'd like to just 
   
   Alternatively, if you don't need to keep the Apache service running, you can stop Apache with `service httpd stop` or `service apache2 stop`.
   
-  3. Install the Puppet Server package by running:
+3. Install the Puppet Server package by running:
 
         yum install puppetserver
     
