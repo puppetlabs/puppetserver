@@ -24,7 +24,9 @@ Puppet Server is configured to use 2GB of RAM by default. If you'd like to just 
   	
   After you've disabled the vhost, restart Apache, which is a service called either `httpd` or `apache2`, depending on your OS.
   
-3. Install the Puppet Server package by running:
+  Alternatively, if you don't need to keep the Apache service running, you can stop Apache with `service httpd stop` or `service apache2 stop`.
+  
+  3. Install the Puppet Server package by running:
 
         yum install puppetserver
     
@@ -40,7 +42,7 @@ Puppet Server is configured to use 2GB of RAM by default. If you'd like to just 
         
 ## Memory Allocation
 
-By default, the Puppet Server will be configured to use 2GB of RAM. However, if you want to experiment with Puppet Server on a VM, you can safely allocate as little as 512MB of memory. To change the Puppet Server memory allocation:
+By default, Puppet Server will be configured to use 2GB of RAM. However, if you want to experiment with Puppet Server on a VM, you can safely allocate as little as 512MB of memory. To change the Puppet Server memory allocation:
 
 1. Open `/etc/sysconfig/puppetserver` and modify these settings:
 
