@@ -13,7 +13,7 @@ due to changes in the underlying architecture. Please see [Puppet Server vs. Apa
 
 ## Installing Puppet Server
  
-Puppet Server depends on Puppet 3.7.1 or later, so if you install it on a system running an older version of Puppet, installation will also upgrade Puppet itself. Please see [Installing Puppet Server from Packages](./documentation/install_from_packages.markdown) for complete installation  requirements and instructions.
+Puppet Server depends on Puppet 3.7.3 or later, so if you install it on a system running an older version of Puppet, installation will also upgrade Puppet itself. Please see [Installing Puppet Server from Packages](./documentation/install_from_packages.markdown) for complete installation  requirements and instructions.
 
 ## Ruby and Puppet Server
 
