@@ -67,7 +67,8 @@ http-client: {
     # A list of acceptable protocols for making HTTP requests
     #ssl-protocols: [TLSv1, TLSv1.1, TLSv1.2]
 
-    # A list of acceptable cipher suites for making HTTP requests
+    # A list of acceptable cipher suites for making HTTP requests.  For more info on available cipher suites, see:
+    # http://docs.oracle.com/javase/7/docs/technotes/guides/security/SunProviders.html#SunJSSEProvider
     #cipher-suites: [TLS_RSA_WITH_AES_256_CBC_SHA256,
     #                TLS_RSA_WITH_AES_256_CBC_SHA,
     #                TLS_RSA_WITH_AES_128_CBC_SHA256,
