@@ -75,6 +75,8 @@
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]
 
+  :repl-options {:init-ns user}
+
   ;; NOTE: jruby-stdlib packages some unexpected things inside
   ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle
   ;; jar into its META-INF directory.  This is highly undesirable
