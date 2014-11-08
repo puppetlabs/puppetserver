@@ -1,6 +1,7 @@
 require 'puppet/server/network/http'
 
 require 'puppet/network/http/handler'
+require 'puppet/server/certificate'
 
 module Puppet::Server::Network::HTTP::Handler
   include Puppet::Network::HTTP::Handler

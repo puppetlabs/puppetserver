@@ -14,6 +14,8 @@ java_import java.io.FileReader
 class Puppet::Server::Config
 
   def self.initialize_puppet_server(puppet_server_config)
+    Puppet::Server::Logger.init_logging
+
     if puppet_server_config.has_key?("profiler")
       @profiler = Puppet::Server::JvmProfiler.new(puppet_server_config["profiler"])
 
@@ -24,7 +26,6 @@ class Puppet::Server::Config
       Puppet::Util::Profiler.add_profiler(@profiler)
     end
 
-    Puppet::Server::Logger.init_logging
     Puppet::Server::Execution.initialize_execution_stub
   end
 
