@@ -16,6 +16,10 @@ class Puppet::Server::PuppetConfig
         end
     )
     Puppet[:trace] = true
+
+    # Crank Puppet's log level all the way up and just control it via logback.
+    Puppet::Util::Log.level = :debug
+
     # TODO: find out if this is actually the best way to set the run mode
     Puppet.settings.preferred_run_mode = :master
 
