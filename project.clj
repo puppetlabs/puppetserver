@@ -44,6 +44,7 @@
 
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
+  :test-paths ["test/unit" "test/integration"]
   :resource-paths ["resources" "src/ruby"]
 
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
@@ -69,6 +70,11 @@
 
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
+
+  :test-selectors {:default (complement :integration)
+                   :integration :integration
+                   :unit (complement :integration)
+                   :all (constantly true)}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]}
 
