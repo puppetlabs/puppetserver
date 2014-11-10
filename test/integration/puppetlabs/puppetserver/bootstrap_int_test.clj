@@ -1,4 +1,4 @@
-(ns puppetlabs.services.bootstrap-test
+(ns puppetlabs.puppetserver.bootstrap-int-test
   (:import (java.io IOException)
            (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
@@ -22,7 +22,7 @@
 (def dev-bootstrap-file
   "./dev/bootstrap.cfg")
 
-(deftest test-app-startup
+(deftest ^:integration test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
     (with-no-jvm-shutdown-hooks
       (let [config (tk-config/load-config dev-config-file)
