@@ -3,7 +3,7 @@
            (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.testutils :refer [with-no-jvm-shutdown-hooks]]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.internal :as tk-internal]

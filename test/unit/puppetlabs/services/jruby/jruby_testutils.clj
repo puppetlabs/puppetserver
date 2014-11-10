@@ -1,4 +1,4 @@
-(ns puppetlabs.services.jruby.testutils
+(ns puppetlabs.services.jruby.jruby-testutils
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
            (org.jruby.embed ScriptingContainer))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]

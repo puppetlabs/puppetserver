@@ -1,4 +1,4 @@
-(ns puppetlabs.services.ca.testutils
+(ns puppetlabs.services.ca.ca-testutils
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]))

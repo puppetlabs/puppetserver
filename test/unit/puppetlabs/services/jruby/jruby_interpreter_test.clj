@@ -1,11 +1,11 @@
 (ns puppetlabs.services.jruby.jruby-interpreter-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.services.jruby.testutils :as testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all
              :as core]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf

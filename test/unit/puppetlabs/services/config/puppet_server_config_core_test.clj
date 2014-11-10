@@ -1,15 +1,15 @@
 (ns puppetlabs.services.config.puppet-server-config-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
-            [puppetlabs.services.jruby.testutils :as testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [schema.core :as schema]))
 
 (use-fixtures :once
-              (testutils/with-puppet-conf
+              (jruby-testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
 
 (deftest test-puppet-config-values
-  (let [pool-instance (testutils/create-pool-instance)
+  (let [pool-instance (jruby-testutils/create-pool-instance)
         jruby-puppet  (:jruby-puppet pool-instance)]
 
     (testing "usage of get-puppet-config-value"

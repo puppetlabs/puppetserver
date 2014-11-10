@@ -7,7 +7,7 @@
             [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.services.ca.testutils :as testutils]
+            [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.services.ca.certificate-authority-core :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [ring.mock.request :as mock]
