@@ -159,12 +159,13 @@
         (.put puppet-server-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
       (when http-client-cipher-suites
         (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
+      (.put puppet-server-config "profiler" profiler)
 
       {:jruby-puppet (.callMethod scripting-container
                                   ruby-puppet-class
                                   "new"
                                   (into-array Object
-                                              [puppet-config puppet-server-config profiler])
+                                              [puppet-config puppet-server-config])
                                               JRubyPuppet)
        :scripting-container scripting-container})))
 
