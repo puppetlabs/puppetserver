@@ -5,7 +5,7 @@ set -x
 
 git fetch --tags
 
-lein test
+lein test :all
 echo "Tests passed!"
 
 lein release
