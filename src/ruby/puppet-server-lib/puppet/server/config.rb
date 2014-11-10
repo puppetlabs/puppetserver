@@ -16,15 +16,13 @@ class Puppet::Server::Config
   def self.initialize_puppet_server(puppet_server_config)
     Puppet::Server::Logger.init_logging
 
-    if puppet_server_config.has_key?("profiler")
+    if puppet_server_config["profiler"]
       @profiler = Puppet::Server::JvmProfiler.new(puppet_server_config["profiler"])
-
-    end
-    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
-    Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
-    if @profiler
       Puppet::Util::Profiler.add_profiler(@profiler)
     end
+    
+    Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
+    Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     Puppet::Server::Execution.initialize_execution_stub
   end
