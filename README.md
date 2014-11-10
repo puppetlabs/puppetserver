@@ -25,7 +25,12 @@ Puppet Server uses its own JRuby interpreter, which doesn't load gems or other c
 ## Configuration
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
-up automatically. However, we have also introduced some new Puppet Server-specific settings---please see the [Configuration](./documentation/configuration.markdown) page for details.
+up automatically. However, we have also introduced some new Puppet
+Server-specific settings---please see the [Configuration]
+(./documentation/configuration.markdown) page for details. For more information
+on the specific differences in Puppet Server's support for `puppet.conf`
+settings as compared to the Ruby master, see the [puppet.conf differences]
+(./documentation/puppet_conf_setting_diffs.markdown) page.
 
 ### Certificate Authority Configuration
 
