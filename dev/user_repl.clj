@@ -3,6 +3,7 @@
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
@@ -10,7 +11,11 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.set :as set]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Configuration
 
 (defn jvm-puppet-conf
   "This function returns a map containing all of the config settings that
@@ -31,6 +36,9 @@
                              :ssl-host    "localhost"
                              :ssl-port    8140}
      :certificate-authority {:certificate-status {:client-whitelist []}}}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Basic system life cycle
 
 (def system nil)
 
@@ -61,12 +69,42 @@
   (init)
   (start))
 
-(defn context []
-  @(tka/app-context system))
-
-(defn print-context []
-  (clojure.pprint/pprint (context)))
-
 (defn reset []
   (stop)
   (refresh :after 'user-repl/go))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities for interacting with running system
+
+(defn context
+  ([]
+   (context []))
+  ([keys]
+   (get-in @(tka/app-context system) keys)))
+
+(defn print-context
+  ([]
+   (print-context []))
+  ([keys]
+   (clojure.pprint/pprint (context keys))))
+
+(defn jruby-pool
+  []
+  (jruby-testutils/jruby-pool system))
+
+(defn puppet-environment-state
+  [jruby-instance]
+  {:jruby-instance-id (:id jruby-instance)
+   :environment-states (-> jruby-instance
+                             :environment-registry
+                             puppet-env/environment-state
+                             deref)})
+
+(defn print-puppet-environment-states
+  []
+  (clojure.pprint/pprint
+    (map puppet-environment-state (jruby-pool))))
+
+(defn mark-all-environments-stale
+  []
+  (jruby-testutils/mark-all-environments-stale system))
