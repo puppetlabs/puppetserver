@@ -28,7 +28,7 @@ Step 3: Set up Config Files
 
 Choose a directory outside of the git working copy, e.g. `~/.puppet-server`, where you'd
 like to maintain local config files for development.  Then, copy the file
-`dev/sample-configs/puppet-server.sample.conf` to that directory, and name it `puppet-server.conf`.
+`dev/puppet-server.conf.sample` to that directory, and name it `puppet-server.conf`.
 Edit it to suit your needs.  A few notes:
 
 * Relative paths in the config file refer to the root directory of the puppet-server

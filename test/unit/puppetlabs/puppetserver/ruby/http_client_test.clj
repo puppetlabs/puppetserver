@@ -11,7 +11,7 @@
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [ring.middleware.basic-authentication :as auth]))
 
 ;; NOTE: this namespace is pretty disgusting.  It'd be much nicer to test this

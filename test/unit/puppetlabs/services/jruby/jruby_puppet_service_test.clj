@@ -4,7 +4,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby.testutils :as testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
@@ -13,10 +13,10 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]))
 
-(use-fixtures :each testutils/mock-pool-instance-fixture)
+(use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
 (def jruby-service-test-config
-  {:jruby-puppet (testutils/jruby-puppet-config 1)})
+  {:jruby-puppet (jruby-testutils/jruby-puppet-config 1)})
 
 (deftest test-error-during-init
   (testing
@@ -50,7 +50,7 @@
         app
         [jruby-puppet-pooled-service
          profiler/puppet-profiler-service]
-        {:jruby-puppet (testutils/jruby-puppet-config pool-size)}
+        {:jruby-puppet (jruby-testutils/jruby-puppet-config pool-size)}
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
               (mapv (fn [_] (jruby-protocol/borrow-instance service))

@@ -5,14 +5,14 @@
             [puppetlabs.services.config.puppet-server-config-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
 
 (def service-and-deps
   [puppet-server-config-service jruby-puppet-pooled-service jetty9-service

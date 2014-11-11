@@ -3,7 +3,7 @@
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
             [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]

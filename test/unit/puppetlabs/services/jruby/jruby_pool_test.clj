@@ -3,10 +3,9 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all :as core]
-            [puppetlabs.services.jruby.testutils :as testutils]
-            [puppetlabs.services.jruby.testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
 
-(use-fixtures :each testutils/mock-pool-instance-fixture)
+(use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Private
@@ -34,8 +33,8 @@
 
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
-        config           (testutils/jruby-puppet-config pool-size)
-        pool             (create-pool-context config testutils/default-profiler)]
+        config           (jruby-testutils/jruby-puppet-config pool-size)
+        pool             (create-pool-context config jruby-testutils/default-profiler)]
 
     (testing "The pool should not yet be full as it is being primed in the
              background."
@@ -71,8 +70,8 @@
 
 (deftest prime-pools-failure
   (let [pool-size 2
-        config    (testutils/jruby-puppet-config pool-size)
-        pool      (create-pool-context config testutils/default-profiler)
+        config    (jruby-testutils/jruby-puppet-config pool-size)
+        pool      (create-pool-context config jruby-testutils/default-profiler)
         err-msg   (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [core/create-pool-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (prime-pools! pool))))
@@ -93,8 +92,8 @@
 
 (deftest pool-state-initialization
   (let [pool-size  1
-        config     (testutils/jruby-puppet-config pool-size)
-        pool-ctxt  (create-pool-context config testutils/default-profiler)
+        config     (jruby-testutils/jruby-puppet-config pool-size)
+        pool-ctxt  (create-pool-context config jruby-testutils/default-profiler)
         pool-state (get-pool-state pool-ctxt)]
     (is (false? (:initialized? pool-state)))
     (is (= 1 (:size pool-state)))
@@ -103,8 +102,8 @@
       (is (true? (:initialized? updated-pool-state))))))
 
 (deftest test-default-pool-size
-  (let [config testutils/default-config-no-size
-        profiler   testutils/default-profiler
+  (let [config jruby-testutils/default-config-no-size
+        profiler   jruby-testutils/default-profiler
         pool       (create-pool-context config profiler)
         pool-state @(:pool-state pool)]
     (is (= core/default-pool-size (:size pool-state)))))
