@@ -21,8 +21,6 @@
    CA service."
   [request-handler]
   (compojure/routes
-    ; TODO there are a bunch more that we'll need to add here
-    ; https://tickets.puppetlabs.com/browse/PE-3977
     (compojure/GET "/node/*" request
                    (request-handler request))
     (compojure/GET "/facts/*" request
