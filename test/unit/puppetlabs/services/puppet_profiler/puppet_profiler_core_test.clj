@@ -4,7 +4,8 @@
            (ch.qos.logback.classic Logger Level)
            (com.puppetlabs.puppetserver LoggingPuppetProfiler PuppetProfiler))
   (:require [clojure.test :refer :all]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :refer :all]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :refer :all]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]))
 
 ;; Our normal testutils for logging only work with clojure.tools.logging.
 (defmacro with-test-logs
@@ -29,13 +30,14 @@
         @logs))
 
 (deftest test-logging-profiler
-  (with-test-logs logs
-    (testing "logging profiler logs a message"
-      (let [profiler (LoggingPuppetProfiler.)
-            metric-id (into-array String ["foo" "bar"])
-            context (.start profiler "foo" metric-id)]
-        (.finish profiler context "foo" metric-id))
-      (is (test-logs-contain? logs #"\[foo bar\] \(\d+ ms\) foo" Level/DEBUG)))))
+  (logutils/with-test-logging
+    (with-test-logs logs
+      (testing "logging profiler logs a message"
+        (let [profiler (LoggingPuppetProfiler.)
+              metric-id (into-array String ["foo" "bar"])
+              context (.start profiler "foo" metric-id)]
+          (.finish profiler context "foo" metric-id))
+        (is (test-logs-contain? logs #"\[foo bar\] \(\d+ ms\) foo" Level/DEBUG))))))
 
 (deftest test-create-profiler
   (testing "should return nil if there is no profiler config"
