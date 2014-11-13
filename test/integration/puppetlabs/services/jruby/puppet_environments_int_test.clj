@@ -76,8 +76,13 @@
   (let [resources (get-in catalog ["data" "resources"])]
     (some (partial resource-matches? resource-type resource-title) resources)))
 
+;; This test is written in a way that relies on knowledge about
+;; the underlying implementation of the JRuby pool. That is admittedly
+;; not ideal, but we discussed it at length and agreed that the test has
+;; value in terms of simulating an end user's experience, which could not
+;; be achieved w/o some such assumptions, and thus is worth keeping.
 (deftest ^:integration environment-flush-integration-test
-  (testing "environments are flushed after marking stale"
+  (testing "environments are flushed after marking expired"
     ;; This test is a bit complicated, so warrants some 'splainin.
     ;;
     ;; Note that we start off with a puppet.conf file from the fixture
@@ -121,7 +126,7 @@
         (is (catalog-contains? catalog1 "Notify" "hello1"))
         (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
       ;; Now we call our code to mark the cache as stale.
-      (jruby-testutils/mark-all-environments-stale app)
+      (jruby-testutils/mark-all-environments-expired! app)
       ;; Next catalog request goes to the second jruby instance,
       ;; where we should see 'hello2' regardless of caching.
       (let [catalog2 (get-catalog)]

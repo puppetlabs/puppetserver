@@ -1,7 +1,7 @@
 require 'puppet/server/environments'
 require 'puppet/environments'
 
-class Puppet::Server::Environments::Cached
+module Puppet::Server::Environments::Cached
   class CacheExpirationService
     def initialize(environment_registry)
       @environment_registry = environment_registry

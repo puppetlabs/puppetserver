@@ -69,8 +69,6 @@
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made."
-  ;; TODO: add profiler to this map?
-  ;; TODO: add docs re: env registry
   {:ruby-load-path                                  [schema/Str]
    :gem-home                                        schema/Str
    (schema/optional-key :master-conf-dir)           schema/Str

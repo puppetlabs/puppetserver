@@ -12,7 +12,7 @@
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.java.io :as io]
-            [clojure.set :as set]))
+            [clojure.pprint :as pprint]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
@@ -77,22 +77,30 @@
 ;;; Utilities for interacting with running system
 
 (defn context
+  "Get the current TK application context.  Accepts an optional array
+  argument, which is treated as a sequence of keys to retrieve a nested
+  subset of the map (a la `get-in`)."
   ([]
    (context []))
   ([keys]
    (get-in @(tka/app-context system) keys)))
 
 (defn print-context
+  "Pretty-print the current TK application context.  Accepts an optional
+  array of keys (a la `get-in`) to print a nested subset of the context."
   ([]
    (print-context []))
   ([keys]
    (clojure.pprint/pprint (context keys))))
 
 (defn jruby-pool
+  "Returns a reference to the current pool of JRuby interpreters."
   []
   (jruby-testutils/jruby-pool system))
 
 (defn puppet-environment-state
+  "Given a JRuby instance, return the state information about the environments
+  that it is aware of."
   [jruby-instance]
   {:jruby-instance-id (:id jruby-instance)
    :environment-states (-> jruby-instance
@@ -101,10 +109,14 @@
                              deref)})
 
 (defn print-puppet-environment-states
+  "Print state information about the environments that each JRuby instance is
+  aware of."
   []
-  (clojure.pprint/pprint
+  (pprint/pprint
     (map puppet-environment-state (jruby-pool))))
 
-(defn mark-all-environments-stale
+(defn mark-all-environments-expired!
+  "Mark all environments, on all JRuby instances, stale so that they will
+  be flushed from the environment cache."
   []
-  (jruby-testutils/mark-all-environments-stale system))
+  (jruby-testutils/mark-all-environments-expired! system))

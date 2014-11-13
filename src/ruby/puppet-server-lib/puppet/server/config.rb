@@ -28,8 +28,10 @@ class Puppet::Server::Config
 
     Puppet::Server::Execution.initialize_execution_stub
 
-    Puppet::Environments::Cached.cache_expiration_service =
-        Puppet::Server::Environments::Cached::CacheExpirationService.new(puppet_server_config["environment_registry"])
+    if puppet_server_config["environment_registry"]
+      Puppet::Environments::Cached.cache_expiration_service =
+          Puppet::Server::Environments::Cached::CacheExpirationService.new(puppet_server_config["environment_registry"])
+    end
   end
 
   def self.ssl_context

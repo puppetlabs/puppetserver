@@ -105,9 +105,9 @@
       .iterator
       iterator-seq))
 
-(defn mark-all-environments-stale
+(defn mark-all-environments-expired!
   [app]
   (doseq [jruby-instance (jruby-pool app)]
     (-> jruby-instance
         :environment-registry
-        puppet-env/mark-all-environments-stale)))
+        puppet-env/mark-all-environments-expired!)))
