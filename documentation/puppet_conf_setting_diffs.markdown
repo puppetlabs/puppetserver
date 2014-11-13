@@ -22,9 +22,9 @@ listens is set as the `host` (unencrypted) or `ssl-host` (SSL encrypted) in the
 
 #### [ca] (https://docs.puppetlabs.com/references/latest/configuration.html#ca)
 
-Puppet Server does not read this setting to determine whether or not the master
-should function as a certificate authority.  Instead, this is now done through
-a service listed in the `bootstrap.cfg` file.  See [Service Bootstrapping]
+Puppet Server does not use this setting.  Instead, Puppet Server will act as a
+certificate authority based on the certificate authority service configuration
+in the `bootstrap.cfg` file.  See [Service Bootstrapping]
 (./configuration.markdown#service-bootstrapping) for more details.
 
 #### [cacert] (https://docs.puppetlabs.com/references/latest/configuration.html#cacert)
@@ -206,7 +206,7 @@ In the context of any code running on the master which uses the
 `Puppet::Network::HttpPool` module to create an HTTP client connection, Puppet
 Server does not currently consider this setting.  This pertains, for example, to
 any requests that the master would make to the `reporturl` for the `http` report
-processor.
+processor.  Note that Puppet agents do still honor this setting.
 
 #### [http_proxy_host] (https://docs.puppetlabs.com/references/latest/configuration.html#httpproxyhost)
 
