@@ -17,7 +17,7 @@
     (let [config        {:ruby-load-path  testutils/ruby-load-path
                          :gem-home        testutils/gem-home
                          :master-conf-dir testutils/conf-dir}
-          pool-instance (create-pool-instance config testutils/default-profiler)
+          pool-instance (create-pool-instance 1 config testutils/default-profiler)
           jruby-puppet  (:jruby-puppet pool-instance)
           var-dir       (.getSetting jruby-puppet "vardir")]
       (is (not (nil? var-dir)))))

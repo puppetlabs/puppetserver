@@ -3,6 +3,7 @@
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
@@ -10,7 +11,11 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [clojure.pprint :as pprint]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Configuration
 
 (defn jvm-puppet-conf
   "This function returns a map containing all of the config settings that
@@ -31,6 +36,9 @@
                              :ssl-host    "localhost"
                              :ssl-port    8140}
      :certificate-authority {:certificate-status {:client-whitelist []}}}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Basic system life cycle
 
 (def system nil)
 
@@ -61,12 +69,54 @@
   (init)
   (start))
 
-(defn context []
-  @(tka/app-context system))
-
-(defn print-context []
-  (clojure.pprint/pprint (context)))
-
 (defn reset []
   (stop)
   (refresh :after 'user-repl/go))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Utilities for interacting with running system
+
+(defn context
+  "Get the current TK application context.  Accepts an optional array
+  argument, which is treated as a sequence of keys to retrieve a nested
+  subset of the map (a la `get-in`)."
+  ([]
+   (context []))
+  ([keys]
+   (get-in @(tka/app-context system) keys)))
+
+(defn print-context
+  "Pretty-print the current TK application context.  Accepts an optional
+  array of keys (a la `get-in`) to print a nested subset of the context."
+  ([]
+   (print-context []))
+  ([keys]
+   (pprint/pprint (context keys))))
+
+(defn jruby-pool
+  "Returns a reference to the current pool of JRuby interpreters."
+  []
+  (jruby-testutils/jruby-pool system))
+
+(defn puppet-environment-state
+  "Given a JRuby instance, return the state information about the environments
+  that it is aware of."
+  [jruby-instance]
+  {:jruby-instance-id (:id jruby-instance)
+   :environment-states (-> jruby-instance
+                             :environment-registry
+                             puppet-env/environment-state
+                             deref)})
+
+(defn print-puppet-environment-states
+  "Print state information about the environments that each JRuby instance is
+  aware of."
+  []
+  (pprint/pprint
+    (map puppet-environment-state (jruby-pool))))
+
+(defn mark-all-environments-expired!
+  "Mark all environments, on all JRuby instances, stale so that they will
+  be flushed from the environment cache."
+  []
+  (jruby-testutils/mark-all-environments-expired! system))

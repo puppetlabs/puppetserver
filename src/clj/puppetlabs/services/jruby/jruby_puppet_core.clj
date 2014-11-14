@@ -4,11 +4,13 @@
            (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
            (org.jruby.embed ScriptingContainer LocalContextScope)
            (clojure.lang Atom)
-           (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet))
+           (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet
+                                        EnvironmentRegistry))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -67,11 +69,11 @@
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made."
-  {:ruby-load-path [schema/Str]
-   :gem-home       schema/Str
-   (schema/optional-key :master-conf-dir) schema/Str
-   (schema/optional-key :master-var-dir) schema/Str
-   (schema/optional-key :max-active-instances) schema/Int
+  {:ruby-load-path                                  [schema/Str]
+   :gem-home                                        schema/Str
+   (schema/optional-key :master-conf-dir)           schema/Str
+   (schema/optional-key :master-var-dir)            schema/Str
+   (schema/optional-key :max-active-instances)      schema/Int
    (schema/optional-key :http-client-ssl-protocols) [schema/Str]
    (schema/optional-key :http-client-cipher-suites) [schema/Str]})
 
@@ -95,8 +97,13 @@
 
 (def JRubyPuppetInstance
   "A map with objects pertaining to an individual entry in the JRubyPuppet pool."
-  {:jruby-puppet JRubyPuppet
-   :scripting-container ScriptingContainer})
+  {:id                    schema/Int
+   :jruby-puppet          JRubyPuppet
+   :scripting-container   ScriptingContainer
+   :environment-registry  (schema/both
+                            EnvironmentRegistry
+                            (schema/pred
+                              #(satisfies? puppet-env/EnvironmentStateContainer %)))})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -139,7 +146,8 @@
 (schema/defn ^:always-validate
   create-pool-instance :- JRubyPuppetInstance
   "Creates a new pool instance."
-  [config   :- JRubyPuppetConfig
+  [id       :- schema/Int
+   config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
                 http-client-ssl-protocols http-client-cipher-suites]} config]
@@ -147,6 +155,7 @@
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
     (let [scripting-container   (create-scripting-container ruby-load-path gem-home)
+          env-registry          (puppet-env/environment-registry)
           ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
           puppet-config         (HashMap.)
           puppet-server-config  (HashMap.)]
@@ -160,14 +169,17 @@
       (when http-client-cipher-suites
         (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
       (.put puppet-server-config "profiler" profiler)
+      (.put puppet-server-config "environment_registry" env-registry)
 
-      {:jruby-puppet (.callMethod scripting-container
-                                  ruby-puppet-class
-                                  "new"
-                                  (into-array Object
-                                              [puppet-config puppet-server-config])
-                                              JRubyPuppet)
-       :scripting-container scripting-container})))
+      {:id                    id
+       :jruby-puppet          (.callMethod scripting-container
+                                           ruby-puppet-class
+                                           "new"
+                                           (into-array Object
+                                                       [puppet-config puppet-server-config])
+                                           JRubyPuppet)
+       :scripting-container   scripting-container
+       :environment-registry  env-registry})))
 
 (schema/defn ^:always-validate
   get-pool-state :- PoolState
@@ -248,11 +260,12 @@
     (try
       (let [count (.remainingCapacity pool)]
         (dotimes [i count]
-          (log/debugf "Priming JRubyPuppet instance %d of %d" (inc i) count)
-          (.put pool (create-pool-instance config (:profiler context)))
-          (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                     (inc i) count))
-        (mark-as-initialized! context))
+          (let [id (inc i)]
+            (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
+            (.put pool (create-pool-instance id config (:profiler context)))
+            (log/infof "Finished creating JRubyPuppet instance %d of %d"
+                       id count))
+          (mark-as-initialized! context)))
       (catch Exception e
         (.clear pool)
         (.put pool (PoisonPill. e))

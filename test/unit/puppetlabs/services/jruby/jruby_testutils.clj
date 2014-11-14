@@ -3,7 +3,9 @@
            (org.jruby.embed ScriptingContainer))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.trapperkeeper.app :as tk-app]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -67,7 +69,7 @@
   ([]
    (create-pool-instance (jruby-puppet-config 1)))
   ([config]
-   (jruby-core/create-pool-instance config default-profiler)))
+   (jruby-core/create-pool-instance 1 config default-profiler)))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -79,9 +81,11 @@
       (Object.))))
 
 (defn create-mock-pool-instance
-  [_ _]
-  {:jruby-puppet        (create-mock-jruby-instance)
-   :scripting-container (ScriptingContainer.)})
+  [_ _ _]
+  {:id                    1
+   :jruby-puppet          (create-mock-jruby-instance)
+   :scripting-container   (ScriptingContainer.)
+   :environment-registry  (puppet-env/environment-registry)})
 
 (defn mock-pool-instance-fixture
   "Test fixture which changes the behavior of the JRubyPool to create
@@ -90,3 +94,20 @@
   (with-redefs
     [jruby-core/create-pool-instance create-mock-pool-instance]
     (f)))
+
+(defn jruby-pool
+  [app]
+  (-> (tk-app/app-context app)
+      deref
+      (get-in [:JRubyPuppetService :pool-context :pool-state])
+      deref
+      :pool
+      .iterator
+      iterator-seq))
+
+(defn mark-all-environments-expired!
+  [app]
+  (doseq [jruby-instance (jruby-pool app)]
+    (-> jruby-instance
+        :environment-registry
+        puppet-env/mark-all-environments-expired!)))
