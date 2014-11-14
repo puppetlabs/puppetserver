@@ -6,6 +6,7 @@
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
     [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+    [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
@@ -29,6 +30,7 @@
              puppet-server-config-service
              jruby/jruby-puppet-pooled-service
              jetty9-service
+             webrouting-service
              request-handler-service
              profiler/puppet-profiler-service
              version-check-service/version-check-service
@@ -38,7 +40,10 @@
                   (jruby-testutils/jruby-puppet-config 1))
                 (assoc-in [:jruby-puppet :master-conf-dir]
                           "dev-resources/puppetlabs/services/master/master_service_test/conf")
-                (assoc :webserver {:port 8081}))
+                (assoc :webserver {:port 8081})
+                (assoc :web-router-service
+                       { :puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/"
+                        :puppetlabs.services.master.master-service/master-service "/"}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet

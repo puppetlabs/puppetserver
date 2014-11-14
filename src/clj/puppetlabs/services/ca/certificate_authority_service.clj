@@ -10,17 +10,17 @@
 (tk/defservice certificate-authority-service
   CaService
   [[:PuppetServerConfigService get-config get-in-config]
-   [:WebserverService add-ring-handler]]
+   [:WebroutingService add-ring-handler get-route]]
   (init
    [this context]
-   (let [path           ""
+   (let [path           (get-route this)
          settings       (ca/config->ca-settings (get-config))
          puppet-version (get-in-config [:puppet-server :puppet-version])]
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
-      (compojure/context path [] (core/compojure-app settings puppet-version))
-      path))
+       this
+      (compojure/context path [] (core/compojure-app settings puppet-version))))
    context)
 
   (initialize-master-ssl!
