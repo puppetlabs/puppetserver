@@ -91,7 +91,7 @@
   ([]
    (print-context []))
   ([keys]
-   (clojure.pprint/pprint (context keys))))
+   (pprint/pprint (context keys))))
 
 (defn jruby-pool
   "Returns a reference to the current pool of JRuby interpreters."
