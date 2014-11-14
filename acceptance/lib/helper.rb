@@ -223,6 +223,30 @@ EOF
         raise "Package #{name} cannot be upgraded on #{host}"
     end
   end
+
+  def get_defaults_var(host, varname)
+    if master.is_pe?
+      package_name = "pe-puppetserver"
+    else
+      package_name = "puppetserver"
+    end
+
+    variant, version, _, _ = master['platform'].to_array
+
+    case variant
+    when /^(fedora|el|centos)$/
+      defaults_dir = "/etc/sysconfig/"
+    when /^(debian|ubuntu)$/
+      defaults_dir = "/etc/defaults/"
+    else
+      logger.warn("#{platform}: Unsupported platform for puppetserver.")
+    end
+
+    defaults_file = File.join(defaults_dir, package_name)
+
+    on(host, "source #{defaults_file}; echo -n $#{varname}")
+    stdout
+  end
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)
