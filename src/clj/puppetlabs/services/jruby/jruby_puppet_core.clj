@@ -283,9 +283,9 @@
 (schema/defn ^:always-validate
   free-instance-count
   "Returns the number of JRubyPuppet instances available in the pool."
-  [context :- PoolContext]
+  [pool :- pool-queue-type]
   {:post [(>= % 0)]}
-  (.size (get-pool context)))
+  (.size pool))
 
 (schema/defn ^:always-validate
   mark-all-environments-expired!
@@ -299,9 +299,8 @@
   borrow-from-pool :- JRubyPuppetInstance
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
-  [context :- PoolContext]
-  (let [pool     (get-pool context)
-        instance (.take pool)]
+  [pool :- pool-queue-type]
+  (let [instance (.take pool)]
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
@@ -312,17 +311,15 @@
   waiting for an instance to be free for the number of milliseconds given in
   timeout. If the timeout runs out then nil will be returned, indicating that
   there were no instances available."
-  [context :- PoolContext
+  [pool :- pool-queue-type
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (let [pool     (get-pool context)
-        instance (.poll pool timeout TimeUnit/MILLISECONDS)]
+  (let [instance (.poll pool timeout TimeUnit/MILLISECONDS)]
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [context :- PoolContext
+  [pool :- pool-queue-type
    instance :- JRubyPuppetInstance]
-  (let [pool (get-pool context)]
-    (.put pool instance)))
+  (.put pool instance))

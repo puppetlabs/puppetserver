@@ -39,24 +39,28 @@
 
   (borrow-instance
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool pool-context)))
+    (let [pool-context (:pool-context (tk-services/service-context this))
+          pool         (core/get-pool pool-context)]
+      (core/borrow-from-pool pool)))
 
   (borrow-instance
     [this timeout]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context timeout)))
+    (let [pool-context (:pool-context (tk-services/service-context this))
+          pool         (core/get-pool pool-context)]
+      (core/borrow-from-pool-with-timeout pool timeout)))
 
   (return-instance
     [this jruby-instance]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/return-to-pool pool-context jruby-instance)))
+    (let [pool-context (:pool-context (tk-services/service-context this))
+          pool         (core/get-pool pool-context)]
+      (core/return-to-pool pool jruby-instance)))
 
   (free-instance-count
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/free-instance-count pool-context)))
-
+    (let [pool-context (:pool-context (tk-services/service-context this))
+          pool         (core/get-pool pool-context)]
+      (core/free-instance-count pool)))
+  
   (mark-all-environments-expired!
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
