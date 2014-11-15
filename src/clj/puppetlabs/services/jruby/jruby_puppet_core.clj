@@ -215,13 +215,14 @@
                                            "you did not specify the --config option?")))))
 
 (schema/defn ^:always-validate
-  create-pool-from-config :- PoolState
+  create-pool-from-config :- PoolStateContainer
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- JRubyPuppetConfig]
   (let [size (or size default-pool-size)]
-    {:pool         (instantiate-free-pool size)
-     :size         size
-     :initialized? false}))
+    (atom
+      {:pool         (instantiate-free-pool size)
+       :size         size
+       :initialized? false})))
 
 (defn validate-instance-from-pool!
   "Validate an instance.  The main purpose of this function is to check for
@@ -241,15 +242,16 @@
   mark-as-initialized! :- PoolState
   "Updates the PoolState map to reflect that pool initialization has completed
   successfully."
-  [context :- PoolContext]
-  (swap! (:pool-state context) #(assoc % :initialized? true)))
+  [pool-state :- PoolStateContainer]
+  (swap! pool-state assoc :initialized? true))
 
 (schema/defn ^:always-validate
   prime-pool!
   "Sequentially fill the pool with new JRubyPuppet instances."
-  [context :- PoolContext]
-  (let [config (:config context)
-        pool   (get-pool context)]
+  [pool-state :- PoolStateContainer
+   config :- JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)]
+  (let [pool (:pool @pool-state)]
     (log/debug (str "Initializing JRubyPuppet instances with the following settings:\n"
                     (ks/pprint-to-string config)))
     (try
@@ -257,10 +259,10 @@
         (dotimes [i count]
           (let [id (inc i)]
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
-            (.put pool (create-pool-instance id config (:profiler context)))
+            (.put pool (create-pool-instance id config profiler))
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
                        id count))
-          (mark-as-initialized! context)))
+          (mark-as-initialized! pool-state)))
       (catch Exception e
         (.clear pool)
         (.put pool (PoisonPill. e))
@@ -276,7 +278,7 @@
   [config profiler]
   {:config     config
    :profiler   profiler
-   :pool-state (atom (create-pool-from-config config))})
+   :pool-state (create-pool-from-config config)})
 
 (schema/defn ^:always-validate
   free-instance-count
