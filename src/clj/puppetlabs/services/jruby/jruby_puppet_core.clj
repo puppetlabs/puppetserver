@@ -193,6 +193,14 @@
   [context :- PoolContext]
   (:pool (get-pool-state context)))
 
+(schema/defn ^:always-validate
+  pool->vec :- [JRubyPuppetInstance]
+  [context :- PoolContext]
+  (-> (get-pool context)
+      .iterator
+      iterator-seq
+      vec))
+
 (defn instantiate-free-pool
   "Instantiate a new queue object to use as the pool of free JRubyPuppet's."
   [size]
@@ -277,6 +285,14 @@
   [context :- PoolContext]
   {:post [(>= % 0)]}
   (.size (get-pool context)))
+
+(schema/defn ^:always-validate
+  mark-all-environments-expired!
+  [context :- PoolContext]
+  (doseq [jruby-instance (pool->vec context)]
+    (-> jruby-instance
+        :environment-registry
+        puppet-env/mark-all-environments-expired!)))
 
 (schema/defn ^:always-validate
   borrow-from-pool :- JRubyPuppetInstance

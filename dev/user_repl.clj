@@ -12,7 +12,9 @@
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.java.io :as io]
-            [clojure.pprint :as pprint]))
+            [clojure.pprint :as pprint]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
@@ -96,7 +98,7 @@
 (defn jruby-pool
   "Returns a reference to the current pool of JRuby interpreters."
   []
-  (jruby-testutils/jruby-pool system))
+  (jruby-core/pool->vec (context [:JRubyPuppetService :pool-context])))
 
 (defn puppet-environment-state
   "Given a JRuby instance, return the state information about the environments
@@ -119,4 +121,5 @@
   "Mark all environments, on all JRuby instances, stale so that they will
   be flushed from the environment cache."
   []
-  (jruby-testutils/mark-all-environments-expired! system))
+  (jruby-protocol/mark-all-environments-expired!
+    (tka/get-service system :JRubyPuppetService)))

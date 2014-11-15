@@ -19,4 +19,8 @@
 
   (free-instance-count
     [this]
-    "The number of free JRubyPuppet instances left in the pool."))
+    "The number of free JRubyPuppet instances left in the pool.")
+
+  (mark-all-environments-expired!
+    [this]
+    "Mark all cached environments expired, in all JRuby instances."))

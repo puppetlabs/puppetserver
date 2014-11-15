@@ -52,7 +52,12 @@
   (free-instance-count
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/free-instance-count pool-context))))
+      (core/free-instance-count pool-context)))
+
+  (mark-all-environments-expired!
+    [this]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/mark-all-environments-expired! pool-context))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
