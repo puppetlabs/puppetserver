@@ -35,13 +35,14 @@
   (let [pool-size        2
         config           (jruby-testutils/jruby-puppet-config pool-size)
         profiler         jruby-testutils/default-profiler
-        pool             (create-pool-context config profiler)]
+        pool-context     (create-pool-context config profiler)
+        pool             (get-pool pool-context)]
 
     (testing "The pool should not yet be full as it is being primed in the
              background."
       (is (= (free-instance-count pool) 0)))
 
-    (prime-pool! (:pool-state pool) config profiler)
+    (prime-pool! (:pool-state pool-context) config profiler)
 
     (testing "Borrowing all instances from a pool while it is being primed and
              returning them."
@@ -71,12 +72,13 @@
 
 (deftest prime-pools-failure
   (let [pool-size 2
-        config    (jruby-testutils/jruby-puppet-config pool-size)
-        profiler  jruby-testutils/default-profiler
-        pool      (create-pool-context config profiler)
-        err-msg   (re-pattern "Unable to borrow JRuby instance from pool")]
+        config        (jruby-testutils/jruby-puppet-config pool-size)
+        profiler      jruby-testutils/default-profiler
+        pool-context  (create-pool-context config profiler)
+        pool          (get-pool pool-context)
+        err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [core/create-pool-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
-                 (is (thrown? IllegalStateException (prime-pool! (:pool-state pool) config profiler))))
+                 (is (thrown? IllegalStateException (prime-pool! (:pool-state pool-context) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
             err-msg
