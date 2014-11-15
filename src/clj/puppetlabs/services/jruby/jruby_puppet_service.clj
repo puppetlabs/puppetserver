@@ -1,6 +1,7 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]))
@@ -18,21 +19,22 @@
                            [:PuppetProfilerService get-profiler]]
   (init
     [this context]
-    (let [config (-> (get-in-config [:jruby-puppet])
-                     (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
-                     (assoc :http-client-ssl-protocols
-                            (get-in-config [:http-client :ssl-protocols]))
-                     (assoc :http-client-cipher-suites
-                            (get-in-config [:http-client :cipher-suites])))]
+    (let [config            (-> (get-in-config [:jruby-puppet])
+                              (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
+                              (assoc :http-client-ssl-protocols
+                                     (get-in-config [:http-client :ssl-protocols]))
+                              (assoc :http-client-cipher-suites
+                                     (get-in-config [:http-client :cipher-suites])))
+          service-id        (tk-services/service-id this)
+          agent-shutdown-fn (partial shutdown-on-error service-id)
+          prime-pool-agent  (jruby-agents/jruby-pool-agent agent-shutdown-fn)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config (get-profiler))]
-        (future
-          (shutdown-on-error
-            (tk-services/service-id this)
-            #(core/prime-pools! pool-context)))
-
-        (assoc context :pool-context pool-context))))
+        (jruby-agents/send-prime-pool! prime-pool-agent pool-context)
+        (-> context
+            (assoc :pool-context pool-context)
+            (assoc :prime-pool-agent prime-pool-agent)))))
 
   (borrow-instance
     [this]
