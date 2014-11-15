@@ -34,13 +34,14 @@
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
         config           (jruby-testutils/jruby-puppet-config pool-size)
-        pool             (create-pool-context config jruby-testutils/default-profiler)]
+        profiler         jruby-testutils/default-profiler
+        pool             (create-pool-context config profiler)]
 
     (testing "The pool should not yet be full as it is being primed in the
              background."
       (is (= (free-instance-count pool) 0)))
 
-    (prime-pool! pool)
+    (prime-pool! (:pool-state pool) config profiler)
 
     (testing "Borrowing all instances from a pool while it is being primed and
              returning them."
@@ -71,10 +72,11 @@
 (deftest prime-pools-failure
   (let [pool-size 2
         config    (jruby-testutils/jruby-puppet-config pool-size)
-        pool      (create-pool-context config jruby-testutils/default-profiler)
+        profiler  jruby-testutils/default-profiler
+        pool      (create-pool-context config profiler)
         err-msg   (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [core/create-pool-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
-                 (is (thrown? IllegalStateException (prime-pool! pool))))
+                 (is (thrown? IllegalStateException (prime-pool! (:pool-state pool) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
             err-msg
@@ -93,11 +95,12 @@
 (deftest pool-state-initialization
   (let [pool-size  1
         config     (jruby-testutils/jruby-puppet-config pool-size)
-        pool-ctxt  (create-pool-context config jruby-testutils/default-profiler)
+        profiler   jruby-testutils/default-profiler
+        pool-ctxt  (create-pool-context config profiler)
         pool-state (get-pool-state pool-ctxt)]
     (is (false? (:initialized? pool-state)))
     (is (= 1 (:size pool-state)))
-    (prime-pool! pool-ctxt)
+    (prime-pool! (:pool-state pool-ctxt) config profiler)
     (let [updated-pool-state (get-pool-state pool-ctxt)]
       (is (true? (:initialized? updated-pool-state))))))
 

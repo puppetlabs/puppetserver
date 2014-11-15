@@ -1,5 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
-  (:import (clojure.lang IFn Agent))
+  (:import (clojure.lang IFn Agent)
+           (com.puppetlabs.puppetserver PuppetProfiler))
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
@@ -46,5 +47,7 @@
   send-prime-pool! :- JRubyPoolAgent
   "Sends a request to the agent to prime the pool using the given pool context."
   [prime-pool-agent :- JRubyPoolAgent
-   pool-context :- jruby-core/PoolContext]
-  (send-agent prime-pool-agent #(jruby-core/prime-pool! pool-context)))
+   pool-state :- jruby-core/PoolStateContainer
+   config :- jruby-core/JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)]
+  (send-agent prime-pool-agent #(jruby-core/prime-pool! pool-state config profiler)))
