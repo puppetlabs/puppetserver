@@ -244,21 +244,8 @@
   [context :- PoolContext]
   (swap! (:pool-state context) #(assoc % :initialized? true)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public
-
 (schema/defn ^:always-validate
-  create-pool-context :- PoolContext
-  "Creates a new JRubyPuppet pool context with empty pools. Once the JRubyPuppet
-  pool object has been created, it will need to have its pools filled using
-  `prime-pools!`."
-  [config profiler]
-  {:config     config
-   :profiler   profiler
-   :pool-state (atom (create-pool-from-config config))})
-
-(schema/defn ^:always-validate
-  prime-pools!
+  prime-pool!
   "Sequentially fill the pool with new JRubyPuppet instances."
   [context :- PoolContext]
   (let [config (:config context)
@@ -278,6 +265,18 @@
         (.clear pool)
         (.put pool (PoisonPill. e))
         (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(schema/defn ^:always-validate
+  create-pool-context :- PoolContext
+  "Creates a new JRubyPuppet pool context with an empty pool. Once the JRubyPuppet
+  pool object has been created, it will need to be filled using `prime-pool!`."
+  [config profiler]
+  {:config     config
+   :profiler   profiler
+   :pool-state (atom (create-pool-from-config config))})
 
 (schema/defn ^:always-validate
   free-instance-count
