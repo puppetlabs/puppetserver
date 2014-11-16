@@ -77,7 +77,7 @@
         pool-context  (create-pool-context config profiler)
         pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
-    (with-redefs [core/create-pool-instance (fn [_] (throw (IllegalStateException. "BORK!")))]
+    (with-redefs [core/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (prime-pool! (:pool-state pool-context) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException

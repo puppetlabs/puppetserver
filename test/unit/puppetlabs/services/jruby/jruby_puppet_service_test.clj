@@ -23,7 +23,7 @@
       (str "If there as an exception while putting a JRubyPuppet instance in "
            "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-puppet-core/create-pool-instance
+      (with-redefs [jruby-puppet-core/create-pool-instance!
                     (fn [& _] (throw (Exception. "42")))]
                    (let [got-expected-exception (atom false)]
                      (try

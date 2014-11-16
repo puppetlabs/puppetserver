@@ -23,4 +23,10 @@
 
   (mark-all-environments-expired!
     [this]
-    "Mark all cached environments expired, in all JRuby instances."))
+    "Mark all cached environments expired, in all JRuby instances.")
+
+  (flush-jruby-pool!
+    [this]
+    "Flush all the current JRuby instances and repopulate the pool."))
+
+      
