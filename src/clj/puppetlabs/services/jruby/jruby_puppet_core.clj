@@ -95,16 +95,17 @@
    :profiler   (schema/maybe PuppetProfiler)
    :pool-state PoolStateContainer})
 
-(def JRubyPuppetInstance
-  "A map with objects pertaining to an individual entry in the JRubyPuppet pool."
-  {:pool                  pool-queue-type
-   :id                    schema/Int
-   :jruby-puppet          JRubyPuppet
-   :scripting-container   ScriptingContainer
-   :environment-registry  (schema/both
-                            EnvironmentRegistry
-                            (schema/pred
-                              #(satisfies? puppet-env/EnvironmentStateContainer %)))})
+;; A record representing an individual entry in the JRubyPuppet pool.
+(schema/defrecord JRubyPuppetInstance
+  [pool :- pool-queue-type
+   id :- schema/Int
+   jruby-puppet :- JRubyPuppet
+   scripting-container :- ScriptingContainer
+   environment-registry :- (schema/both
+                             EnvironmentRegistry
+                             (schema/pred
+                               #(satisfies? puppet-env/EnvironmentStateContainer %)))])
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -173,16 +174,17 @@
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
 
-      {:pool                  pool
-       :id                    id
-       :jruby-puppet          (.callMethod scripting-container
-                                           ruby-puppet-class
-                                           "new"
-                                           (into-array Object
-                                                       [puppet-config puppet-server-config])
-                                           JRubyPuppet)
-       :scripting-container   scripting-container
-       :environment-registry  env-registry})))
+      (map->JRubyPuppetInstance
+        {:pool                 pool
+         :id                   id
+         :jruby-puppet         (.callMethod scripting-container
+                                            ruby-puppet-class
+                                            "new"
+                                            (into-array Object
+                                                        [puppet-config puppet-server-config])
+                                            JRubyPuppet)
+         :scripting-container  scripting-container
+         :environment-registry env-registry}))))
 
 (schema/defn ^:always-validate
   get-pool-state :- PoolState
@@ -234,7 +236,7 @@
   be available to other callers) and throws the poison pill's exception.
   Otherwise returns the instance that was passed in."
   [instance pool]
-  {:post [((some-fn nil? #(nil? (schema/check JRubyPuppetInstance %))) %)]}
+  {:post [((some-fn nil? #(instance? JRubyPuppetInstance %)) %)]}
   (when (instance? PoisonPill instance)
     (.put pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
