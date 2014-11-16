@@ -67,7 +67,8 @@
   ([]
    (create-pool-instance (jruby-puppet-config 1)))
   ([config]
-   (jruby-core/create-pool-instance 1 config default-profiler)))
+   (let [pool (jruby-core/instantiate-free-pool 1)]
+     (jruby-core/create-pool-instance pool 1 config default-profiler))))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -79,8 +80,9 @@
       (Object.))))
 
 (defn create-mock-pool-instance
-  [_ _ _]
-  {:id                    1
+  [pool _ _ _]
+  {:pool                  pool
+   :id                    1
    :jruby-puppet          (create-mock-jruby-instance)
    :scripting-container   (ScriptingContainer.)
    :environment-registry  (puppet-env/environment-registry)})

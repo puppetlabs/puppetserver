@@ -97,7 +97,8 @@
 
 (def JRubyPuppetInstance
   "A map with objects pertaining to an individual entry in the JRubyPuppet pool."
-  {:id                    schema/Int
+  {:pool                  pool-queue-type
+   :id                    schema/Int
    :jruby-puppet          JRubyPuppet
    :scripting-container   ScriptingContainer
    :environment-registry  (schema/both
@@ -146,7 +147,8 @@
 (schema/defn ^:always-validate
   create-pool-instance :- JRubyPuppetInstance
   "Creates a new pool instance."
-  [id       :- schema/Int
+  [pool     :- pool-queue-type
+   id       :- schema/Int
    config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
@@ -171,7 +173,8 @@
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
 
-      {:id                    id
+      {:pool                  pool
+       :id                    id
        :jruby-puppet          (.callMethod scripting-container
                                            ruby-puppet-class
                                            "new"
@@ -259,7 +262,7 @@
         (dotimes [i count]
           (let [id (inc i)]
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
-            (.put pool (create-pool-instance id config profiler))
+            (.put pool (create-pool-instance pool id config profiler))
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
                        id count))
           (mark-as-initialized! pool-state)))
@@ -320,6 +323,5 @@
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [pool :- pool-queue-type
-   instance :- JRubyPuppetInstance]
-  (.put pool instance))
+  [instance :- JRubyPuppetInstance]
+  (.put (:pool instance) instance))
