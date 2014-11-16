@@ -18,7 +18,7 @@
                          :gem-home        testutils/gem-home
                          :master-conf-dir testutils/conf-dir}
           pool          (instantiate-free-pool 1)
-          pool-instance (create-pool-instance pool 1 config testutils/default-profiler)
+          pool-instance (create-pool-instance! pool 1 config testutils/default-profiler)
           jruby-puppet  (:jruby-puppet pool-instance)
           var-dir       (.getSetting jruby-puppet "vardir")]
       (is (not (nil? var-dir)))))

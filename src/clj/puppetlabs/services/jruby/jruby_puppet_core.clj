@@ -146,8 +146,8 @@
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate
-  create-pool-instance :- JRubyPuppetInstance
-  "Creates a new pool instance."
+  create-pool-instance! :- JRubyPuppetInstance
+  "Creates a new JRubyPuppet instance and adds it to the pool."
   [pool     :- pool-queue-type
    id       :- schema/Int
    config   :- JRubyPuppetConfig
@@ -174,17 +174,19 @@
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
 
-      (map->JRubyPuppetInstance
-        {:pool                 pool
-         :id                   id
-         :jruby-puppet         (.callMethod scripting-container
-                                            ruby-puppet-class
-                                            "new"
-                                            (into-array Object
-                                                        [puppet-config puppet-server-config])
-                                            JRubyPuppet)
-         :scripting-container  scripting-container
-         :environment-registry env-registry}))))
+      (let [instance (map->JRubyPuppetInstance
+                       {:pool                 pool
+                        :id                   id
+                        :jruby-puppet         (.callMethod scripting-container
+                                                           ruby-puppet-class
+                                                           "new"
+                                                           (into-array Object
+                                                                       [puppet-config puppet-server-config])
+                                                           JRubyPuppet)
+                        :scripting-container  scripting-container
+                        :environment-registry env-registry})]
+        (.put pool instance)
+        instance))))
 
 (schema/defn ^:always-validate
   get-pool-state :- PoolState
@@ -220,14 +222,13 @@
                                            "you did not specify the --config option?")))))
 
 (schema/defn ^:always-validate
-  create-pool-from-config :- PoolStateContainer
+  create-pool-from-config :- PoolState
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- JRubyPuppetConfig]
   (let [size (or size default-pool-size)]
-    (atom
-      {:pool         (instantiate-free-pool size)
-       :size         size
-       :initialized? false})))
+    {:pool         (instantiate-free-pool size)
+     :size         size
+     :initialized? false}))
 
 (defn validate-instance-from-pool!
   "Validate an instance.  The main purpose of this function is to check for
@@ -264,7 +265,7 @@
         (dotimes [i count]
           (let [id (inc i)]
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
-            (.put pool (create-pool-instance pool id config profiler))
+            (create-pool-instance! pool id config profiler)
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
                        id count))
           (mark-as-initialized! pool-state)))
@@ -283,7 +284,7 @@
   [config profiler]
   {:config     config
    :profiler   profiler
-   :pool-state (create-pool-from-config config)})
+   :pool-state (atom (create-pool-from-config config))})
 
 (schema/defn ^:always-validate
   free-instance-count
@@ -327,3 +328,19 @@
   "Return a borrowed pool instance to its free pool."
   [instance :- JRubyPuppetInstance]
   (.put (:pool instance) instance))
+
+(defmacro with-jruby-puppet
+  "Encapsulates the behavior of borrowing and returning an instance of
+  JRubyPuppet.  Example usage:
+
+  (let [pool (get-pool pool-context)]
+    (with-jruby-puppet
+      jruby-puppet
+      pool
+      (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
+  [jruby-puppet pool & body]
+  `(let [~jruby-puppet (borrow-from-pool ~pool)]
+     (try
+       ~@body
+       (finally
+         (return-to-pool ~jruby-puppet)))))
