@@ -26,7 +26,7 @@
   will automatically load it when the REPL is started.)"
   []
   (if-let [conf (resolve 'user/jvm-puppet-conf)]
-    (deref conf)
+    ((deref conf))
     {:global                {:logging-config "./dev/logback-dev.xml"}
      :os-settings           {:ruby-load-path jruby-testutils/ruby-load-path}
      :jruby-puppet          {:gem-home             jruby-testutils/gem-home
