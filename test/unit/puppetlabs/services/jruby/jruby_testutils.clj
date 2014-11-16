@@ -81,11 +81,12 @@
 
 (defn create-mock-pool-instance
   [pool _ _ _]
-  {:pool                  pool
-   :id                    1
-   :jruby-puppet          (create-mock-jruby-instance)
-   :scripting-container   (ScriptingContainer.)
-   :environment-registry  (puppet-env/environment-registry)})
+  (jruby-core/map->JRubyPuppetInstance
+    {:pool                 pool
+     :id                   1
+     :jruby-puppet         (create-mock-jruby-instance)
+     :scripting-container  (ScriptingContainer.)
+     :environment-registry (puppet-env/environment-registry)}))
 
 (defn mock-pool-instance-fixture
   "Test fixture which changes the behavior of the JRubyPool to create
