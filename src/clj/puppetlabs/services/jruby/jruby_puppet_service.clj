@@ -51,9 +51,7 @@
 
   (return-instance
     [this jruby-instance]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/return-to-pool pool jruby-instance)))
+    (core/return-to-pool jruby-instance))
 
   (free-instance-count
     [this]
