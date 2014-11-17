@@ -17,7 +17,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
 
-(defn jvm-puppet-conf
+(defn puppet-server-conf
   "This function returns a map containing all of the config settings that
   will be used when running Puppet Server in the repl.  It provides some
   reasonable defaults, but if you'd like to use your own settings, you can
@@ -25,7 +25,7 @@
   will be used instead.  (If there is a `user.clj` on the classpath, lein
   will automatically load it when the REPL is started.)"
   []
-  (if-let [conf (resolve 'user/jvm-puppet-conf)]
+  (if-let [conf (resolve 'user/puppet-server-conf)]
     ((deref conf))
     {:global                {:logging-config "./dev/logback-dev.xml"}
      :os-settings           {:ruby-load-path jruby-testutils/ruby-load-path}
@@ -52,7 +52,7 @@
                request-handler-service
                puppet-server-config-service
                certificate-authority-service]
-              (jvm-puppet-conf))))
+              (puppet-server-conf))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 

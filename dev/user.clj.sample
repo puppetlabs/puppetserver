@@ -11,7 +11,7 @@
 ;; defaults.  You could just supply a map literal here, but I like to parse
 ;; the config from my config files on disk, so that I am using the same settings
 ;; that I would get if I ran the server via `lein run --config`.
-(defn jvm-puppet-conf
+(defn puppet-server-conf
   []
   (config/load-config "/Users/cprice/puppet-server/conf/puppet-server.conf"))
 
