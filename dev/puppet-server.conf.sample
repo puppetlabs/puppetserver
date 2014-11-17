@@ -28,8 +28,8 @@ webserver: {
 }
 
 web-router-service: {
-    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": "/"
-    "puppetlabs.services.master.master-service/master-service": "/"
+    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
+    "puppetlabs.services.master.master-service/master-service": ""
 }
 
 # configuration for the JRuby interpreters

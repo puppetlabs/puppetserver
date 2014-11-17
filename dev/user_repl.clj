@@ -1,5 +1,6 @@
 (ns user-repl
   (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
@@ -46,6 +47,7 @@
   (alter-var-root #'system
     (fn [_] (tk/build-app
               [jetty9-service
+               webrouting-service
                master-service
                jruby-puppet-pooled-service
                puppet-profiler-service
