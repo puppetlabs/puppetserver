@@ -6,12 +6,13 @@
   (:require [puppetlabs.trapperkeeper.config :as config]))
 
 ;; The `user_repl.clj` file has utility functions for starting, stopping, and
-;; loading Puppet Server from the REPL.  If you define a var here that contains
+;; loading Puppet Server from the REPL.  If you define a no-arg function here that returns
 ;; configuration data for Puppet Server, it will use that config instead of the
 ;; defaults.  You could just supply a map literal here, but I like to parse
 ;; the config from my config files on disk, so that I am using the same settings
 ;; that I would get if I ran the server via `lein run --config`.
-(def jvm-puppet-conf
+(defn puppet-server-conf
+  []
   (config/load-config "/Users/cprice/puppet-server/conf/puppet-server.conf"))
 
 ;; The `go` function in the `user-repl` namespace  will start up an instance of
