@@ -10,6 +10,9 @@ require 'puppet/server/network/http/handler'
 
 require 'java'
 
+require 'jopenssl/version'
+Jopenssl::Version::BOUNCY_CASTLE_VERSION = '1.50'
+
 ##
 ## This class is a bridge between the puppet ruby code and the java interface
 ## `com.puppetlabs.puppetserver.JRubyPuppet`.  The first `include` line in the class
