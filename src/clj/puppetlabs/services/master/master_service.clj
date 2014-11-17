@@ -6,14 +6,14 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]))
 
 (defservice master-service
-  [[:WebserverService add-ring-handler]
+  [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert!]]
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path        ""
+   (let [path        (get-route this)
          config      (get-config)
          certname    (get-in config [:puppet-server :certname])
          localcacert (get-in config [:puppet-server :localcacert])
@@ -24,8 +24,8 @@
 
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
-      (compojure/context path [] (core/compojure-app handle-request))
-      path))
+       this
+      (compojure/context path [] (core/compojure-app handle-request))))
    context)
   (start
     [this context]

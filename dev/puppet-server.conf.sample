@@ -27,6 +27,11 @@ webserver: {
     ssl-port: 8140
 }
 
+web-router-service: {
+    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": "/"
+    "puppetlabs.services.master.master-service/master-service": "/"
+}
+
 # configuration for the JRuby interpreters
 jruby-puppet: {
     # This setting determines where JRuby will look for gems.  It is also
