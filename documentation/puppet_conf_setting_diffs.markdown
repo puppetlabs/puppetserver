@@ -197,7 +197,7 @@ Puppet Server does not use this setting.
 
 Puppet Server does not use this setting.
 
-Settings Maybe Not Worth Documenting?
+HttpPool-Related Server Settings
 =====
 
 #### [configtimeout] (https://docs.puppetlabs.com/references/latest/configuration.html#configtimeout)
