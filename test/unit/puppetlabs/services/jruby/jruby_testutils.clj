@@ -95,19 +95,3 @@
     [jruby-core/create-pool-instance create-mock-pool-instance]
     (f)))
 
-(defn jruby-pool
-  [app]
-  (-> (tk-app/app-context app)
-      deref
-      (get-in [:JRubyPuppetService :pool-context :pool-state])
-      deref
-      :pool
-      .iterator
-      iterator-seq))
-
-(defn mark-all-environments-expired!
-  [app]
-  (doseq [jruby-instance (jruby-pool app)]
-    (-> jruby-instance
-        :environment-registry
-        puppet-env/mark-all-environments-expired!)))
