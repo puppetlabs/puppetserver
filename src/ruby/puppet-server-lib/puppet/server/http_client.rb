@@ -5,8 +5,8 @@ require 'net/http'
 require 'base64'
 
 require 'java'
-java_import com.puppetlabs.http.client.SyncHttpClient
-java_import com.puppetlabs.http.client.RequestOptions
+SyncHttpClient = com.puppetlabs.http.client.Sync
+java_import com.puppetlabs.http.client.SimpleRequestOptions
 java_import com.puppetlabs.http.client.ResponseBodyType
 
 class Puppet::Server::HttpClient
@@ -51,7 +51,7 @@ class Puppet::Server::HttpClient
           "Basic #{Base64.strict_encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
     end
 
-    request_options = RequestOptions.new(build_url(url))
+    request_options = SimpleRequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
@@ -61,7 +61,7 @@ class Puppet::Server::HttpClient
   end
 
   def get(url, headers)
-    request_options = RequestOptions.new(build_url(url))
+    request_options = SimpleRequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     configure_ssl(request_options)
