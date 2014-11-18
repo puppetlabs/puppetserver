@@ -272,5 +272,11 @@
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
+
+      ; If we ever port the rest of the ring handler to use liberator,
+      ; I believe this will become unnecessary, as I'm pretty you get this
+      ; behavior "out of the box" with liberator.
+      (ringutils/wrap-exception-handling)
+
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))

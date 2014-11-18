@@ -1,5 +1,7 @@
 (ns puppetlabs.services.jruby.puppet-environments-int-test
   (:require [clojure.test :refer :all]
+            [puppetlabs.services.request-handler.request-handler-core :as request-handler]
+            [puppetlabs.services.ca.certificate-authority-core :as ca]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
@@ -72,6 +74,7 @@
   []
   (-> (http-client/get
         "https://localhost:8140/production/catalog/localhost"
+        bootstrap/request-options)
         catalog-request-options)
       :body
       json/parse-string))

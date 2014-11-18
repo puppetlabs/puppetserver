@@ -5,6 +5,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.certificate-authority.core :as ca-utils]
+            [ring.util.response :as ring]
             [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,3 +95,16 @@
     (if (client-allowed-access? settings req)
       (handler req)
       {:status 401 :body "Unauthorized"})))
+
+(defn wrap-exception-handling
+  "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
+  and return a very simple HTTP 500 response."
+  [handler]
+  (fn [req]
+    (try
+      (handler req)
+      (catch Exception e
+        (log/error e "Uncaught Exception while handling HTTP request")
+        (-> (ring/response "Internal Server Error.")
+            (ring/status 500)
+            (ring/content-type "text/plain"))))))
