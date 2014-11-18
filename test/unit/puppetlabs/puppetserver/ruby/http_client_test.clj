@@ -27,6 +27,12 @@
   {:status 200
    :body "hi"})
 
+(defn ring-app-connection-closed
+  [req]
+  {:status 200
+   :body (str "The Connection header has value "
+              ((:headers req) "connection"))})
+
 (defn authenticated? [name pass]
   (and (= name "foo")
        (= pass "bar")))
@@ -202,3 +208,24 @@
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
           (is (= "hi" (.runScriptlet sc "response.body"))))))))
+
+(deftest clients-persist
+  (testing "client persists when making HTTP requests"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app port
+        (let [scripting-container (create-scripting-container port)
+              client1 (.runScriptlet scripting-container "c.get('/', {}); c.client")
+              client2 (.runScriptlet scripting-container "c.post('/', 'foo', {}); c.client")]
+          (is (= client1 client2)))))))
+
+(deftest connections-closed
+  (testing "connection header always set to close on get"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app-connection-closed port
+        (let [scripting-container (create-scripting-container port)]
+          (is (= "The Connection header has value close" (.runScriptlet scripting-container "c.get('/', {}).body")))))))
+  (testing "connection header always set to close on get"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app-connection-closed port
+        (let [scripting-container (create-scripting-container port)]
+          (is (= "The Connection header has value close" (.runScriptlet scripting-container "c.post('/', 'foo', {}).body"))))))))
