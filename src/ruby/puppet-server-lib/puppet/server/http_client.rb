@@ -5,9 +5,10 @@ require 'net/http'
 require 'base64'
 
 require 'java'
-java_import com.puppetlabs.http.client.SyncHttpClient
 java_import com.puppetlabs.http.client.RequestOptions
+java_import com.puppetlabs.http.client.ClientOptions
 java_import com.puppetlabs.http.client.ResponseBodyType
+SyncHttpClient = com.puppetlabs.http.client.Sync
 
 class Puppet::Server::HttpClient
 
@@ -51,21 +52,37 @@ class Puppet::Server::HttpClient
           "Basic #{Base64.strict_encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
     end
 
+    # Ensure multiple requests are not made on the same connection
+    headers["Connection"] = "close"
+
+    if @client.nil?
+      client_options = ClientOptions.new
+      configure_ssl(client_options)
+      @client = SyncHttpClient.createClient(client_options)
+    end
+
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
-    configure_ssl(request_options)
-    response = SyncHttpClient.post(request_options)
+    response = @client.post(request_options)
     ruby_response(response)
   end
 
   def get(url, headers)
+    # Ensure multiple requests are not made on the same connection
+    headers["Connection"] = "close"
+
+    if @client.nil?
+      client_options = ClientOptions.new
+      configure_ssl(client_options)
+      @client = SyncHttpClient.createClient(client_options)
+    end
+
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
-    configure_ssl(request_options)
-    response = SyncHttpClient.get(request_options)
+    response = @client.get(request_options)
     ruby_response(response)
   end
 
@@ -103,11 +120,9 @@ class Puppet::Server::HttpClient
     clazz = ruby_response_class(response.status.to_s)
     result = clazz.new(nil, response.status.to_s, nil)
     result.body = response.body
-    # TODO: this is nasty, nasty.  But apparently there is no way to create
+    # This is nasty, nasty.  But apparently there is no way to create
     # an instance of Net::HttpResponse from outside of the library and have
     # the body be readable, unless you do stupid things like this.
-    # We need to figure out how to add some spec tests to make sure that this
-    # fragile thing doesn't break in a future version of jruby. (PE-3356)
     result.instance_variable_set(:@read, true)
 
     response.headers.each do |k,v|
