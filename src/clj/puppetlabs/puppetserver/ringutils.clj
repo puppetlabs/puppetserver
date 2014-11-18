@@ -1,5 +1,5 @@
 (ns puppetlabs.puppetserver.ringutils
-  (:import (clojure.lang ExceptionInfo)
+  (:import (clojure.lang ExceptionInfo IFn)
            (java.security.cert X509Certificate))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
@@ -35,7 +35,7 @@
    access control whitelist."
   (let [subject (get-cert-subject certificate)]
     (log/info
-      (str "Client '" subject "' access to" uri "rejected;\n"
+      (str "Client '" subject "' access to " uri " rejected;\n"
            "client not found in whitelist configuration."))))
 
 (defn client-on-whitelist?
@@ -104,3 +104,14 @@
         (log/info "Access to certificate_status rejected; no client certificate found")
         false))
     true))
+
+(schema/defn ^:always-validate
+  wrap-with-cert-whitelist-check :- IFn
+  "A ring middleware that checks to make sure the client cert is in the whitelist
+  before granting access."
+  [handler :- IFn
+   settings :- WhitelistSettings]
+  (fn [req]
+    (if (client-allowed-access? settings req)
+      (handler req)
+      {:status 401 :body "Unauthorized"})))

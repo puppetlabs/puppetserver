@@ -29,6 +29,17 @@ webserver: {
     ssl-host = 0.0.0.0
     ssl-port = 8140
 }
+
+# configure the mount points for the web apps
+web-router-service: {
+    # These two should not be modified because the Puppet 3.x agent expects them to
+    # be mounted at "/"
+    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
+    "puppetlabs.services.master.master-service/master-service": ""
+
+    # This controls the mount point for the puppet admin API.
+    "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
+}
 ```
 
 The above settings set the webserver to require a valid certificate from the client; to listen on all available hostnames for encrypted HTTPS traffic; and to use port 8140 for encrypted HTTPS traffic. For full documentation, including a complete list of available settings and values, see
@@ -78,6 +89,11 @@ http-client: {
 # settings related to profiling the puppet Ruby code
 profiler: {
     enabled: true
+}
+
+# Settings related to the puppet-admin HTTP API
+puppet-admin: {
+    client-whitelist: []
 }
 ```
 
