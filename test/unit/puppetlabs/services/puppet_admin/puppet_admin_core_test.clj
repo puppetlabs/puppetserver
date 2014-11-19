@@ -23,7 +23,7 @@
 
 (defn app
   [config]
-  (-> (core/compojure-app
+  (-> (core/build-ring-handler
         "/puppet-admin-api"
         config)))
 

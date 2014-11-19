@@ -100,7 +100,7 @@
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"
-          ring-app (compojure-app (testutils/ca-settings cadir) version-number)
+          ring-app (build-ring-handler (testutils/ca-settings cadir) version-number)
           ;; we can just GET the /CRL endpoint, so that's an easy test here.
           request (mock/request :get
                                 "/production/certificate_revocation_list/mynode")
@@ -239,7 +239,7 @@
 
 (deftest certificate-status-test
   (testing "read requests"
-    (let [test-app (-> (compojure-app (testutils/ca-settings cadir) "42.42.42")
+    (let [test-app (-> (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
                        (wrap-with-ssl-client-cert))]
       (testing "GET /certificate_status"
         (doseq [[subject status] [["localhost" localhost-status]
@@ -325,7 +325,7 @@
 
   (testing "write requests"
     (let [settings (testutils/ca-sandbox! cadir)
-          test-app (-> (compojure-app settings "42.42.42")
+          test-app (-> (build-ring-handler settings "42.42.42")
                        (wrap-with-ssl-client-cert))]
       (testing "PUT"
         (testing "signing a cert"
@@ -383,7 +383,7 @@
 
         (testing "Additional error handling on PUT requests"
           (let [settings (testutils/ca-sandbox! cadir)
-                test-app (-> (compojure-app settings "42.42.42")
+                test-app (-> (build-ring-handler settings "42.42.42")
                              (wrap-with-ssl-client-cert))]
 
             (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
@@ -437,7 +437,7 @@
 
   (testing "a signing request w/ a 'application/json' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
-          test-app         (-> (compojure-app settings "42.42.42")
+          test-app         (-> (build-ring-handler settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
@@ -451,7 +451,7 @@
 
   (testing "a signing request w/ a 'text/pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
-          test-app         (-> (compojure-app settings "42.42.42")
+          test-app         (-> (build-ring-handler settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
@@ -465,7 +465,7 @@
 
   (testing "a signing request w/ a 'pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
-          test-app         (-> (compojure-app settings "42.42.42")
+          test-app         (-> (build-ring-handler settings "42.42.42")
                                (wrap-with-ssl-client-cert))
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
@@ -479,7 +479,7 @@
 
   (testing "a signing request w/ a bogus content-type header results in a HTTP 415"
     (let [settings (testutils/ca-sandbox! cadir)
-          test-app (-> (compojure-app settings "42.42.42")
+          test-app (-> (build-ring-handler settings "42.42.42")
                        (wrap-with-ssl-client-cert))
           response (test-app
                     {:uri            "/production/certificate_status/test-agent"
@@ -494,7 +494,7 @@
   (testing "Asking /certificate_status to sign invalid CSRs"
     (let [settings  (assoc (testutils/ca-settings cadir)
                       :csrdir (str test-resources-dir "/alternate-csrdir"))
-          test-app (-> (compojure-app settings "42.42.42")
+          test-app (-> (build-ring-handler settings "42.42.42")
                        (wrap-with-ssl-client-cert))]
 
       (testing "one example - a CSR with DNS alt-names"
@@ -526,7 +526,7 @@
       (testing bool
         (let [settings    (assoc (testutils/ca-sandbox! cadir)
                             :allow-duplicate-certs bool)
-              test-app    (-> (compojure-app settings "1.2.3.4")
+              test-app    (-> (build-ring-handler settings "1.2.3.4")
                               (wrap-with-ssl-client-cert))
               signed-path (ca/path-to-cert (:signeddir settings) "test-agent")]
           (is (false? (fs/exists? signed-path)))
@@ -540,7 +540,7 @@
 
 (deftest cert-status-access-control
   (testing "a request with no certificate is rejected with 403 Forbidden"
-    (let [test-app (compojure-app (testutils/ca-settings cadir) "1.2.3.4")]
+    (let [test-app (build-ring-handler (testutils/ca-settings cadir) "1.2.3.4")]
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
@@ -553,7 +553,7 @@
     (let [settings (assoc (testutils/ca-settings cadir)
                      :access-control {:certificate-status
                                       {:client-whitelist []}})
-          test-app (compojure-app settings "1.2.3.4")]
+          test-app (build-ring-handler settings "1.2.3.4")]
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
@@ -569,7 +569,7 @@
         (let [settings (assoc (testutils/ca-settings cadir)
                          :access-control {:certificate-status
                                           {:client-whitelist whitelist}})
-              test-app (compojure-app settings "1.2.3.4")
+              test-app (build-ring-handler settings "1.2.3.4")
               response (test-app
                         {:uri             "/production/certificate_status/test-agent"
                          :request-method  :get
@@ -581,7 +581,7 @@
         (let [settings (assoc (testutils/ca-settings cadir)
                          :access-control {:certificate-status
                                           {:client-whitelist whitelist}})
-              test-app (compojure-app settings "1.2.3.4")
+              test-app (build-ring-handler settings "1.2.3.4")
               response (test-app
                         {:uri             "/production/certificate_statuses/all"
                          :request-method  :get
@@ -595,7 +595,7 @@
                      :access-control {:certificate-status
                                       {:authorization-required false
                                        :client-whitelist []}})
-          test-app (compojure-app settings "1.2.3.4")]
+          test-app (build-ring-handler settings "1.2.3.4")]
 
       (testing "certificate_status"
         (let [response (test-app

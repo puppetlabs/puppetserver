@@ -20,7 +20,7 @@
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/compojure-app settings puppet-version))))
+      (compojure/context path [] (core/build-ring-handler settings puppet-version))))
    context)
 
   (initialize-master-ssl!

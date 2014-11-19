@@ -39,8 +39,8 @@
   [config]
   (:puppet-admin config))
 
-(schema/defn ^:always-validate compojure-app :- IFn
-  "Return the compojure ring app for the Puppet Admin API."
+(schema/defn ^:always-validate build-ring-handler :- IFn
+  "Return the ring handler for the Puppet Admin API."
   [path :- schema/Str
    settings :- PuppetAdminSettings]
   (-> (compojure/context

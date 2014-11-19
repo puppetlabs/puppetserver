@@ -267,7 +267,7 @@
         (rr/header response "X-Puppet-Version" version)))))
 
 (schema/defn ^:always-validate
-  compojure-app
+  build-ring-handler
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)

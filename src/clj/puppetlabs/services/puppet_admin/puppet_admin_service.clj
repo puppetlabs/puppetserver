@@ -13,5 +13,5 @@
     (let [settings (core/config->puppet-admin-settings (get-config))]
       (add-ring-handler
         this
-        (core/compojure-app (get-route this) settings)))
+        (core/build-ring-handler (get-route this) settings)))
     context))
