@@ -88,5 +88,5 @@ certificate-authority: {
 
 # Settings related to the puppet-admin HTTP API
 puppet-admin: {
-    client-whitelist: []
+    client-whitelist: [localhost]
 }

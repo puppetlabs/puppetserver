@@ -2,10 +2,8 @@
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
            (org.jruby.embed ScriptingContainer))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.trapperkeeper.app :as tk-app]))
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
