@@ -76,3 +76,10 @@ called pry.
 There are many other gems that are useful for debugging, and a large percentage
 of them are compatible with JRuby.  If you have a favorite that is not mentioned
 here please let us know, and we will consider adding it to this documentation!
+
+Tracing Code Events
+===================
+
+Puppet Server can utilize JRuby's standard facilities for tracing events during
+code execution.  For more information on these techniques, see the
+[Tracing Code Events] (./dev_trace_func.markdown) page.
