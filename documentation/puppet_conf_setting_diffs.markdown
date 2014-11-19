@@ -61,7 +61,7 @@ setting were "false".  Puppet Server, however, ignores both the `ca` and
 `hostcrl` setting from the "puppet.conf" file.
 
 Regardless of the configuration of the `ssl-` "webserver.conf" settings, any
-updates that that the Puppet Server certificate authority does to a CRL file,
+updates that the Puppet Server certificate authority does to a CRL file,
 e.g., revocations performed via the "certificate_status" HTTP endpoint, will
 use the `cacrl` "puppet.conf" setting to determine the location of the CRL, not
 the`ssl-crl-path` "webserver.conf" setting.
