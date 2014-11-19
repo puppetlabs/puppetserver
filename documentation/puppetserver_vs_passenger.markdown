@@ -1,68 +1,49 @@
-Puppet Server vs. Apache/Passenger Puppet Master
-========================
+# Puppet Server vs. Apache/Passenger Puppet Master
 
 Puppet Server is intended to function as a drop-in replacement for the existing
-Apache/Passenger Puppet Master stack.  However, there are a handful of differences
-due to changes in the underlying architecture.
+Apache/Passenger Puppet master stack. However, there are a handful of differences with Puppet Server due to changes in the underlying architecture.
 
 This page details things that are intentionally different between the two
-applications; you may also be interested in the [Known Issues](./known_issues.markdown)
+applications. You may also be interested in the [Known Issues](./known_issues.markdown)
 page, where we've listed a handful of issues that we expect to fix in future releases.
 
+## Service Name
 
-Service Name
------
-
-Since the Apache/Passenger master runs under, um, Apache, the name of the service
+Since the Apache/Passenger master runs under, well, Apache, the name of the service
 that you use to start and stop the master is `httpd` (or `apache2`, depending
-on your platform).  With Puppet Server, the service name is `puppetserver`.  So
-to start and stop the service, you'll use, e.g., `service puppetserver restart`.
+on your platform). With Puppet Server, the service name is `puppetserver`. So
+to start and stop the service, you'll use `puppetserver` commands, such as `service puppetserver restart`.
 
-Config Files
------
+## Config Files
 
-Puppet Server honors *almost* all settings in `puppet.conf`, and should pick them
-up automatically.  It does introduce new settings for some "Puppet Server"-specific
-things, though.  For example, the webserver interface and port.  For a complete
-list of the new settings, see the [Configuration](./configuration.markdown) docs
-page.
+Puppet Server honors almost all settings in `puppet.conf` and should pick them
+up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed on the [Puppet Server Configuration](./configuration.markdown) page.
 
-Gems
------
+## Gems
 
 If you have server-side Ruby code in your modules, Puppet Server will run it via
-JRuby.  Generally speaking this only affects custom parser functions and report
-processors, and for the vast majority of cases, this should not pose any problems
-whatsoever as JRuby does a great job in terms of compatibility with vanilla Ruby.
+JRuby. Generally speaking, this only affects custom parser functions and report
+processors. For the vast majority of cases, this shouldn't pose any problems, as JRuby is highly compatible with vanilla Ruby.
 
-We do take some care to isolate the Ruby load paths that are accessible to the
-JRuby interpreter, so that it doesn't attempt to load any gems or other code that
-you have installed on your system Ruby. To achieve this, we ship a
-"Puppet Server"-specific `gem` command with the application, and you can use this
-command to install or remove gems for Puppet Server.
+## Installing And Removing Gems
 
-For more details on how Puppet Server interacts with gems, see the [Puppet Server and Gems](./gems.markdown)
+We isolate the Ruby load paths that are accessible to Puppet Server's
+JRuby interpreter, so that it doesn't load any gems or other code that
+you have installed on your system Ruby. If you want Puppet Server to load additional gems, use the Puppet Server-specific `gem` command to install them. For more details on how Puppet Server interacts with gems, see the [Puppet Server and Gems](./gems.markdown)
 page.
 
-Startup Time
------
+## Startup Time
 
-Puppet Server runs on the JVM, and as a result, it takes a bit longer for the
-server to start up and be ready to accept HTTP connections as compared to the
-Apache/Passenger stack.  We see significant performance improvements after start up,
-but the initial start up is definitely a bit slower.
+Because Puppet Server runs on the JVM, it takes a bit longer than the Apache/Passenger stack to start up and get ready to accept HTTP connections. Performance improves significantly after start up, but the initial start up is definitely a bit slower.
 
-External CA Configuration
------
+## External CA Configuration
 
-Puppet Server can be configured for use with an external CA instead of the
-internal Puppet CA.  There are a few differences around how this is done for
-Puppet Server as compared to an Apache/Passenger configuration.  See the
+You can configure Puppet Server for use with an external CA instead of the
+internal Puppet CA. You'll do this a little differently for Puppet Server than you would for an Apache/Passenger configuration. See the
 [External CA Configuration](./external_ca_configuration.markdown) page for
 more details.
 
-External SSL Termination
------
+## External SSL Termination
 
 See [External SSL termination](external_ssl_termination.markdown) for details on
 how to get this working in Puppet Server.
