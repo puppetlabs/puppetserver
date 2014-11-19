@@ -12,7 +12,7 @@ calls into C code, the `jruby.debug.fullTrace` Java property must be set to
 "true".  If you are running Puppet Server from source, this can be done by
 adding the option to the `project.clj` file:
 
-```
+```ini
 :jvm-opts ["-XX:MaxPermSize=256m" "-Djruby.debug.fullTrace=true"]
 ```
 
@@ -20,7 +20,7 @@ If you are running Puppet Server from a package, this can be done by adding the
 option to the `puppetserver` file in `/etc/sysconfig` or `/etc/default`,
 depending upon your OS distribution:
 
-```
+```ini
 JAVA_ARGS="-Xms2g -Xmx2g -XX:MaxPermSize=256m -Djruby.debug.fullTrace=true"
 ```
 
@@ -30,7 +30,7 @@ of Ruby code, one common place to put this call would be at the top of the
 `../src/ruby/puppet-server-lib/puppet/server/master.rb` file, the Puppet Server
 master class.  A basic implementation might look like this:
 
-```
+```ruby
 set_trace_func proc { |event, file, line, id, binding, classname|
   printf "%8s %s:%-2d %10s %8s\n", event, file, line, id, classname
 }
@@ -51,7 +51,7 @@ names from code and the active stack at the point of each reference.  For
 example, to locate callers of any `OpenSSL` classes, you could add the following
 to the `set_trace_func` call:
 
-```
+```ruby
 set_trace_func proc { |event, file, line, id, binding, classname|
   if classname.to_s =~ /OpenSSL/
      printf "%8s %s:%-2d %10s %8s\n", event, file, line, id, classname
