@@ -1,7 +1,7 @@
 # Puppet Server Configuration
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
-up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.
+up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences] (./puppet_conf_setting_diffs.markdown) page.
 
 ## Config Files
 
