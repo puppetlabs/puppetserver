@@ -37,3 +37,6 @@
                        ssl-request-options)]
         (is (= 401 (:status response))
             (ks/pprint-to-string response))))))
+
+;; See 'environment-flush-integration-test'
+;; for additional test coverage on the /environment-cache endpoint
