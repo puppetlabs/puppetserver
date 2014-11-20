@@ -36,7 +36,7 @@ page.
 
 Because Puppet Server runs on the JVM, it takes a bit longer than the Apache/Passenger stack to start and get ready to accept HTTP connections.
 
-Overall, Puppet Server performance is significantly better than Apache/Passenger, but the initial startup is definitely slower.
+Overall, Puppet Server performance is significantly better than a Puppet master running on the Apache/Passenger stack, but the initial startup is definitely slower.
 
 ## External CA Configuration
 
