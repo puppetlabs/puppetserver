@@ -18,7 +18,8 @@
   [config args]
   (doto (ScriptingContainer.)
     (.setArgv (into-array String args))
-    (.setEnvironment (hash-map "GEM_HOME" (get-in config [:jruby-puppet :gem-home])))
+    (.setEnvironment (hash-map "GEM_HOME" (get-in config [:jruby-puppet :gem-home])
+                               "JARS_NO_REQUIRE" "true"))
     (.runScriptlet "load 'META-INF/jruby.home/bin/gem'")))
 
 (defn load-tk-config
