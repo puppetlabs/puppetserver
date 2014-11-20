@@ -5,7 +5,7 @@
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
     [puppetlabs.http.client.sync :as http-client]
-    [puppetlabs.services.ca.certificate-authority-core :as ca]
+    [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.services.request-handler.request-handler-core :as request-handler]))
 
 (use-fixtures :once
@@ -17,11 +17,16 @@
   [& _]
   (throw (Exception. "barf")))
 
+(defn throw-npe
+  [& _]
+  (throw (NullPointerException.)))
+
 (deftest ^:integration test-HTTP-500
   (testing "When returning an HTTP 500, the response body is a simple text message,
             not anything wacky like HTML (I'm looking at you, Jetty.)"
     (bootstrap/with-puppetserver-running
-      app {}
+      app
+      {:certificate-authority {:certificate-status {:authorization-required false}}}
       (with-test-logging
         (testing "the Puppet Master's main API"
           ;; This next line of code is wacky, so here's an explanation -
@@ -37,16 +42,18 @@
                              "https://localhost:8140/production/catalog/localhost"
                              bootstrap/request-options)]
               (is (= 500 (:status response)))
-              (is (= "Internal Server Error." (:body response)))
+              (is (= "Internal Server Error: java.lang.Exception: barf"
+                     (:body response)))
               (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))
-        (testing "the CA API"
+        (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
-          (with-redefs [ca/handle-get-certificate just-throw-it]
+          (with-redefs [ca/get-certificate-status throw-npe]
             (let [response (http-client/get
-                             "https://localhost:8140/production/certificate/foo"
+                             "https://localhost:8140/production/certificate_status/localhost"
                              bootstrap/request-options)]
               (is (= 500 (:status response)))
-              (is (= "Internal Server Error." (:body response)))
+              (is (= "Internal Server Error: java.lang.NullPointerException"
+                     (:body response)))
               (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))))))

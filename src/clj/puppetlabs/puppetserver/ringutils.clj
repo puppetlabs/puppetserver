@@ -98,13 +98,14 @@
 
 (defn wrap-exception-handling
   "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
-  and return a very simple HTTP 500 response."
+  and return an HTTP 500 reponse which includes the Exception type and message,
+  if any, in the body."
   [handler]
   (fn [req]
     (try
       (handler req)
       (catch Exception e
-        (log/error e "Uncaught Exception while handling HTTP request")
-        (-> (ring/response "Internal Server Error.")
+        (log/error e "Exception while handling HTTP request")
+        (-> (ring/response (format "Internal Server Error: %s" e))
             (ring/status 500)
             (ring/content-type "text/plain"))))))

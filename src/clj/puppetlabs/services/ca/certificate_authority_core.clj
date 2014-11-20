@@ -3,7 +3,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.certificate-authority.core :as ca-utils]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.puppetserver.liberator-utils :as utils]
+            [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
@@ -160,7 +160,7 @@
   (fn [context]
     (::conflict context))
 
-  :handle-exception utils/exception-handler
+  :handle-exception liberator-utils/exception-handler
 
   :handle-not-implemented
   (fn [context]
@@ -229,7 +229,7 @@
 
   :available-media-types media-types
 
-  :handle-exception utils/exception-handler
+  :handle-exception liberator-utils/exception-handler
 
   :handle-ok
   (fn [context]
@@ -272,11 +272,6 @@
    puppet-version :- schema/Str]
   (-> (routes ca-settings)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-
-      ; If we ever port the rest of the ring handler to use liberator,
-      ; I believe this will become unnecessary, as I'm pretty you get this
-      ; behavior "out of the box" with liberator.
       (ringutils/wrap-exception-handling)
-
       (wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
