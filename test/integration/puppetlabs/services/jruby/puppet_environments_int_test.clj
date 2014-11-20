@@ -135,12 +135,12 @@
       (let [catalog1 (get-catalog)]
         (is (catalog-contains? catalog1 "Notify" "hello1"))
         (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
-      ;; Now, make a request to the /flush-environment-cache endpoint.
+      ;; Now, make a DELETE request to the /environment-cache endpoint.
       ;; This flushes Puppet's cache for all environments.
-      (let [response (http-client/post
-                       "https://localhost:8140/puppet-admin-api/v1/flush-environment-cache"
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
                        ssl-request-options)]
-        (testing "A successful request to /flush-environment-cache returns an HTTP 204"
+        (testing "A successful DELETE request to /environment-cache returns an HTTP 204"
           (is (= 204 (:status response))
               (ks/pprint-to-string response))))
       ;; Next catalog request goes to the second jruby instance,

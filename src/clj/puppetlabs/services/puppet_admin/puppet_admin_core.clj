@@ -21,16 +21,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Liberator resource
 
-(defresource flush-environment-cache-resource
+(defresource environment-cache-resource
   [jruby-service]
-  :allowed-methods [:post]
+  :allowed-methods [:delete]
 
   :handle-exception liberator-utils/exception-handler
 
   ;; Never return a '201 Created', we're not creating anything
   :new? false
 
-  :post!
+  :delete!
   (fn [context]
     (jruby-puppet/mark-all-environments-expired! jruby-service)))
 
@@ -42,8 +42,8 @@
   [jruby-service]
   "Routes for v1 of the Puppet Admin HTTP API."
   (compojure/routes
-    (compojure/ANY "/flush-environment-cache" []
-      (flush-environment-cache-resource jruby-service))))
+    (compojure/ANY "/environment-cache" []
+      (environment-cache-resource jruby-service))))
 
 (defn versioned-routes
   [jruby-service]

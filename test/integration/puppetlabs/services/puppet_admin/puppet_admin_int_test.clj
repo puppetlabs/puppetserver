@@ -32,8 +32,8 @@
   (testing "access denied when cert not on whitelist"
     (bootstrap/with-puppetserver-running app
       {:puppet-admin {:client-whitelist ["notlocalhost"]}}
-      (let [response (http-client/post
-                       "https://localhost:8140/puppet-admin-api/v1/flush-environment-cache"
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
                        ssl-request-options)]
         (is (= 401 (:status response))
             (ks/pprint-to-string response))))))
