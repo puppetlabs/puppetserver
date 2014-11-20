@@ -8,7 +8,9 @@ processors. For the vast majority of cases, this shouldn't pose any problems, as
 
 We isolate the Ruby load paths that are accessible to Puppet Server's
 JRuby interpreter, so that it doesn't load any gems or other code that
-you have installed on your system Ruby. If you want Puppet Server to load additional gems, use the Puppet Server-specific `gem` command to install them: `puppetserver gem install foobar`. 
+you have installed on your system Ruby. If you want Puppet Server to load additional gems, use the Puppet Server-specific `gem` command to install them. For example, to install the foobar gem, use:
+
+`puppetserver gem install foobar`
 
 The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem` command, so all of the usual arguments and flags should work as expected. For example, to show your locally installed gems, run: 
 
