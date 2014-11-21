@@ -72,7 +72,11 @@
   "Given the full Puppet Server config map, extract and return the settings for
   the Puppet Admin web service."
   [config]
-  (:puppet-admin config))
+  (if-let [settings (:puppet-admin config)]
+    settings
+    (throw (IllegalArgumentException.
+             (str "'puppet admin' section required but not found in "
+                  "configuration settings")))))
 
 (schema/defn ^:always-validate build-ring-handler :- IFn
   "Returns the ring handler for the Puppet Admin API."
