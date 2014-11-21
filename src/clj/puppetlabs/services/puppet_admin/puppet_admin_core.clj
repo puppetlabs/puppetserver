@@ -25,7 +25,20 @@
   [jruby-service]
   :allowed-methods [:delete]
 
+  ;; If you need to define :available-media-types, see comment below.
+  ;:available-media-types ...
+
   :handle-exception liberator-utils/exception-handler
+
+  ;; This next line of code tells liberator to ignore any media-types
+  ;; the client has asked for.  This is necessary for this endpoint to work
+  ;; when the client sends an 'Accept: */*' header, due to the somewhat strange
+  ;; fact that this endpoint defines no 'available-media-types', since it always
+  ;; returns a '204 No Content' on success.
+  ;;
+  ;; If this resource is ever updated to define ':available-media-types' and
+  ;; return a response body, this line of code should be deleted.
+  :media-type-available? true
 
   ;; Never return a '201 Created', we're not creating anything
   :new? false

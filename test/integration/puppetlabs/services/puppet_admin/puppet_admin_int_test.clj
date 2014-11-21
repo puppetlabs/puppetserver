@@ -43,6 +43,15 @@
                        "https://localhost:8140/puppet-admin-api/v1/environment-cache"
                        ssl-request-options)]
         (is (= 401 (:status response))
+            (ks/pprint-to-string response)))))
+
+  (testing "server tolerates client specifying an 'Accept: */*' header"
+    (bootstrap/with-puppetserver-running app
+      {:puppet-admin {:client-whitelist ["localhost"]}}
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                       (assoc ssl-request-options :headers {"Accept" "*/*"}))]
+        (is (= 204 (:status response))
             (ks/pprint-to-string response))))))
 
 ;; See 'environment-flush-integration-test'
