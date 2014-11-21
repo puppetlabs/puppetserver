@@ -4,9 +4,16 @@
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [schema.test :as schema-test]))
+    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+    [schema.test :as schema-test]
+    [me.raynes.fs :as fs]))
 
-(use-fixtures :once schema-test/validate-schemas)
+(def test-resources-dir
+  "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")
+
+(use-fixtures :once
+  schema-test/validate-schemas
+  (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
