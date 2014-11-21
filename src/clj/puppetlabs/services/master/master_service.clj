@@ -25,7 +25,7 @@
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/compojure-app handle-request))))
+      (compojure/context path [] (core/build-ring-handler handle-request))))
    context)
   (start
     [this context]

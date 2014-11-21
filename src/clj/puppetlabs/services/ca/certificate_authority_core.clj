@@ -11,7 +11,7 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [compojure.core :as compojure :refer [GET ANY PUT]]
-            [liberator.core :as liberator]
+            [liberator.core :refer [defresource]]
             [liberator.representation :as representation]
             [liberator.dev :as liberator-dev]
             [ring.util.response :as rr]))
@@ -112,7 +112,7 @@
         (assoc :status 200)
         (representation/ring-response))))
 
-(liberator/defresource certificate-status
+(defresource certificate-status
   [subject settings]
   :allowed-methods [:get :put :delete]
 
@@ -218,7 +218,7 @@
     (let [desired-state (get-desired-state context)]
       (ca/set-certificate-status! settings subject desired-state))))
 
-(liberator/defresource certificate-statuses
+(defresource certificate-statuses
   [settings]
   :allowed-methods [:get]
 
@@ -267,7 +267,7 @@
         (rr/header response "X-Puppet-Version" version)))))
 
 (schema/defn ^:always-validate
-  compojure-app
+  build-ring-handler
   [ca-settings :- ca/CaSettings
    puppet-version :- schema/Str]
   (-> (routes ca-settings)

@@ -101,7 +101,7 @@
         true
         (do (log-access-denied (:uri req) client-cert) false))
       (do
-        (log/info "Access to certificate_status rejected; no client certificate found")
+        (log/info "Access to " (:uri req) " rejected; no client certificate found")
         false))
     true))
 
