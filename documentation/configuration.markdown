@@ -1,7 +1,7 @@
 # Puppet Server Configuration
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
-up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.
+up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences] (./puppet_conf_setting_diffs.markdown) page.
 
 ## Config Files
 
@@ -28,6 +28,17 @@ webserver: {
     client-auth = need
     ssl-host = 0.0.0.0
     ssl-port = 8140
+}
+
+# configure the mount points for the web apps
+web-router-service: {
+    # These two should not be modified because the Puppet 3.x agent expects them to
+    # be mounted at "/"
+    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
+    "puppetlabs.services.master.master-service/master-service": ""
+
+    # This controls the mount point for the puppet admin API.
+    "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
 }
 ```
 
@@ -78,6 +89,11 @@ http-client: {
 # settings related to profiling the puppet Ruby code
 profiler: {
     enabled: true
+}
+
+# Settings related to the puppet-admin HTTP API
+puppet-admin: {
+    client-whitelist: []
 }
 ```
 

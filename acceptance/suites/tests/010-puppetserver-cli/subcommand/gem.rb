@@ -18,8 +18,13 @@ end
 # define gems to test
 gems = ['beaker']
 
+additional_gem_source = ENV['GEM_SOURCE']
 # define command lines
 gem_install = "#{cli} gem install --minimal-deps --force"
+if additional_gem_source
+  gem_install += " -s #{additional_gem_source}"
+end
+
 gem_uninstall = "#{cli} gem uninstall"
 gem_list = "#{cli} gem list"
 gem_cleanup = "#{cli} gem cleanup"

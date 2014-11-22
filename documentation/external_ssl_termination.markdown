@@ -10,7 +10,7 @@ Puppet Server.
     for more info on the `master.conf` file. Without `allow-header-cert-info` set 
     to true, none of the HTTP headers described below will be recognized by 
     Puppet Server. Please note that if `allow-header-cert-info` is set to true, 
-    Puppet Server is in an incredibly vulnerbale state, and extra caution should
+    Puppet Server is in an incredibly vulnerable state, and extra caution should
     be taken to ensure it is absolutely not reachable by an untrusted network.
 
   * The `ssl_client_header` and `ssl_client_verify_header` options in the 

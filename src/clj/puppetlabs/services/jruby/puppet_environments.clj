@@ -35,5 +35,5 @@
       EnvironmentStateContainer
       (environment-state [this] state)
       (mark-all-environments-expired! [this]
-        (log/debug "Marking all registered environments as expired.")
+        (log/info "Marking all registered environments as expired.")
         (swap! state mark-all-expired!)))))

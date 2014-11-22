@@ -27,9 +27,15 @@ webserver: {
     ssl-port: 8140
 }
 
+# configure the mount points for the web apps
 web-router-service: {
+    # These two should not be modified because the Puppet 3.x agent expects them to
+    # be mounted at "/"
     "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
     "puppetlabs.services.master.master-service/master-service": ""
+
+    # This controls the mount point for the puppet admin API.
+    "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
 }
 
 # configuration for the JRuby interpreters
@@ -78,4 +84,9 @@ certificate-authority: {
         # this list will be denied access.
         client-whitelist: []
     }
+}
+
+# Settings related to the puppet-admin HTTP API
+puppet-admin: {
+    client-whitelist: [localhost]
 }

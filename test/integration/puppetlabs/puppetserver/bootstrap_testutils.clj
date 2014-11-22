@@ -20,6 +20,10 @@
 (def master-var-dir
   "./target/master-var")
 
+(defn pem-file
+  [& args]
+  (str (apply fs/file master-conf-dir "ssl" args)))
+
 (defmacro with-puppetserver-running
   [app config-overrides & body]
   (let [tmp-conf (ks/temp-file "puppet-server" ".conf")]

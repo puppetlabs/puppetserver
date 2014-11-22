@@ -8,7 +8,7 @@
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
-        app         (compojure-app handler)
+        app         (build-ring-handler handler)
         request     (fn r ([path] (r :get path))
                           ([method path] (app (mock/request method path))))]
     (is (nil? (request "/v2.0/foo")))

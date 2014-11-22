@@ -92,7 +92,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn compojure-app
+(defn build-ring-handler
   "Creates the entire compojure application (all routes and middleware)."
   [request-handler]
   {:pre [(fn? request-handler)]}

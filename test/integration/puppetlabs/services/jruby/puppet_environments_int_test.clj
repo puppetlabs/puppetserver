@@ -5,9 +5,8 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
             [cheshire.core :as json]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (def test-resources-dir
@@ -17,18 +16,14 @@
               (jruby-testutils/with-puppet-conf
                 (fs/file test-resources-dir "puppet.conf")))
 
-(defn pem-file
-  [& args]
-  (str (apply fs/file bootstrap/master-conf-dir "ssl" args)))
-
 (def ca-cert
-  (pem-file "certs" "ca.pem"))
+  (bootstrap/pem-file "certs" "ca.pem"))
 
 (def localhost-cert
-  (pem-file "certs" "localhost.pem"))
+  (bootstrap/pem-file "certs" "localhost.pem"))
 
 (def localhost-key
-  (pem-file "private_keys" "localhost.pem"))
+  (bootstrap/pem-file "private_keys" "localhost.pem"))
 
 (defn write-site-pp-file
   [site-pp-contents]
@@ -48,12 +43,16 @@
     (fs/mkdirs (fs/parent foo-pp-file))
     (spit foo-pp-file foo-pp-contents)))
 
-(def request-options
-  {:ssl-cert      localhost-cert
-   :ssl-key       localhost-key
-   :ssl-ca-cert   ca-cert
-   :headers       {"Accept" "pson"}
-   :as            :text})
+(def ssl-request-options
+  {:ssl-cert    localhost-cert
+   :ssl-key     localhost-key
+   :ssl-ca-cert ca-cert})
+
+(def catalog-request-options
+  (merge
+    ssl-request-options
+    {:headers     {"Accept" "pson"}
+     :as          :text}))
 
 (defn service-context
   [app service-id]
@@ -73,7 +72,7 @@
   []
   (-> (http-client/get
         "https://localhost:8140/production/catalog/localhost"
-        request-options)
+        catalog-request-options)
       :body
       json/parse-string))
 
@@ -136,9 +135,14 @@
       (let [catalog1 (get-catalog)]
         (is (catalog-contains? catalog1 "Notify" "hello1"))
         (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
-      ;; Now we call our code to mark the cache as stale.
-      (jruby-protocol/mark-all-environments-expired!
-        (tk-app/get-service app :JRubyPuppetService))
+      ;; Now, make a DELETE request to the /environment-cache endpoint.
+      ;; This flushes Puppet's cache for all environments.
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                       ssl-request-options)]
+        (testing "A successful DELETE request to /environment-cache returns an HTTP 204"
+          (is (= 204 (:status response))
+              (ks/pprint-to-string response))))
       ;; Next catalog request goes to the second jruby instance,
       ;; where we should see 'hello2' regardless of caching.
       (let [catalog2 (get-catalog)]
@@ -149,5 +153,3 @@
       (let [catalog1 (get-catalog)]
         (is (not (catalog-contains? catalog1 "Notify" "hello1")))
         (is (catalog-contains? catalog1 "Notify" "hello2"))))))
-
-
