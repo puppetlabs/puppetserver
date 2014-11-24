@@ -72,7 +72,6 @@
   []
   (-> (http-client/get
         "https://localhost:8140/production/catalog/localhost"
-        bootstrap/request-options)
         catalog-request-options)
       :body
       json/parse-string))
