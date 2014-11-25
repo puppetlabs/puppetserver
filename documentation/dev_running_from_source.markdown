@@ -105,6 +105,12 @@ development.  We are also starting to build up a library of utility functions th
 can be used to inspect and modify the state of the running server; see `dev/user_repl.clj`
 for more info.
 
+(NOTE: many of the developers of this project are using a more full-featured IDE called
+[Cursive Clojure](https://cursiveclojure.com/), built on the IntelliJ IDEA platform, for
+our daily development.  It contains an integrated REPL that can be used in place of
+the `lein repl` command-line command, and works great with all of the functions described
+in this document.)
+
 To start the server from the REPL, run the following:
 
     $ lein repl
@@ -140,4 +146,12 @@ Other useful commands for developers:
 
 * `lein test` to run the clojure test suite
 * `rake spec` to run the jruby test suite
+
+Debugging
+------
+
+For more information about debugging, see our [Puppet Server: Debugging](./dev_debugging.markdown)
+documentation.
+
+
 

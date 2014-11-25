@@ -77,6 +77,18 @@ There are many other gems that are useful for debugging, and a large percentage
 of them are compatible with JRuby.  If you have a favorite that is not mentioned
 here please let us know, and we will consider adding it to this documentation!
 
+## Limitations
+
+We are aware that some favorite gems/tools/features for ruby debugging don't currently
+work with JRuby/Puppet Server.  (For example, some things like color syntax highlighting
+in Pry.)  It's important to us to make sure that the Ruby developer experience is not
+degraded for developers working via Puppet Server rather than webrick, so, if you run
+into issues like this, please file an issue on  our [Bug Tracker](https://tickets.puppetlabs.com/browse/SERVER),
+and we will see if it's possible to add support for things that we're missing.  In many
+cases it might be a matter of simply submitting a patch to JRuby, or submitting a
+JRuby-compatibility patch for an existing gem, and we're interested in trying to help
+with those sorts of things whenever possible.
+
 Tracing Code Events
 ===================
 
