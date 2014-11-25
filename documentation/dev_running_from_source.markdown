@@ -3,6 +3,32 @@ Puppet Server: Running From Source
 
 The following steps will help you get Puppet Server up and running from source.
 
+Step 0: Quick Start for Developers
+
+    $ git clone git://github.com/puppetlabs/puppet-server
+    $ cd puppet-server
+    # initialize git submodules (which are located in ./ruby, and contain the
+    #   puppet/facter ruby source code)
+    $ git submodule init
+    $ git submodule update
+
+    # Copy sample puppet server config file
+    $ mkdir ~/.puppet-server
+    $ cp dev/puppet-server.conf.sample ~/.puppet-server/puppet-server.conf
+    # Edit the default config file to include your own preferred paths and settings
+    $ vi ~/.puppet-server/puppet-server.conf
+
+    # Copy the sample repl utilities namspace
+    $ cp dev/user.clj.sample dev/user.clj
+    # Edit it to suit your needs; in particular, modify the config path to point
+    # to your custom copy of puppet-server.conf
+    $ vi dev/user.clj
+
+    # Launch the clojure REPL
+    $ lein repl
+    # Run Puppet Server
+    user=> (go)
+
 Step 1: Install Prerequisites
 -----
 
@@ -38,34 +64,54 @@ Edit it to suit your needs.  A few notes:
   of the Puppet `confdir`.  Otherwise, it will use the same default locations as
   Puppet normally uses (`~/.puppet` for non-root users, `/etc/puppet` for root).
 
-Alternately you may break the individual configuration settings from `puppet-server.conf`
+You probably don't need to make any changes to the sample config for your first run,
+but the settings that I edit the most frequently are:
+
+ * `jruby-puppet.master-conf-dir`: the puppet master confdir (where `puppet.conf`,
+   `modules`, `manifests`, etc. should be located).
+ * `jruby-puppet.master-var-dir`: the puppet master vardir
+ * `jruby-puppet.max-active-instances`: the number of JRuby instances to put into the
+   pool.  This can usually be set to 1 for dev purposes, unless you're working on
+   something that involves concurrency.
+
+If you prefer, you may break the individual configuration sections from `puppet-server.conf`
 into multiple `.conf` files, and place them in a `conf.d`-style directory.
 
-Step 4a: Run the server from the command line
+Step 4a: Run the server from the clojure REPL
 -----
 
-This will let you develop on Puppet Server and see your changes by simply editing
-the code and restarting the server. It will not create an init script or default
-configuration directory. To start the Puppet Server when running from source, you
-will need to run the following:
+The preferred way of running the server for development purposes is to run it from
+inside the clojure REPL.  The git repo includes some files in the `/dev` directory
+that are intended to make this process easier.
 
-    $ lein run -c /path/to/puppet-server.conf
+When running a clojure REPL via the `lein repl` command-line command, lein will look
+for a namespace called `user.clj` on the classpath, and if one is found, it will
+load that namespace by default.  We provide a sample version of this namespace that
+is tailored for use with Puppet Server.  To use it, simply do:
 
-Step 4b: Run the server from the clojure REPL
------
+    $ cp dev/user.clj.sample dev/user.clj
+
+The git repo contains a `.gitignore` for `dev/user.clj`, so each user can customize
+their user namespace to their liking.
+
+Once you've made a copy of the `user.clj` file you'll want to edit it.  It contains
+some comments explaining the contents of the file.  The main change you'll want to
+make is to edit the `jvm-puppet-conf` function to your liking; you'll probably just
+want to change it so that it points to the path of the `puppet-server.conf` file that
+you created in step 3.
 
 Running the server inside of the clojure REPL allows you to make changes to the
 source code and reload the server without having to restart the entire JVM.  It
 can be much faster than running from the command line, when you are doing iterative
-development.  To start the server from the REPL, run the following:
+development.  We are also starting to build up a library of utility functions that
+can be used to inspect and modify the state of the running server; see `dev/user_repl.clj`
+for more info.
+
+To start the server from the REPL, run the following:
 
     $ lein repl
     nREPL server started on port 47631 on host 127.0.0.1
-    puppetlabs.trapperkeeper.main=> (load-file "./dev/user_repl.clj")
-    #'user-repl/reset
-    puppetlabs.trapperkeeper.main=> (ns user-repl)
-    nil
-    user-repl=> (go)
+    user=> (go)
 
 Then, if you make changes to the source code, all you need to do in order to
 restart the server with the latest changes is:
@@ -74,6 +120,22 @@ restart the server with the latest changes is:
 
 Restarting the server this way should be significantly faster than restarting
 the entire JVM process.
+
+You can also run the utility functions to inspect the state of the server, e.g.:
+
+    user-repl=> (print-puppet-environment-state)
+
+Have a look at `user_repl.clj` if you're interested in seeing what other utility
+functions are available.
+
+Step 4b: Run the server from the command line
+-----
+
+If you prefer not to run the server interactively in the REPL, you can launch it
+as a normal process.  To start the Puppet Server when running from source, simply
+run the following:
+
+    $ lein run -c /path/to/puppet-server.conf
 
 Other useful commands for developers:
 -----
