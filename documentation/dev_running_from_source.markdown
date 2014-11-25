@@ -4,13 +4,11 @@ Puppet Server: Running From Source
 The following steps will help you get Puppet Server up and running from source.
 
 Step 0: Quick Start for Developers
+-----
 
-    $ git clone git://github.com/puppetlabs/puppet-server
+    # clone git repository and initialize submodules
+    $ git clone --recursive git://github.com/puppetlabs/puppet-server
     $ cd puppet-server
-    # initialize git submodules (which are located in ./ruby, and contain the
-    #   puppet/facter ruby source code)
-    $ git submodule init
-    $ git submodule update
 
     # Copy sample puppet server config file
     $ mkdir ~/.puppet-server
@@ -18,7 +16,7 @@ Step 0: Quick Start for Developers
     # Edit the default config file to include your own preferred paths and settings
     $ vi ~/.puppet-server/puppet-server.conf
 
-    # Copy the sample repl utilities namspace
+    # Copy the sample repl utilities namespace
     $ cp dev/user.clj.sample dev/user.clj
     # Edit it to suit your needs; in particular, modify the config path to point
     # to your custom copy of puppet-server.conf
@@ -96,7 +94,7 @@ their user namespace to their liking.
 
 Once you've made a copy of the `user.clj` file you'll want to edit it.  It contains
 some comments explaining the contents of the file.  The main change you'll want to
-make is to edit the `jvm-puppet-conf` function to your liking; you'll probably just
+make is to edit the `puppet-server-conf` function to your liking; you'll probably just
 want to change it so that it points to the path of the `puppet-server.conf` file that
 you created in step 3.
 
@@ -123,7 +121,7 @@ the entire JVM process.
 
 You can also run the utility functions to inspect the state of the server, e.g.:
 
-    user-repl=> (print-puppet-environment-state)
+    user-repl=> (print-puppet-environment-states)
 
 Have a look at `user_repl.clj` if you're interested in seeing what other utility
 functions are available.
