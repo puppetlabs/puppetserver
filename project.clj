@@ -9,7 +9,7 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/puppet-server "0.4.1"
+(defproject puppetlabs/puppet-server "0.4.2-SNAPSHOT"
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
