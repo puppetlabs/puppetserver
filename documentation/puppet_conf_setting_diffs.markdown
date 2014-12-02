@@ -46,25 +46,15 @@ using the CA certificate to sign client certificates.
 
 #### [cacrl] (https://docs.puppetlabs.com/references/latest/configuration.html#cacrl)
 
-If `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` is defined in
-[webserver.conf] (./configuration.markdown#webserverconf), the file at
-`ssl-crl-path` is what Puppet Server will use as the CRL for authenticating
-clients via SSL.  If at least one of the `ssl-` "webserver.conf" settings is set
-but `ssl-crl-path` is not, Puppet Server will not use a CRL to validate
-clients via SSL.
-
-If none of the `ssl-` "webserver.conf" settings is set, Puppet Server will use
-the CRL file defined for the `cacrl` "puppet.conf" setting.  A Ruby Puppet
-master hosted on the WEBrick web server would use the `cacrl` setting as the CRL
-if the "puppet.conf" `ca` setting were "true" or the `hostcrl` setting if `ca`
-setting were "false".  Puppet Server, however, ignores both the `ca` and
-`hostcrl` setting from the "puppet.conf" file.
-
-Regardless of the configuration of the `ssl-` "webserver.conf" settings, any
-updates that the Puppet Server certificate authority does to a CRL file,
+Any updates that the Puppet Server certificate authority does to a CRL file,
 e.g., revocations performed via the "certificate_status" HTTP endpoint, will
-use the `cacrl` "puppet.conf" setting to determine the location of the CRL, not
-the`ssl-crl-path` "webserver.conf" setting.
+use the `cacrl` "puppet.conf" setting to determine the location of the CRL.
+
+Regardless of the certificate authority service configuration in the
+`bootstrap.cfg` file, Puppet Server will use the [hostcrl] (#hostcrl) setting
+and webserver configuration to determine the file to load into its web server
+for authenticating clients.  During each service startup, the server will attempt
+to copy over the file at the `cacrl` setting to file at the `hostcrl` setting.
 
 #### [capass] (https://docs.puppetlabs.com/references/latest/configuration.html#capass)
 
@@ -99,7 +89,21 @@ location of the server host certificate to generate.
 
 #### [hostcrl] (https://docs.puppetlabs.com/references/latest/configuration.html#hostcrl)
 
-Puppet Server does not use this setting.  See [cacrl] (#cacrl) for more details.
+If `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` is defined in
+[webserver.conf] (./configuration.markdown#webserverconf), the file at
+`ssl-crl-path` is what Puppet Server will use as the CRL for authenticating
+clients via SSL.  If at least one of the `ssl-` "webserver.conf" settings is set
+but `ssl-crl-path` is not, Puppet Server will not use a CRL to validate
+clients via SSL.
+
+If none of the `ssl-` "webserver.conf" settings is set, Puppet Server will use
+the CRL file defined for the `hostcrl` "puppet.conf" setting.  A Ruby Puppet
+master hosted on the WEBrick web server would use the `cacrl` setting as the CRL
+if the "puppet.conf" `ca` setting were "true" or the `hostcrl` setting if `ca`
+setting were "false".  Puppet Server, however, ignores both the `ca` and
+`hostcrl` setting from the "puppet.conf" file.  During each service startup, the
+server will attempt to copy over the file at the `cacrl` setting to file at the
+`hostcrl` setting.
 
 #### [hostprivkey] (https://docs.puppetlabs.com/references/latest/configuration.html#hostprivkey)
 

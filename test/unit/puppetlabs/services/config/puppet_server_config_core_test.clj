@@ -44,7 +44,7 @@
                                (reset! settings-passed settings))
         puppet-config        {:hostcert    "thehostcert"
                               :cacert      "thecacert"
-                              :cacrl       "thecacrl"
+                              :hostcrl     "thehostcrl"
                               :hostprivkey "thehostprivkey"}
         init-webserver-fn    (fn [webserver-settings]
                                (reset! settings-passed nil)
@@ -55,7 +55,7 @@
         webserver-ssl-config {:ssl-cert     "thehostcert"
                               :ssl-key      "thehostprivkey"
                               :ssl-ca-cert  "thecacert"
-                              :ssl-crl-path "thecacrl"}]
+                              :ssl-crl-path "thehostcrl"}]
 
     (testing (str "no call made to override default webserver settings if "
                   "full ssl cert configuration already in webserver settings")

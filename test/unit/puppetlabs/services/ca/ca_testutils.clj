@@ -18,6 +18,7 @@
        {:certdir        (str ssldir "/certs")
         :dns-alt-names  ""
         :hostcert       (str ssldir "/certs/" hostname ".pem")
+        :hostcrl        (str ssldir "/certs/crl.pem")
         :hostprivkey    (str ssldir "/private_keys/" hostname ".pem")
         :hostpubkey     (str ssldir "/public_keys/" hostname ".pem")
         :localcacert    (str ssldir "/certs/ca.pem")

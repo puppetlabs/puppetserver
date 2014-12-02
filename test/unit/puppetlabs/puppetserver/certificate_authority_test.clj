@@ -448,6 +448,35 @@
               "No exception thrown even though no file existed for copying")
           (fs/copy copy cacert))))))
 
+(deftest retrieve-ca-crl!-test
+  (testing "CRL file copied when it doesn't already exist"
+    (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+          settings    (testutils/master-settings tmp-confdir)
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))
+          cacrl       (:cacrl ca-settings)
+          hostcrl     (:hostcrl settings)
+          cacrl-text (slurp cacrl)]
+
+      (testing "Copied cacrl to hostcrl when hostcrl not present"
+        (retrieve-ca-crl! cacrl hostcrl)
+        (is (= (slurp hostcrl) cacrl-text)
+            (str "Unexpected content for hostcrl: " hostcrl)))
+
+      (testing "Copied cacrl to hostcrl when different hostcrl present"
+        (spit (:hostcrl settings) "12345")
+        (retrieve-ca-crl! cacrl hostcrl)
+        (is (= (slurp hostcrl) cacrl-text)
+            (str "Unexpected content for hostcrl: " hostcrl)))
+
+      (testing (str "Doesn't throw exception or create dummy file if no "
+                    "hostcrl and no cacrl to copy")
+        (fs/delete hostcrl)
+        (let [copy (fs/copy cacrl (ks/temp-file))]
+          (fs/delete cacrl)
+          (is (not (fs/exists? hostcrl))
+              "hostcrl file present even though no file existed for copying")
+          (fs/copy copy cacrl))))))
+
 (deftest initialize-master-ssl!-test
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
         settings    (-> (testutils/master-settings tmp-confdir "master")
@@ -455,6 +484,7 @@
         ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
 
     (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
+    (retrieve-ca-crl! (:cacrl ca-settings) (:hostcrl settings))
     (initialize-master-ssl! settings "master" ca-settings 512)
 
     (testing "Generated SSL file"

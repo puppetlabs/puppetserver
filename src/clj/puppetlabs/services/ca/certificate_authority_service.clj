@@ -31,4 +31,9 @@
   (retrieve-ca-cert!
     [this localcacert]
     (ca/retrieve-ca-cert! (get-in-config [:puppet-server :cacert])
-                          localcacert)))
+                          localcacert))
+
+  (retrieve-ca-crl!
+    [this localcacrl]
+    (ca/retrieve-ca-crl! (get-in-config [:puppet-server :cacrl])
+                         localcacrl)))
