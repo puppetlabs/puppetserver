@@ -27,6 +27,7 @@
   {:certdir        schema/Str
    :dns-alt-names  schema/Str
    :hostcert       schema/Str
+   :hostcrl        schema/Str
    :hostprivkey    schema/Str
    :hostpubkey     schema/Str
    :localcacert    schema/Str
@@ -583,9 +584,9 @@
              (throw (partial-state-error "master" found missing))))))))
 
 (schema/defn ^:always-validate retrieve-ca-cert!
-  "Given configuration settings and CA settings, ensure a local copy of the CA
-  cert is available on disk.  cacert is the base CA cert file to copy from and
-  localcacert is where that the CA cert file should be copied to."
+  "Ensure a local copy of the CA cert is available on disk.  cacert is the base
+  CA cert file to copy from and localcacert is where the CA cert file should be
+  copied to."
   ([cacert :- schema/Str
     localcacert :- schema/Str]
    (if (fs/exists? cacert)
@@ -600,6 +601,16 @@
                      "be found and no file at :cacert ("
                      cacert
                      ") to copy it from")))))))
+
+(schema/defn ^:always-validate retrieve-ca-crl!
+  "Ensure a local copy of the CA CRL, if one exists, is available on disk.
+  cacrl is the base CRL file to copy from and localcacrl is where the CRL file
+  should be copied to."
+  ([cacrl :- schema/Str
+    localcacrl :- schema/Str]
+    (when (fs/exists? cacrl)
+      (ks/mkdirs! (fs/parent localcacrl))
+      (fs/copy cacrl localcacrl))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign

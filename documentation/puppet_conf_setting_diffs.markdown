@@ -41,12 +41,21 @@ If you enable Puppet Server's certificate authority service, it uses the `cacert
 ### [`cacrl`](https://docs.puppetlabs.com/references/latest/configuration.html#cacrl)
 
 If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
-[webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the file at `ssl-crl-path` as the CRL for authenticating clients via SSL. If at least one of the `ssl-` settings in webserver.conf is set but `ssl-crl-path` is not set, Puppet Server will *not* use a CRL to validate clients via SSL.
+[webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the
+file at `ssl-crl-path` as the CRL for authenticating clients via SSL. If at least
+one of the `ssl-` settings in webserver.conf is set but `ssl-crl-path` is not set,
+Puppet Server will *not* use a CRL to validate clients via SSL.
 
 If none of the `ssl-` settings in webserver.conf are set, Puppet Server uses
-the CRL file defined for the `cacrl` setting in puppet.conf. (In a Ruby Puppet master on the WEBrick server, the CRL would be determined by the `ca` and `hostcrl` settings, but Puppet Server ignores both of these settings.)
+the CRL file defined for the `hostcrl` setting---and not the file defined for
+the `cacrl` setting--in puppet.conf. At start time, Puppet Server copies the
+file for the `cacrl` setting, if one exists, over to the location in the
+`hostcrl` setting.
 
-Any CRL file updates from the Puppet Server certificate authority---such as revocations performed via the `certificate_status` HTTP endpoint---use the `cacrl` setting in puppet.conf to determine the location of the CRL. This is true regardless of the `ssl-` settings in webserver.conf.
+Any CRL file updates from the Puppet Server certificate authority---such as
+revocations performed via the `certificate_status` HTTP endpoint---use the `cacrl`
+setting in puppet.conf to determine the location of the CRL. This is true
+regardless of the `ssl-` settings in webserver.conf.
 
 ### [`capass`](https://docs.puppetlabs.com/references/latest/configuration.html#capass)
 
@@ -81,7 +90,22 @@ location of the server host certificate to generate.
 
 ### [`hostcrl`](https://docs.puppetlabs.com/references/latest/configuration.html#hostcrl)
 
-Puppet Server does not use this setting.  See [`cacrl`](#cacrl) for more details.
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+[webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the
+file at `ssl-crl-path` as the CRL for authenticating clients via SSL. If at least
+one of the `ssl-` settings in webserver.conf is set but `ssl-crl-path` is not set,
+Puppet Server will *not* use a CRL to validate clients via SSL.
+
+If none of the `ssl-` settings in webserver.conf are set, Puppet Server uses
+the CRL file defined for the `hostcrl` setting---and not the file defined for
+the `cacrl` setting--in puppet.conf. At start time, Puppet Server copies the
+file for the `cacrl` setting, if one exists, over to the location in the
+`hostcrl` setting.
+
+Any CRL file updates from the Puppet Server certificate authority---such as
+revocations performed via the `certificate_status` HTTP endpoint---use the `cacrl`
+setting in puppet.conf to determine the location of the CRL. This is true
+regardless of the `ssl-` settings in webserver.conf.
 
 ### [`hostprivkey`](https://docs.puppetlabs.com/references/latest/configuration.html#hostprivkey)
 
