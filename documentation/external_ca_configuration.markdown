@@ -7,7 +7,7 @@ still applies to using an external CA with Puppet Server. However, there are som
 
 ## Client DN Authentication
 
-Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server, whether it's an external CA or a Puppet CA. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication. 
+Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication. 
 
 That said, the use of an `X-Client-DN` request header is still supported
 for cases where SSL termination of client requests needs to be done on an
@@ -37,7 +37,7 @@ use the correct SSL configuration:
 
 * `ssl-cert`: The value of `puppet master --configprint hostcert`. Equivalent to the 'SSLCertificateFile' Apache config setting.
 * `ssl-key`: The value of `puppet master --configprint hostprivkey`. Equivalent to the 'SSLCertificateKeyFile' Apache config setting.
-* `ssl-ca-cert`: The value of `puppet master -- configprint localcacert`. Equivalent to the 'SSLCACertificateFile' Apache config setting.
+* `ssl-ca-cert`: The value of `puppet master --configprint localcacert`. Equivalent to the 'SSLCACertificateFile' Apache config setting.
 * `ssl-cert-chain`: Equivalent to the 'SSLCertificateChainFile' Apache config setting. Optional.
 * `ssl-crl-path`: Equivalent to the 'SSLCARevocationPath' Apache config setting. Optional.
 
