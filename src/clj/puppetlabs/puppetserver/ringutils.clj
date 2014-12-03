@@ -98,7 +98,7 @@
 
 (defn wrap-exception-handling
   "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
-  and return an HTTP 500 reponse which includes the Exception type and message,
+  and return an HTTP 500 response which includes the Exception type and message,
   if any, in the body."
   [handler]
   (fn [req]
