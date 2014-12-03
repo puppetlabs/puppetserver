@@ -1,8 +1,8 @@
 
-When using directory environments, the Puppetmaster 
+When using directory environments, the Puppet master 
 [caches](https://docs.puppetlabs.com/puppet/latest/reference/environments_configuring.html)
 the data it loads from disk for each environment.  Puppet Server adds a new 
-endpoint to the Master's HTTP API:
+endpoint to the master's HTTP API:
 
 
 ## `DELETE /puppet-admin-api/v1/environment-cache`
