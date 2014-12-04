@@ -127,13 +127,13 @@ certificate-authority: {
 
 ### `os-settings.conf`
 
-This file is set up by packaging and is used to initialize the Ruby load paths for JRuby. The only setting in this file is `ruby-load-paths`. To avoid the risk of loading any gems or other code from your system Ruby, we recommend that you do not modify this file. However, if you must add additional paths to the JRuby load path, you can do so here.
+This file is set up by packaging and is used to initialize the Ruby load paths for JRuby. The only setting in this file is `ruby-load-path`. To avoid the risk of loading any gems or other code from your system Ruby, we recommend that you do not modify this file. However, if you must add additional paths to the JRuby load path, you can do so here.
 
 The Ruby load path defaults to the directory where Puppet is installed. In this release, this directory varies depending on what OS you are using.
 
 ```
 os-settings: {
-    ruby-load-paths: ["/usr/lib/ruby/site_ruby/1.8"]
+    ruby-load-path: ["/usr/lib/ruby/site_ruby/1.8"]
 }
 ```
 
