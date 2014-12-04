@@ -36,7 +36,8 @@
                  [slingshot "0.10.3"]
                  [ring/ring-codec "1.0.0"]
                  [cheshire "5.3.1"]
-                 [trptcolin/versioneer "0.1.0"]]
+                 [trptcolin/versioneer "0.1.0"]
+                 [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -59,7 +60,6 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace "0.2.4"]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
