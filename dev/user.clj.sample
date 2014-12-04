@@ -13,7 +13,7 @@
 ;; that I would get if I ran the server via `lein run --config`.
 (defn puppet-server-conf
   []
-  (config/load-config "/Users/cprice/puppet-server/conf/puppet-server.conf"))
+  (config/load-config "/Users/cprice/.puppet-server/puppet-server.conf"))
 
 ;; The `go` function in the `user-repl` namespace  will start up an instance of
 ;; Pupppet Server.  This function will load that namespace, switch to it, and call `go`.
