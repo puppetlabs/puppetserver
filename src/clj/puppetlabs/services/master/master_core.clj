@@ -97,5 +97,6 @@
   [request-handler]
   {:pre [(fn? request-handler)]}
   (-> (root-routes request-handler)
+      ringutils/wrap-exception-handling
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))

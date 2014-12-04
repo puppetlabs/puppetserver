@@ -1,10 +1,11 @@
 (ns puppetlabs.puppetserver.ringutils
-  (:import (clojure.lang ExceptionInfo IFn)
+  (:import (clojure.lang IFn)
            (java.security.cert X509Certificate))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.certificate-authority.core :as ca-utils]
+            [ring.util.response :as ring]
             [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -50,20 +51,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn log-failed-request!
-  "Logs a failed HTTP request.
-  `exception` is expected to be an instance of ExceptionInfo"
-  [req exception]
-  {:pre [(map? req)
-         (instance? ExceptionInfo exception)]}
-  (log/error "===================================================")
-  (log/error "Failed request:")
-  (log/error (ks/pprint-to-string (dissoc req :ssl-client-cert)))
-  (log/error "---------------------------------------------------")
-  (log/error (.getMessage exception))
-  (log/error (ks/pprint-to-string (dissoc (.getData exception) :environment)))
-  (log/error "==================================================="))
-
 (defn wrap-request-logging
   "A ring middleware that logs the request."
   [handler]
@@ -81,13 +68,6 @@
     (let [resp (handler req)]
       (log/trace "Computed response:" resp)
       resp)))
-
-(defn json-request?
-  "Does the given request contain JSON, according to its 'Content-Type' header?
-  This is copied directly out of ring.middleware.json"
-  [request]
-  (if-let [type (:content-type request)]
-    (not (empty? (re-find #"^application/(.+\+)?json" type)))))
 
 (schema/defn client-allowed-access? :- schema/Bool
   "Determines if the client in the request is allowed to access the
@@ -115,3 +95,17 @@
     (if (client-allowed-access? settings req)
       (handler req)
       {:status 401 :body "Unauthorized"})))
+
+(defn wrap-exception-handling
+  "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
+  and return an HTTP 500 response which includes the Exception type and message,
+  if any, in the body."
+  [handler]
+  (fn [req]
+    (try
+      (handler req)
+      (catch Exception e
+        (log/error e "Exception while handling HTTP request")
+        (-> (ring/response (format "Internal Server Error: %s" e))
+            (ring/status 500)
+            (ring/content-type "text/plain"))))))
