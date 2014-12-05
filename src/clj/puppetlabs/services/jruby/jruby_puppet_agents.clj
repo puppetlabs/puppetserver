@@ -1,7 +1,7 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
   (:import (clojure.lang IFn Agent)
            (com.puppetlabs.puppetserver PuppetProfiler)
-           (puppetlabs.services.jruby.jruby_puppet_core PoisonPill))
+           (puppetlabs.services.jruby.jruby_puppet_core PoisonPill RetryPoisonPill))
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [clojure.tools.logging :as log]))
@@ -62,13 +62,17 @@
         (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
                    id count)
         (try
-          (jruby-core/create-pool-instance! #spy/d new-pool id config profiler)
+          (jruby-core/create-pool-instance! new-pool id config profiler)
+          (jruby-core/mark-as-initialized! pool-state)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count)
           (catch Exception e
             (.clear new-pool)
             (.put new-pool (PoisonPill. e))
-            (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
+            (throw (IllegalStateException.
+                     "There was a problem adding a JRubyPuppet instance to the pool."
+                     e))))))
+    (.put (:pool old-pool) (RetryPoisonPill.))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
