@@ -42,7 +42,7 @@ you can set the following JVM property:
 When Puppet Server is installed from packages, this property should be added
 to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
 or `/etc/default/puppetserver`, depending on upon your distribution.  Note that 
-the service will need to be restarted in order for this change to take affect.
+the service will need to be restarted in order for this change to take effect.
 
 
 ## Diffie-Helman HTTPS Client Issues
