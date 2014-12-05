@@ -34,9 +34,15 @@ To work around this issue, you can either mount the `/tmp` directory without
 `noexec`, or you can choose a different directory to use as the temporary 
 directory for the Puppet Server process. If you want to use a different directory,
 you can set the following JVM property:
+
 ```
 -Djava.io.tmpdir=/some/other/temporary/directory
 ```
+
+When Puppet Server is installed from packages, this property should be added
+to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
+or `/etc/default/puppetserver`, depending on upon your distribution.  Note that 
+the service will need to be restarted in order for this change to take affect.
 
 
 ## Diffie-Helman HTTPS Client Issues
