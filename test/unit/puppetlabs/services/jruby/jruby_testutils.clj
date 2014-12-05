@@ -99,3 +99,7 @@
     [jruby-core/create-pool-instance! create-mock-pool-instance]
     (f)))
 
+(defn drain-pool
+  "Drains the JRubyPuppet pool and returns each instance in a vector."
+  [pool size]
+  (mapv (fn [_] (jruby-core/borrow-from-pool pool)) (range size)))

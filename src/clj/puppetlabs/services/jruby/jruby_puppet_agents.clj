@@ -72,7 +72,7 @@
             (throw (IllegalStateException.
                      "There was a problem adding a JRubyPuppet instance to the pool."
                      e))))))
-    (.put (:pool old-pool) (RetryPoisonPill.))))
+    (jruby-core/return-to-pool (RetryPoisonPill. (:pool old-pool)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
