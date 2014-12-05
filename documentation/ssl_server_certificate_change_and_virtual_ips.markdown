@@ -21,7 +21,7 @@ session id provided from the server (PuppetDB, in this case), whereas a Ruby
 Puppet master will not.
 
 For the case that a load balancer is sitting between the Puppet master and
-PuppetDB instances, a client connection directed to a server which has no
+PuppetDB instances and a client connection is directed to a server which has no
 registered session id for the session that the client is trying to resume, the
 SSL handshake would need to be renegotiated.  The JDK, which underlies the
 Puppet Server master, added a check for uniqueness of the server certificate
