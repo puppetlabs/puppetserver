@@ -42,6 +42,13 @@
   ;; state in a thread-safe manner.
   [err])
 
+(defrecord RetryPoisonPill
+  ;; A sentinel object to put into an old pool when we swap in a new pool.
+  ;; This can be used to build `borrow` functionality that will detect the
+  ;; case where we're trying to borrow from an old pool, so that we can retry
+  ;; with the new pool.
+  [])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -105,6 +112,19 @@
                              EnvironmentRegistry
                              (schema/pred
                                #(satisfies? puppet-env/EnvironmentStateContainer %)))])
+
+(defn jruby-puppet-instance?
+  [x]
+  (instance? JRubyPuppetInstance x))
+
+(defn retry-poison-pill?
+  [x]
+  (instance? RetryPoisonPill x))
+
+(def JRubyPuppetInstanceOrRetry
+  (schema/conditional
+    jruby-puppet-instance? (schema/pred jruby-puppet-instance?)
+    retry-poison-pill? (schema/pred retry-poison-pill?)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -237,7 +257,9 @@
   be available to other callers) and throws the poison pill's exception.
   Otherwise returns the instance that was passed in."
   [instance pool]
-  {:post [((some-fn nil? #(instance? JRubyPuppetInstance %)) %)]}
+  {:post [((some-fn nil?
+                    jruby-puppet-instance?
+                    retry-poison-pill?) %)]}
   (when (instance? PoisonPill instance)
     (.put pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
@@ -302,7 +324,7 @@
         puppet-env/mark-all-environments-expired!)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool :- JRubyPuppetInstance
+  borrow-from-pool :- JRubyPuppetInstanceOrRetry
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool :- pool-queue-type]
@@ -310,7 +332,7 @@
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppetInstance)
+  borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppetInstanceOrRetry)
   "Borrows a JRubyPuppet interpreter from the pool, like borrow-from-pool but a
   blocking timeout is provided. If an instance is available then it will be
   immediately returned to the caller, if not then this function will block
