@@ -127,3 +127,11 @@
   []
   (jruby-protocol/mark-all-environments-expired!
     (tka/get-service system :JRubyPuppetService)))
+
+(defn flush-jruby-pool!
+  "TODO"
+  []
+  #_(jruby-testutils/flush-jruby-pool!
+    (tka/get-service system :JRubyPuppetService))
+  (jruby-protocol/flush-jruby-pool!
+    (tka/get-service system :JRubyPuppetService)))
