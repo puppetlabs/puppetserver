@@ -47,7 +47,7 @@
   ;; This can be used to build `borrow` functionality that will detect the
   ;; case where we're trying to borrow from an old pool, so that we can retry
   ;; with the new pool.
-  [])
+  [pool])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -348,7 +348,7 @@
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [instance :- JRubyPuppetInstance]
+  [instance :- JRubyPuppetInstanceOrRetry]
   (.put (:pool instance) instance))
 
 (defmacro with-jruby-puppet

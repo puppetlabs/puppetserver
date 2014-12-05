@@ -4,7 +4,8 @@
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -80,9 +81,13 @@
       jruby-service
       (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
   [jruby-puppet jruby-service & body]
-  `(let [pool-instance# (jruby/borrow-instance ~jruby-service)
-         ~jruby-puppet  (:jruby-puppet pool-instance#)]
-     (try
-       ~@body
-       (finally
-         (jruby/return-instance ~jruby-service pool-instance#)))))
+  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
+     (if (core/retry-poison-pill? pool-instance#)
+       (do
+         (jruby-core/return-to-pool pool-instance#)
+         (recur (jruby/borrow-instance ~jruby-service)))
+       (let [~jruby-puppet (:jruby-puppet pool-instance#)]
+         (try
+           ~@body
+           (finally
+             (jruby/return-instance ~jruby-service pool-instance#)))))))
