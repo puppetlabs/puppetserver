@@ -45,3 +45,27 @@
   (load-file "./dev/user_repl.clj")
   (ns user-repl)
   ((-> 'user-repl/go resolve deref)))
+
+;; Leiningen allows users to add plugins at a global level by modifying a
+;; file in a user's home directory called '.lein/profiles.clj'. This will allow
+;; a developer to use their favorite plugins without adding unneeded
+;; dependencies to individual projects.
+;;
+;; At Puppet we use a couple plugins during development there are incredibly
+;; helpful. The first being
+;; [Humane Test Output](https://github.com/pjstadig/humane-test-output) which
+;; prints out test failures in a much more readable way so a developer can
+;; easily determine what the failed output looks like and what it was supposed
+;; to look like.
+;; The other one is [Pretty](https://github.com/AvisoNovate/pretty) which
+;; displays stack traces in a nicely formatted and human readable form.
+;;
+;; To enable these, paste the following into a file under your home directory
+;; called '.lein/profiles.clj'
+;;
+;; {:user {:dependencies [[io.aviso/pretty "0.1.12" :exclusions [org.clojure/clojure]]
+;;                        [pjstadig/humane-test-output "0.6.0"]]
+;;         :repl-options {:nrepl-middleware [io.aviso.nrepl/pretty-middleware]}
+;;         :injections   [(require 'pjstadig.humane-test-output)
+;;                        (pjstadig.humane-test-output/activate!)]}}
+
