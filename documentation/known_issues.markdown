@@ -30,7 +30,10 @@ Nov 12 17:46:12 fqdn.com java[56495]: Failed to load feature test for posix: can
 Nov 12 17:46:12 fqdn.com java[56495]: Cannot run on Microsoft Windows without the win32-process, win32-dir and win32-service gems: Win32API only supported on win32
 Nov 12 17:46:12 fqdn.com java[56495]: Puppet::Error: Cannot determine basic system flavour
 ```
-To work around this issue, you can either mount the `/tmp` directory without 
+This is caused by the fact that JRuby contains some embedded files which need to be
+copied somewhere on the filesystem before they can be executed
+([see this JRuby issue](https://github.com/jruby/jruby/issues/2186)).  To work 
+around this  issue, you can either mount the `/tmp` directory without 
 `noexec`, or you can choose a different directory to use as the temporary 
 directory for the Puppet Server process. If you want to use a different directory,
 you can set the following JVM property:
