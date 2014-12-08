@@ -8,15 +8,6 @@
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Private
-
-(defn fill-drained-pool
-  "Returns a list of JRubyPuppet instances back to their pool."
-  [instance-list]
-  (doseq [instance instance-list]
-    (return-to-pool instance)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Tests
 
 (deftest configuration-validation
@@ -45,7 +36,7 @@
         (is (= 0 (free-instance-count pool)))
         (doseq [instance all-the-jrubys]
           (is (not (nil? instance)) "One of JRubyPuppet instances is nil"))
-        (fill-drained-pool all-the-jrubys)
+        (jruby-testutils/fill-drained-pool all-the-jrubys)
         (is (= pool-size (free-instance-count pool)))))
 
     (testing "Borrowing from an empty pool with a timeout returns nil within the
@@ -56,7 +47,7 @@
         (is (nil? (borrow-from-pool-with-timeout pool timeout)))
         (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout)
             "The timeout value was not honored.")
-        (fill-drained-pool all-the-jrubys)
+        (jruby-testutils/fill-drained-pool all-the-jrubys)
         (is (= (free-instance-count pool) pool-size)
             "All JRubyPuppet instances were not returned to the pool.")))
 

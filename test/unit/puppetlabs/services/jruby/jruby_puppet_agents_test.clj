@@ -16,6 +16,54 @@
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
+(defn reduce-over-jrubies!
+  "Utility function; takes a JRuby pool and size, and a function f from integer
+  to string.  For each JRuby instance in the pool, f will be called, passing in
+  an integer offset into the jruby array (0..size), and f is expected to return
+  a string containing a script to run against the jruby instance.
+
+  Returns a vector containing the results of executing the scripts against the
+  JRuby instances."
+  [pool size f]
+  (let [jrubies (jruby-testutils/drain-pool pool size)
+        result  (reduce
+                  (fn [acc jruby-offset]
+                    (let [sc (:scripting-container (nth jrubies jruby-offset))
+                          script (f jruby-offset)
+                          result (.runScriptlet sc script)]
+                      (conj acc result)))
+                  []
+                  (range size))]
+    (jruby-testutils/fill-drained-pool jrubies)
+    result))
+
+(deftest basic-flush-test
+  (testing "Flushing the pool results in all new JRuby instances"
+    (tk-testutils/with-app-with-config
+      app
+      [jruby/jruby-puppet-pooled-service
+       profiler/puppet-profiler-service]
+      (-> (jruby-testutils/jruby-puppet-tk-config
+            (jruby-testutils/jruby-puppet-config 4)))
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            context (tk-services/service-context jruby-service)
+            pool-context (:pool-context context)
+            pool (jruby-core/get-pool pool-context)]
+        (reduce-over-jrubies! pool 4 #(format "InstanceID = %s" %))
+        (is (= #{0 1 2 3}
+               (-> (reduce-over-jrubies! pool 4 (constantly "InstanceID"))
+                   set)))
+        (jruby-protocol/flush-jruby-pool! jruby-service)
+        ; wait until the flush is complete
+        (await (:pool-agent context))
+        (let [new-pool (jruby-core/get-pool pool-context)]
+         (is (every? true?
+                     (reduce-over-jrubies!
+                       new-pool
+                       4
+                       (constantly
+                         "begin; InstanceID; false; rescue NameError; true; end")))))))))
+
 (deftest retry-poison-pill-test
   (testing "Flush puts a retry poison pill into the old pool"
     (tk-testutils/with-app-with-config
