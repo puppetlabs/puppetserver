@@ -2,6 +2,10 @@ require 'puppet/server'
 
 class Puppet::Server::PuppetConfig
   def self.initialize_puppet(puppet_config)
+    # It's critical that we initialize the run mode before allowing any of the
+    # other settings to be loaded / accessed.
+    Puppet.settings.preferred_run_mode = :master
+
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
     # cli tools.)  Here we can basically pass through any settings that we wish
@@ -19,9 +23,6 @@ class Puppet::Server::PuppetConfig
 
     # Crank Puppet's log level all the way up and just control it via logback.
     Puppet::Util::Log.level = :debug
-
-    # TODO: find out if this is actually the best way to set the run mode
-    Puppet.settings.preferred_run_mode = :master
 
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
