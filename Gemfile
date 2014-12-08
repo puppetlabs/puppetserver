@@ -5,6 +5,6 @@ gem 'jira-ruby'
 group :test do
   gem 'rake'
   gem 'rspec'
-  gem 'beaker', '~>1.17'
+  gem 'beaker', '~>2.0.0'
 end
 
