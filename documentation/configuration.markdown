@@ -1,4 +1,8 @@
-# Puppet Server Configuration
+---
+layout: default
+title: "Puppet Server: Configuration"
+canonical: "/puppetserver/latest/configuration.html"
+---
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
 up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences] (./puppet_conf_setting_diffs.markdown) page.
@@ -7,7 +11,7 @@ up automatically. However, for some tasks, such as configuring the webserver or 
 
 All of Puppet Server's new config files and settings (with the exception of the [logging config file](#Logging)) are located in the `conf.d` directory. These new config files are in HOCON format. HOCON keeps the basic structure of JSON, but is a more human-readable config file format. You can find details about this format in the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
 
-At startup, Puppet Server reads all the .conf files found in this directory, located at `/etc/puppetserver/conf.d` on most platforms. Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings: 
+At startup, Puppet Server reads all the .conf files found in this directory, located at `/etc/puppetserver/conf.d` on most platforms. Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
 
 ### `global.conf`
 
@@ -21,7 +25,7 @@ global: {
 
 ### `webserver.conf`
 
-This file contains the web server configuration settings. The `webserver.conf` file looks something like this: 
+This file contains the web server configuration settings. The `webserver.conf` file looks something like this:
 
 ```
 webserver: {
@@ -59,20 +63,20 @@ This file contains the settings for Puppet Server itself.
 
   * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
 
- * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'. 
+ * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
 
 * `profiler`, if `enabled` is set to 'true', this enables profiling for the Puppet Ruby code. Defaults to 'false'.
 
-* The `puppet-admin` section configures the administrative API that Puppet 
-  Server adds to the Puppetmaster's API.  
-  
-  * `authorization-required` determines whether a client 
-  certificate is required to access the endpoints in this API.  If set to 
+* The `puppet-admin` section configures the administrative API that Puppet
+  Server adds to the Puppetmaster's API.
+
+  * `authorization-required` determines whether a client
+  certificate is required to access the endpoints in this API.  If set to
   `false`, the client-whitelist will be ignored. Defaults to `true`.
-  
-  * `client-whitelist` contains a list of client certnames that are whitelisted 
-  to access to the admin API. Any requests made to this endpoint that do not 
-  present a valid client cert mentioned in this list will be denied access. 
+
+  * `client-whitelist` contains a list of client certnames that are whitelisted
+  to access to the admin API. Any requests made to this endpoint that do not
+  present a valid client cert mentioned in this list will be denied access.
 
 ```
 # configuration for the JRuby interpreters
@@ -122,21 +126,21 @@ master: {
 
 This file contains settings for the Certificate Authority service.
 
-* `certificate-status` contains settings for the certificate_status HTTP endpoint.  
-This endpoint allows certs to be signed, revoked, and deleted via HTTP requests. 
-This provides full control over Puppet's security, and access should almost 
-always be heavily restricted. Puppet Enterprise uses this endpoint to provide 
-a cert signing interface in the PE console. For full documentation, see the 
+* `certificate-status` contains settings for the certificate_status HTTP endpoint.
+This endpoint allows certs to be signed, revoked, and deleted via HTTP requests.
+This provides full control over Puppet's security, and access should almost
+always be heavily restricted. Puppet Enterprise uses this endpoint to provide
+a cert signing interface in the PE console. For full documentation, see the
 [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
-  
-  * `authorization-required` determines whether a client certificate 
-  is required to access the certificate status endpoints. If set to 'false' the 
+
+  * `authorization-required` determines whether a client certificate
+  is required to access the certificate status endpoints. If set to 'false' the
   whitelist will be ignored. Defaults to `true`.
-  
-  * `client-whitelist` contains a list of client certnames that are whitelisted 
-  to access to the certificate_status endpoint. Any requests made to this 
-  endpoint that do not present a valid client cert mentioned in this list will 
-  be denied access. 
+
+  * `client-whitelist` contains a list of client certnames that are whitelisted
+  to access to the certificate_status endpoint. Any requests made to this
+  endpoint that do not present a valid client cert mentioned in this list will
+  be denied access.
 
 ```
 # CA-related settings

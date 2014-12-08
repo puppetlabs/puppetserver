@@ -1,4 +1,9 @@
-# Puppet Server External CA Configuration
+---
+layout: default
+title: "Puppet Server: External CA Configuration"
+canonical: "/puppetserver/latest/external_ca_configuration.html"
+---
+
 
 Puppet Server supports the ability to configure certificates from an existing
 external CA. This is similar to Ruby Puppet master functionality under a Rack-enabled web server like Apache with Passenger. Much of the existing
@@ -7,7 +12,7 @@ still applies to using an external CA with Puppet Server. However, there are som
 
 ## Client DN Authentication
 
-Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication. 
+Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication.
 
 That said, the use of an `X-Client-DN` request header is still supported
 for cases where SSL termination of client requests needs to be done on an

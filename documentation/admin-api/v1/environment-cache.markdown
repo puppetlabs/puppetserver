@@ -1,7 +1,12 @@
+---
+layout: default
+title: "Puppet Server: Admin API: Environment Cache"
+canonical: "/puppetserver/latest/admin-api/v1/environment-cache.html"
+---
 
-When using directory environments, the Puppet master 
+When using directory environments, the Puppet master
 [caches](https://docs.puppetlabs.com/puppet/latest/reference/environments_configuring.html)
-the data it loads from disk for each environment.  Puppet Server adds a new 
+the data it loads from disk for each environment.  Puppet Server adds a new
 endpoint to the master's HTTP API:
 
 
@@ -14,7 +19,7 @@ request to this endpoint.
 ### Response
 
 A successful request to this endpoint will return an `HTTP 204: No Content`.
-The response body will be empty.  
+The response body will be empty.
 
 
 ### Example
@@ -27,7 +32,7 @@ HTTP/1.1 204 No Content
 ### Relevant Configuration
 
 This endpoint is gated behind the security provisions in the `puppet-admin`
-part of the configuration data; see 
+part of the configuration data; see
 [this page](https://github.com/puppetlabs/puppet-server/blob/master/documentation/configuration.markdown)
 for more information.  In the example above, we have configured
 `authorization-required: false` for brevity.

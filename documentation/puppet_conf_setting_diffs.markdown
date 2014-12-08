@@ -1,4 +1,9 @@
-# Configuring puppet.conf for Puppet Server
+---
+layout: default
+title: "Puppet Server: Differing Behavior in puppet.conf"
+canonical: "/puppetserver/latest/puppet_conf_setting_diffs.html"
+---
+
 
 Puppet Server honors almost all settings in puppet.conf and should pick them
 up automatically. However, some Puppet Server settings differ from a Ruby Puppet master's puppet.conf settings; we've detailed these differences below. For more complete information on puppet.conf settings, see our [Configuration Reference](https://docs.puppetlabs.com/references/latest/configuration.html) page.

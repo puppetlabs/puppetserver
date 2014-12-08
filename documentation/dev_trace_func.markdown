@@ -1,5 +1,9 @@
-Puppet Server: Tracing Code Events
-==================================
+---
+layout: default
+title: "Puppet Server: Tracing Code Events"
+canonical: "/puppetserver/latest/dev_trace_func.html"
+---
+
 
 The JRuby runtime supports the Ruby [set_trace_func]
 (http://ruby-doc.org/core-1.9.3/Kernel.html#method-i-set_trace_func) Kernel

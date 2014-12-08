@@ -1,5 +1,9 @@
-Puppet Server: Debugging
-========================
+---
+layout: default
+title: "Puppet Server: Debugging"
+canonical: "/puppetserver/latest/dev_debugging.html"
+---
+
 
 Because Puppet Server executes both Clojure and Ruby code, approaches to debugging
 differ depending on which part of the application you're interested in.
