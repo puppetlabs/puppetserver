@@ -63,6 +63,17 @@ This file contains the settings for Puppet Server itself.
 
 * `profiler`, if `enabled` is set to 'true', this enables profiling for the Puppet Ruby code. Defaults to 'false'.
 
+* The `puppet-admin` section configures the administrative API that Puppet 
+  Server adds to the Puppetmaster's API.  
+  
+  * `authorization-required` determines whether a client 
+  certificate is required to access the endpoints in this API.  If set to 
+  `false`, the client-whitelist will be ignored. Defaults to `true`.
+  
+  * `client-whitelist` contains a list of client certnames that are whitelisted 
+  to access to the admin API. Any requests made to this endpoint that do not 
+  present a valid client cert mentioned in this list will be denied access. 
+
 ```
 # configuration for the JRuby interpreters
 
@@ -111,9 +122,21 @@ master: {
 
 This file contains settings for the Certificate Authority service.
 
-* `certificate-status` contains settings for the certificate_status HTTP endpoint. This endpoint allows certs to be signed, revoked, and deleted via HTTP requests. This provides full control over Puppet's security, and access should almost always be heavily restricted. Puppet Enterprise uses this endpoint to provide a cert signing interface in the PE console. For full documentation, see the [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
-  * `authorization-required` determines whether a client certificate is required to access the certificate status endpoints. If set to 'false', this allows plain text access, and the client-whitelist will be ignored. Defaults to 'true'.
-  * `client-whitelist` contains a list of client certnames that are whitelisted to access to the certificate_status endpoint. Any requests made to this endpoint that do not present a valid client cert mentioned in this list will be denied access. 
+* `certificate-status` contains settings for the certificate_status HTTP endpoint.  
+This endpoint allows certs to be signed, revoked, and deleted via HTTP requests. 
+This provides full control over Puppet's security, and access should almost 
+always be heavily restricted. Puppet Enterprise uses this endpoint to provide 
+a cert signing interface in the PE console. For full documentation, see the 
+[Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
+  
+  * `authorization-required` determines whether a client certificate 
+  is required to access the certificate status endpoints. If set to 'false' the 
+  whitelist will be ignored. Defaults to `true`.
+  
+  * `client-whitelist` contains a list of client certnames that are whitelisted 
+  to access to the certificate_status endpoint. Any requests made to this 
+  endpoint that do not present a valid client cert mentioned in this list will 
+  be denied access. 
 
 ```
 # CA-related settings
