@@ -19,7 +19,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Liberator resource
+;;; Liberator resources
 
 (defresource environment-cache-resource
   [jruby-service]
@@ -47,6 +47,20 @@
   (fn [context]
     (jruby-puppet/mark-all-environments-expired! jruby-service)))
 
+(defresource jruby-pool-resource
+  [jruby-service]
+  :allowed-methods [:delete]
+
+  :handle-exception liberator-utils/exception-handler
+
+  :media-type-available? true
+
+  :new? false
+
+  :delete!
+  (fn [context]
+    (jruby-puppet/flush-jruby-pool! jruby-service)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -56,7 +70,9 @@
   "Routes for v1 of the Puppet Admin HTTP API."
   (compojure/routes
     (compojure/ANY "/environment-cache" []
-      (environment-cache-resource jruby-service))))
+      (environment-cache-resource jruby-service))
+    (compojure/ANY "/jruby-pool" []
+       (jruby-pool-resource jruby-service))))
 
 (defn versioned-routes
   [jruby-service]
