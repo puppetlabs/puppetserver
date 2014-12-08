@@ -1,6 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-testutils
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
-           (org.jruby.embed ScriptingContainer))
+           (org.jruby.embed ScriptingContainer LocalContextScope))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
@@ -86,7 +86,7 @@
                    {:pool                 pool
                     :id                   1
                     :jruby-puppet         (create-mock-jruby-instance)
-                    :scripting-container  (ScriptingContainer.)
+                    :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
     (.put pool instance)
     instance))
@@ -103,3 +103,10 @@
   "Drains the JRubyPuppet pool and returns each instance in a vector."
   [pool size]
   (mapv (fn [_] (jruby-core/borrow-from-pool pool)) (range size)))
+
+(defn fill-drained-pool
+  "Returns a list of JRubyPuppet instances back to their pool."
+  [instance-list]
+  (doseq [instance instance-list]
+    (jruby-core/return-to-pool instance)))
+
