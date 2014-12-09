@@ -81,18 +81,6 @@
           err-msg
           (borrow-from-pool-with-timeout pool 120))))))
 
-(deftest pool-state-initialization
-  (let [pool-size  1
-        config     (jruby-testutils/jruby-puppet-config pool-size)
-        profiler   jruby-testutils/default-profiler
-        pool-ctxt  (create-pool-context config profiler)
-        pool-state (get-pool-state pool-ctxt)]
-    (is (false? (:initialized? pool-state)))
-    (is (= 1 (:size pool-state)))
-    (jruby-agents/prime-pool! (:pool-state pool-ctxt) config profiler)
-    (let [updated-pool-state (get-pool-state pool-ctxt)]
-      (is (true? (:initialized? updated-pool-state))))))
-
 (deftest test-default-pool-size
   (let [config jruby-testutils/default-config-no-size
         profiler   jruby-testutils/default-profiler

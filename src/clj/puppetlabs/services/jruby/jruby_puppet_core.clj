@@ -87,8 +87,7 @@
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
   {:pool         pool-queue-type
-   :size         schema/Int
-   :initialized? schema/Bool})
+   :size         schema/Int})
 
 (def PoolStateContainer
   "An atom containing the current state of all of the JRubyPuppet pool."
@@ -247,8 +246,7 @@
   [{size :max-active-instances} :- JRubyPuppetConfig]
   (let [size (or size default-pool-size)]
     {:pool         (instantiate-free-pool size)
-     :size         size
-     :initialized? false}))
+     :size         size}))
 
 (schema/defn validate-instance-from-pool! :- (schema/maybe JRubyPuppetInstanceOrRetry)
   "Validate an instance.  The main purpose of this function is to check for
@@ -262,13 +260,6 @@
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
                                    (:err instance))))
   instance)
-
-(schema/defn ^:always-validate
-  mark-as-initialized! :- PoolState
-  "Updates the PoolState map to reflect that pool initialization has completed
-  successfully."
-  [pool-state :- PoolStateContainer]
-  (swap! pool-state assoc :initialized? true))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

@@ -53,8 +53,7 @@
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
             (jruby-core/create-pool-instance! pool id config profiler)
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                       id count))
-          (jruby-core/mark-as-initialized! pool-state)))
+                       id count))))
       (catch Exception e
         (.clear pool)
         (.put pool (PoisonPill. e))
@@ -88,7 +87,6 @@
           (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
                      id count)
           (jruby-core/create-pool-instance! new-pool id config profiler)
-          (jruby-core/mark-as-initialized! pool-state)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count)
           (catch Exception e
