@@ -76,7 +76,9 @@
                    :unit (complement :integration)
                    :all (constantly true)}
 
-  :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]}
+  :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]
+            "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby"]
+            "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"]
