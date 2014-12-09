@@ -2,40 +2,37 @@ GEM
   remote: https://rubygems.org/
   specs:
     CFPropertyList (2.2.8)
-    activesupport (4.1.8)
-      i18n (~> 0.6, >= 0.6.9)
-      json (~> 1.7, >= 1.7.7)
-      minitest (~> 5.1)
-      thread_safe (~> 0.1)
-      tzinfo (~> 1.1)
     addressable (2.3.6)
     archive-tar-minitar (0.5.2)
     autoparse (0.3.3)
       addressable (>= 2.3.1)
       extlib (>= 0.9.15)
       multi_json (>= 1.0.0)
-    aws-sdk (1.59.1)
-      aws-sdk-v1 (= 1.59.1)
-    aws-sdk-v1 (1.59.1)
+    aws-sdk (1.42.0)
       json (~> 1.4)
       nokogiri (>= 1.4.4)
-    beaker (2.0.0)
-      aws-sdk (~> 1.57)
+    beaker (1.17.6)
+      aws-sdk (= 1.42.0)
+      blimpy (~> 0.6)
       docker-api
       fission (~> 0.4)
-      fog (~> 1.25)
-      google-api-client (~> 0.7)
+      google-api-client (~> 0.7.1)
       hocon (~> 0.0.4)
       inifile (~> 2.0)
       json (~> 1.8)
-      minitest (~> 5.4)
-      net-scp (~> 1.2)
-      net-ssh (~> 2.9)
-      rbvmomi (~> 1.8)
+      mime-types (~> 1.25)
+      net-scp (~> 1.1)
+      net-ssh (~> 2.6)
+      nokogiri (~> 1.5.10)
+      rbvmomi (= 1.8.1)
       unf (~> 0.1)
+    blimpy (0.6.7)
+      fog
+      minitar
+      thor
     builder (3.2.2)
     diff-lcs (1.2.5)
-    docker-api (1.17.0)
+    docker-api (1.13.2)
       archive-tar-minitar
       excon (>= 0.38.0)
       json
@@ -45,26 +42,18 @@ GEM
       multipart-post (>= 1.2, < 3)
     fission (0.5.0)
       CFPropertyList (~> 2.2)
-    fog (1.25.0)
-      fog-brightbox (~> 0.4)
-      fog-core (~> 1.25)
+    fog (1.23.0)
+      fog-brightbox
+      fog-core (~> 1.23)
       fog-json
-      fog-profitbricks
-      fog-radosgw (>= 0.0.2)
-      fog-sakuracloud (>= 0.0.4)
       fog-softlayer
-      fog-terremark
-      fog-vmfusion
-      fog-voxel
-      fog-xml (~> 0.1.1)
       ipaddress (~> 0.5)
       nokogiri (~> 1.5, >= 1.5.11)
-      opennebula
-    fog-brightbox (0.7.1)
+    fog-brightbox (0.3.0)
       fog-core (~> 1.22)
       fog-json
-      inflecto (~> 0.0.2)
-    fog-core (1.25.0)
+      inflecto
+    fog-core (1.24.0)
       builder
       excon (~> 0.38)
       formatador (~> 0.2)
@@ -73,32 +62,9 @@ GEM
       net-ssh (>= 2.1.3)
     fog-json (1.0.0)
       multi_json (~> 1.0)
-    fog-profitbricks (0.0.1)
-      fog-core
-      fog-xml
-      nokogiri
-    fog-radosgw (0.0.3)
-      fog-core (>= 1.21.0)
-      fog-json
-      fog-xml (>= 0.0.1)
-    fog-sakuracloud (0.1.1)
+    fog-softlayer (0.3.15)
       fog-core
       fog-json
-    fog-softlayer (0.3.25)
-      fog-core
-      fog-json
-    fog-terremark (0.0.3)
-      fog-core
-      fog-xml
-    fog-vmfusion (0.0.1)
-      fission
-      fog-core
-    fog-voxel (0.0.2)
-      fog-core
-      fog-xml
-    fog-xml (0.1.1)
-      fog-core
-      nokogiri (~> 1.5, >= 1.5.11)
     formatador (0.2.5)
     google-api-client (0.7.1)
       addressable (>= 2.3.2)
@@ -112,30 +78,21 @@ GEM
       signet (>= 0.5.0)
       uuidtools (>= 2.1.0)
     hocon (0.0.4)
-    i18n (0.6.11)
     inflecto (0.0.2)
     inifile (2.0.2)
     ipaddress (0.8.0)
-    jira-ruby (0.1.11)
-      activesupport (~> 4.1.4)
-      oauth (~> 0.4.7)
     json (1.8.1)
     jwt (1.0.0)
     launchy (2.4.2)
       addressable (~> 2.3)
     mime-types (1.25.1)
-    minitest (5.4.3)
+    minitar (0.5.4)
     multi_json (1.10.1)
     multipart-post (2.0.0)
     net-scp (1.2.1)
       net-ssh (>= 2.6.5)
     net-ssh (2.9.1)
     nokogiri (1.5.11)
-    oauth (0.4.7)
-    opennebula (4.10.1)
-      json
-      nokogiri
-      rbvmomi
     rake (10.3.2)
     rbvmomi (1.8.1)
       builder
@@ -159,10 +116,8 @@ GEM
       faraday (>= 0.9.0.rc5)
       jwt (>= 0.1.5)
       multi_json (>= 1.0.0)
-    thread_safe (0.3.4)
+    thor (0.19.1)
     trollop (2.0)
-    tzinfo (1.2.2)
-      thread_safe (~> 0.1)
     unf (0.1.4)
       unf_ext
     unf_ext (0.0.6)
@@ -172,7 +127,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  beaker (~> 2.0.0)
-  jira-ruby
+  beaker (~> 1.17.0)
   rake
   rspec
