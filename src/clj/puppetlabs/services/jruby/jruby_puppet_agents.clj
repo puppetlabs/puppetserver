@@ -1,10 +1,11 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
   (:import (clojure.lang IFn Agent)
-           (com.puppetlabs.puppetserver PuppetProfiler)
-           (puppetlabs.services.jruby.jruby_puppet_core PoisonPill RetryPoisonPill))
+           (puppetlabs.services.jruby.jruby_puppet_core PoisonPill RetryPoisonPill)
+           (com.puppetlabs.puppetserver PuppetProfiler))
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,6 +37,30 @@
     (send jruby-agent agent-fn)))
 
 (schema/defn ^:always-validate
+  prime-pool!
+  "Sequentially fill the pool with new JRubyPuppet instances.  NOTE: this
+  function should never be called except by the pool-agent."
+  [pool-state :- jruby-core/PoolStateContainer
+   config :- jruby-core/JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)]
+  (let [pool (:pool @pool-state)]
+    (log/debug (str "Initializing JRubyPuppet instances with the following settings:\n"
+                    (ks/pprint-to-string config)))
+    (try
+      (let [count (.remainingCapacity pool)]
+        (dotimes [i count]
+          (let [id (inc i)]
+            (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
+            (jruby-core/create-pool-instance! pool id config profiler)
+            (log/infof "Finished creating JRubyPuppet instance %d of %d"
+                       id count))
+          (jruby-core/mark-as-initialized! pool-state)))
+      (catch Exception e
+        (.clear pool)
+        (.put pool (PoisonPill. e))
+        (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
+
+(schema/defn ^:always-validate
   flush-pool!
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
@@ -58,10 +83,10 @@
     (doseq [i (range count)]
       (let [id (inc i)
             instance (jruby-core/borrow-from-pool (:pool old-pool))]
-        (.terminate (:scripting-container instance))
-        (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
-                   id count)
         (try
+          (.terminate (:scripting-container instance))
+          (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
+                     id count)
           (jruby-core/create-pool-instance! new-pool id config profiler)
           (jruby-core/mark-as-initialized! pool-state)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
@@ -90,7 +115,7 @@
   [pool-context :- jruby-core/PoolContext
    pool-agent :- JRubyPoolAgent]
   (let [{:keys [pool-state config profiler]} pool-context]
-    (send-agent pool-agent #(jruby-core/prime-pool! pool-state config profiler))))
+    (send-agent pool-agent #(prime-pool! pool-state config profiler))))
 
 (schema/defn ^:always-validate
   send-flush-pool! :- JRubyPoolAgent

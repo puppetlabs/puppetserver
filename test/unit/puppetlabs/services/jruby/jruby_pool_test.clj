@@ -3,7 +3,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all :as core]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -28,7 +29,7 @@
              background."
       (is (= (free-instance-count pool) 0)))
 
-    (prime-pool! (:pool-state pool-context) config profiler)
+    (jruby-agents/prime-pool! (:pool-state pool-context) config profiler)
 
     (testing "Borrowing all instances from a pool while it is being primed and
              returning them."
@@ -64,7 +65,7 @@
         pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [core/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
-                 (is (thrown? IllegalStateException (prime-pool! (:pool-state pool-context) config profiler))))
+                 (is (thrown? IllegalStateException (jruby-agents/prime-pool! (:pool-state pool-context) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
             err-msg
@@ -88,7 +89,7 @@
         pool-state (get-pool-state pool-ctxt)]
     (is (false? (:initialized? pool-state)))
     (is (= 1 (:size pool-state)))
-    (prime-pool! (:pool-state pool-ctxt) config profiler)
+    (jruby-agents/prime-pool! (:pool-state pool-ctxt) config profiler)
     (let [updated-pool-state (get-pool-state pool-ctxt)]
       (is (true? (:initialized? updated-pool-state))))))
 

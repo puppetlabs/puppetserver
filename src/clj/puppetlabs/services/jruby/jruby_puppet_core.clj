@@ -250,16 +250,13 @@
      :size         size
      :initialized? false}))
 
-(defn validate-instance-from-pool!
+(schema/defn validate-instance-from-pool! :- (schema/maybe JRubyPuppetInstanceOrRetry)
   "Validate an instance.  The main purpose of this function is to check for
   a poison pill, which indicates that there was an error when initializing the
   pool.  If the poison pill is found, returns it to the pool (so that it will
   be available to other callers) and throws the poison pill's exception.
   Otherwise returns the instance that was passed in."
   [instance pool]
-  {:post [((some-fn nil?
-                    jruby-puppet-instance?
-                    retry-poison-pill?) %)]}
   (when (instance? PoisonPill instance)
     (.put pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
@@ -272,29 +269,6 @@
   successfully."
   [pool-state :- PoolStateContainer]
   (swap! pool-state assoc :initialized? true))
-
-(schema/defn ^:always-validate
-  prime-pool!
-  "Sequentially fill the pool with new JRubyPuppet instances."
-  [pool-state :- PoolStateContainer
-   config :- JRubyPuppetConfig
-   profiler :- (schema/maybe PuppetProfiler)]
-  (let [pool (:pool @pool-state)]
-    (log/debug (str "Initializing JRubyPuppet instances with the following settings:\n"
-                    (ks/pprint-to-string config)))
-    (try
-      (let [count (.remainingCapacity pool)]
-        (dotimes [i count]
-          (let [id (inc i)]
-            (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
-            (create-pool-instance! pool id config profiler)
-            (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                       id count))
-          (mark-as-initialized! pool-state)))
-      (catch Exception e
-        (.clear pool)
-        (.put pool (PoisonPill. e))
-        (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
