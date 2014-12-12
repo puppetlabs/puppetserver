@@ -1,7 +1,8 @@
 (ns puppetlabs.services.jruby.jruby-testutils
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
-           (org.jruby.embed ScriptingContainer))
+           (org.jruby.embed ScriptingContainer LocalContextScope))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
 
@@ -67,7 +68,8 @@
   ([]
    (create-pool-instance (jruby-puppet-config 1)))
   ([config]
-   (jruby-core/create-pool-instance 1 config default-profiler)))
+   (let [pool (jruby-core/instantiate-free-pool 1)]
+     (jruby-core/create-pool-instance! pool 1 config default-profiler))))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -79,17 +81,32 @@
       (Object.))))
 
 (defn create-mock-pool-instance
-  [_ _ _]
-  {:id                    1
-   :jruby-puppet          (create-mock-jruby-instance)
-   :scripting-container   (ScriptingContainer.)
-   :environment-registry  (puppet-env/environment-registry)})
+  [pool _ _ _]
+  (let [instance (jruby-core/map->JRubyPuppetInstance
+                   {:pool                 pool
+                    :id                   1
+                    :jruby-puppet         (create-mock-jruby-instance)
+                    :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+                    :environment-registry (puppet-env/environment-registry)})]
+    (.put pool instance)
+    instance))
 
 (defn mock-pool-instance-fixture
   "Test fixture which changes the behavior of the JRubyPool to create
   mock JRubyPuppet instances."
   [f]
   (with-redefs
-    [jruby-core/create-pool-instance create-mock-pool-instance]
+    [jruby-core/create-pool-instance! create-mock-pool-instance]
     (f)))
+
+(defn drain-pool
+  "Drains the JRubyPuppet pool and returns each instance in a vector."
+  [pool size]
+  (mapv (fn [_] (jruby-core/borrow-from-pool pool)) (range size)))
+
+(defn fill-drained-pool
+  "Returns a list of JRubyPuppet instances back to their pool."
+  [instance-list]
+  (doseq [instance instance-list]
+    (jruby-core/return-to-pool instance)))
 
