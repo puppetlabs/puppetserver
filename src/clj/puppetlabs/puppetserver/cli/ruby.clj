@@ -1,5 +1,5 @@
 (ns puppetlabs.puppetserver.cli.ruby
-  (:import (org.jruby Main RubyInstanceConfig)
+  (:import (org.jruby Main RubyInstanceConfig CompatVersion)
            (java.util HashMap))
   (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]))
@@ -14,7 +14,8 @@
                        (.put "GEM_HOME" gem-home))]
     (doto jruby-config
       (.setEnvironment env)
-      (.setLoadPaths load-path))
+      (.setLoadPaths load-path)
+      (.setCompatVersion (CompatVersion/RUBY1_9)))
     (Main. jruby-config)))
 
 (defn run!
