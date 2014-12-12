@@ -8,6 +8,11 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def default-borrow-timeout 60000)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 ;; This service uses TK's normal config service instead of the
@@ -29,26 +34,23 @@
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
           pool-agent  (jruby-agents/pool-agent agent-shutdown-fn)
-          profiler          (get-profiler)]
+          profiler          (get-profiler)
+          borrow-timeout (get-in-config [:jruby-puppet :borrow-timeout] default-borrow-timeout)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config profiler)]
         (jruby-agents/send-prime-pool! pool-context pool-agent)
         (-> context
             (assoc :pool-context pool-context)
-            (assoc :pool-agent pool-agent)))))
+            (assoc :pool-agent pool-agent)
+            (assoc :borrow-timeout borrow-timeout)))))
 
   (borrow-instance
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool pool)))
-
-  (borrow-instance
-    [this timeout]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool-with-timeout pool timeout)))
+    (let [pool-context   (:pool-context (tk-services/service-context this))
+          pool           (core/get-pool pool-context)
+          borrow-timeout (:borrow-timeout (tk-services/service-context this))]
+      (core/borrow-from-pool-with-timeout pool borrow-timeout)))
 
   (return-instance
     [this jruby-instance]

@@ -75,14 +75,18 @@
         when https client requests are made.
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
-        be used when https client requests are made."
+        be used when https client requests are made.
+
+    * :borrow-timeout - The timeout when borrowing instances from the JRuby Pool in milliseconds.
+        Defaults to 60000."
   {:ruby-load-path                                  [schema/Str]
    :gem-home                                        schema/Str
    (schema/optional-key :master-conf-dir)           schema/Str
    (schema/optional-key :master-var-dir)            schema/Str
    (schema/optional-key :max-active-instances)      schema/Int
    (schema/optional-key :http-client-ssl-protocols) [schema/Str]
-   (schema/optional-key :http-client-cipher-suites) [schema/Str]})
+   (schema/optional-key :http-client-cipher-suites) [schema/Str]
+   (schema/optional-key :borrow-timeout)            schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
