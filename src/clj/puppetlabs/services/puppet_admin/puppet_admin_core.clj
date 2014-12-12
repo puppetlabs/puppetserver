@@ -19,7 +19,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Liberator resource
+;;; Liberator resources
 
 (defresource environment-cache-resource
   [jruby-service]
@@ -47,6 +47,33 @@
   (fn [context]
     (jruby-puppet/mark-all-environments-expired! jruby-service)))
 
+(defresource jruby-pool-resource
+  [jruby-service]
+  :allowed-methods [:delete]
+
+  ;; If you need to define :available-media-types, see comment below.
+  ;:available-media-types ...
+
+  :handle-exception liberator-utils/exception-handler
+
+  ;; This next line of code tells liberator to ignore any media-types
+  ;; the client has asked for.  This is necessary for this endpoint to work
+  ;; when the client sends an 'Accept: */*' header, due to the somewhat strange
+  ;; fact that this endpoint defines no 'available-media-types', since it always
+  ;; returns a '204 No Content' on success.
+  ;;
+  ;; If this resource is ever updated to define ':available-media-types' and
+  ;; return a response body, this line of code should be deleted.
+
+  :media-type-available? true
+
+  ;; Never return a '201 Created', we're not creating anything
+  :new? false
+
+  :delete!
+  (fn [context]
+    (jruby-puppet/flush-jruby-pool! jruby-service)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -56,7 +83,9 @@
   "Routes for v1 of the Puppet Admin HTTP API."
   (compojure/routes
     (compojure/ANY "/environment-cache" []
-      (environment-cache-resource jruby-service))))
+      (environment-cache-resource jruby-service))
+    (compojure/ANY "/jruby-pool" []
+       (jruby-pool-resource jruby-service))))
 
 (defn versioned-routes
   [jruby-service]

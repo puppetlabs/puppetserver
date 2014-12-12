@@ -110,3 +110,24 @@
   (doseq [instance instance-list]
     (jruby-core/return-to-pool instance)))
 
+(defn reduce-over-jrubies!
+  "Utility function; takes a JRuby pool and size, and a function f from integer
+  to string.  For each JRuby instance in the pool, f will be called, passing in
+  an integer offset into the jruby array (0..size), and f is expected to return
+  a string containing a script to run against the jruby instance.
+
+  Returns a vector containing the results of executing the scripts against the
+  JRuby instances."
+  [pool size f]
+  (let [jrubies (drain-pool pool size)
+        result  (reduce
+                  (fn [acc jruby-offset]
+                    (let [sc (:scripting-container (nth jrubies jruby-offset))
+                          script (f jruby-offset)
+                          result (.runScriptlet sc script)]
+                      (conj acc result)))
+                  []
+                  (range size))]
+    (fill-drained-pool jrubies)
+    result))
+
