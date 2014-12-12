@@ -5,13 +5,12 @@
 
   (borrow-instance
     [this]
-    [this timeout]
     "Borrows an instance from the JRubyPuppet interpreter pool. If there are no
     interpreters left in the pool then the operation blocks until there is one
-    available. A timeout (integer measured in milliseconds) can be provided
+    available. A timeout (integer measured in milliseconds) can be configured
     which will either return an interpreter if one is available within the
     timeout length, or will return nil after the timeout expires if no
-    interpreters are available.")
+    interpreters are available. This timeout defaults to 60000 milliseconds.")
 
   (return-instance
     [this jrubypuppet-instance]

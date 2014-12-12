@@ -55,8 +55,8 @@
    {:ruby-load-path  ruby-load-path
     :gem-home        gem-home
     :master-conf-dir conf-dir})
-  ([pool-size]
-   (assoc (jruby-puppet-config) :max-active-instances pool-size)))
+  ([options]
+   (merge (jruby-puppet-config) options)))
 
 (def default-config-no-size
   (jruby-puppet-config))
@@ -66,7 +66,7 @@
 
 (defn create-pool-instance
   ([]
-   (create-pool-instance (jruby-puppet-config 1)))
+   (create-pool-instance (jruby-puppet-config {:max-active-instances 1})))
   ([config]
    (let [pool (jruby-core/instantiate-free-pool 1)]
      (jruby-core/create-pool-instance! pool 1 config default-profiler))))
