@@ -85,7 +85,7 @@
              "Providing config values that should be read from Puppet results "
              "in an error that mentions all offending config keys.")
     (with-redefs
-      [jruby-puppet-core/create-pool-instance
+      [jruby-puppet-core/create-pool-instance!
          jruby-testutils/create-mock-pool-instance]
       (with-test-logging
         (is (thrown-with-msg?
