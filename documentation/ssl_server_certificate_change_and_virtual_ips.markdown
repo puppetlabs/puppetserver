@@ -1,6 +1,6 @@
 # SSL Server Certificate Change and Virtual IP Addresses
 
-[SERVER-207] (https://tickets.puppetlabs.com/browse/SERVER-207) documents an
+[SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207) documents an
 issue that has been seen with Puppet Server but is not present with the
 Ruby-based Puppet master.  When the Puppet Server master needs to make an SSL
 client connection and the connection target is a virtual ip address which is
@@ -60,16 +60,16 @@ optionally turn off SSL session caching for the Jetty server (when hosting
 Puppet Server and/or PuppetDB) and/or Puppet Server master client requests.
 Several JIRA tickets have been filed to cover this work:
 
-* [TK-124] (https://tickets.puppetlabs.com/browse/TK-124) - Disable SSL session
+* [TK-124](https://tickets.puppetlabs.com/browse/TK-124) - Disable SSL session
   caching in the Jetty server
-* [TK-125] (https://tickets.puppetlabs.com/browse/TK-125) - Disable SSL session
+* [TK-125](https://tickets.puppetlabs.com/browse/TK-125) - Disable SSL session
   caching in the clj-http-client library that Puppet Server uses to make its
   client requests
-* [SERVER-216] (https://tickets.puppetlabs.com/browse/SERVER-216) - Utilize work
+* [SERVER-216](https://tickets.puppetlabs.com/browse/SERVER-216) - Utilize work
   in TK-125 to allow SSL session caching to be disabled for Puppet Server client
   requests.
 
-While the ability to disable SSL session caching would provide mitigation 
+While the ability to disable SSL session caching would provide mitigation
 against the triple handshake attack, allow different certificates to be used on
 each PuppetDB server, and provide for more backward compatible behavior with the
 Ruby Puppet master, the approach would have performance trade-offs.  Not having

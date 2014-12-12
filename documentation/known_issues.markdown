@@ -73,7 +73,7 @@ running. We will try to work with the JRuby team to see if they can get a fix
 in for this, and upgrade to a newer JRuby when a fix becomes available. It might
 also be possible to patch the Puppet Ruby code to work around this issue.
 
-## Puppet Server Master Fails to Make SSL Connection to Servers with Different Certificates
+## Puppet Server Master Fails to Connect to Load-Balanced Servers with Different SSL Certificates
 
 [SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207): Intermittent
 SSL connection failures have been seen when the Puppet Server master tries to
