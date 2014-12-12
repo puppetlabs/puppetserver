@@ -36,12 +36,12 @@
         ; wait until the flush is complete
         (await (:pool-agent context))
         (let [new-pool (jruby-core/get-pool pool-context)]
-         (is (every? true?
-                     (jruby-testutils/reduce-over-jrubies!
-                       new-pool
-                       4
-                       (constantly
-                         "begin; InstanceID; false; rescue NameError; true; end")))))))))
+          (is (every? true?
+                      (jruby-testutils/reduce-over-jrubies!
+                        new-pool
+                        4
+                        (constantly
+                          "begin; InstanceID; false; rescue NameError; true; end")))))))))
 
 (deftest retry-poison-pill-test
   (testing "Flush puts a retry poison pill into the old pool"

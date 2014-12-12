@@ -14,7 +14,7 @@
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")
+  "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
 
 (use-fixtures :once
               schema-test/validate-schemas
@@ -56,7 +56,7 @@
                    set)))
         (let [response (http-client/delete
                          "https://localhost:8140/puppet-admin-api/v1/jruby-pool"
-                         (assoc ssl-request-options :headers {"Accept" "*/*"}))]
+                         ssl-request-options)]
           (is (= 204 (:status response))))
         ; wait until the flush is complete
         (await (:pool-agent context))
