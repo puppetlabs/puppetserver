@@ -164,12 +164,14 @@ os-settings: {
 }
 ```
 
-##Logging
+## Logging
 
-All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/)
-library. You can specify a custom `logback.xml` configuration file in the `global`
-section of the Puppet Server settings mentioned above. By default, all logs are stored in `/var/log/puppetserver.log`, and the default log level is 'INFO'. For more information on
-configuring logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html).
+All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetserver/puppetserver.log` (open source releases) or `/var/log/pe-puppetserver/puppetserver.log` (Puppet Enterprise). The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
+
+The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on
+configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html).
+
+Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
 
 ## Service Bootstrapping
 
