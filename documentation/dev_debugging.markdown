@@ -98,4 +98,4 @@ Tracing Code Events
 
 Puppet Server can utilize JRuby's standard facilities for tracing events during
 code execution.  For more information on these techniques, see the
-[Tracing Code Events] (./dev_trace_func.markdown) page.
+[Tracing Code Events](./dev_trace_func.markdown) page.
