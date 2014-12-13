@@ -24,11 +24,16 @@ step "Install MRI Puppet Agents."
 step "Run puppet as puppet user to prevent permissions errors later."
   puppet_apply_as_puppet_user
 
-step "Install Puppet Server."
-  make_env = {
-    "prefix" => "/usr",
-    "confdir" => "/etc/",
-    "rundir" => "/var/run/puppetserver",
-    "initdir" => "/etc/init.d",
-  }
-  install_puppet_server master, 'puppetserver', make_env
+if (test_config[:puppetserver_install_mode] == :upgrade)
+  step "Upgrade Puppet Server."
+    upgrade_package(master, "puppetserver")
+else
+  step "Install Puppet Server."
+    make_env = {
+      "prefix" => "/usr",
+      "confdir" => "/etc/",
+      "rundir" => "/var/run/puppetserver",
+      "initdir" => "/etc/init.d",
+    }
+    install_puppet_server master, make_env
+end
