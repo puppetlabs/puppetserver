@@ -72,3 +72,12 @@ have a bug in their POSIX support on OpenBSD that prevents Puppet Server from
 running. We will try to work with the JRuby team to see if they can get a fix
 in for this, and upgrade to a newer JRuby when a fix becomes available. It might
 also be possible to patch the Puppet Ruby code to work around this issue.
+
+## Puppet Server Master Fails to Connect to Load-Balanced Servers with Different SSL Certificates
+
+[SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207): Intermittent
+SSL connection failures have been seen when the Puppet Server master tries to
+make SSL requests to servers via the same virtual ip address.  This has been
+seen when the servers present different certificates during the SSL handshake.
+For more information on the issue, see
+[this page](./ssl_server_certificate_change_and_virtual_ips.markdown).
