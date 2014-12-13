@@ -24,12 +24,12 @@ If you are using certs from an external CA, you'll need to disable the internal 
 
 To disable the Puppet CA service in `bootstrap.cfg`, comment out the line following "To enable the CA service..." and uncomment the line following "To disable the CA service...":
 
-```
+~~~
 # To enable the CA service, leave the following line uncommented
 # puppetlabs.services.ca.certificate-authority-service/certificate-authority-service
 # To disable the CA service, comment out the above line and uncomment the line below
 puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
-```
+~~~
 
 For more information on the `bootstrap.cfg` file, see [Service Bootstrapping](./configuration.markdown#service-bootstrapping).
 
@@ -48,7 +48,7 @@ use the correct SSL configuration:
 
 An example `webserver.conf` file might look something like this:
 
-```
+~~~
 webserver: {
 
   client-auth : want
@@ -65,7 +65,7 @@ webserver: {
 
   ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
 }
-```
+~~~
 
 For more information on these settings, see [Configuring the Web Server Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
 

@@ -17,17 +17,17 @@ At startup, Puppet Server reads all the `.conf` files found in this directory, l
 
 This file contains global configuration settings for Puppet Server. You shouldn't typically need to make changes to this file. However, you can change the `logging-config` path for the logback logging configuration file if necessary. For more information about the logback file, see [http://logback.qos.ch/manual/configuration.html](http://logback.qos.ch/manual/configuration.html).
 
-```
+~~~
 global: {
   logging-config: /etc/puppetlabs/puppetserver/logback.xml
 }
-```
+~~~
 
 ### `webserver.conf`
 
 This file contains the web server configuration settings. The `webserver.conf` file looks something like this:
 
-```
+~~~
 webserver: {
     client-auth = need
     ssl-host = 0.0.0.0
@@ -44,7 +44,7 @@ web-router-service: {
     # This controls the mount point for the puppet admin API.
     "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
 }
-```
+~~~
 
 The above settings set the webserver to require a valid certificate from the client; to listen on all available hostnames for encrypted HTTPS traffic; and to use port 8140 for encrypted HTTPS traffic. For full documentation, including a complete list of available settings and values, see
 [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
@@ -56,29 +56,21 @@ By default, Puppet Server is configured to use the correct Puppet Master and CA 
 This file contains the settings for Puppet Server itself.
 
 * The `jruby-puppet` settings configure the interpreter:
+    * `gem-home`: This setting determines where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If not specified, uses the Puppet default `/var/lib/puppet/jruby-gems`.
+    * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
+    * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
+    * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
+* The `profiler` settings configure profiling:
+    * `enabled`: if this is set to `true`, it enables profiling for the Puppet Ruby code. Defaults to `false`.
+* The `puppet-admin` section configures the Puppet Server's administrative API. (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
+    * `authorization-required` determines whether a client
+    certificate is required to access the endpoints in this API.  If set to
+    `false`, the client-whitelist will be ignored. Defaults to `true`.
+    * `client-whitelist` contains a list of client certnames that are whitelisted
+    to access to the admin API. Any requests made to this endpoint that do not
+    present a valid client cert mentioned in this list will be denied access.
 
-  * `gem-home`: This setting determines where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If not specified, uses the Puppet default `/var/lib/puppet/jruby-gems`.
-
-  * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
-
-  * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
-
- * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
-
-* `profiler`, if `enabled` is set to 'true', this enables profiling for the Puppet Ruby code. Defaults to 'false'.
-
-* The `puppet-admin` section configures the administrative API that Puppet
-  Server adds to the Puppetmaster's API.
-
-  * `authorization-required` determines whether a client
-  certificate is required to access the endpoints in this API.  If set to
-  `false`, the client-whitelist will be ignored. Defaults to `true`.
-
-  * `client-whitelist` contains a list of client certnames that are whitelisted
-  to access to the admin API. Any requests made to this endpoint that do not
-  present a valid client cert mentioned in this list will be denied access.
-
-```
+~~~
 # configuration for the JRuby interpreters
 
 jruby-puppet: {
@@ -110,17 +102,17 @@ profiler: {
 puppet-admin: {
     client-whitelist: []
 }
-```
+~~~
 
 ### `master.conf`
 
 This file contains settings for the Puppet master functionality of Puppet Server. If `allow-header-cert-info` is set to 'true', this allows the `ssl_client_header` and `ssl_client_verify_header` options in puppet.conf to work. By default, this is set to 'false'.
 
-```
+~~~
 master: {
     # allow-header-cert-info: false
 }
-```
+~~~
 
 #### `ca.conf`
 
@@ -142,7 +134,7 @@ a cert signing interface in the PE console. For full documentation, see the
   endpoint that do not present a valid client cert mentioned in this list will
   be denied access.
 
-```
+~~~
 # CA-related settings
 certificate-authority: {
     certificate-status: {
@@ -150,7 +142,7 @@ certificate-authority: {
         client-whitelist: []
     }
 }
-```
+~~~
 
 ### `os-settings.conf`
 
@@ -158,11 +150,11 @@ This file is set up by packaging and is used to initialize the Ruby load paths f
 
 The Ruby load path defaults to the directory where Puppet is installed. In this release, this directory varies depending on what OS you are using.
 
-```
+~~~
 os-settings: {
     ruby-load-path: ["/usr/lib/ruby/site_ruby/1.8"]
 }
-```
+~~~
 
 ## Logging
 
@@ -183,12 +175,12 @@ feature to enable or disable the CA service, by modifying your `bootstrap.cfg` f
 (usually located in `/etc/puppetserver/bootstrap.cfg`); in that file, you should
 see some lines that look like this:
 
-```
+~~~
 # To enable the CA service, leave the following line uncommented
 puppetlabs.services.ca.certificate-authority-service/certificate-authority-service
 # To disable the CA service, comment out the above line and uncomment the line below
 #puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
-```
+~~~
 
 In most cases, you'll want the CA service enabled. However, if you're running
 a multi-master environment or using an external CA, you might want to disable

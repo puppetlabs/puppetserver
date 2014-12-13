@@ -23,10 +23,11 @@ The response body will be empty.
 
 
 ### Example
-```
+
+~~~
 $ curl -i -k -X DELETE https://localhost:8140/puppet-admin-api/v1/environment-cache
 HTTP/1.1 204 No Content
-```
+~~~
 
 
 ### Relevant Configuration
