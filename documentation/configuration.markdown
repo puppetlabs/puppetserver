@@ -11,7 +11,7 @@ up automatically. However, for some tasks, such as configuring the webserver or 
 
 All of Puppet Server's new config files and settings (with the exception of the [logging config file](#logging)) are located in the `conf.d` directory. These new config files are in HOCON format. HOCON keeps the basic structure of JSON, but is a more human-readable config file format. You can find details about this format in the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
 
-At startup, Puppet Server reads all the .conf files found in this directory, located at `/etc/puppetserver/conf.d` on most platforms. Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
+At startup, Puppet Server reads all the `.conf` files found in this directory, located at `/etc/puppetserver/conf.d` (open source releases) or `/etc/puppetlabs/puppetserver/conf.d` (Puppet Enterprise). Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
 
 ### `global.conf`
 
