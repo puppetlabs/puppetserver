@@ -1,3 +1,13 @@
+## 1.0.0
+
+ * (SERVER-151, SERVER-150) Created a HTTP endpoint to trigger a complete
+   refresh of the entire JRuby pool.
+ * (SERVER-204) Added CLI tools to execute the `ruby` and `irb` commands using
+   Puppet server's JRuby environment.
+ * (SERVER-221) Initialize run_mode earlier
+ * (SERVER-114, SERVER-112) Added a HTTP endpoint to trigger a flush of the 
+   Puppet environment cache.
+
 ## 0.4.0
 This release contains improvements based on feedback from the community and
 Puppet Labs QA testing. It has usability and correctness improvements, mainly

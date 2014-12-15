@@ -127,6 +127,6 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  beaker (~> 1.17)
+  beaker (~> 1.17.0)
   rake
   rspec

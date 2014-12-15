@@ -127,3 +127,9 @@
   []
   (jruby-protocol/mark-all-environments-expired!
     (tka/get-service system :JRubyPuppetService)))
+
+(defn flush-jruby-pool!
+  "Flush and repopulate the JRuby pool"
+  []
+  (jruby-protocol/flush-jruby-pool!
+    (tka/get-service system :JRubyPuppetService)))
