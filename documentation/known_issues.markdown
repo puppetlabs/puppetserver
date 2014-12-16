@@ -1,4 +1,9 @@
-# Known Issues
+---
+layout: default
+title: "Puppet Server: Known Issues"
+canonical: "/puppetserver/latest/known_issues.html"
+---
+
 
 For a list of all known issues, visit our [Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER).
 
@@ -8,7 +13,7 @@ Here are a few specific issues that we're aware of that might affect certain use
 
 Puppet Server uses an embedded JRuby interpreter to execute Ruby code. This
 interpreter is compatible with Ruby 1.9. If you are installing
-Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby. 
+Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby.
 
 ## Config Reload
 

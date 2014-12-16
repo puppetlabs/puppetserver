@@ -137,15 +137,15 @@ module PuppetServerExtensions
     end
   end
 
-  def install_puppet_server (host, puppet_server_name='puppetserver', make_env={})
+  def install_puppet_server (host, make_env={})
     case test_config[:puppetserver_install_type]
     when :package
-      install_package host, puppet_server_name
+      install_package host, 'puppetserver'
     when :git
       project_version = 'puppet-server-version='
       project_version += test_config[:puppetserver_version] ||
         `lein with-profile ci pprint :version | tail -n 1 | cut -d\\" -f2`
-      install_from_ezbake host, puppet_server_name, project_version, make_env
+      install_from_ezbake host, 'puppetserver', project_version, make_env
     else
       abort("Invalid install type: " + test_config[:puppetserver_install_type])
     end
@@ -210,6 +210,19 @@ EOF
     on master, "su -s /bin/bash -c \"puppet apply #{manifest_path}\" #{user}"
   end
 
+  def upgrade_package(host, name)
+    variant, _, _, _ = master['platform'].to_array
+    case variant
+      when /^(fedora|centos|eos|el)$/
+        on(host, "rm -f $(rpm --verify #{name} | cut -f 4)")
+        on(host, "yum -y reinstall #{name}")
+        on(host, "yum -y upgrade #{name}")
+      when /^(ubuntu|debian|cumulus)$/
+        on(host, "apt-get install -o Dpkg::Options::='--force-confnew' -y --force-yes #{name}")
+      else
+        raise "Package #{name} cannot be upgraded on #{host}"
+    end
+  end
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)

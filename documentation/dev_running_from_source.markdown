@@ -1,5 +1,9 @@
-Puppet Server: Running From Source
-======================================
+---
+layout: default
+title: "Puppet Server: Running From Source"
+canonical: "/puppetserver/latest/dev_running_from_source.html"
+---
+
 
 The following steps will help you get Puppet Server up and running from source.
 
