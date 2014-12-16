@@ -1,4 +1,12 @@
 ## 1.0.0
+This release is the official "one point oh" version of Puppet Server. In
+accordance with the [Semantic Versioning](http://semver.org) specification,
+we're declaring the existing public API of this version to be the
+baseline for backwards-incompatible changes, which will trigger another 
+major version number. (No backwards-incompatible changes were introduced 
+between 0.4.0 and this version.)
+
+In addition, the following features were added:
 
  * (SERVER-151, SERVER-150) Created a HTTP endpoint to trigger a complete
    refresh of the entire JRuby pool.
@@ -7,6 +15,9 @@
  * (SERVER-221) Initialize run_mode earlier
  * (SERVER-114, SERVER-112) Added a HTTP endpoint to trigger a flush of the 
    Puppet environment cache.
+
+For a list of all changes in this release, check out the JIRA page:
+https://tickets.puppetlabs.com/browse/SERVER/fixforversion/12023/
 
 ## 0.4.0
 This release contains improvements based on feedback from the community and
