@@ -1,5 +1,9 @@
-Puppet Server: Debugging
-========================
+---
+layout: default
+title: "Puppet Server: Debugging"
+canonical: "/puppetserver/latest/dev_debugging.html"
+---
+
 
 Because Puppet Server executes both Clojure and Ruby code, approaches to debugging
 differ depending on which part of the application you're interested in.
@@ -94,4 +98,4 @@ Tracing Code Events
 
 Puppet Server can utilize JRuby's standard facilities for tracing events during
 code execution.  For more information on these techniques, see the
-[Tracing Code Events] (./dev_trace_func.markdown) page.
+[Tracing Code Events](./dev_trace_func.markdown) page.
