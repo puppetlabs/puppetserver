@@ -1,4 +1,9 @@
-# Puppet Server External CA Configuration
+---
+layout: default
+title: "Puppet Server: External CA Configuration"
+canonical: "/puppetserver/latest/external_ca_configuration.html"
+---
+
 
 Puppet Server supports the ability to configure certificates from an existing
 external CA. This is similar to Ruby Puppet master functionality under a Rack-enabled web server like Apache with Passenger. Much of the existing
@@ -7,7 +12,7 @@ still applies to using an external CA with Puppet Server. However, there are som
 
 ## Client DN Authentication
 
-Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication. 
+Puppet Server is hosted by a Jetty web server; therefore, Rack-enabled web server configuration is irrelevant. For client authentication purposes, Puppet Server can extract the distinguished name (DN) from a client certificate provided during SSL negotiation with the Jetty web server. This means the web server no longer needs to be configured to use an `X-Client-DN` request header for client authentication.
 
 That said, the use of an `X-Client-DN` request header is still supported
 for cases where SSL termination of client requests needs to be done on an
@@ -19,12 +24,12 @@ If you are using certs from an external CA, you'll need to disable the internal 
 
 To disable the Puppet CA service in `bootstrap.cfg`, comment out the line following "To enable the CA service..." and uncomment the line following "To disable the CA service...":
 
-```
+~~~
 # To enable the CA service, leave the following line uncommented
 # puppetlabs.services.ca.certificate-authority-service/certificate-authority-service
 # To disable the CA service, comment out the above line and uncomment the line below
 puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
-```
+~~~
 
 For more information on the `bootstrap.cfg` file, see [Service Bootstrapping](./configuration.markdown#service-bootstrapping).
 
@@ -43,7 +48,7 @@ use the correct SSL configuration:
 
 An example `webserver.conf` file might look something like this:
 
-```
+~~~
 webserver: {
 
   client-auth : want
@@ -60,7 +65,7 @@ webserver: {
 
   ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
 }
-```
+~~~
 
 For more information on these settings, see [Configuring the Web Server Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
 

@@ -1,4 +1,9 @@
-# Puppet Server and Gems
+---
+layout: default
+title: "Puppet Server: Using Ruby Gems"
+canonical: "/puppetserver/latest/gems.html"
+---
+
 
 If you have server-side Ruby code in your modules, Puppet Server will run it via
 JRuby. Generally speaking, this only affects custom parser functions and report
@@ -12,7 +17,7 @@ you have installed on your system Ruby. If you want Puppet Server to load additi
 
 `puppetserver gem install foobar`
 
-The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem` command, so all of the usual arguments and flags should work as expected. For example, to show your locally installed gems, run: 
+The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem` command, so all of the usual arguments and flags should work as expected. For example, to show your locally installed gems, run:
 
     $ puppetserver gem list
 
@@ -32,6 +37,6 @@ to change your code at all.
 
 In other cases, there may be a replacement gem available with a slightly different name;
 e.g., `jdbc-mysql` instead of `mysql`. The JRuby wiki [C Extension Alternatives](https://github.com/jruby/jruby/wiki/C-Extension-Alternatives)
-page discusses this issue further. 
+page discusses this issue further.
 
 If you're using a gem that won't run on JRuby and you can't find a suitable replacement, please open a ticket on our [Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER); we're definitely interested in helping provide solutions if there are common gems that are causing trouble for users!
