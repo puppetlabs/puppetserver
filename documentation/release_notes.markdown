@@ -1,23 +1,71 @@
-## 1.0.0
+---
+layout: default
+title: "Puppet Server: Release Notes"
+canonical: "/puppetserver/latest/release_notes.html"
+---
+
+
+## Puppet Server 1.0.0
+
 This release is the official "one point oh" version of Puppet Server. In
 accordance with the [Semantic Versioning](http://semver.org) specification,
 we're declaring the existing public API of this version to be the
-baseline for backwards-incompatible changes, which will trigger another 
-major version number. (No backwards-incompatible changes were introduced 
+baseline for backwards-incompatible changes, which will trigger another
+major version number. (No backwards-incompatible changes were introduced
 between 0.4.0 and this version.)
 
-In addition, the following features were added:
+In addition, this release adds HTTP endpoints to refresh data and CLI tools for working with the JRuby runtime.
 
- * (SERVER-151, SERVER-150) Created a HTTP endpoint to trigger a complete
-   refresh of the entire JRuby pool.
- * (SERVER-204) Added CLI tools to execute the `ruby` and `irb` commands using
-   Puppet server's JRuby environment.
- * (SERVER-221) Initialize run_mode earlier
- * (SERVER-114, SERVER-112) Added a HTTP endpoint to trigger a flush of the 
-   Puppet environment cache.
+### Compatibility Note
 
-For a list of all changes in this release, check out the JIRA page:
-https://tickets.puppetlabs.com/browse/SERVER/fixforversion/12023/
+Puppet Server 1.x works with Puppet 3.7.3 and all subsequent Puppet 3.x versions. (When Puppet 4 is released, we’ll release a new Puppet Server version to support it.)
+
+### New Feature: Admin API for Refreshing Environments
+
+This release adds two new HTTP endpoints to speed up deployment of Puppet code changes. Previously, such changes might require a restart of the entire Puppet Server instance, which can be rather slow. These new endpoints allow you to refresh the environment without restarting it.
+
+If you need this feature, you should probably use the `environment-cache` endpoint, since it’s faster than the `jruby-pool` endpoint. To use it, you’ll need to get a valid certificate from Puppet’s CA, add that certificate’s name to the `puppet-admin -> client-whitelist` setting in `puppetserver.conf`, and use that certificate to do an HTTP DELETE request at the `environment-cache` endpoint. For more details, see [the API docs for `environment-cache`.](./admin-api/v1/environment-cache.markdown)
+
+* [SERVER-150](https://tickets.puppetlabs.com/browse/SERVER-150): Add functionality to JRuby service to trash instance.
+* [SERVER-151](https://tickets.puppetlabs.com/browse/SERVER-151): Add an HTTP endpoint to call flush jruby pool function.
+* [SERVER-112](https://tickets.puppetlabs.com/browse/SERVER-112): Create environment cache entry factory implementation that allows flushing all environments.
+* [SERVER-114](https://tickets.puppetlabs.com/browse/SERVER-114): Add `flush_environment_cache` admin endpoint.
+
+### New Feature: `puppetserver ruby` and `puppetserver irb` Commands
+
+This release adds two new CLI commands: `puppetserver ruby` and `puppetserver irb`. These work like the normal `ruby` and `irb` commands, except they use Puppet Server’s JRuby environment instead of your operating system’s version of Ruby. This makes it easier to develop and test Ruby code for use with Puppet Server.
+
+* [SERVER-204](https://tickets.puppetlabs.com/browse/SERVER-204): `puppetserver ruby` cli tool.
+* [SERVER-222](https://tickets.puppetlabs.com/browse/SERVER-222): Add `puppetserver irb` cli command.
+
+### New Feature: `puppetserver foreground` Command
+
+The new `puppetserver foreground` command will start an instance of Puppet Server in the foreground, which will log directly to the console with higher-than-normal detail.
+
+This behavior is similar to the traditional `puppet master --verbose --no-daemonize` command, and it’s useful for developing extensions, tracking down problems, and other tasks that are a little outside the day-to-day work of running Puppet.
+
+* [SERVER-141](https://tickets.puppetlabs.com/browse/SERVER-141): Add `foreground` subcommand.
+
+### General Bug Fixes
+
+The `service puppetserver start` and `restart` commands will now block until Puppet Server is actually started and ready to work. (Previously, the init script would return with success before Puppet Server was actually online.) This release also fixes bugs that could cause startup to hang or to timeout prematurely, and a subtle settings bug.
+
+* [SERVER-205](https://tickets.puppetlabs.com/browse/SERVER-205): `wait_for_app` functions occasionally fails to read pidfile on debian and hangs indefinitely.
+* [SERVER-166](https://tickets.puppetlabs.com/browse/SERVER-166): Set `START_TIMEOUT` to 120 seconds for sysv init scripts and systemd.
+* [SERVER-221](https://tickets.puppetlabs.com/browse/SERVER-221): Run mode not initialized properly
+
+### Performance Improvements
+
+This release improves performance of the certificate status check. Previously, the CRL file was converted to an object once per CSR and signed certificate; as of this release, the object will be reused across checks instead of created for every check.
+
+* [SERVER-137](https://tickets.puppetlabs.com/browse/SERVER-137): Compose X509CRL once and reuse for get-certificate-statuses.
+
+### All Changes
+
+For a list of all changes in this release, see the following Jira pages:
+
+* [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/browse/SERVER/fixforversion/12023/)
+* [All Trapperkeeper issues targeted at this release](https://tickets.puppetlabs.com/browse/TK/fixforversion/12131/)
 
 ## Puppet Server 0.4.0
 This release contains improvements based on feedback from the community and
