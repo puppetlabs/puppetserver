@@ -17,11 +17,11 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
                  [puppetlabs/http-client "0.4.0"]
-                 [org.jruby/jruby-core "1.7.15" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
+                 [org.jruby/jruby-core "1.7.17" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.15"]
+                 [org.jruby/jruby-stdlib "1.7.17"]
                  [com.github.jnr/jffi "1.2.7"]
                  [com.github.jnr/jffi "1.2.7" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
