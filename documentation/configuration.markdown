@@ -67,7 +67,7 @@ This file contains the settings for Puppet Server itself.
     certificate is required to access the endpoints in this API.  If set to
     `false`, the client-whitelist will be ignored. Defaults to `true`.
     * `client-whitelist` contains a list of client certnames that are whitelisted
-    to access to the admin API. Any requests made to this endpoint that do not
+    to access the admin API. Any requests made to this endpoint that do not
     present a valid client cert mentioned in this list will be denied access.
 
 ~~~
@@ -130,7 +130,7 @@ a cert signing interface in the PE console. For full documentation, see the
   whitelist will be ignored. Defaults to `true`.
 
   * `client-whitelist` contains a list of client certnames that are whitelisted
-  to access to the certificate_status endpoint. Any requests made to this
+  to access the certificate_status endpoint. Any requests made to this
   endpoint that do not present a valid client cert mentioned in this list will
   be denied access.
 
