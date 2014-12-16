@@ -40,18 +40,38 @@ their capabilities (not unlike how you would debug Ruby code in the MRI interpre
 
 For more info on installing gems for Puppet Server, see [Puppet Server and Gems](./gems.markdown).
 
+## Ruby REPL incompatible with Lein REPL
+
+Please note that a REPL running in Ruby is incompatible with `lein repl`
+because JRuby will not receive data from standard input when running inside
+of `lein repl`.  To use a ruby REPL during development run `puppetserver` from
+source with `lein run` rather than `lein repl`:
+
+    $ lein run --config ~/.puppet-server/puppet-server.conf
+
+The `lein run` command will start the server in the foreground as normal.
+`pry` or `ruby-debug` will display an input prompt once the relevant statement
+is reached.  Expect to see the normal `lein run` output and then the Ruby REPL
+will present itself as compared to `lein repl` which presents a prompt early in
+the process lifecycle.  In this way the "ruby repl" is more of a breakpoint
+than a REPL in the Clojure sense.
+
 ## `ruby-debug`
+
+### Installation
 
 There are many gems available that provide various ways of debugging Ruby code
 depending on what version of Ruby and which Ruby interpreter you're running.
 One of the most common gems is `ruby-debug`, and there is a JRuby-compatible
 version available.  To install it for use in Puppet Server, run:
 
-    $ puppetserver gem install ruby-debug
+    $ sudo puppetserver gem install ruby-debug
 
 Or, if you're running puppetserver from source:
 
     $ lein gem -c /path/to/puppet-server.conf install ruby-debug
+
+### Usage
 
 After installing the gem, you can trigger the debugger by adding a line like this
 to any of the Ruby code that is run in Puppet Server (including the Puppet Ruby
@@ -61,14 +81,26 @@ code):
 
 ## `pry`
 
-Pry is another popular gem for introspecting Ruby code.  It is compatible with
-JRuby, so you can install it via:
+### Installation
 
-    $ puppetserver gem install pry
+Pry is another popular gem for introspecting Ruby code.  It is compatible with
+JRuby.  Install `pry` when running a packaged version of puppetserver using:
+
+    $ sudo puppetserver gem install pry --no-ri --no-rdoc
 
 Or, if you're running puppetserver from source:
 
-    $ lein gem -c /path/to/puppet-server.conf install pry
+    $ lein gem -c ~/puppet-server/puppet-server.conf -- install pry \
+      --no-ri --no-rdoc
+
+### Usage
+
+`puppetserver` should be run in the foreground to make use of the pry repl.
+This involves stopping the background service and starting the server in the
+foreground with the `puppet foreground` subcommand:
+
+    $ sudo service puppetserver stop
+    $ sudo puppetserver foreground
 
 After installing, you can add a line like this to the Ruby code:
 
