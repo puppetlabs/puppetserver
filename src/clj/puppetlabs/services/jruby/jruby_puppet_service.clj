@@ -81,9 +81,15 @@
     (with-jruby-puppet
       jruby-puppet
       jruby-service
-      (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
+      (do-something-with-a-jruby-puppet-instance jruby-puppet)))
+
+  Will throw an IllegalStateException if borrowing an instance of
+  JRubyPuppet times out."
   [jruby-puppet jruby-service & body]
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
+     (if (nil? pool-instance#)
+       (throw (IllegalStateException.
+                "Error: Attempt to borrow a JRuby instance from the pool timed out")))
      (if (core/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)
