@@ -25,7 +25,7 @@
   "This function returns a map containing all of the config settings that
   will be used when running Puppet Server in the repl.  It provides some
   reasonable defaults, but if you'd like to use your own settings, you can
-  define a var `jvm-puppet-conf` in your `user` namespace, and those settings
+  define a var `puppet-server-conf` in your `user` namespace, and those settings
   will be used instead.  (If there is a `user.clj` on the classpath, lein
   will automatically load it when the REPL is started.)"
   []
@@ -39,7 +39,13 @@
      :webserver             {:client-auth "want"
                              :ssl-host    "localhost"
                              :ssl-port    8140}
-     :certificate-authority {:certificate-status {:client-whitelist []}}}))
+     :certificate-authority {:certificate-status {:client-whitelist []
+                                                  :authorization-required false}}
+     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                             :puppetlabs.services.master.master-service/master-service ""
+                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/admin"}
+     :puppet-admin          {:client-whitelist []
+                             :authorization-required false}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
