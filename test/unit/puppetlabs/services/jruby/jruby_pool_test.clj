@@ -20,7 +20,7 @@
 
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
-        config           (jruby-testutils/jruby-puppet-config pool-size)
+        config           (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})
         profiler         jruby-testutils/default-profiler
         pool-context     (create-pool-context config profiler)
         pool             (get-pool pool-context)]
@@ -59,7 +59,7 @@
 
 (deftest prime-pools-failure
   (let [pool-size 2
-        config        (jruby-testutils/jruby-puppet-config pool-size)
+        config        (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})
         profiler      jruby-testutils/default-profiler
         pool-context  (create-pool-context config profiler)
         pool          (get-pool pool-context)

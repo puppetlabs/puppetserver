@@ -37,7 +37,7 @@
              certificate-authority-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
-                  (jruby-testutils/jruby-puppet-config 1))
+                  (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
                 (assoc-in [:jruby-puppet :master-conf-dir]
                           "dev-resources/puppetlabs/services/master/master_service_test/conf")
                 (assoc :webserver {:port 8081})

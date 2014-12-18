@@ -23,7 +23,7 @@
       [jruby/jruby-puppet-pooled-service
        profiler/puppet-profiler-service]
       (-> (jruby-testutils/jruby-puppet-tk-config
-            (jruby-testutils/jruby-puppet-config 4)))
+            (jruby-testutils/jruby-puppet-config {:max-active-instances 4})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)
@@ -50,7 +50,7 @@
       [jruby/jruby-puppet-pooled-service
        profiler/puppet-profiler-service]
       (-> (jruby-testutils/jruby-puppet-tk-config
-            (jruby-testutils/jruby-puppet-config 1)))
+            (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)
@@ -78,7 +78,7 @@
       [jruby/jruby-puppet-pooled-service
        profiler/puppet-profiler-service]
       (-> (jruby-testutils/jruby-puppet-tk-config
-            (jruby-testutils/jruby-puppet-config 1)))
+            (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             real-pool     (-> (tk-services/service-context jruby-service)
                               :pool-context
