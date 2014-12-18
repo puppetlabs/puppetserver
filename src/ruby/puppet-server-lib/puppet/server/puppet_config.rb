@@ -81,9 +81,6 @@ class Puppet::Server::PuppetConfig
     end
     Puppet.push_context({:current_environment => configured_environment},
                         "Update current environment from puppet master's configuration")
-
-    require 'puppet/util/instrumentation'
-    Puppet::Util::Instrumentation.init
   end
 
   def self.configure_indirector_routes
