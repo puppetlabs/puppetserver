@@ -9,13 +9,44 @@ If you have server-side Ruby code in your modules, Puppet Server will run it via
 JRuby. Generally speaking, this only affects custom parser functions and report
 processors. For the vast majority of cases, this shouldn't pose any problems, as JRuby is highly compatible with vanilla Ruby.
 
+Puppet server will not load gems from user specified `GEM_HOME` and `GEM_PATH`
+environment variables because `puppetserver` unsets `GEM_PATH` and manages
+`GEM_HOME`.
+
+### Gems with packaged versions of Puppet Server
+
+The value of `GEM_HOME` when starting the puppetserver process as root using
+a packaged version of `puppetserver` is:
+
+    /var/lib/puppet/jruby-gems
+
+This directory does not exist by default.
+
+### Gems when running Puppet Server from source
+
+The value of `GEM_HOME` when starting the puppetserver process from the
+project root is:
+
+    ./target/jruby-gems
+
+### Gems when running Puppet Server spec tests
+
+The value of `GEM_HOME` when starting the puppetserver JRuby spec tests
+using `rake spec` from the project root is:
+
+    ./vendor/test_gems
+
+This directory is automatically populated by the `rake spec` task if it does
+not already exist.  The directory may be safely removed and it will be
+re-populated the next time `rake spec` is run in your working copy.
+
 ## Installing And Removing Gems
 
 We isolate the Ruby load paths that are accessible to Puppet Server's
 JRuby interpreter, so that it doesn't load any gems or other code that
 you have installed on your system Ruby. If you want Puppet Server to load additional gems, use the Puppet Server-specific `gem` command to install them. For example, to install the foobar gem, use:
 
-`puppetserver gem install foobar`
+    $ sudo puppetserver gem install foobar --no-ri --no-rdoc
 
 The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem` command, so all of the usual arguments and flags should work as expected. For example, to show your locally installed gems, run:
 
@@ -23,7 +54,40 @@ The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem` c
 
 Or, if you're running from source:
 
-    $ lein gem -c /path/to/puppet-server.conf
+    $ lein gem -c ~/.puppet-server/puppet-server.conf list
+
+## Installing Gems for use with development:
+
+When running from source, JRuby uses a `GEM_HOME` of `./target/jruby-gems`
+relative to the current working directory of the process.  `lein gem` should be
+used to install gems into this location using jruby.
+
+NOTE: `./target/jruby-gems` is not used when running the JRuby spec tests, gems
+are instead automatically installed into and loaded from `./vendor/test_gems`.
+If you need to install a gem for use both during development and testing make
+sure the gem is available in both directories.
+
+As an example, the following command installs `pry` locally in the project.
+Note the use of `--` to pass the following command line arguments to the gem
+script.
+
+    $ lein gem --config ~/.puppet-server/puppet-server.conf -- install pry \
+      --no-ri --no-rdoc
+    Fetching: coderay-1.1.0.gem (100%)
+    Successfully installed coderay-1.1.0
+    Fetching: slop-3.6.0.gem (100%)
+    Successfully installed slop-3.6.0
+    Fetching: method_source-0.8.2.gem (100%)
+    Successfully installed method_source-0.8.2
+    Fetching: spoon-0.0.4.gem (100%)
+    Successfully installed spoon-0.0.4
+    Fetching: pry-0.10.1-java.gem (100%)
+    Successfully installed pry-0.10.1-java
+    5 gems installed
+
+With the gem installed into the project tree `pry` can be invoked from inside
+Ruby code.  For more detailed information on `pry` see
+[Puppet Server: Debugging](./dev_debugging.markdown#pry)
 
 ## Gems with Native (C) Extensions
 

@@ -151,11 +151,14 @@ Other useful commands for developers:
 * `lein test` to run the clojure test suite
 * `rake spec` to run the jruby test suite
 
+Installing Ruby Gems for Development
+-----
+
+Please see the [Gems](./gems.markdown) document for detailed information on
+installing Ruby Gems for use in development and testing contexts.
+
 Debugging
 ------
 
-For more information about debugging, see our [Puppet Server: Debugging](./dev_debugging.markdown)
-documentation.
-
-
-
+For more information about debugging both Clojure and JRuby code, please see
+[Puppet Server: Debugging](./dev_debugging.markdown) documentation.
