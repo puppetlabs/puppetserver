@@ -12,15 +12,15 @@ Apache/Passenger Puppet master stack, there are a handful of differences
 due to changes in the underlying architecture. Please see [Puppet Server vs. Apache/Passenger Puppet Master](./documentation/puppetserver_vs_passenger.markdown) for details.
 
 ## Installing Puppet Server
- 
+
 Puppet Server depends on Puppet 3.7.3 or later, so if you install it on a system running an older version of Puppet, installation will also upgrade Puppet itself. Please see [Installing Puppet Server from Packages](./documentation/install_from_packages.markdown) for complete installation  requirements and instructions.
 
 ## Ruby and Puppet Server
 
 Puppet Server is compatible with Ruby 1.9. If you are installing
-Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby. 
+Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby.
 
-Puppet Server uses its own JRuby interpreter, which doesn't load gems or other code from your system Ruby. If you want Puppet Server to load any additional gems, use the Puppet Server-specific `gem` command to install them. See [Puppet Server and Gems](./documentation/gems.markdown) for more information about gems and Puppet Server. 
+Puppet Server uses its own JRuby interpreter, which doesn't load gems or other code from your system Ruby. If you want Puppet Server to load any additional gems, use the Puppet Server-specific `gem` command to install them. See [Puppet Server and Gems](./documentation/gems.markdown) for more information about gems and Puppet Server.
 
 ## Configuration
 
@@ -41,6 +41,15 @@ still applies to using an external Certificate Authority in conjunction with Pup
 
 In network configurations that require external SSL termination, you need to do a few things differently in Puppet Server. Please see the [External SSL Termination](./documentation/external_ssl_termination.markdown) page for details.
 
+## CLI Commands
+
+Puppet Server provides several command-line utilities useful for development
+and debugging purposes. These commands are all aware of `puppet-server.conf`
+and the gems and Ruby code specific to Puppet Server and Puppet, while keeping
+them isolated from your system Ruby.
+
+For more information, see [Puppet Server Subcommands](./documentation/subcommands.markdown).
+
 ## Known Issues
 
 As this application is still in development, there are a few [known issues](./documentation/known_issues.markdown) that you should be aware of.
@@ -48,8 +57,9 @@ As this application is still in development, there are a few [known issues](./do
 ## Developer Documentation
 
 If you are a developer who wants to play with our code, these documents should prove useful:
-* [Running Puppet Server From Source](./documentation/dev_running_from_source.markdown) 
+* [Running Puppet Server From Source](./documentation/dev_running_from_source.markdown)
 * [Debugging](./documentation/dev_debugging.markdown)
+* [Puppet Server Subcommands](./documentation/subcommands.markdown)
 
 ## Issue Tracker
 
@@ -82,4 +92,3 @@ grateful to the developers for building such a great product and for helping us
 work through a few bugs that we've discovered along the way.
 
 [leiningen]: https://github.com/technomancy/leiningen
-
