@@ -28,6 +28,7 @@ end
 gem_uninstall = "#{cli} gem uninstall"
 gem_list = "#{cli} gem list"
 gem_cleanup = "#{cli} gem cleanup"
+gem_env = "#{cli} gem env"
 
 # teardown
 teardown do
@@ -69,7 +70,7 @@ step "Clean up gems that are not required to meet a dependency."
 
 on(master, "#{gem_cleanup}")
 
-step "Verify that current list matchs initial list."
+step "Verify that current list matches initial list."
 
 final_installed_gems = get_gem_list(master, "#{gem_list}")
 
@@ -77,3 +78,10 @@ initial_installed_gems.each do |gem_info|
   assert_send([final_installed_gems, :include?, gem_info])
 end
 
+step "(SERVER-262) Verify the gem env command returns expected information"
+
+on(master, gem_env) do
+  assert_no_match(/ERROR:  While executing gem/, stdout, "gem env blew up!")
+  assert_match(/SHELL PATH:/, stdout, "PATH expected but not present")
+  assert_match(/INSTALLATION DIRECTORY:/, stdout, "GEM_HOME not present")
+end
