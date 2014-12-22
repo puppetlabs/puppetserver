@@ -2,7 +2,8 @@
   (:import (java.security.cert X509Certificate)
            (java.util HashMap)
            (java.io StringReader)
-           (com.puppetlabs.puppetserver JRubyPuppetResponse))
+           (com.puppetlabs.puppetserver JRubyPuppetResponse)
+           (org.apache.commons.io IOUtils))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
             [clojure.walk :as walk]
@@ -62,6 +63,33 @@
       :headers {"Content-Type"     (.getContentType response)
                 "X-Puppet-Version" (.getPuppetVersion response)}})
 
+(defn body-for-jruby
+  "Converts the body from a request into a String if it is a non-binary
+   content type.  Otherwise, just returns back the same body InputStream.
+   Non-binary request bodies are coerced per the appropriate encoding at
+   the Clojure layer.  Binary request bodies, however, need to be preserved
+   in the originating InputStream so that they can be converted at the Ruby
+   layer, where the raw bytes within the stream can be converted losslessly
+   to a Ruby ASCII-8BIT encoded String.  Java has no equivalent to ASCII-8BIT
+   for its Strings."
+  [request]
+  (let [body         (:body request)
+        content-type (if-let [raw-type (:content-type request)]
+                       (string/lower-case raw-type))]
+    (case content-type
+      (nil "" "application/octet-stream") body
+      ; Treatment of the *default* encoding arguably should be much more
+      ; intelligent than just choosing UTF-8.  Basing the default on the
+      ; Content-Type would be an improvement although even this could lead to
+      ; some ambiguities.  For "text/*" Content-Types, for example,
+      ; different RFCs specified that either US-ASCII or ISO-8859-1 could
+      ; be applied - see https://tools.ietf.org/html/rfc6657.  Ideally, this
+      ; should be filled in with a broader list of the different Content-Types
+      ; that Puppet recognizes and the default encodings to use when typical
+      ; Puppet requests do not specify a corresponding charset.
+      (slurp body :encoding (or (:character-encoding request)
+                                "UTF-8")))))
+
 (defn wrap-params-for-jruby
   "Pull parameters from the URL query string and/or urlencoded form POST
    body into the ring request map.  Includes some special processing for
@@ -73,30 +101,25 @@
   ; the ring functions happen to slurp it up first.  This would happen for a
   ; 'application/x-www-form-urlencoded' form post where ring needs to slurp
   ; in the body of the request in order to parse out parameters from the form.
-
-  ; Arguably could use "ISO-8859-1" as the default encoding if one is not
-  ; specified on the request, but "UTF-8" is what ring would use as well.
-  (let [body-string (slurp (:body request)
-                           :encoding (or (:character-encoding request)
-                                         "UTF-8"))]
-        (->
-          request
-          ; Leave the slurped content under an alternate key so that it
-          ; is available to be proxied on to the JRubyPuppet request.
-          (assoc :body-string body-string)
-          ; Body content has been slurped already so wrap it in a new reader
-          ; so that a copy of it can be obtained by ring middleware functions,
-          ; if needed.
-          (assoc :body (StringReader. body-string))
-          ; Compojure request may have destructured parameters from subportions
-          ; of the URL into the params map by this point.  Clear this out
-          ; before invoking the ring middleware param functions so that keys
-          ; pulled from the query string or form body parameters don't
-          ; inadvertently conflict.
-          (assoc :params {})
-          ; Defer to ring middleware to pull out parameters from the query
-          ; string and/or form body.
-          ring-params/params-request)))
+  (let [body-for-jruby (body-for-jruby request)]
+    (->
+      request
+      ; Leave the slurped content under an alternate key so that it
+      ; is available to be proxied on to the JRubyPuppet request.
+      (assoc :body-for-jruby body-for-jruby)
+      ; Body content has been slurped already so wrap it in a new reader
+      ; so that a copy of it can be obtained by ring middleware functions,
+      ; if needed.
+      (assoc :body (if (string? body-for-jruby) (StringReader. body-for-jruby)))
+      ; Compojure request may have destructured parameters from subportions
+      ; of the URL into the params map by this point.  Clear this out
+      ; before invoking the ring middleware param functions so that keys
+      ; pulled from the query string or form body parameters don't
+      ; inadvertently conflict.
+      (assoc :params {})
+      ; Defer to ring middleware to pull out parameters from the query
+      ; string and/or form body.
+      ring-params/params-request)))
 
 (def unauthenticated-client-info
   "Return a map with default info for an unauthenticated client"
@@ -218,7 +241,7 @@
                    :params         (:params request)
                    :remote-addr    (:remote-addr request)
                    :headers        headers
-                   :body           (:body-string request)
+                   :body           (:body-for-jruby request)
                    :request-method (-> (:request-method request)
                                        name
                                        string/upper-case)}]

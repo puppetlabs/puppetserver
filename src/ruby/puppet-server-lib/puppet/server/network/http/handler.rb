@@ -3,6 +3,8 @@ require 'puppet/server/network/http'
 require 'puppet/network/http/handler'
 require 'puppet/server/certificate'
 
+java_import java.io.InputStream
+
 module Puppet::Server::Network::HTTP::Handler
   include Puppet::Network::HTTP::Handler
 
@@ -32,7 +34,12 @@ module Puppet::Server::Network::HTTP::Handler
   end
 
   def body(request)
-    request["body"]
+    body = request["body"]
+    if body.java_kind_of?(InputStream)
+      body.to_io.read()
+    else
+      body
+    end
   end
 
   def params(request)
