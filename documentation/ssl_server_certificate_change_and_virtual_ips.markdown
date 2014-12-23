@@ -1,4 +1,9 @@
-# SSL Server Certificate Change and Virtual IP Addresses
+---
+layout: default
+title: "Puppet Server: SSL Server Certificate Change and Virtual IP Addresses"
+canonical: "/puppetserver/latest/ssl_server_certificate_change_and_virtual_ips.html"
+toc: false
+---
 
 [SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207) documents an
 issue that has been seen with Puppet Server but is not present with the
@@ -10,10 +15,10 @@ for example, be delivering a report to multiple PuppetDB servers behind the
 load-balanced ip address.  The failure in the master's `puppetserver.log` file
 may look like this:
 
-```
+~~~
 2014-11-20 22:04:03,392 ERROR [c.p.h.c.SyncHttpClient] Error executing http request
 javax.net.ssl.SSLHandshakeException: server certificate change is restrictedduring renegotiation
-```
+~~~
 
 One difference between Puppet Server and the Ruby Puppet master is that Puppet
 Server's SSL client connections will attempt to resume an SSL session, using the
