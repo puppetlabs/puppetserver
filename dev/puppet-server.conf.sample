@@ -32,6 +32,7 @@ web-router-service: {
     # These two should not be modified because the Puppet 3.x agent expects them to
     # be mounted at "/"
     "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
+    "puppetlabs.services.file-serving.file-metadata.file-metadata-service/file-metadata-service": ""
     "puppetlabs.services.master.master-service/master-service": ""
 
     # This controls the mount point for the puppet admin API.

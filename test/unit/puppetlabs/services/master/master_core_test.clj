@@ -21,7 +21,6 @@
                    "facts"
                    "file_content"
                    "file_metadatas"
-                   "file_metadata"
                    "file_bucket_file"
                    "resource_type"
                    "resource_types"
