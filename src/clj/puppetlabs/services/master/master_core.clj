@@ -66,11 +66,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
 
-(defn validate-memory-requirements!
-  "On Linux Distributions, parses the /proc/meminfo file to determine
-   the total amount of System RAM, and throws an exception if that
-   is less than 1.1 times the maximum heap size of the JVM. This is done
-   so that the JVM doesn't fail later due to an Out of Memory error."
+(defn meminfo-content
+  "Read and return the contents of /proc/meminfo, if it exists.  Otherwise
+  return nil."
   []
   (when (fs/exists? "/proc/meminfo")
     ; Due to OpenJDK Issue JDK-7132461
@@ -79,15 +77,35 @@
     ; slurping the file directly, since directly slurping the file
     ; causes a call to be made to FileInputStream.available().
     (with-open [mem-info-file (FileInputStream. "/proc/meminfo")]
-      (let [heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024)
-            mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
-                                                (slurp mem-info-file))))
-            required-mem-size (/ heap-size 0.9)]
-        (when (< mem-size required-mem-size)
-          (throw (Error.
-                   (str "Not enough RAM. Puppet Server requires at least "
-                        (int (/ required-mem-size 1024.0))
-                        "MB of RAM."))))))))
+      (slurp mem-info-file))))
+
+; the current max java heap size (-Xmx) in kB defined for with-redefs in tests
+(def max-heap-size (/ (.maxMemory (Runtime/getRuntime)) 1024))
+
+(defn validate-memory-requirements!
+  "On Linux Distributions, parses the /proc/meminfo file to determine
+   the total amount of System RAM, and throws an exception if that
+   is less than 1.1 times the maximum heap size of the JVM. This is done
+   so that the JVM doesn't fail later due to an Out of Memory error."
+  []
+  (when-let [meminfo-file-content (meminfo-content)]
+    (let [heap-size max-heap-size
+          mem-size (Integer. (second (re-find #"MemTotal:\s+(\d+)\s+\S+"
+                                               meminfo-file-content)))
+          required-mem-size (* heap-size 1.1)]
+      (when (< mem-size required-mem-size)
+        (throw (Error.
+                 (str "Not enough available RAM (" (int (/ mem-size 1024.0))
+                      "MB) to safely accommodate the configured JVM heap "
+                      "size of " (int (/ heap-size 1024.0)) "MB.  "
+                      "Puppet Server requires at least "
+                      (int (/ required-mem-size 1024.0))
+                      "MB of available RAM given this heap size, computed as "
+                      "1.1 * max heap (-Xmx).  Either increase available "
+                      "memory or decrease the configured heap size by "
+                      "reducing the -Xms and -Xmx values in JAVA_ARGS in "
+                      "/etc/sysconfig/puppetserver on EL systems or "
+                      "/etc/default/puppetserver on Debian systems.")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
