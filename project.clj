@@ -17,14 +17,24 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
                  [puppetlabs/http-client "0.4.0"]
-                 [org.jruby/jruby-core "1.7.17" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
-                 ;; NOTE: jruby-stdlib packages some unexpected things inside
-                 ;; of its jar; please read the detailed notes above the
-                 ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.17"]
+                 [org.jruby/jruby-core "1.7.18"
+                  :exclusions
+                  [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
+                   org.ow2.asm/asm org.ow2.asm/asm-commons org.ow2.asm/asm-analysis
+                   org.ow2.asm/asm-util com.github.jnr/jnr-constants]]
+                 ;; NOTE: the JRuby poms (as of 1.7.18) had some conflicting transitive dependencies
+                 ;; which necessitated the above exclusions and the following explicit versions of
+                 ;; those transitive deps.  We should check to see if this issue is resolved
+                 ;; in 1.7.19.
                  [com.github.jnr/jffi "1.2.7"]
                  [com.github.jnr/jffi "1.2.7" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
+                 [com.github.jnr/jnr-ffi "2.0.1"]
+                 [com.github.jnr/jnr-constants "0.8.6"]
+                 ;; NOTE: jruby-stdlib packages some unexpected things inside
+                 ;; of its jar; please read the detailed notes above the
+                 ;; 'uberjar-exclusions' example toward the end of this file.
+                 [org.jruby/jruby-stdlib "1.7.18"]
                  [clj-time "0.5.1" :exclusions [joda-time]]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
