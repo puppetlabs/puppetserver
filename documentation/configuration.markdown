@@ -106,7 +106,7 @@ puppet-admin: {
 
 ### `master.conf`
 
-This file contains settings for the Puppet master functionality of Puppet Server. If `allow-header-cert-info` is set to 'true', this allows the `ssl_client_header` and `ssl_client_verify_header` options in puppet.conf to work. By default, this is set to 'false'.
+This file contains settings for the Puppet master functionality of Puppet Server. If `allow-header-cert-info` is set to 'true', this allows the `ssl_client_header` and `ssl_client_verify_header` settings in puppet.conf to work. By default, this is set to 'false'.
 
 ~~~
 master: {
