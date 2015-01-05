@@ -201,9 +201,11 @@ This is the expected workflow for running vcloud tests directly from one's
 laptop.
 
     bundle install --path vendor/bundle
-    export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-i386.cfg
-    export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
+    export BEAKER_CONFIG=./acceptance/config/beaker/jenkins/debian-7-x86_64-mdca.cfg
+    export PACKAGE_BUILD_VERSION=2.0.0.SNAPSHOT.2015.01.05T1228
     export BEAKER_OPTS="--keyfile /home/username/downloads/id_rsa-acceptance"
+    export BEAKER_TYPE=foss
+    export BEAKER_LOADPATH=./acceptance/lib
     bundle exec rake test:acceptance:beaker 
 
 Noteworthy here is BEAKER_OPTS which specifies an acceptance testing specific
@@ -280,7 +282,7 @@ test:acceptance:beaker Rake task and descriptions of the effect each has.
 
 * $BEAKER_TYPE 
   * Beaker CLI Option: --type 
-  * Default: foss 
+  * Default: None
   * Description: Same as the Beaker option.
 
 * $BEAKER_FAILMODE 
@@ -300,7 +302,7 @@ test:acceptance:beaker Rake task and descriptions of the effect each has.
 
 * $BEAKER_LOADPATH 
   * Beaker CLI Option: --load-path 
-  * Default: 
+  * Default: None
   * Description: Same as the Beaker option.
 
 * $BEAKER_HELPER 
