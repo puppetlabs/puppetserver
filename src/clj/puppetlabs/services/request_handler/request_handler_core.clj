@@ -1,16 +1,12 @@
 (ns puppetlabs.services.request-handler.request-handler-core
-  (:import (java.security.cert X509Certificate)
-           (java.util HashMap)
+  (:import (java.util HashMap)
            (java.io StringReader)
-           (com.puppetlabs.puppetserver JRubyPuppetResponse)
-           (org.apache.commons.io IOUtils))
+           (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [clojure.walk :as walk]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.certificate-authority.core :as ssl]
             [ring.middleware.params :as ring-params]
-            [ring.middleware.nested-params :as ring-nested-params]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]))
