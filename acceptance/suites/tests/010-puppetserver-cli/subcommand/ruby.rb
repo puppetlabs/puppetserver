@@ -18,6 +18,14 @@ on(master, cmd) do
   assert_no_match(/UHOH/, stdout)
 end
 
+%w(GEM_PATH RUBYLIB RUBYOPT RUBY_OPTS).each do |var|
+  step "Check that #{var} is cleared"
+  on(master, "#{var}=DOOH #{cli} ruby -- -e 'puts ENV[%{#{var}}] || %{OK}'") do
+    assert(/^OK$/.match(stdout), "#{var} is not being cleared")
+    assert_no_match(/DOOH/, stdout)
+  end
+end
+
 step "Check that FOO_DEBUG is preserved"
 on(master, "FOO_DEBUG=OK #{cli} ruby -e 'puts ENV[%{FOO_DEBUG}] || %{BAD}'") do
   assert_match(/^OK$/, stdout, "FOO_DEBUG is not being preserved")
