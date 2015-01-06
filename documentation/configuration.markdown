@@ -114,7 +114,7 @@ master: {
 }
 ~~~
 
-#### `ca.conf`
+### `ca.conf`
 
 This file contains settings for the Certificate Authority service.
 
