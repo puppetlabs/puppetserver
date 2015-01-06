@@ -16,13 +16,13 @@ end
 # --------------------------------------------------------------------------
 
 # define gems to test
-gems = ['beaker']
+gems = ['nokogiri', 'excon']
 
 additional_gem_source = ENV['GEM_SOURCE']
 # define command lines
 gem_install = "#{cli} gem install --minimal-deps --force"
 if additional_gem_source
-  gem_install += " -s #{additional_gem_source}"
+  gem_install += " --clear-sources --source #{additional_gem_source}"
 end
 
 gem_uninstall = "#{cli} gem uninstall"
