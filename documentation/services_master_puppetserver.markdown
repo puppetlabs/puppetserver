@@ -58,9 +58,11 @@ The CA service uses .pem files in the standard Puppet [`ssldir`](/puppet/latest/
 
 Puppet Server includes an administrative API for triggering maintenance tasks. This is a new feature that doesn't exist in Rack or WEBrick Puppet masters.
 
-Right now, the only administrative task is forcing expiration of all environment caches. This lets you deploy new code to long-timeout environments without having to do a lengthy full restart of the service.
+Right now, the main administrative task is forcing expiration of all environment caches. This lets you deploy new code to long-timeout environments without having to do a lengthy full restart of the service.
 
-- For API docs, see [the page about the `environment-cache` endpoint.](./admin-api/v1/environment-cache.markdown)
+- For API docs, see:
+    - [The `environment-cache` endpoint](./admin-api/v1/environment-cache.markdown)
+    - [The `jruby-pool` endpoint](./admin-api/v1/jruby-pool.markdown)
 - For details about environment caching, see [the page about environment limitations.][env_limits]
 
 [env_limits]: /puppet/latest/reference/environments_limitations.html
@@ -108,7 +110,17 @@ Finally, there's a special "daemon" log file used only for errors that happen be
 
 ### SSL Termination
 
-By default, Puppet Server handles SSL termination automatically. In network configurations that require external SSL termination, you'll need to configure a few other things. See the [External SSL Termination](./external_ssl_termination.html) page for details.
+By default, Puppet Server handles SSL termination automatically.
+
+In network configurations that require external SSL termination (e.g. with a hardware load balancer), you'll need to configure a few other things. See the [External SSL Termination](./external_ssl_termination.html) page for details. In summary, you'll need to:
+
+* Configure Puppet Server to use HTTP instead of HTTPS
+* Configure Puppet Server to accept SSL information via insecure HTTP headers
+* Secure your network so that Puppet Server **cannot** be directly reached by **any** untrusted clients
+* Configure your SSL terminating proxy to set the following HTTP headers:
+    * `X-Client-Verify` (mandatory)
+    * `X-Client-DN` (mandatory for client-verified requests)
+    * `X-Client-Cert` (optional; required for [trusted facts](/puppet/latest/reference/lang_facts_and_builtin_vars.html))
 
 ## Configuring Puppet Server
 
@@ -127,6 +139,6 @@ For detailed information about Puppet Server settings and the conf.d directory, 
 
 While Puppet Server uses Puppet's [auth.conf](/latest/reference/config_file_auth.html) for most access control, access to the `certificate_status` endpoint is controlled in the ca.conf file mentioned above. By default, this file allows no access to this endpoint. (Access to the `certificate`, `certificate_request`, and `certificate_revocation_list` endpoints is always allowed.)
 
-As mentioned above, Puppet Server also uses Puppet's usual config files, including most of the settings in [puppet.conf](/puppet/latest/reference/config_file_main.html). However, Puppet Server does treat some puppet.conf settings differently, and you should be aware of [these differences](puppet_conf_setting_diffs.html).
+As mentioned above, Puppet Server also uses Puppet's usual config files, including most of the settings in [puppet.conf](/puppet/latest/reference/config_file_main.html). However, Puppet Server does treat some puppet.conf settings differently, and you should be aware of [these differences](./puppet_conf_setting_diffs.html).
 
 
