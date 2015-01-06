@@ -41,7 +41,9 @@
     ;; the actual payload is "binary".  Coercing this to
     ;; "application/octet-stream" for now as this is synonymous with "binary".
     ;; This should be removed when/if Puppet agents start using an appropriate
-    ;; Content-Type to describe the input payload.
+    ;; Content-Type to describe the input payload - see PUP-3812 for the core
+    ;; Puppet work and SERVER-294 for the related Puppet Server work that
+    ;; would be done.
     (compojure/PUT "/file_bucket_file/*" request
                    (request-handler (assoc request
                                            :content-type
