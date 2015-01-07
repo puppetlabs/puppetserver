@@ -85,3 +85,20 @@ on(master, gem_env) do
   assert_match(/SHELL PATH:/, stdout, "PATH expected but not present")
   assert_match(/INSTALLATION DIRECTORY:/, stdout, "GEM_HOME not present")
 end
+
+step "Install hiera-eyaml gem."
+on(master, "#{gem_install} hiera-eyaml --no-ri --no-rdoc")
+
+step "Check that ruby subcommand can load hiera/backend/eyaml from hiera-eyaml"
+on(master, "#{cli} ruby -- -rrubygems -rhiera/backend/eyaml -e 'puts %{OK}'") do
+  assert_match(/^OK$/, stdout, "ruby could not load eyaml after gem install")
+  assert_no_match(/Error/i, stdout, "error loading hiera-eyaml library")
+end
+
+step "Check that irb subcommand can load hiera/backend/eyaml from hiera-eyaml"
+cmd = "echo 'puts Hiera::Backend::Eyaml::DESCRIPTION'" \
+      "| #{cli} irb -- -rrubygems -rhiera/backend/eyaml"
+on(master, cmd) do
+  assert_match(/OpenSSL/i, stdout, "hiera-eyaml description does not match")
+  assert_no_match(/Error/i, stdout, "error loading hiera-eyaml library")
+end
