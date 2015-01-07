@@ -78,7 +78,9 @@
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}
 
-             :uberjar {:aot [puppetlabs.trapperkeeper.main]}
+             :uberjar {:aot [puppetlabs.trapperkeeper.main]
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
+
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
   :test-selectors {:default (complement :integration)
