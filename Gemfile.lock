@@ -2,6 +2,12 @@ GEM
   remote: https://rubygems.org/
   specs:
     CFPropertyList (2.2.8)
+    activesupport (4.1.9)
+      i18n (~> 0.6, >= 0.6.9)
+      json (~> 1.7, >= 1.7.7)
+      minitest (~> 5.1)
+      thread_safe (~> 0.1)
+      tzinfo (~> 1.1)
     addressable (2.3.6)
     archive-tar-minitar (0.5.2)
     autoparse (0.3.3)
@@ -78,21 +84,27 @@ GEM
       signet (>= 0.5.0)
       uuidtools (>= 2.1.0)
     hocon (0.0.4)
+    i18n (0.7.0)
     inflecto (0.0.2)
     inifile (2.0.2)
     ipaddress (0.8.0)
+    jira-ruby (0.1.11)
+      activesupport (~> 4.1.4)
+      oauth (~> 0.4.7)
     json (1.8.1)
     jwt (1.0.0)
     launchy (2.4.2)
       addressable (~> 2.3)
     mime-types (1.25.1)
     minitar (0.5.4)
+    minitest (5.5.0)
     multi_json (1.10.1)
     multipart-post (2.0.0)
     net-scp (1.2.1)
       net-ssh (>= 2.6.5)
     net-ssh (2.9.1)
     nokogiri (1.5.11)
+    oauth (0.4.7)
     rake (10.3.2)
     rbvmomi (1.8.1)
       builder
@@ -117,7 +129,10 @@ GEM
       jwt (>= 0.1.5)
       multi_json (>= 1.0.0)
     thor (0.19.1)
+    thread_safe (0.3.4)
     trollop (2.0)
+    tzinfo (1.2.2)
+      thread_safe (~> 0.1)
     unf (0.1.4)
       unf_ext
     unf_ext (0.0.6)
@@ -128,5 +143,6 @@ PLATFORMS
 
 DEPENDENCIES
   beaker (~> 1.17.0)
+  jira-ruby
   rake
   rspec
