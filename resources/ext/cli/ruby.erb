@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-${JAVA_BIN} -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
+"${JAVA_BIN}" -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
     clojure.main -m puppetlabs.puppetserver.cli.ruby \
-    --config ${CONFIG} -- "$@"
+    --config "${CONFIG}" -- "$@"
