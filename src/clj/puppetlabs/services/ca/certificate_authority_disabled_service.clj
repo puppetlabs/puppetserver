@@ -15,4 +15,8 @@
 
   (retrieve-ca-cert!
     [this localcacert]
-    (log/info "CA disabled; ignoring retrieval of CA cert")))
+    (log/info "CA disabled; ignoring retrieval of CA cert"))
+
+  (retrieve-ca-crl!
+    [this localcacrl]
+    (log/info "CA disabled; ignoring retrieval of CA CRL")))

@@ -61,6 +61,7 @@
                   (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
                   (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
                   (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
+                  (test-path! "hostcrl" "target/master-service-test/ca/crl.pem")
                   (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
                   (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
                   (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
