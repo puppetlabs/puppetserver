@@ -28,7 +28,7 @@ When running from source, the format is:
 lein <subcommand> -c /path/to/puppet-server.conf [--] [<args>]
 ~~~
 
-Note that if you are running from source, you need to separate flag arguments (such as `--version` or -`e`) with `--`, as shown above. Otherwise, those arguments will be applied to Leiningen instead of to Puppet Server. This isn't necessary when running from
+Note that if you are running from source, you need to separate flag arguments (such as `--version` or `-e`) with `--`, as shown above. Otherwise, those arguments will be applied to Leiningen instead of to Puppet Server. This isn't necessary when running from
 packages (i.e., `puppetserver <subcommand>`).
 
 ## gem
