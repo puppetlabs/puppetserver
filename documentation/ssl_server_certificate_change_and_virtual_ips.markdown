@@ -41,7 +41,7 @@ The Puppet Enterprise documentation has [instructions for configuring multiple P
 
 It's also possible to configure the JDK to allow server certificate changes. You can do this by editing the `/etc/sysconfig/puppetserver` file and adding `-Djdk.tls.allowUnsafeServerCertChange=true` to the value of the `JAVA_ARGS` variable.
 
-We do not recommend this, because it can make Puppet Server more vulnerable to the TLS triple handshake attack.
+We don't recommend this workaround, however, because it can make Puppet Server more vulnerable to the TLS triple handshake attack.
 
 The use of the `allowUnsafeServerCertChange` property is documented in
 <http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.50>.
