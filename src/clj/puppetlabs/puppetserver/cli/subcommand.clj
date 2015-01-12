@@ -15,6 +15,26 @@
         required [:config]]
     (ks/cli! cli-args specs required)))
 
+(defn environment
+  "Return a map representing the environment suitable for use with Ruby
+  subcommands.  Environment variables puppetserver needs are enforced while
+  all other variables are preserved.  This function manages GEM_HOME,
+  GEM_PATH, RUBYOPT, RUBY_OPTS, and RUBYLIB.
+
+  If no initial-env is provided then System/getenv is used.
+
+  The underlying principle is that a process should preserve as much of the
+  environment as possible in an effort to get out of the end users way.  This
+  includes PATH which should be fully managed elsewhere, e.g. the service
+  management framework."
+  ([config] (environment config (System/getenv)))
+  ([config initial-env]
+    (let [gem-home (get-in config [:jruby-puppet :gem-home])]
+      (-> (into {} initial-env)
+          (dissoc "GEM_PATH" "RUBYOPT" "RUBY_OPTS" "RUBYLIB")
+          (assoc "GEM_HOME" gem-home
+                 "JARS_NO_REQUIRE" "true")))))
+
 (defn load-tk-config
   [cli-data]
   (let [debug? (or (:debug cli-data) false)]

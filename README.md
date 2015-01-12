@@ -45,7 +45,7 @@ In network configurations that require external SSL termination, you need to do 
 
 Puppet Server provides several command-line utilities useful for development
 and debugging purposes. These commands are all aware of `puppet-server.conf`
-and the gems & Ruby code specific to Puppet Server and Puppet, while keeping
+and the gems and Ruby code specific to Puppet Server and Puppet, while keeping
 them isolated from your system Ruby.
 
 For more information, see [Puppet Server Subcommands](./documentation/subcommands.markdown).

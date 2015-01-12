@@ -10,37 +10,6 @@ via JRuby. Generally speaking, this only affects custom parser functions,
 types, and report processors. For the vast majority of cases this shouldn't
 pose any problems because JRuby is highly compatible with vanilla Ruby.
 
-Puppet server will not load gems from user specified `GEM_HOME` and `GEM_PATH`
-environment variables because `puppetserver` unsets `GEM_PATH` and manages
-`GEM_HOME`.
-
-### Gems with packaged versions of Puppet Server
-
-The value of `GEM_HOME` when starting the puppetserver process as root using
-a packaged version of `puppetserver` is:
-
-    /var/lib/puppet/jruby-gems
-
-This directory does not exist by default.
-
-### Gems when running Puppet Server from source
-
-The value of `GEM_HOME` when starting the puppetserver process from the
-project root is:
-
-    ./target/jruby-gems
-
-### Gems when running Puppet Server spec tests
-
-The value of `GEM_HOME` when starting the puppetserver JRuby spec tests
-using `rake spec` from the project root is:
-
-    ./vendor/test_gems
-
-This directory is automatically populated by the `rake spec` task if it does
-not already exist.  The directory may be safely removed and it will be
-re-populated the next time `rake spec` is run in your working copy.
-
 ## Installing And Removing Gems
 
 We isolate the Ruby load paths that are accessible to Puppet Server's
@@ -49,7 +18,7 @@ you have installed on your system Ruby. If you want Puppet Server to load
 additional gems, use the Puppet Server-specific `gem` command to install them.
 For example, to install the foobar gem, use:
 
-    $ sudo puppetserver gem install foobar --no-ri --no-rdoc
+`puppetserver gem install foobar`
 
 The `puppetserver gem` command is simply a wrapper around the usual Ruby `gem`
 command, so all of the usual arguments and flags should work as expected.
