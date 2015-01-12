@@ -13,8 +13,7 @@
   [config initial-env]
   (let [clojure-map-env (into {} initial-env)]
     (assoc clojure-map-env
-           "GEM_HOME" (get-in config [:jruby-puppet :gem-home])
-           "JARS_NO_REQUIRE" "true")))
+           "GEM_HOME" (get-in config [:jruby-puppet :gem-home]))))
 
 (defn run!
   [config args]

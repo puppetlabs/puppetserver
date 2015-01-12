@@ -1,63 +1,58 @@
-# SSL Server Certificate Change and Virtual IP Addresses
-
-[SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207) documents an
-issue that has been seen with Puppet Server but is not present with the
-Ruby-based Puppet master.  When the Puppet Server master needs to make an SSL
-client connection and the connection target is a virtual ip address which is
-load balanced to multiple backing servers, differences in the certificate that
-the target server presents may lead to a connection failure.  The master may,
-for example, be delivering a report to multiple PuppetDB servers behind the
-load-balanced ip address.  The failure in the master's `puppetserver.log` file
-may look like this:
-
-```
-2014-11-20 22:04:03,392 ERROR [c.p.h.c.SyncHttpClient] Error executing http request
-javax.net.ssl.SSLHandshakeException: server certificate change is restrictedduring renegotiation
-```
-
-One difference between Puppet Server and the Ruby Puppet master is that Puppet
-Server's SSL client connections will attempt to resume an SSL session, using the
-session id provided from the server (PuppetDB, in this case), whereas a Ruby
-Puppet master will not.
-
-For the case that a load balancer is sitting between the Puppet master and
-PuppetDB instances and a client connection is directed to a server which has no
-registered session id for the session that the client is trying to resume, the
-SSL handshake would need to be renegotiated.  The JDK, which underlies the
-Puppet Server master, added a check for uniqueness of the server certificate
-during a re-negotiation following a session resumption. This check is done as a
-way to help mitigate the TLS triple handshake attack – see
-https://secure-resumption.com.  The client connection is aborted if the check
-fails.
-
-There are at least a couple of immediate options:
-
-* In order to avoid having the certificate check fail, all end servers could
-present the same certificate.
-
-It appears to be possible for the server certificates to use certificates which
-are different but have some matching attributes – i.e., the ipAddress in the
-SubjectAltName extension, the dNSName in the SubjectAltName extension, and/or
-the subject and issuer.  See
-http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.186.  The
-approach of having certificates with selectively matched attributes may not be
-foolproof, though, in that a future JDK implementation may strengthen the
-comparison to only accept an exact match for the full data in the certificate.
-
-* To the `JAVA_ARGS` variable value in the `/etc/sysconfig/puppetserver`
-configuration file, add `-Djdk.tls.allowUnsafeServerCertChange=true`.
-
-The use of this property is also documented in
-http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.50.  While
-this would appear to allow for the certificate equivalence check to be bypassed
-entirely, this would also open up the Puppet master more fully to the TLS triple
-handshake attack.  For this reason, this is probably not the best solution.
-
+---
+layout: default
+title: "Puppet Server: Known Issues: SSL Server Certificate Change and Virtual IP Addresses"
+canonical: "/puppetserver/latest/ssl_server_certificate_change_and_virtual_ips.html"
 ---
 
-Additionally, we're considering adding the ability via configuration to
+
+Puppet Server can often encounter `server certificate change is restricted` errors when it makes HTTPS requests to a group of load-balanced servers behind a virtual IP address. This page describes the issue and its workarounds, with a little info about future plans.
+
+The behavior described in this page was identified in [SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207).
+
+## Summary of the Problem
+
+The JDK handles HTTPS client connections differently from Ruby, so Puppet Server has some behaviors that aren't seen with a Passenger-based Puppet master.
+
+Specifically: if Puppet Server makes multiple HTTPS requests to the same server, it will attempt to resume an SSL session, using the session ID provided from the server. If that server doesn't have a suitable session ID, Puppet Server and the server it's contacting will try to renegotiate the session.
+
+During the renegotiation, Puppet Server will check to make sure the server is using the same certificate (to [mitigate the TLS triple handshake attack](https://secure-resumption.com)). If that check fails, it will abort the connection.
+
+This means that if Puppet Server is configured to use a load-balanced group of PuppetDB servers (for example), and those PuppetDB servers all use different certificates, it will abort some connections if it isn't always directed to the same PuppetDB server.
+
+These connection failures may look like this in the `puppetserver.log` file:
+
+~~~
+2014-11-20 22:04:03,392 ERROR [c.p.h.c.SyncHttpClient] Error executing http request
+javax.net.ssl.SSLHandshakeException: server certificate change is restricted during renegotiation
+~~~
+
+## Working Around the Problem
+
+### Recommended Workaround
+
+If you need Puppet Server to act as a client to a load-balanced HTTPS service (e.g. multiple PuppetDB servers), your best option right now is to have all of the servers behind the load balancer present the same certificate.
+
+There appear to be ways to fulfill the renegotiation check with certificates that only partially match ([see here for more info](http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.186)), but these might not be foolproof, especially since the JDK implementation may change in the future to disallow these partial matches. The most reliable way is to simply use the same certificates.
+
+The Puppet Enterprise documentation has instructions for configuring multiple PuppetDB servers to use a single certificate, but note that this configuration isn't necessarily supported. [See full instructions here.][pe_instructions]
+
+[pe_instructions]: https://docs.puppetlabs.com/pe/latest/release_notes_known_issues.html#puppetdb-behind-a-load-balancer-causes-puppet-server-errors
+
+### Alternate Workaround
+
+It's also possible to configure the JDK to allow server certificate changes. You can do this by editing the `/etc/sysconfig/puppetserver` file and adding `-Djdk.tls.allowUnsafeServerCertChange=true` to the value of the `JAVA_ARGS` variable.
+
+We do not recommend this, because it can make Puppet Server more vulnerable to the TLS triple handshake attack.
+
+The use of the `allowUnsafeServerCertChange` property is documented in
+<http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.50>.
+
+
+## Future Plans
+
+We're considering adding settings to
 optionally turn off SSL session caching for the Jetty server (when hosting
-Puppet Server and/or PuppetDB) and/or Puppet Server master client requests.
+Puppet Server and/or PuppetDB) and/or Puppet Server's client requests.
 Several JIRA tickets have been filed to cover this work:
 
 * [TK-124](https://tickets.puppetlabs.com/browse/TK-124) - Disable SSL session
@@ -69,13 +64,4 @@ Several JIRA tickets have been filed to cover this work:
   in TK-125 to allow SSL session caching to be disabled for Puppet Server client
   requests.
 
-While the ability to disable SSL session caching would provide mitigation
-against the triple handshake attack, allow different certificates to be used on
-each PuppetDB server, and provide for more backward compatible behavior with the
-Ruby Puppet master, the approach would have performance trade-offs.  Not having
-the ability to use session resumption would force a full SSL handshake to occur
-on each connection for master requests.  If the load balancer were aggressively
-redirecting consecutive requests to different PuppetDB servers, a full handshake
-would inevitably be occurring anyway.  If the load balancer were to redirect at
-least some requests for different connections back to the same server, however,
-session resumption would otherwise have had a performance benefit.
+This approach might have performance trade-offs, although they'd be minimal if the load balancer was distributing requests evenly among all of its servers.

@@ -23,7 +23,7 @@ sure that your JRuby instances are cleaned up and don't have conflicts based
 on common code that appears in multiple environments.
 
 This is an experimental feature, and as such the performance impact is unknown at this time. Also, please
-note that this operation is computationally-expensive, and as such Puppet Server will be unable to fulfill
+note that this operation is computationally expensive, and as such Puppet Server will be unable to fulfill
 any incoming requests until the first of the new interpreters has been initialized, which may take several
 seconds.
 
@@ -35,16 +35,17 @@ The response body will be empty.
 
 
 ### Example
+
 ~~~
-$ curl -i -k -X DELETE https://localhost:8140/puppet-admin-api/v1/jruby-pool
+$ curl -i --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X DELETE https://localhost:8140/puppet-admin-api/v1/jruby-pool
 HTTP/1.1 204 No Content
 ~~~
 
 
 ## Relevant Configuration
 
-This endpoint is gated behind the security provisions in the `puppet-admin`
-part of the configuration data; see
-[this page](../../configuration.markdown)
-for more information.  In the example above, we have configured
-`authorization-required: false` for brevity.
+Access to this endpoint is controlled by the `puppet-admin` section of `puppetserver.conf`. See
+[the configuration page](../../configuration.markdown)
+for more information.
+
+In the example above, the `curl` command is using a certificate and private key. You must make sure this certificate's name is included in the `puppet-admin -> client-whitelist` setting before you can use it.
