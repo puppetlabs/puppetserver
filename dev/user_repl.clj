@@ -42,7 +42,7 @@
      :certificate-authority {:certificate-status {:client-whitelist []
                                                   :authorization-required false}}
      :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                             :puppetlabs.services.master.master-service/master-service ""
+                             :puppetlabs.services.master.master-service/master-service "/puppet"
                              :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/admin"}
      :puppet-admin          {:client-whitelist []
                              :authorization-required false}}))

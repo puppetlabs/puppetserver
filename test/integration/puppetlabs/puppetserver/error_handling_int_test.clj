@@ -39,7 +39,7 @@
           ;; request) to simply ignore any arguments and just throw an Exception.
           (with-redefs [request-handler/handle-request just-throw-it]
             (let [response (http-client/get
-                             "https://localhost:8140/production/catalog/localhost"
+                             "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
                              bootstrap/request-options)]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.Exception: barf"

@@ -14,11 +14,10 @@
     (compojure/GET "/environments" request
                    (request-handler request))))
 
-(defn legacy-routes
-  "Creates the compojure routes to handle the master's 'legacy' routes
-   - ie, any route without a version in its path (eg, /v2.0/whatever) - but
-   excluding the CA-related endpoints, which are handled separately by the
-   CA service."
+(defn v3-routes
+  "Creates the compojure routes to handle the master's '/v3' routes, which
+   includes '/environments' and the non-CA indirected routes. The CA-related
+   endpoints are handled separately by the CA service."
   [request-handler]
   (compojure/routes
     (compojure/GET "/node/*" request
@@ -60,8 +59,8 @@
   (compojure/routes
     (compojure/context "/v2.0" request
                        (v2_0-routes request-handler))
-    (compojure/context "/:environment" [environment]
-                       (legacy-routes request-handler))))
+    (compojure/context "/v3" request
+                       (v3-routes request-handler))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions

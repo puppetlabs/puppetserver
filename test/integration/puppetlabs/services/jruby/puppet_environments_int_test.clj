@@ -71,7 +71,7 @@
 (defn get-catalog
   []
   (-> (http-client/get
-        "https://localhost:8140/production/catalog/localhost"
+        "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
         catalog-request-options)
       :body
       json/parse-string))

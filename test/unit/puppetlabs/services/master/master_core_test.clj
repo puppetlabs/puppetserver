@@ -31,7 +31,7 @@
                    "report"]
              :head ["file_bucket_file"]}
             path paths]
-      (let [resp (request method (str "/foo/" path "/bar"))]
+      (let [resp (request method (str "/v3/" path "/bar"))]
         (is (= 200 (:status resp))
             (str "Did not get 200 for method: "
                  method
