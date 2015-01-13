@@ -29,9 +29,7 @@ webserver: {
 
 # configure the mount points for the web apps
 web-router-service: {
-    # These two should not be modified because the Puppet 3.x agent expects them to
-    # be mounted at "/"
-    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
+    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": "/puppet-ca"
     "puppetlabs.services.master.master-service/master-service": "/puppet"
 
     # This controls the mount point for the puppet admin API.

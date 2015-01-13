@@ -239,7 +239,7 @@
 
 (schema/defn routes
   [ca-settings :- ca/CaSettings]
-  (compojure/context "/:environment" [environment]
+  (compojure/context "/v1" []
     (compojure/routes
       (ANY "/certificate_status/:subject" [subject]
         (certificate-status subject ca-settings))

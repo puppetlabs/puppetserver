@@ -41,7 +41,7 @@
                              :ssl-port    8140}
      :certificate-authority {:certificate-status {:client-whitelist []
                                                   :authorization-required false}}
-     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
                              :puppetlabs.services.master.master-service/master-service "/puppet"
                              :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/admin"}
      :puppet-admin          {:client-whitelist []
