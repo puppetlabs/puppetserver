@@ -1,6 +1,7 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
+            [compojure.route :as route]
             [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]))
 
@@ -60,7 +61,8 @@
     (compojure/context "/v2.0" request
                        (v2_0-routes request-handler))
     (compojure/context "/v3" request
-                       (v3-routes request-handler))))
+                       (v3-routes request-handler))
+    (route/not-found "Not Found")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions

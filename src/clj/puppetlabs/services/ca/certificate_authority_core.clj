@@ -11,6 +11,7 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [compojure.core :as compojure :refer [GET ANY PUT]]
+            [compojure.route :as route]
             [liberator.core :refer [defresource]]
             [liberator.representation :as representation]
             [liberator.dev :as liberator-dev]
@@ -237,23 +238,28 @@
       (ca/get-certificate-statuses settings)
       (as-json-or-pson context))))
 
-(schema/defn routes
+(schema/defn v1-routes
   [ca-settings :- ca/CaSettings]
-  (compojure/context "/v1" []
-    (compojure/routes
-      (ANY "/certificate_status/:subject" [subject]
-        (certificate-status subject ca-settings))
-      (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
-        (certificate-statuses ca-settings)))
-      (GET "/certificate/:subject" [subject]
-        (handle-get-certificate subject ca-settings))
-      (compojure/context "/certificate_request/:subject" [subject]
-        (GET "/" []
-          (handle-get-certificate-request subject ca-settings))
-        (PUT "/" {body :body}
-          (handle-put-certificate-request! subject body ca-settings)))
-      (GET "/certificate_revocation_list/:ignored-node-name" []
-        (handle-get-certificate-revocation-list ca-settings))))
+  (compojure/routes
+    (ANY "/certificate_status/:subject" [subject]
+         (certificate-status subject ca-settings))
+    (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
+         (certificate-statuses ca-settings))
+    (GET "/certificate/:subject" [subject]
+         (handle-get-certificate subject ca-settings))
+    (compojure/context "/certificate_request/:subject" [subject]
+                       (GET "/" []
+                            (handle-get-certificate-request subject ca-settings))
+                       (PUT "/" {body :body}
+                            (handle-put-certificate-request! subject body ca-settings)))
+    (GET "/certificate_revocation_list/:ignored-node-name" []
+         (handle-get-certificate-revocation-list ca-settings))))
+
+(defn routes
+  [ca-settings]
+  (compojure/routes
+    (compojure/context "/v1" [] (v1-routes ca-settings))
+    (route/not-found "Not Found")))
 
 (defn wrap-with-puppet-version-header
   "Function that returns a middleware that adds an
