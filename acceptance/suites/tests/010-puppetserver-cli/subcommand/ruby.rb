@@ -20,11 +20,11 @@ end
 step "Check that FOO_DEBUG is preserved"
 on(master, "FOO_DEBUG=OK #{cli} ruby -e 'puts ENV[%{FOO_DEBUG}] || %{BAD}'") do
   assert_match(/^OK$/, stdout, "FOO_DEBUG is not being preserved")
-  assert_no_match(/BAD/, stdout)
+  assert_no_match(/BAD/, stdout, "FOO_DEBUG is being unset, it should not be")
 end
 
 step "Check that puppet is loadable"
-cmd = "#{cli} ruby -rpuppet -e 'puts %{GOOD: #{Puppet.version}}'"
+cmd = "#{cli} ruby -rpuppet -e 'puts %{GOOD: } + Puppet.version'"
 on(master, cmd) do
   assert_match(/GOOD:/, stdout)
   assert_no_match(/error/i, stdout)
