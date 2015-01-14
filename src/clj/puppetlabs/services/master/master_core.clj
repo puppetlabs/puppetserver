@@ -29,8 +29,6 @@
                    (request-handler request))
     (compojure/GET "/file_metadatas/*" request
                    (request-handler request))
-    (compojure/GET "/file_metadata/*" request
-                   (request-handler request))
     (compojure/GET "/file_bucket_file/*" request
                    (request-handler request))
     (compojure/PUT "/file_bucket_file/*" request

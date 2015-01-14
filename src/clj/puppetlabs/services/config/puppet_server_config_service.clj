@@ -5,8 +5,7 @@
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.services.protocols.puppet-server-config
-             :refer [PuppetServerConfigService]]
+            [puppetlabs.services.protocols.puppet-server-config :refer [PuppetServerConfigService]]
             [puppetlabs.services.config.puppet-server-config-core :as core]
             [puppetlabs.trapperkeeper.services :as tk-services]))
 

@@ -27,6 +27,7 @@
     :cert-inventory
     :certname
     :csrdir
+    :fileserverconfig
     :hostcert
     :hostcrl
     :hostprivkey
