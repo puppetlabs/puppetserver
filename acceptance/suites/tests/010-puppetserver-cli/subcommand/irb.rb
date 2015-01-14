@@ -21,7 +21,7 @@ step "Check that FOO_DEBUG is preserved"
 cmd = "echo 'puts ENV[%{FOO_DEBUG}] || %{BAD}' | FOO_DEBUG=OK #{cli} irb -f"
 on(master, cmd) do
   assert_match(/^OK$/, stdout, "FOO_DEBUG is not being preserved")
-  assert_no_match(/BAD/, stdout)
+  assert_no_match(/^BAD$/, stdout, "FOO_DEBUG is being unset, it should not be")
 end
 
 step "Check that puppet is loadable"
