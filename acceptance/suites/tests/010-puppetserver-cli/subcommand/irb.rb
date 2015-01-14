@@ -25,7 +25,7 @@ on(master, cmd) do
 end
 
 step "Check that puppet is loadable"
-cmd = "echo 'puts %{GOOD: #{Puppet.version}}' | #{cli} irb -rpuppet -f"
+cmd = "echo 'puts %{GOOD: } + Puppet.version' | #{cli} irb -rpuppet -f"
 on(master, cmd) do
   assert_match(/GOOD:/, stdout)
   assert_no_match(/error/i, stdout)
