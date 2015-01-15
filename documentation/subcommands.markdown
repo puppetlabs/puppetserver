@@ -11,6 +11,7 @@ in a Ruby environment --- such as `gem`, `ruby`, and `irb` --- except they run
 against Puppet Server's JRuby installation and gems instead of your system Ruby.
 
 The following subcommands are provided:
+
 * [gem](#gem)
 * [ruby](#ruby)
 * [irb](#irb)
