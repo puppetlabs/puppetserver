@@ -13,6 +13,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
 * [Installation](./install_from_packages.markdown)
 * [Configuring Puppet Server](./configuration.markdown)
 * [Differing Behavior in puppet.conf](./puppet_conf_setting_diffs.markdown)
+* [Subcommands](./subcommands.markdown)
 * [Using Ruby Gems](./gems.markdown)
 * [Using an External CA](./external_ca_configuration.markdown)
 * [External SSL Termination](./external_ssl_termination.markdown)
