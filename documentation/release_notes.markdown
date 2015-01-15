@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 1.0.2
 
-The 1.0.2 release of Puppet Server include several bug fixes. It also improves logging functionality by allowing Logback changes to take effect without a restart.
+The 1.0.2 release of Puppet Server includes several bug fixes. It also improves logging functionality by allowing Logback changes to take effect without a restart.
 
 ### Bug Fixes
 
