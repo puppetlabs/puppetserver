@@ -4,6 +4,36 @@ title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
+## Puppet Server 1.0.2
+
+The 1.0.2 release of Puppet Server include several bug fixes. It also improves logging functionality by allowing Logback changes to take effect without a restart.
+
+### Bug Fixes
+
+#### Filebucket files treated as binary data
+
+Puppet Server now treats filebucket files as binary data. This prevents possible data alteration resulting from Puppet Server inappropriately treating all filebucket files as text data.
+
+* [SERVER-269](https://tickets.puppetlabs.com/browse/SERVER-269): Puppet Server aggressively coerces request data to UTF-8
+
+#### `puppetserver gem env` command now works
+
+This release fixes functionality of the `puppetserver gem env` command. Previously, this command was throwing an error because the entire system environment was being cleared. 
+
+* [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262): `puppetserver gem env` does not work, useful for troubleshooting
+
+#### Startup time extended for systemd 
+
+In 1.0.0, we extended the allowed startup time from 60 to 120 seconds, but we missed the systemd configuration. Now both the init script and systemd configs have the same timeout. 
+
+* [SERVER-166](https://tickets.puppetlabs.com/browse/SERVER-166): Set START_TIMEOUT to 120 seconds for sysv init scripts and systemd.
+
+### Improvements
+
+Puppet Server now picks up changes to logging levels at runtime, rather than requiring a system restart to detect Logback changes.
+
+* [SERVER-275](https://tickets.puppetlabs.com/browse/SERVER-275): Fixed an issue where logback levels weren't changed unless you restarted Puppet Server. 
+
 
 ## Puppet Server 1.0.0
 
