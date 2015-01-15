@@ -34,6 +34,9 @@ Puppet Server now picks up changes to logging levels at runtime, rather than req
 
 * [SERVER-275](https://tickets.puppetlabs.com/browse/SERVER-275): Fixed an issue where logback levels weren't changed unless you restarted Puppet Server. 
 
+## Puppet Server 1.0.1 (Skipped)
+
+This version number was not released.
 
 ## Puppet Server 1.0.0
 
