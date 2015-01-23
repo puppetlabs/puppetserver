@@ -83,7 +83,7 @@
 
 (defn catalog-contains?
   [catalog resource-type resource-title]
-  (let [resources (get-in catalog ["data" "resources"])]
+  (let [resources (get catalog "resources")]
     (some (partial resource-matches? resource-type resource-title) resources)))
 
 ;; This test is written in a way that relies on knowledge about
