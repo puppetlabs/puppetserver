@@ -2,7 +2,7 @@
   (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [puppetlabs.certificate-authority.core :as utils]
+            [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :as sling]
