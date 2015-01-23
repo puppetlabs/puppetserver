@@ -29,8 +29,7 @@ class Puppet::Server::Master
     # Tell Puppet's network layer which routes we are willing handle - which is
     # the master routes, not the CA routes. We are handling the URL prefixes
     # on the Puppet Server side, so we don't include those here.
-    register([Puppet::Network::HTTP::API::Master::V3.routes,
-              Puppet::Network::HTTP::API::Master::V2.routes])
+    register([Puppet::Network::HTTP::API::Master::V3.routes])
   end
 
   def handleRequest(request)

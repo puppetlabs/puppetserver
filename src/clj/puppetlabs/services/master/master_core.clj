@@ -8,13 +8,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
-(defn v2_0-routes
-  "Creates the compojure routes to handle the master's '/v2.0' routes."
-  [request-handler]
-  (compojure/routes
-    (compojure/GET "/environments" request
-                   (request-handler request))))
-
 (defn v3-routes
   "Creates the compojure routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
@@ -58,8 +51,6 @@
   "Creates all of the compojure routes for the master."
   [request-handler]
   (compojure/routes
-    (compojure/context "/v2.0" request
-                       (v2_0-routes request-handler))
     (compojure/context "/v3" request
                        (v3-routes request-handler))
     (route/not-found "Not Found")))

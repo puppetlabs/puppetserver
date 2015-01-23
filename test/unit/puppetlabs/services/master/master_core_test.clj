@@ -11,8 +11,6 @@
         app         (build-ring-handler handler)
         request     (fn r ([path] (r :get path))
                           ([method path] (app (mock/request method path))))]
-    (is (= 404 (:status (request "/v2.0/foo"))))
-    (is (= 200 (:status (request "/v2.0/environments"))))
     (is (= 404 (:status (request "/foo"))))
     (is (= 404 (:status (request "/foo/bar"))))
     (doseq [[method paths]
