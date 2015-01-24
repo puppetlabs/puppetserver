@@ -1,6 +1,7 @@
 (def tk-version "1.0.1")
 (def tk-jetty-version "1.1.0")
 (def ks-version "1.0.0")
+(def ps-version "2.0.0-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -9,7 +10,7 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/puppet-server "2.0.0-SNAPSHOT"
+(defproject puppetlabs/puppet-server ps-version
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
@@ -60,7 +61,17 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5"]]
+  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
+
+  :uberjar-name "puppet-server-release.jar"
+  :lein-ezbake {:vars {:user "puppet"
+                       :group "puppet"
+                       :start-timeout "120"
+                       :build-type "foss"
+                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
+                :resources {:dir "tmp/ezbake-resources"}
+                :config-dir "ezbake/config"}
+
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
 
@@ -78,9 +89,13 @@
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}
 
+             :ezbake {:dependencies ^:replace [[puppetlabs/puppet-server ~ps-version]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
+                                               [org.clojure/tools.nrepl "0.2.3"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.1.0"]]
+                      :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
-
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
   :test-selectors {:default (complement :integration)
@@ -105,5 +120,7 @@
   ;; you should take care to exclude the things that you don't want
   ;; in your final jar.  Here is an example of how you could exclude
   ;; that from the final uberjar:
-  ;:uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
+  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )
+
+
