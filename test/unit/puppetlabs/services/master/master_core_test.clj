@@ -36,6 +36,17 @@
                  ", path: "
                  path))))))
 
+(deftest file-bucket-file
+  (testing (str "that the content-type in the ring request is replaced with "
+                "application/octet-stream for a file_bucket_file put request")
+    (let [handler     (fn ([req] {:request req}))
+          app         (build-ring-handler handler)
+          resp        (app {:request-method :put
+                            :content-type   "text/plain"
+                            :uri            "/v3/file_bucket_file/bar"})]
+      (is (= "application/octet-stream"
+             (get-in resp [:request :content-type]))))))
+
 (defn assert-failure-msg
   "Assert the message thrown by validate-memory-requirements! matches re"
   [re behavior-msg]

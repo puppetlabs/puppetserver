@@ -107,7 +107,15 @@ puppet-admin: {
 
 ### `master.conf`
 
-This file contains settings for the Puppet master functionality of Puppet Server. If `allow-header-cert-info` is set to 'true', this allows the `ssl_client_header` and `ssl_client_verify_header` options in puppet.conf to work. By default, this is set to 'false'.
+This file contains settings for Puppet master features, such as node identification and authorization.
+
+In a default installation, this file doesn't exist. You'll need to create it if you want to set non-default values for these settings.
+
+* `allow-header-cert-info` determines whether Puppet Server should use authorization info from the `X-Client-Verify`, `X-Client-CN`, and `X-Client-Cert` HTTP headers. Defaults to `false`.
+
+    This setting is used to enable [external SSL termination.](./external_ssl_termination.markdown) If enabled, Puppet Server will ignore any actual certificate presented to the Jetty webserver, and will rely completely on header data to authorize requests. This is very dangerous unless you've secured your network to prevent any untrusted access to Puppet Server.
+
+    You can change Puppet's `ssl_client_verify_header` setting to use another header name instead of `X-Client-Verify`; the `ssl_client_header` setting can rename `X-Client-CN`. The `X-Client-Cert` header can't be renamed.
 
 ~~~
 master: {
@@ -115,7 +123,7 @@ master: {
 }
 ~~~
 
-#### `ca.conf`
+### `ca.conf`
 
 This file contains settings for the Certificate Authority service.
 
@@ -126,14 +134,14 @@ always be heavily restricted. Puppet Enterprise uses this endpoint to provide
 a cert signing interface in the PE console. For full documentation, see the
 [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
 
-  * `authorization-required` determines whether a client certificate
-  is required to access the certificate status endpoints. If set to 'false' the
-  whitelist will be ignored. Defaults to `true`.
+    * `authorization-required` determines whether a client certificate
+    is required to access the certificate status endpoints. If set to 'false' the
+    whitelist will be ignored. Defaults to `true`.
 
-  * `client-whitelist` contains a list of client certnames that are whitelisted
-  to access the certificate_status endpoint. Any requests made to this
-  endpoint that do not present a valid client cert mentioned in this list will
-  be denied access.
+    * `client-whitelist` contains a list of client certnames that are whitelisted
+    to access the certificate_status endpoint. Any requests made to this
+    endpoint that do not present a valid client cert mentioned in this list will
+    be denied access.
 
 ~~~
 # CA-related settings
@@ -161,8 +169,7 @@ os-settings: {
 
 All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetserver/puppetserver.log` (open source releases) or `/var/log/pe-puppetserver/puppetserver.log` (Puppet Enterprise). The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
 
-The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on
-configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html).
+The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
 
 Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
 

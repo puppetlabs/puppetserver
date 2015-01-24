@@ -25,15 +25,14 @@ The response body will be empty.
 ### Example
 
 ~~~
-$ curl -i -k -X DELETE https://localhost:8140/puppet-admin-api/v1/environment-cache
+$ curl -i --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X DELETE https://localhost:8140/puppet-admin-api/v1/environment-cache
 HTTP/1.1 204 No Content
 ~~~
 
+## Relevant Configuration
 
-### Relevant Configuration
+Access to this endpoint is controlled by the `puppet-admin` section of `puppetserver.conf`. See
+[the configuration page](../../configuration.markdown)
+for more information.
 
-This endpoint is gated behind the security provisions in the `puppet-admin`
-part of the configuration data; see
-[this page](https://github.com/puppetlabs/puppet-server/blob/master/documentation/configuration.markdown)
-for more information.  In the example above, we have configured
-`authorization-required: false` for brevity.
+In the example above, the `curl` command is using a certificate and private key. You must make sure this certificate's name is included in the `puppet-admin -> client-whitelist` setting before you can use it.
