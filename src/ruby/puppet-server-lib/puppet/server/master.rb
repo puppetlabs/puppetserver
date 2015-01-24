@@ -1,8 +1,8 @@
 require 'puppet/server'
 
 require 'puppet/network/http'
-require 'puppet/network/http/api/v1'
-require 'puppet/network/http/api/v2'
+require 'puppet/network/http/api/master/v2'
+require 'puppet/network/http/api/master/v3'
 
 require 'puppet/server/config'
 require 'puppet/server/puppet_config'
@@ -27,9 +27,9 @@ class Puppet::Server::Master
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config)
     # Tell Puppet's network layer which routes we are willing handle - which is
-    # all of them.  This is copied directly out of the WEBrick handler.
-    register([Puppet::Network::HTTP::API::V2.routes,
-              Puppet::Network::HTTP::API::V1.routes])
+    # the master routes, not the CA routes. We are handling the URL prefixes
+    # on the Puppet Server side, so we don't include those here.
+    register([Puppet::Network::HTTP::API::Master::V3.routes])
   end
 
   def handleRequest(request)

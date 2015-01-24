@@ -61,6 +61,7 @@ namespace :spec do
   end
 end
 
+desc "Run rspec tests"
 task :spec => ["spec:init"] do
   ## Run RSpec via our JRuby dependency
   ## Line 1 tells bundler to use puppet's Gemfile

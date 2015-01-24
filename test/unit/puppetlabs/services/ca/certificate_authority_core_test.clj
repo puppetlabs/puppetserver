@@ -103,7 +103,7 @@
           ring-app (build-ring-handler (testutils/ca-settings cadir) version-number)
           ;; we can just GET the /CRL endpoint, so that's an easy test here.
           request (mock/request :get
-                                "/production/certificate_revocation_list/mynode")
+                                "/v1/certificate_revocation_list/mynode")
           response (ring-app request)]
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
@@ -247,19 +247,19 @@
                                   ["revoked-agent" revoked-agent-status]]]
           (testing subject
             (let [response (test-app
-                            {:uri (str "/production/certificate_status/" subject)
+                            {:uri (str "/v1/certificate_status/" subject)
                              :request-method :get})]
               (is (= 200 (:status response)) (str "Error requesting status for " subject))
               (is (= status (json/parse-string (:body response) true))))))
 
         (testing "returns a 404 when a non-existent certname is given"
-          (let [request {:uri "/production/certificate_status/doesnotexist"
+          (let [request {:uri "/v1/certificate_status/doesnotexist"
                          :request-method :get}
                 response (test-app request)]
             (is (= 404 (:status response)))))
 
         (testing "honors 'Accept: pson' header"
-          (let [request {:uri "/production/certificate_status/localhost"
+          (let [request {:uri "/v1/certificate_status/localhost"
                          :request-method :get
                          :headers {"accept" "pson"}}
                 response (test-app request)]
@@ -268,7 +268,7 @@
             (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
 
         (testing "honors 'Accept: text/pson' header"
-          (let [request {:uri "/production/certificate_status/localhost"
+          (let [request {:uri "/v1/certificate_status/localhost"
                          :request-method :get
                          :headers {"accept" "text/pson"}}
                 response (test-app request)]
@@ -277,7 +277,7 @@
             (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
 
         (testing "honors 'Accept: application/json' header"
-          (let [request {:uri "/production/certificate_status/localhost"
+          (let [request {:uri "/v1/certificate_status/localhost"
                          :request-method :get
                          :headers {"accept" "application/json"}}
                 response (test-app request)]
@@ -287,7 +287,7 @@
 
       (testing "GET /certificate_statuses"
         (let [response (test-app
-                        {:uri "/production/certificate_statuses/thisisirrelevant"
+                        {:uri "/v1/certificate_statuses/thisisirrelevant"
                          :request-method :get})]
           (is (= 200 (:status response)))
           (is (= #{localhost-status test-agent-status revoked-agent-status}
@@ -295,7 +295,7 @@
 
         (testing "with 'Accept: pson'"
           (let [response (test-app
-                          {:uri "/production/certificate_statuses/thisisirrelevant"
+                          {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "pson"}})]
           (is (= 200 (:status response)))
@@ -305,7 +305,7 @@
 
         (testing "with 'Accept: text/pson'"
           (let [response (test-app
-                          {:uri "/production/certificate_statuses/thisisirrelevant"
+                          {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "text/pson"}})]
           (is (= 200 (:status response)))
@@ -315,7 +315,7 @@
 
         (testing "with 'Accept: application/json'"
           (let [response (test-app
-                          {:uri "/production/certificate_statuses/thisisirrelevant"
+                          {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "application/json"}})]
           (is (= 200 (:status response)))
@@ -332,7 +332,7 @@
           (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
             (is (false? (fs/exists? signed-cert-path)))
             (let [response (test-app
-                            {:uri "/production/certificate_status/test-agent"
+                            {:uri "/v1/certificate_status/test-agent"
                              :request-method :put
                              :body (body-stream "{\"desired_state\":\"signed\"}")})]
               (is (true? (fs/exists? signed-cert-path)))
@@ -343,14 +343,14 @@
           (let [cert (utils/pem->cert (ca/path-to-cert (:signeddir settings) "localhost"))]
             (is (false? (utils/revoked? (utils/pem->crl (:cacrl settings)) cert)))
             (let [response (test-app
-                            {:uri "/production/certificate_status/localhost"
+                            {:uri "/v1/certificate_status/localhost"
                              :request-method :put
                              :body (body-stream "{\"desired_state\":\"revoked\"}")})]
               (is (true? (utils/revoked? (utils/pem->crl (:cacrl settings)) cert)))
               (is (= 204 (:status response))))))
 
         (testing "no body results in a 400"
-          (let [request  {:uri "/production/certificate_status/test-agent"
+          (let [request  {:uri "/v1/certificate_status/test-agent"
                           :request-method :put}
                 response (test-app request)]
             (is (= 400 (:status response)))
@@ -358,14 +358,14 @@
 
         (testing "a body that isn't JSON results in a 400"
           (let [request  {:body (body-stream "this is not JSON")
-                          :uri "/production/certificate_status/test-agent"
+                          :uri "/v1/certificate_status/test-agent"
                           :request-method :put}
                 response (test-app request)]
             (is (= 400 (:status response)))
             (is (= (:body response) "Request body is not JSON."))))
 
         (testing "invalid cert status results in a 400"
-          (let [request  {:uri "/production/certificate_status/test-agent"
+          (let [request  {:uri "/v1/certificate_status/test-agent"
                           :request-method :put
                           :body (body-stream "{\"desired_state\":\"bogus\"}")}
                 response (test-app request)]
@@ -374,7 +374,7 @@
                    "State bogus invalid; Must specify desired state of 'signed' or 'revoked' for host test-agent."))))
 
         (testing "returns a 404 when a non-existent certname is given"
-          (let [request {:uri "/production/certificate_status/doesnotexist"
+          (let [request {:uri "/v1/certificate_status/doesnotexist"
                          :request-method :put
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
@@ -387,7 +387,7 @@
                              (wrap-with-ssl-client-cert))]
 
             (testing "Asking to revoke a cert that hasn't been signed yet is a 409"
-              (let [request {:uri            "/production/certificate_status/test-agent"
+              (let [request {:uri            "/v1/certificate_status/test-agent"
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
@@ -399,7 +399,7 @@
                     (ks/pprint-to-string response))))
 
             (testing "trying to sign a cert that's already signed is a 409"
-              (let [request {:uri            "/production/certificate_status/localhost"
+              (let [request {:uri            "/v1/certificate_status/localhost"
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"signed\"}")}
                     response (test-app request)]
@@ -408,7 +408,7 @@
                        "Cannot sign certificate for host localhost without a certificate request"))))
 
             (testing "trying to revoke a cert that's already revoked is a 204"
-              (let [request {:uri            "/production/certificate_status/revoked-agent"
+              (let [request {:uri            "/v1/certificate_status/revoked-agent"
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
@@ -419,20 +419,20 @@
           (fs/copy (ca/path-to-cert-request csrdir "test-agent") csr)
           (is (true? (fs/exists? csr)))
           (is (= 204 (:status (test-app
-                               {:uri "/production/certificate_status/test-agent"
+                               {:uri "/v1/certificate_status/test-agent"
                                 :request-method :delete}))))
           (is (false? (fs/exists? csr))))
 
         (let [cert (ca/path-to-cert (:signeddir settings) "revoked-agent")]
           (is (true? (fs/exists? cert)))
           (is (= 204 (:status (test-app
-                               {:uri "/production/certificate_status/revoked-agent"
+                               {:uri "/v1/certificate_status/revoked-agent"
                                 :request-method :delete}))))
           (is (false? (fs/exists? cert))))
 
         (testing "returns a 404 when a non-existent certname is given"
           (is (= 404 (:status (test-app
-                               {:uri "/production/certificate_status/doesnotexist"
+                               {:uri "/v1/certificate_status/doesnotexist"
                                 :request-method :delete}))))))))
 
   (testing "a signing request w/ a 'application/json' content-type succeeds"
@@ -442,7 +442,7 @@
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
       (let [response (test-app
-                      {:uri            "/production/certificate_status/test-agent"
+                      {:uri            "/v1/certificate_status/test-agent"
                        :request-method :put
                        :headers        {"content-type" "application/json"}
                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
@@ -456,7 +456,7 @@
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
       (let [response (test-app
-                      {:uri            "/production/certificate_status/test-agent"
+                      {:uri            "/v1/certificate_status/test-agent"
                        :request-method :put
                        :headers        {"content-type" "text/pson"}
                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
@@ -470,7 +470,7 @@
           signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
       (is (false? (fs/exists? signed-cert-path)))
       (let [response (test-app
-                      {:uri            "/production/certificate_status/test-agent"
+                      {:uri            "/v1/certificate_status/test-agent"
                        :request-method :put
                        :headers        {"content-type" "pson"}
                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
@@ -482,7 +482,7 @@
           test-app (-> (build-ring-handler settings "42.42.42")
                        (wrap-with-ssl-client-cert))
           response (test-app
-                    {:uri            "/production/certificate_status/test-agent"
+                    {:uri            "/v1/certificate_status/test-agent"
                      :request-method :put
                      :headers        {"content-type" "bogus"}
                      :body           (body-stream "{\"desired_state\":\"signed\"}")})]
@@ -498,7 +498,7 @@
                        (wrap-with-ssl-client-cert))]
 
       (testing "one example - a CSR with DNS alt-names"
-        (let [request {:uri            "/production/certificate_status/hostwithaltnames"
+        (let [request {:uri            "/v1/certificate_status/hostwithaltnames"
                        :request-method :put
                        :body           (body-stream "{\"desired_state\":\"signed\"}")}
               response (test-app request)]
@@ -511,7 +511,7 @@
                       "to sign this request.")))))
 
       (testing "another example - a CSR with an invalid extension"
-        (let [request {:uri            "/production/certificate_status/meow"
+        (let [request {:uri            "/v1/certificate_status/meow"
                        :request-method :put
                        :body           (body-stream "{\"desired_state\":\"signed\"}")}
               response (test-app request)]
@@ -531,7 +531,7 @@
               signed-path (ca/path-to-cert (:signeddir settings) "test-agent")]
           (is (false? (fs/exists? signed-path)))
           (let [response (test-app
-                          {:uri "/production/certificate_status/test-agent"
+                          {:uri "/v1/certificate_status/test-agent"
                            :request-method :put
                            :body (body-stream "{\"desired_state\":\"signed\"}")})]
             (is (true? (fs/exists? signed-path)))
@@ -544,7 +544,7 @@
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
-                          {:uri (str "/production/" endpoint "/test-agent")
+                          {:uri (str "/v1/" endpoint "/test-agent")
                            :request-method :get})]
             (is (= 403 (:status response)))
             (is (= "Forbidden." (:body response))))))))
@@ -557,7 +557,7 @@
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
-                          {:uri (str "/production/" endpoint "/test-agent")
+                          {:uri (str "/v1/" endpoint "/test-agent")
                            :request-method :get
                            :ssl-client-cert localhost-cert})]
             (is (= 403 (:status response)))
@@ -571,7 +571,7 @@
                                           {:client-whitelist whitelist}})
               test-app (build-ring-handler settings "1.2.3.4")
               response (test-app
-                        {:uri             "/production/certificate_status/test-agent"
+                        {:uri             "/v1/certificate_status/test-agent"
                          :request-method  :get
                          :ssl-client-cert localhost-cert})]
           (is (= 200 (:status response)))
@@ -583,7 +583,7 @@
                                           {:client-whitelist whitelist}})
               test-app (build-ring-handler settings "1.2.3.4")
               response (test-app
-                        {:uri             "/production/certificate_statuses/all"
+                        {:uri             "/v1/certificate_statuses/all"
                          :request-method  :get
                          :ssl-client-cert localhost-cert})]
           (is (= 200 (:status response)))
@@ -599,14 +599,14 @@
 
       (testing "certificate_status"
         (let [response (test-app
-                        {:uri            "/production/certificate_status/test-agent"
+                        {:uri            "/v1/certificate_status/test-agent"
                          :request-method :get})]
           (is (= 200 (:status response)))
           (is (= test-agent-status (json/parse-string (:body response) true)))))
 
       (testing "certificate_statuses"
         (let [response (test-app
-                        {:uri            "/production/certificate_statuses/all"
+                        {:uri            "/v1/certificate_statuses/all"
                          :request-method :get})]
           (is (= 200 (:status response)))
           (is (= #{test-agent-status revoked-agent-status localhost-status}

@@ -1,24 +1,17 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
+            [compojure.route :as route]
             [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
-(defn v2_0-routes
-  "Creates the compojure routes to handle the master's '/v2.0' routes."
-  [request-handler]
-  (compojure/routes
-    (compojure/GET "/environments" request
-                   (request-handler request))))
-
-(defn legacy-routes
-  "Creates the compojure routes to handle the master's 'legacy' routes
-   - ie, any route without a version in its path (eg, /v2.0/whatever) - but
-   excluding the CA-related endpoints, which are handled separately by the
-   CA service."
+(defn v3-routes
+  "Creates the compojure routes to handle the master's '/v3' routes, which
+   includes '/environments' and the non-CA indirected routes. The CA-related
+   endpoints are handled separately by the CA service."
   [request-handler]
   (compojure/routes
     (compojure/GET "/node/*" request
@@ -58,10 +51,9 @@
   "Creates all of the compojure routes for the master."
   [request-handler]
   (compojure/routes
-    (compojure/context "/v2.0" request
-                       (v2_0-routes request-handler))
-    (compojure/context "/:environment" [environment]
-                       (legacy-routes request-handler))))
+    (compojure/context "/v3" request
+                       (v3-routes request-handler))
+    (route/not-found "Not Found")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions

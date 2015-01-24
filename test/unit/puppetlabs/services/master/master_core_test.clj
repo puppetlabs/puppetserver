@@ -11,10 +11,8 @@
         app         (build-ring-handler handler)
         request     (fn r ([path] (r :get path))
                           ([method path] (app (mock/request method path))))]
-    (is (nil? (request "/v2.0/foo")))
-    (is (= 200 (:status (request "/v2.0/environments"))))
-    (is (nil? (request "/foo")))
-    (is (nil? (request "/foo/bar")))
+    (is (= 404 (:status (request "/foo"))))
+    (is (= 404 (:status (request "/foo/bar"))))
     (doseq [[method paths]
             {:get ["catalog"
                    "node"
@@ -31,7 +29,7 @@
                    "report"]
              :head ["file_bucket_file"]}
             path paths]
-      (let [resp (request method (str "/foo/" path "/bar"))]
+      (let [resp (request method (str "/v3/" path "/bar"))]
         (is (= 200 (:status resp))
             (str "Did not get 200 for method: "
                  method
