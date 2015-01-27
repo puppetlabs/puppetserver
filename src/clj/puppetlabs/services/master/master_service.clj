@@ -8,12 +8,12 @@
 (defservice master-service
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
-   [:RequestHandlerService handle-request]
+   [:RequestHandlerService handle-request handle-invalid-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]]
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path        (get-route this)
+   (let [path        (get-route this :master-routes)
          config      (get-config)
          certname    (get-in config [:puppet-server :certname])
          localcacert (get-in config [:puppet-server :localcacert])
@@ -27,7 +27,9 @@
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/build-ring-handler handle-request))))
+      (compojure/context path [] (core/build-ring-handler handle-request))
+      {:route-id :master-routes})
+     (add-ring-handler this handle-invalid-request {:route-id :404}))
    context)
   (start
     [this context]

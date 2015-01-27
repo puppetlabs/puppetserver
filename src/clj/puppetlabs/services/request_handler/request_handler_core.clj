@@ -12,6 +12,14 @@
             [slingshot.slingshot :as sling]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def error-message-404
+  (str "Error: This master is running Puppet 4, and the URL format has changed. "
+       "This request was likely made with a Puppet 3 Agent, as it used an invalid "
+       "URL format. Please upgrade your agents to Puppet 4 and try again."))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 (def header-client-cert-name
@@ -277,3 +285,8 @@
       (-> (ring-response/response message)
           (ring-response/status 400)
           (ring-response/content-type "text/plain")))))
+
+(defn handle-invalid-request
+  [_]
+  {:status 404
+   :body error-message-404})

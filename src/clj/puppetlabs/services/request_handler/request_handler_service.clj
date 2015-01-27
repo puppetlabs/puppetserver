@@ -17,4 +17,7 @@
                  [this request]
                  (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
                        config (core/config->request-handler-settings (get-config))]
-                   (handle-request request jruby-service config))))
+                   (handle-request request jruby-service config)))
+               (handle-invalid-request
+                 [this request]
+                 (core/handle-invalid-request request)))

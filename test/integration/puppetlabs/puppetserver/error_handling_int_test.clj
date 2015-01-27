@@ -56,4 +56,17 @@
               (is (= "Internal Server Error: java.lang.NullPointerException"
                      (:body response)))
               (is (re-matches #"text/plain; charset=.*"
-                              (get-in response [:headers "content-type"]))))))))))
+                              (get-in response [:headers "content-type"]))))))
+        (testing "Puppet 3 Master URLs are no longer valid"
+          (let [response (http-client/get
+                           "https://localhost:8140/production/catalog/localhost"
+                           bootstrap/request-options)]
+            (is (= 404 (:status response)))
+            (is (= (:body response) request-handler/error-message-404))))
+
+        (testing "Puppet 3 CA URLs are no longer valid"
+          (let [response (http-client/get
+                           "https://localhost:8140/production/certificate_status/localhost"
+                           bootstrap/request-options)]
+            (is (= 404 (:status response)))
+            (is (= (:body response) request-handler/error-message-404))))))))
