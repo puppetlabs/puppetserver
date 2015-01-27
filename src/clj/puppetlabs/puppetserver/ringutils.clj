@@ -4,7 +4,7 @@
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.certificate-authority.core :as ca-utils]
+            [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.response :as ring]
             [schema.core :as schema]))
 
@@ -28,7 +28,7 @@
   [certificate]
   (-> certificate
       (ca/get-subject)
-      (ca-utils/x500-name->CN)))
+      (ssl-utils/x500-name->CN)))
 
 (defn log-access-denied
   [uri certificate]

@@ -1,7 +1,7 @@
 (ns puppetlabs.services.request-handler.request-handler-core-test
   (:import (java.io StringReader ByteArrayInputStream))
   (:require [puppetlabs.services.request-handler.request-handler-core :as core]
-            [puppetlabs.certificate-authority.core :as cert-utils]
+            [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [clojure.test :refer :all]
@@ -38,7 +38,7 @@
 (deftest get-cert-common-name-test
   (testing (str "expected common name can be extracted from the certificate on "
                 "a request")
-    (let [cert (cert-utils/pem->cert
+    (let [cert (ssl-utils/pem->cert
                  (str test-resources-dir "/localhost.pem"))]
       (is (= "localhost" (core/get-cert-common-name cert)))))
   (testing "nil returned for cn when certificate on request is nil"
@@ -178,8 +178,8 @@
           (is (nil? (get req :client-cert)))))
 
       (testing "cert and cn from header used and not from SSL cert when allow-header-cert-info true"
-        (let [cert (cert-utils/pem->cert
-                    (str test-resources-dir "/localhost.pem"))
+        (let [cert (ssl-utils/pem->cert
+                     (str test-resources-dir "/localhost.pem"))
               req (core/as-jruby-request
                    (puppet-server-config true)
                    {:request-method  :GET
@@ -193,8 +193,8 @@
                  (cert-authority/get-subject (get req :client-cert))))))
 
       (testing "cert and cn from ssl used when allow-header-cert-info false"
-        (let [cert (cert-utils/pem->cert
-                    (str test-resources-dir "/localhost.pem"))
+        (let [cert (ssl-utils/pem->cert
+                     (str test-resources-dir "/localhost.pem"))
               req (core/as-jruby-request
                    (puppet-server-config false)
                    {:request-method  :GET

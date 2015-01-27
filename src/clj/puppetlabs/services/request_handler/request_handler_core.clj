@@ -5,7 +5,7 @@
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.certificate-authority.core :as ssl]
+            [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.middleware.params :as ring-params]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
@@ -125,8 +125,8 @@
 (defn header-auth-info
   "Return a map with authentication info based on header content"
   [header-dn-name header-dn-val header-auth-val]
-  (if (ssl/valid-x500-name? header-dn-val)
-    {:client-cert-cn (ssl/x500-name->CN header-dn-val)
+  (if (ssl-utils/valid-x500-name? header-dn-val)
+    {:client-cert-cn (ssl-utils/x500-name->CN header-dn-val)
      :authenticated  (= "SUCCESS" header-auth-val)}
     (do
       (if-not (nil? header-dn-val)
@@ -157,7 +157,7 @@
   [pem]
   (with-open [reader (StringReader. pem)]
     (try
-      (ssl/pem->certs reader)
+      (ssl-utils/pem->certs reader)
       (catch Exception e
         (throw-bad-request!
           (str "Unable to parse "
