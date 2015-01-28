@@ -1,5 +1,5 @@
 (def tk-version "1.0.1")
-(def tk-jetty-version "1.1.0")
+(def tk-jetty-version "1.1.1")
 (def ks-version "1.0.0")
 (def ps-version "2.0.0-SNAPSHOT")
 
@@ -17,7 +17,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.7.0"]
-                 [puppetlabs/http-client "0.4.0"]
+                 [puppetlabs/http-client "0.4.1"]
                  [org.jruby/jruby-core "1.7.18"
                   :exclusions
                   [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
