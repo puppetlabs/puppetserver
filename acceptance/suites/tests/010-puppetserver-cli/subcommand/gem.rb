@@ -69,7 +69,7 @@ step "Clean up gems that are not required to meet a dependency."
 
 on(master, "#{gem_cleanup}")
 
-step "Verify that current list matches initial list."
+step "Verify that current list matchs initial list."
 
 final_installed_gems = get_gem_list(master, "#{gem_list}")
 
