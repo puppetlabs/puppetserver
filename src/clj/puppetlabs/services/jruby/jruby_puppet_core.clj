@@ -233,7 +233,7 @@
                                                            JRubyPuppet)
                         :scripting-container  scripting-container
                         :environment-registry env-registry})]
-        (.put pool instance)
+        (.putLast pool instance)
         instance))))
 
 (schema/defn ^:always-validate
@@ -293,7 +293,7 @@
   Otherwise returns the instance that was passed in."
   [instance pool]
   (when (instance? PoisonPill instance)
-    (.put pool instance)
+    (.putFirst pool instance)
     (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
                                    (:err instance))))
   instance)
@@ -330,7 +330,7 @@
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool :- pool-queue-type]
-  (let [instance (.take pool)]
+  (let [instance (.takeFirst pool)]
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
@@ -344,11 +344,11 @@
   [pool :- pool-queue-type
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (let [instance (.poll pool timeout TimeUnit/MILLISECONDS)]
+  (let [instance (.pollFirst pool timeout TimeUnit/MILLISECONDS)]
     (validate-instance-from-pool! instance pool)))
 
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
   [instance :- JRubyPuppetInstanceOrRetry]
-  (.put (:pool instance) instance))
+  (.putFirst (:pool instance) instance))
