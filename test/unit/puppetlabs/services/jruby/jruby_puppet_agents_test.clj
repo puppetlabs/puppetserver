@@ -11,7 +11,7 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
   (:import (puppetlabs.services.jruby.jruby_puppet_core RetryPoisonPill)
            (com.puppetlabs.puppetserver JRubyPuppet)
-           (java.util.concurrent ArrayBlockingQueue)))
+           (java.util.concurrent LinkedBlockingDeque)))
 
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
@@ -83,7 +83,7 @@
             real-pool     (-> (tk-services/service-context jruby-service)
                               :pool-context
                               (jruby-core/get-pool))
-            retry-pool    (ArrayBlockingQueue. 1)
+            retry-pool    (LinkedBlockingDeque. 1)
             _             (-> retry-pool (RetryPoisonPill.) jruby-core/return-to-pool)
             mock-pools    [retry-pool retry-pool retry-pool real-pool]
             num-borrows   (atom 0)
