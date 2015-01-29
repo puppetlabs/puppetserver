@@ -1,6 +1,4 @@
 (ns puppetlabs.puppetserver.bootstrap-int-test
-  (:import (java.io IOException)
-           (org.apache.http ConnectionClosedException))
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]))
