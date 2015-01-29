@@ -152,7 +152,7 @@ module PuppetServerExtensions
   end
 
   def get_rubylibdir host, config_key
-    on(host, "ruby -rrbconfig -e \"puts Config::CONFIG['#{config_key}']\"").stdout.strip
+    "/opt/puppetlabs/agent/lib/ruby/vendor_ruby"
   end
 
   def configure_puppet_server
