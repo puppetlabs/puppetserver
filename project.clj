@@ -13,7 +13,7 @@
 (defproject puppetlabs/puppet-server ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.7.0"]
