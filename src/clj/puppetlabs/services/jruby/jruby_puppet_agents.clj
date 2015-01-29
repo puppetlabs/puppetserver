@@ -56,7 +56,7 @@
                        id count))))
       (catch Exception e
         (.clear pool)
-        (.put pool (PoisonPill. e))
+        (.putFirst pool (PoisonPill. e))
         (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
 
 (schema/defn ^:always-validate
@@ -91,7 +91,7 @@
                      id count)
           (catch Exception e
             (.clear new-pool)
-            (.put new-pool (PoisonPill. e))
+            (.putFirst new-pool (PoisonPill. e))
             (throw (IllegalStateException.
                      "There was a problem adding a JRubyPuppet instance to the pool."
                      e))))))
