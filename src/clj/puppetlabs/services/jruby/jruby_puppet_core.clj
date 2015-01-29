@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core
-  (:import (java.util.concurrent ArrayBlockingQueue BlockingQueue TimeUnit)
+  (:import (java.util.concurrent LinkedBlockingDeque BlockingDeque TimeUnit)
            (java.util HashMap)
            (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
            (org.jruby.embed ScriptingContainer LocalContextScope)
@@ -22,7 +22,7 @@
 (def pool-queue-type
   "The Java datastructure type used to store JRubyPuppet instances which are
   free to be borrowed."
-  BlockingQueue)
+  BlockingDeque)
 
 (def jruby-puppet-env
   "The environment variables that should be passed to the Puppet JRuby interpreters.
@@ -231,7 +231,7 @@
   "Instantiate a new queue object to use as the pool of free JRubyPuppet's."
   [size]
   {:post [(instance? pool-queue-type %)]}
-  (ArrayBlockingQueue. size))
+  (LinkedBlockingDeque. size))
 
 (defn verify-config-found!
   [config]
