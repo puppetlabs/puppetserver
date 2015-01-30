@@ -1,7 +1,6 @@
 require 'puppet/server'
 
 require 'puppet/network/http'
-require 'puppet/network/http/api/master/v2'
 require 'puppet/network/http/api/master/v3'
 
 require 'puppet/server/config'
