@@ -12,7 +12,8 @@
             [clojure.stacktrace :as stacktrace]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -98,7 +99,9 @@
           service
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
-        (is (= 1 (jruby-protocol/free-instance-count service)))))))
+        (is (= 1 (jruby-protocol/free-instance-count service)))
+        (let [jruby (jruby-protocol/borrow-instance service)]
+          (is (= 2 (:request-count (jruby-core/instance-state jruby)))))))))
 
 (deftest test-borrow-timeout-configuration
   (testing "configured :borrow-timeout is honored by the borrow-instance service function"
