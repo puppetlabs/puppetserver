@@ -93,4 +93,18 @@
               (is (re-find puppet-server-version-regex (:body response)))
               (is (re-find puppet-version-regex (:body response)))
               (is (re-find puppet-api-regex (:body response)))
-              (is (re-find puppet-ca-api-regex (:body response))))))))))
+              (is (re-find puppet-ca-api-regex (:body response)))))
+
+          (testing "URLs with the /puppet prefix will not get the 404 upgrade message"
+            (let [response (http-client/get
+                             "https://localhost:8140/puppet/unknown"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (nil? (re-find puppet-server-version-regex (:body response))))))
+
+          (testing "URLs with the /puppet-ca prefix will not get the 404 upgrade message"
+            (let [response (http-client/get
+                             "https://localhost:8140/puppet-ca/unknown"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (nil? (re-find puppet-server-version-regex (:body response)))))))))))
