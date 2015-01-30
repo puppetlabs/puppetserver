@@ -44,7 +44,7 @@
                 (assoc :web-router-service
                        {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
                         :puppetlabs.services.master.master-service/master-service {:master-routes "/puppet"
-                                                                                   :404           "/"}}))
+                                                                                   :invalid-in-puppet-4 "/"}}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet
