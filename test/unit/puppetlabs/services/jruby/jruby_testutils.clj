@@ -81,10 +81,11 @@
       (Object.))))
 
 (defn create-mock-pool-instance
-  [pool _ _ _]
+  [pool id _ _]
   (let [instance (jruby-core/map->JRubyPuppetInstance
                    {:pool                 pool
-                    :id                   1
+                    :id                   id
+                    :state                (atom {:request-count 0})
                     :jruby-puppet         (create-mock-jruby-instance)
                     :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]

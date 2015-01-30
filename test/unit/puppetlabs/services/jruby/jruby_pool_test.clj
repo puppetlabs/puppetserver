@@ -4,7 +4,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all :as core]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]))
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -55,7 +56,25 @@
     (testing "Removing an instance decrements the pool size by 1."
       (let [jruby-instance (borrow-from-pool pool)]
         (is (= (free-instance-count pool) (dec pool-size)))
-        (return-to-pool jruby-instance)))))
+        (return-to-pool jruby-instance)))
+
+    (testing "Borrowing an instance increments its request count."
+      (let [drain-via   (fn [borrow-fn] (doall (repeatedly pool-size borrow-fn)))
+            assoc-count (fn [acc jruby]
+                          (assoc acc (:id jruby)
+                                     (:request-count @(:state jruby))))
+            get-counts  (fn [jrubies] (reduce assoc-count {} jrubies))]
+        (doseq [drain-fn [#(jruby-core/borrow-from-pool pool)
+                          #(jruby-core/borrow-from-pool-with-timeout pool 20000)]]
+          (let [jrubies (drain-via drain-fn)
+                counts  (get-counts jrubies)]
+            (jruby-testutils/fill-drained-pool jrubies)
+            (let [jrubies    (drain-via drain-fn)
+                  new-counts (get-counts jrubies)]
+              (jruby-testutils/fill-drained-pool jrubies)
+              (is (= (ks/keyset counts) (ks/keyset new-counts)))
+              (doseq [k (keys counts)]
+                (is (= (inc (counts k)) (new-counts k)))))))))))
 
 (deftest prime-pools-failure
   (let [pool-size 2

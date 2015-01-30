@@ -101,16 +101,33 @@
    :profiler   (schema/maybe PuppetProfiler)
    :pool-state PoolStateContainer})
 
+(def JRubyInstanceState
+  "State metadata for an individual JRubyPuppet instance"
+  {:request-count schema/Int})
+
+(def JRubyInstanceStateContainer
+  "An atom containing the current state of a given JRubyPuppet instance."
+  (schema/pred #(and (instance? Atom %)
+                     (nil? (schema/check JRubyInstanceState @%)))
+               'JRubyInstanceState))
+
 ;; A record representing an individual entry in the JRubyPuppet pool.
 (schema/defrecord JRubyPuppetInstance
   [pool :- pool-queue-type
    id :- schema/Int
+   state :- JRubyInstanceStateContainer
    jruby-puppet :- JRubyPuppet
    scripting-container :- ScriptingContainer
    environment-registry :- (schema/both
                              EnvironmentRegistry
                              (schema/pred
-                               #(satisfies? puppet-env/EnvironmentStateContainer %)))])
+                               #(satisfies? puppet-env/EnvironmentStateContainer %)))]
+  Object
+  (toString [this] (format "%s@%s {:id %s :state (Atom: %s)}"
+                           "puppetlabs.services.jruby.jruby_puppet_core.JRubyPuppetInstance"
+                           (Integer/toHexString (.hashCode this))
+                           id
+                           @state)))
 
 (defn jruby-puppet-instance?
   [x]
@@ -196,6 +213,7 @@
       (let [instance (map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id
+                        :state                (atom {:request-count 0})
                         :jruby-puppet         (.callMethod scripting-container
                                                            ruby-puppet-class
                                                            "new"
@@ -248,18 +266,21 @@
     {:pool         (instantiate-free-pool size)
      :size         size}))
 
-(schema/defn validate-instance-from-pool! :- (schema/maybe JRubyPuppetInstanceOrRetry)
-  "Validate an instance.  The main purpose of this function is to check for
-  a poison pill, which indicates that there was an error when initializing the
-  pool.  If the poison pill is found, returns it to the pool (so that it will
-  be available to other callers) and throws the poison pill's exception.
-  Otherwise returns the instance that was passed in."
-  [instance pool]
-  (when (instance? PoisonPill instance)
-    (.putFirst pool instance)
-    (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
-                                   (:err instance))))
-  instance)
+(schema/defn borrow-from-pool!* :- (schema/maybe JRubyPuppetInstanceOrRetry)
+  "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
+  If successful, updates the state information and returns the JRuby instance.
+  Returns nil if the borrow function returns nil; throws an exception if
+  the borrow function's return value indicates an error condition."
+  [borrow-fn :- (schema/pred ifn?)
+   pool :- pool-queue-type]
+  (let [instance (borrow-fn pool)]
+    (when (instance? PoisonPill instance)
+      (.putFirst pool instance)
+      (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
+                                     (:err instance))))
+    (when (jruby-puppet-instance? instance)
+      (swap! (:state instance) (fn [m] (update-in m [:request-count] inc))))
+    instance))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -281,6 +302,12 @@
   (.size pool))
 
 (schema/defn ^:always-validate
+  instance-state :- JRubyInstanceState
+  "Get the state metadata for a JRubyPuppet instance."
+  [jruby-puppet :- (schema/pred jruby-puppet-instance?)]
+  @(:state jruby-puppet))
+
+(schema/defn ^:always-validate
   mark-all-environments-expired!
   [context :- PoolContext]
   (doseq [jruby-instance (pool->vec context)]
@@ -293,8 +320,8 @@
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool :- pool-queue-type]
-  (let [instance (.takeFirst pool)]
-    (validate-instance-from-pool! instance pool)))
+  (let [borrow-fn #(.takeFirst %)]
+    (borrow-from-pool!* borrow-fn pool)))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe JRubyPuppetInstanceOrRetry)
@@ -307,8 +334,8 @@
   [pool :- pool-queue-type
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (let [instance (.pollFirst pool timeout TimeUnit/MILLISECONDS)]
-    (validate-instance-from-pool! instance pool)))
+  (let [borrow-fn #(.pollFirst % timeout TimeUnit/MILLISECONDS)]
+    (borrow-from-pool!* borrow-fn pool)))
 
 (schema/defn ^:always-validate
   return-to-pool
