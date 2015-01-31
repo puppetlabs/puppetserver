@@ -193,6 +193,7 @@ EOF
     # installed.
     manifest_path = master.tmpfile("puppetserver_manifest.pp")
     herp_path = master.tmpfile("herp")
+    bin_dir = "/opt/puppetlabs/agent/bin/"
 
     manifest_content = <<-EOS
     file { "herp":
@@ -213,7 +214,7 @@ EOF
     on master, "chown #{user}:#{user} #{manifest_path}"
     on master, "chown #{user}:#{user} #{herp_path}"
 
-    on master, "su -s /bin/bash -c \"puppet apply #{manifest_path}\" #{user}"
+    on master, "su -s /bin/bash -c \"#{bin_dir}puppet apply #{manifest_path}\" #{user}"
   end
 
   def upgrade_package(host, name)
