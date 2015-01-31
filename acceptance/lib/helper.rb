@@ -203,6 +203,12 @@ EOF
     EOS
 
     user = master.puppet('master')['user']
+    on master, "groupadd -r puppet"
+    on master, "useradd -r -g puppet -d /opt/puppetlabs/agent/cache #{user} "
+    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/"
+    on master, "mkdir /opt/puppetlabs/agent/cache/reports"
+    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/reports"
+    on master, "chmod 0755 /opt/puppetlabs/agent/cache/reports"
     create_remote_file(master, manifest_path, manifest_content)
     on master, "chown #{user}:#{user} #{manifest_path}"
     on master, "chown #{user}:#{user} #{herp_path}"
