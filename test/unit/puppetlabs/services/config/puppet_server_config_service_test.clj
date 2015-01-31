@@ -19,9 +19,11 @@
    profiler/puppet-profiler-service])
 
 (def required-config
-  (merge (jruby-testutils/jruby-puppet-tk-config
-           (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-         {:webserver    {:port 8081}}))
+  (-> (jruby-testutils/jruby-puppet-tk-config
+        (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+      (assoc-in [:webserver :port] 8081)
+      (assoc-in [:jruby-puppet :master-conf-dir]
+                (str test-resources-dir "/master/conf"))))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/config/puppet_server_config_service_test")
@@ -34,8 +36,7 @@
     app
     service-and-deps
     (-> required-config
-        (assoc :my-config {:foo "bar"})
-        (assoc-in [:jruby-puppet :master-conf-dir] (str test-resources-dir "/master/conf")))
+        (assoc :my-config {:foo "bar"}))
     (testing "Basic puppet-server config service function usage"
 
       (let [service (tk-app/get-service app :PuppetServerConfigService)
@@ -90,7 +91,7 @@
       (with-test-logging
         (is (thrown-with-msg?
               Exception
-              #".*configuration.*conflict.*cacrl.*cacert"
+              #".*configuration.*conflict.*:cacert, :cacrl"
               (tk-testutils/with-app-with-config
                 app service-and-deps (assoc required-config :cacrl "bogus"
                                                             :cacert "meow")
