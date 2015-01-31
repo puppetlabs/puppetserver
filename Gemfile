@@ -9,4 +9,6 @@ group :test do
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils'
   end
+  gem 'httparty'
+  gem 'uuidtools'
 end

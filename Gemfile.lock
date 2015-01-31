@@ -132,6 +132,9 @@ GEM
       retriable (~> 1.4)
       signet (~> 0.6)
     hocon (0.0.7)
+    httparty (0.13.3)
+      json (~> 1.8)
+      multi_xml (>= 0.5.2)
     i18n (0.7.0)
     inflecto (0.0.2)
     inifile (2.0.2)
@@ -147,6 +150,7 @@ GEM
     mini_portile (0.6.2)
     minitest (5.5.1)
     multi_json (1.10.1)
+    multi_xml (0.5.5)
     multipart-post (2.0.0)
     net-scp (1.2.1)
       net-ssh (>= 2.6.5)
@@ -185,12 +189,15 @@ GEM
     unf (0.1.4)
       unf_ext
     unf_ext (0.0.6)
+    uuidtools (2.1.5)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   beaker (~> 2.2)
+  httparty
   jira-ruby
   rake
   rspec
+  uuidtools
