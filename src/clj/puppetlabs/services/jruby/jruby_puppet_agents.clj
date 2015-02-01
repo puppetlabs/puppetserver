@@ -80,21 +80,21 @@
     (reset! pool-state new-pool-state)
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
     (doseq [i (range count)]
-      (let [id (inc i)
-            instance (jruby-core/borrow-from-pool (:pool old-pool))]
-        (try
+      (try
+        (let [id (inc i)
+              instance (jruby-core/borrow-from-pool (:pool old-pool))]
           (.terminate (:scripting-container instance))
           (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
                      id count)
           (jruby-core/create-pool-instance! new-pool id config profiler)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                     id count)
-          (catch Exception e
-            (.clear new-pool)
-            (.putFirst new-pool (PoisonPill. e))
-            (throw (IllegalStateException.
-                     "There was a problem adding a JRubyPuppet instance to the pool."
-                     e))))))
+                     id count))
+        (catch Exception e
+          (.clear new-pool)
+          (.putFirst new-pool (PoisonPill. e))
+          (throw (IllegalStateException.
+                   "There was a problem adding a JRubyPuppet instance to the pool."
+                   e)))))
     (jruby-core/return-to-pool (RetryPoisonPill. (:pool old-pool)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
