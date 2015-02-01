@@ -34,15 +34,13 @@
 
   (borrow-instance
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool pool)))
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/borrow-from-pool pool-context)))
 
   (borrow-instance
     [this timeout]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool-with-timeout pool timeout)))
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/borrow-from-pool-with-timeout pool-context timeout)))
 
   (return-instance
     [this jruby-instance]
