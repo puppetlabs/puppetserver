@@ -116,9 +116,8 @@
         config
         (let [service (app/get-service app :JRubyPuppetService)
               context (services/service-context service)
-              pool-context (:pool-context context)
-              pool (jruby-puppet-core/get-pool pool-context)]
-          (jruby-testutils/drain-pool pool pool-size)
+              pool-context (:pool-context context)]
+          (jruby-testutils/drain-pool pool-context pool-size)
           (let [test-start-in-millis (System/currentTimeMillis)]
             (is (nil? (jruby-protocol/borrow-instance service)))
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))

@@ -55,13 +55,13 @@
   get-pool-state :- jruby-schemas/PoolState
   "Gets the PoolState from the pool context."
   [context :- jruby-schemas/PoolContext]
-  @(:pool-state context))
+  (jruby-internal/get-pool-state context))
 
 (schema/defn ^:always-validate
   get-pool :- jruby-schemas/pool-queue-type
   "Gets the JRubyPuppet pool object from the pool context."
   [context :- jruby-schemas/PoolContext]
-  (:pool (get-pool-state context)))
+  (jruby-internal/get-pool context))
 
 (schema/defn ^:always-validate
   pool->vec :- [JRubyPuppetInstance]
@@ -139,8 +139,8 @@
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
-  [pool :- jruby-schemas/pool-queue-type]
-  (jruby-internal/borrow-from-pool pool))
+  [pool-context :- jruby-schemas/PoolContext]
+  (jruby-internal/borrow-from-pool pool-context))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -150,10 +150,10 @@
   waiting for an instance to be free for the number of milliseconds given in
   timeout. If the timeout runs out then nil will be returned, indicating that
   there were no instances available."
-  [pool :- jruby-schemas/pool-queue-type
+  [pool-context :- jruby-schemas/PoolContext
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (jruby-internal/borrow-from-pool-with-timeout pool timeout))
+  (jruby-internal/borrow-from-pool-with-timeout pool-context timeout))
 
 (schema/defn ^:always-validate
   return-to-pool

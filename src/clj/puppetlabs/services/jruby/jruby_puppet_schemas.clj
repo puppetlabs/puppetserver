@@ -123,6 +123,10 @@
   [x]
   (instance? JRubyPuppetInstance x))
 
+(defn poison-pill?
+  [x]
+  (instance? PoisonPill x))
+
 (defn retry-poison-pill?
   [x]
   (instance? RetryPoisonPill x))
@@ -131,4 +135,10 @@
   (schema/conditional
     jruby-puppet-instance? (schema/pred jruby-puppet-instance?)
     retry-poison-pill? (schema/pred retry-poison-pill?)))
+
+(def JRubyPuppetBorrowResult
+  (schema/pred (some-fn nil?
+                        poison-pill?
+                        retry-poison-pill?
+                        jruby-puppet-instance?)))
 
