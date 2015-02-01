@@ -122,13 +122,40 @@
         (.putLast pool instance)
         instance))))
 
+(schema/defn ^:always-validate
+             get-pool-state :- jruby-schemas/PoolState
+  "Gets the PoolState from the pool context."
+  [context :- jruby-schemas/PoolContext]
+  @(:pool-state context))
+
+(schema/defn ^:always-validate
+  get-pool :- jruby-schemas/pool-queue-type
+  "Gets the JRubyPuppet pool object from the pool context."
+  [context :- jruby-schemas/PoolContext]
+  (:pool (get-pool-state context)))
+
+(schema/defn borrow-without-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
+  [pool :- jruby-schemas/pool-queue-type]
+  (.takeFirst pool))
+
+(schema/defn borrow-with-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
+  [timeout :- schema/Int
+   pool :- jruby-schemas/pool-queue-type]
+  (.pollFirst pool timeout TimeUnit/MILLISECONDS))
+
 (schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
   If successful, updates the state information and returns the JRuby instance.
   Returns nil if the borrow function returns nil; throws an exception if
   the borrow function's return value indicates an error condition."
   [borrow-fn :- (schema/pred ifn?)
-   pool :- jruby-schemas/pool-queue-type]
+   ;; it looks unusual that we accept both the pool and the pool-context
+   ;; as arguments, since the PoolContext contains a reference to a pool.  However,
+   ;; in cases such as a full pool flush operation, there may be two distinct
+   ;; pools in play, and the one in the pool-context may be different from the
+   ;; one we're borrowing from.
+   pool :- jruby-schemas/pool-queue-type
+   pool-context :- jruby-schemas/PoolContext]
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
           (do
@@ -153,9 +180,9 @@
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
-  [pool :- jruby-schemas/pool-queue-type]
-  (let [borrow-fn #(.takeFirst %)]
-    (borrow-from-pool!* borrow-fn pool)))
+  [pool-context :- jruby-schemas/PoolContext]
+  (borrow-from-pool!* borrow-without-timeout-fn
+                      (get-pool pool-context) pool-context))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -165,11 +192,11 @@
   waiting for an instance to be free for the number of milliseconds given in
   timeout. If the timeout runs out then nil will be returned, indicating that
   there were no instances available."
-  [pool :- jruby-schemas/pool-queue-type
+  [pool-context :- jruby-schemas/PoolContext
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (let [borrow-fn #(.pollFirst % timeout TimeUnit/MILLISECONDS)]
-    (borrow-from-pool!* borrow-fn pool)))
+  (borrow-from-pool!* (partial borrow-with-timeout-fn timeout)
+                      (get-pool pool-context) pool-context))
 
 (schema/defn ^:always-validate
   return-to-pool

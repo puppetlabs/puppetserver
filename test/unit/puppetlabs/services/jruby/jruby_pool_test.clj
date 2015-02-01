@@ -50,7 +50,7 @@
 
     (testing "Borrowing all instances from a pool while it is being primed and
              returning them."
-      (let [all-the-jrubys (jruby-testutils/drain-pool pool pool-size)]
+      (let [all-the-jrubys (jruby-testutils/drain-pool pool-context pool-size)]
         (is (= 0 (free-instance-count pool)))
         (doseq [instance all-the-jrubys]
           (is (not (nil? instance)) "One of JRubyPuppet instances is nil"))
@@ -60,9 +60,9 @@
     (testing "Borrowing from an empty pool with a timeout returns nil within the
              proper amount of time."
       (let [timeout              250
-            all-the-jrubys       (jruby-testutils/drain-pool pool pool-size)
+            all-the-jrubys       (jruby-testutils/drain-pool pool-context pool-size)
             test-start-in-millis (System/currentTimeMillis)]
-        (is (nil? (borrow-from-pool-with-timeout pool timeout)))
+        (is (nil? (borrow-from-pool-with-timeout pool-context timeout)))
         (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout)
             "The timeout value was not honored.")
         (jruby-testutils/fill-drained-pool all-the-jrubys)
@@ -70,7 +70,7 @@
             "All JRubyPuppet instances were not returned to the pool.")))
 
     (testing "Removing an instance decrements the pool size by 1."
-      (let [jruby-instance (borrow-from-pool pool)]
+      (let [jruby-instance (borrow-from-pool pool-context)]
         (is (= (free-instance-count pool) (dec pool-size)))
         (return-to-pool jruby-instance)))
 
@@ -80,8 +80,8 @@
                           (assoc acc (:id jruby)
                                      (:request-count @(:state jruby))))
             get-counts  (fn [jrubies] (reduce assoc-count {} jrubies))]
-        (doseq [drain-fn [#(jruby-core/borrow-from-pool pool)
-                          #(jruby-core/borrow-from-pool-with-timeout pool 20000)]]
+        (doseq [drain-fn [#(jruby-core/borrow-from-pool pool-context)
+                          #(jruby-core/borrow-from-pool-with-timeout pool-context 20000)]]
           (let [jrubies (drain-via drain-fn)
                 counts  (get-counts jrubies)]
             (jruby-testutils/fill-drained-pool jrubies)
@@ -97,24 +97,23 @@
         config        (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})
         profiler      jruby-testutils/default-profiler
         pool-context  (create-pool-context config profiler nil)
-        pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [jruby-internal/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (jruby-agents/prime-pool! (:pool-state pool-context) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
             err-msg
-            (borrow-from-pool pool)))
+            (borrow-from-pool pool-context)))
       (is (thrown-with-msg? IllegalStateException
             err-msg
-            (borrow-from-pool-with-timeout pool 120))))
+            (borrow-from-pool-with-timeout pool-context 120))))
     (testing "borrow and borrow-with-timeout both continue to throw exceptions on subsequent calls"
       (is (thrown-with-msg? IllegalStateException
           err-msg
-          (borrow-from-pool pool)))
+          (borrow-from-pool pool-context)))
       (is (thrown-with-msg? IllegalStateException
           err-msg
-          (borrow-from-pool-with-timeout pool 120))))))
+          (borrow-from-pool-with-timeout pool-context 120))))))
 
 (deftest test-default-pool-size
   (logutils/with-test-logging

@@ -83,7 +83,10 @@
     (doseq [i (range count)]
       (try
         (let [id        (inc i)
-              instance  (jruby-internal/borrow-from-pool (:pool old-pool))]
+              instance  (jruby-internal/borrow-from-pool!*
+                          jruby-internal/borrow-without-timeout-fn
+                          (:pool old-pool)
+                          pool-context)]
           (flush-instance! instance new-pool id config profiler)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
