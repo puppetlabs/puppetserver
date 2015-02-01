@@ -60,6 +60,20 @@
         (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
 
 (schema/defn ^:always-validate
+  flush-instance!
+  "Flush a single JRuby instance.  Create a new replacement instance
+  and insert it into the specified pool."
+  [{:keys [scripting-container id]} :- jruby-core/JRubyPuppetInstanceOrRetry
+   new-pool :- jruby-core/pool-queue-type
+   new-id   :- schema/Int
+   config   :- jruby-core/JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)]
+  (.terminate scripting-container)
+  (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
+             id)
+  (jruby-core/create-pool-instance! new-pool new-id config profiler))
+
+(schema/defn ^:always-validate
   flush-pool!
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
@@ -81,12 +95,9 @@
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
     (doseq [i (range count)]
       (try
-        (let [id (inc i)
-              instance (jruby-core/borrow-from-pool (:pool old-pool))]
-          (.terminate (:scripting-container instance))
-          (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
-                     id count)
-          (jruby-core/create-pool-instance! new-pool id config profiler)
+        (let [id        (inc i)
+              instance  (jruby-core/borrow-from-pool (:pool old-pool))]
+          (flush-instance! instance new-pool id config profiler)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
         (catch Exception e
