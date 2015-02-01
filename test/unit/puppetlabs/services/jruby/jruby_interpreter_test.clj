@@ -20,7 +20,9 @@
                                           :master-var-dir  testutils/var-dir}
                            :os-settings  {:ruby-load-path testutils/ruby-load-path}})
           pool          (jruby-internal/instantiate-free-pool 1)
-          pool-instance (jruby-internal/create-pool-instance! pool 1 config testutils/default-profiler)
+          pool-instance (jruby-internal/create-pool-instance! pool 1 config
+                                                              testutils/default-flush-fn
+                                                              testutils/default-profiler)
           jruby-puppet  (:jruby-puppet pool-instance)
           var-dir       (.getSetting jruby-puppet "vardir")]
       (is (not (nil? var-dir)))))
