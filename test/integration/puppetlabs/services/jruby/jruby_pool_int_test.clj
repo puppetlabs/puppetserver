@@ -65,3 +65,5 @@
                       4
                       (constantly
                         "begin; InstanceID; false; rescue NameError; true; end"))))))))
+
+;; TODO: test flush instance while pool flush is in progress
