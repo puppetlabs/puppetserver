@@ -5,7 +5,8 @@
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all
              :as core]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf
@@ -14,9 +15,10 @@
 (deftest create-jruby-instance-test
 
   (testing "Var dir is not required."
-    (let [config        {:ruby-load-path  testutils/ruby-load-path
-                         :gem-home        testutils/gem-home
-                         :master-conf-dir testutils/conf-dir}
+    (let [config        (jruby-core/initialize-config
+                          {:jruby-puppet {:gem-home        testutils/gem-home
+                                          :master-conf-dir testutils/conf-dir}
+                           :os-settings  {:ruby-load-path testutils/ruby-load-path}})
           pool          (instantiate-free-pool 1)
           pool-instance (create-pool-instance! pool 1 config testutils/default-profiler)
           jruby-puppet  (:jruby-puppet pool-instance)

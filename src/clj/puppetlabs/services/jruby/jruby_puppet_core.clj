@@ -76,13 +76,14 @@
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made."
-  {:ruby-load-path                                  [schema/Str]
-   :gem-home                                        schema/Str
-   (schema/optional-key :master-conf-dir)           schema/Str
-   (schema/optional-key :master-var-dir)            schema/Str
-   (schema/optional-key :max-active-instances)      schema/Int
-   (schema/optional-key :http-client-ssl-protocols) [schema/Str]
-   (schema/optional-key :http-client-cipher-suites) [schema/Str]})
+  {:ruby-load-path              (schema/both [schema/Str] (schema/pred vector?))
+   :gem-home                    schema/Str
+   :master-conf-dir             (schema/maybe schema/Str)
+   :master-var-dir              (schema/maybe schema/Str)
+   :http-client-ssl-protocols   [schema/Str]
+   :http-client-cipher-suites   [schema/Str]
+   :max-active-instances        schema/Int
+   :max-requests-per-instance   schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -262,9 +263,8 @@
   create-pool-from-config :- PoolState
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- JRubyPuppetConfig]
-  (let [size (or size default-pool-size)]
-    {:pool         (instantiate-free-pool size)
-     :size         size}))
+  {:pool (instantiate-free-pool size)
+   :size size})
 
 (schema/defn borrow-from-pool!* :- (schema/maybe JRubyPuppetInstanceOrRetry)
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
@@ -284,6 +284,20 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(schema/defn ^:always-validate
+  initialize-config :- JRubyPuppetConfig
+  [config :- {schema/Keyword schema/Any}]
+  (-> (get-in config [:jruby-puppet])
+      (assoc :ruby-load-path (get-in config [:os-settings :ruby-load-path]))
+      (assoc :http-client-ssl-protocols
+             (get-in config [:http-client :ssl-protocols]))
+      (assoc :http-client-cipher-suites
+             (get-in config [:http-client :cipher-suites]))
+      (update-in [:master-conf-dir] #(or % nil))
+      (update-in [:master-var-dir] #(or % nil))
+      (update-in [:max-active-instances] #(or % default-pool-size))
+      (update-in [:max-requests-per-instance] #(or % 0))))
 
 (schema/defn ^:always-validate
   create-pool-context :- PoolContext

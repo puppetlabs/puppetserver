@@ -17,7 +17,8 @@
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
 (def jruby-service-test-config
-  {:jruby-puppet (jruby-testutils/jruby-puppet-config 1)})
+  {:jruby-puppet (jruby-testutils/jruby-puppet-config 1)
+   :os-settings {:ruby-load-path []}})
 
 (deftest test-error-during-init
   (testing

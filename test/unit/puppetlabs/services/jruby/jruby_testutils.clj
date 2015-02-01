@@ -12,6 +12,7 @@
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
 
 (def conf-dir "./target/master-conf")
+(def var-dir "./target/master-var")
 
 (def gem-home "./target/jruby-gem-home")
 
@@ -52,14 +53,13 @@
   JRubyPuppet pool size with be included with the config, otherwise no size
   will be specified."
   ([]
-   {:ruby-load-path  ruby-load-path
-    :gem-home        gem-home
-    :master-conf-dir conf-dir})
+   (jruby-core/initialize-config
+     {:jruby-puppet {:gem-home        gem-home
+                     :master-conf-dir conf-dir
+                     :master-var-dir  var-dir}
+      :os-settings  {:ruby-load-path  ruby-load-path}}))
   ([pool-size]
    (assoc (jruby-puppet-config) :max-active-instances pool-size)))
-
-(def default-config-no-size
-  (jruby-puppet-config))
 
 (def default-profiler
   nil)
