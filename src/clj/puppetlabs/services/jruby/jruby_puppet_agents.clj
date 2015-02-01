@@ -1,5 +1,5 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
-  (:import (clojure.lang IFn Agent)
+  (:import (clojure.lang IFn)
            (com.puppetlabs.puppetserver PuppetProfiler)
            (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill))
   (:require [schema.core :as schema]
@@ -8,28 +8,14 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Schemas
-
-(def JRubyPoolAgent
-  "An agent configured for use in managing JRuby pools"
-  (schema/both Agent
-               (schema/pred
-                 (fn [a]
-                   (let [state @a]
-                     (and
-                       (map? state)
-                       (ifn? (:shutdown-on-error state))))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
 (schema/defn ^:always-validate
-  send-agent :- JRubyPoolAgent
+  send-agent :- jruby-schemas/JRubyPoolAgent
   "Utility function; given a JRubyPoolAgent, send the specified function.
   Ensures that the function call is wrapped in a `shutdown-on-error`."
-  [jruby-agent :- JRubyPoolAgent
+  [jruby-agent :- jruby-schemas/JRubyPoolAgent
    f :- IFn]
   (letfn [(agent-fn [agent-ctxt]
                     (let [shutdown-on-error (:shutdown-on-error agent-ctxt)]
@@ -113,23 +99,21 @@
 ;;; Public
 
 (schema/defn ^:always-validate
-  pool-agent :- JRubyPoolAgent
+  pool-agent :- jruby-schemas/JRubyPoolAgent
   "Given a shutdown-on-error function, create an agent suitable for use in managing
   JRuby pools."
-  [shutdown-on-error-fn :- IFn]
+  [shutdown-on-error-fn :- (schema/maybe (schema/pred ifn?))]
   (agent {:shutdown-on-error shutdown-on-error-fn}))
 
 (schema/defn ^:always-validate
-  send-prime-pool! :- JRubyPoolAgent
+  send-prime-pool! :- jruby-schemas/JRubyPoolAgent
   "Sends a request to the agent to prime the pool using the given pool context."
-  [pool-context :- jruby-schemas/PoolContext
-   pool-agent :- JRubyPoolAgent]
-  (let [{:keys [pool-state config profiler]} pool-context]
+  [pool-context :- jruby-schemas/PoolContext]
+  (let [{:keys [pool-state pool-agent config profiler]} pool-context]
     (send-agent pool-agent #(prime-pool! pool-state config profiler))))
 
 (schema/defn ^:always-validate
-  send-flush-pool! :- JRubyPoolAgent
+  send-flush-pool! :- jruby-schemas/JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool and create a new one."
-  [pool-context :- jruby-schemas/PoolContext
-   pool-agent :- JRubyPoolAgent]
-  (send-agent pool-agent #(flush-pool! pool-context)))
+  [pool-context :- jruby-schemas/PoolContext]
+  (send-agent (:pool-agent pool-context) #(flush-pool! pool-context)))

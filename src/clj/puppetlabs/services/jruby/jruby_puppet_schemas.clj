@@ -2,7 +2,7 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env])
   (:import (java.util.concurrent BlockingDeque)
-           (clojure.lang Atom)
+           (clojure.lang Atom Agent)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (org.jruby.embed ScriptingContainer)))
 
@@ -63,6 +63,16 @@
    :max-active-instances        schema/Int
    :max-requests-per-instance   schema/Int})
 
+(def JRubyPoolAgent
+  "An agent configured for use in managing JRuby pools"
+  (schema/both Agent
+               (schema/pred
+                 (fn [a]
+                   (let [state @a]
+                     (and
+                       (map? state)
+                       ((some-fn nil? ifn?) (:shutdown-on-error state))))))))
+
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
   {:pool         pool-queue-type
@@ -78,6 +88,7 @@
   "The data structure that stores all JRubyPuppet pools and the original configuration."
   {:config     JRubyPuppetConfig
    :profiler   (schema/maybe PuppetProfiler)
+   :pool-agent JRubyPoolAgent
    :pool-state PoolStateContainer})
 
 (def JRubyInstanceState

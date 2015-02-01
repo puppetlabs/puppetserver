@@ -35,7 +35,7 @@
                    set)))
         (jruby-protocol/flush-jruby-pool! jruby-service)
         ; wait until the flush is complete
-        (await (:pool-agent context))
+        (await (:pool-agent pool-context))
         (let [new-pool (jruby-core/get-pool pool-context)]
           (is (every? true?
                       (jruby-testutils/reduce-over-jrubies!
@@ -68,7 +68,7 @@
         ; wait until we know the new pool has been swapped in
         @pool-state-swapped
         ; wait until the flush is complete
-        (await (:pool-agent context))
+        (await (:pool-agent pool-context))
         (let [old-pool-instance (jruby-core/borrow-from-pool old-pool)]
           (is (jruby-schemas/retry-poison-pill? old-pool-instance)))))))
 
