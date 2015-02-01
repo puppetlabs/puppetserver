@@ -8,8 +8,9 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
-  (:import (puppetlabs.services.jruby.jruby_puppet_core RetryPoisonPill)
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
+  (:import (puppetlabs.services.jruby.jruby_puppet_schemas RetryPoisonPill)
            (com.puppetlabs.puppetserver JRubyPuppet)
            (java.util.concurrent LinkedBlockingDeque)))
 
@@ -69,7 +70,7 @@
         ; wait until the flush is complete
         (await (:pool-agent context))
         (let [old-pool-instance (jruby-core/borrow-from-pool old-pool)]
-          (is (jruby-core/retry-poison-pill? old-pool-instance)))))))
+          (is (jruby-schemas/retry-poison-pill? old-pool-instance)))))))
 
 (deftest with-jruby-retry-test-via-mock-get-pool
   (testing "with-jruby-puppet retries if it encounters a RetryPoisonPill"

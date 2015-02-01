@@ -2,9 +2,9 @@
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
            (org.jruby.embed ScriptingContainer LocalContextScope))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -82,7 +82,7 @@
 
 (defn create-mock-pool-instance
   [pool id _ _]
-  (let [instance (jruby-core/map->JRubyPuppetInstance
+  (let [instance (jruby-schemas/map->JRubyPuppetInstance
                    {:pool                 pool
                     :id                   id
                     :state                (atom {:request-count 0})

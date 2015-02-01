@@ -1,11 +1,12 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
   (:import (clojure.lang IFn Agent)
-           (puppetlabs.services.jruby.jruby_puppet_core PoisonPill RetryPoisonPill)
-           (com.puppetlabs.puppetserver PuppetProfiler))
+           (com.puppetlabs.puppetserver PuppetProfiler)
+           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill))
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,8 +41,8 @@
   prime-pool!
   "Sequentially fill the pool with new JRubyPuppet instances.  NOTE: this
   function should never be called except by the pool-agent."
-  [pool-state :- jruby-core/PoolStateContainer
-   config :- jruby-core/JRubyPuppetConfig
+  [pool-state :- jruby-schemas/PoolStateContainer
+   config :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [pool (:pool @pool-state)]
     (log/debug (str "Initializing JRubyPuppet instances with the following settings:\n"
@@ -63,10 +64,10 @@
   flush-instance!
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
-  [{:keys [scripting-container id]} :- jruby-core/JRubyPuppetInstanceOrRetry
-   new-pool :- jruby-core/pool-queue-type
+  [{:keys [scripting-container id]} :- jruby-schemas/JRubyPuppetInstanceOrRetry
+   new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
-   config   :- jruby-core/JRubyPuppetConfig
+   config   :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (.terminate scripting-container)
   (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
@@ -77,7 +78,7 @@
   flush-pool!
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
-  [pool-context :- jruby-core/PoolContext]
+  [pool-context :- jruby-schemas/PoolContext]
   ;; Since this function is only called by the pool-agent, and since this
   ;; is the only entry point into the pool flushing code that is exposed by the
   ;; service API, we know that if we receive multiple flush requests before the
@@ -121,7 +122,7 @@
 (schema/defn ^:always-validate
   send-prime-pool! :- JRubyPoolAgent
   "Sends a request to the agent to prime the pool using the given pool context."
-  [pool-context :- jruby-core/PoolContext
+  [pool-context :- jruby-schemas/PoolContext
    pool-agent :- JRubyPoolAgent]
   (let [{:keys [pool-state config profiler]} pool-context]
     (send-agent pool-agent #(prime-pool! pool-state config profiler))))
@@ -129,6 +130,6 @@
 (schema/defn ^:always-validate
   send-flush-pool! :- JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool and create a new one."
-  [pool-context :- jruby-core/PoolContext
+  [pool-context :- jruby-schemas/PoolContext
    pool-agent :- JRubyPoolAgent]
   (send-agent pool-agent #(flush-pool! pool-context)))
