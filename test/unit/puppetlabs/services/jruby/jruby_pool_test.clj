@@ -18,8 +18,8 @@
   (testing "malformed configuration fails"
     (let [malformed-config {:illegal-key [1 2 3]}]
       (is (thrown-with-msg? ExceptionInfo
-                            #"Input to create-pool-from-config does not match schema"
-                            (create-pool-context malformed-config nil)))))
+                            #"Input to create-pool-context does not match schema"
+                            (create-pool-context malformed-config nil nil)))))
   (let [minimal-config {:jruby-puppet {:gem-home "/dev/null"
                                        :master-conf-dir "/dev/null"
                                        :master-var-dir "/dev/null"}
@@ -39,7 +39,7 @@
   (let [pool-size        2
         config           (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})
         profiler         jruby-testutils/default-profiler
-        pool-context     (create-pool-context config profiler)
+        pool-context     (create-pool-context config profiler nil)
         pool             (get-pool pool-context)]
 
     (testing "The pool should not yet be full as it is being primed in the
@@ -96,7 +96,7 @@
   (let [pool-size 2
         config        (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})
         profiler      jruby-testutils/default-profiler
-        pool-context  (create-pool-context config profiler)
+        pool-context  (create-pool-context config profiler nil)
         pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [jruby-internal/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
@@ -120,7 +120,7 @@
   (logutils/with-test-logging
     (let [config (jruby-testutils/jruby-puppet-config)
           profiler jruby-testutils/default-profiler
-          pool (create-pool-context config profiler)
+          pool (create-pool-context config profiler nil)
           pool-state @(:pool-state pool)]
       (is (= (core/default-pool-size (ks/num-cpus)) (:size pool-state))))))
 

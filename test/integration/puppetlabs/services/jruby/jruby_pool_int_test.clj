@@ -59,7 +59,7 @@
                          ssl-request-options)]
           (is (= 204 (:status response))))
         ; wait until the flush is complete
-        (await (:pool-agent context))
+        (await (:pool-agent pool-context))
         (let [new-pool (jruby-core/get-pool pool-context)]
           (is (every? true?
                       (jruby-testutils/reduce-over-jrubies!

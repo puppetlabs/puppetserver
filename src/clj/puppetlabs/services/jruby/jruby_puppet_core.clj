@@ -3,8 +3,10 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal])
-  (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents])
+  (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
+           (com.puppetlabs.puppetserver PuppetProfiler)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -104,9 +106,12 @@
   create-pool-context :- jruby-schemas/PoolContext
   "Creates a new JRubyPuppet pool context with an empty pool. Once the JRubyPuppet
   pool object has been created, it will need to be filled using `prime-pool!`."
-  [config profiler]
+  [config :- jruby-schemas/JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)
+   agent-shutdown-fn :- (schema/maybe (schema/pred ifn?))]
   {:config     config
    :profiler   profiler
+   :pool-agent (jruby-agents/pool-agent agent-shutdown-fn)
    :pool-state (atom (jruby-internal/create-pool-from-config config))})
 
 (schema/defn ^:always-validate
