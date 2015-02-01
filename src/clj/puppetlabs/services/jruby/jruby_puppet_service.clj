@@ -8,24 +8,6 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Constants
-
-(def default-borrow-timeout
-  "Default timeout when borrowing instances from the JRuby pool in
-   milliseconds. Current value is 1200000ms, or 20 minutes."
-  1200000)
-
-(def default-http-connect-timeout
-  "The default number of milliseconds that the client will wait for a connection
-  to be established. Currently set to 2 minutes."
-  (* 2 60 1000))
-
-(def default-http-socket-timeout
-  "The default number of milliseconds that the client will allow for no data to
-  be available on the socket. Currently set to 20 minutes."
-  (* 20 60 1000))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 ;; This service uses TK's normal config service instead of the
@@ -33,29 +15,17 @@
 
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
-                          [[:ConfigService get-in-config]
+                          [[:ConfigService get-config]
                            [:ShutdownService shutdown-on-error]
                            [:PuppetProfilerService get-profiler]]
   (init
     [this context]
-    (let [config            (-> (get-in-config [:jruby-puppet])
-                              (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
-                              (assoc :http-client-ssl-protocols
-                                     (get-in-config [:http-client :ssl-protocols]))
-                              (assoc :http-client-cipher-suites
-                                     (get-in-config [:http-client :cipher-suites]))
-                              (assoc :http-client-connect-timeout-milliseconds
-                                     (get-in-config [:http-client :connect-timeout-milliseconds]
-                                                    default-http-connect-timeout))
-                              (assoc :http-client-idle-timeout-milliseconds
-                                     (get-in-config [:http-client :idle-timeout-milliseconds]
-                                                    default-http-socket-timeout)))
+    (let [config            (core/initialize-config (get-config))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
           pool-agent        (jruby-agents/pool-agent agent-shutdown-fn)
           profiler          (get-profiler)
-          borrow-timeout    (get-in-config [:jruby-puppet :borrow-timeout]
-                                           default-borrow-timeout)]
+          borrow-timeout    (get config :borrow-timeout)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config profiler)]

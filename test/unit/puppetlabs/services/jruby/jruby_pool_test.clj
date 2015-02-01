@@ -19,7 +19,21 @@
     (let [malformed-config {:illegal-key [1 2 3]}]
       (is (thrown-with-msg? ExceptionInfo
                             #"Input to create-pool-from-config does not match schema"
-                            (create-pool-context malformed-config nil))))))
+                            (create-pool-context malformed-config nil)))))
+  (let [minimal-config {:jruby-puppet {:gem-home "/dev/null"
+                                       :master-conf-dir "/dev/null"
+                                       :master-var-dir "/dev/null"}
+                        :os-settings  {:ruby-load-path ["/dev/null"]}}
+        config        (jruby-core/initialize-config minimal-config)]
+    (testing "max-active-instances is set to default if not specified"
+      (is (= (jruby-core/default-pool-size (ks/num-cpus)) (:max-active-instances config))))
+    (testing "max-requests-per-instance is set to 0 if not specified"
+      (is (= 0 (:max-requests-per-instance config))))
+    (testing "max-requests-per-instance is honored if specified"
+      (is (= 5 (-> minimal-config
+                   (assoc-in [:jruby-puppet :max-requests-per-instance] 5)
+                   (jruby-core/initialize-config)
+                   :max-requests-per-instance))))))
 
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
@@ -104,7 +118,7 @@
 
 (deftest test-default-pool-size
   (logutils/with-test-logging
-    (let [config jruby-testutils/default-config-no-size
+    (let [config (jruby-testutils/jruby-puppet-config)
           profiler jruby-testutils/default-profiler
           pool (create-pool-context config profiler)
           pool-state @(:pool-state pool)]
