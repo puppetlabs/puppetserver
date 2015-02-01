@@ -274,13 +274,24 @@
   [borrow-fn :- (schema/pred ifn?)
    pool :- pool-queue-type]
   (let [instance (borrow-fn pool)]
-    (when (instance? PoisonPill instance)
-      (.putFirst pool instance)
-      (throw (IllegalStateException. "Unable to borrow JRuby instance from pool"
-                                     (:err instance))))
-    (when (jruby-puppet-instance? instance)
-      (swap! (:state instance) (fn [m] (update-in m [:request-count] inc))))
-    instance))
+    (cond (instance? PoisonPill instance)
+          (do
+            (.putFirst pool instance)
+            (throw (IllegalStateException.
+                     "Unable to borrow JRuby instance from pool"
+                     (:err instance))))
+
+          (jruby-puppet-instance? instance)
+          (do
+            (swap! (:state instance) (fn [m] (update-in m [:request-count] inc)))
+            instance)
+
+          ((some-fn nil? retry-poison-pill?) instance)
+          instance
+
+          :else
+          (throw (IllegalStateException.
+                   (str "Borrowed unrecognized object from pool!: " instance))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
