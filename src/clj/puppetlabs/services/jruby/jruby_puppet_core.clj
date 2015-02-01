@@ -13,6 +13,24 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def default-borrow-timeout
+  "Default timeout when borrowing instances from the JRuby pool in
+   milliseconds. Current value is 1200000ms, or 20 minutes."
+  1200000)
+
+(def default-http-connect-timeout
+  "The default number of milliseconds that the client will wait for a connection
+  to be established. Currently set to 2 minutes."
+  (* 2 60 1000))
+
+(def default-http-socket-timeout
+  "The default number of milliseconds that the client will allow for no data to
+  be available on the socket. Currently set to 20 minutes."
+  (* 20 60 1000))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
 (def pool-queue-type
@@ -96,7 +114,8 @@
    (schema/optional-key :http-client-cipher-suites)                [schema/Str]
    (schema/optional-key :http-client-connect-timeout-milliseconds) schema/Int
    (schema/optional-key :http-client-idle-timeout-milliseconds)    schema/Int
-   (schema/optional-key :borrow-timeout)                           schema/Int})
+   (schema/optional-key :borrow-timeout)                           schema/Int
+   :max-requests-per-instance   schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -321,6 +340,27 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(schema/defn ^:always-validate
+  initialize-config :- JRubyPuppetConfig
+  [config :- {schema/Keyword schema/Any}]
+  (-> (get-in config [:jruby-puppet])
+      (assoc :ruby-load-path (get-in config [:os-settings :ruby-load-path]))
+      (assoc :http-client-ssl-protocols
+             (get-in config [:http-client :ssl-protocols]))
+      (assoc :http-client-cipher-suites
+             (get-in config [:http-client :cipher-suites]))
+      (assoc :http-client-connect-timeout-milliseconds
+             (get-in config [:http-client :connect-timeout-milliseconds]
+                            default-http-connect-timeout))
+      (assoc :http-client-idle-timeout-milliseconds
+             (get-in config [:http-client :idle-timeout-milliseconds]
+                            default-http-socket-timeout))
+      (update-in [:borrow-timeout] #(or % default-borrow-timeout))
+      (update-in [:master-conf-dir] #(or % nil))
+      (update-in [:master-var-dir] #(or % nil))
+      (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
+      (update-in [:max-requests-per-instance] #(or % 0))))
 
 (schema/defn ^:always-validate
   create-pool-context :- PoolContext

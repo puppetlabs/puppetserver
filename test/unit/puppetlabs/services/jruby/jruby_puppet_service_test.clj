@@ -123,14 +123,14 @@
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
             (is (= (:borrow-timeout context) timeout)))))))
 
-  (testing (str ":borrow-timeout defaults to " default-borrow-timeout " milliseconds")
+  (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
       app
       [jruby-puppet-pooled-service profiler/puppet-profiler-service]
       jruby-service-test-config
       (let [service (app/get-service app :JRubyPuppetService)
             context (services/service-context service)]
-        (is (= (:borrow-timeout context) default-borrow-timeout))))))
+        (is (= (:borrow-timeout context) jruby-core/default-borrow-timeout))))))
 
 (deftest timeout-settings-applied
   (testing "timeout settings are properly plumbed"
@@ -154,7 +154,7 @@
       (let [service          (app/get-service app :JRubyPuppetService)
             context          (services/service-context service)
             pool-context-cfg (get-in context [:pool-context :config])]
-        (is (= default-http-connect-timeout
+        (is (= jruby-core/default-http-connect-timeout
                (:http-client-connect-timeout-milliseconds pool-context-cfg)))
-        (is (= default-http-socket-timeout
+        (is (= jruby-core/default-http-socket-timeout
                (:http-client-idle-timeout-milliseconds pool-context-cfg)))))))
