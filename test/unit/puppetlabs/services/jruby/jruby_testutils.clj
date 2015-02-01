@@ -65,6 +65,10 @@
 (def default-profiler
   nil)
 
+(defn default-shutdown-fn
+  [f]
+  (f))
+
 (defn create-pool-instance
   ([]
    (create-pool-instance (jruby-puppet-config 1)))
