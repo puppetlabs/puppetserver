@@ -24,15 +24,13 @@
     (let [config            (core/initialize-config (get-config))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
-          pool-agent        (jruby-agents/pool-agent agent-shutdown-fn)
           profiler          (get-profiler)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
-      (let [pool-context (core/create-pool-context config profiler)]
-        (jruby-agents/send-prime-pool! pool-context pool-agent)
+      (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
+        (jruby-agents/send-prime-pool! pool-context)
         (-> context
-            (assoc :pool-context pool-context)
-            (assoc :pool-agent pool-agent)))))
+            (assoc :pool-context pool-context)))))
 
   (borrow-instance
     [this]
@@ -64,8 +62,8 @@
   (flush-jruby-pool!
     [this]
     (let [service-context (tk-services/service-context this)
-          {:keys [pool-context pool-agent]} service-context]
-      (jruby-agents/send-flush-pool! pool-context pool-agent))))
+          {:keys [pool-context]} service-context]
+      (jruby-agents/send-flush-pool! pool-context))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of

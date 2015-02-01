@@ -17,8 +17,8 @@
   (testing "malformed configuration fails"
     (let [malformed-config {:illegal-key [1 2 3]}]
       (is (thrown-with-msg? ExceptionInfo
-                            #"Input to create-pool-from-config does not match schema"
-                            (create-pool-context malformed-config nil)))))
+                            #"Input to create-pool-context does not match schema"
+                            (create-pool-context malformed-config nil nil)))))
   (let [minimal-config {:jruby-puppet {:gem-home "/dev/null"}
                         :os-settings  {:ruby-load-path ["/dev/null"]}}
         config        (jruby-core/initialize-config minimal-config)]
@@ -36,7 +36,7 @@
   (let [pool-size        2
         config           (jruby-testutils/jruby-puppet-config pool-size)
         profiler         jruby-testutils/default-profiler
-        pool-context     (create-pool-context config profiler)
+        pool-context     (create-pool-context config profiler nil)
         pool             (get-pool pool-context)]
 
     (testing "The pool should not yet be full as it is being primed in the
@@ -93,7 +93,7 @@
   (let [pool-size 2
         config        (jruby-testutils/jruby-puppet-config pool-size)
         profiler      jruby-testutils/default-profiler
-        pool-context  (create-pool-context config profiler)
+        pool-context  (create-pool-context config profiler nil)
         pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
     (with-redefs [jruby-internal/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
