@@ -2,7 +2,8 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
@@ -35,7 +36,7 @@
   (LinkedBlockingDeque. size))
 
 (schema/defn ^:always-validate
-             create-pool-from-config :- jruby-schemas/PoolState
+  create-pool-from-config :- jruby-schemas/PoolState
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- jruby-schemas/JRubyPuppetConfig]
   {:pool (instantiate-free-pool size)
@@ -123,7 +124,7 @@
         instance))))
 
 (schema/defn ^:always-validate
-             get-pool-state :- jruby-schemas/PoolState
+  get-pool-state :- jruby-schemas/PoolState
   "Gets the PoolState from the pool context."
   [context :- jruby-schemas/PoolContext]
   @(:pool-state context))
@@ -134,6 +135,12 @@
   [context :- jruby-schemas/PoolContext]
   (:pool (get-pool-state context)))
 
+(schema/defn ^:always-validate
+  get-pool-size :- schema/Int
+  "Gets the size of the JRubyPuppet pool from the pool context."
+  [context :- jruby-schemas/PoolContext]
+  (get-in context [:config :max-active-instances]))
+
 (schema/defn borrow-without-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
   [pool :- jruby-schemas/pool-queue-type]
   (.takeFirst pool))
@@ -142,6 +149,36 @@
   [timeout :- schema/Int
    pool :- jruby-schemas/pool-queue-type]
   (.pollFirst pool timeout TimeUnit/MILLISECONDS))
+
+(schema/defn borrowed-poison-pill
+  [pool :- jruby-schemas/pool-queue-type
+   instance :- PoisonPill]
+  (.putFirst pool instance)
+  (throw (IllegalStateException.
+           "Unable to borrow JRuby instance from pool"
+           (:err instance))))
+
+(declare borrow-from-pool!*)
+
+(schema/defn borrowed-jruby-instance :- jruby-schemas/JRubyPuppetBorrowResult
+  [borrow-fn :- (schema/pred ifn?)
+   pool :- jruby-schemas/pool-queue-type
+   pool-context :- jruby-schemas/PoolContext
+   flush-instance-fn :- (schema/pred ifn?)
+   instance :- JRubyPuppetInstance]
+  (let [new-state (swap! (:state instance)
+                         update-in [:request-count] inc)
+        max-requests (get-in pool-context [:config :max-requests-per-instance])]
+    (if (and (pos? max-requests)
+             (> (:request-count new-state) max-requests))
+      (do
+        (log/infof (str "Flushing JRuby instance %s because it has exceeded the "
+                        "maximum number of requests (%s)")
+                   (:id instance)
+                   max-requests)
+        (flush-instance-fn pool pool-context instance)
+        (borrow-from-pool!* borrow-fn pool pool-context flush-instance-fn))
+      instance)))
 
 (schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
@@ -155,19 +192,14 @@
    ;; pools in play, and the one in the pool-context may be different from the
    ;; one we're borrowing from.
    pool :- jruby-schemas/pool-queue-type
-   pool-context :- jruby-schemas/PoolContext]
+   pool-context :- jruby-schemas/PoolContext
+   flush-instance-fn :- (schema/pred ifn?)]
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
-          (do
-            (.putFirst pool instance)
-            (throw (IllegalStateException.
-                     "Unable to borrow JRuby instance from pool"
-                     (:err instance))))
+          (borrowed-poison-pill pool instance)
 
           (jruby-schemas/jruby-puppet-instance? instance)
-          (do
-            (swap! (:state instance) (fn [m] (update-in m [:request-count] inc)))
-            instance)
+          (borrowed-jruby-instance borrow-fn pool pool-context flush-instance-fn instance)
 
           ((some-fn nil? jruby-schemas/retry-poison-pill?) instance)
           instance
@@ -180,9 +212,12 @@
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
-  [pool-context :- jruby-schemas/PoolContext]
+  [pool-context :- jruby-schemas/PoolContext
+   flush-instance-fn :- (schema/pred ifn?)]
   (borrow-from-pool!* borrow-without-timeout-fn
-                      (get-pool pool-context) pool-context))
+                      (get-pool pool-context)
+                      pool-context
+                      flush-instance-fn))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -193,10 +228,13 @@
   timeout. If the timeout runs out then nil will be returned, indicating that
   there were no instances available."
   [pool-context :- jruby-schemas/PoolContext
-   timeout :- schema/Int]
+   timeout :- schema/Int
+   flush-instance-fn :- (schema/pred ifn?)]
   {:pre  [(>= timeout 0)]}
   (borrow-from-pool!* (partial borrow-with-timeout-fn timeout)
-                      (get-pool pool-context) pool-context))
+                      (get-pool pool-context)
+                      pool-context
+                      flush-instance-fn))
 
 (schema/defn ^:always-validate
   return-to-pool

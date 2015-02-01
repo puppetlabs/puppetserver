@@ -10,7 +10,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal])
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas RetryPoisonPill)
            (com.puppetlabs.puppetserver JRubyPuppet)
            (java.util.concurrent LinkedBlockingDeque)))
@@ -71,7 +72,8 @@
         (let [old-pool-instance (jruby-internal/borrow-from-pool!*
                                   jruby-internal/borrow-without-timeout-fn
                                   old-pool
-                                  pool-context)]
+                                  pool-context
+                                  jruby-agents/send-flush-instance!)]
           (is (jruby-schemas/retry-poison-pill? old-pool-instance)))))))
 
 (deftest with-jruby-retry-test-via-mock-get-pool
@@ -99,3 +101,15 @@
             jruby-service
             (is (instance? JRubyPuppet jruby-puppet))))
         (is (= 4 @num-borrows))))))
+
+(deftest next-instance-id-test
+  (let [pool-context (jruby-core/create-pool-context
+                       (jruby-testutils/jruby-puppet-config {:max-active-instances 8})
+                       jruby-testutils/default-profiler
+                       jruby-testutils/default-shutdown-fn)]
+    (testing "next instance id should be based on the pool size"
+      (is (= 10 (jruby-agents/next-instance-id 2 pool-context)))
+      (is (= 100 (jruby-agents/next-instance-id 92 pool-context))))
+    (testing "next instance id should wrap after max int"
+      (let [id (- Integer/MAX_VALUE 1)]
+        (is (= (mod id 8) (jruby-agents/next-instance-id id pool-context)))))))

@@ -1,15 +1,25 @@
 (ns puppetlabs.services.jruby.jruby-puppet-agents
-  (:import (clojure.lang IFn)
-           (com.puppetlabs.puppetserver PuppetProfiler)
-           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill))
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
+  (:import (clojure.lang IFn)
+           (com.puppetlabs.puppetserver PuppetProfiler)
+           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
+
+(schema/defn ^:always-validate
+  next-instance-id :- schema/Int
+  [id :- schema/Int
+   pool-context :- jruby-schemas/PoolContext]
+  (let [pool-size (jruby-internal/get-pool-size pool-context)
+        next-id (+ id pool-size)]
+    (if (> next-id Integer/MAX_VALUE)
+      (mod next-id pool-size)
+      next-id)))
 
 (schema/defn ^:always-validate
   send-agent :- jruby-schemas/JRubyPoolAgent
@@ -50,7 +60,7 @@
   flush-instance!
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
-  [{:keys [scripting-container id]} :- jruby-schemas/JRubyPuppetInstanceOrRetry
+  [{:keys [scripting-container id]} :- JRubyPuppetInstance
    new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
@@ -59,6 +69,8 @@
   (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
              id)
   (jruby-internal/create-pool-instance! new-pool new-id config profiler))
+
+(declare send-flush-instance!)
 
 (schema/defn ^:always-validate
   flush-pool!
@@ -86,7 +98,8 @@
               instance  (jruby-internal/borrow-from-pool!*
                           jruby-internal/borrow-without-timeout-fn
                           (:pool old-pool)
-                          pool-context)]
+                          pool-context
+                          send-flush-instance!)]
           (flush-instance! instance new-pool id config profiler)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
@@ -105,7 +118,7 @@
   pool-agent :- jruby-schemas/JRubyPoolAgent
   "Given a shutdown-on-error function, create an agent suitable for use in managing
   JRuby pools."
-  [shutdown-on-error-fn :- (schema/maybe (schema/pred ifn?))]
+  [shutdown-on-error-fn :- (schema/pred ifn?)]
   (agent {:shutdown-on-error shutdown-on-error-fn}))
 
 (schema/defn ^:always-validate
@@ -120,3 +133,13 @@
   "Sends requests to the agent to flush the existing pool and create a new one."
   [pool-context :- jruby-schemas/PoolContext]
   (send-agent (:pool-agent pool-context) #(flush-pool! pool-context)))
+
+(schema/defn ^:always-validate
+  send-flush-instance! :- jruby-schemas/JRubyPoolAgent
+  "Sends requests to the flush-instance agent to flush the instance and create a new one."
+  [pool :- jruby-schemas/pool-queue-type
+   pool-context :- jruby-schemas/PoolContext
+   instance :- JRubyPuppetInstance]
+  (let [{:keys [flush-instance-agent config profiler]} pool-context
+        id (next-instance-id (:id instance) pool-context)]
+    (send-agent flush-instance-agent #(flush-instance! instance pool id config profiler))))

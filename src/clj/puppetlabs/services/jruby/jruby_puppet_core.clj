@@ -108,11 +108,12 @@
   pool object has been created, it will need to be filled using `prime-pool!`."
   [config :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)
-   agent-shutdown-fn :- (schema/maybe (schema/pred ifn?))]
-  {:config     config
-   :profiler   profiler
-   :pool-agent (jruby-agents/pool-agent agent-shutdown-fn)
-   :pool-state (atom (jruby-internal/create-pool-from-config config))})
+   agent-shutdown-fn :- (schema/pred ifn?)]
+  {:config                config
+   :profiler              profiler
+   :pool-agent            (jruby-agents/pool-agent agent-shutdown-fn)
+   :flush-instance-agent  (jruby-agents/pool-agent agent-shutdown-fn)
+   :pool-state            (atom (jruby-internal/create-pool-from-config config))})
 
 (schema/defn ^:always-validate
   free-instance-count
@@ -140,7 +141,9 @@
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool-context :- jruby-schemas/PoolContext]
-  (jruby-internal/borrow-from-pool pool-context))
+  (jruby-internal/borrow-from-pool
+    pool-context
+    jruby-agents/send-flush-instance!))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -153,7 +156,10 @@
   [pool-context :- jruby-schemas/PoolContext
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (jruby-internal/borrow-from-pool-with-timeout pool-context timeout))
+  (jruby-internal/borrow-from-pool-with-timeout
+    pool-context
+    timeout
+    jruby-agents/send-flush-instance!))
 
 (schema/defn ^:always-validate
   return-to-pool

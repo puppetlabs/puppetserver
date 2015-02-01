@@ -71,7 +71,7 @@
                    (let [state @a]
                      (and
                        (map? state)
-                       ((some-fn nil? ifn?) (:shutdown-on-error state))))))))
+                       (ifn? (:shutdown-on-error state))))))))
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -86,10 +86,11 @@
 
 (def PoolContext
   "The data structure that stores all JRubyPuppet pools and the original configuration."
-  {:config     JRubyPuppetConfig
-   :profiler   (schema/maybe PuppetProfiler)
-   :pool-agent JRubyPoolAgent
-   :pool-state PoolStateContainer})
+  {:config                JRubyPuppetConfig
+   :profiler              (schema/maybe PuppetProfiler)
+   :pool-agent            JRubyPoolAgent
+   :flush-instance-agent  JRubyPoolAgent
+   :pool-state            PoolStateContainer})
 
 (def JRubyInstanceState
   "State metadata for an individual JRubyPuppet instance"
