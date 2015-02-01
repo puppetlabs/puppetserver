@@ -5,7 +5,8 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -77,7 +78,7 @@
       (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
   [jruby-puppet jruby-service & body]
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
-     (if (core/retry-poison-pill? pool-instance#)
+     (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)
          (recur (jruby/borrow-instance ~jruby-service)))
