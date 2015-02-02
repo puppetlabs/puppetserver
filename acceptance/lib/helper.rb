@@ -204,12 +204,17 @@ EOF
     EOS
 
     user = master.puppet('master')['user']
+
+    # TODO: All of this is only necessary because puppet-agent packages
+    # are currently missing some things. We should remove this once
+    # puppet-agent packages are settled. See SERVER-333.
     on master, "groupadd -r puppet"
     on master, "useradd -r -g puppet -d /opt/puppetlabs/agent/cache #{user} "
     on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/"
     on master, "mkdir /opt/puppetlabs/agent/cache/reports"
     on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/reports"
     on master, "chmod 0755 /opt/puppetlabs/agent/cache/reports"
+
     create_remote_file(master, manifest_path, manifest_content)
     on master, "chown #{user}:#{user} #{manifest_path}"
     on master, "chown #{user}:#{user} #{herp_path}"
