@@ -151,6 +151,10 @@ module PuppetServerExtensions
     end
   end
 
+  # TODO: With AIO packages, ruby-load-path is now the same across all
+  # platforms, so we don't need this or `configure_puppet_server`, since this
+  # setting should be able to be moved into a regular conf file.  See
+  # SERVER-331.
   def get_rubylibdir host, config_key
     "/opt/puppetlabs/agent/lib/ruby/vendor_ruby"
   end
