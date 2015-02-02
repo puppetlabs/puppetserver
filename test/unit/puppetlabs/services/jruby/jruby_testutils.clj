@@ -86,10 +86,10 @@
                    {:pool                 pool
                     :id                   1
                     :jruby-puppet         (create-mock-jruby-instance)
-                    :scripting-container (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-                                             (jruby-core/prep-scripting-container ruby-load-path gem-home))
+                    :scripting-container (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+                                               (jruby-core/prep-scripting-container ruby-load-path gem-home)
+                                               (.runScriptlet "require 'puppet/server/master'"))
                     :environment-registry (puppet-env/environment-registry)})]
-    (.runScriptlet (:scripting-container instance) "require 'puppet/server/master'")
     (.put pool instance)
     instance))
 
