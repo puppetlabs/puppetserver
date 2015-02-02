@@ -3,7 +3,7 @@
            (com.puppetlabs.puppetserver PuppetProfiler)
            (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill))
   (:require [schema.core :as schema]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
@@ -52,7 +52,7 @@
         (dotimes [i count]
           (let [id (inc i)]
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
-            (jruby-core/create-pool-instance! pool id config profiler)
+            (jruby-internal/create-pool-instance! pool id config profiler)
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
                        id count))))
       (catch Exception e
@@ -72,7 +72,7 @@
   (.terminate scripting-container)
   (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
              id)
-  (jruby-core/create-pool-instance! new-pool new-id config profiler))
+  (jruby-internal/create-pool-instance! new-pool new-id config profiler))
 
 (schema/defn ^:always-validate
   flush-pool!
@@ -87,7 +87,7 @@
   ;; between the steps we perform here in the body.
   (log/info "Flush request received; creating new JRuby pool.")
   (let [{:keys [config profiler pool-state]} pool-context
-        new-pool-state (jruby-core/create-pool-from-config config)
+        new-pool-state (jruby-internal/create-pool-from-config config)
         new-pool (:pool new-pool-state)
         old-pool @pool-state
         count    (:size old-pool)]
@@ -97,7 +97,7 @@
     (doseq [i (range count)]
       (try
         (let [id        (inc i)
-              instance  (jruby-core/borrow-from-pool (:pool old-pool))]
+              instance  (jruby-internal/borrow-from-pool (:pool old-pool))]
           (flush-instance! instance new-pool id config profiler)
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
@@ -107,7 +107,7 @@
           (throw (IllegalStateException.
                    "There was a problem adding a JRubyPuppet instance to the pool."
                    e)))))
-    (jruby-core/return-to-pool (RetryPoisonPill. (:pool old-pool)))))
+    (jruby-internal/return-to-pool (RetryPoisonPill. (:pool old-pool)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
