@@ -1,0 +1,44 @@
+#
+# This is the "override security properties file" which is used by default
+# in the lein dev profile.  End users may override java security properties in
+# a similar manner in the production code.
+#
+# This file augments and overrides $JAVA_HOME/jre/lib/security/java.security
+# when the java process is provided the option,
+# -Djava.security.properties=./dev/java.security
+#
+# NOTE: It is possible to make this file authoritative, discarding the values
+# in $JAVA_HOME/jre/lib/security/java.security by setting the first character
+# of the path to an '=' sign.
+#
+# Algorithm restrictions for Secure Socket Layer/Transport Layer Security
+# (SSL/TLS) processing
+
+# In some environments, certain algorithms or key lengths may be undesirable
+# when using SSL/TLS.  This section describes the mechanism for disabling
+# algorithms during SSL/TLS security parameters negotiation, including
+# protocol version negotiation, cipher suites selection, peer authentication
+# and key exchange mechanisms.
+#
+# Disabled algorithms will not be negotiated for SSL/TLS connections, even
+# if they are enabled explicitly in an application.
+#
+# For PKI-based peer authentication and key exchange mechanisms, this list
+# of disabled algorithms will also be checked during certification path
+# building and validation, including algorithms used in certificates, as
+# well as revocation information such as CRLs and signed OCSP Responses.
+# This is in addition to the jdk.certpath.disabledAlgorithms property above.
+#
+# See the specification of "jdk.certpath.disabledAlgorithms" for the
+# syntax of the disabled algorithm string.
+#
+# Note: This property is currently used by Oracle's JSSE implementation.
+# It is not guaranteed to be examined and used by other implementations.
+#
+# Example:
+#   jdk.tls.disabledAlgorithms=MD5, SSLv3, DSA, RSA keySize < 2048
+#
+# SERVER-332 Disable no algorithms so that unit tests are able to exercise the
+# behavior of the system when the end user explicitly configures deprecated
+# algorithms like SSLv3.
+jdk.tls.disabledAlgorithms=
