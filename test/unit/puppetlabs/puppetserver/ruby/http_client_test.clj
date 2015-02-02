@@ -41,6 +41,14 @@
   (-> ring-app
       (auth/wrap-basic-authentication authenticated?)))
 
+(defn ssl-connection-exception?
+  [ex]
+  (or
+    (instance? ConnectionClosedException ex)
+    (instance? SSLHandshakeException ex)
+    (and (instance? IOException ex)
+         (= "Connection reset by peer" (.getMessage ex)))))
+
 (defn get-http-client-settings
   [options]
   (let [result (HashMap.)]
@@ -143,7 +151,7 @@
              (is (true? false) "Expected HTTP connection to HTTPS port to fail")
              (catch EvalFailedException e
                (is (instance? HttpClientException (.. e getCause)))
-               (is (instance? ConnectionClosedException (.. e getCause getCause)))))))))
+               (is (ssl-connection-exception? (.. e getCause getCause)))))))))
 
   (testing "Can connect via TLSv1 by default"
     (with-webserver-with-protocols ["TLSv1"] nil
@@ -176,7 +184,7 @@
             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
             (catch EvalFailedException e
               (is (instance? HttpClientException (.. e getCause)))
-              (is (instance? SSLHandshakeException (.. e getCause getCause)))))))
+              (is (ssl-connection-exception? (.. e getCause getCause)))))))
 
       (testing "Can connect via SSLv3 when specified"
         (let [sc (create-scripting-container-with-ssl-client
@@ -199,7 +207,7 @@
             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
             (catch EvalFailedException e
               (is (instance? HttpClientException (.. e getCause)))
-              (is (instance? ConnectionClosedException (.. e getCause getCause)))))))
+              (is (ssl-connection-exception? (.. e getCause getCause)))))))
       (testing "Should be able to connect if explicit matching ciphers are configured"
         (let [sc (create-scripting-container-with-ssl-client
                   10080
