@@ -4,15 +4,14 @@
            (org.apache.http ConnectionClosedException)
            (com.puppetlabs.http.client HttpClientException)
            (javax.net.ssl SSLHandshakeException)
-           (java.util HashMap)
-           (java.io IOException))
+           (java.util HashMap))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [ring.middleware.basic-authentication :as auth]))
+            [ring.middleware.basic-authentication :as auth]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 ;; NOTE: this namespace is pretty disgusting.  It'd be much nicer to test this
 ;; ruby code via ruby spec tests, but since we need to stand up a webserver to
@@ -57,7 +56,7 @@
                                 (select-keys options [:ssl-protocols :cipher-suites]))
          sc                   (ScriptingContainer. LocalContextScope/SINGLETHREAD
                                                    LocalVariableBehavior/PERSISTENT)]
-     (jruby-puppet/prep-scripting-container sc
+     (jruby-internal/prep-scripting-container sc
                                             jruby-testutils/ruby-load-path
                                             jruby-testutils/gem-home)
      (.runScriptlet sc "require 'puppet/server/http_client'")
