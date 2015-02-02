@@ -4,7 +4,8 @@
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -68,8 +69,8 @@
   ([]
    (create-pool-instance (jruby-puppet-config {:max-active-instances 1})))
   ([config]
-   (let [pool (jruby-core/instantiate-free-pool 1)]
-     (jruby-core/create-pool-instance! pool 1 config default-profiler))))
+   (let [pool (jruby-internal/instantiate-free-pool 1)]
+     (jruby-internal/create-pool-instance! pool 1 config default-profiler))))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -97,7 +98,7 @@
   mock JRubyPuppet instances."
   [f]
   (with-redefs
-    [jruby-core/create-pool-instance! create-mock-pool-instance]
+    [jruby-internal/create-pool-instance! create-mock-pool-instance]
     (f)))
 
 (defn drain-pool

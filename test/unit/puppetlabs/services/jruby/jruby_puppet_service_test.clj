@@ -13,7 +13,8 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -31,7 +32,7 @@
       (str "If there as an exception while putting a JRubyPuppet instance in "
            "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-puppet-core/create-pool-instance!
+      (with-redefs [jruby-internal/create-pool-instance!
                     (fn [& _] (throw (Exception. "42")))]
                    (let [got-expected-exception (atom false)]
                      (try

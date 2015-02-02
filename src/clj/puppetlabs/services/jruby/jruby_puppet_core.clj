@@ -1,16 +1,10 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core
-  (:require [me.raynes.fs :as fs]
-            [schema.core :as schema]
+  (:require [schema.core :as schema]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [clojure.tools.logging :as log])
-  (:import (java.util.concurrent LinkedBlockingDeque TimeUnit BlockingDeque)
-           (java.util HashMap)
-           (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
-           (org.jruby.embed ScriptingContainer LocalContextScope)
-           (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
-           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill JRubyPuppetInstance)))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal])
+  (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -55,93 +49,6 @@
        (max 1)
        (min 4)))
 
-(defn prep-scripting-container
-  [scripting-container ruby-load-path gem-home]
-  (doto scripting-container
-    (.setLoadPaths (cons ruby-code-dir
-                         (map fs/absolute-path ruby-load-path)))
-    (.setCompatVersion (CompatVersion/RUBY1_9))
-    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    (.setEnvironment (merge {"GEM_HOME" gem-home
-                             "JARS_NO_REQUIRE" "true"}
-                            jruby-puppet-env))))
-
-(defn empty-scripting-container
-  "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
-  [ruby-load-path gem-home]
-  {:pre [(sequential? ruby-load-path)
-         (every? string? ruby-load-path)
-         (string? gem-home)]
-   :post [(instance? ScriptingContainer %)]}
-  (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-      (prep-scripting-container ruby-load-path gem-home)))
-
-(defn create-scripting-container
-  "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
-  puppet and facter code inside it."
-  [ruby-load-path gem-home]
-  {:pre [(sequential? ruby-load-path)
-         (every? string? ruby-load-path)
-         (string? gem-home)]
-   :post [(instance? ScriptingContainer %)]}
-  ;; for information on other legal values for `LocalContextScope`, there
-  ;; is some documentation available in the JRuby source code; e.g.:
-  ;; https://github.com/jruby/jruby/blob/1.7.11/core/src/main/java/org/jruby/embed/LocalContextScope.java#L58
-  ;; I'm convinced that this is the safest and most reasonable value
-  ;; to use here, but we could potentially explore optimizations in the future.
-  (doto (empty-scripting-container ruby-load-path gem-home)
-    (.runScriptlet "require 'puppet/server/master'")))
-
-(schema/defn ^:always-validate
-  create-pool-instance! :- JRubyPuppetInstance
-  "Creates a new JRubyPuppet instance and adds it to the pool."
-  [pool     :- jruby-schemas/pool-queue-type
-   id       :- schema/Int
-   config   :- jruby-schemas/JRubyPuppetConfig
-   profiler :- (schema/maybe PuppetProfiler)]
-  (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
-                http-client-ssl-protocols http-client-cipher-suites
-                http-client-connect-timeout-milliseconds
-                http-client-idle-timeout-milliseconds]} config]
-    (when-not ruby-load-path
-      (throw (Exception.
-               "JRuby service missing config value 'ruby-load-path'")))
-    (let [scripting-container   (create-scripting-container ruby-load-path gem-home)
-          env-registry          (puppet-env/environment-registry)
-          ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
-          puppet-config         (HashMap.)
-          puppet-server-config  (HashMap.)]
-      (when master-conf-dir
-        (.put puppet-config "confdir" (fs/absolute-path master-conf-dir)))
-      (when master-var-dir
-        (.put puppet-config "vardir" (fs/absolute-path master-var-dir)))
-
-      (when http-client-ssl-protocols
-        (.put puppet-server-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
-      (when http-client-cipher-suites
-        (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
-      (.put puppet-server-config "profiler" profiler)
-      (.put puppet-server-config "environment_registry" env-registry)
-      (.put puppet-server-config "http_connect_timeout_milliseconds"
-            http-client-connect-timeout-milliseconds)
-      (.put puppet-server-config "http_idle_timeout_milliseconds"
-            http-client-idle-timeout-milliseconds)
-
-      (let [instance (jruby-schemas/map->JRubyPuppetInstance
-                       {:pool                 pool
-                        :id                   id
-                        :state                (atom {:request-count 0})
-                        :jruby-puppet         (.callMethod scripting-container
-                                                           ruby-puppet-class
-                                                           "new"
-                                                           (into-array Object
-                                                                       [puppet-config puppet-server-config])
-                                                           JRubyPuppet)
-                        :scripting-container  scripting-container
-                        :environment-registry env-registry})]
-        (.putLast pool instance)
-        instance))))
-
 (schema/defn ^:always-validate
   get-pool-state :- jruby-schemas/PoolState
   "Gets the PoolState from the pool context."
@@ -162,61 +69,12 @@
       iterator-seq
       vec))
 
-(defn instantiate-free-pool
-  "Instantiate a new queue object to use as the pool of free JRubyPuppet's."
-  [size]
-  {:post [(instance? jruby-schemas/pool-queue-type %)]}
-  (LinkedBlockingDeque. size))
-
 (defn verify-config-found!
   [config]
   (if (or (not (map? config))
           (empty? config))
     (throw (IllegalArgumentException. (str "No configuration data found.  Perhaps "
                                            "you did not specify the --config option?")))))
-
-(schema/defn ^:always-validate
-  create-pool-from-config :- jruby-schemas/PoolState
-  "Create a new PoolData based on the config input."
-  [{size :max-active-instances} :- jruby-schemas/JRubyPuppetConfig]
-  (let [size (if size
-               size
-               (let [default-size (default-pool-size (ks/num-cpus))]
-                 (log/warn (str "No configuration value found for jruby-puppet "
-                                "max-active-instances; using default value of "
-                                default-size ".  Please consider setting this "
-                                "value explicitly in the jruby-puppet section "
-                                "of your Puppet Server config files."))
-                 default-size))]
-    {:pool         (instantiate-free-pool size)
-     :size         size}))
-
-(schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
-  "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
-  If successful, updates the state information and returns the JRuby instance.
-  Returns nil if the borrow function returns nil; throws an exception if
-  the borrow function's return value indicates an error condition."
-  [borrow-fn :- (schema/pred ifn?)
-   pool :- jruby-schemas/pool-queue-type]
-  (let [instance (borrow-fn pool)]
-    (cond (instance? PoisonPill instance)
-          (do
-            (.putFirst pool instance)
-            (throw (IllegalStateException.
-                     "Unable to borrow JRuby instance from pool"
-                     (:err instance))))
-
-          (jruby-schemas/jruby-puppet-instance? instance)
-          (do
-            (swap! (:state instance) (fn [m] (update-in m [:request-count] inc)))
-            instance)
-
-          ((some-fn nil? jruby-schemas/retry-poison-pill?) instance)
-          instance
-
-          :else
-          (throw (IllegalStateException.
-                   (str "Borrowed unrecognized object from pool!: " instance))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -249,7 +107,7 @@
   [config profiler]
   {:config     config
    :profiler   profiler
-   :pool-state (atom (create-pool-from-config config))})
+   :pool-state (atom (jruby-internal/create-pool-from-config config))})
 
 (schema/defn ^:always-validate
   free-instance-count
@@ -277,8 +135,7 @@
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool :- jruby-schemas/pool-queue-type]
-  (let [borrow-fn #(.takeFirst %)]
-    (borrow-from-pool!* borrow-fn pool)))
+  (jruby-internal/borrow-from-pool pool))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -291,11 +148,10 @@
   [pool :- jruby-schemas/pool-queue-type
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
-  (let [borrow-fn #(.pollFirst % timeout TimeUnit/MILLISECONDS)]
-    (borrow-from-pool!* borrow-fn pool)))
+  (jruby-internal/borrow-from-pool-with-timeout pool timeout))
 
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
-  (.putFirst (:pool instance) instance))
+  (jruby-internal/return-to-pool instance))

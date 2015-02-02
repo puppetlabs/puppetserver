@@ -3,10 +3,9 @@
             [puppetlabs.services.jruby.jruby-testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.jruby-puppet-core :refer :all
-             :as core]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf
@@ -20,8 +19,8 @@
                                           :master-conf-dir testutils/conf-dir
                                           :master-var-dir  testutils/var-dir}
                            :os-settings  {:ruby-load-path testutils/ruby-load-path}})
-          pool          (instantiate-free-pool 1)
-          pool-instance (create-pool-instance! pool 1 config testutils/default-profiler)
+          pool          (jruby-internal/instantiate-free-pool 1)
+          pool-instance (jruby-internal/create-pool-instance! pool 1 config testutils/default-profiler)
           jruby-puppet  (:jruby-puppet pool-instance)
           var-dir       (.getSetting jruby-puppet "vardir")]
       (is (not (nil? var-dir)))))
@@ -45,7 +44,7 @@
 
 (deftest jruby-env-vars
   (testing "the environment used by the JRuby interpreters"
-    (let [jruby-interpreter (create-scripting-container
+    (let [jruby-interpreter (jruby-internal/create-scripting-container
                               jruby-testutils/ruby-load-path
                               jruby-testutils/gem-home)
           jruby-env (.runScriptlet jruby-interpreter "ENV")]

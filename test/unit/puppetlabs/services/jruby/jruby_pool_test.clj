@@ -6,7 +6,7 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
@@ -99,7 +99,7 @@
         pool-context  (create-pool-context config profiler)
         pool          (get-pool pool-context)
         err-msg       (re-pattern "Unable to borrow JRuby instance from pool")]
-    (with-redefs [core/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
+    (with-redefs [jruby-internal/create-pool-instance! (fn [_] (throw (IllegalStateException. "BORK!")))]
                  (is (thrown? IllegalStateException (jruby-agents/prime-pool! (:pool-state pool-context) config profiler))))
     (testing "borrow and borrow-with-timeout both throw an exception if the pool failed to initialize"
       (is (thrown-with-msg? IllegalStateException
