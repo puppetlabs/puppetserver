@@ -11,7 +11,9 @@ java_import com.puppetlabs.http.client.ResponseBodyType
 SyncHttpClient = com.puppetlabs.http.client.Sync
 
 class Puppet::Server::HttpClient
+
   attr_reader :client
+  @@client = nil
 
   OPTION_DEFAULTS = {
       :use_ssl => true,
@@ -62,7 +64,7 @@ class Puppet::Server::HttpClient
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
-    response = @client.post(request_options)
+    response = @@client.post(request_options)
     ruby_response(response)
   end
 
@@ -75,8 +77,14 @@ class Puppet::Server::HttpClient
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
-    response = @client.get(request_options)
+    response = @@client.get(request_options)
     ruby_response(response)
+  end
+
+  def self.terminate
+    unless @@client.nil?
+      @@client.close
+    end
   end
 
   private
@@ -125,10 +133,10 @@ class Puppet::Server::HttpClient
   end
 
   def create_client_if_nil
-    if @client.nil?
+    if @@client.nil?
       client_options = ClientOptions.new
       configure_ssl(client_options)
-      @client = SyncHttpClient.createClient(client_options)
+      @@client = SyncHttpClient.createClient(client_options)
     end
   end
 end

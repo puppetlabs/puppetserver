@@ -46,4 +46,8 @@ class Puppet::Server::Config
     end
     @ssl_context
   end
+
+  def self.terminate_puppet_server
+    Puppet::Server::HttpClient.terminate
+  end
 end
