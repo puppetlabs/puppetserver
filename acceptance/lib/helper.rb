@@ -197,7 +197,7 @@ EOF
     # installed.
     manifest_path = master.tmpfile("puppetserver_manifest.pp")
     herp_path = master.tmpfile("herp")
-    bin_dir = "/opt/puppetlabs/agent/bin/"
+    bin_dir = options['puppetbindir']
 
     manifest_content = <<-EOS
     file { "herp":
