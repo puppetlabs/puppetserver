@@ -8,5 +8,6 @@
   "puppetservice" => 'puppetserver',
   "use-service" => true,
   "master-start-curl-retries" => 60,
+  "puppetpath" => "/etc/puppetlabs/agent"
 }
 
