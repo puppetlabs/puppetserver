@@ -195,3 +195,34 @@ a multi-master environment or using an external CA, you might want to disable
 the CA service on some nodes.
 
 
+## Java Secure Socket Extension (JSSE) configuration
+
+A result of the [POODLE](https://blogs.oracle.com/security/entry/information_about_ssl_poodle_vulnerability)
+is that SSLv3 is disabled by default at the JRE layer and in Puppet Server.
+It is possible to enable Puppet Server to negotiate with SSLv3 clients,
+however the recommended course of action is to upgrade clients to negotiate
+using secure protocols.
+
+SSLv3 has been disabled by default in javase 7u75 (1.7.0_u75).  See [7u75
+Update Release Notes](http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html)
+for more information.
+
+To enable SSLv3 at the JRE layer, first create a properties file, e.g.
+`/etc/sysconfig/puppetserver-properties/java.security` with the following
+content:
+
+~~~
+# Override properties in $JAVA_HOME/jre/lib/security/java.security
+# An empty value enables all algorithms including INSECURE SSLv3
+# java should be started with
+# -Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security
+# for this file to take effect.
+jdk.tls.disabledAlgorithms=
+~~~
+
+Once this property file exists, update `JAVA_ARGS`, typically defined in
+`/etc/sysconfig/puppetserver` with
+`-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`.  This
+will configure the JVM to override the `jdk.tls.disabledAlgorithms` property
+defined in `$JAVA_HOME/jre/lib/security/java.security`.  The puppetserver
+service needs to be restarted for this setting to take effect.
