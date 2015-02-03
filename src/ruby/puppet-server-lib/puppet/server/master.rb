@@ -26,9 +26,12 @@ class Puppet::Server::Master
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config)
     # Tell Puppet's network layer which routes we are willing handle - which is
-    # the master routes, not the CA routes. We are handling the URL prefixes
-    # on the Puppet Server side, so we don't include those here.
-    register([Puppet::Network::HTTP::API::Master::V3.routes])
+    # the master routes, not the CA routes.
+    master_prefix = Regexp.new("^#{Puppet::Network::HTTP::MASTER_URL_PREFIX}/")
+    master_routes = Puppet::Network::HTTP::Route.path(master_prefix).
+                          any.
+                          chain(Puppet::Network::HTTP::API::Master::V3.routes)
+    register([master_routes])
   end
 
   def handleRequest(request)
