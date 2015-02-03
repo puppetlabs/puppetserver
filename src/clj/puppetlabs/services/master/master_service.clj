@@ -15,13 +15,14 @@
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path        (get-route this :master-routes)
-         config      (get-config)
-         certname    (get-in config [:puppet-server :certname])
-         localcacert (get-in config [:puppet-server :localcacert])
-         hostcrl     (get-in config [:puppet-server :hostcrl])
-         settings    (ca/config->master-settings config)
-         jruby-service (tk-services/get-service this :JRubyPuppetService)]
+   (let [path          (get-route this :master-routes)
+         config        (get-config)
+         certname      (get-in config [:puppet-server :certname])
+         localcacert   (get-in config [:puppet-server :localcacert])
+         hostcrl       (get-in config [:puppet-server :hostcrl])
+         settings      (ca/config->master-settings config)
+         jruby-service (tk-services/get-service this :JRubyPuppetService)
+         upgrade-error (core/construct-404-error-message jruby-service)]
 
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
@@ -32,7 +33,7 @@
        this
       (compojure/context path [] (core/build-ring-handler handle-request))
       {:route-id :master-routes})
-     (add-ring-handler this (core/construct-invalid-request-handler jruby-service) {:route-id :invalid-in-puppet-4}))
+     (add-ring-handler this (core/construct-invalid-request-handler upgrade-error) {:route-id :invalid-in-puppet-4}))
    context)
   (start
     [this context]
