@@ -66,7 +66,9 @@
                                    [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
-                   :injections    [(require 'spyscope.core)]}
+                   :injections    [(require 'spyscope.core)]
+                   ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
+                   :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
