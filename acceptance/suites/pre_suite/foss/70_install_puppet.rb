@@ -3,7 +3,7 @@ step "Install MRI Puppet Agents."
     puppet_version = test_config[:puppet_version]
 
     if puppet_version
-      install_package host, 'puppet'
+      install_package host, 'puppet-agent'
     else
       puppet_version = test_config[:puppet_version]
 
@@ -12,9 +12,9 @@ step "Install MRI Puppet Agents."
       case variant
       when /^(debian|ubuntu)$/
         puppet_version += "-1puppetlabs1"
-        install_package host, "puppet=#{puppet_version} puppet-common=#{puppet_version}"
+        install_package host, "puppet-agent=#{puppet_version}"
       when /^(redhat|el|centos)$/
-        install_package host, 'puppet', puppet_version
+        install_package host, 'puppet-agent', puppet_version
       end
 
     end

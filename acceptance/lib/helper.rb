@@ -28,7 +28,7 @@ module PuppetServerExtensions
 
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "3.7.3")
+                         "PUPPET_BUILD_VERSION", "0.2.1")
 
     @config = {
       :base_dir => base_dir,
@@ -151,8 +151,12 @@ module PuppetServerExtensions
     end
   end
 
+  # TODO: With AIO packages, ruby-load-path is now the same across all
+  # platforms, so we don't need this or `configure_puppet_server`, since this
+  # setting should be able to be moved into a regular conf file.  See
+  # SERVER-331.
   def get_rubylibdir host, config_key
-    on(host, "ruby -rrbconfig -e \"puts Config::CONFIG['#{config_key}']\"").stdout.strip
+    "/opt/puppetlabs/agent/lib/ruby/vendor_ruby"
   end
 
   def configure_puppet_server
@@ -193,6 +197,7 @@ EOF
     # installed.
     manifest_path = master.tmpfile("puppetserver_manifest.pp")
     herp_path = master.tmpfile("herp")
+    bin_dir = options['puppetbindir']
 
     manifest_content = <<-EOS
     file { "herp":
@@ -203,11 +208,22 @@ EOF
     EOS
 
     user = master.puppet('master')['user']
+
+    # TODO: All of this is only necessary because puppet-agent packages
+    # are currently missing some things. We should remove this once
+    # puppet-agent packages are settled. See SERVER-333.
+    on master, "groupadd -r puppet"
+    on master, "useradd -r -g puppet -d /opt/puppetlabs/agent/cache #{user} "
+    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/"
+    on master, "mkdir /opt/puppetlabs/agent/cache/reports"
+    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/reports"
+    on master, "chmod 0755 /opt/puppetlabs/agent/cache/reports"
+
     create_remote_file(master, manifest_path, manifest_content)
     on master, "chown #{user}:#{user} #{manifest_path}"
     on master, "chown #{user}:#{user} #{herp_path}"
 
-    on master, "su -s /bin/bash -c \"puppet apply #{manifest_path}\" #{user}"
+    on master, "su -s /bin/bash -c \"#{bin_dir}puppet apply #{manifest_path}\" #{user}"
   end
 
   def upgrade_package(host, name)

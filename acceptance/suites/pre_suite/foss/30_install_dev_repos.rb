@@ -14,7 +14,7 @@ puppet_build_version = test_config[:puppet_build_version]
 if puppet_build_version
   step "Setup Puppet Labs Dev Repositories." do
     hosts.each do |host|
-      install_puppetlabs_dev_repo host, 'puppet', puppet_build_version
+      install_puppetlabs_dev_repo host, 'puppet-agent', puppet_build_version
     end
   end
 end
