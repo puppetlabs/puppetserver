@@ -42,8 +42,9 @@
                           "dev-resources/puppetlabs/services/master/master_service_test/conf")
                 (assoc :webserver {:port 8081})
                 (assoc :web-router-service
-                       { :puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                        :puppetlabs.services.master.master-service/master-service "/puppet"}))
+                       {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                        :puppetlabs.services.master.master-service/master-service {:master-routes "/puppet"
+                                                                                   :invalid-in-puppet-4 "/"}}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet

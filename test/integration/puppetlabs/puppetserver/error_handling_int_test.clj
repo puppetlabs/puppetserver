@@ -6,7 +6,11 @@
     [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
-    [puppetlabs.services.request-handler.request-handler-core :as request-handler]))
+    [puppetlabs.services.request-handler.request-handler-core :as request-handler]
+    [puppetlabs.services.version.version-check-core :as version-check]
+    [puppetlabs.trapperkeeper.app :as tk-app]
+    [puppetlabs.services.config.puppet-server-config-core :as config]
+    [puppetlabs.services.master.master-core :as master]))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf
@@ -57,3 +61,50 @@
                      (:body response)))
               (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))))))
+
+(deftest ^:integration test-HTTP-404
+  (testing "When an improperly-formatted request is made (i.e., in the pre-Puppet 4 format),
+            a 404 error is logged containing information on upgrading the agent."
+    (bootstrap/with-puppetserver-running
+      app
+      {:certificate-authority {:certificate-status {:authorization-required false}}}
+      (with-test-logging
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+              puppet-server-version-regex (re-pattern (str "Puppet Server version: "
+                                                           (version-check/get-version-string "puppet-server")))
+              puppet-version-regex (re-pattern (str "Puppet version: " (:puppet-version (config/get-puppet-config jruby-service))))
+              puppet-api-regex (re-pattern (str "Supported /puppet API versions: " master/puppet-API-versions))
+              puppet-ca-api-regex (re-pattern (str "Supported /puppet-ca API versions: " master/puppet-ca-API-versions))]
+          (testing "Puppet 3 Master URLs are no longer valid"
+            (let [response (http-client/get
+                             "https://localhost:8140/production/catalog/localhost"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (re-find puppet-server-version-regex (:body response)))
+              (is (re-find puppet-version-regex (:body response)))
+              (is (re-find puppet-api-regex (:body response)))
+              (is (re-find puppet-ca-api-regex (:body response)))))
+
+          (testing "Puppet 3 CA URLs are no longer valid"
+            (let [response (http-client/get
+                             "https://localhost:8140/production/certificate_status/localhost"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (re-find puppet-server-version-regex (:body response)))
+              (is (re-find puppet-version-regex (:body response)))
+              (is (re-find puppet-api-regex (:body response)))
+              (is (re-find puppet-ca-api-regex (:body response)))))
+
+          (testing "URLs with the /puppet prefix will not get the 404 upgrade message"
+            (let [response (http-client/get
+                             "https://localhost:8140/puppet/unknown"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (nil? (re-find puppet-server-version-regex (:body response))))))
+
+          (testing "URLs with the /puppet-ca prefix will not get the 404 upgrade message"
+            (let [response (http-client/get
+                             "https://localhost:8140/puppet-ca/unknown"
+                             bootstrap/request-options)]
+              (is (= 404 (:status response)))
+              (is (nil? (re-find puppet-server-version-regex (:body response)))))))))))

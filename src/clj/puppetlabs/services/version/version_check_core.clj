@@ -103,3 +103,9 @@
     (when newer
       (log/info update-msg))))
 
+(defn get-version-string
+  ([product-name]
+    (get-version-string product-name default-group-id))
+  ([product-name group-id]
+    (version* group-id product-name)))
+
