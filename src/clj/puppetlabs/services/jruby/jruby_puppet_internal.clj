@@ -2,7 +2,8 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
@@ -169,6 +170,10 @@
     (if (and (pos? max-requests)
              (> (:request-count new-state) max-requests))
       (do
+        (log/infof (str "Flushing JRuby instance %s because it has exceeded the "
+                        "maximum number of requests (%s)")
+                   (:id instance)
+                   max-requests)
         (flush-instance-fn pool pool-context instance)
         (borrow-from-pool!* borrow-fn pool pool-context flush-instance-fn))
       instance)))
