@@ -189,43 +189,6 @@ EOF
 
   end
 
-  def puppet_apply_as_puppet_user
-    # When puppet apply is run for the first time, certain directories are
-    # created as the user owning the process. In order to avoid creating these
-    # directories as root (making them inaccessible to the puppet user) we must
-    # first run puppet apply as the puppet user whenever puppet is first
-    # installed.
-    manifest_path = master.tmpfile("puppetserver_manifest.pp")
-    herp_path = master.tmpfile("herp")
-    bin_dir = options['puppetbindir']
-
-    manifest_content = <<-EOS
-    file { "herp":
-      path => '#{herp_path}',
-      ensure => 'present',
-      content => 'derp',
-    }
-    EOS
-
-    user = master.puppet('master')['user']
-
-    # TODO: All of this is only necessary because puppet-agent packages
-    # are currently missing some things. We should remove this once
-    # puppet-agent packages are settled. See SERVER-333.
-    on master, "groupadd -r puppet"
-    on master, "useradd -r -g puppet -d /opt/puppetlabs/agent/cache #{user} "
-    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/"
-    on master, "mkdir /opt/puppetlabs/agent/cache/reports"
-    on master, "chown puppet:puppet /opt/puppetlabs/agent/cache/reports"
-    on master, "chmod 0755 /opt/puppetlabs/agent/cache/reports"
-
-    create_remote_file(master, manifest_path, manifest_content)
-    on master, "chown #{user}:#{user} #{manifest_path}"
-    on master, "chown #{user}:#{user} #{herp_path}"
-
-    on master, "su -s /bin/bash -c \"#{bin_dir}puppet apply #{manifest_path}\" #{user}"
-  end
-
   def upgrade_package(host, name)
     variant, _, _, _ = master['platform'].to_array
     case variant

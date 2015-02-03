@@ -21,9 +21,6 @@ step "Install MRI Puppet Agents."
 
   end
 
-step "Run puppet as puppet user to prevent permissions errors later."
-  puppet_apply_as_puppet_user
-
 if (test_config[:puppetserver_install_mode] == :upgrade)
   step "Upgrade Puppet Server."
     upgrade_package(master, "puppetserver")

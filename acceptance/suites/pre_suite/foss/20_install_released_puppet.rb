@@ -6,10 +6,6 @@ if (test_config[:puppetserver_install_mode] == :upgrade)
     end
   end
 
-  step "Run puppet as puppet user to prevent permissions errors later." do
-    puppet_apply_as_puppet_user
-  end
-
   step "Install released Puppet Server for upgrade test" do
     manifest = "
     package { 'puppetserver':
