@@ -2,12 +2,12 @@
   (:import (org.jruby Main RubyInstanceConfig CompatVersion)
            (java.util HashMap))
   (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (defn new-jruby-main
   [config]
   (let [load-path    (->> (get-in config [:os-settings :ruby-load-path])
-                          (cons jruby-puppet/ruby-code-dir))
+                          (cons jruby-internal/ruby-code-dir))
         gem-home     (get-in config [:jruby-puppet :gem-home])
         jruby-config (new RubyInstanceConfig)
         env          (doto (HashMap. (.getEnvironment jruby-config))
