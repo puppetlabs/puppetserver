@@ -82,6 +82,19 @@
                        (v3-routes request-handler))
     (route/not-found "Not Found")))
 
+(defn construct-404-error-message
+  [jruby-service]
+  (str "Error: Invalid URL - Puppet Server expects requests that conform to the "
+       "/puppet and /puppet-ca APIs.\n\n"
+       "Note that Puppet 3 agents aren't compatible with this version; if you're "
+       "running Puppet 3, you must either upgrade your agents to match the server "
+       "or point them to a server running Puppet 3.\n\n"
+       "Server Info:\n"
+       "  Puppet Server version: " (version-check/get-version-string "puppet-server") "\n"
+       "  Puppet version: " (:puppet-version (config/get-puppet-config jruby-service)) "\n"
+       "  Supported /puppet API versions: " puppet-API-versions
+       "  Supported /puppet-ca API versions: " puppet-ca-API-versions))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
 
@@ -127,22 +140,6 @@
                       "/etc/default/puppetserver on Debian systems.")))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Helper Functions
-
-(defn construct-404-error-message
-  [jruby-service]
-  (str "Error: Invalid URL - Puppet Server expects requests that conform to the "
-       "/puppet and /puppet-ca APIs.\n\n"
-       "Note that Puppet 3 agents aren't compatible with this version; if you're "
-       "running Puppet 3, you must either upgrade your agents to match the server "
-       "or point them to a server running Puppet 3.\n\n"
-       "Server Info:\n"
-       "  Puppet Server version: " (version-check/get-version-string "puppet-server") "\n"
-       "  Puppet version: " (:puppet-version (config/get-puppet-config jruby-service)) "\n"
-       "  Supported /puppet API versions: " puppet-API-versions
-       "  Supported /puppet-ca API versions: " puppet-ca-API-versions))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn build-ring-handler
@@ -157,8 +154,8 @@
 (defn construct-invalid-request-handler
   "Constructs a ring handler to handle an incorrectly formatted request and indicate to the user
    they need to update to Puppet 4"
-  [jruby-service]
+  [error-message]
   (fn
     [_]
     {:status 404
-     :body   (construct-404-error-message jruby-service)}))
+     :body   error-message}))
