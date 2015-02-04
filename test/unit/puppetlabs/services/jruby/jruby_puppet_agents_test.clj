@@ -8,7 +8,8 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (puppetlabs.services.jruby.jruby_puppet_core RetryPoisonPill)
            (com.puppetlabs.puppetserver JRubyPuppet)
            (java.util.concurrent ArrayBlockingQueue)))
@@ -96,3 +97,19 @@
             jruby-service
             (is (instance? JRubyPuppet jruby-puppet))))
         (is (= 4 @num-borrows))))))
+
+(deftest master-termination-test
+  (testing "Flushing the pool causes masters to be terminated"
+    (logutils/with-test-logging
+      (tk-testutils/with-app-with-config
+        app
+        [jruby/jruby-puppet-pooled-service
+         profiler/puppet-profiler-service]
+        (-> (jruby-testutils/jruby-puppet-tk-config
+              (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+              context (tk-services/service-context jruby-service)]
+          (jruby-protocol/flush-jruby-pool! jruby-service)
+          ; wait until the flush is complete
+          (await (:pool-agent context))
+          (is (logged? #"Terminating Master")))))))

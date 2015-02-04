@@ -83,7 +83,7 @@
       (let [id (inc i)
             instance (jruby-core/borrow-from-pool (:pool old-pool))]
         (try
-          (.runScriptlet (:scripting-container instance) "Puppet::Server::Master.terminate")
+          (.terminate (:jruby-puppet instance))
           (.terminate (:scripting-container instance))
           (log/infof "Cleaned up old JRuby instance %s of %s, creating replacement."
                      id count)

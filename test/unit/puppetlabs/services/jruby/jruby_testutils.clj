@@ -4,7 +4,8 @@
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [clojure.tools.logging :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -78,7 +79,9 @@
     (handleRequest [_ _]
       (JRubyPuppetResponse. 0 nil nil nil))
     (getSetting [_ _]
-      (Object.))))
+      (Object.))
+    (terminate [_]
+      (log/info "Terminating Master"))))
 
 (defn create-mock-pool-instance
   [pool _ _ _]
@@ -86,9 +89,7 @@
                    {:pool                 pool
                     :id                   1
                     :jruby-puppet         (create-mock-jruby-instance)
-                    :scripting-container (doto (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-                                               (jruby-core/prep-scripting-container ruby-load-path gem-home)
-                                               (.runScriptlet "require 'puppet/server/master'"))
+                    :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
     (.put pool instance)
     instance))

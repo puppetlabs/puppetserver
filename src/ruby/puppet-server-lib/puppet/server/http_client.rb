@@ -12,9 +12,6 @@ SyncHttpClient = com.puppetlabs.http.client.Sync
 
 class Puppet::Server::HttpClient
 
-  attr_reader :client
-  @@client = nil
-
   OPTION_DEFAULTS = {
       :use_ssl => true,
       :verify => nil,
@@ -37,8 +34,8 @@ class Puppet::Server::HttpClient
 
     @server = server
     @port = port
-    @use_ssl = options[:use_ssl]
-    @protocol = @use_ssl ? "https" : "http"
+    self.class.use_ssl = options[:use_ssl]
+    @protocol = self.class.use_ssl ? "https" : "http"
   end
 
   def post(url, body, headers, options = {})
@@ -58,13 +55,11 @@ class Puppet::Server::HttpClient
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
 
-    create_client_if_nil
-
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
-    response = @@client.post(request_options)
+    response = self.class.client_post(request_options)
     ruby_response(response)
   end
 
@@ -72,28 +67,26 @@ class Puppet::Server::HttpClient
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
 
-    create_client_if_nil
-
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
-    response = @@client.get(request_options)
+    response = self.class.client_get(request_options)
     ruby_response(response)
   end
 
   def self.terminate
-    unless @@client.nil?
-      @@client.close
+    unless self.client.nil?
+      self.client.close
     end
   end
 
   private
 
-  def configure_ssl(request_options)
-    return unless @use_ssl
+  def self.configure_ssl(request_options)
+    return unless self.use_ssl
     request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
 
-    settings = self.class.settings
+    settings = self.settings
     if settings.has_key?("ssl_protocols")
       request_options.set_ssl_protocols(settings["ssl_protocols"])
     end
@@ -132,11 +125,29 @@ class Puppet::Server::HttpClient
     result
   end
 
-  def create_client_if_nil
-    if @@client.nil?
-      client_options = ClientOptions.new
-      configure_ssl(client_options)
-      @@client = SyncHttpClient.createClient(client_options)
-    end
+  def self.create_client
+    client_options = ClientOptions.new
+    self.configure_ssl(client_options)
+    SyncHttpClient.createClient(client_options)
+  end
+
+  def self.client
+    @client ||= create_client
+  end
+
+  def self.client_post(request_options)
+    self.client.post(request_options)
+  end
+
+  def self.client_get(request_options)
+    self.client.get(request_options)
+  end
+
+  def self.use_ssl=(use_ssl)
+    @use_ssl = use_ssl
+  end
+
+  def self.use_ssl
+    @use_ssl
   end
 end

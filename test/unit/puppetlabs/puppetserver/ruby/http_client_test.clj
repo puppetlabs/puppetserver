@@ -82,6 +82,11 @@
                                     port use-ssl?)))
      sc)))
 
+(defn terminate-scripting-container
+  [scripting-container]
+  (.runScriptlet scripting-container "Puppet::Server::HttpClient.terminate")
+  (.terminate scripting-container))
+
 (deftest test-ruby-http-client
   (jetty9/with-test-webserver ring-app port
     (let [scripting-container (create-scripting-container port)]
@@ -91,8 +96,7 @@
       (testing "HTTP POST"
         (is (= "hi" (.runScriptlet scripting-container "c.post('/', 'foo', {}).body"))))
 
-      (.runScriptlet scripting-container "Puppet::Server::HttpClient.terminate")
-      (.terminate scripting-container))))
+      (terminate-scripting-container scripting-container))))
 
 (deftest http-basic-auth
   (jetty9/with-test-webserver ring-app-with-auth port
@@ -114,8 +118,7 @@
         (is (= "401" (.runScriptlet scripting-container "response.code")))
         (is (= "access denied" (.runScriptlet scripting-container "response.body"))))
 
-      (.runScriptlet scripting-container "Puppet::Server::HttpClient.terminate")
-      (.terminate scripting-container))))
+      (terminate-scripting-container scripting-container))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SSL Tests
@@ -158,8 +161,7 @@
              (catch EvalFailedException e
                (is (instance? HttpClientException (.. e getCause)))
                (is (ssl-connection-exception? (.. e getCause getCause))))))
-         (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-         (.terminate sc))))
+         (terminate-scripting-container sc))))
 
   (testing "Can connect via TLSv1 by default"
     (with-webserver-with-protocols ["TLSv1"] nil
@@ -167,8 +169,7 @@
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
-         (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-         (.terminate sc))))
+         (terminate-scripting-container sc))))
 
   (testing "Can connect via TLSv1.1 by default"
     (with-webserver-with-protocols ["TLSv1.1"] nil
@@ -176,8 +177,7 @@
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
-         (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-         (.terminate sc))))
+         (terminate-scripting-container sc))))
 
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
@@ -185,8 +185,7 @@
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
-         (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-         (.terminate sc)))))
+         (terminate-scripting-container sc)))))
 
 (deftest https-sslv3
   (logutils/with-test-logging
@@ -199,8 +198,7 @@
             (catch EvalFailedException e
               (is (instance? HttpClientException (.. e getCause)))
               (is (ssl-connection-exception? (.. e getCause getCause)))))
-          (.runScriptlet sc"Puppet::Server::HttpClient.terminate")
-          (.terminate sc)))
+          (terminate-scripting-container sc)))
 
       (testing "Can connect via SSLv3 when specified"
         (let [sc (create-scripting-container-with-ssl-client
@@ -209,8 +207,7 @@
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
           (is (= "hi" (.runScriptlet sc "response.body")))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc))))))
+          (terminate-scripting-container sc))))))
 
 (deftest https-cipher-suites
   (logutils/with-test-logging
@@ -226,8 +223,7 @@
             (catch EvalFailedException e
               (is (instance? HttpClientException (.. e getCause)))
               (is (ssl-connection-exception? (.. e getCause getCause)))))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc)))
+          (terminate-scripting-container sc)))
 
       (testing "Should be able to connect if explicit matching ciphers are configured"
         (let [sc (create-scripting-container-with-ssl-client
@@ -237,19 +233,17 @@
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
           (is (= "hi" (.runScriptlet sc "response.body")))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc))))))
+          (terminate-scripting-container sc))))))
 
 (deftest clients-persist
   (testing "client persists when making HTTP requests"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app port
         (let [sc (create-scripting-container port)
-              client1 (.runScriptlet sc "c.get('/', {}); c.client")
-              client2 (.runScriptlet sc "c.post('/', 'foo', {}); c.client")]
+              client1 (.runScriptlet sc "c.get('/', {}); c.class.client")
+              client2 (.runScriptlet sc "c.post('/', 'foo', {}); c.class.client")]
           (is (= client1 client2))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc))))))
+          (terminate-scripting-container sc))))))
 
 (deftest connections-closed
   (testing "connection header always set to close on get"
@@ -257,22 +251,25 @@
       (jetty9/with-test-webserver ring-app-connection-closed port
         (let [sc (create-scripting-container port)]
           (is (= "The Connection header has value close" (.runScriptlet sc "c.get('/', {}).body")))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc)))))
+          (terminate-scripting-container sc)))))
   (testing "connection header always set to close on post"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (let [sc (create-scripting-container port)]
           (is (= "The Connection header has value close" (.runScriptlet sc "c.post('/', 'foo', {}).body")))
-          (.runScriptlet sc "Puppet::Server::HttpClient.terminate")
-          (.terminate sc)))))
-  (testing "master's terminate function closes the client"
+          (terminate-scripting-container sc)))))
+  (testing "client's terminate function closes the client"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (let [sc (create-scripting-container port)]
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
-          (.runScriptlet sc "require 'puppet/server/master'; Puppet::Server::Master.terminate")
-          (is (thrown? EvalFailedException
-                       (.runScriptlet sc "response = c.get('/', {})")))
+          (.runScriptlet sc "c.class.terminate")
+          (try
+            (.runScriptlet sc "response = c.get('/', {})")
+            (catch EvalFailedException e
+              (let [wrapped-exception (.getCause e)
+                    message           (.getMessage e)]
+                (is (instance? IllegalStateException wrapped-exception))
+                (is (re-find #"Request cannot be executed; I/O reactor status: STOPPED" message)))))
           (.terminate sc))))))

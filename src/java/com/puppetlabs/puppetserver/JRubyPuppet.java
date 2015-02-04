@@ -18,4 +18,5 @@ public interface JRubyPuppet {
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);
     String puppetVersion();
+    void terminate();
 }
