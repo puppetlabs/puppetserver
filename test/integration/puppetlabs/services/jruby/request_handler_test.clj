@@ -63,25 +63,23 @@
                                                        (subs expected-md5 0 8))
                                           expected-md5
                                           "contents"])
-               ;; The 'text/plain' content-type mimics what a Puppet agent
-               ;; sends to a master for a file-bucket PUT.  Ideally, this
-               ;; should be "application/octet-stream" but including this at
-               ;; present would result in a Puppet Ruby error - Puppet Client
-               ;; sent a mime-type (application/octet-stream) that doesn't
-               ;; correspond to a format we support.
+               ;; This accept and content-type header match what the Puppet
+               ;; agent sends to the master for a file-bucket PUT. Ideally,
+               ;; these should both be 'application/octet-stream', but for now
+               ;; we have to live with 'binary' content-type because
+               ;; everything is terrible.
                options                 (merge ssl-request-options
                                               {:body (ByteArrayInputStream.
                                                        raw-byte-arr)
                                                :headers {"accept"
-                                                           "s, pson"
+                                                           "binary"
                                                          "content-type"
-                                                           "text/plain"}})
+                                                           "application/octet-stream"}})
                response (http-client/put (str "https://localhost:8140/"
                                               "puppet/v3/file_bucket_file/md5/"
                                               expected-md5
                                               "?environment=production")
                                          options)]
-
            (is (= 200 (:status response)) "Bucket PUT request failed")
            (is (fs/exists? expected-bucket-file)
                "Bucket file not stored at expected location")
