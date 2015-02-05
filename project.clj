@@ -95,7 +95,7 @@
              :ezbake {:dependencies ^:replace [[puppetlabs/puppet-server ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.1.0"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.1.2"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
