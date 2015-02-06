@@ -16,7 +16,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/http-client "0.4.1"]
-                 [compojure "1.1.8" :exclusions [commons-io]]
+                 [compojure "1.1.8" :exclusions [commons-io org.clojure/tools.macro]]
                  [commons-io "2.1"]
                  [liberator "0.12.0"]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server

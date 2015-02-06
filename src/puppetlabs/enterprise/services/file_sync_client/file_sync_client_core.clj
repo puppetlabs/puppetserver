@@ -5,7 +5,8 @@
             [schema.core :as schema]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
-            [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.http.client.sync :as sync]
+            [puppetlabs.http.client.common :as http-client]
             [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -68,13 +69,14 @@
   `server-api-url` argument.  Returns a latest-commit payload which
   should validate against the FileSyncLatestCommits schema if successful or
   throws an Exception on failure."
-  [server-api-url :- schema/Str]
+  [server-api-url :- schema/Str
+   client :- http-client/HTTPClient]
   (let [latest-commits-url (str
                              server-api-url
                              common/latest-commits-sub-path)]
     (try
       (get-body-from-latest-commits-payload
-        (http-client/get latest-commits-url {:as :text}))
+        (http-client/get client latest-commits-url {:as :text}))
       (catch Exception e
         (throw (Exception. (str "Unable to get latest-commits from server ("
                                 latest-commits-url
@@ -180,8 +182,8 @@
   service for any updates which may be available on the server.
   server-repo-url is the base URL at which the repository is hosted on the
   server.  Repos is the repos section of the file sync client configuration."
-  [server-repo-base-url server-api-url repos]
-  (let [latest-commits (get-latest-commits-from-server server-api-url)]
+  [server-repo-base-url server-api-url repos client]
+  (let [latest-commits (get-latest-commits-from-server server-api-url client)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
     (doseq [repo repos]
       (let [name (:name repo)]
@@ -213,14 +215,16 @@
         server-repo-path    (:server-repo-path config)
         server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
-        repos               (:repos config)]
+        repos               (:repos config)
+        client              (sync/create-client {})]
     (log/debugf "File sync client repos: %s" repos)
     (while (not (realized? shutdown-requested?))
       (try
         (process-repos-for-updates
           (str filesync-server-url server-repo-path)
           (str filesync-server-url server-api-path)
-          repos)
+          repos
+          client)
         (catch Exception e
           (log/error (str "File sync failure.  Cause: "
                       e
@@ -228,7 +232,8 @@
                         (str "  Cause: " sub-cause)
                         "")))
           (log/debug e "File sync failure.")))
-      (Thread/sleep poll-interval)))
+      (Thread/sleep poll-interval))
+    (http-client/close client))
   (log/info "File sync client worker stopped")
   nil)
 
