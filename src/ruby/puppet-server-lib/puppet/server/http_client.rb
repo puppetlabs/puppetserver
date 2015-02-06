@@ -34,8 +34,8 @@ class Puppet::Server::HttpClient
 
     @server = server
     @port = port
-    self.class.use_ssl = options[:use_ssl]
-    @protocol = self.class.use_ssl ? "https" : "http"
+    @use_ssl = options[:use_ssl]
+    @protocol = @use_ssl ? "https" : "http"
   end
 
   def post(url, body, headers, options = {})
@@ -83,10 +83,10 @@ class Puppet::Server::HttpClient
   private
 
   def self.configure_ssl(request_options)
-    return unless self.use_ssl
     request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
 
     settings = self.settings
+
     if settings.has_key?("ssl_protocols")
       request_options.set_ssl_protocols(settings["ssl_protocols"])
     end
@@ -143,11 +143,4 @@ class Puppet::Server::HttpClient
     self.client.get(request_options)
   end
 
-  def self.use_ssl=(use_ssl)
-    @use_ssl = use_ssl
-  end
-
-  def self.use_ssl
-    @use_ssl
-  end
 end

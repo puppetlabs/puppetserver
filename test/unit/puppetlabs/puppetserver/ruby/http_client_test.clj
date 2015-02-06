@@ -27,6 +27,11 @@
   {:status 200
    :body "hi"})
 
+(defn ring-app-alternate
+  [req]
+  {:status 200
+   :body "bye"})
+
 (defn ring-app-connection-closed
   [req]
   {:status 200
@@ -58,6 +63,10 @@
       (.put result "cipher_suites" (into-array String (:cipher-suites options))))
     result))
 
+(def ca-pem (test-resource "ca.pem"))
+(def cert-pem (test-resource "localhost_cert.pem"))
+(def privkey-pem (test-resource "localhost_key.pem"))
+
 (defn create-scripting-container
   "A JRuby ScriptingContainer with an instance of 'Puppet::Server::HttpClient'
   assigned to a variable 'c'.  The ScriptingContainer was created
@@ -80,6 +89,10 @@
      (.runScriptlet sc (str "require 'puppet/server/http_client';"
                             (format "c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
                                     port use-ssl?)))
+     (doto sc
+       (.runScriptlet (format "Puppet[:hostcert] = '%s'" cert-pem))
+       (.runScriptlet (format "Puppet[:hostprivkey] = '%s'" privkey-pem))
+       (.runScriptlet (format "Puppet[:localcacert] = '%s'" ca-pem)))
      sc)))
 
 (defn terminate-scripting-container
@@ -123,19 +136,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; SSL Tests
 
-(def ca-pem (test-resource "ca.pem"))
-(def cert-pem (test-resource "localhost_cert.pem"))
-(def privkey-pem (test-resource "localhost_key.pem"))
-
-(defn create-scripting-container-with-ssl-client
-  ([port]
-   (create-scripting-container-with-ssl-client port {:use-ssl true}))
-  ([port options]
-   (doto (create-scripting-container port (merge {:use-ssl true} options))
-     (.runScriptlet (format "Puppet[:hostcert] = '%s'" cert-pem))
-     (.runScriptlet (format "Puppet[:hostprivkey] = '%s'" privkey-pem))
-     (.runScriptlet (format "Puppet[:localcacert] = '%s'" ca-pem)))))
-
 (defmacro with-webserver-with-protocols
   [protocols cipher-suites & body]
   `(jetty9/with-test-webserver-and-config ring-app port#
@@ -151,21 +151,9 @@
     ~@body))
 
 (deftest https-tls-defaults
-  (testing "requests fail without an SSL client"
-    (with-webserver-with-protocols nil nil
-       (let [sc (create-scripting-container 10080)]
-         (logutils/with-test-logging
-           (try
-             (.runScriptlet sc "response = c.get('/', {})")
-             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
-             (catch EvalFailedException e
-               (is (instance? HttpClientException (.. e getCause)))
-               (is (ssl-connection-exception? (.. e getCause getCause))))))
-         (terminate-scripting-container sc))))
-
   (testing "Can connect via TLSv1 by default"
     (with-webserver-with-protocols ["TLSv1"] nil
-       (let [sc (create-scripting-container-with-ssl-client 10080)]
+       (let [sc (create-scripting-container 10080 {:use-ssl true})]
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
@@ -173,7 +161,7 @@
 
   (testing "Can connect via TLSv1.1 by default"
     (with-webserver-with-protocols ["TLSv1.1"] nil
-       (let [sc (create-scripting-container-with-ssl-client 10080)]
+       (let [sc (create-scripting-container 10080 {:use-ssl true})]
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
@@ -181,7 +169,7 @@
 
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
-       (let [sc (create-scripting-container-with-ssl-client 10080)]
+       (let [sc (create-scripting-container 10080 {:use-ssl true})]
          (.runScriptlet sc "response = c.get('/', {})")
          (is (= "200" (.runScriptlet sc "response.code")))
          (is (= "hi" (.runScriptlet sc "response.body")))
@@ -191,7 +179,7 @@
   (logutils/with-test-logging
     (with-webserver-with-protocols ["SSLv3"] nil
       (testing "Cannot connect via SSLv3 by default"
-        (let [sc (create-scripting-container-with-ssl-client 10080)]
+        (let [sc (create-scripting-container 10080 {:use-ssl true})]
           (try
             (.runScriptlet sc "response = c.get('/', {})")
             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
@@ -201,9 +189,10 @@
           (terminate-scripting-container sc)))
 
       (testing "Can connect via SSLv3 when specified"
-        (let [sc (create-scripting-container-with-ssl-client
+        (let [sc (create-scripting-container
                   10080
-                  {:ssl-protocols ["SSLv3" "TLSv1"]})]
+                  {:ssl-protocols ["SSLv3" "TLSv1"]
+                   :use-ssl true})]
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
           (is (= "hi" (.runScriptlet sc "response.body")))
@@ -213,10 +202,11 @@
   (logutils/with-test-logging
     (with-webserver-with-protocols ["SSLv3"] ["SSL_RSA_WITH_RC4_128_SHA"]
       (testing "Should not be able to connect if no matching ciphers"
-        (let [sc (create-scripting-container-with-ssl-client
+        (let [sc (create-scripting-container
                   10080
                   {:ssl-protocols ["SSLv3"]
-                   :cipher-suites ["SSL_RSA_WITH_RC4_128_MD5"]})]
+                   :cipher-suites ["SSL_RSA_WITH_RC4_128_MD5"]
+                   :use-ssl true})]
           (try
             (.runScriptlet sc "response = c.get('/', {})")
             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
@@ -226,10 +216,11 @@
           (terminate-scripting-container sc)))
 
       (testing "Should be able to connect if explicit matching ciphers are configured"
-        (let [sc (create-scripting-container-with-ssl-client
+        (let [sc (create-scripting-container
                   10080
                   {:ssl-protocols ["SSLv3"]
-                   :cipher-suites ["SSL_RSA_WITH_RC4_128_SHA"]})]
+                   :cipher-suites ["SSL_RSA_WITH_RC4_128_SHA"]
+                   :use-ssl true})]
           (.runScriptlet sc "response = c.get('/', {})")
           (is (= "200" (.runScriptlet sc "response.code")))
           (is (= "hi" (.runScriptlet sc "response.body")))
@@ -242,6 +233,16 @@
         (let [sc (create-scripting-container port)
               client1 (.runScriptlet sc "c.get('/', {}); c.class.client")
               client2 (.runScriptlet sc "c.post('/', 'foo', {}); c.class.client")]
+          (is (= client1 client2))
+          (terminate-scripting-container sc)))))
+  (testing "all instances of HttpClient have the same underlying client object"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app port
+        (let [sc (create-scripting-container port)
+              client1 (.runScriptlet sc "c.class.client")
+              client2 (.runScriptlet sc (str (format "c2 = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                                                  port false)
+                                          "c2.class.client"))]
           (is (= client1 client2))
           (terminate-scripting-container sc))))))
 
@@ -273,3 +274,21 @@
                 (is (instance? IllegalStateException wrapped-exception))
                 (is (re-find #"Request cannot be executed; I/O reactor status: STOPPED" message)))))
           (.terminate sc))))))
+
+
+(deftest http-and-https
+  (testing "can make http and https requests without having to use a new scripting container"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app-alternate port
+        (with-webserver-with-protocols nil nil
+          (let [sc (create-scripting-container 10080 {:use-ssl true})]
+            (.runScriptlet sc "response = c.get('/', {})")
+            (is (= "200" (.runScriptlet sc "response.code")))
+            (is (= "hi" (.runScriptlet sc "response.body")))
+            (.runScriptlet sc (str (format "c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                                           port false)
+                                   "response = c.get('/', {})"))
+            (is (= "200" (.runScriptlet sc "response.code")))
+            (is (= "bye" (.runScriptlet sc "response.body")))
+            (terminate-scripting-container sc)))))))
+
