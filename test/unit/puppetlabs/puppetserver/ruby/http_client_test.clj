@@ -277,7 +277,7 @@
 
 
 (deftest http-and-https
-  (testing "can make http and https requests without having to use a new scripting container"
+  (testing "can make http calls after https calls without a new scripting container"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-alternate port
         (with-webserver-with-protocols nil nil
@@ -290,5 +290,20 @@
                                    "response = c.get('/', {})"))
             (is (= "200" (.runScriptlet sc "response.code")))
             (is (= "bye" (.runScriptlet sc "response.body")))
+            (terminate-scripting-container sc))))))
+
+  (testing "can make https calls after http calls without a new scripting container"
+    (logutils/with-test-logging
+      (jetty9/with-test-webserver ring-app-alternate port
+        (with-webserver-with-protocols nil nil
+          (let [sc (create-scripting-container port)]
+            (.runScriptlet sc "response = c.get('/', {})")
+            (is (= "200" (.runScriptlet sc "response.code")))
+            (is (= "bye" (.runScriptlet sc "response.body")))
+            (.runScriptlet sc (str (format "c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                                           10080 true)
+                                   "response = c.get('/', {})"))
+            (is (= "200" (.runScriptlet sc "response.code")))
+            (is (= "hi" (.runScriptlet sc "response.body")))
             (terminate-scripting-container sc)))))))
 
