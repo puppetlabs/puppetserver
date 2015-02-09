@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-test
+(ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
