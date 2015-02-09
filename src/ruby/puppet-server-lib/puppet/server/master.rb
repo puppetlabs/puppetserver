@@ -69,4 +69,8 @@ class Puppet::Server::Master
   def run_mode()
     Puppet.run_mode.name.to_s
   end
+
+  def terminate
+    Puppet::Server::Config.terminate_puppet_server
+  end
 end
