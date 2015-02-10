@@ -83,4 +83,3 @@
            :ssl-key       "./dev-resources/ssl/key.pem"}
           (Thread/sleep 500)
           (is (logged? #"Not configuring SSL, as only some SSL options were set. ")))))))
-

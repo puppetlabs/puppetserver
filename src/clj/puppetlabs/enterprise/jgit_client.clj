@@ -6,9 +6,32 @@
            (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult)
-           (java.io File))
+           (org.eclipse.jgit.transport.http HttpConnectionFactory)
+           (java.io File)
+           (com.puppetlabs.enterprise HttpClientConnection)
+           (java.util HashMap))
   (:require [clojure.java.io :as io]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.http.client.sync :as sync]
+            [puppetlabs.http.client.common :as http-client]
+            [puppetlabs.enterprise.file-sync-common :as common]
+            [puppetlabs.ssl-utils.core :as ssl]))
+
+(defn create-connection
+  [config url connection-proxy]
+  (let [ssl-opts (common/extract-ssl-opts config)
+        ssl-ctxt (if-not (empty? ssl-opts)
+                   (ssl/pems->ssl-context (:ssl-cert ssl-opts) (:ssl-key ssl-opts) (:ssl-ca-cert ssl-opts)))]
+    (HttpClientConnection. ssl-ctxt url connection-proxy)))
+
+(defn create-connection-factory
+  [config]
+  (proxy [HttpConnectionFactory] []
+    (create
+      ([url]
+        (create-connection config (.toString url) nil))
+      ([url connection-proxy]
+        (create-connection config (.toString url) connection-proxy)))))
 
 (defn add-and-commit
   "Perform a git-add and git-commit of all files in the repo working tree. All

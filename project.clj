@@ -20,10 +20,15 @@
                  [commons-io "2.1"]
                  [liberator "0.12.0"]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server
-                    "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]]
+                    "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
+                 [org.eclipse.jgit/org.eclipse.jgit.http.apache
+                    "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
+                 [puppetlabs/ssl-utils "0.7.0"]]
 
   :pedantic? :abort
 
+  :source-paths ["src/clj"]
+  :java-source-paths ["src/java"]
   :test-paths ["test/unit" "test/integration"]
 
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]

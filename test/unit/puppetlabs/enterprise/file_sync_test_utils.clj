@@ -20,19 +20,33 @@
 
 (def http-port                    8080)
 
+(def https-port                   10080)
+
 (def file-text                    "here is some text")
 
 (def server-base-url              (str "http://localhost:" http-port))
+
+(def server-base-url-ssl          (str "https://localhost:" https-port))
 
 (def server-repo-url              (str server-base-url default-repo-path-prefix))
 
 (def author                       (PersonIdent.
                                     "lein tester" "lein.tester@bogus.com"))
 
+(defn base-url
+  [ssl?]
+  (if ssl?
+    server-base-url-ssl
+    server-base-url))
+
 (defn repo-base-url
-  ([] (repo-base-url default-repo-path-prefix))
-  ([repo-path-prefix]
-   (str server-base-url repo-path-prefix)))
+  ([] (repo-base-url default-repo-path-prefix false))
+  ([ssl?] (repo-base-url default-repo-path-prefix ssl?))
+  ([repo-path-prefix ssl?]
+  (let [base-url (if ssl?
+                   server-base-url-ssl
+                   server-base-url)]
+    (str base-url repo-path-prefix))))
 
 (defn webserver-plaintext-config
   []
@@ -40,6 +54,17 @@
    :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
                          {:api          default-api-path-prefix
                           :repo-servlet default-repo-path-prefix}}})
+
+(defn webserver-ssl-config
+  []
+  {:webserver {:ssl-port    https-port
+               :ssl-host    "0.0.0.0"
+               :ssl-ca-cert "./dev-resources/ssl/ca.pem"
+               :ssl-cert    "./dev-resources/ssl/cert.pem"
+               :ssl-key     "./dev-resources/ssl/key.pem"}
+   :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                        {:api          default-api-path-prefix
+                         :repo-servlet default-repo-path-prefix}}})
 
 (defn enable-push
   "Given the config map for a repo, return an updated config map that
@@ -57,10 +82,21 @@
   [base-path repos]
   {:file-sync-storage (file-sync-storage-config-payload base-path repos)})
 
+(defn file-sync-storage-config-ssl
+  [base-path repos]
+  {:file-sync-storage (merge (file-sync-storage-config-payload base-path repos) {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
+                                                                                 :ssl-cert    "./dev-resources/ssl/cert.pem"
+                                                                                 :ssl-key     "./dev-resources/ssl/key.pem"})})
+
 (defn jgit-plaintext-config-with-repos
   [base-path repos]
   (merge (webserver-plaintext-config)
          (file-sync-storage-config base-path repos)))
+
+(defn jgit-ssl-config-with-repos
+  [base-path repos]
+  (merge (webserver-ssl-config)
+         (file-sync-storage-config-ssl base-path repos)))
 
 (defn temp-dir-as-string
   []
@@ -169,10 +205,12 @@
    changes, and pushes the commit to the server.  Returns the path on disk
    to the repository."
   ([server-repo-subpath]
-   (clone-repo-and-push-test-files server-repo-subpath 1))
+   (clone-repo-and-push-test-files server-repo-subpath 1 false))
   ([server-repo-subpath number-of-files]
+    (clone-repo-and-push-test-files server-repo-subpath number-of-files false))
+  ([server-repo-subpath number-of-files ssl?]
    (let [client-repo-dir  (ks/temp-dir)
-         server-repo-url  (str (repo-base-url) "/" server-repo-subpath)
+         server-repo-url  (str (repo-base-url ssl?) "/" server-repo-subpath)
          client-orig-repo (jgit-client/clone server-repo-url client-repo-dir)]
      (dotimes [_ number-of-files]
        (create-and-push-file client-orig-repo client-repo-dir))

@@ -1,11 +1,13 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
-  (:import (org.eclipse.jgit.http.server GitServlet))
+  (:import (org.eclipse.jgit.http.server GitServlet)
+           (org.eclipse.jgit.transport HttpTransport))
   (:require
     [clojure.tools.logging :as log]
     [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
     [puppetlabs.enterprise.file-sync-common :as common]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
-    [compojure.core :as compojure]))
+    [compojure.core :as compojure]
+    [puppetlabs.enterprise.jgit-client :as jgit-client]))
 
 (defservice file-sync-storage-service
             [[:ConfigService get-in-config]
@@ -22,6 +24,9 @@
           ; -- everything exported -- until a need to do
           ; something different for security arises.
           export-all "1"]
+
+      ; Ensure the JGit client is configured for SSL if necessary
+      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory config))
       (core/initialize-repos! config)
 
       (log/info

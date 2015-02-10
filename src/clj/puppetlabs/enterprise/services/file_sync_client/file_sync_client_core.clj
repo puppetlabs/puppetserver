@@ -199,19 +199,6 @@
             "File sync did not find matching server repo for client repo: %s"
             name))))))
 
-(defn extract-ssl-opts
-  [config]
-  (let [ssl-opts (select-keys config [:ssl-cert :ssl-key :ssl-ca-cert])
-        ssl-configured? (= 3 (count (keys ssl-opts)))
-        incomplete-ssl? (and (not ssl-configured?) (< 0 (count (keys ssl-opts))))]
-    (cond
-      ssl-configured? ssl-opts
-      incomplete-ssl? (do (log/warn (str "Not configuring SSL, as only some SSL options were set. "
-                                           "To configure SSL, the ssl-cert, ssl-key, and ssl-ca-cert "
-                                           "must all be set in the file sync client configuration."))
-                            {})
-      :else {})))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -232,7 +219,7 @@
         server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
         repos               (:repos config)
-        client-opts         (extract-ssl-opts config)
+        client-opts         (common/extract-ssl-opts config)
         client              (sync/create-client client-opts)]
     (log/debugf "File sync client repos: %s" repos)
     (while (not (realized? shutdown-requested?))

@@ -1,50 +1,10 @@
-/*
- * Copyright (C) 2013 Christian Halstrick <christian.halstrick@sap.com>
- * and other copyright owners as documented in the JGit project's IP log.
- *
- * This program and the accompanying materials are made available
- * under the terms of the Eclipse Distribution License v1.0 which
- * accompanies this distribution, is reproduced below, and is
- * available at http://www.eclipse.org/org/documents/edl-v10.php
- *
- * All rights reserved.
- *
- * Redistribution and use in source and binary forms, with or
- * without modification, are permitted provided that the following
- * conditions are met:
- *
- * - Redistributions of source code must retain the above copyright
- *   notice, this list of conditions and the following disclaimer.
- *
- * - Redistributions in binary form must reproduce the above
- *   copyright notice, this list of conditions and the following
- *   disclaimer in the documentation and/or other materials provided
- *   with the distribution.
- *
- * - Neither the name of the Eclipse Foundation, Inc. nor the
- *   names of its contributors may be used to endorse or promote
- *   products derived from this software without specific prior
- *   written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
- * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
- * INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
- * STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
- * ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
 package com.puppetlabs.enterprise;
 
+import java.io.FileNotFoundException;
+import java.io.OutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.ProtocolException;
@@ -82,16 +42,19 @@ import org.apache.http.client.methods.HttpUriRequest;
 import org.apache.http.client.params.ClientPNames;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.scheme.Scheme;
+
+import org.apache.http.conn.ssl.BrowserCompatHostnameVerifier;
 import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.apache.http.conn.ssl.X509HostnameVerifier;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.params.CoreConnectionPNames;
 import org.apache.http.params.HttpParams;
 import org.eclipse.jgit.transport.http.HttpConnection;
+
+import org.eclipse.jgit.transport.http.apache.TemporaryBufferEntity;
 import org.eclipse.jgit.transport.http.apache.internal.HttpApacheText;
 import org.eclipse.jgit.util.TemporaryBuffer;
 import org.eclipse.jgit.util.TemporaryBuffer.LocalFile;
-
 /**
  * A {@link HttpConnection} which uses {@link HttpClient}
  *
@@ -120,7 +83,9 @@ public class HttpClientConnection implements HttpConnection {
 
     private Boolean followRedirects;
 
-    private X509HostnameVerifier hostnameverifier;
+    private X509HostnameVerifier hostnameverifier = new BrowserCompatHostnameVerifier();
+
+    private Boolean useSSL = false;
 
     SSLContext ctx;
 
@@ -143,7 +108,8 @@ public class HttpClientConnection implements HttpConnection {
         if (followRedirects != null)
             params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
                     followRedirects.booleanValue());
-        if (hostnameverifier != null) {
+
+        if (hostnameverifier != null && useSSL) {
             SSLSocketFactory sf;
             sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
             Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
@@ -176,28 +142,14 @@ public class HttpClientConnection implements HttpConnection {
 
     /**
      * @param urlStr
-     */
-    public HttpClientConnection(String urlStr) {
-        this(urlStr, null);
-    }
-
-    /**
-     * @param urlStr
      * @param proxy
      */
-    public HttpClientConnection(String urlStr, Proxy proxy) {
-        this(urlStr, proxy, null);
-    }
-
-    /**
-     * @param urlStr
-     * @param proxy
-     * @param cl
-     */
-    public HttpClientConnection(String urlStr, Proxy proxy, HttpClient cl) {
-        this.client = cl;
+    public HttpClientConnection(SSLContext sslContext, String urlStr, Proxy proxy) throws FileNotFoundException {
         this.urlStr = urlStr;
         this.proxy = proxy;
+        this.client = null;
+        this.ctx = sslContext;
+        this.useSSL = this.ctx != null;
     }
 
     public int getResponseCode() throws IOException {
@@ -309,19 +261,19 @@ public class HttpClientConnection implements HttpConnection {
     public void setFixedLengthStreamingMode(int contentLength) {
         if (entity != null)
             throw new IllegalArgumentException();
-        entity = new TemporaryBufferEntity(new LocalFile(null));
+        entity = new TemporaryBufferEntity(new LocalFile());
         entity.setContentLength(contentLength);
     }
 
     public OutputStream getOutputStream() throws IOException {
         if (entity == null)
-            entity = new TemporaryBufferEntity(new LocalFile(null));
+            entity = new TemporaryBufferEntity(new LocalFile());
         return entity.getBuffer();
     }
 
     public void setChunkedStreamingMode(int chunklen) {
         if (entity == null)
-            entity = new TemporaryBufferEntity(new LocalFile(null));
+            entity = new TemporaryBufferEntity(new LocalFile());
         entity.setChunked(true);
     }
 
