@@ -1,6 +1,5 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
-  (:import (org.eclipse.jgit.http.server GitServlet)
-           (org.eclipse.jgit.transport HttpTransport))
+  (:import (org.eclipse.jgit.transport HttpTransport))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
               :as core]

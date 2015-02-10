@@ -6,8 +6,7 @@
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.http.client.sync :as sync]
-            [puppetlabs.http.client.common :as http-client]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.http.client.common :as http-client]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas

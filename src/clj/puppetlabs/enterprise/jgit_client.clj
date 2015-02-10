@@ -1,6 +1,5 @@
 (ns puppetlabs.enterprise.jgit-client
   (:import (org.eclipse.jgit.api Git PullResult)
-           (org.eclipse.jgit.dircache DirCache)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository)
            (org.eclipse.jgit.merge MergeStrategy)
@@ -8,12 +7,9 @@
            (org.eclipse.jgit.transport PushResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
            (java.io File)
-           (com.puppetlabs.enterprise HttpClientConnection)
-           (java.util HashMap))
+           (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.java.io :as io]
             [me.raynes.fs :as fs]
-            [puppetlabs.http.client.sync :as sync]
-            [puppetlabs.http.client.common :as http-client]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.ssl-utils.core :as ssl]))
 
