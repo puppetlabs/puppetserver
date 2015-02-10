@@ -1,5 +1,9 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-service-test
-  (:import (javax.net.ssl SSLHandshakeException))
+  (:import (javax.net.ssl SSLHandshakeException)
+           (java.net URL)
+           (org.eclipse.jgit.transport HttpTransport)
+           (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
+           (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-utils :as client-utils]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
@@ -83,3 +87,23 @@
            :ssl-key       "./dev-resources/ssl/key.pem"}
           (Thread/sleep 500)
           (is (logged? #"Not configuring SSL, as only some SSL options were set. ")))))))
+
+(deftest jgit-client-ssl-configuration-test
+  (testing "client service configures a connection factory that produces the proper type of connection"
+    (HttpTransport/setConnectionFactory (JDKHttpConnectionFactory.))
+    (client-utils/with-boostrapped-file-sync-client-and-webserver
+      {:ssl-port    10080
+       :ssl-host    "0.0.0.0"
+       :ssl-ca-cert "./dev-resources/ssl/ca.pem"
+       :ssl-cert    "./dev-resources/ssl/cert.pem"
+       :ssl-key     "./dev-resources/ssl/key.pem"}
+      ring-handler
+      {:poll-interval 1
+       :server-url    "https://localhost:10080/"
+       :repos         [{:name "fake" :target-dir "fake"}]
+       :ssl-ca-cert   "./dev-resources/ssl/ca.pem"
+       :ssl-cert      "./dev-resources/ssl/cert.pem"
+       :ssl-key       "./dev-resources/ssl/key.pem"}
+      (let [connection-factory (HttpTransport/getConnectionFactory)
+            connection (.create connection-factory (URL. "https://localhost:10080"))]
+        (is (instance? HttpClientConnection connection))))))

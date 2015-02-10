@@ -98,6 +98,11 @@
   (merge (webserver-ssl-config)
          (file-sync-storage-config-ssl base-path repos)))
 
+(defn jgit-ssl-and-plaintext-config-with-repos
+  [base-path repos]
+  (merge (webserver-ssl-config)
+         (file-sync-storage-config base-path repos)))
+
 (defn temp-dir-as-string
   []
   (.getPath (ks/temp-dir)))
