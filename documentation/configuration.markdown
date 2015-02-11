@@ -195,20 +195,24 @@ a multi-master environment or using an external CA, you might want to disable
 the CA service on some nodes.
 
 
-## Java Secure Socket Extension (JSSE) configuration
+## Enabling the Insecure SSLv3 Protocol
 
-A result of the [POODLE](https://blogs.oracle.com/security/entry/information_about_ssl_poodle_vulnerability)
-is that SSLv3 is disabled by default at the JRE layer and in Puppet Server.
-It is possible to enable Puppet Server to negotiate with SSLv3 clients,
-however the recommended course of action is to upgrade clients to negotiate
-using secure protocols.
+Puppet Server usually cannot use SSLv3, because it is disabled by default at the
+JRE layer. (As of javase 7u75 / 1.7.0_u75. See the
+[7u75 Update Release Notes](http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html)
+for more information.)
 
-SSLv3 has been disabled by default in javase 7u75 (1.7.0_u75).  See [7u75
-Update Release Notes](http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html)
-for more information.
+You should almost always leave SSLv3 disabled, because it isn't secure anymore;
+it's been broken since the
+[POODLE vulnerability.](https://blogs.oracle.com/security/entry/information_about_ssl_poodle_vulnerability)
+If you have clients that can't use newer protocols, you should try to upgrade
+them instead of downgrading Puppet Server.
 
-To enable SSLv3 at the JRE layer, first create a properties file, e.g.
-`/etc/sysconfig/puppetserver-properties/java.security` with the following
+However, if you absolutely must, you can allow Puppet Server to negotiate with
+SSLv3 clients.
+
+To enable SSLv3 at the JRE layer, first create a properties file (e.g.
+`/etc/sysconfig/puppetserver-properties/java.security`) with the following
 content:
 
 ~~~
@@ -221,8 +225,8 @@ jdk.tls.disabledAlgorithms=
 ~~~
 
 Once this property file exists, update `JAVA_ARGS`, typically defined in
-`/etc/sysconfig/puppetserver` with
+`/etc/sysconfig/puppetserver`, and add the option
 `-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`.  This
 will configure the JVM to override the `jdk.tls.disabledAlgorithms` property
-defined in `$JAVA_HOME/jre/lib/security/java.security`.  The puppetserver
+defined in `$JAVA_HOME/jre/lib/security/java.security`.  The `puppetserver`
 service needs to be restarted for this setting to take effect.
