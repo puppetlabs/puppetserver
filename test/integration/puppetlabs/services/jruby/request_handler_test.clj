@@ -63,18 +63,11 @@
                                                        (subs expected-md5 0 8))
                                           expected-md5
                                           "contents"])
-               ;; This accept and content-type header match what the Puppet
-               ;; agent sends to the master for a file-bucket PUT. Ideally,
-               ;; these should both be 'application/octet-stream', but for now
-               ;; we have to live with 'binary' content-type because
-               ;; everything is terrible.
                options                 (merge ssl-request-options
                                               {:body (ByteArrayInputStream.
                                                        raw-byte-arr)
-                                               :headers {"accept"
-                                                           "binary"
-                                                         "content-type"
-                                                           "application/octet-stream"}})
+                                               :headers {"accept" "application/octet-stream"
+                                                         "content-type" "application/octet-stream"}})
                response (http-client/put (str "https://localhost:8140/"
                                               "puppet/v3/file_bucket_file/md5/"
                                               expected-md5
