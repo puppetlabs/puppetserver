@@ -66,7 +66,7 @@
                options                 (merge ssl-request-options
                                               {:body (ByteArrayInputStream.
                                                        raw-byte-arr)
-                                               :headers {"accept" "application/octet-stream"
+                                               :headers {"accept" "binary"
                                                          "content-type" "application/octet-stream"}})
                response (http-client/put (str "https://localhost:8140/"
                                               "puppet/v3/file_bucket_file/md5/"
