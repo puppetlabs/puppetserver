@@ -211,15 +211,15 @@
   corresponding stop-worker call is made later with the same promise, the
   worker can be appropriately stopped."
   [config :- FileSyncClientServiceRawConfig
-   shutdown-requested?]
+   shutdown-requested?
+   ssl-opts]
   (log/info "File sync client worker started")
   (let [filesync-server-url (:server-url config)
         server-repo-path    (:server-repo-path config)
         server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
         repos               (:repos config)
-        client-opts         (common/extract-ssl-opts config)
-        client              (sync/create-client client-opts)]
+        client              (sync/create-client ssl-opts)]
     (log/debugf "File sync client repos: %s" repos)
     (while (not (realized? shutdown-requested?))
       (try

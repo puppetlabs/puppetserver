@@ -23,10 +23,11 @@
           ; for external access.  Using a value of '1' for now
           ; -- everything exported -- until a need to do
           ; something different for security arises.
-          export-all "1"]
+          export-all "1"
+          ssl-opts (common/extract-ssl-opts config)]
 
       ; Ensure the JGit client is configured for SSL if necessary
-      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory config))
+      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-opts))
       (core/initialize-repos! config)
 
       (log/info

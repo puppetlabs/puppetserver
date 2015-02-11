@@ -14,20 +14,19 @@
             [puppetlabs.ssl-utils.core :as ssl]))
 
 (defn create-connection
-  [config url connection-proxy]
-  (let [ssl-opts (common/extract-ssl-opts config)
-        ssl-ctxt (if-not (empty? ssl-opts)
+  [ssl-opts url connection-proxy]
+  (let [ssl-ctxt (if-not (empty? ssl-opts)
                    (ssl/pems->ssl-context (:ssl-cert ssl-opts) (:ssl-key ssl-opts) (:ssl-ca-cert ssl-opts)))]
     (HttpClientConnection. ssl-ctxt url connection-proxy)))
 
 (defn create-connection-factory
-  [config]
+  [ssl-opts]
   (proxy [HttpConnectionFactory] []
     (create
       ([url]
-        (create-connection config (.toString url) nil))
+        (create-connection ssl-opts (.toString url) nil))
       ([url connection-proxy]
-        (create-connection config (.toString url) connection-proxy)))))
+        (create-connection ssl-opts (.toString url) connection-proxy)))))
 
 (defn add-and-commit
   "Perform a git-add and git-commit of all files in the repo working tree. All
