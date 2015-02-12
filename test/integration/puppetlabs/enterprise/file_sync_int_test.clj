@@ -10,10 +10,11 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
+            [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]))
 
 (def latest-commits-url (str helpers/server-base-url
                              common/default-api-path-prefix
@@ -55,52 +56,51 @@
           (is (= (get-latest-commits-for-repo repo)
                  (jgit-client/head-rev-id local-repo-dir))))
 
-        (testing "setup file sync client"
-          (tk/boot-services-with-config
-            [jetty-service/jetty9-service
-             file-sync-client-service/file-sync-client-service]
-            {:webserver {:host "localhost" :port 8083}
-             :file-sync-client {:server-url helpers/server-base-url
-                                :poll-interval 2
-                                :repos [{:name repo
-                                         :target-dir client-repo-dir}]}})
+        (bootstrap/with-app-with-config
+          app
+          [file-sync-client-service/file-sync-client-service]
+          {:file-sync-client {:server-url helpers/server-base-url
+                              :poll-interval 2
+                              :repos [{:name repo
+                                       :target-dir client-repo-dir}]}}
 
-          ;; wait the 2 second polling interval for the client to sync from
-          ;; the storage service, then test this by checking the SHA for the
-          ;; latest commit returned from the storage service's latest-commits
-          ;; endpoint against the client's latest commit
-          (Thread/sleep 2000)
-          (is (= (get-latest-commits-for-repo repo)
-                 (jgit-client/head-rev-id client-repo-dir))))
+          (testing "file sync client service is running"
+            ;; wait the 2 second polling interval for the client to sync from
+            ;; the storage service, then test this by checking the SHA for the
+            ;; latest commit returned from the storage service's latest-commits
+            ;; endpoint against the client's latest commit
+            (Thread/sleep 2000)
+            (is (= (get-latest-commits-for-repo repo)
+                   (jgit-client/head-rev-id client-repo-dir))))
 
-        (testing "kill storage service and verify client has errors"
-          (tka/stop storage-app)
+          (testing "kill storage service and verify client has errors"
+            (tka/stop storage-app)
 
-          ;; within 2 seconds the client should poll again, and this time it
-          ;; should log an error because it can't connect to the server
-          (Thread/sleep 2000)
-          (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
+            ;; within 2 seconds the client should poll again, and this time it
+            ;; should log an error because it can't connect to the server
+            (Thread/sleep 2000)
+            (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
 
-        (testing "start storage service again"
-          (tka/start storage-app)
-          (is (= 200 (:status (latest-commits-response))))
+          (testing "start storage service again"
+            (tka/start storage-app)
+            (is (= 200 (:status (latest-commits-response))))
 
-          ;; push a new commit up to the storage service
-          (helpers/create-and-push-file local-repo-dir)
+            ;; push a new commit up to the storage service
+            (helpers/create-and-push-file local-repo-dir)
 
-          ;; At this point, the storage service should have one more commit than
-          ;; the client, since the client has not yet had time to sync with it,
-          ;; so the SHA returned from latest-commits and the revision ID for the
-          ;; client should not be the same
-          (is (not= (get-latest-commits-for-repo repo)
-                    (jgit-client/head-rev-id client-repo-dir))))
+            ;; At this point, the storage service should have one more commit than
+            ;; the client, since the client has not yet had time to sync with it,
+            ;; so the SHA returned from latest-commits and the revision ID for the
+            ;; client should not be the same
+            (is (not= (get-latest-commits-for-repo repo)
+                      (jgit-client/head-rev-id client-repo-dir))))
 
-        (testing "verify client recovers"
-          ;; wait two seconds for the client to poll again, then check that the
-          ;; client has been synced to have the same latest commit as the
-          ;; storage service
-          (Thread/sleep 2000)
-          (is (= (get-latest-commits-for-repo repo)
-                 (jgit-client/head-rev-id client-repo-dir))))
+          (testing "verify client recovers"
+            ;; wait two seconds for the client to poll again, then check that the
+            ;; client has been synced to have the same latest commit as the
+            ;; storage service
+            (Thread/sleep 2000)
+            (is (= (get-latest-commits-for-repo repo)
+                   (jgit-client/head-rev-id client-repo-dir)))))
 
         (tka/stop storage-app)))))
