@@ -28,7 +28,10 @@
 
 (defn webserver-plaintext-config
   []
-  {:webserver {:port http-port}})
+  {:webserver {:port http-port}
+   :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                         {:api          common/default-api-path-prefix
+                          :repo-servlet common/default-repo-path-prefix}}})
 
 (defn enable-push
   "Given the config map for a repo, return an updated config map that
@@ -63,7 +66,8 @@
   [app config & body]
   `(bootstrap/with-app-with-config
      ~app
-     [jetty-service/jetty9-service file-sync-storage-service/file-sync-storage-service]
+     [webrouting-service/webrouting-service file-sync-storage-service/file-sync-storage-service
+      jetty9-service/jetty9-service]
      ~config
      (do
        ~@body)))

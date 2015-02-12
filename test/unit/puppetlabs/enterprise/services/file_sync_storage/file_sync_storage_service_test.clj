@@ -6,7 +6,8 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
             [puppetlabs.enterprise.jgit-client :as client]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
@@ -82,11 +83,12 @@
         api-path              "/test-api-path"
         server-repo-subpath   "file-sync-storage-service-simple-workflow.git"
         config                {:file-sync-storage
-                                {:repo-path-prefix repo-path
-                                 :api-path-prefix api-path
-                                 :base-path (helpers/temp-dir-as-string)
+                                {:base-path (helpers/temp-dir-as-string)
                                  :repos [{:sub-path server-repo-subpath}]}
-                               :webserver {:port helpers/http-port}}]
+                               :webserver {:port helpers/http-port}
+                               :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                                                     {:api          api-path
+                                                      :repo-servlet repo-path}}}]
 
     (helpers/with-bootstrapped-file-sync-storage-service-for-http app config
       (let [client-orig-repo-dir  (helpers/temp-dir-as-string)

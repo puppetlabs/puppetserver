@@ -39,9 +39,7 @@
     * :repos     - A vector with metadata about each of the individual
                    Git repositories that the server manages."
   {:base-path                               String
-   :repos                                   [GitRepo]
-   (schema/optional-key :repo-path-prefix)  String
-   (schema/optional-key :api-path-prefix)   String})
+   :repos                                   [GitRepo]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private

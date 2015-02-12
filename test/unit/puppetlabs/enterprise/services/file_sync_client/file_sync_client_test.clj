@@ -9,7 +9,9 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
-              :as jetty-service]
+              :as jetty9-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service
+              :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.enterprise.jgit-client :as client]
