@@ -14,6 +14,38 @@
   [response]
   (cheshire/parse-string (slurp (:body response))))
 
+(defn simple-workflow
+  [git-base-dir server-repo-subpath ssl?]
+  (let [config-fn (if ssl?
+                    helpers/jgit-ssl-config-with-repos
+                    helpers/jgit-plaintext-config-with-repos)]
+    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      app
+      (config-fn
+        git-base-dir
+        [{:sub-path server-repo-subpath}])
+      (let [client-orig-repo-dir (helpers/temp-dir-as-string)
+            server-repo-url (str
+                              (helpers/repo-base-url ssl?)
+                              "/"
+                              server-repo-subpath)
+            repo-test-file "tester"
+            client-orig-repo (helpers/clone-and-validate
+                               server-repo-url
+                               client-orig-repo-dir)]
+        (helpers/create-and-push-file
+          client-orig-repo
+          client-orig-repo-dir
+          repo-test-file)
+        (let [client-second-repo-dir
+              (helpers/temp-dir-as-string)]
+          (helpers/clone-and-validate
+            server-repo-url
+            client-second-repo-dir)
+          (is (= helpers/file-text
+                 (slurp (str client-second-repo-dir "/" repo-test-file)))
+              "Unexpected file text found in second repository clone"))))))
+
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes unless configured to do so"
     (let [server-repo-subpath "push-disabled-test.git"
@@ -47,64 +79,14 @@
         server-repo-subpath "file-sync-storage-service-simple-workflow.git"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
-        app
-        (helpers/jgit-plaintext-config-with-repos
-          git-base-dir
-          [{:sub-path server-repo-subpath}])
-        (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-              server-repo-url (str
-                                (helpers/repo-base-url)
-                                "/"
-                                server-repo-subpath)
-              repo-test-file "tester"
-              client-orig-repo (helpers/clone-and-validate
-                                 server-repo-url
-                                 client-orig-repo-dir)]
-          (helpers/create-and-push-file
-            client-orig-repo
-            client-orig-repo-dir
-            repo-test-file)
-          (let [client-second-repo-dir
-                (helpers/temp-dir-as-string)]
-            (helpers/clone-and-validate
-              server-repo-url
-              client-second-repo-dir)
-            (is (= helpers/file-text
-                   (slurp (str client-second-repo-dir "/" repo-test-file)))
-                "Unexpected file text found in second repository clone")))))
+      (simple-workflow git-base-dir server-repo-subpath false))
 
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over https when SSL is configured"
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
-        app
-        (helpers/jgit-ssl-config-with-repos
-          git-base-dir
-          [{:sub-path server-repo-subpath}])
-        (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-              server-repo-url (str
-                                (helpers/repo-base-url true)
-                                "/"
-                                server-repo-subpath)
-              repo-test-file "tester"
-              client-orig-repo (helpers/clone-and-validate
-                                 server-repo-url
-                                 client-orig-repo-dir)]
-          (helpers/create-and-push-file
-            client-orig-repo
-            client-orig-repo-dir
-            repo-test-file)
-          (let [client-second-repo-dir
-                (helpers/temp-dir-as-string)]
-            (helpers/clone-and-validate
-              server-repo-url
-              client-second-repo-dir)
-            (is (= helpers/file-text
-                   (slurp (str client-second-repo-dir "/" repo-test-file)))
-                "Unexpected file text found in second repository clone")))))
+      (simple-workflow git-base-dir server-repo-subpath true))
 
-    (testing "file sync storage service cannot perform git operations over https when SSL
-            is not configured"
+    (testing "file sync storage service cannot perform git operations over plaintext when
+              the server is configured using SSL"
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/jgit-ssl-and-plaintext-config-with-repos
