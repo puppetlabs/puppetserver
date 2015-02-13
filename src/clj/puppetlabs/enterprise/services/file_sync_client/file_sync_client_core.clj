@@ -71,8 +71,8 @@
   `server-api-url` argument.  Returns a latest-commit payload which
   should validate against the FileSyncLatestCommits schema if successful or
   throws an Exception on failure."
-  [server-api-url :- schema/Str
-   client :- http-client/HTTPClient]
+  [client :- http-client/HTTPClient
+   server-api-url :- schema/Str]
   (let [latest-commits-url (str
                              server-api-url
                              common/latest-commits-sub-path)]
@@ -184,8 +184,8 @@
   service for any updates which may be available on the server.
   server-repo-url is the base URL at which the repository is hosted on the
   server.  Repos is the repos section of the file sync client configuration."
-  [server-repo-base-url server-api-url repos client]
-  (let [latest-commits (get-latest-commits-from-server server-api-url client)]
+  [client server-repo-base-url server-api-url repos]
+  (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
     (doseq [repo repos]
       (let [name (:name repo)]
@@ -218,25 +218,24 @@
         server-repo-path    (:server-repo-path config)
         server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
-        repos               (:repos config)
-        client              (sync/create-client ssl-opts)]
+        repos               (:repos config)]
     (log/debugf "File sync client repos: %s" repos)
-    (while (not (realized? shutdown-requested?))
-      (try
-        (process-repos-for-updates
-          (str filesync-server-url server-repo-path)
-          (str filesync-server-url server-api-path)
-          repos
-          client)
-        (catch Exception e
-          (log/error (str "File sync failure.  Cause: "
-                      e
-                      (if-let [sub-cause (.getCause e)]
-                        (str "  Cause: " sub-cause)
-                        "")))
-          (log/debug e "File sync failure.")))
-      (Thread/sleep poll-interval))
-    (http-client/close client))
+    (with-open [client (sync/create-client ssl-opts)]
+      (while (not (realized? shutdown-requested?))
+        (try
+          (process-repos-for-updates
+            client
+            (str filesync-server-url server-repo-path)
+            (str filesync-server-url server-api-path)
+            repos)
+          (catch Exception e
+            (log/error (str "File sync failure.  Cause: "
+                            e
+                            (if-let [sub-cause (.getCause e)]
+                              (str "  Cause: " sub-cause)
+                              "")))
+            (log/debug e "File sync failure.")))
+        (Thread/sleep poll-interval))))
   (log/info "File sync client worker stopped")
   nil)
 

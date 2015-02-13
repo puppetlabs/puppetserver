@@ -11,7 +11,7 @@
   `(bootstrap/with-app-with-config
      webserver-app#
      [jetty-service/jetty9-service]
-     {:webserver ~webserver-config}
+     ~webserver-config
      (let [target-webserver# (tk-app/get-service webserver-app# :WebserverService)]
        (jetty-service/add-ring-handler
          target-webserver#

@@ -11,16 +11,18 @@
   (:require [clojure.java.io :as io]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.ssl-utils.core :as ssl]))
+            [puppetlabs.ssl-utils.core :as ssl]
+            [schema.core :as schema]))
 
-(defn create-connection
-  [ssl-opts url connection-proxy]
+(schema/defn ^:always-validate create-connection :- HttpClientConnection
+  [ssl-opts :- common/SSLOptions
+   url connection-proxy]
   (let [ssl-ctxt (if-not (empty? ssl-opts)
                    (ssl/pems->ssl-context (:ssl-cert ssl-opts) (:ssl-key ssl-opts) (:ssl-ca-cert ssl-opts)))]
     (HttpClientConnection. ssl-ctxt url connection-proxy)))
 
-(defn create-connection-factory
-  [ssl-opts]
+(schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
+  [ssl-opts :- common/SSLOptions]
   (proxy [HttpConnectionFactory] []
     (create
       ([url]

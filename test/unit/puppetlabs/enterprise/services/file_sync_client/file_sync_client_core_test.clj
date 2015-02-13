@@ -34,10 +34,10 @@
     (process-repos-and-verify repos-to-verify client false))
   ([repos-to-verify client ssl?]
     (core/process-repos-for-updates
+      client
       (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
       (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-      (into-array (map #(:process-repo %) repos-to-verify))
-      client)
+      (into-array (map #(:process-repo %) repos-to-verify)))
     (doseq [repo repos-to-verify]
       (let [target-dir (get-in repo [:process-repo :target-dir])]
         (is (= (client/head-rev-id (:origin-dir repo))
@@ -101,11 +101,11 @@
               (let [client-targ-repo-nonexistent (helpers/temp-dir-as-string)]
                 (fs/delete-dir client-targ-repo-nonexistent)
                 (core/process-repos-for-updates
+                  client
                   (str helpers/server-base-url helpers/default-repo-path-prefix)
                   (str helpers/server-base-url helpers/default-api-path-prefix)
                   [{:name       "process-repos-test-nonexistent.git"
-                    :target-dir client-targ-repo-nonexistent}]
-                  client)
+                    :target-dir client-targ-repo-nonexistent}])
                 (is (not (fs/exists? client-targ-repo-nonexistent))
                     "Found client directory despite no matching repo on server")
                 (is
@@ -173,11 +173,11 @@
               (let [client-targ-repo-nonexistent (helpers/temp-dir-as-string)]
                 (fs/delete-dir client-targ-repo-nonexistent)
                 (core/process-repos-for-updates
+                  client
                   (str (helpers/base-url true) helpers/default-repo-path-prefix)
                   (str (helpers/base-url true) helpers/default-api-path-prefix)
                   [{:name       "process-repos-test-nonexistent.git"
-                    :target-dir client-targ-repo-nonexistent}]
-                  client)
+                    :target-dir client-targ-repo-nonexistent}])
                 (is (not (fs/exists? client-targ-repo-nonexistent))
                     "Found client directory despite no matching repo on server")
                 (is

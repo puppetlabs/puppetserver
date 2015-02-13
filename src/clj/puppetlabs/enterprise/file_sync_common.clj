@@ -18,10 +18,17 @@
   Str in the pair represents the id of the latest commit in the repository."
   {schema/Str (schema/maybe schema/Str)})
 
+(def SSLOptions
+  (schema/either
+    {:ssl-cert    schema/Str
+     :ssl-ca-cert schema/Str
+     :ssl-key     schema/Str}
+    {}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Helper Functions
 
-(defn extract-ssl-opts
+(schema/defn ^:always-validate extract-ssl-opts :- SSLOptions
   [config]
   (let [ssl-opts (select-keys config [:ssl-cert :ssl-key :ssl-ca-cert])
         ssl-configured? (= 3 (count (keys ssl-opts)))

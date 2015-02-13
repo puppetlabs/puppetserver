@@ -127,8 +127,6 @@ public class HttpClientConnection implements HttpConnection {
 
     private X509HostnameVerifier hostnameverifier = new BrowserCompatHostnameVerifier();
 
-    private Boolean useSSL = false;
-
     SSLContext ctx;
 
     private HttpClient getClient() {
@@ -151,7 +149,7 @@ public class HttpClientConnection implements HttpConnection {
             params.setBooleanParameter(ClientPNames.HANDLE_REDIRECTS,
                     followRedirects.booleanValue());
 
-        if (hostnameverifier != null && useSSL) {
+        if (hostnameverifier != null && ctx != null) {
             SSLSocketFactory sf;
             sf = new SSLSocketFactory(getSSLContext(), hostnameverifier);
             Scheme https = new Scheme("https", 443, sf); //$NON-NLS-1$
@@ -191,7 +189,6 @@ public class HttpClientConnection implements HttpConnection {
         this.proxy = proxy;
         this.client = null;
         this.ctx = sslContext;
-        this.useSSL = this.ctx != null;
     }
 
     public int getResponseCode() throws IOException {
@@ -303,19 +300,19 @@ public class HttpClientConnection implements HttpConnection {
     public void setFixedLengthStreamingMode(int contentLength) {
         if (entity != null)
             throw new IllegalArgumentException();
-        entity = new TemporaryBufferEntity(new LocalFile());
+        entity = new TemporaryBufferEntity(new LocalFile(null));
         entity.setContentLength(contentLength);
     }
 
     public OutputStream getOutputStream() throws IOException {
         if (entity == null)
-            entity = new TemporaryBufferEntity(new LocalFile());
+            entity = new TemporaryBufferEntity(new LocalFile(null));
         return entity.getBuffer();
     }
 
     public void setChunkedStreamingMode(int chunklen) {
         if (entity == null)
-            entity = new TemporaryBufferEntity(new LocalFile());
+            entity = new TemporaryBufferEntity(new LocalFile(null));
         entity.setChunked(true);
     }
 

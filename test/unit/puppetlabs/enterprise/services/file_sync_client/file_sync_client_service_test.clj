@@ -9,16 +9,26 @@
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.http.client.common :as http-client]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.enterprise.file-sync-test-utils :as testutils]))
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]))
+
+(def file-sync-client-ssl-config
+  {:poll-interval    1
+   :server-url       "https://localhost:10080/"
+   :repos            [{:name "fake" :target-dir "fake"}]
+   :server-api-path  helpers/default-api-path-prefix
+   :server-repo-path helpers/default-repo-path-prefix
+   :ssl-ca-cert      "./dev-resources/ssl/ca.pem"
+   :ssl-cert         "./dev-resources/ssl/cert.pem"
+   :ssl-key          "./dev-resources/ssl/key.pem"})
 
 (defn mock-process-repos-for-updates
-  [request-url _ _ client]
+  [client request-url _ _]
   (let [response (http-client/get client request-url {:as :text})]
     (is (= 200 (:status response)))
     (is (= "Successful connection over SSL" (:body response)))))
 
 (defn mock-process-repos-for-updates-SSL-failure
-  [request-url _ _ client]
+  [client request-url _ _]
   (is (thrown? SSLHandshakeException
                (http-client/get client request-url))))
 
@@ -33,20 +43,9 @@
       (with-redefs
         [core/process-repos-for-updates mock-process-repos-for-updates]
         (client-utils/with-boostrapped-file-sync-client-and-webserver
-          {:ssl-port    10080
-           :ssl-host    "0.0.0.0"
-           :ssl-ca-cert "./dev-resources/ssl/ca.pem"
-           :ssl-cert    "./dev-resources/ssl/cert.pem"
-           :ssl-key     "./dev-resources/ssl/key.pem"}
+          (helpers/webserver-ssl-config)
           ring-handler
-          {:poll-interval 1
-           :server-url    "https://localhost:10080/"
-           :repos         [{:name "fake" :target-dir "fake"}]
-           :server-api-path testutils/default-api-path-prefix
-           :server-repo-path testutils/default-repo-path-prefix
-           :ssl-ca-cert   "./dev-resources/ssl/ca.pem"
-           :ssl-cert      "./dev-resources/ssl/cert.pem"
-           :ssl-key       "./dev-resources/ssl/key.pem"}
+          file-sync-client-ssl-config
           (Thread/sleep 500)))))
 
   (testing "polling client fails to use SSL when not configured"
@@ -54,17 +53,9 @@
       (with-redefs
         [core/process-repos-for-updates mock-process-repos-for-updates-SSL-failure]
         (client-utils/with-boostrapped-file-sync-client-and-webserver
-          {:ssl-port    10080
-           :ssl-host    "0.0.0.0"
-           :ssl-ca-cert "./dev-resources/ssl/ca.pem"
-           :ssl-cert    "./dev-resources/ssl/cert.pem"
-           :ssl-key     "./dev-resources/ssl/key.pem"}
+          (helpers/webserver-ssl-config)
           ring-handler
-          {:poll-interval 1
-           :server-url    "https://localhost:10080/"
-           :repos         [{:name "fake" :target-dir "fake"}]
-           :server-api-path testutils/default-api-path-prefix
-           :server-repo-path testutils/default-repo-path-prefix}
+          (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
           (Thread/sleep 500)))))
 
   (testing "SSL configuration fails when not all options are provided"
@@ -72,19 +63,9 @@
       (with-redefs
         [core/process-repos-for-updates mock-process-repos-for-updates-SSL-failure]
         (client-utils/with-boostrapped-file-sync-client-and-webserver
-          {:ssl-port    10080
-           :ssl-host    "0.0.0.0"
-           :ssl-ca-cert "./dev-resources/ssl/ca.pem"
-           :ssl-cert    "./dev-resources/ssl/cert.pem"
-           :ssl-key     "./dev-resources/ssl/key.pem"}
+          (helpers/webserver-ssl-config)
           ring-handler
-          {:poll-interval 1
-           :server-url    "https://localhost:10080/"
-           :repos         [{:name "fake" :target-dir "fake"}]
-           :server-api-path testutils/default-api-path-prefix
-           :server-repo-path testutils/default-repo-path-prefix
-           :ssl-cert      "./dev-resources/ssl/cert.pem"
-           :ssl-key       "./dev-resources/ssl/key.pem"}
+          (dissoc file-sync-client-ssl-config :ssl-ca-cert)
           (Thread/sleep 500)
           (is (logged? #"Not configuring SSL, as only some SSL options were set. ")))))))
 
@@ -92,18 +73,9 @@
   (testing "client service configures a connection factory that produces the proper type of connection"
     (HttpTransport/setConnectionFactory (JDKHttpConnectionFactory.))
     (client-utils/with-boostrapped-file-sync-client-and-webserver
-      {:ssl-port    10080
-       :ssl-host    "0.0.0.0"
-       :ssl-ca-cert "./dev-resources/ssl/ca.pem"
-       :ssl-cert    "./dev-resources/ssl/cert.pem"
-       :ssl-key     "./dev-resources/ssl/key.pem"}
+      (helpers/webserver-ssl-config)
       ring-handler
-      {:poll-interval 1
-       :server-url    "https://localhost:10080/"
-       :repos         [{:name "fake" :target-dir "fake"}]
-       :ssl-ca-cert   "./dev-resources/ssl/ca.pem"
-       :ssl-cert      "./dev-resources/ssl/cert.pem"
-       :ssl-key       "./dev-resources/ssl/key.pem"}
+      file-sync-client-ssl-config
       (let [connection-factory (HttpTransport/getConnectionFactory)
             connection (.create connection-factory (URL. "https://localhost:10080"))]
         (is (instance? HttpClientConnection connection))))))
