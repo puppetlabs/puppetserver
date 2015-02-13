@@ -35,72 +35,73 @@
 
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
-    (logging/with-test-logging
-      (let [repo "network-partition-test.git"
-            client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
-            storage-app (tk/boot-services-with-config
+    (let [repo "network-partition-test.git"
+          storage-app (tka/check-for-errors!
+                        (tk/boot-services-with-config
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service]
                           (helpers/jgit-plaintext-config-with-repos
                             (helpers/temp-dir-as-string)
-                            [{:sub-path repo}]))
+                            [{:sub-path repo}])))]
+      (try
+        (logging/with-test-logging
+          (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+                ;; clone the repo from the storage service, create and commit a new
+                ;; file, and push it back up to the server. Returns the path to the
+                ;; locally cloned repo so that we can push additional files to it later.
+                local-repo-dir (helpers/clone-repo-and-push-test-files repo)]
 
-            ;; clone the repo from the storage service, create and commit a new
-            ;; file, and push it back up to the server. Returns the path to the
-            ;; locally cloned repo so that we can push additional files to it later.
-            local-repo-dir (helpers/clone-repo-and-push-test-files repo)]
+            (testing "file sync storage service is running"
+              ;; Ensure that a commit pushed to the server is reflected by the
+              ;; latest-commits endpoint
+              (is (= (get-latest-commits-for-repo repo)
+                     (jgit-client/head-rev-id local-repo-dir))))
 
-        (testing "file sync storage service is running"
-          ;; Ensure that a commit pushed to the server is reflected by the
-          ;; latest-commits endpoint
-          (is (= (get-latest-commits-for-repo repo)
-                 (jgit-client/head-rev-id local-repo-dir))))
+            (bootstrap/with-app-with-config
+              app
+              [file-sync-client-service/file-sync-client-service]
+              {:file-sync-client {:server-url helpers/server-base-url
+                                  :poll-interval 2
+                                  :repos [{:name repo
+                                           :target-dir client-repo-dir}]}}
 
-        (bootstrap/with-app-with-config
-          app
-          [file-sync-client-service/file-sync-client-service]
-          {:file-sync-client {:server-url helpers/server-base-url
-                              :poll-interval 2
-                              :repos [{:name repo
-                                       :target-dir client-repo-dir}]}}
+              (testing "file sync client service is running"
+                ;; wait the 2 second polling interval for the client to sync from
+                ;; the storage service, then test this by checking the SHA for the
+                ;; latest commit returned from the storage service's latest-commits
+                ;; endpoint against the client's latest commit
+                (Thread/sleep 2000)
+                (is (= (get-latest-commits-for-repo repo)
+                       (jgit-client/head-rev-id client-repo-dir))))
 
-          (testing "file sync client service is running"
-            ;; wait the 2 second polling interval for the client to sync from
-            ;; the storage service, then test this by checking the SHA for the
-            ;; latest commit returned from the storage service's latest-commits
-            ;; endpoint against the client's latest commit
-            (Thread/sleep 2000)
-            (is (= (get-latest-commits-for-repo repo)
-                   (jgit-client/head-rev-id client-repo-dir))))
+              (testing "kill storage service and verify client has errors"
+                (tka/stop storage-app)
 
-          (testing "kill storage service and verify client has errors"
-            (tka/stop storage-app)
+                ;; within 2 seconds the client should poll again, and this time it
+                ;; should log an error because it can't connect to the server
+                (Thread/sleep 2000)
+                (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
 
-            ;; within 2 seconds the client should poll again, and this time it
-            ;; should log an error because it can't connect to the server
-            (Thread/sleep 2000)
-            (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
+              (testing "start storage service again"
+                (tka/start storage-app)
+                (is (= 200 (:status (latest-commits-response))))
 
-          (testing "start storage service again"
-            (tka/start storage-app)
-            (is (= 200 (:status (latest-commits-response))))
+                ;; push a new commit up to the storage service
+                (helpers/create-and-push-file local-repo-dir)
 
-            ;; push a new commit up to the storage service
-            (helpers/create-and-push-file local-repo-dir)
+                ;; At this point, the storage service should have one more commit than
+                ;; the client, since the client has not yet had time to sync with it,
+                ;; so the SHA returned from latest-commits and the revision ID for the
+                ;; client should not be the same
+                (is (not= (get-latest-commits-for-repo repo)
+                          (jgit-client/head-rev-id client-repo-dir))))
 
-            ;; At this point, the storage service should have one more commit than
-            ;; the client, since the client has not yet had time to sync with it,
-            ;; so the SHA returned from latest-commits and the revision ID for the
-            ;; client should not be the same
-            (is (not= (get-latest-commits-for-repo repo)
-                      (jgit-client/head-rev-id client-repo-dir))))
+              (testing "verify client recovers"
+                ;; wait two seconds for the client to poll again, then check that the
+                ;; client has been synced to have the same latest commit as the
+                ;; storage service
+                (Thread/sleep 2000)
+                (is (= (get-latest-commits-for-repo repo)
+                       (jgit-client/head-rev-id client-repo-dir)))))))
 
-          (testing "verify client recovers"
-            ;; wait two seconds for the client to poll again, then check that the
-            ;; client has been synced to have the same latest commit as the
-            ;; storage service
-            (Thread/sleep 2000)
-            (is (= (get-latest-commits-for-repo repo)
-                   (jgit-client/head-rev-id client-repo-dir)))))
-
-        (tka/stop storage-app)))))
+        (finally (tka/stop storage-app))))))
