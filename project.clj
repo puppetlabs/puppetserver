@@ -17,7 +17,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.0"]
-                 [puppetlabs/http-client "0.4.1"]
+                 [puppetlabs/http-client "0.4.2"]
                  [org.jruby/jruby-core "1.7.18"
                   :exclusions
                   [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
