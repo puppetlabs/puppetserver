@@ -61,25 +61,40 @@
               app
               [file-sync-client-service/file-sync-client-service]
               {:file-sync-client {:server-url helpers/server-base-url
-                                  :poll-interval 2
+                                  :poll-interval 1
                                   :repos [{:name repo
                                            :target-dir client-repo-dir}]}}
 
               (testing "file sync client service is running"
-                ;; wait the 2 second polling interval for the client to sync from
-                ;; the storage service, then test this by checking the SHA for the
-                ;; latest commit returned from the storage service's latest-commits
-                ;; endpoint against the client's latest commit
-                (Thread/sleep 2000)
+                ;; TODO: The HTTP polling request and the subsequent git pull
+                ;; operation are not guaranteed to have been completed within
+                ;; this time period. We should refactor this test to get rid
+                ;; of the race condition (see PE-8163).
+                ;;
+                ;; wait the 1 second polling interval (+ some additional time
+                ;; to decrease the likelihood of triggering a race condition)
+                ;; for the client to sync from the storage service, then test
+                ;; this by checking the SHA for the latest commit returned
+                ;; from the storage service's latest-commits endpoint against
+                ;; the client's latest commit
+                (Thread/sleep 3000)
                 (is (= (get-latest-commits-for-repo repo)
                        (jgit-client/head-rev-id client-repo-dir))))
 
               (testing "kill storage service and verify client has errors"
                 (tka/stop storage-app)
 
-                ;; within 2 seconds the client should poll again, and this time it
-                ;; should log an error because it can't connect to the server
-                (Thread/sleep 2000)
+                ;; TODO: This is not very robust, since if the client HTTP
+                ;; polling request isn't completed during this time, we won't
+                ;; get a log message, but if we increase this too much the
+                ;; client could potentially have polled a second time, and the
+                ;; test could fail because there are multiple log messages.
+                ;; This should be refactored (see PE-8163).
+                ;;
+                ;; within 1 second the client should poll again, and this time
+                ;; it should log an error because it can't connect to the
+                ;; server
+                (Thread/sleep 1000)
                 (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
 
               (testing "start storage service again"
@@ -97,10 +112,16 @@
                           (jgit-client/head-rev-id client-repo-dir))))
 
               (testing "verify client recovers"
-                ;; wait two seconds for the client to poll again, then check that the
-                ;; client has been synced to have the same latest commit as the
-                ;; storage service
-                (Thread/sleep 2000)
+                ;; TODO: As above, the HTTP polling request and the subsequent
+                ;; git pull operation are not guaranteed to have been
+                ;; completed within this time period. We should refactor this
+                ;; test to get rid of the race condition (see PE-8163).
+                ;;
+                ;; wait 1 second (+ some additional time to decreate the
+                ;; likelihood of triggering a race condition) for the client
+                ;; to poll again, then check that the client has been synced
+                ;; to have the same latest commit as the storage service
+                (Thread/sleep 3000)
                 (is (= (get-latest-commits-for-repo repo)
                        (jgit-client/head-rev-id client-repo-dir)))))))
 
