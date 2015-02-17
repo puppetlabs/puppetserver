@@ -10,7 +10,6 @@
             [puppetlabs.enterprise.ringutils :as ringutils]
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+]]
-            [ring.util.response :as ring-response]
             [compojure.core :as compojure]
             [liberator.core :as liberator]
             [puppetlabs.enterprise.file-sync-common :as common]))

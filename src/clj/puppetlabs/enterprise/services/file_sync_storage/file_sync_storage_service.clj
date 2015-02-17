@@ -7,7 +7,8 @@
     [puppetlabs.enterprise.file-sync-common :as common]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
     [compojure.core :as compojure]
-    [puppetlabs.enterprise.jgit-client :as jgit-client]))
+    [puppetlabs.enterprise.jgit-client :as jgit-client]
+    [puppetlabs.ssl-utils.core :as ssl]))
 
 (defservice file-sync-storage-service
             [[:ConfigService get-in-config]
@@ -24,10 +25,10 @@
           ; -- everything exported -- until a need to do
           ; something different for security arises.
           export-all "1"
-          ssl-opts (common/extract-ssl-opts config)]
+          ssl-ctxt   (ssl/generate-ssl-context config)]
 
       ; Ensure the JGit client is configured for SSL if necessary
-      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-opts))
+      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-ctxt))
       (core/initialize-repos! config)
 
       (log/info

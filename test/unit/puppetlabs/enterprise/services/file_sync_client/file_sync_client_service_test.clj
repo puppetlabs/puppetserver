@@ -60,14 +60,11 @@
 
   (testing "SSL configuration fails when not all options are provided"
     (logging/with-test-logging
-      (with-redefs
-        [core/process-repos-for-updates mock-process-repos-for-updates-SSL-failure]
-        (client-utils/with-boostrapped-file-sync-client-and-webserver
-          (helpers/webserver-ssl-config)
-          ring-handler
-          (dissoc file-sync-client-ssl-config :ssl-ca-cert)
-          (Thread/sleep 500)
-          (is (logged? #"Not configuring SSL, as only some SSL options were set. ")))))))
+      (is (thrown? IllegalArgumentException
+                   (client-utils/with-boostrapped-file-sync-client-and-webserver
+                     (helpers/webserver-ssl-config)
+                     ring-handler
+                     (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
 
 (deftest jgit-client-ssl-configuration-test
   (testing "client service configures a connection factory that produces the proper type of connection"

@@ -6,7 +6,7 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
-            [puppetlabs.enterprise.file-sync-common :as common]))
+            [puppetlabs.ssl-utils.core :as ssl]))
 
 (tk/defservice file-sync-client-service
                [[:ConfigService get-in-config]
@@ -17,13 +17,13 @@
     (let [config               (get-in-config
                                  [:file-sync-client])
           shutdown-requested?  (promise)
-          ssl-opts             (common/extract-ssl-opts config)]
+          ssl-ctxt             (ssl/generate-ssl-context config)]
       ; Ensure the JGit client is configured for SSL if necessary
-      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-opts))
+      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-ctxt))
       (future
         (shutdown-on-error
           (tk-services/service-id this)
-          #(core/start-worker config shutdown-requested? ssl-opts)))
+          #(core/start-worker config shutdown-requested? ssl-ctxt)))
       (assoc context :file-sync-client-shutdown-requested?
                      shutdown-requested?)))
 

@@ -212,15 +212,18 @@
   worker can be appropriately stopped."
   [config :- FileSyncClientServiceRawConfig
    shutdown-requested?
-   ssl-opts]
+   ssl-ctxt :- common/SSLContextOrNil]
   (log/info "File sync client worker started")
   (let [filesync-server-url (:server-url config)
         server-repo-path    (:server-repo-path config)
         server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
-        repos               (:repos config)]
+        repos               (:repos config)
+        client-opts         (if ssl-ctxt
+                              {:ssl-context ssl-ctxt}
+                              {})]
     (log/debugf "File sync client repos: %s" repos)
-    (with-open [client (sync/create-client ssl-opts)]
+    (with-open [client (sync/create-client client-opts)]
       (while (not (realized? shutdown-requested?))
         (try
           (process-repos-for-updates

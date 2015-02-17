@@ -9,26 +9,22 @@
            (java.io File)
            (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.java.io :as io]
-            [me.raynes.fs :as fs]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.ssl-utils.core :as ssl]
             [schema.core :as schema]))
 
 (schema/defn ^:always-validate create-connection :- HttpClientConnection
-  [ssl-opts :- common/SSLOptions
+  [ssl-ctxt :- common/SSLContextOrNil
    url connection-proxy]
-  (let [ssl-ctxt (if-not (empty? ssl-opts)
-                   (ssl/pems->ssl-context (:ssl-cert ssl-opts) (:ssl-key ssl-opts) (:ssl-ca-cert ssl-opts)))]
-    (HttpClientConnection. ssl-ctxt url connection-proxy)))
+  (HttpClientConnection. ssl-ctxt url connection-proxy))
 
 (schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
-  [ssl-opts :- common/SSLOptions]
+  [ssl-ctxt :- common/SSLContextOrNil]
   (proxy [HttpConnectionFactory] []
     (create
       ([url]
-        (create-connection ssl-opts (.toString url) nil))
+        (create-connection ssl-ctxt (.toString url) nil))
       ([url connection-proxy]
-        (create-connection ssl-opts (.toString url) connection-proxy)))))
+        (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
 (defn add-and-commit
   "Perform a git-add and git-commit of all files in the repo working tree. All

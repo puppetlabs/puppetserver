@@ -23,7 +23,7 @@
                     "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.apache
                     "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
-                 [puppetlabs/ssl-utils "0.7.0"]]
+                 [puppetlabs/ssl-utils "0.8.0"]]
 
   :pedantic? :abort
 

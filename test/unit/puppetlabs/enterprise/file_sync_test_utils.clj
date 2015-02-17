@@ -43,10 +43,10 @@
   ([] (repo-base-url default-repo-path-prefix false))
   ([ssl?] (repo-base-url default-repo-path-prefix ssl?))
   ([repo-path-prefix ssl?]
-  (let [base-url (if ssl?
-                   server-base-url-ssl
-                   server-base-url)]
-    (str base-url repo-path-prefix))))
+    (let [base-url (if ssl?
+                     server-base-url-ssl
+                     server-base-url)]
+      (str base-url repo-path-prefix))))
 
 (defn webserver-plaintext-config
   []
