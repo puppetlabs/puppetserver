@@ -13,6 +13,7 @@
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]))
 
@@ -39,7 +40,8 @@
           storage-app (tka/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
-                           file-sync-storage-service/file-sync-storage-service]
+                           file-sync-storage-service/file-sync-storage-service
+                           webrouting-service/webrouting-service]
                           (helpers/jgit-plaintext-config-with-repos
                             (helpers/temp-dir-as-string)
                             [{:sub-path repo}])))]
