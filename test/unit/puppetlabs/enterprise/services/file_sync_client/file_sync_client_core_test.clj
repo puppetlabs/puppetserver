@@ -29,6 +29,11 @@
           (core/get-body-from-latest-commits-payload
             {:headers {"content-type" "application/json"}})))))
 
+(defn parse-test-repo-config
+  [repo-test-config]
+  (let [{:keys [:name :target-dir]} (:process-repo repo-test-config)]
+    {(keyword name) {:target-dir target-dir}}))
+
 (defn process-repos-and-verify
   ([repos-to-verify client]
     (process-repos-and-verify repos-to-verify client false))
@@ -37,7 +42,7 @@
       client
       (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
       (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-      (into-array (map #(:process-repo %) repos-to-verify)))
+      (into {} (map parse-test-repo-config repos-to-verify)))
     (doseq [repo repos-to-verify]
       (let [target-dir (get-in repo [:process-repo :target-dir])]
         (is (= (client/head-rev-id (:origin-dir repo))
@@ -99,6 +104,15 @@
           (fs/delete-dir client-targ-repo-dir-2)
           (fs/delete-dir client-targ-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))
+        (testing "Validate that repo config can be a string instead of a map"
+          (fs/delete-dir client-targ-repo-dir-1)
+          (core/process-repos-for-updates
+            client
+            (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
+            (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
+            {(keyword server-repo-subpath-1) client-targ-repo-dir-1})
+          (is (= (client/head-rev-id client-orig-repo-dir-1)
+                 (client/head-rev-id client-targ-repo-dir-1))))
         (testing "Files pulled for update"
           (helpers/create-and-push-file client-orig-repo-dir-2)
           (helpers/create-and-push-file client-orig-repo-dir-3)
@@ -116,8 +130,8 @@
                 client
                 (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
                 (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-                [{:name       "process-repos-test-nonexistent.git"
-                  :target-dir client-targ-repo-nonexistent}])
+                {:process-repos-test-nonexistent.git
+                 {:target-dir client-targ-repo-nonexistent}})
               (is (not (fs/exists? client-targ-repo-nonexistent))
                   "Found client directory despite no matching repo on server")
               (is

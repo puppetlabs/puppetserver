@@ -14,7 +14,7 @@
 (def file-sync-client-ssl-config
   {:poll-interval    1
    :server-url       "https://localhost:10080/"
-   :repos            [{:name "fake" :target-dir "fake"}]
+   :repos            {:fake {:target-dir "fake"}}
    :server-api-path  helpers/default-api-path-prefix
    :server-repo-path helpers/default-repo-path-prefix
    :ssl-ca-cert      "./dev-resources/ssl/ca.pem"
