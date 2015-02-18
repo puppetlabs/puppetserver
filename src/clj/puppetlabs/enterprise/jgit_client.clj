@@ -1,14 +1,30 @@
 (ns puppetlabs.enterprise.jgit-client
   (:import (org.eclipse.jgit.api Git PullResult)
-           (org.eclipse.jgit.dircache DirCache)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository)
            (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult)
-           (java.io File))
+           (org.eclipse.jgit.transport.http HttpConnectionFactory)
+           (java.io File)
+           (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.java.io :as io]
-            [me.raynes.fs :as fs]))
+            [puppetlabs.enterprise.file-sync-common :as common]
+            [schema.core :as schema]))
+
+(schema/defn ^:always-validate create-connection :- HttpClientConnection
+  [ssl-ctxt :- common/SSLContextOrNil
+   url connection-proxy]
+  (HttpClientConnection. ssl-ctxt url connection-proxy))
+
+(schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
+  [ssl-ctxt :- common/SSLContextOrNil]
+  (proxy [HttpConnectionFactory] []
+    (create
+      ([url]
+        (create-connection ssl-ctxt (.toString url) nil))
+      ([url connection-proxy]
+        (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
 (defn add-and-commit
   "Perform a git-add and git-commit of all files in the repo working tree. All
