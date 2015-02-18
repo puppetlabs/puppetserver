@@ -69,6 +69,7 @@
                        :group "puppet"
                        :start-timeout "120"
                        :build-type "foss"
+                       :create-dirs ["/etc/puppetlabs/code/environments/production/manifests", "/etc/puppetlabs/code/environments/production/modules"]
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"}
@@ -125,5 +126,3 @@
   ;; that from the final uberjar:
   :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )
-
-
