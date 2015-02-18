@@ -17,3 +17,9 @@ dev/user.clj
 .lein-repl-history
 ext/packaging
 Gemfile.lock
+Gemfile.local
+.DS_Store
+.idea/
+/junit/
+/tmp/
+puppet_server.iml
