@@ -46,10 +46,7 @@
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}}
 
-  :test-selectors {:default (complement :integration)
-                   :integration :integration
-                   :unit (complement :integration)
-                   :all (constantly true)}
+  :test-selectors {:integration :integration
+                   :unit        (complement :integration)}
 
-  :repl-options {:init-ns user}
-)
+  :repl-options {:init-ns user})
