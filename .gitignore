@@ -16,3 +16,4 @@ profiles.clj
 dev/user.clj
 .lein-repl-history
 ext/packaging
+Gemfile.lock
