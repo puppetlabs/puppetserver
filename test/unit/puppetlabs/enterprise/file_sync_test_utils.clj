@@ -8,7 +8,11 @@
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]))
 
 (def default-api-path-prefix "/file-sync")
 

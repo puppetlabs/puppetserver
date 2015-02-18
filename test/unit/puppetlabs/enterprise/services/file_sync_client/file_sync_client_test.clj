@@ -4,19 +4,9 @@
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
               :as core]
-            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
-              :as file-sync-storage-service]
-            [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service
-              :as jetty9-service]
-            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service
-              :as webrouting-service]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.enterprise.jgit-client :as client]
-            [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.file-sync-common :as common]))
+            [me.raynes.fs :as fs]))
 
 (deftest get-body-from-latest-commits-payload-test
   (testing "Can get latest commits"
