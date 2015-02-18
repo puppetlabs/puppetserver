@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.jgit-client-test-helpers
+(ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.transport RemoteRefUpdate$Status)
            (org.eclipse.jgit.treewalk.filter PathFilter)
@@ -8,7 +8,15 @@
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]))
+
+(def default-api-path-prefix "/file-sync")
+
+(def default-repo-path-prefix "/git")
 
 (def http-port                    8080)
 
@@ -16,19 +24,22 @@
 
 (def server-base-url              (str "http://localhost:" http-port))
 
-(def server-repo-url              (str server-base-url common/default-repo-path-prefix))
+(def server-repo-url              (str server-base-url default-repo-path-prefix))
 
 (def author                       (PersonIdent.
                                     "lein tester" "lein.tester@bogus.com"))
 
 (defn repo-base-url
-  ([] (repo-base-url common/default-repo-path-prefix))
+  ([] (repo-base-url default-repo-path-prefix))
   ([repo-path-prefix]
    (str server-base-url repo-path-prefix)))
 
 (defn webserver-plaintext-config
   []
-  {:webserver {:port http-port}})
+  {:webserver {:port http-port}
+   :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                         {:api          default-api-path-prefix
+                          :repo-servlet default-repo-path-prefix}}})
 
 (defn enable-push
   "Given the config map for a repo, return an updated config map that
@@ -63,7 +74,8 @@
   [app config & body]
   `(bootstrap/with-app-with-config
      ~app
-     [jetty-service/jetty9-service file-sync-storage-service/file-sync-storage-service]
+     [webrouting-service/webrouting-service file-sync-storage-service/file-sync-storage-service
+      jetty9-service/jetty9-service]
      ~config
      (do
        ~@body)))

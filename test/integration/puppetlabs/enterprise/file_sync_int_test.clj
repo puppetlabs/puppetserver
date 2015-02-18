@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
-            [puppetlabs.enterprise.jgit-client-test-helpers :as helpers]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
              :as file-sync-client-core]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
@@ -13,11 +13,12 @@
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]))
 
 (def latest-commits-url (str helpers/server-base-url
-                             common/default-api-path-prefix
+                             helpers/default-api-path-prefix
                              common/latest-commits-sub-path))
 
 (defn latest-commits-response
@@ -39,7 +40,8 @@
           storage-app (tka/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
-                           file-sync-storage-service/file-sync-storage-service]
+                           file-sync-storage-service/file-sync-storage-service
+                           webrouting-service/webrouting-service]
                           (helpers/jgit-plaintext-config-with-repos
                             (helpers/temp-dir-as-string)
                             [{:sub-path repo}])))]
@@ -62,6 +64,8 @@
               [file-sync-client-service/file-sync-client-service]
               {:file-sync-client {:server-url helpers/server-base-url
                                   :poll-interval 1
+                                  :server-api-path helpers/default-api-path-prefix
+                                  :server-repo-path helpers/default-repo-path-prefix
                                   :repos [{:name repo
                                            :target-dir client-repo-dir}]}}
 

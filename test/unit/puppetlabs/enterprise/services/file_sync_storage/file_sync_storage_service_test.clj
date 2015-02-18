@@ -1,15 +1,11 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service-test
   (:import  (org.eclipse.jgit.api.errors TransportException))
   (:require [clojure.test :refer :all]
-            [puppetlabs.enterprise.jgit-client-test-helpers :as helpers]
-            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
             [puppetlabs.enterprise.jgit-client :as client]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]))
 
@@ -82,11 +78,12 @@
         api-path              "/test-api-path"
         server-repo-subpath   "file-sync-storage-service-simple-workflow.git"
         config                {:file-sync-storage
-                                {:repo-path-prefix repo-path
-                                 :api-path-prefix api-path
-                                 :base-path (helpers/temp-dir-as-string)
+                                {:base-path (helpers/temp-dir-as-string)
                                  :repos [{:sub-path server-repo-subpath}]}
-                               :webserver {:port helpers/http-port}}]
+                               :webserver {:port helpers/http-port}
+                               :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                                                     {:api          api-path
+                                                      :repo-servlet repo-path}}}]
 
     (helpers/with-bootstrapped-file-sync-storage-service-for-http app config
       (let [client-orig-repo-dir  (helpers/temp-dir-as-string)
@@ -134,7 +131,7 @@
         (testing "Validate /latest-commits endpoint"
           (let [response (http-client/get (str
                                             helpers/server-base-url
-                                            common/default-api-path-prefix
+                                            helpers/default-api-path-prefix
                                             common/latest-commits-sub-path))
                 content-type (get-in response [:headers "content-type"])]
 
