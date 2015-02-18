@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.jgit-client-test-helpers
+(ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.transport RemoteRefUpdate$Status)
            (org.eclipse.jgit.treewalk.filter PathFilter)
@@ -10,19 +10,23 @@
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]))
 
+(def default-api-path-prefix "/file-sync")
+
+(def default-repo-path-prefix "/git")
+
 (def http-port                    8080)
 
 (def file-text                    "here is some text")
 
 (def server-base-url              (str "http://localhost:" http-port))
 
-(def server-repo-url              (str server-base-url common/default-repo-path-prefix))
+(def server-repo-url              (str server-base-url default-repo-path-prefix))
 
 (def author                       (PersonIdent.
                                     "lein tester" "lein.tester@bogus.com"))
 
 (defn repo-base-url
-  ([] (repo-base-url common/default-repo-path-prefix))
+  ([] (repo-base-url default-repo-path-prefix))
   ([repo-path-prefix]
    (str server-base-url repo-path-prefix)))
 
@@ -30,8 +34,8 @@
   []
   {:webserver {:port http-port}
    :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
-                         {:api          common/default-api-path-prefix
-                          :repo-servlet common/default-repo-path-prefix}}})
+                         {:api          default-api-path-prefix
+                          :repo-servlet default-repo-path-prefix}}})
 
 (defn enable-push
   "Given the config map for a repo, return an updated config map that

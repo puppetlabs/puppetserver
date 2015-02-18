@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-test
   (:import (org.eclipse.jgit.api Git))
   (:require [clojure.test :refer :all]
-            [puppetlabs.enterprise.jgit-client-test-helpers :as helpers]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
               :as core]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
@@ -42,8 +42,8 @@
 (defn process-repos-and-verify
   [repos-to-verify]
   (core/process-repos-for-updates
-    (str helpers/server-base-url common/default-repo-path-prefix)
-    (str helpers/server-base-url common/default-api-path-prefix)
+    (str helpers/server-base-url helpers/default-repo-path-prefix)
+    (str helpers/server-base-url helpers/default-api-path-prefix)
     (into-array (map #(:process-repo %) repos-to-verify)))
   (doseq [repo repos-to-verify]
     (let [target-dir (get-in repo [:process-repo :target-dir])]
@@ -106,8 +106,8 @@
             (let [client-targ-repo-nonexistent (helpers/temp-dir-as-string)]
               (fs/delete-dir client-targ-repo-nonexistent)
               (core/process-repos-for-updates
-                (str helpers/server-base-url common/default-repo-path-prefix)
-                (str helpers/server-base-url common/default-api-path-prefix)
+                (str helpers/server-base-url helpers/default-repo-path-prefix)
+                (str helpers/server-base-url helpers/default-api-path-prefix)
                 [{:name       "process-repos-test-nonexistent.git"
                   :target-dir client-targ-repo-nonexistent}])
               (is (not (fs/exists? client-targ-repo-nonexistent))

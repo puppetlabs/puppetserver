@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service-test
   (:import  (org.eclipse.jgit.api.errors TransportException))
   (:require [clojure.test :refer :all]
-            [puppetlabs.enterprise.jgit-client-test-helpers :as helpers]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
             [puppetlabs.enterprise.jgit-client :as client]
@@ -136,7 +136,7 @@
         (testing "Validate /latest-commits endpoint"
           (let [response (http-client/get (str
                                             helpers/server-base-url
-                                            common/default-api-path-prefix
+                                            helpers/default-api-path-prefix
                                             common/latest-commits-sub-path))
                 content-type (get-in response [:headers "content-type"])]
 

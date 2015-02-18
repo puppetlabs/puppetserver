@@ -4,10 +4,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
 
-(def default-api-path-prefix "/file-sync")
-
-(def default-repo-path-prefix "/git")
-
 (def latest-commits-sub-path "/latest-commits")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

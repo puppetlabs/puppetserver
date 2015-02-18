@@ -40,8 +40,8 @@
                        that the server manages."
   {:poll-interval                           schema/Int
    :server-url                              schema/Str
-   (schema/optional-key :server-repo-path)  schema/Str
-   (schema/optional-key :server-api-path)   schema/Str
+   :server-repo-path                        schema/Str
+   :server-api-path                         schema/Str
    :repos                                   [RepoConfig]})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -210,10 +210,8 @@
    shutdown-requested?]
   (log/info "File sync client worker started")
   (let [filesync-server-url (:server-url config)
-        server-repo-path    (or (:server-repo-path config)
-                                common/default-repo-path-prefix)
-        server-api-path     (or (:server-api-path config)
-                                common/default-api-path-prefix)
+        server-repo-path    (:server-repo-path config)
+        server-api-path     (:server-api-path config)
         poll-interval       (* (:poll-interval config) 1000)
         repos               (:repos config)]
     (log/debugf "File sync client repos: %s" repos)

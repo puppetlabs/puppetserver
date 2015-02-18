@@ -2,7 +2,7 @@
   (:import (org.eclipse.jgit.api Git))
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.jgit-client :refer :all]
-            [puppetlabs.enterprise.jgit-client-test-helpers :as helpers]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.kitchensink.core :as ks]))
 
 (deftest test-head-rev-id

@@ -4,7 +4,7 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.jgit-client-test-helpers
+            [puppetlabs.enterprise.file-sync-test-utils
               :as jgit-client-test-helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
               :refer :all]
