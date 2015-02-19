@@ -15,7 +15,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.7.0"]
+                 [puppetlabs/ssl-utils "0.8.0"]
                  [puppetlabs/http-client "0.4.0"]
                  [org.jruby/jruby-core "1.7.15" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
