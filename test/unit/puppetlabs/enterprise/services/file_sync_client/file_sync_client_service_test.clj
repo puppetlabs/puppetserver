@@ -21,16 +21,27 @@
    :ssl-cert         "./dev-resources/ssl/cert.pem"
    :ssl-key          "./dev-resources/ssl/key.pem"})
 
+; As it stands right now, there's no way to directly access the worker loop for the client service
+; from outside the code, so the only way to test it right now is to use with-redefs to redefine
+; a function that it calls. However, if the service fails before it calls that function (say, if
+; the configuration is invalid), no test failures or errors will occur. This atom is here
+; to ensure that test failures occur if the client service never calls the functions being
+; redefined below.
+(def polling-test-success
+  (atom {}))
+
 (defn mock-process-repos-for-updates
   [client request-url _ _]
   (let [response (http-client/get client request-url {:as :text})]
     (is (= 200 (:status response)))
-    (is (= "Successful connection over SSL" (:body response)))))
+    (is (= "Successful connection over SSL" (:body response)))
+    (swap! polling-test-success assoc :poll-success true)))
 
 (defn mock-process-repos-for-updates-SSL-failure
   [client request-url _ _]
   (is (thrown? SSLHandshakeException
-               (http-client/get client request-url))))
+               (http-client/get client request-url)))
+  (swap! polling-test-success assoc :poll-fail true))
 
 (defn ring-handler
   [_]
@@ -46,7 +57,8 @@
           (helpers/webserver-ssl-config)
           ring-handler
           file-sync-client-ssl-config
-          (Thread/sleep 500)))))
+          (Thread/sleep 500)
+          (is (:poll-success @polling-test-success))))))
 
   (testing "polling client fails to use SSL when not configured"
     (logging/with-test-logging
@@ -56,7 +68,8 @@
           (helpers/webserver-ssl-config)
           ring-handler
           (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
-          (Thread/sleep 500)))))
+          (Thread/sleep 500)
+          (is (:poll-fail @polling-test-success))))))
 
   (testing "SSL configuration fails when not all options are provided"
     (logging/with-test-logging
