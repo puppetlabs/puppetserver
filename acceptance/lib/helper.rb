@@ -160,7 +160,7 @@ module PuppetServerExtensions
   # setting should be able to be moved into a regular conf file.  See
   # SERVER-331.
   def get_rubylibdir host, config_key
-    "/opt/puppetlabs/agent/lib/ruby/vendor_ruby"
+    "/opt/puppetlabs/puppet/lib/ruby/vendor_ruby"
   end
 
   def configure_puppet_server
