@@ -26,9 +26,13 @@ module PuppetServerExtensions
                          nil, "Puppet Version", "PUPPET_VERSION", nil) ||
                          get_puppet_version
 
+    # SERVER-339 - puppet-agent commit 49f7b1b967e44020587ab087f87e2f5e3ff2b1f6
+    # corresponds to packaged development version located at
+    # http://builds.delivery.puppetlabs.net/puppet-agent/49f7b1b967e44020587ab087f87e2f5e3ff2b1f6/
+    # TODO: This build version needs to be updated to a released version
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "0.2.1")
+                         "PUPPET_BUILD_VERSION", "49f7b1b967e44020587ab087f87e2f5e3ff2b1f6")
 
     @config = {
       :base_dir => base_dir,
