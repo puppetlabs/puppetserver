@@ -42,9 +42,10 @@
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
                            webrouting-service/webrouting-service]
-                          (helpers/jgit-plaintext-config-with-repos
+                          (helpers/jgit-config-with-repos
                             (helpers/temp-dir-as-string)
-                            [{:sub-path repo}])))]
+                            [{:sub-path repo}]
+                            false)))]
       (try
         (logging/with-test-logging
           (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)

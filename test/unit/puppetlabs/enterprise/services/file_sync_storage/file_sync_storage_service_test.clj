@@ -16,14 +16,15 @@
 
 (defn simple-workflow
   [git-base-dir server-repo-subpath ssl?]
-  (let [config-fn (if ssl?
-                    helpers/jgit-ssl-config-with-repos
-                    helpers/jgit-plaintext-config-with-repos)]
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
-      app
-      (config-fn
-        git-base-dir
-        [{:sub-path server-repo-subpath}])
+  (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    app
+    (helpers/jgit-config-with-repos
+      git-base-dir
+      [{:sub-path server-repo-subpath}]
+      ssl?)
+    (do
+      (if ssl?
+        (helpers/configure-JGit-SSL true))
       (let [client-orig-repo-dir (helpers/temp-dir-as-string)
             server-repo-url (str
                               (helpers/repo-base-url ssl?)
@@ -49,7 +50,7 @@
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes unless configured to do so"
     (let [server-repo-subpath "push-disabled-test.git"
-          config (merge (helpers/webserver-plaintext-config)
+          config (merge helpers/webserver-plaintext-config
                         {:file-sync-storage {:base-path (helpers/temp-dir-as-string)
                                              :repos     [{:sub-path server-repo-subpath}]}})]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
@@ -87,11 +88,13 @@
 
     (testing "file sync storage service cannot perform git operations over plaintext when
               the server is configured using SSL"
+      (helpers/configure-JGit-SSL false)
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
-        (helpers/jgit-ssl-and-plaintext-config-with-repos
+        (helpers/jgit-config-with-repos
           git-base-dir
-          [{:sub-path server-repo-subpath}])
+          [{:sub-path server-repo-subpath}]
+          true)
         (let [client-orig-repo-dir (helpers/temp-dir-as-string)
               server-repo-url (str
                                 (helpers/repo-base-url true)
@@ -142,11 +145,12 @@
         server-repo-subpath-no-commits "latest-commits-test-3.git"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
-      (helpers/jgit-plaintext-config-with-repos
+      (helpers/jgit-config-with-repos
         git-base-dir
         [{:sub-path server-repo-subpath-1}
          {:sub-path server-repo-subpath-2}
-         {:sub-path server-repo-subpath-no-commits}])
+         {:sub-path server-repo-subpath-no-commits}]
+        false)
 
       (let [client-orig-repo-dir-1 (helpers/clone-repo-and-push-test-files
                                      server-repo-subpath-1)
