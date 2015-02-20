@@ -12,7 +12,6 @@
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
     [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-    [puppetlabs.services.version.version-check-service :as version-check-service]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
     [me.raynes.fs :as fs]))
@@ -33,7 +32,6 @@
              webrouting-service
              request-handler-service
              profiler/puppet-profiler-service
-             version-check-service/version-check-service
              certificate-authority-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config

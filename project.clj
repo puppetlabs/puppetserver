@@ -85,6 +85,7 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
+                                   [puppetlabs/dujour-version-check "0.1.1-SNAPSHOT" :exclusions [org.clojure/tools.logging]]
                                    [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]]

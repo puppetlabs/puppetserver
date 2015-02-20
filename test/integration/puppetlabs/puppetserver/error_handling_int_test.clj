@@ -7,7 +7,7 @@
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.services.request-handler.request-handler-core :as request-handler]
-    [puppetlabs.services.version.version-check-core :as version-check]
+    [puppetlabs.dujour.version-check :as version-check]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.services.config.puppet-server-config-core :as config]
     [puppetlabs.services.master.master-core :as master]))

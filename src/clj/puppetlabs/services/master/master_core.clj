@@ -4,7 +4,7 @@
             [compojure.route :as route]
             [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.services.version.version-check-core :as version-check]
+            [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.services.config.puppet-server-config-core :as config]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
