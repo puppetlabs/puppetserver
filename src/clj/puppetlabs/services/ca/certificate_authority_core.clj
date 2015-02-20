@@ -1,6 +1,7 @@
 (ns puppetlabs.services.ca.certificate-authority-core
   (:import  [java.io InputStream])
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.certificate-authority.core :as ca-utils]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as utils]
             [slingshot.slingshot :as sling]
