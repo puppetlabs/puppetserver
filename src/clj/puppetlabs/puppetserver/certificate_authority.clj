@@ -13,7 +13,7 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.certificate-authority.core :as utils]
             [clj-yaml.core :as yaml]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

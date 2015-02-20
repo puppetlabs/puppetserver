@@ -4,8 +4,8 @@ require 'puppet/ssl/oids'
 require 'puppet/server'
 require 'java'
 
-java_import com.puppetlabs.ssl_utils.SSLUtils
-java_import com.puppetlabs.ssl_utils.ExtensionsUtils
+java_import com.puppetlabs.certificate_authority.CertificateAuthority
+java_import com.puppetlabs.certificate_authority.ExtensionsUtils
 java_import java.security.cert.X509Certificate
 
 class Puppet::Server::Certificate < Puppet::SSL::Certificate
@@ -34,7 +34,7 @@ class Puppet::Server::Certificate < Puppet::SSL::Certificate
   end
 
   def unmunged_name
-    SSLUtils.get_cn_from_x500_principal(@java_cert.getSubjectX500Principal)
+    CertificateAuthority.get_cn_from_x500_principal(@java_cert.getSubjectX500Principal)
   end
 
   def custom_extensions

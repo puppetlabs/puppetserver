@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.ssl-utils.core :as utils]
+            [puppetlabs.certificate-authority.core :as utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.ca-testutils :as testutils]

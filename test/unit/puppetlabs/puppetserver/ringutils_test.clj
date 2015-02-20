@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.ringutils-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.ringutils :refer :all]
-            [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.certificate-authority.core :as utils]
             [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -17,10 +17,10 @@
   (str test-resources-dir "/" pem-file-name))
 
 (def localhost-cert
-  (ssl-utils/pem->cert (test-pem-file "localhost-cert.pem")))
+  (utils/pem->cert (test-pem-file "localhost-cert.pem")))
 
 (def other-cert
-  (ssl-utils/pem->cert (test-pem-file "revoked-agent.pem")))
+  (utils/pem->cert (test-pem-file "revoked-agent.pem")))
 
 (def base-handler
   (fn [request]
