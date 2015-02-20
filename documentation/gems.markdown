@@ -19,7 +19,7 @@ environment variables because `puppetserver` unsets `GEM_PATH` and manages
 The value of `GEM_HOME` when starting the puppetserver process as root using
 a packaged version of `puppetserver` is:
 
-    /var/lib/puppet/jruby-gems
+    /opt/puppetlabs/puppet/cache/jruby-gems
 
 This directory does not exist by default.
 
