@@ -37,22 +37,8 @@
                    (request-handler request))
     (compojure/GET "/file_bucket_file/*" request
                    (request-handler request))
-
-    ;; TODO: file_bucket_file request PUTs from Puppet agents currently use a
-    ;; Content-Type of 'text/plain', which, per HTTP specification, would imply
-    ;; a default character encoding of ISO-8859-1 or US-ASCII be used to decode
-    ;; the data.  This would be incorrect to do in this case, however, because
-    ;; the actual payload is "binary".  Coercing this to
-    ;; "application/octet-stream" for now as this is synonymous with "binary".
-    ;; This should be removed when/if Puppet agents start using an appropriate
-    ;; Content-Type to describe the input payload - see PUP-3812 for the core
-    ;; Puppet work and SERVER-294 for the related Puppet Server work that
-    ;; would be done.
     (compojure/PUT "/file_bucket_file/*" request
-                   (request-handler (assoc request
-                                           :content-type
-                                           "application/octet-stream")))
-
+                   (request-handler request))
     (compojure/HEAD "/file_bucket_file/*" request
                    (request-handler request))
     (compojure/GET "/catalog/*" request
