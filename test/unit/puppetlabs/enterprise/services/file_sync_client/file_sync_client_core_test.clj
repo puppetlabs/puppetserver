@@ -2,11 +2,14 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
-              :as core]
+             :as core]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.enterprise.jgit-client :as client]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest get-body-from-latest-commits-payload-test
   (testing "Can get latest commits"

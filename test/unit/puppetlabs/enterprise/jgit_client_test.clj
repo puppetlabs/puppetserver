@@ -2,7 +2,10 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.jgit-client :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest test-head-rev-id
   (testing "Getting the latest commit on the current branch of a repo"

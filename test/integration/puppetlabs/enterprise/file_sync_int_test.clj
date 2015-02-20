@@ -15,7 +15,10 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (def latest-commits-url (str helpers/server-base-url
                              helpers/default-api-path-prefix

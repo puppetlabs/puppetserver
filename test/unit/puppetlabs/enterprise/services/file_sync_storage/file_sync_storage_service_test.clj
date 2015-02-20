@@ -8,7 +8,10 @@
             [puppetlabs.http.client.sync :as http-client]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]))
+            [puppetlabs.enterprise.jgit-client :as jgit-client]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (defn parse-response-body
   [response]

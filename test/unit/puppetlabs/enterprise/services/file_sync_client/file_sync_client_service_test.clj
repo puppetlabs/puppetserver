@@ -8,7 +8,10 @@
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.http.client.common :as http-client]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.enterprise.file-sync-test-utils :as helpers]))
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [schema.test :as schema-test]))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
   {:poll-interval    1
