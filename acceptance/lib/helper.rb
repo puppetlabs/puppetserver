@@ -155,14 +155,6 @@ module PuppetServerExtensions
     end
   end
 
-  # TODO: With AIO packages, ruby-load-path is now the same across all
-  # platforms, so we don't need this or `configure_puppet_server`, since this
-  # setting should be able to be moved into a regular conf file.  See
-  # SERVER-331.
-  def get_rubylibdir host, config_key
-    "/opt/puppetlabs/puppet/lib/ruby/vendor_ruby"
-  end
-
   def configure_puppet_server
     variant, version, _, _ = master['platform'].to_array
 
@@ -182,15 +174,6 @@ module PuppetServerExtensions
     else
       logger.warn("#{platform}: Unsupported platform for puppetserver.")
     end
-
-    rubylibdir = get_rubylibdir master, config_key
-    create_remote_file master, '/etc/puppetserver/conf.d/os-settings.conf', <<EOF
-os-settings: {
-    ruby-load-path: [#{rubylibdir}]
-}
-EOF
-    on master, "chmod 0644 /etc/puppetserver/conf.d/os-settings.conf"
-
   end
 
   def upgrade_package(host, name)
