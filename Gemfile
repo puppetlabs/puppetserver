@@ -4,6 +4,7 @@ gem 'rake', :group => [:development, :test]
 gem 'jira-ruby', :group => :development
 
 group :test do
+  gem 'rake'
   gem 'rspec'
   gem 'beaker', '~> 2.2'
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
@@ -12,3 +13,4 @@ group :test do
   gem 'httparty'
   gem 'uuidtools'
 end
+
