@@ -1,6 +1,7 @@
 (def tk-version "1.0.1")
 (def tk-jetty-version "1.1.0")
 (def ks-version "1.0.0")
+(def ps-version "1.0.4-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -9,7 +10,7 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/puppet-server "1.0.4-SNAPSHOT"
+(defproject puppetlabs/puppet-server ps-version
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
@@ -50,7 +51,17 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5"]]
+  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
+
+  :uberjar-name "puppet-server-release.jar"
+  :lein-ezbake {:vars {:user "puppet"
+                       :group "puppet"
+                       :start-timeout "120"
+                       :build-type "foss"
+                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
+                :resources {:dir "tmp/ezbake-resources"}
+                :config-dir "ezbake/config"}
+
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
 
@@ -69,6 +80,12 @@
                    :injections    [(require 'spyscope.core)]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
+
+             :ezbake {:dependencies ^:replace [[puppetlabs/puppet-server ~ps-version]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
+                                               [org.clojure/tools.nrepl "0.2.3"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.2.3"]]
+                      :name "puppetserver"}
 
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
