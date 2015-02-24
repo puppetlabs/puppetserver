@@ -67,7 +67,7 @@
 
 (deftest jgit-client-ssl-configuration-test
   (testing "client service configures a connection factory that produces the proper type of connection"
-    (helpers/configure-JGit-SSL false)
+    (helpers/configure-JGit-SSL! false)
     (client-utils/with-boostrapped-file-sync-client-and-webserver
       helpers/webserver-ssl-config
       ring-handler

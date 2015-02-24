@@ -56,7 +56,7 @@
                              :ssl-cert    "./dev-resources/ssl/cert.pem"
                              :ssl-key     "./dev-resources/ssl/key.pem"}))
 
-(defn configure-JGit-SSL
+(defn configure-JGit-SSL!
   [ssl?]
   (let [connection-factory (if ssl?
                              (jgit-client/create-connection-factory ssl-context)

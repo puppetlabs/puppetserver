@@ -129,5 +129,5 @@
 
   (testing "process-repos-for-updates works over https when SSL is configured"
     ; The client service is not being started, so we need to configure JGit to use SSL
-    (helpers/configure-JGit-SSL true)
+    (helpers/configure-JGit-SSL! true)
     (test-process-repos-for-updates true)))

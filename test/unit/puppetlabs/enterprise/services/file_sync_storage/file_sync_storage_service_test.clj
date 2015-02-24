@@ -22,30 +22,29 @@
       git-base-dir
       [{:sub-path server-repo-subpath}]
       ssl?)
-    (do
-      (if ssl?
-        (helpers/configure-JGit-SSL true))
-      (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-            server-repo-url (str
-                              (helpers/repo-base-url ssl?)
-                              "/"
-                              server-repo-subpath)
-            repo-test-file "tester"
-            client-orig-repo (helpers/clone-and-validate
-                               server-repo-url
-                               client-orig-repo-dir)]
-        (helpers/create-and-push-file
-          client-orig-repo
-          client-orig-repo-dir
-          repo-test-file)
-        (let [client-second-repo-dir
-              (helpers/temp-dir-as-string)]
-          (helpers/clone-and-validate
-            server-repo-url
-            client-second-repo-dir)
-          (is (= helpers/file-text
-                 (slurp (str client-second-repo-dir "/" repo-test-file)))
-              "Unexpected file text found in second repository clone"))))))
+    (if ssl?
+      (helpers/configure-JGit-SSL! true))
+    (let [client-orig-repo-dir (helpers/temp-dir-as-string)
+          server-repo-url (str
+                            (helpers/repo-base-url ssl?)
+                            "/"
+                            server-repo-subpath)
+          repo-test-file "tester"
+          client-orig-repo (helpers/clone-and-validate
+                             server-repo-url
+                             client-orig-repo-dir)]
+      (helpers/create-and-push-file
+        client-orig-repo
+        client-orig-repo-dir
+        repo-test-file)
+      (let [client-second-repo-dir
+            (helpers/temp-dir-as-string)]
+        (helpers/clone-and-validate
+          server-repo-url
+          client-second-repo-dir)
+        (is (= helpers/file-text
+               (slurp (str client-second-repo-dir "/" repo-test-file)))
+            "Unexpected file text found in second repository clone")))))
 
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes unless configured to do so"
@@ -88,7 +87,7 @@
 
     (testing "file sync storage service cannot perform git operations over plaintext when
               the server is configured using SSL"
-      (helpers/configure-JGit-SSL false)
+      (helpers/configure-JGit-SSL! false)
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/jgit-config-with-repos
