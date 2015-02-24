@@ -181,10 +181,12 @@
 
                 (testing "the first repo"
                   (let [actual-rev (get body server-repo-subpath-1)
-                        expected-rev (client/head-rev-id client-orig-repo-dir-1)]
+                        expected-rev (client/head-rev-id-from-working-tree
+                                       client-orig-repo-dir-1)]
                     (is (= actual-rev expected-rev))))
 
                 (testing "The second repo"
                   (let [actual-rev (get body server-repo-subpath-2)
-                        expected-rev (client/head-rev-id client-orig-repo-dir-2)]
+                        expected-rev (client/head-rev-id-from-working-tree
+                                       client-orig-repo-dir-2)]
                     (is (= actual-rev expected-rev))))))))))))

@@ -41,8 +41,8 @@
     (doseq [repo repos-to-verify]
       (let [name       (:name repo)
             target-dir (get-in repo [:process-repo (keyword name)])]
-        (is (= (client/head-rev-id (:origin-dir repo))
-               (client/head-rev-id target-dir))
+        (is (= (client/head-rev-id-from-working-tree (:origin-dir repo))
+               (client/head-rev-id-from-git-dir target-dir))
             (str "Unexpected head revision in target repo directory : "
                  target-dir))))))
 

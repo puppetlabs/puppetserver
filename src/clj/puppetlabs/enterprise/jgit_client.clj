@@ -4,7 +4,7 @@
                                  Repository)
            (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
-           (org.eclipse.jgit.transport PushResult)
+           (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
            (java.io File)
            (com.puppetlabs.enterprise HttpClientConnection))
@@ -92,6 +92,57 @@
       (.setBranch "master")
       (.call)))
 
+(defn clone-bare
+  "Perform a git-clone of the content at the specified 'server-repo-url' string
+  into a local directory.  The 'local-repo-dir' parameter should be a value
+  that can be coerced into a File by `clojure.java.io/as-file`.
+
+  The implementation currently hardcodes an 'origin' remote and 'master'
+  branch as the content to be cloned.  In addition, it sets the clone to be a
+  bare repository.  If the clone is successful, a handle to a Git instance
+  which wraps the repository is returned.  If the clone failed, one of the
+  following Exceptions from the org.eclipse.api.errors namespace may be
+  thrown:
+
+  * InvalidRemoteException
+    - when an invalid `server-repo-url` was provided (e.g., not syntactically
+      valid as a URL).
+
+  * TransportException -
+    - when a protocol error occurred during fetching of objects (e.g., an
+      inability to connect to the server or if the repository in the URL was
+      not accessible on the server)
+
+  * GitAPIException
+    - when some other low-level Git failure occurred"
+  [server-repo-url local-repo-dir]
+  {:pre [(string? server-repo-url)]
+   :post [(instance? Git %)]}
+  (-> (Git/cloneRepository)
+      (.setURI server-repo-url)
+      (.setDirectory (io/as-file local-repo-dir))
+      (.setRemote "origin")
+      (.setBranch "master")
+      (.setBare true)
+      (.call)))
+
+(defn fetch
+  "Perform a git-fetch of remote commits into the supplied repository.
+  Returns a FetchResult or throws one of the following Exceptions from the
+  org.eclipse.api.errors package:
+
+  * InvalidRemoteException
+  * TransportException
+  * GitAPIException"
+  [repo]
+  {:pre [(instance? Repository repo)]
+   :post [(instance? FetchResult %)]}
+  (-> repo
+      (Git.)
+      (.fetch)
+      (.setRemote "origin")
+      (.call)))
+
 (defn pull
   "Perform a git-pull of remote commits into the supplied repository.  Does not
   do a rebase of current content on top of the new content being fetched.  Uses
@@ -119,7 +170,9 @@
       (.call)))
 
 (defn push
-  "Perform a git-push of pending commits to the supplied repository.  Returns
+  "Perform a git-push of pending commits in the supplied repository to a
+  remote, if specified. If no remote is specified, follows the
+  repository's configuration or the push default configuration. Returns
   an iteration over PushResult objects or may throw one of the following
   Exceptions from the org.eclipse.api.errors namespace:
 
@@ -130,13 +183,22 @@
 
   * GitAPIException
     - when some other low-level Git failure occurred"
-  [git]
-  {:pre [(instance? Git git)]
-   :post [(instance? Iterable %)
-          (every? #(instance? PushResult %) %)]}
-  (-> git
-      (.push)
-      (.call)))
+  ([git]
+   {:pre [(instance? Git git)]
+    :post [(instance? Iterable %)
+           (every? #(instance? PushResult %) %)]}
+   (-> git
+       (.push)
+       (.call)))
+  ([git remote]
+   {:pre [(instance? Git git)
+          (string? remote)]
+    :post [(instance? Iterable %)
+           (every? #(instance? PushResult %) %)]}
+   (-> git
+       (.push)
+       (.setRemote remote)
+       (.call))))
 
 (defn commit-id
   "Given an instance of `AnyObjectId` or its subclasses
@@ -147,9 +209,10 @@
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
-(defn get-repository
-  "Get a JGit Repository object for the supplied directory.  Returns nil if
-  no repository exists at the supplied directory."
+(defn get-repository-from-working-tree
+  "Get a JGit Repository object using the supplied directory as the
+  working tree. Returns nil if no repository exists with the supplied
+  directory as working tree."
   [repo-dir]
   {:pre [(instance? File repo-dir)]
    :post [(or (nil? %) (instance? Repository %))]}
@@ -162,19 +225,53 @@
       repo
       nil)))
 
+(defn get-repository-from-git-dir
+  "Get a JGit Repository object using the supplied directory as the git
+  dir (for instance, when the supplied directory is a bare repo).
+  Returns nil if no repository exists with the supplied directory as git
+  dir."
+  [repo-dir]
+  {:pre [(instance? File repo-dir)]
+   :post [(or (nil? %) (instance? Repository %))]}
+  (if-let [repo (-> (RepositoryBuilder.)
+                    (.setGitDir repo-dir)
+                    (.build))]
+    (if (-> repo
+            (.getObjectDatabase)
+            (.exists))
+      repo
+      nil)))
+
 (defn head-rev-id
   "Returns the SHA-1 revision ID of a repository on disk.  Like
   `git rev-parse HEAD`.  Returns `nil` if the repository has no commits."
   [repo]
-  {:pre [((some-fn #(instance? File %)
-                   #(instance? Repository %)
-                   string?)
-          repo)]
+  {:pre [(instance? Repository repo)]
    :post [(or (nil? %) (string? %))]}
-  (if-let [as-repo (if (instance? Repository repo)
-                     repo
-                     (get-repository (io/as-file repo)))]
-    (if-let [commit (.resolve as-repo "HEAD")]
-      (commit-id commit))))
+  (if-let [commit (.resolve repo "HEAD")]
+    (commit-id commit)))
 
+(defn head-rev-id-from-working-tree
+  "Given a file or a string path to a file, returns the SHA-1 revision
+  ID of a repository on disk, using the file as the working tree.  Like
+  `git rev-parse HEAD`.  Returns `nil` if the repository has no
+  commits."
+  [repo]
+  {:pre [((some-fn #(instance? File %)
+                   string?)
+           repo)]
+   :post [(or (nil? %) (string? %))]}
+  (if-let [as-repo (get-repository-from-working-tree (io/as-file repo))]
+    (head-rev-id as-repo)))
 
+(defn head-rev-id-from-git-dir
+  "Given a file or a string path to a file, returns the SHA-1 revision
+  ID of a repository on disk, using the file as the git dir.  Like `git
+  rev-parse HEAD`.  Returns `nil` if the repository has no commits."
+  [repo]
+  {:pre [((some-fn #(instance? File %)
+                   string?)
+           repo)]
+   :post [(or (nil? %) (string? %))]}
+  (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
+    (head-rev-id as-repo)))

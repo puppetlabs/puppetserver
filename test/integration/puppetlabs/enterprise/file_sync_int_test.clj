@@ -58,7 +58,7 @@
               ;; Ensure that a commit pushed to the server is reflected by the
               ;; latest-commits endpoint
               (is (= (get-latest-commits-for-repo repo)
-                     (jgit-client/head-rev-id local-repo-dir))))
+                     (jgit-client/head-rev-id-from-working-tree local-repo-dir))))
 
             (bootstrap/with-app-with-config
               app
@@ -83,7 +83,7 @@
                 ;; the client's latest commit
                 (Thread/sleep 3000)
                 (is (= (get-latest-commits-for-repo repo)
-                       (jgit-client/head-rev-id client-repo-dir))))
+                       (jgit-client/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "kill storage service and verify client has errors"
                 (tka/stop storage-app)
@@ -113,7 +113,7 @@
                 ;; so the SHA returned from latest-commits and the revision ID for the
                 ;; client should not be the same
                 (is (not= (get-latest-commits-for-repo repo)
-                          (jgit-client/head-rev-id client-repo-dir))))
+                          (jgit-client/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "verify client recovers"
                 ;; TODO: As above, the HTTP polling request and the subsequent
@@ -127,6 +127,6 @@
                 ;; to have the same latest commit as the storage service
                 (Thread/sleep 3000)
                 (is (= (get-latest-commits-for-repo repo)
-                       (jgit-client/head-rev-id client-repo-dir)))))))
+                       (jgit-client/head-rev-id-from-git-dir client-repo-dir)))))))
 
         (finally (tka/stop storage-app))))))

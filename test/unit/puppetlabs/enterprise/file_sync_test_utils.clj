@@ -189,7 +189,7 @@
 (defn create-and-push-file
   ([repo-dir]
    (create-and-push-file
-     (Git. (jgit-client/get-repository (fs/file repo-dir)))
+     (Git. (jgit-client/get-repository-from-working-tree (fs/file repo-dir)))
      repo-dir))
   ([repo repo-dir]
    (create-and-push-file repo repo-dir (str "test-file" (ks/uuid))))
@@ -223,4 +223,12 @@
   "Creates a new Git repository at the given path.  Like `git init`."
   (-> (Git/init)
       (.setDirectory path)
+      (.call)))
+
+(defn init-bare-repo!
+  [path]
+  "Creates a new Git repository at the given path.  Like `git init`."
+  (-> (Git/init)
+      (.setDirectory path)
+      (.setBare true)
       (.call)))
