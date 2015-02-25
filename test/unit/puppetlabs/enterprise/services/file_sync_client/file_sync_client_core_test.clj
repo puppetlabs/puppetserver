@@ -51,9 +51,6 @@
         server-repo-subpath-1 "process-repos-test-1.git"
         server-repo-subpath-2 "process-repos-test-2.git"
         server-repo-subpath-3 "process-repos-test-3.git"
-        config-fn             (if ssl?
-                                helpers/jgit-ssl-config-with-repos
-                                helpers/jgit-plaintext-config-with-repos)
         client-opts           (if ssl?
                                 {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
                                  :ssl-cert    "./dev-resources/ssl/cert.pem"
@@ -61,11 +58,12 @@
                                 {})]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
-      (config-fn
+      (helpers/jgit-config-with-repos
         git-base-dir
         [{:sub-path server-repo-subpath-1}
          {:sub-path server-repo-subpath-2}
-         {:sub-path server-repo-subpath-3}])
+         {:sub-path server-repo-subpath-3}]
+        ssl?)
       (let [client-orig-repo-dir-1 (helpers/clone-repo-and-push-test-files
                                      server-repo-subpath-1
                                      1
@@ -129,8 +127,7 @@
   (testing "process-repos-for-updates works over http"
     (test-process-repos-for-updates false))
 
-  ; This test is a little strange. Configuring SSL for the JGit client works by using a static
-  ; method. As a result, since we're running the storage service, that ends up configuring SSL
-  ; for the client service as well.
   (testing "process-repos-for-updates works over https when SSL is configured"
+    ; The client service is not being started, so we need to configure JGit to use SSL
+    (helpers/configure-JGit-SSL! true)
     (test-process-repos-for-updates true)))

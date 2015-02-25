@@ -3,16 +3,18 @@
            (org.eclipse.jgit.transport RemoteRefUpdate$Status)
            (org.eclipse.jgit.treewalk.filter PathFilter)
            (org.eclipse.jgit.treewalk TreeWalk)
-           (org.eclipse.jgit.lib PersonIdent))
+           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.transport HttpTransport)
+           (org.eclipse.jgit.transport.http JDKHttpConnectionFactory))
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
-            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]))
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
+            [puppetlabs.ssl-utils.core :as ssl]))
 
 (def default-api-path-prefix "/file-sync")
 
@@ -48,15 +50,26 @@
                      server-base-url)]
       (str base-url repo-path-prefix))))
 
-(defn webserver-plaintext-config
-  []
+; Used to configure JGit for SSL in tests
+(def ssl-context
+  (ssl/generate-ssl-context {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
+                             :ssl-cert    "./dev-resources/ssl/cert.pem"
+                             :ssl-key     "./dev-resources/ssl/key.pem"}))
+
+(defn configure-JGit-SSL!
+  [ssl?]
+  (let [connection-factory (if ssl?
+                             (jgit-client/create-connection-factory ssl-context)
+                             (JDKHttpConnectionFactory.))]
+    (HttpTransport/setConnectionFactory connection-factory)))
+
+(def webserver-plaintext-config
   {:webserver {:port http-port}
    :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
                          {:api          default-api-path-prefix
                           :repo-servlet default-repo-path-prefix}}})
 
-(defn webserver-ssl-config
-  []
+(def webserver-ssl-config
   {:webserver {:ssl-port    https-port
                :ssl-host    "0.0.0.0"
                :ssl-ca-cert "./dev-resources/ssl/ca.pem"
@@ -82,25 +95,9 @@
   [base-path repos]
   {:file-sync-storage (file-sync-storage-config-payload base-path repos)})
 
-(defn file-sync-storage-config-ssl
-  [base-path repos]
-  {:file-sync-storage (merge (file-sync-storage-config-payload base-path repos) {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
-                                                                                 :ssl-cert    "./dev-resources/ssl/cert.pem"
-                                                                                 :ssl-key     "./dev-resources/ssl/key.pem"})})
-
-(defn jgit-plaintext-config-with-repos
-  [base-path repos]
-  (merge (webserver-plaintext-config)
-         (file-sync-storage-config base-path repos)))
-
-(defn jgit-ssl-config-with-repos
-  [base-path repos]
-  (merge (webserver-ssl-config)
-         (file-sync-storage-config-ssl base-path repos)))
-
-(defn jgit-ssl-and-plaintext-config-with-repos
-  [base-path repos]
-  (merge (webserver-ssl-config)
+(defn jgit-config-with-repos
+  [base-path repos ssl?]
+  (merge (if ssl? webserver-ssl-config webserver-plaintext-config)
          (file-sync-storage-config base-path repos)))
 
 (defn temp-dir-as-string

@@ -2,7 +2,6 @@
   (:import (javax.net.ssl SSLHandshakeException)
            (java.net URL)
            (org.eclipse.jgit.transport HttpTransport)
-           (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
            (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-utils :as client-utils]
@@ -43,7 +42,7 @@
       (with-redefs
         [core/process-repos-for-updates mock-process-repos-for-updates]
         (client-utils/with-boostrapped-file-sync-client-and-webserver
-          (helpers/webserver-ssl-config)
+          helpers/webserver-ssl-config
           ring-handler
           file-sync-client-ssl-config
           (Thread/sleep 500)))))
@@ -53,7 +52,7 @@
       (with-redefs
         [core/process-repos-for-updates mock-process-repos-for-updates-SSL-failure]
         (client-utils/with-boostrapped-file-sync-client-and-webserver
-          (helpers/webserver-ssl-config)
+          helpers/webserver-ssl-config
           ring-handler
           (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
           (Thread/sleep 500)))))
@@ -62,15 +61,15 @@
     (logging/with-test-logging
       (is (thrown? IllegalArgumentException
                    (client-utils/with-boostrapped-file-sync-client-and-webserver
-                     (helpers/webserver-ssl-config)
+                     helpers/webserver-ssl-config
                      ring-handler
                      (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
 
 (deftest jgit-client-ssl-configuration-test
   (testing "client service configures a connection factory that produces the proper type of connection"
-    (HttpTransport/setConnectionFactory (JDKHttpConnectionFactory.))
+    (helpers/configure-JGit-SSL! false)
     (client-utils/with-boostrapped-file-sync-client-and-webserver
-      (helpers/webserver-ssl-config)
+      helpers/webserver-ssl-config
       ring-handler
       file-sync-client-ssl-config
       (let [connection-factory (HttpTransport/getConnectionFactory)
