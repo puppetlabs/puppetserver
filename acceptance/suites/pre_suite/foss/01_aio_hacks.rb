@@ -5,6 +5,8 @@ step "Configure the SUT to work with new AIO Layout specified at: https://github
 # End users are expected to execute puppetserver by having /opt/puppetlabs/bin in their PATH
 step "AIO: Add /opt/puppetlabs/bin to PATH (REMOVE ONCE https://tickets.puppetlabs.com/browse/QENG-1891 is resolved and employed)" do
   hosts.each do |host|
-    on host, 'sed -i s,PATH=,PATH=/opt/puppetlabs/bin:, ~/.ssh/environment'
+    # /opt/puppetlabs/bin is present to get puppetserver
+    # /opt/puppetlabs/puppet/bin is present to get facter
+    on host, 'sed -i s,PATH=,PATH=/opt/puppetlabs/bin:/opt/puppetlabs/puppet/bin:, ~/.ssh/environment'
   end
 end
