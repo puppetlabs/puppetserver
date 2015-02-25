@@ -10,7 +10,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-borrow-timeout 60000)
+(def default-borrow-timeout
+  "Default timeout when borrowing instances from the JRuby pool in
+   milliseconds. Current value is 1200000ms, or 20 minutes."
+  1200000)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -61,7 +64,7 @@
     (let [pool-context (:pool-context (tk-services/service-context this))
           pool         (core/get-pool pool-context)]
       (core/free-instance-count pool)))
-  
+
   (mark-all-environments-expired!
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
