@@ -80,14 +80,3 @@
                      helpers/webserver-ssl-config
                      ring-handler
                      (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
-
-(deftest jgit-client-ssl-configuration-test
-  (testing "client service configures a connection factory that produces the proper type of connection"
-    (helpers/configure-JGit-SSL! false)
-    (client-utils/with-boostrapped-file-sync-client-and-webserver
-      helpers/webserver-ssl-config
-      ring-handler
-      file-sync-client-ssl-config
-      (let [connection-factory (HttpTransport/getConnectionFactory)
-            connection (.create connection-factory (URL. "https://localhost:10080"))]
-        (is (instance? HttpClientConnection connection))))))

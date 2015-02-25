@@ -6,7 +6,8 @@
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.http.client.sync :as sync]
-            [puppetlabs.http.client.common :as http-client]))
+            [puppetlabs.http.client.common :as http-client])
+  (:import (org.eclipse.jgit.transport HttpTransport)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
@@ -178,6 +179,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(schema/defn ^:always-validate configure-jgit-client-ssl!
+  "Ensures that the JGit client is configured for SSL, if necessary.  The JGit
+  client's connection is configured through global state, via the static
+  'connectionFactory' defined on org.eclipse.jgit.transport.HttpTransport.
+  This functions creates a connection factory based on the given SSL context
+  and mutates that global state.  This is unforunate; we would like to configure
+  this in a way that does not involve mutating global state, but JGit does not
+  currently allow this - see https://bugs.eclipse.org/bugs/show_bug.cgi?id=460483"
+  [ssl-context :- common/SSLContextOrNil]
+  (-> ssl-context
+      (jgit-client/create-connection-factory)
+      (HttpTransport/setConnectionFactory)))
 
 (schema/defn ^:always-validate start-worker :- nil
   "Start a worker loop for the file sync client service.  This loop is

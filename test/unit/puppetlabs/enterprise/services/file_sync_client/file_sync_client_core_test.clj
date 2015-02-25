@@ -7,7 +7,10 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.enterprise.jgit-client :as client]
             [me.raynes.fs :as fs]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test])
+  (:import (org.eclipse.jgit.transport HttpTransport)
+           (java.net URL)
+           (com.puppetlabs.enterprise HttpClientConnection)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -135,3 +138,11 @@
     ; The client service is not being started, so we need to configure JGit to use SSL
     (helpers/configure-JGit-SSL! true)
     (test-process-repos-for-updates true)))
+
+(deftest ssl-configuration-test
+  (testing "JGit's ConnectionFactory hands-out instances of our own
+            HttpClientConnection after SSL has been configured."
+    (core/configure-jgit-client-ssl! helpers/ssl-context)
+    (let [connection-factory (HttpTransport/getConnectionFactory)
+          connection (.create connection-factory (URL. "https://localhost:10080"))]
+      (is (instance? HttpClientConnection connection)))))

@@ -1,11 +1,8 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
-  (:import (org.eclipse.jgit.transport HttpTransport))
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
-              :as core]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.ssl-utils.core :as ssl]))
 
 (tk/defservice file-sync-client-service
@@ -14,16 +11,14 @@
 
   (start [this context]
     (log/info "Starting file sync client service")
-    (let [config               (get-in-config
-                                 [:file-sync-client])
-          shutdown-requested?  (promise)
-          ssl-ctxt             (ssl/generate-ssl-context config)]
-      ; Ensure the JGit client is configured for SSL if necessary
-      (HttpTransport/setConnectionFactory (jgit-client/create-connection-factory ssl-ctxt))
+    (let [config (get-in-config [:file-sync-client])
+          shutdown-requested? (promise)
+          ssl-context (ssl/generate-ssl-context config)]
+      (core/configure-jgit-client-ssl! ssl-context)
       (future
         (shutdown-on-error
           (tk-services/service-id this)
-          #(core/start-worker config shutdown-requested? ssl-ctxt)))
+          #(core/start-worker config shutdown-requested? ssl-context)))
       (assoc context :file-sync-client-shutdown-requested?
                      shutdown-requested?)))
 
