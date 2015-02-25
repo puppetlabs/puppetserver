@@ -10,7 +10,7 @@
     available. A timeout (integer measured in milliseconds) can be configured
     which will either return an interpreter if one is available within the
     timeout length, or will return nil after the timeout expires if no
-    interpreters are available. This timeout defaults to 60000 milliseconds.")
+    interpreters are available. This timeout defaults to 1200000 milliseconds.")
 
   (return-instance
     [this jrubypuppet-instance]
@@ -27,5 +27,3 @@
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool."))
-
-      
