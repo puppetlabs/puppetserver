@@ -131,13 +131,13 @@ module PuppetServerExtensions
 
     destination = File.join("./log/latest/puppetserver/", relative_path)
     FileUtils.mkdir_p(destination)
-    scp_from master, "/var/log/puppetserver/puppetserver.log", destination
+    scp_from master, "/var/log/puppetlabs/puppetserver/puppetserver.log", destination
     if use_journalctl
       puppetserver_daemon_log = on(master, "journalctl -u puppetserver").stdout.strip
       destination = File.join(destination, "puppetserver-daemon.log")
       File.open(destination, 'w') {|file| file.puts puppetserver_daemon_log }
     else
-      scp_from master, "/var/log/puppetserver/puppetserver-daemon.log", destination
+      scp_from master, "/var/log/puppetlabs/puppetserver/puppetserver-daemon.log", destination
     end
   end
 
