@@ -1,5 +1,5 @@
 (ns puppetlabs.enterprise.jgit-client
-  (:import (org.eclipse.jgit.api Git PullResult)
+  (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository)
            (org.eclipse.jgit.merge MergeStrategy)
@@ -141,32 +141,6 @@
       (Git.)
       (.fetch)
       (.setRemote "origin")
-      (.call)))
-
-(defn pull
-  "Perform a git-pull of remote commits into the supplied repository.  Does not
-  do a rebase of current content on top of the new content being fetched.  Uses
-  a merge strategy of 'THEIRS' to defer to give remote content precedence over
-  any local content in the event of a merge conflict.  Returns a PullResult or
-  throws one of the following Exceptions from the org.eclipse.api.errors
-  package:
-
-  * WrongRepositoryStateException
-  * InvalidConfigurationException
-  * DetachedHeadException
-  * InvalidRemoteException
-  * CanceledException
-  * RefNotFoundException
-  * TransportException
-  * GitAPIException"
-  [repo]
-  {:pre [(instance? Repository repo)]
-   :post [(instance? PullResult %)]}
-  (-> repo
-      (Git.)
-      (.pull)
-      (.setRebase false)
-      (.setStrategy MergeStrategy/THEIRS)
       (.call)))
 
 (defn push
