@@ -98,7 +98,7 @@
           (fs/delete-dir client-targ-repo-dir-2)
           (fs/delete-dir client-targ-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))
-        (testing "Files pulled for update"
+        (testing "Files fetched for update"
           (helpers/create-and-push-file client-orig-repo-dir-2)
           (helpers/create-and-push-file client-orig-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))

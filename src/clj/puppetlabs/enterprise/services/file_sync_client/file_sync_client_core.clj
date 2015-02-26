@@ -113,49 +113,6 @@
                name
                target-dir)))))
 
-(defn do-pull
-  "Pull the latest content for a repository from the server.  Name is the name
-  of the repository.  latest-commit-id is the id of the latest commit on the
-  server for the repository.  target-dir is the location in which the client
-  repository is intended to reside.  Throws an `Exception` on failure."
-  [name latest-commit-id target-dir]
-  (if-let [repo (jgit-client/get-repository-from-git-dir target-dir)]
-    (when-not (= (jgit-client/head-rev-id repo) latest-commit-id)
-      (log/infof "File sync updating '%s'"
-                 name
-                 latest-commit-id)
-      (try
-        (let [pull-result (jgit-client/pull repo)]
-          (if (.isSuccessful pull-result)
-            (log/info
-              (str "File sync update of '"
-                   name
-                   "' successful.  New head commit: "
-                   (-> pull-result
-                       (.getMergeResult)
-                       (.getNewHead)
-                       (jgit-client/commit-id))))
-            (throw (Exception.
-                     (message-with-repo-info
-                       (str "File sync repo pull result was not successful.  "
-                            "Result: "
-                            (.toString pull-result))
-                       name
-                       target-dir)))))
-        (catch Exception e
-          (throw (Exception.
-                   (message-with-repo-info
-                     "File sync was unable to pull a server repo"
-                     name
-                     target-dir)
-                   e)))))
-    (throw (Exception.
-             (message-with-repo-info
-               (str "File sync found a directory that already exists but does "
-                    "not have a repository in it")
-               name
-               target-dir)))))
-
 (defn do-clone
   "Clone the latest content for a repository from the server.  Name is
   the name of the repository.  server-repo-url is the URL under which

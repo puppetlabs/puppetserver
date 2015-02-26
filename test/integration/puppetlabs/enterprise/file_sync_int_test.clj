@@ -70,7 +70,7 @@
                                   :repos {(keyword repo) (str client-repo-dir)}}}
 
               (testing "file sync client service is running"
-                ;; TODO: The HTTP polling request and the subsequent git pull
+                ;; TODO: The HTTP polling request and the subsequent git fetch
                 ;; operation are not guaranteed to have been completed within
                 ;; this time period. We should refactor this test to get rid
                 ;; of the race condition (see PE-8163).
@@ -117,7 +117,7 @@
 
               (testing "verify client recovers"
                 ;; TODO: As above, the HTTP polling request and the subsequent
-                ;; git pull operation are not guaranteed to have been
+                ;; git fetch operation are not guaranteed to have been
                 ;; completed within this time period. We should refactor this
                 ;; test to get rid of the race condition (see PE-8163).
                 ;;
