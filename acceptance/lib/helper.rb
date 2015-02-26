@@ -26,13 +26,13 @@ module PuppetServerExtensions
                          nil, "Puppet Version", "PUPPET_VERSION", nil) ||
                          get_puppet_version
 
-    # SERVER-339 - puppet-agent commit 49f7b1b967e44020587ab087f87e2f5e3ff2b1f6
-    # corresponds to packaged development version located at
-    # http://builds.delivery.puppetlabs.net/puppet-agent/49f7b1b967e44020587ab087f87e2f5e3ff2b1f6/
+    # SERVER-339, SERVER-386 - puppet-agent version corresponds to packaged
+    # development version located at http://builds.delivery.puppetlabs
+    # .net/puppet-agent/
     # TODO: This build version needs to be updated to a released version
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "49f7b1b967e44020587ab087f87e2f5e3ff2b1f6")
+                         "PUPPET_BUILD_VERSION", "bc00b6e7106846aae0af5b915976a8d192e53803")
 
     @config = {
       :base_dir => base_dir,
@@ -131,13 +131,13 @@ module PuppetServerExtensions
 
     destination = File.join("./log/latest/puppetserver/", relative_path)
     FileUtils.mkdir_p(destination)
-    scp_from master, "/var/log/puppetserver/puppetserver.log", destination
+    scp_from master, "/var/log/puppetlabs/puppetserver/puppetserver.log", destination
     if use_journalctl
       puppetserver_daemon_log = on(master, "journalctl -u puppetserver").stdout.strip
       destination = File.join(destination, "puppetserver-daemon.log")
       File.open(destination, 'w') {|file| file.puts puppetserver_daemon_log }
     else
-      scp_from master, "/var/log/puppetserver/puppetserver-daemon.log", destination
+      scp_from master, "/var/log/puppetlabs/puppetserver/puppetserver-daemon.log", destination
     end
   end
 
@@ -153,14 +153,6 @@ module PuppetServerExtensions
     else
       abort("Invalid install type: " + test_config[:puppetserver_install_type])
     end
-  end
-
-  # TODO: With AIO packages, ruby-load-path is now the same across all
-  # platforms, so we don't need this or `configure_puppet_server`, since this
-  # setting should be able to be moved into a regular conf file.  See
-  # SERVER-331.
-  def get_rubylibdir host, config_key
-    "/opt/puppetlabs/agent/lib/ruby/vendor_ruby"
   end
 
   def configure_puppet_server
@@ -182,15 +174,6 @@ module PuppetServerExtensions
     else
       logger.warn("#{platform}: Unsupported platform for puppetserver.")
     end
-
-    rubylibdir = get_rubylibdir master, config_key
-    create_remote_file master, '/etc/puppetserver/conf.d/os-settings.conf', <<EOF
-os-settings: {
-    ruby-load-path: [#{rubylibdir}]
-}
-EOF
-    on master, "chmod 0644 /etc/puppetserver/conf.d/os-settings.conf"
-
   end
 
   def upgrade_package(host, name)

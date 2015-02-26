@@ -11,7 +11,7 @@ up automatically. However, for some tasks, such as configuring the webserver or 
 
 All of Puppet Server's new config files and settings (with the exception of the [logging config file](#logging)) are located in the `conf.d` directory. These new config files are in HOCON format. HOCON keeps the basic structure of JSON, but is a more human-readable config file format. You can find details about this format in the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
 
-At startup, Puppet Server reads all the `.conf` files found in this directory, located at `/etc/puppetserver/conf.d` (open source releases) or `/etc/puppetlabs/puppetserver/conf.d` (Puppet Enterprise). Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
+At startup, Puppet Server reads all the `.conf` files found in this directory, located at `/etc/puppetlabs/puppetserver/conf.d`. Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
 
 ### `global.conf`
 
@@ -56,9 +56,13 @@ By default, Puppet Server is configured to use the correct Puppet Master and CA 
 This file contains the settings for Puppet Server itself.
 
 * The `jruby-puppet` settings configure the interpreter:
-    * `gem-home`: This setting determines where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If not specified, uses the Puppet default `/var/lib/puppet/jruby-gems`.
+    * `gem-home`: This setting determines where JRuby looks for gems. It is
+      also used by the `puppetserver gem` command line tool. If not specified,
+      uses the Puppet default `/opt/puppetlabs/puppet/cache/jruby-gems`.
     * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
-    * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
+    * `master-var-dir`: Optionally, set the path to the Puppet variable
+      directory. If not specified, uses the Puppet default
+      `/opt/puppetlabs/puppet/cache`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
@@ -75,9 +79,9 @@ This file contains the settings for Puppet Server itself.
 # configuration for the JRuby interpreters
 
 jruby-puppet: {
-    gem-home: /var/lib/puppet/jruby-gems
+    gem-home: /opt/puppetlabs/puppet/cache/jruby-gems
     master-conf-dir: /etc/puppet
-    master-var-dir: /var/lib/puppet
+    master-var-dir: /opt/puppetlabs/puppet/cache
     max-active-instances: 1
 }
 

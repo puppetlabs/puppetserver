@@ -1,3 +1,6 @@
+## Ignore project specific files here
+## For OS and IDE specific files, use a global gitignore
+## See: https://help.github.com/articles/ignoring-files/
 scratch
 pom.xml
 *jar
@@ -8,7 +11,6 @@ pom.xml
 .lein-failures
 target/
 log
-.bundle
 .vagrant
 vendor
 .nrepl-port
@@ -16,3 +18,12 @@ profiles.clj
 dev/user.clj
 .lein-repl-history
 ext/packaging
+
+# Bundler local state files
+Gemfile.lock
+Gemfile.local
+/.bundle/
+
+# Local test runs drop files into junit and tmp
+/junit/
+/tmp/
