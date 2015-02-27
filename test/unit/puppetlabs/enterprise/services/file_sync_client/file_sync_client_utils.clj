@@ -1,6 +1,8 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-utils
   (:require [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
              :as file-sync-client-service]
+            [puppetlabs.enterprise.services.scheduler.scheduler-service
+             :as scheduler-service]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service
              :as jetty-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
@@ -19,7 +21,8 @@
          "/"))
      (bootstrap/with-app-with-config
        client-app#
-       [file-sync-client-service/file-sync-client-service]
+       [file-sync-client-service/file-sync-client-service
+        scheduler-service/scheduler-service]
        {:file-sync-client ~client-config}
        (do
          ~@body))))

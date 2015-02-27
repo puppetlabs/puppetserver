@@ -40,6 +40,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
 
+(defn create-http-client
+  [ssl-context]
+  (sync/create-client
+    (if ssl-context {:ssl-context ssl-context} {})))
+
 (schema/defn ^:always-validate get-body-from-latest-commits-payload
   :- common/LatestCommitsPayload
   [response]
@@ -193,50 +198,25 @@
       (jgit-client/create-connection-factory)
       (HttpTransport/setConnectionFactory)))
 
-(schema/defn ^:always-validate start-worker :- nil
-  "Start a worker loop for the file sync client service.  This loop is
-  intended to stay alive until told to stop at service shutdown.  At a
-  poll-interval configured in the supplied config, the loop processes
-  configured repositories for any needed content updates.  The supplied
-  config derives from the file sync client service configuration.  The
-  supplied shutdown-requested? promise is retained so that when a
-  corresponding stop-worker call is made later with the same promise, the
-  worker can be appropriately stopped."
+(schema/defn ^:always-validate perform-sync!
+  "Synchronizes the repositories specified in 'config'."
   [config :- FileSyncClientServiceRawConfig
-   shutdown-requested?
-   ssl-ctxt :- common/SSLContextOrNil]
-  (log/info "File sync client worker started")
+   http-client :- http-client/HTTPClient]
   (let [filesync-server-url (:server-url config)
         server-repo-path    (:server-repo-path config)
         server-api-path     (:server-api-path config)
-        poll-interval       (* (:poll-interval config) 1000)
-        repos               (:repos config)
-        client-opts         (if ssl-ctxt
-                              {:ssl-context ssl-ctxt}
-                              {})]
+        repos               (:repos config)]
     (log/debugf "File sync client repos: %s" repos)
-    (with-open [client (sync/create-client client-opts)]
-      (while (not (realized? shutdown-requested?))
-        (try
-          (process-repos-for-updates
-            client
-            (str filesync-server-url server-repo-path)
-            (str filesync-server-url server-api-path)
-            repos)
-          (catch Exception e
-            (log/error (str "File sync failure.  Cause: "
-                            e
-                            (if-let [sub-cause (.getCause e)]
-                              (str "  Cause: " sub-cause)
-                              "")))
-            (log/debug e "File sync failure.")))
-        (Thread/sleep poll-interval))))
-  (log/info "File sync client worker stopped")
-  nil)
-
-(defn stop-worker
-  "Stop the file sync client service worker.  The shutdown-requested?
-  argument promise supplied to this function should be the same as the one
-  passed into the start-worker function call used to start the worker."
-  [shutdown-requested?]
-  (deliver shutdown-requested? true))
+    (try
+      (process-repos-for-updates
+        http-client
+        (str filesync-server-url server-repo-path)
+        (str filesync-server-url server-api-path)
+        repos)
+      (catch Exception e
+        (log/error (str "File sync failure.  Cause: "
+                        e
+                        (if-let [sub-cause (.getCause e)]
+                          (str "  Cause: " sub-cause)
+                          "")))
+        (log/debug e "File sync failure.")))))

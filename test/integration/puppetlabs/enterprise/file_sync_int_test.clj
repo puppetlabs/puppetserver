@@ -9,6 +9,8 @@
              :as file-sync-client-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
+            [puppetlabs.enterprise.services.scheduler.scheduler-service
+             :as scheduler-service]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.core :as tk]
@@ -65,7 +67,8 @@
 
             (bootstrap/with-app-with-config
               app
-              [file-sync-client-service/file-sync-client-service]
+              [file-sync-client-service/file-sync-client-service
+               scheduler-service/scheduler-service]
               {:file-sync-client {:server-url helpers/server-base-url
                                   :poll-interval 1
                                   :server-api-path helpers/default-api-path-prefix
