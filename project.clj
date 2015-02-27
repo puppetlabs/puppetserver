@@ -19,6 +19,7 @@
                  [compojure "1.1.8" :exclusions [commons-io org.clojure/tools.macro]]
                  [commons-io "2.1"]
                  [liberator "0.12.0"]
+                 [overtone/at-at "1.2.0"]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server
                     "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.apache
