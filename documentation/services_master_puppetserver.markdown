@@ -133,12 +133,9 @@ Puppet Server's conf.d directory contains:
 * `puppetserver.conf`: Settings for Puppet Server itself, including the JRuby interpreter and the administrative API.
 * `master.conf`: Settings for the Puppet master functionality of Puppet Server.
 * `ca.conf`: Settings for the Certificate Authority service.
-* `os-settings.conf`: Settings for the Ruby load paths for JRuby.
 
 For detailed information about Puppet Server settings and the conf.d directory, refer to the [Configuration](./configuration.markdown) page.
 
 While Puppet Server uses Puppet's [auth.conf](/latest/reference/config_file_auth.html) for most access control, access to the `certificate_status` endpoint is controlled in the ca.conf file mentioned above. By default, this file allows no access to this endpoint. (Access to the `certificate`, `certificate_request`, and `certificate_revocation_list` endpoints is always allowed.)
 
 As mentioned above, Puppet Server also uses Puppet's usual config files, including most of the settings in [puppet.conf](/puppet/latest/reference/config_file_main.html). However, Puppet Server does treat some puppet.conf settings differently, and you should be aware of [these differences](./puppet_conf_setting_diffs.html).
-
-

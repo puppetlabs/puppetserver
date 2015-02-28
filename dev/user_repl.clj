@@ -32,8 +32,8 @@
   (if-let [conf (resolve 'user/puppet-server-conf)]
     ((deref conf))
     {:global                {:logging-config "./dev/logback-dev.xml"}
-     :os-settings           {:ruby-load-path jruby-testutils/ruby-load-path}
-     :jruby-puppet          {:gem-home             jruby-testutils/gem-home
+     :jruby-puppet          {:ruby-load-path       jruby-testutils/ruby-load-path
+                             :gem-home             jruby-testutils/gem-home
                              :max-active-instances 1
                              :master-conf-dir      jruby-testutils/conf-dir}
      :webserver             {:client-auth "want"

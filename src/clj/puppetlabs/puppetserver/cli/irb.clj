@@ -17,7 +17,7 @@
                        (.put "GEM_HOME" gem-home)
                        (.put "JARS_NO_REQUIRE" "true"))
         jruby-home   (.getJRubyHome jruby-config)
-        load-path    (->> (get-in config [:os-settings :ruby-load-path])
+        load-path    (->> (get-in config [:jruby-puppet :ruby-load-path])
                           (cons jruby-puppet/ruby-code-dir)
                           (cons (str jruby-home "/lib/ruby/1.9"))
                           (cons (str jruby-home "/lib/ruby/shared"))

@@ -155,27 +155,6 @@ module PuppetServerExtensions
     end
   end
 
-  def configure_puppet_server
-    variant, version, _, _ = master['platform'].to_array
-
-    case variant
-    when /^fedora$/
-      config_key = 'sitelibdir'
-      if version.to_i >= 17
-        config_key = 'vendorlibdir'
-      end
-    when /^(el|centos)$/
-      config_key = 'sitelibdir'
-      if version.to_i >= 7
-        config_key = 'vendorlibdir'
-      end
-    when /^(debian|ubuntu)$/
-      config_key = 'sitelibdir'
-    else
-      logger.warn("#{platform}: Unsupported platform for puppetserver.")
-    end
-  end
-
   def upgrade_package(host, name)
     variant, _, _, _ = master['platform'].to_array
     case variant

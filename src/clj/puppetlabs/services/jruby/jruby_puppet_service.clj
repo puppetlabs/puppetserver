@@ -29,16 +29,15 @@
   (init
     [this context]
     (let [config            (-> (get-in-config [:jruby-puppet])
-                              (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
-                              (assoc :http-client-ssl-protocols
-                                     (get-in-config [:http-client :ssl-protocols]))
-                              (assoc :http-client-cipher-suites
-                                     (get-in-config [:http-client :cipher-suites])))
+                                (assoc :http-client-ssl-protocols
+                                       (get-in-config [:http-client :ssl-protocols]))
+                                (assoc :http-client-cipher-suites
+                                       (get-in-config [:http-client :cipher-suites])))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
-          pool-agent  (jruby-agents/pool-agent agent-shutdown-fn)
+          pool-agent        (jruby-agents/pool-agent agent-shutdown-fn)
           profiler          (get-profiler)
-          borrow-timeout (get-in-config [:jruby-puppet :borrow-timeout] default-borrow-timeout)]
+          borrow-timeout    (get-in-config [:jruby-puppet :borrow-timeout] default-borrow-timeout)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (let [pool-context (core/create-pool-context config profiler)]

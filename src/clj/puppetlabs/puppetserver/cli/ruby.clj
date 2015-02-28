@@ -6,7 +6,7 @@
 
 (defn new-jruby-main
   [config]
-  (let [load-path    (->> (get-in config [:os-settings :ruby-load-path])
+  (let [load-path    (->> (get-in config [:jruby-puppet :ruby-load-path])
                           (cons jruby-puppet/ruby-code-dir))
         gem-home     (get-in config [:jruby-puppet :gem-home])
         jruby-config (new RubyInstanceConfig)
