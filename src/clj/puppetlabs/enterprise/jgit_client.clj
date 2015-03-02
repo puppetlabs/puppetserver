@@ -68,7 +68,7 @@
   The implementation currently hardcodes an 'origin' remote and 'master' branch as
   the content to be cloned.  If the clone is successful, a handle to a Git
   instance which wraps the repository is returned.  If the clone failed, one of
-  the following Exceptions from the org.eclipse.api.errors namespace may be
+  the following Exceptions from the org.eclipse.jgit.api.errors namespace may be
   thrown:
 
   * InvalidRemoteException
@@ -98,7 +98,7 @@
 (defn fetch
   "Perform a git-fetch of remote commits into the supplied repository.
   Returns a FetchResult or throws one of the following Exceptions from the
-  org.eclipse.api.errors package:
+  org.eclipse.jgit.api.errors package:
 
   * InvalidRemoteException
   * TransportException

@@ -12,13 +12,15 @@
             [puppetlabs.enterprise.services.scheduler.scheduler-service
              :as scheduler-service]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [schema.test :as schema-test]))
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [schema.test :as schema-test])
+  (:import (java.net ConnectException)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -42,7 +44,7 @@
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
     (let [repo "network-partition-test.git"
-          storage-app (tka/check-for-errors!
+          storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
@@ -52,63 +54,77 @@
                             [{:sub-path repo}]
                             false)))]
       (try
-        (logging/with-test-logging
-          (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
-                ;; clone the repo from the storage service, create and commit a new
-                ;; file, and push it back up to the server. Returns the path to the
-                ;; locally cloned repo so that we can push additional files to it later.
-                local-repo-dir (helpers/clone-repo-and-push-test-files repo)]
+        (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+              ;; clone the repo from the storage service, create and commit a new
+              ;; file, and push it back up to the server. Returns the path to the
+              ;; locally cloned repo so that we can push additional files to it later.
+              local-repo-dir (helpers/clone-repo-and-push-test-files repo)]
 
-            (testing "file sync storage service is running"
-              ;; Ensure that a commit pushed to the server is reflected by the
-              ;; latest-commits endpoint
-              (is (= (get-latest-commits-for-repo repo)
-                     (jgit-client/head-rev-id-from-working-tree local-repo-dir))))
+          (testing "file sync storage service is running"
+            ;; Ensure that a commit pushed to the server is reflected by the
+            ;; latest-commits endpoint
+            (is (= (get-latest-commits-for-repo repo)
+                   (jgit-client/head-rev-id-from-working-tree local-repo-dir))))
 
-            (bootstrap/with-app-with-config
-              app
-              [file-sync-client-service/file-sync-client-service
-               scheduler-service/scheduler-service]
-              {:file-sync-client {:server-url helpers/server-base-url
-                                  :poll-interval 1
-                                  :server-api-path helpers/default-api-path-prefix
-                                  :server-repo-path helpers/default-repo-path-prefix
-                                  :repos {(keyword repo) (str client-repo-dir)}}}
+          (bootstrap/with-app-with-config
+            app
+            [file-sync-client-service/file-sync-client-service
+             scheduler-service/scheduler-service]
+            {:file-sync-client {:server-url       helpers/server-base-url
+                                :poll-interval    1
+                                :server-api-path  helpers/default-api-path-prefix
+                                :server-repo-path helpers/default-repo-path-prefix
+                                :repos            {(keyword repo) (str client-repo-dir)}}}
+
+            (let [sync-agent (->> :FileSyncClientService
+                                  (tk-app/get-service app)
+                                  (tk-services/service-context)
+                                  :agent)]
 
               (testing "file sync client service is running"
-                ;; TODO: The HTTP polling request and the subsequent git fetch
-                ;; operation are not guaranteed to have been completed within
-                ;; this time period. We should refactor this test to get rid
-                ;; of the race condition (see PE-8163).
-                ;;
-                ;; wait the 1 second polling interval (+ some additional time
-                ;; to decrease the likelihood of triggering a race condition)
-                ;; for the client to sync from the storage service, then test
-                ;; this by checking the SHA for the latest commit returned
-                ;; from the storage service's latest-commits endpoint against
-                ;; the client's latest commit
-                (Thread/sleep 3000)
-                (is (= (get-latest-commits-for-repo repo)
-                       (jgit-client/head-rev-id-from-git-dir client-repo-dir))))
+                ;; Test the result of the periodic sync by checking the SHA for
+                ;; the latest commit returned from the storage service's
+                ;; latest-commits endpoint against the client's latest commit
+                (let [p (promise)]
+                  ;; Make the agent running the periodic sync process 'deliver'
+                  ;; our promise once it's done.
+                  (helpers/add-watch-and-deliver-new-state sync-agent p)
+                  ;; Block until we are sure that the periodic sync process
+                  ;; has completed.
+                  (let [new-state (deref p)]
+                    (is (= :successful (:status new-state))))
+                  (is (= (get-latest-commits-for-repo repo)
+                         (jgit-client/head-rev-id-from-git-dir client-repo-dir)))))
 
               (testing "kill storage service and verify client has errors"
-                (tka/stop storage-app)
+                ;; Stop the storage service - the next time the sync runs, it
+                ;; should fail.  Use 'with-test-logging' just to prevent the
+                ;; error from being logged.
+                (with-test-logging
+                  (tk-app/stop storage-app)
 
-                ;; TODO: This is not very robust, since if the client HTTP
-                ;; polling request isn't completed during this time, we won't
-                ;; get a log message, but if we increase this too much the
-                ;; client could potentially have polled a second time, and the
-                ;; test could fail because there are multiple log messages.
-                ;; This should be refactored (see PE-8163).
-                ;;
-                ;; within 1 second the client should poll again, and this time
-                ;; it should log an error because it can't connect to the
-                ;; server
-                (Thread/sleep 1000)
-                (is (logged? #"^File sync failure.\s*Cause:.*" :error)))
+                  ;; Wait until the client polls again, and this time an error
+                  ;; should occur because it can't connect to the server.  This is
+                  ;; accomplished by adding a watch on the
+                  ;; agent which simply delivers a promise.  This test then
+                  ;; deref's that promise, thereby blocking until the error occurs.
+                  (let [p (promise)]
+                    (helpers/add-watch-and-deliver-new-state sync-agent p)
+                    (let [new-state (deref p)]
+                      ;; The sync process failed, and we were delivered an error.
+                      ;; Verify that it is what it should be.
+                      (is (= :failed (:status new-state)))
+                      (let [error (:error new-state)]
+                        (testing "the delivered error describes a network connectivity problem"
+                          (is (map? error))
+                          (let [cause (:cause error)]
+                            (is (instance? ConnectException cause))
+                            (is (re-matches
+                                  #"Connection refused.*"
+                                  (.getMessage cause))))))))))
 
               (testing "start storage service again"
-                (tka/start storage-app)
+                (tk-app/start storage-app)
                 (is (= 200 (:status (latest-commits-response))))
 
                 ;; push a new commit up to the storage service
@@ -122,17 +138,18 @@
                           (jgit-client/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "verify client recovers"
-                ;; TODO: As above, the HTTP polling request and the subsequent
-                ;; git fetch operation are not guaranteed to have been
-                ;; completed within this time period. We should refactor this
-                ;; test to get rid of the race condition (see PE-8163).
-                ;;
-                ;; wait 1 second (+ some additional time to decreate the
-                ;; likelihood of triggering a race condition) for the client
-                ;; to poll again, then check that the client has been synced
-                ;; to have the same latest commit as the storage service
-                (Thread/sleep 3000)
+                ;; Same deal as above - wait until the client polls again, then
+                ;; check that the client has been synced to have the same latest
+                ;; commit as the storage service
+                (let [p (promise)]
+                  ;; Make the agent running the periodic sync process 'deliver'
+                  ;; our promise once it's done.
+                  (helpers/add-watch-and-deliver-new-state sync-agent p)
+                  ;; Block until we are sure that the periodic sync process
+                  ;; has completed.
+                  (let [new-state (deref p)]
+                    (is (= :successful (:status new-state)))))
                 (is (= (get-latest-commits-for-repo repo)
                        (jgit-client/head-rev-id-from-git-dir client-repo-dir)))))))
 
-        (finally (tka/stop storage-app))))))
+        (finally (tk-app/stop storage-app))))))

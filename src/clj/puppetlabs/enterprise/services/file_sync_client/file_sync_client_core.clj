@@ -3,13 +3,17 @@
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
+            [slingshot.slingshot :refer [try+ throw+]]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
-  (:import (org.eclipse.jgit.transport HttpTransport)))
+  (:import (org.eclipse.jgit.transport HttpTransport)
+           (clojure.lang IFn Agent)
+           (java.io IOException)
+           (org.eclipse.jgit.api.errors GitAPIException)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
 
 (def FileSyncClientServiceRawConfig
@@ -37,7 +41,26 @@
    (schema/optional-key :ssl-cert)    schema/Str
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def AgentError
+  {:type                        (schema/eq ::error)
+   :message                     String
+   (schema/optional-key :cause) Exception})
+
+(defn agent-error? [x] (not (schema/check AgentError x)))
+
+(def AgentState
+  "A schema which describes a valid state of the agent."
+  (schema/both
+    {:status                      (schema/enum :successful :failed :created)
+     (schema/optional-key :error) AgentError}
+    (schema/pred
+      (fn [state]
+        (if (= (:status state) :failed)
+          (contains? state :error)
+          (not (contains? state :error)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
 
 (defn create-http-client
@@ -48,16 +71,10 @@
 (schema/defn ^:always-validate get-body-from-latest-commits-payload
   :- common/LatestCommitsPayload
   [response]
-  (let [content-type (get-in response [:headers "content-type"])]
-    (if (.startsWith content-type "application/json")
-      (if-let [body (:body response)]
-        (cheshire/parse-string body)
-        (throw (Exception.
-                 (str "Did not get response body for latest-commits.  "
-                      "Response: " response))))
-      (throw (Exception.
-               (str "Did not get json response for latest-commits.  "
-                    "Response: " response))))))
+  (when-let [failure (schema/check common/LatestCommitsResponse response)]
+    (throw+ {:type    ::error
+             :message (str "Response for latest commits unexpected, detail: " failure)}))
+  (cheshire/parse-string (:body response)))
 
 (schema/defn ^:always-validate get-latest-commits-from-server
   :- common/LatestCommitsPayload
@@ -74,11 +91,11 @@
     (try
       (get-body-from-latest-commits-payload
         (http-client/get client latest-commits-url {:as :text}))
-      (catch Exception e
-        (throw (Exception. (str "Unable to get latest-commits from server ("
-                                latest-commits-url
-                                ").")
-                           e))))))
+      (catch IOException e
+        (throw+ {:type ::error
+                 :message (str "Unable to get latest-commits from server ("
+                               latest-commits-url ").")
+                 :cause e})))))
 
 (defn message-with-repo-info
   "Add repository information to a message.  Name is the name of the repository.
@@ -96,23 +113,12 @@
   [name latest-commit-id target-dir]
   (if-let [repo (jgit-client/get-repository-from-git-dir target-dir)]
     (when-not (= (jgit-client/head-rev-id repo) latest-commit-id)
-      (log/infof "File sync updating '%s'"
-                 name
-                 latest-commit-id)
-      (try
-        (jgit-client/fetch repo)
-        (log/info
-          (str "File sync fetch of '" name
-               "' successful.  New head commit: "
-               (jgit-client/head-rev-id repo)))
-
-        (catch Exception e
-          (throw (Exception. (message-with-repo-info
-                               "File sync was unable to fetch update from server repo"
-                               name
-                               target-dir)
-                             e)))))
-    (throw (Exception.
+      (log/infof "File sync updating '%s' to %s" name latest-commit-id)
+      (jgit-client/fetch repo)
+      (log/info
+        (str "File sync fetch of '" name "' successful.  New latest commit: "
+             (jgit-client/head-rev-id repo))))
+    (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a directory that already exists but does "
                     "not have a repository in it")
@@ -125,20 +131,11 @@
   the repository resides on the server.  target-dir is the directory in which
   the client repository should be stored.  Throws an `Exception` on failure."
   [name server-repo-url target-dir]
-  (try
-    (log/infof "File sync cloning '%s' to: %s" name target-dir)
-    (let [git (jgit-client/clone server-repo-url target-dir true)]
-      (log/info (str "File sync clone of '"
-                     name
-                     "' successful.  New head commit: "
-                     (jgit-client/head-rev-id (.getRepository git)))))
-    (catch Exception e
-      (throw (Exception.
-               (message-with-repo-info
-                 "File sync was unable to clone a server repo"
-                 name
-                 target-dir)
-               e)))))
+  (log/infof "File sync cloning '%s' to: %s" name target-dir)
+  (let [git (jgit-client/clone server-repo-url target-dir true)]
+    (log/info
+      (str "File sync clone of '" name "' successful.  New latest commit: "
+           (jgit-client/head-rev-id (.getRepository git))))))
 
 (defn apply-updates-to-repo
   "Apply updates from the server to the client repository.  Name is the
@@ -148,9 +145,20 @@
   location in which the client repository is intended to reside.  Returns
   true on success, else false on failure."
   [name server-repo-url latest-commit-id target-dir]
-  (if (fs/exists? target-dir)
-    (do-fetch name latest-commit-id target-dir)
-    (do-clone name server-repo-url target-dir)))
+  (let [fetch? (fs/exists? target-dir)]
+    (try
+      (if fetch?
+        (do-fetch name latest-commit-id target-dir)
+        (do-clone name server-repo-url target-dir))
+      (catch GitAPIException e
+        (throw+ {:type    ::error
+                 :message (message-with-repo-info
+                            (str "File sync was unable to "
+                                 (if fetch? "fetch" "clone")
+                                 " from server repo")
+                            name
+                            target-dir)
+                 :cause e})))))
 
 (defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
@@ -163,7 +171,7 @@
         target-dir       (fs/file target-dir)]
     (apply-updates-to-repo name server-repo-url latest-commit-id target-dir)))
 
-(schema/defn process-repos-for-updates
+(defn process-repos-for-updates
   "Process through all of the repos configured with the
   service for any updates which may be available on the server.
   server-repo-url is the base URL at which the repository is hosted on the
@@ -182,7 +190,48 @@
             "File sync did not find matching server repo for client repo: %s"
             name))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; This function is marked 'always-validate' to ensure that the agent is always
+; left in a valid state.
+(schema/defn ^:always-validate sync-on-agent :- AgentState
+  "Runs the sync process on the agent."
+  [agent-state config http-client]
+  (try+
+    (let [filesync-server-url (:server-url config)
+          server-repo-path (:server-repo-path config)
+          server-api-path (:server-api-path config)
+          repos (:repos config)]
+      (log/debugf "File sync client repos: %s" repos)
+      (process-repos-for-updates
+        http-client
+        (str filesync-server-url server-repo-path)
+        (str filesync-server-url server-api-path)
+        repos)
+      {:status :successful})
+    (catch agent-error? error
+      (let [message (str "File sync failure: " (:message error))]
+        (if-let [cause (:cause error)]
+          (log/error cause message)
+          (log/error message)))
+      {:status :failed
+       :error  error})))
+
+(defn sync-and-schedule-again
+  "Runs the sync process on the agent and, once complete, schedules the next
+  iteration of the sync process using 'schedule-fn' and sending an action to
+  'sync-agent'."
+  [agent-state sync-agent schedule-fn config http-client]
+  (log/info "Periodic file sync process running ...")
+  (let [new-state (sync-on-agent agent-state config http-client)]
+    (log/debug "Scheduling the next iteration of the sync process.")
+    (schedule-fn #(send-off sync-agent
+                            sync-and-schedule-again
+                            sync-agent
+                            schedule-fn
+                            config
+                            http-client))
+    new-state))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
@@ -198,25 +247,34 @@
       (jgit-client/create-connection-factory)
       (HttpTransport/setConnectionFactory)))
 
-(schema/defn ^:always-validate perform-sync!
-  "Synchronizes the repositories specified in 'config'."
-  [config :- FileSyncClientServiceRawConfig
+(defn create-agent
+  "Creates and returns the agent used by the file sync client service.
+  'request-shutdown' is a function that will be called in the event of a fatal
+  error during the sync process when the entire applications needs to be shut down."
+  [request-shutdown]
+  (agent
+    {:status :created}
+    :error-mode :fail
+    :error-handler (fn [_ error]
+                     ; disaster!  shut down the entire application.
+                     (log/error error "Fatal error during file sync, requesting shutdown.")
+                     (request-shutdown))))
+
+(schema/defn ^:always-validate start-periodic-sync-process!
+  "Synchronizes the repositories sypecified in 'config' by sending the agent an
+  action.  It is important that this function only be called once, during service
+  startup.  (Although, note that one-off sync runs can be triggered by sending
+  the agent a 'sync-on-agent' action.)
+
+  'schedule-fn' the function that will be invoked after each iteration of the
+  sync process to schedule the next iteration."
+  [sync-agent :- Agent
+   schedule-fn :- IFn
+   config :- FileSyncClientServiceRawConfig
    http-client :- http-client/HTTPClient]
-  (let [filesync-server-url (:server-url config)
-        server-repo-path    (:server-repo-path config)
-        server-api-path     (:server-api-path config)
-        repos               (:repos config)]
-    (log/debugf "File sync client repos: %s" repos)
-    (try
-      (process-repos-for-updates
-        http-client
-        (str filesync-server-url server-repo-path)
-        (str filesync-server-url server-api-path)
-        repos)
-      (catch Exception e
-        (log/error (str "File sync failure.  Cause: "
-                        e
-                        (if-let [sub-cause (.getCause e)]
-                          (str "  Cause: " sub-cause)
-                          "")))
-        (log/debug e "File sync failure.")))))
+  (send-off sync-agent
+            sync-and-schedule-again
+            sync-agent
+            schedule-fn
+            config
+            http-client))
