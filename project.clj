@@ -101,10 +101,8 @@
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
-  :test-selectors {:default (complement :integration)
-                   :integration :integration
-                   :unit (complement :integration)
-                   :all (constantly true)}
+  :test-selectors {:integration :integration
+                   :unit (complement :integration)}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby"]
