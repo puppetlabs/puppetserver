@@ -29,11 +29,6 @@
           (core/get-body-from-latest-commits-payload
             {:headers {"content-type" "application/json"}})))))
 
-(defn parse-test-repo-config
-  [repo-test-config]
-  (let [{:keys [:name :target-dir]} (:process-repo repo-test-config)]
-    {(keyword name) {:target-dir target-dir}}))
-
 (defn process-repos-and-verify
   ([repos-to-verify client]
     (process-repos-and-verify repos-to-verify client false))
@@ -42,9 +37,10 @@
       client
       (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
       (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-      (into {} (map parse-test-repo-config repos-to-verify)))
+      (into {} (map #(:process-repo %) repos-to-verify)))
     (doseq [repo repos-to-verify]
-      (let [target-dir (get-in repo [:process-repo :target-dir])]
+      (let [name       (:name repo)
+            target-dir (get-in repo [:process-repo (keyword name)])]
         (is (= (client/head-rev-id (:origin-dir repo))
                (client/head-rev-id target-dir))
             (str "Unexpected head revision in target repo directory : "
@@ -86,33 +82,24 @@
             client-targ-repo-dir-1 (helpers/temp-dir-as-string)
             client-targ-repo-dir-2 (helpers/temp-dir-as-string)
             client-targ-repo-dir-3 (helpers/temp-dir-as-string)
-            repos-to-verify [{:origin-dir   client-orig-repo-dir-1
-                              :process-repo {
-                                             :name       server-repo-subpath-1
-                                             :target-dir client-targ-repo-dir-1}}
-                             {:origin-dir   client-orig-repo-dir-2
-                              :process-repo {
-                                             :name       server-repo-subpath-2
-                                             :target-dir client-targ-repo-dir-2}}
-                             {:origin-dir   client-orig-repo-dir-3
-                              :process-repo {
-                                             :name       server-repo-subpath-3
-                                             :target-dir client-targ-repo-dir-3}}]
+            repos-to-verify [{:name         server-repo-subpath-1
+                              :origin-dir   client-orig-repo-dir-1
+                              :process-repo {(keyword server-repo-subpath-1)
+                                               client-targ-repo-dir-1}}
+                             {:name         server-repo-subpath-2
+                              :origin-dir   client-orig-repo-dir-2
+                              :process-repo {(keyword server-repo-subpath-2)
+                                               client-targ-repo-dir-2}}
+                             {:name         server-repo-subpath-3
+                              :origin-dir   client-orig-repo-dir-3
+                              :process-repo {(keyword server-repo-subpath-3)
+                                               client-targ-repo-dir-3}}]
             client (sync/create-client client-opts)]
         (testing "Validate initial repo update"
           (fs/delete-dir client-targ-repo-dir-1)
           (fs/delete-dir client-targ-repo-dir-2)
           (fs/delete-dir client-targ-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))
-        (testing "Validate that repo config can be a string instead of a map"
-          (fs/delete-dir client-targ-repo-dir-1)
-          (core/process-repos-for-updates
-            client
-            (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-            (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-            {(keyword server-repo-subpath-1) client-targ-repo-dir-1})
-          (is (= (client/head-rev-id client-orig-repo-dir-1)
-                 (client/head-rev-id client-targ-repo-dir-1))))
         (testing "Files pulled for update"
           (helpers/create-and-push-file client-orig-repo-dir-2)
           (helpers/create-and-push-file client-orig-repo-dir-3)
@@ -131,7 +118,7 @@
                 (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
                 (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
                 {:process-repos-test-nonexistent.git
-                 {:target-dir client-targ-repo-nonexistent}})
+                   client-targ-repo-nonexistent})
               (is (not (fs/exists? client-targ-repo-nonexistent))
                   "Found client directory despite no matching repo on server")
               (is

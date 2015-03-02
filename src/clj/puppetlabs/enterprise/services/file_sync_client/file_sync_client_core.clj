@@ -10,19 +10,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
-;
-(def RepoConfig
-  "Schema defining a client repository.
-
-  This can either be a map or a string. If it is a map, the keys should have the following values:
-
-    * :target-dir - Directory to which the repository content should be
-                    deployed.
-
-  If it is a string, that string should be the directory to which the repository content should be
-  deployed."
-
- (schema/if map? {:target-dir schema/Str} schema/Str))
 
 (def FileSyncClientServiceRawConfig
   "Schema defining the full content of the file sync client service
@@ -38,13 +25,14 @@
 
     * :repos         - A map with metadata about each of the repositories
                        that the server manages. Each key should be the name
-                       of a repository, and each value should be metadata about
-                       that repo."
+                       of a repository, and each value should be the directory
+                       to which the repository content should be deployed as
+                       a string."
   {:poll-interval                     schema/Int
    :server-url                        schema/Str
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
-   :repos                             {schema/Keyword RepoConfig}
+   :repos                             {schema/Keyword schema/Str}
    (schema/optional-key :ssl-cert)    schema/Str
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
@@ -188,11 +176,8 @@
   [client server-repo-base-url server-api-url repos]
   (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
-    (doseq [[repo-name repo] repos]
-      (let [name (name repo-name)
-            target-dir (if (map? repo)
-                         (:target-dir repo)
-                         repo)]
+    (doseq [[repo-name target-dir] repos]
+      (let [name (name repo-name)]
         (if (contains? latest-commits name)
           (process-repo-for-updates server-repo-base-url
                                     name
