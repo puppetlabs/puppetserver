@@ -10,19 +10,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
-;
-(def RepoConfig
-  "Schema defining a client repository.
-
-  The keys should have the following values:
-
-    * :name       - The name of the repository.  Used by the client and server
-                    to uniquely identify the repository.
-
-    * :target-dir - Directory to which the repository content should be
-                    deployed."
- {:name       schema/Str
-  :target-dir schema/Str})
 
 (def FileSyncClientServiceRawConfig
   "Schema defining the full content of the file sync client service
@@ -36,17 +23,19 @@
 
     * :server-url    - Base URL of the repository server.
 
-    * :repos         - A vector with metadata about each of the repositories
-                       that the server manages."
-  {:poll-interval                           schema/Int
-   :server-url                              schema/Str
-   :server-repo-path                        schema/Str
-   :server-api-path                         schema/Str
-   :repos                                   [RepoConfig]
-   (schema/optional-key :ssl-cert)          schema/Str
-   (schema/optional-key :ssl-key)           schema/Str
-   (schema/optional-key :ssl-ca-cert)       schema/Str})\
-
+    * :repos         - A map with metadata about each of the repositories
+                       that the server manages. Each key should be the name
+                       of a repository, and each value should be the directory
+                       to which the repository content should be deployed as
+                       a string."
+  {:poll-interval                     schema/Int
+   :server-url                        schema/Str
+   :server-repo-path                  schema/Str
+   :server-api-path                   schema/Str
+   :repos                             {schema/Keyword schema/Str}
+   (schema/optional-key :ssl-cert)    schema/Str
+   (schema/optional-key :ssl-key)     schema/Str
+   (schema/optional-key :ssl-ca-cert) schema/Str})
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
 
@@ -179,7 +168,7 @@
         target-dir       (fs/file target-dir)]
     (apply-updates-to-repo name server-repo-url latest-commit-id target-dir)))
 
-(defn process-repos-for-updates
+(schema/defn process-repos-for-updates
   "Process through all of the repos configured with the
   service for any updates which may be available on the server.
   server-repo-url is the base URL at which the repository is hosted on the
@@ -187,12 +176,12 @@
   [client server-repo-base-url server-api-url repos]
   (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
-    (doseq [repo repos]
-      (let [name (:name repo)]
+    (doseq [[repo-name target-dir] repos]
+      (let [name (name repo-name)]
         (if (contains? latest-commits name)
           (process-repo-for-updates server-repo-base-url
                                     name
-                                    (:target-dir repo)
+                                    target-dir
                                     (latest-commits name))
           (log/errorf
             "File sync did not find matching server repo for client repo: %s"

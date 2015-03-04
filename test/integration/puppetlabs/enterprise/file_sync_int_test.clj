@@ -67,8 +67,7 @@
                                   :poll-interval 1
                                   :server-api-path helpers/default-api-path-prefix
                                   :server-repo-path helpers/default-repo-path-prefix
-                                  :repos [{:name repo
-                                           :target-dir client-repo-dir}]}}
+                                  :repos {(keyword repo) (str client-repo-dir)}}}
 
               (testing "file sync client service is running"
                 ;; TODO: The HTTP polling request and the subsequent git pull
