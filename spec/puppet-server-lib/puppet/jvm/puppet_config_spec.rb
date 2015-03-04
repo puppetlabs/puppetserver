@@ -20,5 +20,12 @@ describe 'Puppet::Server::PuppetConfig' do
         expect(subject).to eq('debug')
       end
     end
+
+    describe '(SERVER-410) Puppet[:always_cache_features]' do
+      subject { Puppet[:always_cache_features] }
+      it 'is true for increased performance in puppet-server' do
+        expect(subject).to eq(true)
+      end
+    end
   end
 end
