@@ -41,8 +41,8 @@
     (doseq [repo repos-to-verify]
       (let [name       (:name repo)
             target-dir (get-in repo [:process-repo (keyword name)])]
-        (is (= (client/head-rev-id (:origin-dir repo))
-               (client/head-rev-id target-dir))
+        (is (= (client/head-rev-id-from-working-tree (:origin-dir repo))
+               (client/head-rev-id-from-git-dir target-dir))
             (str "Unexpected head revision in target repo directory : "
                  target-dir))))))
 
@@ -98,7 +98,7 @@
           (fs/delete-dir client-targ-repo-dir-2)
           (fs/delete-dir client-targ-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))
-        (testing "Files pulled for update"
+        (testing "Files fetched for update"
           (helpers/create-and-push-file client-orig-repo-dir-2)
           (helpers/create-and-push-file client-orig-repo-dir-3)
           (process-repos-and-verify repos-to-verify client ssl?))
