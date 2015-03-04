@@ -121,7 +121,7 @@
   [name server-repo-url target-dir]
   (try
     (log/infof "File sync cloning '%s' to: %s" name target-dir)
-    (let [git (jgit-client/clone-bare server-repo-url target-dir)]
+    (let [git (jgit-client/clone server-repo-url target-dir true)]
       (log/info (str "File sync clone of '"
                      name
                      "' successful.  New head commit: "

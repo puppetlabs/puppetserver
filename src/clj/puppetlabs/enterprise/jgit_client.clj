@@ -82,49 +82,18 @@
 
   * GitAPIException
     - when some other low-level Git failure occurred"
-  [server-repo-url local-repo-dir]
-  {:pre [(string? server-repo-url)]
-   :post [(instance? Git %)]}
-  (-> (Git/cloneRepository)
-      (.setURI server-repo-url)
-      (.setDirectory (io/as-file local-repo-dir))
-      (.setRemote "origin")
-      (.setBranch "master")
-      (.call)))
-
-(defn clone-bare
-  "Perform a git-clone of the content at the specified 'server-repo-url' string
-  into a local directory.  The 'local-repo-dir' parameter should be a value
-  that can be coerced into a File by `clojure.java.io/as-file`.
-
-  The implementation currently hardcodes an 'origin' remote and 'master'
-  branch as the content to be cloned.  In addition, it sets the clone to be a
-  bare repository.  If the clone is successful, a handle to a Git instance
-  which wraps the repository is returned.  If the clone failed, one of the
-  following Exceptions from the org.eclipse.api.errors namespace may be
-  thrown:
-
-  * InvalidRemoteException
-    - when an invalid `server-repo-url` was provided (e.g., not syntactically
-      valid as a URL).
-
-  * TransportException -
-    - when a protocol error occurred during fetching of objects (e.g., an
-      inability to connect to the server or if the repository in the URL was
-      not accessible on the server)
-
-  * GitAPIException
-    - when some other low-level Git failure occurred"
-  [server-repo-url local-repo-dir]
-  {:pre [(string? server-repo-url)]
-   :post [(instance? Git %)]}
-  (-> (Git/cloneRepository)
-      (.setURI server-repo-url)
-      (.setDirectory (io/as-file local-repo-dir))
-      (.setRemote "origin")
-      (.setBranch "master")
-      (.setBare true)
-      (.call)))
+  ([server-repo-url local-repo-dir]
+   (clone server-repo-url local-repo-dir false))
+  ([server-repo-url local-repo-dir bare?]
+   {:pre [(string? server-repo-url)]
+    :post [(instance? Git %)]}
+   (-> (Git/cloneRepository)
+       (.setURI server-repo-url)
+       (.setDirectory (io/as-file local-repo-dir))
+       (.setBare bare?)
+       (.setRemote "origin")
+       (.setBranch "master")
+       (.call))))
 
 (defn fetch
   "Perform a git-fetch of remote commits into the supplied repository.
