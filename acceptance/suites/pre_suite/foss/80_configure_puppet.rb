@@ -7,10 +7,3 @@ step "Configure puppet.conf" do
                            {"main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}",
                                        "verbose" => true }}, dir)
 end
-
-case test_config[:puppetserver_install_type]
-when :git
-  step "Configure os-settings.conf" do
-    configure_puppet_server
-  end
-end

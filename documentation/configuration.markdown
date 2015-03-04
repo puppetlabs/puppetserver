@@ -56,6 +56,7 @@ By default, Puppet Server is configured to use the correct Puppet Master and CA 
 This file contains the settings for Puppet Server itself.
 
 * The `jruby-puppet` settings configure the interpreter:
+    * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
     * `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
       uses the Puppet default `/opt/puppetlabs/puppet/cache/jruby-gems`.
@@ -79,6 +80,7 @@ This file contains the settings for Puppet Server itself.
 # configuration for the JRuby interpreters
 
 jruby-puppet: {
+    ruby-load-path: [/opt/puppetlabs/puppet/lib/ruby/vendor_ruby]
     gem-home: /opt/puppetlabs/puppet/cache/jruby-gems
     master-conf-dir: /etc/puppet
     master-var-dir: /opt/puppetlabs/puppet/cache
@@ -154,18 +156,6 @@ certificate-authority: {
         authorization-required: true
         client-whitelist: []
     }
-}
-~~~
-
-### `os-settings.conf`
-
-This file is set up by packaging and is used to initialize the Ruby load paths for JRuby. The only setting in this file is `ruby-load-path`. To avoid the risk of loading any gems or other code from your system Ruby, we recommend that you do not modify this file. However, if you must add additional paths to the JRuby load path, you can do so here.
-
-The Ruby load path defaults to the directory where Puppet is installed. In this release, this directory varies depending on what OS you are using.
-
-~~~
-os-settings: {
-    ruby-load-path: ["/usr/lib/ruby/site_ruby/1.8"]
 }
 ~~~
 

@@ -706,14 +706,14 @@
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings.
    Throws an exception if any required configuration is not found."
-  [{:keys [puppet-server os-settings certificate-authority]}]
+  [{:keys [puppet-server jruby-puppet certificate-authority]}]
   (if-not certificate-authority
     (throw (IllegalStateException.
             (str "Missing required configuration for CA; "
                  "certificate-authority: { certificate-status: { client-whitelist: [...] } } "
                  "not found in puppet-server.conf"))))
   (-> (select-keys puppet-server (keys CaSettings))
-      (assoc :ruby-load-path (:ruby-load-path os-settings))
+      (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
       (assoc :access-control certificate-authority)))
 
 (schema/defn ^:always-validate

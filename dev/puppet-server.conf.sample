@@ -12,10 +12,6 @@ product: {
            artifact-id: puppet-server}
 }
 
-os-settings: {
-    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib]
-}
-
 webserver: {
     client-auth: want
     # ssl-host controls what networks the server will accept connections from.
@@ -43,6 +39,10 @@ web-router-service: {
 
 # configuration for the JRuby interpreters
 jruby-puppet: {
+    # Where the puppet-agent dependency places puppet, facter, etc...
+    # Puppet server expects to load Puppet from this location
+    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib]
+
     # This setting determines where JRuby will look for gems.  It is also
     # used by the `puppetserver gem` command line tool.
     gem-home: ./target/jruby-gems

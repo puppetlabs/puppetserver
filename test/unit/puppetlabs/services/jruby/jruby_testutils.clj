@@ -42,8 +42,7 @@
   "Create a JRubyPuppet pool config with the given pool config.  Suitable for use
   in bootstrapping trapperkeeper."
   [pool-config]
-  {:os-settings  {:ruby-load-path ruby-load-path}
-   :product     {:name "puppet-server"
+  {:product     {:name "puppet-server"
                  :update-server-url "http://localhost:11111"}
    :jruby-puppet pool-config
    :certificate-authority {:certificate-status {:client-whitelist []}}})
@@ -133,4 +132,3 @@
                   (range size))]
     (fill-drained-pool jrubies)
     result))
-
