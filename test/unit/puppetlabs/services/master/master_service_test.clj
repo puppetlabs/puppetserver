@@ -78,37 +78,43 @@
     (let [version-check-params  (atom {})
           version-check-test-fn (fn [request-values update-server-url]
                                   (swap! version-check-params #(assoc % :request-values request-values
-                                                                        :update-server-url update-server-url)))]
-      (with-redefs
-        [version-check/check-for-updates! version-check-test-fn
-         ; Redefine the CA functions to ensure that the master does not create
-         ; any SSL files
-         ca/retrieve-ca-cert! (fn [_ _])
-         ca/retrieve-ca-crl! (fn [_ _])
-         ca/initialize-master-ssl! (fn [_ _ _])]
-        (logutils/with-test-logging
-          (tk-testutils/with-app-with-config
-            app
+                                                                        :update-server-url update-server-url)))
+          test-dir (doto "target/master-service-test" fs/mkdir)]
+      (try
+        (with-redefs
+          [version-check/check-for-updates! version-check-test-fn
+           ; Redefine the CA functions to ensure that the master does not create
+           ; any SSL files
+           ca/retrieve-ca-cert! (fn [_ _])
+           ca/retrieve-ca-crl! (fn [_ _])
+           ca/initialize-master-ssl! (fn [_ _ _])]
+          (logutils/with-test-logging
+            (tk-testutils/with-app-with-config
+              app
 
-            [master-service
-             puppet-server-config-service
-             jruby/jruby-puppet-pooled-service
-             jetty9-service
-             webrouting-service
-             request-handler-service
-             profiler/puppet-profiler-service
-             certificate-authority-service]
+              [master-service
+               puppet-server-config-service
+               jruby/jruby-puppet-pooled-service
+               jetty9-service
+               webrouting-service
+               request-handler-service
+               profiler/puppet-profiler-service
+               certificate-authority-service]
 
-            (-> (jruby-testutils/jruby-puppet-tk-config
-                  (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-                (assoc :webserver {:port 8081})
-                (assoc :web-router-service
-                       {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                        :puppetlabs.services.master.master-service/master-service                           {:master-routes       "/puppet"
-                                                                                                             :invalid-in-puppet-4 "/"}})
-                (assoc :product {:update-server-url "http://notarealurl/"
-                                 :name              {:group-id    "puppets"
-                                                     :artifact-id "yoda"}}))
-            (is (= {:group-id "puppets" :artifact-id "yoda"}
-                   (get-in @version-check-params [:request-values :product-name])))
-            (is (= "http://notarealurl/" (:update-server-url @version-check-params)))))))))
+              (-> (jruby-testutils/jruby-puppet-tk-config
+                    (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+                  (assoc-in [:jruby-puppet :master-conf-dir]
+                            "dev-resources/puppetlabs/services/master/master_service_test/conf")
+                  (assoc :webserver {:port 8081})
+                  (assoc :web-router-service
+                         {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                          :puppetlabs.services.master.master-service/master-service                           {:master-routes       "/puppet"
+                                                                                                               :invalid-in-puppet-4 "/"}})
+                  (assoc :product {:update-server-url "http://notarealurl/"
+                                   :name              {:group-id    "puppets"
+                                                       :artifact-id "yoda"}}))
+              (is (= {:group-id "puppets" :artifact-id "yoda"}
+                     (get-in @version-check-params [:request-values :product-name])))
+              (is (= "http://notarealurl/" (:update-server-url @version-check-params))))))
+        (finally
+          (fs/delete-dir test-dir))))))
