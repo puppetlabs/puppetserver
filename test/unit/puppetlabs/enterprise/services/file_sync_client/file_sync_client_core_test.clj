@@ -60,9 +60,11 @@
       (into {} (map #(:process-repo %) repos-to-verify)))
     (doseq [repo repos-to-verify]
       (let [name       (:name repo)
-            target-dir (get-in repo [:process-repo (keyword name)])]
+            target-dir (get-in repo [:process-repo (keyword name)])
+            client-repo (client/get-repository-from-git-dir (fs/file target-dir))]
+        (is (.isBare client-repo))
         (is (= (client/head-rev-id-from-working-tree (:origin-dir repo))
-               (client/head-rev-id-from-git-dir target-dir))
+               (client/head-rev-id client-repo))
             (str "Unexpected head revision in target repo directory : "
                  target-dir))))))
 
