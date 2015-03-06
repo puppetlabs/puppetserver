@@ -1,18 +1,31 @@
 require 'puppet/server/puppet_config'
 
-describe Puppet::Server::PuppetConfig do
-  mock_puppet_config = {}
-  context "Puppet's log level" do
-    it "is set as high as possible during initialization, " +
-       "so that all log messages make it to logback" do
+describe 'Puppet::Server::PuppetConfig' do
+  context "When puppet has had settings initialized" do
+    before :each do
+      mock_puppet_config = {}
+      Puppet::Server::PuppetConfig.initialize_puppet(mock_puppet_config)
+    end
 
-      Puppet::Server::PuppetConfig.initialize_puppet mock_puppet_config
+    describe "the puppet log level (Puppet[:log_level])" do
+      subject { Puppet[:log_level] }
+      it 'is set to debug (the highest) so messages make it to logback' do
+        expect(subject).to eq('debug')
+      end
+    end
 
-      # The first line here is probably sufficient, but there's been some
-      # changes in Puppet recently around logging, so it seems worthwhile
-      # to test both of these.
-      Puppet[:log_level].should == "debug"
-      Puppet::Util::Log.level.should == :debug
+    describe "the puppet log level (Puppet::Util::Log.level)" do
+      subject { Puppet::Util::Log.level }
+      it 'is set to debug (the highest) so messages make it to logback' do
+        expect(subject).to eq('debug')
+      end
+    end
+
+    describe '(SERVER-410) Puppet[:always_cache_features]' do
+      subject { Puppet[:always_cache_features] }
+      it 'is true for increased performance in puppet-server' do
+        expect(subject).to eq(true)
+      end
     end
   end
 end
