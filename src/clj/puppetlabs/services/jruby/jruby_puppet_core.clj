@@ -206,7 +206,7 @@
   (let [{:keys [ruby-load-path gem-home
                 http-client-ssl-protocols http-client-cipher-suites]} config]
     (when-not ruby-load-path
-      (throw (Exception.
+      (throw (IllegalStateException.
                "JRuby service missing config value 'ruby-load-path'")))
     (let [scripting-container  (create-scripting-container ruby-load-path gem-home)
           env-registry         (puppet-env/environment-registry)
