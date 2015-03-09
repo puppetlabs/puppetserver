@@ -18,6 +18,7 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.0"]
                  [puppetlabs/http-client "0.4.2"]
+                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [org.jruby/jruby-core "1.7.18"
                   :exclusions
                   [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
