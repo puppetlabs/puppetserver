@@ -49,4 +49,6 @@
   :test-selectors {:integration :integration
                    :unit        (complement :integration)}
 
+  :main puppetlabs.trapperkeeper.main
+
   :repl-options {:init-ns user})
