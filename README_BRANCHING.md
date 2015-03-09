@@ -39,3 +39,23 @@ are too risky to introduce into the `master` branch given our proximity to the
 We'll update this document to reflect changes to that restriction as things
 progress.
 
+## "Normal" branching workflow
+
+Under normal circumstances, the `stable` branch will be used for bugfix releases
+off of the last stable "Y" release.  PRs should only be targeted at stable if
+they are intended to go out in a z/bugfix release, and all code merged into the
+stable branch should be merged up to the master branch at regular intervals.
+
+Most PRs should normally be targeted at the `master` branch, which is where feature
+work will be going on for the next X/Y release.
+
+Ideally, as soon as a new x/major release is shipped (e.g. Puppet Server 2.0), that
+would become the stable branch and there would no additional planned 1.x releases.
+Because of the drastic nature of the changes between Puppet 3 and Puppet 4, it's
+possible that we'll need to continue to do both 1.x and 2.x releases of Puppet
+Server for some period of time.  If we find ourselves in a situation where we
+need three branches (e.g. a stable branch for 1.x and another stable branch for 2.x),
+we may introduce a third branch (e.g. we might have `1.x`, `stable`->2.0.x, and
+`master`->2.1.x, or something along those lines).  We will update this document as
+the plans solidify.  
+
