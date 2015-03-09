@@ -49,6 +49,37 @@
                           (:message error)))))
       (is @got-expected-error?))))
 
+(deftest apply-updates-to-repo-test
+  (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
+        repo-name "apply-updates-test.git"
+        repo-url (str helpers/server-repo-url "/" repo-name)]
+
+    (testing "Throws appropriate error when directory exists but has no git repo"
+      (is (thrown? IllegalStateException
+                   (apply-updates-to-repo repo-name repo-url "" client-target-repo))))
+
+    (testing "Throws appropriate slingshot error for a failed fetch"
+      (helpers/init-bare-repo! client-target-repo)
+      (let [got-expected-error? (atom false)]
+        (try+
+          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
+          (catch map? error
+            (reset! got-expected-error? true)
+            (is (re-matches #"File sync was unable to fetch from server repo.*"
+                            (:message error)))))
+        (is @got-expected-error?)))
+
+    (testing "Throws appropriate slingshot error for a failed clone"
+      (fs/delete-dir client-target-repo)
+      (let [got-expected-error? (atom false)]
+        (try+
+          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
+          (catch map? error
+            (reset! got-expected-error? true)
+            (is (re-matches #"File sync was unable to clone from server repo.*"
+                            (:message error)))))
+        (is @got-expected-error?)))))
+
 (deftest process-repo-for-updates-test
   (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
         repo-name "process-repo-test.git"
