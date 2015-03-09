@@ -17,8 +17,17 @@
 (def master-conf-dir
   "./target/master-conf")
 
+(def master-code-dir
+  "./target/master-code")
+
 (def master-var-dir
   "./target/master-var")
+
+(def master-run-dir
+  "./target/master-var/run")
+
+(def master-log-dir
+  "./target/master-var/log")
 
 (defn pem-file
   [& args]
@@ -31,7 +40,10 @@
     (let [config (-> (tk-config/load-config (.getPath tmp-conf))
                      (assoc-in [:global :logging-config] logging-test-conf-file)
                      (assoc-in [:jruby-puppet :master-conf-dir] master-conf-dir)
+                     (assoc-in [:jruby-puppet :master-code-dir] master-code-dir)
                      (assoc-in [:jruby-puppet :master-var-dir] master-var-dir)
+                     (assoc-in [:jruby-puppet :master-run-dir] master-run-dir)
+                     (assoc-in [:jruby-puppet :master-log-dir] master-log-dir)
                      (ks/deep-merge config-overrides))]
       `(let [services# (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file)]
          (tk-testutils/with-app-with-config

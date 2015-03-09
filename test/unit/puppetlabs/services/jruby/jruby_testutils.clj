@@ -11,10 +11,13 @@
 ;; Constants
 
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
+(def gem-home "./target/jruby-gem-home")
 
 (def conf-dir "./target/master-conf")
-
-(def gem-home "./target/jruby-gem-home")
+(def code-dir "./target/master-code")
+(def var-dir "./target/master-var")
+(def run-dir "./target/master-var/run")
+(def log-dir "./target/master-var/log")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test fixtures
@@ -22,7 +25,7 @@
 (defn with-puppet-conf
   "This function returns a test fixture that will copy a specified puppet.conf
   file into the provided location for testing, and then delete it after the
-  tests have completed. If no destination dir is provided then the puppet.coonf
+  tests have completed. If no destination dir is provided then the puppet.conf
   file is copied to the default location of './target/master-conf'."
   ([puppet-conf-file]
    (with-puppet-conf puppet-conf-file conf-dir))
@@ -54,7 +57,11 @@
   ([]
    {:ruby-load-path  ruby-load-path
     :gem-home        gem-home
-    :master-conf-dir conf-dir})
+    :master-conf-dir conf-dir
+    :master-code-dir code-dir
+    :master-var-dir  var-dir
+    :master-run-dir  run-dir
+    :master-log-dir  log-dir})
   ([options]
    (merge (jruby-puppet-config) options)))
 

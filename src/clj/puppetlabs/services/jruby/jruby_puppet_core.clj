@@ -57,32 +57,45 @@
 
   The keys should have the following values:
 
-    * :ruby-load-path - a vector of file paths, containing the locations of puppet source code.
+    * :ruby-load-path - a vector of file paths, containing the locations
+        of puppet source code.
 
-    * :gem-home - The location that JRuby gems are stored
+    * :gem-home - The location that JRuby gems are stored.
 
     * :master-conf-dir - file path to puppetmaster's conf dir;
         if not specified, will use the puppet default.
 
-    * :master-var-dir - path to the puppetmaster' var dir;
+    * :master-code-dir - file path to puppetmaster's code dir;
+        if not specified, will use the puppet default.
+
+    * :master-var-dir - path to the puppetmaster's var dir;
+        if not specified, will use the puppet default.
+
+    * :master-run-dir - path to the puppetmaster's run dir;
+        if not specified, will use the puppet default.
+
+    * :master-log-dir - path to the puppetmaster's log dir;
         if not specified, will use the puppet default.
 
     * :max-active-instances - The maximum number of JRubyPuppet instances that
         will be pooled. If not specified, the system's
         number of CPUs+2 will be used.
 
-    * :http-client-ssl-protocols - A list of legal SSL protocols that may be used
-        when https client requests are made.
+    * :http-client-ssl-protocols - A list of legal SSL protocols that may be
+        used when https client requests are made.
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made.
 
-    * :borrow-timeout - The timeout when borrowing instances from the JRuby Pool
-        in milliseconds. Defaults to 1200000."
+    * :borrow-timeout - The timeout when borrowing instances from the JRuby
+        Pool in milliseconds. Defaults to 1200000."
   {:ruby-load-path                                  [schema/Str]
    :gem-home                                        schema/Str
    (schema/optional-key :master-conf-dir)           schema/Str
+   (schema/optional-key :master-code-dir)           schema/Str
    (schema/optional-key :master-var-dir)            schema/Str
+   (schema/optional-key :master-run-dir)            schema/Str
+   (schema/optional-key :master-log-dir)            schema/Str
    (schema/optional-key :max-active-instances)      schema/Int
    (schema/optional-key :http-client-ssl-protocols) [schema/Str]
    (schema/optional-key :http-client-cipher-suites) [schema/Str]
@@ -169,6 +182,20 @@
   (doto (empty-scripting-container ruby-load-path gem-home)
     (.runScriptlet "require 'puppet/server/master'")))
 
+(schema/defn config->puppet-config :- HashMap
+  "Given the raw jruby-puppet configuration section, return a
+   HashMap with the configuration necessary for ruby Puppet."
+  [config :- JRubyPuppetConfig]
+  (let [puppet-config (new HashMap)]
+    (doseq [[setting dir] [[:master-conf-dir "confdir"]
+                           [:master-code-dir "codedir"]
+                           [:master-var-dir "vardir"]
+                           [:master-run-dir "rundir"]
+                           [:master-log-dir "logdir"]]]
+      (if-let [value (get config setting)]
+        (.put puppet-config dir (fs/absolute-path value))))
+    puppet-config))
+
 (schema/defn ^:always-validate
   create-pool-instance! :- JRubyPuppetInstance
   "Creates a new JRubyPuppet instance and adds it to the pool."
@@ -176,39 +203,39 @@
    id       :- schema/Int
    config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
-  (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
+  (let [{:keys [ruby-load-path gem-home
                 http-client-ssl-protocols http-client-cipher-suites]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
-    (let [scripting-container   (create-scripting-container ruby-load-path gem-home)
-          env-registry          (puppet-env/environment-registry)
-          ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
-          puppet-config         (HashMap.)
-          puppet-server-config  (HashMap.)]
-      (when master-conf-dir
-        (.put puppet-config "confdir" (fs/absolute-path master-conf-dir)))
-      (when master-var-dir
-        (.put puppet-config "vardir" (fs/absolute-path master-var-dir)))
-
+    (let [scripting-container  (create-scripting-container ruby-load-path gem-home)
+          env-registry         (puppet-env/environment-registry)
+          puppet-server-config (new HashMap)]
       (when http-client-ssl-protocols
-        (.put puppet-server-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
+        (.put puppet-server-config "ssl_protocols"
+              (into-array String http-client-ssl-protocols)))
       (when http-client-cipher-suites
-        (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
+        (.put puppet-server-config "cipher_suites"
+              (into-array String http-client-cipher-suites)))
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
 
-      (let [instance (map->JRubyPuppetInstance
-                       {:pool                 pool
-                        :id                   id
-                        :jruby-puppet         (.callMethod scripting-container
-                                                           ruby-puppet-class
-                                                           "new"
-                                                           (into-array Object
-                                                                       [puppet-config puppet-server-config])
-                                                           JRubyPuppet)
-                        :scripting-container  scripting-container
-                        :environment-registry env-registry})]
+      (let [puppet-config     (config->puppet-config config)
+            ruby-puppet-class (.runScriptlet scripting-container
+                                             "Puppet::Server::Master")
+            jruby-puppet      (.callMethod scripting-container
+                                           ruby-puppet-class
+                                           "new"
+                                           (into-array Object
+                                                       [puppet-config
+                                                        puppet-server-config])
+                                           JRubyPuppet)
+            instance          (map->JRubyPuppetInstance
+                               {:pool                 pool
+                                :id                   id
+                                :jruby-puppet         jruby-puppet
+                                :scripting-container  scripting-container
+                                :environment-registry env-registry})]
         (.put pool instance)
         instance))))
 
