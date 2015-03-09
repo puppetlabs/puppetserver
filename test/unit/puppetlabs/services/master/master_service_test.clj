@@ -13,9 +13,9 @@
     [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
+    [puppetlabs.services.ca.certificate-authority-disabled-service :refer [certificate-authority-disabled-service]]
     [puppetlabs.dujour.version-check :as version-check]
-    [me.raynes.fs :as fs]
-    [puppetlabs.puppetserver.certificate-authority :as ca]))
+    [me.raynes.fs :as fs]))
 
 (deftest ca-files-test
   (testing "CA settings from puppet are honored and the CA
@@ -82,12 +82,7 @@
           test-dir (doto "target/master-service-test" fs/mkdir)]
       (try
         (with-redefs
-          [version-check/check-for-updates! version-check-test-fn
-           ; Redefine the CA functions to ensure that the master does not create
-           ; any SSL files
-           ca/retrieve-ca-cert! (fn [_ _])
-           ca/retrieve-ca-crl! (fn [_ _])
-           ca/initialize-master-ssl! (fn [_ _ _])]
+          [version-check/check-for-updates! version-check-test-fn]
           (logutils/with-test-logging
             (tk-testutils/with-app-with-config
               app
@@ -99,7 +94,7 @@
                webrouting-service
                request-handler-service
                profiler/puppet-profiler-service
-               certificate-authority-service]
+               certificate-authority-disabled-service]
 
               (-> (jruby-testutils/jruby-puppet-tk-config
                     (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))

@@ -12,8 +12,7 @@
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
-   [:JRubyPuppetService]
-   [:ConfigService get-in-config]]
+   [:JRubyPuppetService]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -25,8 +24,8 @@
          settings          (ca/config->master-settings config)
          jruby-service     (tk-services/get-service this :JRubyPuppetService)
          upgrade-error     (core/construct-404-error-message jruby-service)
-         product-name      (get-in-config [:product :name])
-         update-server-url (get-in-config [:product :update-server-url])]
+         product-name      (get-in config [:product :name])
+         update-server-url (get-in config [:product :update-server-url])]
 
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
