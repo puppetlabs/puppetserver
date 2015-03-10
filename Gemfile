@@ -16,9 +16,8 @@ gem 'jira-ruby', :group => :development
 group :test do
   gem 'rspec'
   # gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || '~> 2.2')
-  # Temporary solution until beaker is updated to reflect AIO changes for both
-  # puppetserver and puppet-agent.  See RE-4044, QENG-1891, etc...
-  gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || 'git://github.com/puppetlabs/beaker#32e123e9a5b719a7bacb8f21661effca099a7717')
+  # See: SERVER-435 for the reasoning behind this specific version
+  gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || 'git://github.com/puppetlabs/beaker#7d0cccf22cc7289113de862fe4a4494872f574bb')
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '~> 0.11'
   end
