@@ -20,8 +20,8 @@
                  [puppetlabs/http-client "0.4.0"]
                  [org.jruby/jruby-core "1.7.19"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
-                 [com.github.jnr/jffi "1.2.8"]
-                 [com.github.jnr/jffi "1.2.8" :classifier "native"]
+                 [com.github.jnr/jffi "1.2.7"]
+                 [com.github.jnr/jffi "1.2.7" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
