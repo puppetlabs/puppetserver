@@ -60,15 +60,26 @@ This file contains the settings for Puppet Server itself.
     * `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
       uses the Puppet default `/opt/puppetlabs/puppet/cache/jruby-gems`.
-    * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
+    * `master-conf-dir`: Optionally, set the path to the Puppet configuration
+      directory. If not specified, uses the Puppet default `/etc/puppetlabs/puppet`.
+    * `master-code-dir`: Optionally, set the path to the Puppet code directory.
+      If not specified, uses the Puppet default `/etc/puppetlabs/code`.
     * `master-var-dir`: Optionally, set the path to the Puppet variable
       directory. If not specified, uses the Puppet default
-      `/opt/puppetlabs/puppet/cache`.
-    * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
-    * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
+      `/opt/puppetlabs/server/data/puppetserver`.
+    * `master-run-dir`: Optionally, set the path to the Puppet run directory.
+      If not specified, uses the Puppet default `/var/run/puppetlabs/puppetserver`.
+    * `master-log-dir`: Optionally, set the path to the Puppet log directory.
+      If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
+    * `max-active-instances`: Optionally, set the maximum number of JRuby
+      instances to allow. Defaults to 'num-cpus+2'.
+    * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
+      an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
-    * `enabled`: if this is set to `true`, it enables profiling for the Puppet Ruby code. Defaults to `false`.
-* The `puppet-admin` section configures the Puppet Server's administrative API. (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
+    * `enabled`: if this is set to `true`, it enables profiling for the Puppet
+    Ruby code. Defaults to `false`.
+* The `puppet-admin` section configures the Puppet Server's administrative API.
+  (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
     * `authorization-required` determines whether a client
     certificate is required to access the endpoints in this API.  If set to
     `false`, the client-whitelist will be ignored. Defaults to `true`.
@@ -82,8 +93,11 @@ This file contains the settings for Puppet Server itself.
 jruby-puppet: {
     ruby-load-path: [/opt/puppetlabs/puppet/lib/ruby/vendor_ruby]
     gem-home: /opt/puppetlabs/puppet/cache/jruby-gems
-    master-conf-dir: /etc/puppet
-    master-var-dir: /opt/puppetlabs/puppet/cache
+    master-conf-dir: /etc/puppetlabs/puppet
+    master-code-dir: /etc/puppetlabs/code
+    master-var-dir: /opt/puppetlabs/server/data/puppetserver
+    master-run-dir: /var/run/puppetlabs/puppetserver
+    master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
 }
 

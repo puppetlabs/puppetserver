@@ -65,13 +65,18 @@ Edit it to suit your needs.  A few notes:
   usual `confdir`.  The setting `master-conf-dir` may be used to modify the location
   of the Puppet `confdir`.  Otherwise, it will use the same default locations as
   Puppet normally uses (`~/.puppet` for non-root users, `/etc/puppet` for root).
+* Similar to `confdir`, you will likely want to specify the other top-level
+  Puppet directories `codedir`, `vardir`, `rundir`, and `logdir`.
 
 You probably don't need to make any changes to the sample config for your first run,
 but the settings that I edit the most frequently are:
 
  * `jruby-puppet.master-conf-dir`: the puppet master confdir (where `puppet.conf`,
    `modules`, `manifests`, etc. should be located).
+ * `jruby-puppet.master-code-dir`: the puppet master codedir
  * `jruby-puppet.master-var-dir`: the puppet master vardir
+ * `jruby-puppet.master-run-dir`: the puppet master rundir
+ * `jruby-puppet.master-log-dir`: the puppet master logdir
  * `jruby-puppet.max-active-instances`: the number of JRuby instances to put into the
    pool.  This can usually be set to 1 for dev purposes, unless you're working on
    something that involves concurrency.
