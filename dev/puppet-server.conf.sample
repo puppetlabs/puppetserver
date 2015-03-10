@@ -13,6 +13,7 @@ product: {
 }
 
 webserver: {
+    access-log-config: ./dev/request-logging-dev.xml
     client-auth: want
     # ssl-host controls what networks the server will accept connections from.
     # The default value below is 'localhost', so will only accept connections from
