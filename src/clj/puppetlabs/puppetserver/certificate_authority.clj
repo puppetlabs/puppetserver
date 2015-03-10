@@ -588,7 +588,7 @@
   localcacert is where that the CA cert file should be copied to."
   ([cacert :- schema/Str
     localcacert :- schema/Str]
-   (if (fs/exists? cacert)
+   (if (and (fs/exists? cacert) (not (fs/exists? localcacert)))
      (do
        (ks/mkdirs! (fs/parent localcacert))
        (fs/copy cacert localcacert))
