@@ -11,7 +11,7 @@
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+]]
             [compojure.core :as compojure]
-            [liberator.core :as liberator]
+            [ring.middleware.json :as ring-json]
             [puppetlabs.enterprise.file-sync-common :as common]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -127,16 +127,14 @@
   [base-path sub-paths]
   (compojure/routes
     (compojure/ANY common/latest-commits-sub-path []
-      (liberator/resource
-        :available-media-types  ["application/json"]
-        :handle-ok              (fn [context]
-                                  (compute-latest-commits
-                                    base-path sub-paths))))))
+                   {:status 200
+                    :body (compute-latest-commits base-path sub-paths)})))
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
   [base-path sub-paths]
   (-> (build-routes base-path sub-paths)
+      ring-json/wrap-json-response
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging))
 
