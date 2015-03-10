@@ -1,5 +1,5 @@
-(def tk-version "1.0.1")
-(def tk-jetty-version "1.1.0")
+(def tk-version "1.1.0")
+(def tk-jetty-version "1.2.0")
 (def ks-version "1.0.0")
 (def ps-version "1.0.4-SNAPSHOT")
 
@@ -13,7 +13,7 @@
 (defproject puppetlabs/puppet-server ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
