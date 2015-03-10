@@ -1,5 +1,5 @@
-(def tk-version "1.0.1")
-(def tk-jetty-version "1.1.0")
+(def tk-version "1.1.0")
+(def tk-jetty-version "1.2.0")
 (def ks-version "1.0.0")
 (def ps-version "1.0.4-SNAPSHOT")
 
@@ -13,7 +13,7 @@
 (defproject puppetlabs/puppet-server ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure "1.5.1"]
+  :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
@@ -34,6 +34,7 @@
                  [prismatic/schema "0.2.2"]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
+                 [commons-codec "1.9"]
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
                  [slingshot "0.10.3"]
                  [ring/ring-codec "1.0.0"]
@@ -91,10 +92,8 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}}
 
-  :test-selectors {:default (complement :integration)
-                   :integration :integration
-                   :unit (complement :integration)
-                   :all (constantly true)}
+  :test-selectors {:integration :integration
+                   :unit (complement :integration)}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby"]

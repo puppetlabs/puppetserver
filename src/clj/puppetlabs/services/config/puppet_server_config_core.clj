@@ -7,7 +7,8 @@
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [keyset]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [clojure.string :as str]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config
@@ -89,7 +90,8 @@
       (throw (Exception.
                (str "The following configuration keys "
                     "conflict with the values to be "
-                    "read from puppet: " key-conflicts))))))
+                    "read from puppet: "
+                    (str/join ", " (sort key-conflicts))))))))
 
 (schema/defn ^:always-validate
   get-puppet-config :- Config
