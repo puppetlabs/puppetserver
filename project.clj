@@ -124,5 +124,3 @@
   ;; that from the final uberjar:
   :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )
-
-

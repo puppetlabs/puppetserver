@@ -49,10 +49,19 @@ jruby-puppet: {
     gem-home: ./target/jruby-gems
 
     # (optional) path to puppet conf dir; if not specified, will use the puppet default
-    #master-conf-dir: /etc/puppet
+    #master-conf-dir: /etc/puppetlabs/puppet
+
+    # (optional) path to puppet code dir; if not specified, will use the puppet default
+    #master-code-dir: /etc/puppetlabs/code
 
     # (optional) path to puppet var dir; if not specified, will use the puppet default
-    #master-var-dir: /opt/puppetlabs/puppet/cache
+    #master-var-dir: /opt/puppetlabs/server/data/puppetserver
+
+    # (optional) path to puppet run dir; if not specified, will use the puppet default
+    #master-run-dir: /var/run/puppetlabs/puppetserver
+
+    # (optional) path to puppet log dir; if not specified, will use the puppet default
+    #master-log-dir: /var/log/puppetlabs/puppetserver
 
     # (optional) maximum number of JRuby instances to allow; defaults to <num-cpus>+2
     max-active-instances: 1

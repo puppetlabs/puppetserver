@@ -40,6 +40,3 @@
             jruby-puppet jruby-service
             (is (not (nil? (fs/list-dir ssl-dir))))
             (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))
-
-
-
