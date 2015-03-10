@@ -11,19 +11,22 @@
             [clojure.stacktrace :as stacktrace]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
 (def jruby-service-test-config
-  {:jruby-puppet (jruby-testutils/jruby-puppet-config 1)})
+  {:jruby-puppet (jruby-testutils/jruby-puppet-config 1)
+   :os-settings {:ruby-load-path []}})
 
 (deftest test-error-during-init
   (testing
       (str "If there as an exception while putting a JRubyPuppet instance in "
            "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-puppet-core/create-pool-instance!
+      (with-redefs [jruby-internal/create-pool-instance!
                     (fn [& _] (throw (Exception. "42")))]
                    (let [got-expected-exception (atom false)]
                      (try
@@ -91,4 +94,6 @@
           service
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
-        (is (= 1 (jruby-protocol/free-instance-count service)))))))
+        (is (= 1 (jruby-protocol/free-instance-count service)))
+        (let [jruby (jruby-protocol/borrow-instance service)]
+          (is (= 2 (:request-count (jruby-core/instance-state jruby)))))))))

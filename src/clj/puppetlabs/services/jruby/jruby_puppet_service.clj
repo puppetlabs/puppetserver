@@ -5,7 +5,8 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -15,40 +16,31 @@
 
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
-                          [[:ConfigService get-in-config]
+                          [[:ConfigService get-config]
                            [:ShutdownService shutdown-on-error]
                            [:PuppetProfilerService get-profiler]]
   (init
     [this context]
-    (let [config            (-> (get-in-config [:jruby-puppet])
-                              (assoc :ruby-load-path (get-in-config [:os-settings :ruby-load-path]))
-                              (assoc :http-client-ssl-protocols
-                                     (get-in-config [:http-client :ssl-protocols]))
-                              (assoc :http-client-cipher-suites
-                                     (get-in-config [:http-client :cipher-suites])))
+    (let [config            (core/initialize-config (get-config))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
-          pool-agent  (jruby-agents/pool-agent agent-shutdown-fn)
           profiler          (get-profiler)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
-      (let [pool-context (core/create-pool-context config profiler)]
-        (jruby-agents/send-prime-pool! pool-context pool-agent)
+      (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
+        (jruby-agents/send-prime-pool! pool-context)
         (-> context
-            (assoc :pool-context pool-context)
-            (assoc :pool-agent pool-agent)))))
+            (assoc :pool-context pool-context)))))
 
   (borrow-instance
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool pool)))
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/borrow-from-pool pool-context)))
 
   (borrow-instance
     [this timeout]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          pool         (core/get-pool pool-context)]
-      (core/borrow-from-pool-with-timeout pool timeout)))
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/borrow-from-pool-with-timeout pool-context timeout)))
 
   (return-instance
     [this jruby-instance]
@@ -68,8 +60,8 @@
   (flush-jruby-pool!
     [this]
     (let [service-context (tk-services/service-context this)
-          {:keys [pool-context pool-agent]} service-context]
-      (jruby-agents/send-flush-pool! pool-context pool-agent))))
+          {:keys [pool-context]} service-context]
+      (jruby-agents/send-flush-pool! pool-context))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
@@ -82,7 +74,7 @@
       (do-something-with-a-jruby-puppet-instance jruby-puppet)))"
   [jruby-puppet jruby-service & body]
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
-     (if (core/retry-poison-pill? pool-instance#)
+     (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)
          (recur (jruby/borrow-instance ~jruby-service)))
