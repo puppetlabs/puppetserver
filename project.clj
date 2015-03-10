@@ -18,14 +18,15 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/certificate-authority "0.6.0"]
                  [puppetlabs/http-client "0.4.0"]
-                 [org.jruby/jruby-core "1.7.15" :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
+                 [org.jruby/jruby-core "1.7.19"
+                  :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
+                 [com.github.jnr/jffi "1.2.8"]
+                 [com.github.jnr/jffi "1.2.8" :classifier "native"]
+                 [com.github.jnr/jnr-x86asm "1.0.2"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.15"]
-                 [com.github.jnr/jffi "1.2.7"]
-                 [com.github.jnr/jffi "1.2.7" :classifier "native"]
-                 [com.github.jnr/jnr-x86asm "1.0.2"]
+                 [org.jruby/jruby-stdlib "1.7.19"]
                  [clj-time "0.5.1" :exclusions [joda-time]]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
@@ -112,5 +113,5 @@
   ;; you should take care to exclude the things that you don't want
   ;; in your final jar.  Here is an example of how you could exclude
   ;; that from the final uberjar:
-  ;:uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
+  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
   )

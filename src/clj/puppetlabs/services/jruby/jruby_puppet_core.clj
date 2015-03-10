@@ -136,7 +136,9 @@
                          (map fs/absolute-path ruby-load-path)))
     (.setCompatVersion (CompatVersion/RUBY1_9))
     (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    (.setEnvironment (merge {"GEM_HOME" gem-home} jruby-puppet-env))))
+    (.setEnvironment (merge {"GEM_HOME" gem-home
+                             "JARS_NO_REQUIRE" "true"}
+                            jruby-puppet-env))))
 
 (defn empty-scripting-container
   "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
