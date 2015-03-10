@@ -11,7 +11,8 @@
         gem-home     (get-in config [:jruby-puppet :gem-home])
         jruby-config (new RubyInstanceConfig)
         env          (doto (HashMap. (.getEnvironment jruby-config))
-                       (.put "GEM_HOME" gem-home))]
+                       (.put "GEM_HOME" gem-home)
+                       (.put "JARS_NO_REQUIRE" "true"))]
     (doto jruby-config
       (.setEnvironment env)
       (.setLoadPaths load-path)
