@@ -120,6 +120,14 @@
             (update-repo commit-id)
             (is (= (client/head-rev-id-from-git-dir client-target-repo) commit-id))))))))
 
+(defn process-repos
+  [repos client ssl?]
+  (process-repos-for-updates
+    client
+    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
+    (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
+    repos))
+
 (deftest process-repos-for-updates-test
   (let [client-target-repo-on-server (helpers/temp-dir-as-string)
         client-target-repo-nonexistent (helpers/temp-dir-as-string)
@@ -135,12 +143,9 @@
       (fs/delete-dir client-target-repo-nonexistent)
 
       (with-test-logging
-        (process-repos-for-updates
-          client
-          (str (helpers/base-url false) helpers/default-repo-path-prefix)
-          (str (helpers/base-url false) helpers/default-api-path-prefix)
-          {(keyword server-repo) client-target-repo-on-server
-           :process-repos-test-nonexistent.git client-target-repo-nonexistent})
+        (process-repos {(keyword server-repo) client-target-repo-on-server
+                        :process-repos-test-nonexistent.git client-target-repo-nonexistent}
+                       client false)
 
         (testing "Client directory created when match on server"
           (is (fs/exists? client-target-repo-on-server)))
@@ -151,6 +156,39 @@
           (is
             (logged?
               #"^File sync did not find.*process-repos-test-nonexistent.git"
+              :error)))))))
+
+(deftest process-repos-for-updates-ssl-test
+  (helpers/configure-JGit-SSL! true)
+  (let [client-target-repo-on-server (helpers/temp-dir-as-string)
+        client-target-repo-nonexistent (helpers/temp-dir-as-string)
+        server-repo "process-repos-ssl-test.git"
+        client (sync/create-client {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
+                                    :ssl-cert "./dev-resources/ssl/cert.pem"
+                                    :ssl-key "./dev-resources/ssl/key.pem"})]
+    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      app
+      (helpers/jgit-config-with-repos
+        (helpers/temp-dir-as-string)
+        [{:sub-path server-repo}]
+        true)
+      (fs/delete-dir client-target-repo-on-server)
+      (fs/delete-dir client-target-repo-nonexistent)
+
+      (with-test-logging
+        (process-repos {(keyword server-repo) client-target-repo-on-server
+                        :process-repos-ssl-test-nonexistent.git client-target-repo-nonexistent}
+                       client true)
+
+        (testing "Client directory created when match on server"
+          (is (fs/exists? client-target-repo-on-server)))
+
+        (testing "Client directory not created when no match on server"
+          (is (not (fs/exists? client-target-repo-nonexistent))
+              "Found client directory despite no matching repo on server")
+          (is
+            (logged?
+              #"^File sync did not find.*process-repos-ssl-test-nonexistent.git"
               :error)))))))
 
 (deftest ssl-configuration-test
