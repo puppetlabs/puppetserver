@@ -271,6 +271,15 @@
       (.setBare true)
       (.call)))
 
+(defn add-remote!
+  "Adds a remote named `name` with url `url` to a git instance."
+  [git name url]
+  (let [config (-> git
+                   .getRepository
+                   .getConfig)]
+    (.setString config "remote" name "url" url)
+    (.save config)))
+
 (defn add-watch-and-deliver-new-state
   [ref* promise*]
   (let [key* (keyword (str "test-watcher-" (System/currentTimeMillis)))]

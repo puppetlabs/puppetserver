@@ -6,6 +6,7 @@
 ;;; Url paths
 
 (def latest-commits-sub-path "/latest-commits")
+(def publish-content-sub-path "/publish")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas

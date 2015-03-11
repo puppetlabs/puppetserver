@@ -33,8 +33,8 @@
         {:servlet-init-params {"base-path" base-path "export-all" export-all}
          :route-id            :repo-servlet})
 
-      (let [sub-paths (keys (:repos config))
-            handler   (core/build-handler base-path sub-paths)]
+      (let [repos (:repos config)
+            handler (core/build-handler base-path repos)]
 
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
 

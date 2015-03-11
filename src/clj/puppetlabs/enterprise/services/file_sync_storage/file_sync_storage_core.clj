@@ -1,7 +1,9 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
-           (org.eclipse.jgit.api InitCommand)
-           (org.eclipse.jgit.lib RepositoryBuilder Repository))
+           (org.eclipse.jgit.api Git InitCommand)
+           (org.eclipse.jgit.lib RepositoryBuilder Repository PersonIdent)
+           (org.eclipse.jgit.api.errors GitAPIException)
+           (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]
@@ -12,7 +14,8 @@
             [slingshot.slingshot :refer [try+]]
             [compojure.core :as compojure]
             [ring.middleware.json :as ring-json]
-            [puppetlabs.enterprise.file-sync-common :as common]))
+            [puppetlabs.enterprise.file-sync-common :as common]
+            [cheshire.core :as json]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -39,6 +42,21 @@
                    Git repositories that the server manages."
   {:base-path                               schema/Str
    :repos                                   {schema/Keyword GitRepo}})
+
+(def PublishBody
+  "Schema defining the body of a request to the publish content endpoint.
+
+  The body is optional, but if supplied it must be a map with the
+  following optional values:
+
+    * \"message\" - Commit message
+
+    * \"author\"  - Map containing \"name\" and \"email\" of author for commit "
+  (schema/if map?
+    {(schema/optional-key "message") schema/Str
+     (schema/optional-key "author") {(schema/required-key "name") schema/Str
+                                     (schema/required-key "email") schema/Str}}
+    (schema/eq nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -103,7 +121,7 @@
   {:pre [(instance? File git-dir)]
    :post [(or (string? %) (nil? %))]}
   (when-let [ref (-> git-dir
-                     (get-bare-repo)
+                     (client/get-repository-from-git-dir)
                      (.getRef "refs/heads/master"))]
     (-> ref
         (.getObjectId)
@@ -120,22 +138,109 @@
     {}
     sub-paths))
 
+(defn commit-author
+  "Create PersonIdent instance using provided name and email, or
+  defaults if not provided."
+  [author]
+  (let [name (get author "name" "PE File Sync Service")
+        email (get author "email" "")]
+   (PersonIdent. name email)))
+
+(defn push-and-return-sha
+  "Perform git push on git instance and return SHA of latest commit for
+  updated remote."
+  [git]
+  {:pre [(instance? Git git)]}
+  (-> git
+      client/push
+      first
+      .getRemoteUpdates
+      first
+      .getNewObjectId
+      .getName))
+
+(defn publish-repo
+  "Add and commit all unversioned files and push to origin. Return the
+  SHA of the commit if successful, or a map with an error message if
+  not."
+  [git sub-path message author]
+  (try
+    (log/debugf "Adding and commiting unversioned files for working directory %s" sub-path)
+    (client/add-and-commit git message author)
+
+    (log/debugf "Pushing working directory %s" sub-path)
+    (push-and-return-sha git)
+
+    (catch GitAPIException e
+      (log/errorf "Failed to publish %s: %s" sub-path (.getMessage e))
+      {:error {:type :puppetlabs.enterprise.file-sync-storage/publish-error
+               :message (str "Failed to publish " sub-path ":"
+                          (.getMessage e))}})))
+
+(defn publish-repos
+  "Given a list of working directories, a commit message, and a commit
+  author, perform an add, commit, and push for each working directory.
+  Returns the newest SHA for each working directory that was
+  successfully pushed, an error if there was no existing git repository
+  in the directory, or an error that the add/commit/push failed."
+  [sub-paths message author]
+  (for [sub-path sub-paths]
+    (do
+      (log/infof "Publishing working directory %s to file sync storage service" sub-path)
+      (try (let [git (-> sub-path
+                         fs/file
+                         Git/open)]
+             (publish-repo git sub-path message author))
+           (catch RepositoryNotFoundException e
+             (log/errorf "Unable to find git repository %s" sub-path)
+             {:error {:type :puppetlabs.enterprise.file-sync-storage/repo-not-found-error
+                      :message (.getMessage e)}})))))
+
+(schema/defn ^:always-validate publish-content
+  "Given a map of repositories and the JSON body of the request, publish
+  each working directory to the file sync storage service, using the
+  contents of the body - if provided - for the commit author and
+  message. Returns a map of repository name to status - either SHA of
+  latest commit or error."
+  [repos body :- PublishBody]
+  (let [author (commit-author (get body "author"))
+        message (get body "message" "Publish content to file sync storage service")
+        res (publish-repos (map :working-dir (vals repos)) message author)]
+    (zipmap (keys repos) res)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 (defn build-routes
   "Builds the compojure routes from the given configuration values."
-  [base-path sub-paths]
+  [base-path repos]
   (compojure/routes
+    (compojure/POST common/publish-content-sub-path {body :body}
+                    ;; The body can either be empty - in which a
+                    ;; "Content-Type" header should not be required - or
+                    ;; it can be JSON. If it is empty, JSON parsing will
+                    ;; still work (since it is the empty string), so we
+                    ;; can just try to parse this as JSON and return an
+                    ;; error if that fails.
+                    (try
+                      (let [json-body (json/parse-string (slurp body))]
+                        {:status 200
+                         :body (publish-content repos json-body)})
+                      (catch com.fasterxml.jackson.core.JsonParseException e
+                        {:status 400
+                         :body {:error {:type :json-parse-error
+                                        :message "Could not parse body as JSON."}}})))
     (compojure/ANY common/latest-commits-sub-path []
                    {:status 200
-                    :body (compute-latest-commits base-path sub-paths)})))
+                    :body (compute-latest-commits base-path (keys repos))})))
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
   [base-path sub-paths]
   (-> (build-routes base-path sub-paths)
-      ring-json/wrap-json-response
       ringutils/wrap-request-logging
+      ringutils/wrap-schema-errors
+      ringutils/wrap-errors
+      ring-json/wrap-json-response
       ringutils/wrap-response-logging))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
