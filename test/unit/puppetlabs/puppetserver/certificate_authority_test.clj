@@ -883,7 +883,33 @@
                             :value    "my_ami_image"}
                            {:oid      "1.3.6.1.4.1.34380.1.1.4"
                             :critical false
-                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}]]
+                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.5" :critical false
+                            :value    "center"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.6" :critical false
+                            :value    "product"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.7" :critical false
+                            :value    "project"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.8" :critical false
+                            :value    "application"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.9" :critical false
+                            :value    "service"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.10" :critical false
+                            :value    "employee"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.11" :critical false
+                            :value    "created"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.12" :critical false
+                            :value    "environment"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.13" :critical false
+                            :value    "role"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.14" :critical false
+                            :value    "version"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.15" :critical false
+                            :value    "deparment"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.16" :critical false
+                            :value    "cluster"}
+                           {:oid      "1.3.6.1.4.1.34380.1.1.17" :critical false
+                            :value    "provisioner"}]]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
