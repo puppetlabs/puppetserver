@@ -51,14 +51,10 @@
 
 (def AgentState
   "A schema which describes a valid state of the agent."
-  (schema/both
-    {:status                      (schema/enum :successful :failed :created)
-     (schema/optional-key :error) AgentError}
-    (schema/pred
-      (fn [state]
-        (if (= (:status state) :failed)
-          (contains? state :error)
-          (not (contains? state :error)))))))
+  (schema/if #(= (:status %) :failed)
+    {:status (schema/eq :failed)
+     :error  AgentError}
+    {:status (schema/enum :successful :created)}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -80,9 +76,8 @@
   :- common/LatestCommitsPayload
   "Request information about the latest commits available from the server.
   The latest commits are requested from the URL in the supplied
-  `server-api-url` argument.  Returns a latest-commit payload which
-  should validate against the FileSyncLatestCommits schema if successful or
-  throws an Exception on failure."
+  `server-api-url` argument.  Returns the payload from the response.
+  Throws an 'AgentError' if an error occurs."
   [client :- http-client/HTTPClient
    server-api-url :- schema/Str]
   (let [latest-commits-url (str
@@ -105,11 +100,10 @@
   (str message ".  Name: " name ".  Directory: " directory "."))
 
 (defn do-fetch
-  "Fetch the latest content for a repository from the server. Name is
-  the name of the repository.  latest-commit-id is the id of the latest
-  commit on the server for the repository.  target-dir is the location
-  in which the repository is intended to reside.  Throws an `Exception`
-  on failure."
+  "Fetch the latest content for a repository from the server.  'name' is
+  the name of the repository.  'latest-commit-id' is the ID of the latest
+  commit on the server for the repository.  'target-dir' is the location
+  in which the repository is intended to reside."
   [name latest-commit-id target-dir]
   (if-let [repo (jgit-client/get-repository-from-git-dir target-dir)]
     (when-not (= (jgit-client/head-rev-id repo) latest-commit-id)
@@ -126,10 +120,10 @@
                target-dir)))))
 
 (defn do-clone
-  "Clone the latest content for a repository from the server.  Name is
-  the name of the repository.  server-repo-url is the URL under which
-  the repository resides on the server.  target-dir is the directory in which
-  the client repository should be stored.  Throws an `Exception` on failure."
+  "Clone the latest content for a repository from the server.  'name' is
+  the name of the repository.  'server-repo-url' is the URL under which
+  the repository resides on the server.  'target-dir' is the directory in which
+  the client repository should be stored."
   [name server-repo-url target-dir]
   (log/infof "File sync cloning '%s' to: %s" name target-dir)
   (let [git (jgit-client/clone server-repo-url target-dir true)]
@@ -138,12 +132,11 @@
            (jgit-client/head-rev-id (.getRepository git))))))
 
 (defn apply-updates-to-repo
-  "Apply updates from the server to the client repository.  Name is the
-  name of the repository.  server-repo-url is the URL under which the
-  repository resides on the server.  latest-commit-id is the id of the
-  latest commit on the server for the repository.  target-dir is the
-  location in which the client repository is intended to reside.  Returns
-  true on success, else false on failure."
+  "Apply updates from the server to the client repository.  'name' is the
+  name of the repository.  'server-repo-url' is the URL under which the
+  repository resides on the server.  'latest-commit-id' is the id of the
+  latest commit on the server for the repository.  'target-dir' is the
+  location in which the client repository is intended to reside."
   [name server-repo-url latest-commit-id target-dir]
   (let [fetch? (fs/exists? target-dir)]
     (try
@@ -162,9 +155,9 @@
 
 (defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
-  server-repo-url is the base URL at which the repository is hosted on the
-  server.  Name is the name of the repository.  target-dir is the location in
-  which the client repository is intended to reside.  latest-commit-id is
+  'server-repo-url' is the base URL at which the repository is hosted on the
+  server.  'name' is the name of the repository.  'target-dir' is the location in
+  which the client repository is intended to reside.  'latest-commit-id' is
   the commit id of the latest commit in the server repo."
   [server-repo-url name target-dir latest-commit-id]
   (let [server-repo-url  (str server-repo-url "/" name)
@@ -174,8 +167,8 @@
 (defn process-repos-for-updates
   "Process through all of the repos configured with the
   service for any updates which may be available on the server.
-  server-repo-url is the base URL at which the repository is hosted on the
-  server.  Repos is the repos section of the file sync client configuration."
+  'server-repo-url' is the base URL at which the repository is hosted on the
+  server.  'repos' is the repos section of the file sync client configuration."
   [client server-repo-base-url server-api-url repos]
   (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
@@ -266,7 +259,7 @@
   startup.  (Although, note that one-off sync runs can be triggered by sending
   the agent a 'sync-on-agent' action.)
 
-  'schedule-fn' the function that will be invoked after each iteration of the
+  'schedule-fn' is the function that will be invoked after each iteration of the
   sync process to schedule the next iteration."
   [sync-agent :- Agent
    schedule-fn :- IFn
