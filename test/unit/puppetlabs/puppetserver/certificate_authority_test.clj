@@ -868,7 +868,7 @@
                             :value    {:dns-name ["subject"
                                                   "onefish"
                                                   "twofish"]}}
-                           ;; These extensions come form the csr_attributes.yaml file
+                           ;; These extensions come form csr_attributes.yaml
                            {:oid      "1.3.6.1.4.1.34380.1.1.1"
                             :critical false
                             :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
