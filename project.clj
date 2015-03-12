@@ -53,7 +53,8 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
+  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]
+            [lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
