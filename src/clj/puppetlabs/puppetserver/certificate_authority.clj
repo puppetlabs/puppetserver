@@ -130,11 +130,11 @@
 
 (def required-master-files
   "The set of SSL files that are required on the master."
-  [:hostprivkey :hostcert])
+  #{:hostprivkey :hostcert})
 
 (def required-ca-files
   "The set of SSL related files that are required on the CA."
-  [:cacert :cacrl :cakey :cert-inventory :serial])
+  #{:cacert :cacrl :cakey :cert-inventory :serial})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
