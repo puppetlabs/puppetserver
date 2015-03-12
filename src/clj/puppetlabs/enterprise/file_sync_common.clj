@@ -20,3 +20,11 @@
 
 (def SSLContextOrNil
   (schema/maybe SSLContext))
+
+(def LatestCommitsResponse
+  {:body    Object
+   :status  (schema/eq 200)
+   :headers {(schema/required-key "content-type")
+             (schema/pred #(.startsWith % "application/json"))
+             schema/Any schema/Any}
+   schema/Any schema/Any})

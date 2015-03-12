@@ -2,38 +2,58 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
-              :as core]
+             :refer :all]
             [puppetlabs.http.client.sync :as sync]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.enterprise.jgit-client :as client]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [slingshot.slingshot :refer [try+]]
+            [schema.test :as schema-test])
+  (:import (org.eclipse.jgit.transport HttpTransport)
+           (java.net URL)
+           (com.puppetlabs.enterprise HttpClientConnection)))
+
+(use-fixtures :once schema-test/validate-schemas)
 
 (deftest get-body-from-latest-commits-payload-test
   (testing "Can get latest commits"
     (is (= {"repo1" "123456", "repo2" nil}
-           (core/get-body-from-latest-commits-payload
-             {:headers {"content-type" "application/json"}
+           (get-body-from-latest-commits-payload
+             {:status 200
+              :headers {"content-type" "application/json"}
               :body "{\"repo1\": \"123456\", \"repo2\":null}"}))
         "Unexpected body received for get request"))
+
   (testing "Can't get latest commits for bad content type"
-    (is (thrown-with-msg?
-          Exception
-          #"^Did not get json response for latest-commits.*"
-          (core/get-body-from-latest-commits-payload
-            {:headers {"content-type" "bogus"}
-             :body    "{\"repo1\": \"123456\""}))))
+    (let [got-expected-error? (atom false)]
+      (try+
+        (get-body-from-latest-commits-payload
+          {:status  200
+           :headers {"content-type" "bogus"}
+           :body    "{\"repo1\": \"123456\""})
+        (catch map? error
+          (reset! got-expected-error? true)
+          (is (re-matches #"Response for latest commits unexpected.*content-type.*bogus.*"
+                          (:message error)))))
+      (is @got-expected-error?)))
+
   (testing "Can't get latest commits for no body"
-    (is (thrown-with-msg?
-          Exception
-          #"^Did not get response body for latest-commits.*"
-          (core/get-body-from-latest-commits-payload
-            {:headers {"content-type" "application/json"}})))))
+    (let [got-expected-error? (atom false)]
+      (try+
+        (get-body-from-latest-commits-payload
+          {:status  200
+           :headers {"content-type" "application/json"}})
+        (catch map? error
+          (reset! got-expected-error? true)
+          (is (re-matches #"Response for latest commits unexpected.*body.*missing.*"
+                          (:message error)))))
+      (is @got-expected-error?))))
 
 (defn process-repos-and-verify
   ([repos-to-verify client]
     (process-repos-and-verify repos-to-verify client false))
   ([repos-to-verify client ssl?]
-    (core/process-repos-for-updates
+    (process-repos-for-updates
       client
       (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
       (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
@@ -108,10 +128,10 @@
           (fs/delete-dir client-targ-repo-dir-2)
           (process-repos-and-verify repos-to-verify client ssl?))
         (testing "Client directory not created when no match on server"
-          (logging/with-test-logging
+          (with-test-logging
             (let [client-targ-repo-nonexistent (helpers/temp-dir-as-string)]
               (fs/delete-dir client-targ-repo-nonexistent)
-              (core/process-repos-for-updates
+              (process-repos-for-updates
                 client
                 (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
                 (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
@@ -132,3 +152,27 @@
     ; The client service is not being started, so we need to configure JGit to use SSL
     (helpers/configure-JGit-SSL! true)
     (test-process-repos-for-updates true)))
+
+(deftest ssl-configuration-test
+  (testing "JGit's ConnectionFactory hands-out instances of our own
+            HttpClientConnection after SSL has been configured."
+    (configure-jgit-client-ssl! helpers/ssl-context)
+    (let [connection-factory (HttpTransport/getConnectionFactory)
+          connection (.create connection-factory (URL. "https://localhost:10080"))]
+      (is (instance? HttpClientConnection connection)))))
+
+(deftest fatal-error-test
+  (testing "The agent attempts to shutdown the entire application when a
+            fatal error occurs"
+    (let [shutdown-atom (atom false)
+          shutdown-fn #(reset! shutdown-atom true)
+          sync-agent (create-agent shutdown-fn)
+          disaster (fn [& _] (throw (new Throwable)))
+          my-promise (promise)]
+      (helpers/add-watch-and-deliver-new-state shutdown-atom my-promise)
+      (with-test-logging
+        (send sync-agent disaster))
+      (let [shutdown-requested? (deref my-promise)]
+        ; These two assertions are equivalent.
+        (is shutdown-requested?)
+        (is @shutdown-atom)))))

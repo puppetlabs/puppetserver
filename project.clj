@@ -1,5 +1,5 @@
-(def tk-version "1.0.1")
-(def tk-jetty-version "1.1.1")
+(def tk-version "1.1.0")
+(def tk-jetty-version "1.2.0")
 (def ks-version "1.0.0")
 
 (defn deploy-info
@@ -19,6 +19,7 @@
                  [compojure "1.1.8" :exclusions [commons-io org.clojure/tools.macro]]
                  [commons-io "2.1"]
                  [liberator "0.12.0"]
+                 [overtone/at-at "1.2.0"]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server
                     "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.apache
@@ -46,10 +47,9 @@
                                    [spyscope "0.1.4" :exclusions [clj-time]]]
                    :injections    [(require 'spyscope.core)]}}
 
-  :test-selectors {:default (complement :integration)
-                   :integration :integration
-                   :unit (complement :integration)
-                   :all (constantly true)}
+  :test-selectors {:integration :integration
+                   :unit        (complement :integration)}
 
-  :repl-options {:init-ns user}
-)
+  :main puppetlabs.trapperkeeper.main
+
+  :repl-options {:init-ns user})

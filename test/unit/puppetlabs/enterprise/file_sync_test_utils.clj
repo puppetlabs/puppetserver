@@ -13,6 +13,8 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :as file-sync-client-service]
+            [puppetlabs.enterprise.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.ssl-utils.core :as ssl]))
 
@@ -117,6 +119,26 @@
      ~config
      (do
        ~@body)))
+
+(defmacro with-bootstrapped-file-sync-client-and-webserver
+  [app webserver-config ring-handler client-config & body]
+  `(bootstrap/with-app-with-config
+     webserver-app#
+     [jetty9-service/jetty9-service]
+     ~webserver-config
+     (let [target-webserver# (tk-app/get-service webserver-app# :WebserverService)]
+       (jetty9-service/add-ring-handler
+         target-webserver#
+         ~ring-handler
+         "/"))
+     (bootstrap/with-app-with-config
+       client-app#
+       [file-sync-client-service/file-sync-client-service
+        scheduler-service/scheduler-service]
+       {:file-sync-client ~client-config}
+       (let [~app client-app#]
+         (do
+           ~@body)))))
 
 (defn clone-and-validate
   [server-repo-url local-repo-dir]
@@ -232,3 +254,14 @@
       (.setDirectory path)
       (.setBare true)
       (.call)))
+
+(defn add-watch-and-deliver-new-state
+  [ref* promise*]
+  (let [key* (keyword (str "test-watcher-" (System/currentTimeMillis)))]
+    (add-watch
+      ref*
+      key*
+      (fn [key ref old-state new-state]
+        (when (= key* key)
+          (deliver promise* new-state)
+          (remove-watch ref* key))))))
