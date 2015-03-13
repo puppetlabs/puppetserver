@@ -55,32 +55,32 @@
 
 (deftest initialize-repos!-test
   (let [base-dir (fs/file (ks/temp-dir) "base")
-        repos    [{:sub-path "sub1"}
-                  {:sub-path "sub2"}
-                  {:sub-path "sub3/subsub3"}]
+        repos {:sub1 {:working-dir "sub1-dir"}
+               :sub2 {:working-dir "sub2-dir"}
+               :sub3 {:working-dir "sub3-dir/subsub3"}}
         config   (jgit-client-test-helpers/file-sync-storage-config-payload
                    (.getPath base-dir)
                    repos)]
     (testing "Vector of repos can be initialized"
       (initialize-repos! config)
-      (doseq [{:keys [sub-path]} repos]
+      (doseq [sub-path (map name (keys repos))]
         (validate-receive-pack-setting (fs/file base-dir sub-path))))
     (testing "Content in repos not wiped out during reinitialization"
-      (doseq [{:keys [sub-path]} repos]
+      (doseq [sub-path (map name (keys repos))]
         (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
           (ks/mkdirs! (.getParentFile file-to-check))
           (fs/touch file-to-check)))
       (initialize-repos! config)
-      (doseq [{:keys [sub-path]} repos]
+      (doseq [sub-path (map name (keys repos))]
         (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
           (is (fs/exists? file-to-check)
             (str "Expected file missing after repo reinitialization: "
                  file-to-check)))))
     (testing "Http receive pack for repos restored to 1 after reinitialization"
-      (doseq [{:keys [sub-path]} repos]
+      (doseq [sub-path (map name (keys repos))]
         (fs/delete (fs/file base-dir sub-path "config")))
       (initialize-repos! config)
-      (doseq [{:keys [sub-path]} repos]
+      (doseq [sub-path (map name (keys repos))]
         (validate-receive-pack-setting (fs/file base-dir sub-path))))
     (testing "ExceptionInfo thrown for missing base-path in config"
       (validate-exception-info-for-initialize-repos!
@@ -90,7 +90,7 @@
       (validate-exception-info-for-initialize-repos!
         #":repos missing-required-key"
         (dissoc config :repos)))
-    (testing "ExceptionInfo thrown for missing repos sub-path in config"
+    (testing "ExceptionInfo thrown for missing repos sub-dir in config"
       (validate-exception-info-for-initialize-repos!
-        #":sub-path missing-required-key"
-        (assoc config :repos [{}])))))
+        #":working-dir missing-required-key"
+        (assoc config :repos {:test-repo-name {}})))))

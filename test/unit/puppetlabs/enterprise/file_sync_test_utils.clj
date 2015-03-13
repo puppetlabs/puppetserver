@@ -93,7 +93,7 @@
   "Enables anonymous push access on each repo for ease of testing."
   [base-path repos]
   {:base-path base-path
-   :repos     (map enable-push repos)})
+   :repos     (ks/mapvals enable-push repos)})
 
 (defn file-sync-storage-config
   [base-path repos]

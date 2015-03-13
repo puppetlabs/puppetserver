@@ -23,7 +23,7 @@
     app
     (helpers/storage-service-config-with-repos
       git-base-dir
-      [{:sub-path server-repo-subpath}]
+      {(keyword server-repo-subpath) {:working-dir server-repo-subpath}}
       ssl?)
     (if ssl?
       (helpers/configure-JGit-SSL! true))
@@ -54,7 +54,8 @@
     (let [server-repo-subpath "push-disabled-test.git"
           config (merge helpers/webserver-plaintext-config
                         {:file-sync-storage {:base-path (helpers/temp-dir-as-string)
-                                             :repos     [{:sub-path server-repo-subpath}]}})]
+                                             :repos {(keyword server-repo-subpath)
+                                                     {:working-dir server-repo-subpath}}}})]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         config
@@ -95,7 +96,7 @@
         app
         (helpers/storage-service-config-with-repos
           git-base-dir
-          [{:sub-path server-repo-subpath}]
+          {(keyword server-repo-subpath) {:working-dir server-repo-subpath}}
           true)
         (let [client-orig-repo-dir (helpers/temp-dir-as-string)
               server-repo-url (str
@@ -109,8 +110,9 @@
         api-path              "/test-api-path"
         server-repo-subpath   "file-sync-storage-service-simple-workflow.git"
         config                {:file-sync-storage
-                                {:base-path (helpers/temp-dir-as-string)
-                                 :repos [{:sub-path server-repo-subpath}]}
+                                 {:base-path (helpers/temp-dir-as-string)
+                                  :repos {(keyword server-repo-subpath)
+                                          {:working-dir server-repo-subpath}}}
                                :webserver {:port helpers/http-port}
                                :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
                                                      {:api          api-path
@@ -149,9 +151,9 @@
       app
       (helpers/storage-service-config-with-repos
         git-base-dir
-        [{:sub-path server-repo-subpath-1}
-         {:sub-path server-repo-subpath-2}
-         {:sub-path server-repo-subpath-no-commits}]
+        {(keyword server-repo-subpath-1) {:working-dir server-repo-subpath-1}
+         (keyword server-repo-subpath-2) {:working-dir server-repo-subpath-2}
+         (keyword server-repo-subpath-no-commits) {:working-dir server-repo-subpath-no-commits}}
         false)
 
       (let [client-orig-repo-dir-1 (helpers/clone-repo-and-push-test-files

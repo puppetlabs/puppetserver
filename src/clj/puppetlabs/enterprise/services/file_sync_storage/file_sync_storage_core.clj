@@ -22,9 +22,9 @@
 
   The keys should have the following values:
 
-    * :sub-path  - The path under the Git server's base path at which the
-                   repository's content should reside."
-  {:sub-path                                  schema/Str
+    * :working-dir  - The path under the Git server's data directory where the
+                      repository's working tree resides."
+  {:working-dir                                 schema/Str
    (schema/optional-key :http-push-enabled)   Boolean})
 
 (def FileSyncServiceRawConfig
@@ -37,8 +37,8 @@
 
     * :repos     - A vector with metadata about each of the individual
                    Git repositories that the server manages."
-  {:base-path                               String
-   :repos                                   [GitRepo]})
+  {:base-path                               schema/Str
+   :repos                                   {schema/Keyword GitRepo}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -114,7 +114,7 @@
   [base-path sub-paths]
   (reduce
     (fn [acc sub-path]
-      (let [repo-path (fs/file base-path sub-path)
+      (let [repo-path (fs/file base-path (name sub-path))
             rev (latest-commit-on-master repo-path)]
         (assoc acc sub-path rev)))
     {}
@@ -149,8 +149,9 @@
   (let [base-path (:base-path config)]
     (log/infof "Initializing file sync server base path: %s" base-path)
     (initialize-server-base-path! (fs/file base-path))
-    (doseq [{:keys [sub-path http-push-enabled]}  (:repos config)]
-      (let [repo-path (fs/file base-path sub-path)]
+    (doseq [repo  (:repos config)]
+      (let [repo-path (fs/file base-path (name (key repo)))
+            http-push-enabled (:http-push-enabled (val repo))]
         (log/infof "Initializing file sync repository path: %s" repo-path)
         (initialize-repo! repo-path http-push-enabled))))
   nil)

@@ -92,7 +92,7 @@
       app
       (helpers/storage-service-config-with-repos
         (helpers/temp-dir-as-string)
-        [{:sub-path repo-name}]
+        {(keyword repo-name) {:working-dir repo-name}}
         false)
       (let [local-repo-dir (fs/file (helpers/temp-dir-as-string))
             local-repo (.getRepository (helpers/clone-and-validate
@@ -137,7 +137,7 @@
       app
       (helpers/storage-service-config-with-repos
         (helpers/temp-dir-as-string)
-        [{:sub-path server-repo}]
+        {(keyword server-repo) {:working-dir server-repo}}
         false)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
