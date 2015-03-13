@@ -4,7 +4,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :refer :all :as core]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]))
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -82,9 +83,10 @@
           (borrow-from-pool-with-timeout pool 120))))))
 
 (deftest test-default-pool-size
-  (let [config jruby-testutils/default-config-no-size
-        profiler   jruby-testutils/default-profiler
-        pool       (create-pool-context config profiler)
-        pool-state @(:pool-state pool)]
-    (is (= (core/default-pool-size (ks/num-cpus)) (:size pool-state)))))
+  (logutils/with-test-logging
+    (let [config jruby-testutils/default-config-no-size
+          profiler jruby-testutils/default-profiler
+          pool (create-pool-context config profiler)
+          pool-state @(:pool-state pool)]
+      (is (= (core/default-pool-size (ks/num-cpus)) (:size pool-state))))))
 
