@@ -31,7 +31,7 @@ module PuppetServerExtensions
     # TODO: This build version needs to be updated to a released version
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "890a4a29148a3ae2997cb1cf2cefd329e6badf3d")
+                         "PUPPET_BUILD_VERSION", "dc53fa36a1813454b9b55243a3f291dae122d614")
 
     @config = {
       :base_dir => base_dir,
