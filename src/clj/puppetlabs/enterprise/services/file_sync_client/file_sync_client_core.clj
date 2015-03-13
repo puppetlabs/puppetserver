@@ -241,7 +241,8 @@
 (schema/defn ^:always-validate start-periodic-sync-process!
   "Synchronizes the repositories sypecified in 'config' by sending the agent an
   action.  It is important that this function only be called once, during service
-  startup.
+  startup.  (Although, note that one-off sync runs can be triggered by sending
+  the agent a 'sync-on-agent' action.)
 
   'schedule-fn' is the function that will be invoked after each iteration of the
   sync process to schedule the next iteration."
@@ -249,16 +250,15 @@
    schedule-fn :- IFn
    config :- FileSyncClientServiceRawConfig
    http-client :- http-client/HTTPClient]
-  (let [send-to-agent #(send-off sync-agent sync-on-agent config http-client)]
+  (let [periodic-sync (fn [& args]
+                        (-> (apply sync-on-agent args)
+                            (assoc ::schedule-next-run? true)))
+        send-to-agent #(send-off sync-agent periodic-sync config http-client)]
     (add-watch sync-agent
                ::schedule-watch
-               (fn [key ref* old-state new-state]
-                 ; If we want to support on-demand sync runs, we can easily
-                 ; implement that by adding something to the agent's state
-                 ; indicating if this action is firing as the result of a
-                 ; periodic sync run, and only scheduling the next iteration
-                 ; if appropriate.
-                 (log/debug "Scheduling the next iteration of the sync process.")
-                 (schedule-fn send-to-agent)))
+               (fn [key* ref* old-state new-state]
+                 (when (::schedule-next-run? new-state)
+                   (log/debug "Scheduling the next iteration of the sync process.")
+                   (schedule-fn send-to-agent))))
     ; The watch is in place, now send the initial action.
     (send-to-agent)))
