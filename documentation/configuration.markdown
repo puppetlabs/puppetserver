@@ -60,6 +60,7 @@ This file contains the settings for Puppet Server itself.
     * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
     * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
+    * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
     * `enabled`: if this is set to `true`, it enables profiling for the Puppet Ruby code. Defaults to `false`.
 * The `puppet-admin` section configures the Puppet Server's administrative API. (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
