@@ -49,7 +49,8 @@
                  [slingshot "0.10.3"]
                  [ring/ring-codec "1.0.0" :exclusions [commons-codec]]
                  [cheshire "5.3.1"]
-                 [trptcolin/versioneer "0.1.0"]]
+                 [trptcolin/versioneer "0.1.0"]
+                 [grimradical/clj-semver "0.2.0" :exclusions [org.clojure/clojure]]]
 
   :main puppetlabs.trapperkeeper.main
 
