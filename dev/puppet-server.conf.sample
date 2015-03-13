@@ -51,7 +51,7 @@ jruby-puppet: {
     # (optional) path to puppet var dir; if not specified, will use the puppet default
     #master-var-dir: /var/lib/puppet
 
-    # (optional) maximum number of JRuby instances to allow; defaults to <num-cpus>+2
+    # (optional) maximum number of JRuby instances to allow
     max-active-instances: 1
 }
 
