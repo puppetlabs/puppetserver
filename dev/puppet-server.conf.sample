@@ -8,7 +8,7 @@ master: {
 
 product: {
     update-server-url: "http://localhost/"
-    name: {group-id: puppetlabs
+    name: {group-id: puppetlabs.dev
            artifact-id: puppet-server}
 }
 

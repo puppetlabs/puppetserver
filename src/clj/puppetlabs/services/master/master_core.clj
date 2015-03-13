@@ -69,14 +69,14 @@
     (route/not-found "Not Found")))
 
 (defn construct-404-error-message
-  [jruby-service]
+  [jruby-service product-name]
   (str "Error: Invalid URL - Puppet Server expects requests that conform to the "
        "/puppet and /puppet-ca APIs.\n\n"
        "Note that Puppet 3 agents aren't compatible with this version; if you're "
        "running Puppet 3, you must either upgrade your agents to match the server "
        "or point them to a server running Puppet 3.\n\n"
        "Server Info:\n"
-       "  Puppet Server version: " (version-check/get-version-string "puppet-server") "\n"
+       "  Puppet Server version: " (version-check/get-version-string (:artifact-id product-name) (:group-id product-name)) "\n"
        "  Puppet version: " (:puppet-version (config/get-puppet-config jruby-service)) "\n"
        "  Supported /puppet API versions: " puppet-API-versions
        "  Supported /puppet-ca API versions: " puppet-ca-API-versions))

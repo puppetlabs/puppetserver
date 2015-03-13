@@ -23,9 +23,9 @@
          hostcrl           (get-in config [:puppet-server :hostcrl])
          settings          (ca/config->master-settings config)
          jruby-service     (tk-services/get-service this :JRubyPuppetService)
-         upgrade-error     (core/construct-404-error-message jruby-service)
-         product-name      (get-in config [:product :name])
-         update-server-url (get-in config [:product :update-server-url])]
+         product-name      (or (get-in config [:product :name]) {:group-id "puppetlabs" :artifact-id "puppet-server"})
+         upgrade-error     (core/construct-404-error-message jruby-service product-name)
+         update-server-url (or (get-in config [:product :update-server-url]) "http://updates.puppetlabs.com")]
 
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
