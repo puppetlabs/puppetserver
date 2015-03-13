@@ -18,11 +18,6 @@
   [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
    profiler/puppet-profiler-service])
 
-(def required-config
-  (merge (jruby-testutils/jruby-puppet-tk-config
-           (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-         {:webserver    {:port 8081}}))
-
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/config/puppet_server_config_service_test")
 
