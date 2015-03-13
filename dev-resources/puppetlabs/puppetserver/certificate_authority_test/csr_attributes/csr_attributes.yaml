@@ -5,3 +5,17 @@ extension_requests:
   pp_image_name: my_ami_image
   pp_preshared_key: 342thbjkt82094y0uthhor289jnqthpc2290
   pp_instance_id: thisisanid
+  pp_cost_center: center
+  pp_product: product
+  pp_project: project
+  pp_application: application
+  pp_service: service
+  pp_employee: employee
+  pp_created_by: created
+  pp_environment: environment
+  pp_role: role
+  pp_software_version: version
+  pp_department: deparment
+  pp_cluster: cluster
+  pp_provisioner: provisioner
+
