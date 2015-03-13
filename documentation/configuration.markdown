@@ -59,7 +59,8 @@ This file contains the settings for Puppet Server itself.
     * `gem-home`: This setting determines where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If not specified, uses the Puppet default `/var/lib/puppet/jruby-gems`.
     * `master-conf-dir`: Optionally, set the path to the Puppet configuration directory. If not specified, uses the Puppet default `/etc/puppet`.
     * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
-    * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus+2'.
+    * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to roughly 'num-cpus - 1', with a minimum default
+      value of 1 and a maximum default value of 4.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
     * `enabled`: if this is set to `true`, it enables profiling for the Puppet Ruby code. Defaults to `false`.

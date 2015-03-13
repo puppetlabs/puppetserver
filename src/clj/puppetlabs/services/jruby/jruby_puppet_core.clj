@@ -15,10 +15,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
-(def default-pool-size
-  "The default size of each JRuby pool."
-  (+ 2 (ks/num-cpus)))
-
 (def pool-queue-type
   "The Java datastructure type used to store JRubyPuppet instances which are
   free to be borrowed."
@@ -132,6 +128,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
+
+(defn default-pool-size
+  "Calculate the default size of the JRuby pool, based on the number of cpus."
+  [num-cpus]
+  (->> (- num-cpus 1)
+       (max 1)
+       (min 4)))
 
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
@@ -250,7 +253,15 @@
   create-pool-from-config :- PoolState
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- JRubyPuppetConfig]
-  (let [size (or size default-pool-size)]
+  (let [size (if size
+               size
+               (let [default-size (default-pool-size (ks/num-cpus))]
+                 (log/warn (str "No configuration value found for jruby-puppet "
+                                "max-active-instances; using default value of "
+                                default-size ".  Please consider setting this "
+                                "value explicitly in the jruby-puppet section "
+                                "of your Puppet Server config files."))
+                 default-size))]
     {:pool         (instantiate-free-pool size)
      :size         size}))
 

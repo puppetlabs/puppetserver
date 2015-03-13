@@ -86,5 +86,5 @@
         profiler   jruby-testutils/default-profiler
         pool       (create-pool-context config profiler)
         pool-state @(:pool-state pool)]
-    (is (= core/default-pool-size (:size pool-state)))))
+    (is (= (core/default-pool-size (ks/num-cpus)) (:size pool-state)))))
 
