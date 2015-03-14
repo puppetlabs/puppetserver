@@ -15,7 +15,9 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :as file-sync-client-service]
             [puppetlabs.enterprise.services.scheduler.scheduler-service :as scheduler-service]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
+            [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.ssl-utils.core :as ssl]))
 
 (def default-api-path-prefix "/file-sync")
@@ -52,11 +54,14 @@
                      server-base-url)]
       (str base-url repo-path-prefix))))
 
+(def ssl-options
+  {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
+   :ssl-cert    "./dev-resources/ssl/cert.pem"
+   :ssl-key     "./dev-resources/ssl/key.pem"})
+
 ; Used to configure JGit for SSL in tests
 (def ssl-context
-  (ssl/generate-ssl-context {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
-                             :ssl-cert    "./dev-resources/ssl/cert.pem"
-                             :ssl-key     "./dev-resources/ssl/key.pem"}))
+  (ssl/generate-ssl-context ssl-options))
 
 (defn configure-JGit-SSL!
   [ssl?]
@@ -72,11 +77,8 @@
                           :repo-servlet default-repo-path-prefix}}})
 
 (def webserver-ssl-config
-  {:webserver {:ssl-port    https-port
-               :ssl-host    "0.0.0.0"
-               :ssl-ca-cert "./dev-resources/ssl/ca.pem"
-               :ssl-cert    "./dev-resources/ssl/cert.pem"
-               :ssl-key     "./dev-resources/ssl/key.pem"}
+  {:webserver          (merge {:ssl-port https-port
+                               :ssl-host "0.0.0.0"} ssl-options)
    :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
                         {:api          default-api-path-prefix
                          :repo-servlet default-repo-path-prefix}}})
@@ -97,10 +99,24 @@
   [base-path repos]
   {:file-sync-storage (file-sync-storage-config-payload base-path repos)})
 
-(defn jgit-config-with-repos
+(defn storage-service-config-with-repos
   [base-path repos ssl?]
   (merge (if ssl? webserver-ssl-config webserver-plaintext-config)
          (file-sync-storage-config base-path repos)))
+
+(defn file-sync-client-config-payload
+  [repos ssl?]
+  (let [ssl-opts (if ssl? ssl-options {})]
+    (merge ssl-opts
+           {:server-url       (base-url ssl?)
+            :poll-interval    1
+            :server-api-path  default-api-path-prefix
+            :server-repo-path default-repo-path-prefix
+            :repos            repos})))
+
+(defn client-service-config-with-repos
+  [repos ssl?]
+  {:file-sync-client (file-sync-client-config-payload repos ssl?)})
 
 (defn temp-dir-as-string
   []
@@ -265,3 +281,9 @@
         (when (= key* key)
           (deliver promise* new-state)
           (remove-watch ref* key))))))
+
+(defn get-sync-agent [app]
+  (->> :FileSyncClientService
+       (tk-app/get-service app)
+       (tk-services/service-context)
+       :agent))

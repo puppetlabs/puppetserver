@@ -3,22 +3,13 @@
             [schema.test :as schema-test]
             [cheshire.core :as json]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
-            [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.trapperkeeper.app :as tk-app])
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers])
   (:import (javax.net.ssl SSLException)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
-  {:poll-interval    1
-   :server-url       "https://localhost:10080/"
-   :repos            {:fake "fake"}
-   :server-api-path  helpers/default-api-path-prefix
-   :server-repo-path helpers/default-repo-path-prefix
-   :ssl-ca-cert      "./dev-resources/ssl/ca.pem"
-   :ssl-cert         "./dev-resources/ssl/cert.pem"
-   :ssl-key          "./dev-resources/ssl/key.pem"})
+  (helpers/file-sync-client-config-payload {:fake "fake"} true))
 
 (defn ring-handler
   [_]
@@ -34,10 +25,7 @@
         helpers/webserver-ssl-config
         ring-handler
         file-sync-client-ssl-config
-        (let [sync-agent (->> :FileSyncClientService
-                              (tk-app/get-service app)
-                              (tk-services/service-context)
-                              :agent)
+        (let [sync-agent (helpers/get-sync-agent app)
               p (promise)]
           (helpers/add-watch-and-deliver-new-state sync-agent p)
           (let [new-state (deref p)]
@@ -51,10 +39,7 @@
         helpers/webserver-ssl-config
         ring-handler
         (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
-        (let [sync-agent (->> :FileSyncClientService
-                              (tk-app/get-service app)
-                              (tk-services/service-context)
-                              :agent)
+        (let [sync-agent (helpers/get-sync-agent app)
               p (promise)]
           (helpers/add-watch-and-deliver-new-state sync-agent p)
           (let [new-state (deref p)]
