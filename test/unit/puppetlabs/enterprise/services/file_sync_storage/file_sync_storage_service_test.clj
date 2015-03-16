@@ -21,7 +21,7 @@
   [git-base-dir server-repo-subpath ssl?]
   (helpers/with-bootstrapped-file-sync-storage-service-for-http
     app
-    (helpers/jgit-config-with-repos
+    (helpers/storage-service-config-with-repos
       git-base-dir
       [{:sub-path server-repo-subpath}]
       ssl?)
@@ -93,7 +93,7 @@
       (helpers/configure-JGit-SSL! false)
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
-        (helpers/jgit-config-with-repos
+        (helpers/storage-service-config-with-repos
           git-base-dir
           [{:sub-path server-repo-subpath}]
           true)
@@ -147,7 +147,7 @@
         server-repo-subpath-no-commits "latest-commits-test-3.git"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
-      (helpers/jgit-config-with-repos
+      (helpers/storage-service-config-with-repos
         git-base-dir
         [{:sub-path server-repo-subpath-1}
          {:sub-path server-repo-subpath-2}

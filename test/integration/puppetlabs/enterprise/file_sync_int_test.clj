@@ -14,7 +14,6 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
@@ -41,6 +40,43 @@
   [repo]
   (get (get-latest-commits) repo))
 
+(deftest ^:integration ssl-integration-test
+  (testing "everything works properly when using ssl"
+    (let [repo "ssl-integration-test.git"
+          client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
+      (with-test-logging
+        (bootstrap/with-app-with-config
+          app
+          [jetty-service/jetty9-service
+           file-sync-storage-service/file-sync-storage-service
+           webrouting-service/webrouting-service
+           file-sync-client-service/file-sync-client-service
+           scheduler-service/scheduler-service]
+          (merge (helpers/storage-service-config-with-repos
+                   (helpers/temp-dir-as-string)
+                   [{:sub-path repo}]
+                   true)
+                 (helpers/client-service-config-with-repos
+                   {(keyword repo) (str client-repo-dir)}
+                   true))
+
+          (let [local-repo-dir (helpers/clone-repo-and-push-test-files repo 1 true)
+                sync-agent (helpers/get-sync-agent app)
+                p (promise)]
+            (helpers/add-watch-and-deliver-new-state sync-agent p)
+
+            (testing "client is able to successfully sync with storage service"
+              (let [new-state (deref p)]
+               (is (= :successful (:status new-state)))))
+
+            (testing "client repo revision matches server local repo"
+              ;; The client syncs with the storage service, and the
+              ;; storage service repo was updated from the working copy
+              ;; of the local repo. Thus, this test assures that the whole
+              ;; process was successful.
+              (is (= (jgit-client/head-rev-id-from-git-dir client-repo-dir)
+                     (jgit-client/head-rev-id-from-working-tree local-repo-dir))))))))))
+
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
     (let [repo "network-partition-test.git"
@@ -49,7 +85,7 @@
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
                            webrouting-service/webrouting-service]
-                          (helpers/jgit-config-with-repos
+                          (helpers/storage-service-config-with-repos
                             (helpers/temp-dir-as-string)
                             [{:sub-path repo}]
                             false)))]
@@ -70,16 +106,11 @@
             app
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
-            {:file-sync-client {:server-url       helpers/server-base-url
-                                :poll-interval    1
-                                :server-api-path  helpers/default-api-path-prefix
-                                :server-repo-path helpers/default-repo-path-prefix
-                                :repos            {(keyword repo) (str client-repo-dir)}}}
+            (helpers/client-service-config-with-repos
+              {(keyword repo) (str client-repo-dir)}
+              false)
 
-            (let [sync-agent (->> :FileSyncClientService
-                                  (tk-app/get-service app)
-                                  (tk-services/service-context)
-                                  :agent)]
+            (let [sync-agent (helpers/get-sync-agent app)]
 
               (testing "file sync client service is running"
                 ;; Test the result of the periodic sync by checking the SHA for

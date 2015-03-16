@@ -49,109 +49,114 @@
                           (:message error)))))
       (is @got-expected-error?))))
 
-(defn process-repos-and-verify
-  ([repos-to-verify client]
-    (process-repos-and-verify repos-to-verify client false))
-  ([repos-to-verify client ssl?]
-    (process-repos-for-updates
-      client
-      (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-      (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-      (into {} (map #(:process-repo %) repos-to-verify)))
-    (doseq [repo repos-to-verify]
-      (let [name       (:name repo)
-            target-dir (get-in repo [:process-repo (keyword name)])]
-        (is (= (client/head-rev-id-from-working-tree (:origin-dir repo))
-               (client/head-rev-id-from-git-dir target-dir))
-            (str "Unexpected head revision in target repo directory : "
-                 target-dir))))))
+(deftest apply-updates-to-repo-test
+  (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
+        repo-name "apply-updates-test.git"
+        repo-url (str helpers/server-repo-url "/" repo-name)]
 
-(defn test-process-repos-for-updates
-  [ssl?]
-  (let [git-base-dir (helpers/temp-dir-as-string)
-        server-repo-subpath-1 "process-repos-test-1.git"
-        server-repo-subpath-2 "process-repos-test-2.git"
-        server-repo-subpath-3 "process-repos-test-3.git"
-        client-opts           (if ssl?
-                                {:ssl-ca-cert "./dev-resources/ssl/ca.pem"
-                                 :ssl-cert    "./dev-resources/ssl/cert.pem"
-                                 :ssl-key     "./dev-resources/ssl/key.pem"}
-                                {})]
+    (testing "Throws appropriate error when directory exists but has no git repo"
+      (is (thrown? IllegalStateException
+                   (apply-updates-to-repo repo-name repo-url "" client-target-repo))))
+
+    (testing "Throws appropriate slingshot error for a failed fetch"
+      (helpers/init-bare-repo! client-target-repo)
+      (let [got-expected-error? (atom false)]
+        (try+
+          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
+          (catch map? error
+            (reset! got-expected-error? true)
+            (is (re-matches #"File sync was unable to fetch from server repo.*"
+                            (:message error)))))
+        (is @got-expected-error?)))
+
+    (testing "Throws appropriate slingshot error for a failed clone"
+      (fs/delete-dir client-target-repo)
+      (let [got-expected-error? (atom false)]
+        (try+
+          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
+          (catch map? error
+            (reset! got-expected-error? true)
+            (is (re-matches #"File sync was unable to clone from server repo.*"
+                            (:message error)))))
+        (is @got-expected-error?)))))
+
+(deftest process-repo-for-updates-test
+  (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
+        repo-name "process-repo-test.git"
+        update-repo (fn [commit-id]
+                      (process-repo-for-updates helpers/server-repo-url
+                                                     repo-name
+                                                     client-target-repo
+                                                     commit-id))]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
-      (helpers/jgit-config-with-repos
-        git-base-dir
-        [{:sub-path server-repo-subpath-1}
-         {:sub-path server-repo-subpath-2}
-         {:sub-path server-repo-subpath-3}]
-        ssl?)
-      (let [client-orig-repo-dir-1 (helpers/clone-repo-and-push-test-files
-                                     server-repo-subpath-1
-                                     1
-                                     ssl?)
-            client-orig-repo-dir-2 (helpers/clone-repo-and-push-test-files
-                                     server-repo-subpath-2
-                                     2
-                                     ssl?)
-            client-orig-repo-dir-3 (helpers/clone-repo-and-push-test-files
-                                     server-repo-subpath-3
-                                     0
-                                     ssl?)
-            client-targ-repo-dir-1 (helpers/temp-dir-as-string)
-            client-targ-repo-dir-2 (helpers/temp-dir-as-string)
-            client-targ-repo-dir-3 (helpers/temp-dir-as-string)
-            repos-to-verify [{:name         server-repo-subpath-1
-                              :origin-dir   client-orig-repo-dir-1
-                              :process-repo {(keyword server-repo-subpath-1)
-                                               client-targ-repo-dir-1}}
-                             {:name         server-repo-subpath-2
-                              :origin-dir   client-orig-repo-dir-2
-                              :process-repo {(keyword server-repo-subpath-2)
-                                               client-targ-repo-dir-2}}
-                             {:name         server-repo-subpath-3
-                              :origin-dir   client-orig-repo-dir-3
-                              :process-repo {(keyword server-repo-subpath-3)
-                                               client-targ-repo-dir-3}}]
-            client (sync/create-client client-opts)]
+      (helpers/storage-service-config-with-repos
+        (helpers/temp-dir-as-string)
+        [{:sub-path repo-name}]
+        false)
+      (let [local-repo-dir (fs/file (helpers/temp-dir-as-string))
+            local-repo (.getRepository (helpers/clone-and-validate
+                                         (str helpers/server-repo-url "/" repo-name)
+                                         local-repo-dir))]
         (testing "Validate initial repo update"
-          (fs/delete-dir client-targ-repo-dir-1)
-          (fs/delete-dir client-targ-repo-dir-2)
-          (fs/delete-dir client-targ-repo-dir-3)
-          (process-repos-and-verify repos-to-verify client ssl?))
+          (fs/delete-dir client-target-repo)
+          (let [initial-commit (client/head-rev-id local-repo)]
+            (update-repo initial-commit)
+            (let [repo (client/get-repository-from-git-dir client-target-repo)]
+              (is (.isBare repo))
+              (is (= initial-commit (client/head-rev-id repo))))))
         (testing "Files fetched for update"
-          (helpers/create-and-push-file client-orig-repo-dir-2)
-          (helpers/create-and-push-file client-orig-repo-dir-3)
-          (process-repos-and-verify repos-to-verify client ssl?))
+          (helpers/create-and-push-file local-repo-dir)
+          (let [new-commit (client/head-rev-id local-repo)]
+            (update-repo new-commit)
+            (is (= new-commit (client/head-rev-id-from-git-dir client-target-repo)))))
         (testing "No change when nothing pushed"
-          (process-repos-and-verify repos-to-verify client ssl?))
+          (let [current-commit (client/head-rev-id-from-git-dir client-target-repo)]
+            (update-repo current-commit)
+            (is (= current-commit (client/head-rev-id-from-git-dir client-target-repo)))))
         (testing "Files restored after repo directory deleted"
-          (fs/delete-dir client-targ-repo-dir-2)
-          (process-repos-and-verify repos-to-verify client ssl?))
-        (testing "Client directory not created when no match on server"
-          (with-test-logging
-            (let [client-targ-repo-nonexistent (helpers/temp-dir-as-string)]
-              (fs/delete-dir client-targ-repo-nonexistent)
-              (process-repos-for-updates
-                client
-                (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-                (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-                {:process-repos-test-nonexistent.git
-                   client-targ-repo-nonexistent})
-              (is (not (fs/exists? client-targ-repo-nonexistent))
-                  "Found client directory despite no matching repo on server")
-              (is
-                (logged?
-                  #"^File sync did not find.*process-repos-test-nonexistent.git"
-                  :error)))))))))
+          (let [commit-id (client/head-rev-id-from-git-dir client-target-repo)]
+            (fs/delete-dir client-target-repo)
+            (update-repo commit-id)
+            (is (= (client/head-rev-id-from-git-dir client-target-repo) commit-id))))))))
+
+(defn process-repos
+  [repos client ssl?]
+  (process-repos-for-updates
+    client
+    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
+    (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
+    repos))
 
 (deftest process-repos-for-updates-test
-  (testing "process-repos-for-updates works over http"
-    (test-process-repos-for-updates false))
+  (let [client-target-repo-on-server (helpers/temp-dir-as-string)
+        client-target-repo-nonexistent (helpers/temp-dir-as-string)
+        server-repo "process-repos-test.git"
+        client (sync/create-client {})]
+    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      app
+      (helpers/storage-service-config-with-repos
+        (helpers/temp-dir-as-string)
+        [{:sub-path server-repo}]
+        false)
+      (fs/delete-dir client-target-repo-on-server)
+      (fs/delete-dir client-target-repo-nonexistent)
 
-  (testing "process-repos-for-updates works over https when SSL is configured"
-    ; The client service is not being started, so we need to configure JGit to use SSL
-    (helpers/configure-JGit-SSL! true)
-    (test-process-repos-for-updates true)))
+      (with-test-logging
+        (process-repos {(keyword server-repo) client-target-repo-on-server
+                        :process-repos-test-nonexistent.git client-target-repo-nonexistent}
+                       client false)
+
+        (testing "Client directory created when match on server"
+          (is (fs/exists? client-target-repo-on-server)))
+
+        (testing "Client directory not created when no match on server"
+          (is (not (fs/exists? client-target-repo-nonexistent))
+              "Found client directory despite no matching repo on server")
+          (is
+            (logged?
+              #"^File sync did not find.*process-repos-test-nonexistent.git"
+              :error)))))))
 
 (deftest ssl-configuration-test
   (testing "JGit's ConnectionFactory hands-out instances of our own
