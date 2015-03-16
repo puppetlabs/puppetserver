@@ -26,14 +26,17 @@ considered roughly equivalent to the Puppet Server 1.0.2 release in terms of
 functionality, and will largely only contain changes related to Puppet 4.0
 compatibility.
 
+Shortly following that, there will be an OSS 1.0.8 release.  This release will
+be a bugfix release targeted for inclusion in PE 3.8.
+
 Some time following that, we'll do a 1.1 and 2.1 release, hopefully in close
 proximity to one another.  These will be the next major feature releases (as
 opposed to 2.0, which is simply a compatibility release), and will contain
 several new features, tuning improvements, etc.
 
-These changes have started to land in the `stable` branch now.  Some of them
-are too risky to introduce into the `master` branch given our proximity to the
-2.0 release.  Therefore, it is critical that we do *not* do any merges from
+The changes for 1.0.8 have started to land in the `stable` branch now.  Some of
+them are too risky to introduce into the `master` branch given our proximity to
+the 2.0 release.  Therefore, it is critical that we do *not* do any merges from
 `stable` to `master` until after 2.0 has shipped.
 
 We'll update this document to reflect changes to that restriction as things
