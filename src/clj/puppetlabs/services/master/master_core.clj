@@ -78,7 +78,7 @@
        "Server Info:\n"
        "  Puppet Server version: " (version-check/get-version-string (:artifact-id product-name) (:group-id product-name)) "\n"
        "  Puppet version: " (:puppet-version (config/get-puppet-config jruby-service)) "\n"
-       "  Supported /puppet API versions: " puppet-API-versions
+       "  Supported /puppet API versions: " puppet-API-versions "\n"
        "  Supported /puppet-ca API versions: " puppet-ca-API-versions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

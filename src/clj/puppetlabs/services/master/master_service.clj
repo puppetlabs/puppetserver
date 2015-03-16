@@ -25,7 +25,7 @@
          jruby-service     (tk-services/get-service this :JRubyPuppetService)
          product-name      (or (get-in config [:product :name]) {:group-id "puppetlabs" :artifact-id "puppet-server"})
          upgrade-error     (core/construct-404-error-message jruby-service product-name)
-         update-server-url (or (get-in config [:product :update-server-url]) "http://updates.puppetlabs.com")]
+         update-server-url (get-in config [:product :update-server-url])]
 
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
