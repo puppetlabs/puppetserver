@@ -3,18 +3,28 @@ require 'spec_helper'
 require 'puppet/server/master'
 require 'puppet/server/jvm_profiler'
 
-describe Puppet::Server::Master do
+describe 'Puppet::Server::Master' do
+  let :master do
+    Puppet::Server::Master.new({}, {})
+  end
+
   context "run mode" do
+    subject do
+      master.run_mode
+    end
+
     it "is set to 'master'" do
-      master = Puppet::Server::Master.new({}, {})
-      master.run_mode.should == 'master'
+      expect(subject).to eq('master')
     end
   end
 
   context "puppet version" do
+    subject do
+      master.puppetVersion
+    end
+
     it "returns the correct puppet version number" do
-      master = Puppet::Server::Master.new({}, {})
-      master.puppetVersion.should == '3.7.4'
+      expect(subject).to eq('4.0.0-rc1')
     end
   end
 
