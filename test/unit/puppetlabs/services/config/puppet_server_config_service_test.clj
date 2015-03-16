@@ -12,7 +12,8 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [clj-semver.core :as semver]))
 
 (def service-and-deps
   [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
@@ -28,8 +29,10 @@
       (assoc-in [:jruby-puppet :master-conf-dir]
                 (str test-resources-dir "/master/conf"))))
 
-(defn valid-semver-number? [v]
-  (re-matches #"[0-9]\.[0-9]\.[0-9]" v))
+(defn valid-semver-number? [s]
+  (if (try (semver/valid-format? s)
+           (catch IllegalArgumentException e))
+    true false))
 
 (deftest config-service-functions
   (tk-testutils/with-app-with-config
