@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/certificate-authority "0.6.0"]
+                 [puppetlabs/ssl-utils "0.8.0"]
                  [puppetlabs/http-client "0.4.0"]
                  [org.jruby/jruby-core "1.7.19"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
