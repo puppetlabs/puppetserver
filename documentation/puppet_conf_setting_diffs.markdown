@@ -27,16 +27,11 @@ in the `bootstrap.cfg` file. See [Service Bootstrapping](./configuration.markdow
 
 ### [`cacert`](https://docs.puppetlabs.com/references/latest/configuration.html#cacert)
 
-If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
-[webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the file at `ssl-ca-cert` as the CA cert store for authenticating clients via SSL.
-
-If at least one of the `ssl-` settings in webserver.conf
-is set but `ssl-ca-cert` is not set, Puppet Server gives an error
-and shuts down at startup. If none of the `ssl-` settings in webserver.conf is
-set, Puppet Server uses the CA file defined for the `cacert` setting in puppet.conf
-for SSL authentication.
-
-If you enable Puppet Server's certificate authority service, it uses the `cacert` setting in puppet.conf to determine the location of the CA certificate for such tasks as generating the CA certificate or using the CA to sign client certificates. This is true regardless of the configuration of the `ssl-` settings in webserver.conf.
+If you enable Puppet Server's certificate authority service, it uses the `cacert` 
+setting in puppet.conf to determine the location of the CA certificate for such 
+tasks as generating the CA certificate or using the CA to sign client certificates. 
+This is true regardless of the configuration of the `ssl-` settings in 
+[webserver.conf](./configuration.markdown#webserverconf).
 
 ### [`cacrl`](https://docs.puppetlabs.com/references/latest/configuration.html#cacrl)
 
@@ -108,6 +103,18 @@ Server, see the [logging configuration section](./configuration.markdown#logging
 Puppet Server does not currently use this setting. Puppet Server's certificate
 authority generates 4096-bit keys in conjunction with any SSL certificates that
 it generates.
+
+### [`localcacert`](https://docs.puppetlabs.com/references/latest/configuration.html#localcacert)
+
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+[webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the 
+file at `ssl-ca-cert` as the CA cert store for authenticating clients via SSL.
+
+If at least one of the `ssl-` settings in webserver.conf
+is set but `ssl-ca-cert` is not set, Puppet Server gives an error
+and shuts down at startup. If none of the `ssl-` settings in webserver.conf is
+set, Puppet Server uses the CA file defined for the `localcacert` setting in 
+puppet.conf for SSL authentication.
 
 ### [`logdir`](https://docs.puppetlabs.com/references/latest/configuration.html#logdir)
 
