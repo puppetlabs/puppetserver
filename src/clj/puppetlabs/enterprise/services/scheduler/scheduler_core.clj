@@ -45,4 +45,19 @@
   "Stops all of the specified jobs."
   [jobs pool]
   (doseq [job jobs]
-    (stop-job job pool)))
+    (stop-job job pool))
+
+  ; Shutdown at-at's thread pool.  This is the only way to do it, which is
+  ; unfortunate because it also resets the thread pool.  It's possible to
+  ; hack around this via ...
+  ;
+  ;   (-> pool
+  ;       :pool-atom
+  ;       (deref)
+  ;       :thread-pool
+  ;       (.shutdown))
+  ;
+  ; ... but that is a horrible hack.  I've opened an issue with at-at to add a
+  ; function that can be called to just stop the pool and not also reset it -
+  ; https://github.com/overtone/at-at/issues/13
+  (at-at/stop-and-reset-pool! pool))

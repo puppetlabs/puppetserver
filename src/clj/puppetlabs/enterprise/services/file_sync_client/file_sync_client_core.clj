@@ -188,6 +188,7 @@
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
   [agent-state config http-client]
+  (log/debug "file sync process running ...")
   (try+
     (let [filesync-server-url (:server-url config)
           server-repo-path (:server-repo-path config)
@@ -207,22 +208,6 @@
           (log/error message)))
       {:status :failed
        :error  error})))
-
-(defn sync-and-schedule-again
-  "Runs the sync process on the agent and, once complete, schedules the next
-  iteration of the sync process using 'schedule-fn' and sending an action to
-  'sync-agent'."
-  [agent-state sync-agent schedule-fn config http-client]
-  (log/info "Periodic file sync process running ...")
-  (let [new-state (sync-on-agent agent-state config http-client)]
-    (log/debug "Scheduling the next iteration of the sync process.")
-    (schedule-fn #(send-off sync-agent
-                            sync-and-schedule-again
-                            sync-agent
-                            schedule-fn
-                            config
-                            http-client))
-    new-state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -265,9 +250,15 @@
    schedule-fn :- IFn
    config :- FileSyncClientServiceRawConfig
    http-client :- http-client/HTTPClient]
-  (send-off sync-agent
-            sync-and-schedule-again
-            sync-agent
-            schedule-fn
-            config
-            http-client))
+  (let [periodic-sync (fn [& args]
+                        (-> (apply sync-on-agent args)
+                            (assoc ::schedule-next-run? true)))
+        send-to-agent #(send-off sync-agent periodic-sync config http-client)]
+    (add-watch sync-agent
+               ::schedule-watch
+               (fn [key* ref* old-state new-state]
+                 (when (::schedule-next-run? new-state)
+                   (log/debug "Scheduling the next iteration of the sync process.")
+                   (schedule-fn send-to-agent))))
+    ; The watch is in place, now send the initial action.
+    (send-to-agent)))
