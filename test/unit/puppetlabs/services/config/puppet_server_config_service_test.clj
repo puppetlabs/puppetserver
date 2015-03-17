@@ -29,11 +29,6 @@
       (assoc-in [:jruby-puppet :master-conf-dir]
                 (str test-resources-dir "/master/conf"))))
 
-(defn valid-semver-number? [s]
-  (if (try (semver/valid-format? s)
-           (catch IllegalArgumentException e))
-    true false))
-
 (deftest config-service-functions
   (tk-testutils/with-app-with-config
     app
@@ -57,7 +52,7 @@
             (str "config not as expected: " service-config))
 
         (testing "The config service has puppet's version available."
-          (is (valid-semver-number?
+          (is (semver/valid-format?
                 (get-in-config service [:puppet-server :puppet-version]))))
 
         (testing "`get-in-config` functions"
