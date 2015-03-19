@@ -16,10 +16,10 @@ of context on how Puppet Server uses JRuby to handle incoming HTTP requests from
 your Puppet agents.
 
 When Puppet Server starts up, it creates a pool of JRuby interpreters to use
-as workers when we need to execute some of the Puppet Ruby code.  You can think
-of these almost as invidual Ruby "virtual machines" that are controlled by
+as workers when it needs need to execute some of the Puppet Ruby code.  You can think
+of these almost as individual Ruby "virtual machines" that are controlled by
 Puppet Server; it's not entirely dissimilar to the way that Passenger spawns
-several MRI Ruby processes to hand off work to.
+several Ruby processes to hand off work to.
 
 Puppet Server isolates these JRuby instances so that they will only be allowed
 to handle one request at a time.  This ensures that we do not encounter any
@@ -120,11 +120,14 @@ for all of the garbage that gets generated during a Puppet catalog compilation.
 Also, the memory requirements will vary based on how many Puppet modules you
 have in your module path, how much hiera data you have, etc.  At this time we're
 estimating that a reasonable ballpark figure is about 512MB of RAM per JRuby
-instance, give or take a bit based on the size of your Puppet codebase.
+instance, but that can vary depending on some characteristics of your Puppet
+codebase.  For example, if you have a really high number of modules or a great
+deal of hiera data, you might find that you need more than 512MB per JRuby
+instance.
 
 You'll also want to allocate a little extra heap to be used by the rest of the
 things going on in Puppet Server; the web server, etc.  So, a good rule of thumb
-might be 512MB + (max-active-instance * 512MB).
+might be 512MB + (max-active-instances * 512MB).
 
 We're working on some optimizations for really small installations (for testing,
 demos, etc.).  Puppet Server should run fine with a value of 1 for
