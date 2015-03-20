@@ -1,11 +1,10 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.lib RepositoryBuilder Repository PersonIdent)
+           (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.api.errors GitAPIException)
            (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
-            [clojure.java.io :as io]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-client :as client]
             [puppetlabs.kitchensink.core :as ks]
@@ -104,14 +103,6 @@
     (.setInt "http" nil "receivepack" (if allow-anonymous-push? 1 0))
     (.save))
   nil)
-
-(schema/defn get-bare-repo :- Repository
-  "Given a git directory (as something coercible to a File), return an instance
-  of `org.eclipse.jgit.lib.Repository` for that repository."
-  [git-dir]
-  (-> (RepositoryBuilder.)
-      (.setGitDir (io/as-file git-dir))
-      (.build)))
 
 (defn latest-commit-on-master
   "Returns the SHA-1 revision ID of the latest commit on the master branch of

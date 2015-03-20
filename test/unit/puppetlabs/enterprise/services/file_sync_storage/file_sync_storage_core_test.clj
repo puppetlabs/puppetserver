@@ -1,7 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core-test
   (:import (clojure.lang ExceptionInfo)
            (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.api.errors GitAPIException))
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]

@@ -257,15 +257,15 @@
      client-repo-dir)))
 
 (defn init-repo!
-  [path]
   "Creates a new Git repository at the given path.  Like `git init`."
+  [path]
   (-> (Git/init)
       (.setDirectory path)
       (.call)))
 
 (defn init-bare-repo!
-  [path]
   "Creates a new Git repository at the given path.  Like `git init`."
+  [path]
   (-> (Git/init)
       (.setDirectory path)
       (.setBare true)
