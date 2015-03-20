@@ -20,7 +20,10 @@ class Puppet::Server::HttpClient
   # Store a java HashMap of settings related to the http client
   def self.initialize_settings(settings)
     @settings = settings.select { |k,v|
-      ["ssl_protocols", "cipher_suites"].include? k
+      ["ssl_protocols",
+       "cipher_suites",
+       "http_connect_timeout",
+       "http_socket_timeout"].include? k
     }
   end
 
@@ -55,6 +58,7 @@ class Puppet::Server::HttpClient
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
+    configure_timeouts(request_options)
     configure_ssl(request_options)
     response = SyncHttpClient.post(request_options)
     ruby_response(response)
@@ -64,12 +68,25 @@ class Puppet::Server::HttpClient
     request_options = SimpleRequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
+    configure_timeouts(request_options)
     configure_ssl(request_options)
     response = SyncHttpClient.get(request_options)
     ruby_response(response)
   end
 
   private
+
+  def configure_timeouts(request_options)
+    settings = self.class.settings
+
+    if settings.has_key?("http_connect_timeout")
+      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout"])
+    end
+
+    if settings.has_key?("http_socket_timeout")
+      request_options.set_socket_timeout_milliseconds(settings["http_socket_timeout"])
+    end
+  end
 
   def configure_ssl(request_options)
     return unless @use_ssl

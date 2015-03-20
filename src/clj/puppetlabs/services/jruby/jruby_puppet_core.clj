@@ -74,14 +74,16 @@
 
     * :borrow-timeout - The timeout when borrowing instances from the JRuby Pool
         in milliseconds. Defaults to 1200000."
-  {:ruby-load-path                                  [schema/Str]
-   :gem-home                                        schema/Str
-   (schema/optional-key :master-conf-dir)           schema/Str
-   (schema/optional-key :master-var-dir)            schema/Str
-   (schema/optional-key :max-active-instances)      schema/Int
-   (schema/optional-key :http-client-ssl-protocols) [schema/Str]
-   (schema/optional-key :http-client-cipher-suites) [schema/Str]
-   (schema/optional-key :borrow-timeout)            schema/Int})
+  {:ruby-load-path                                    [schema/Str]
+   :gem-home                                          schema/Str
+   (schema/optional-key :master-conf-dir)             schema/Str
+   (schema/optional-key :master-var-dir)              schema/Str
+   (schema/optional-key :max-active-instances)        schema/Int
+   (schema/optional-key :http-client-ssl-protocols)   [schema/Str]
+   (schema/optional-key :http-client-cipher-suites)   [schema/Str]
+   (schema/optional-key :http-client-connect-timeout) schema/Int
+   (schema/optional-key :http-client-socket-timeout)  schema/Int
+   (schema/optional-key :borrow-timeout)              schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -180,7 +182,8 @@
    config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
-                http-client-ssl-protocols http-client-cipher-suites]} config]
+                http-client-ssl-protocols http-client-cipher-suites
+                http-client-connect-timeout http-client-socket-timeout]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
@@ -200,6 +203,8 @@
         (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
+      (.put puppet-server-config "http_connect_timeout" http-client-connect-timeout)
+      (.put puppet-server-config "http_socket_timeout" http-client-socket-timeout)
 
       (let [instance (map->JRubyPuppetInstance
                        {:pool                 pool

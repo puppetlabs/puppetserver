@@ -1,5 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
+            [clojure.set :as set]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
@@ -14,6 +15,16 @@
   "Default timeout when borrowing instances from the JRuby pool in
    milliseconds. Current value is 1200000ms, or 20 minutes."
   1200000)
+
+(def default-http-connect-timeout
+  "The default number of milliseconds that the client will wait for a connection
+  to be established. Currently set to 20 minutes."
+  (* 20 60 1000))
+
+(def default-http-socket-timeout
+  "The default number of milliseconds that the client will allow for no data to
+  be available on the socket. Currently set to 20 minutes."
+  (* 20 60 1000))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -33,7 +44,13 @@
                               (assoc :http-client-ssl-protocols
                                      (get-in-config [:http-client :ssl-protocols]))
                               (assoc :http-client-cipher-suites
-                                     (get-in-config [:http-client :cipher-suites])))
+                                     (get-in-config [:http-client :cipher-suites]))
+                              (assoc :http-client-connect-timeout
+                                     (get-in-config [:http-client :connect-timeout]
+                                                    default-http-connect-timeout))
+                              (assoc :http-client-socket-timeout
+                                     (get-in-config [:http-client :socket-timeout]
+                                                    default-http-socket-timeout)))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
           pool-agent  (jruby-agents/pool-agent agent-shutdown-fn)
