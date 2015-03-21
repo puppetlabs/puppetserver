@@ -1,3 +1,19 @@
+module CommandUtils
+  def ruby_command(host)
+    "env PATH=\"#{host['privatebindir']}:${PATH}\" ruby"
+  end
+  module_function :ruby_command
+
+  def gem_command(host)
+    if host['platform'] =~ /windows/
+      "env PATH=\"#{host['privatebindir']}:${PATH}\" cmd /c gem"
+    else
+      "env PATH=\"#{host['privatebindir']}:${PATH}\" gem"
+    end
+  end
+  module_function :gem_command
+end
+
 def install_puppet_from_msi( host, opts )
   if not link_exists?(opts[:url])
     raise "Puppet does not exist at #{opts[:url]}!"
@@ -12,6 +28,8 @@ def install_puppet_from_msi( host, opts )
   # make sure install is sane, beaker has already added puppet and ruby
   # to PATH in ~/.ssh/environment
   on host, puppet('--version')
+  ruby = CommandUtils.ruby_command(host)
+  on host, "#{ruby} --version"
 end
 
 step "Install MRI Puppet Agents."
