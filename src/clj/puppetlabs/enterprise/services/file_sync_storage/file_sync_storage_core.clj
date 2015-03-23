@@ -51,11 +51,10 @@
     * \"message\" - Commit message
 
     * \"author\"  - Map containing \"name\" and \"email\" of author for commit "
-  (schema/if map?
+  (schema/maybe
     {(schema/optional-key "message") schema/Str
      (schema/optional-key "author") {(schema/required-key "name") schema/Str
-                                     (schema/required-key "email") schema/Str}}
-    (schema/eq nil)))
+                                     (schema/required-key "email") schema/Str}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
