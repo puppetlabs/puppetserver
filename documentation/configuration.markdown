@@ -94,15 +94,17 @@ http-client: {
     #                TLS_RSA_WITH_AES_128_CBC_SHA256,
     #                TLS_RSA_WITH_AES_128_CBC_SHA]
     
-    # The amount of time, in milliseconds, that  an outbound HTTP connection
+    # The amount of time, in milliseconds, that an outbound HTTP connection
     # will wait for no data to be available before closing the socket. If not
-    # defined, defaults to 20 minutes.
+    # defined, defaults to 20 minutes. If 0, the timeout is infinite and if 
+    # negative, the value is undefined (system default).
     #socket-timeout: 1200000
 
-    # The mount of time, in milliseconds, that an output HTTP connection will
-    # wait to connect to connect before giving up. It not defined, defaults to
-    # 20 minutes.
-    #connect-timeout: 1200000    
+    # The amount of time, in milliseconds, that an output HTTP connection will
+    # wait to connect before giving up. It not defined, defaults to 2 minutes.
+    # If 0, the timeout is infinite and if negative, the value is undefined (
+    # system default).
+    #connect-timeout: 120000  
 }
 
 # settings related to profiling the puppet Ruby code

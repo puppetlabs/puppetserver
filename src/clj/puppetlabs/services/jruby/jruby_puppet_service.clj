@@ -19,7 +19,7 @@
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection
   to be established. Currently set to 20 minutes."
-  (* 20 60 1000))
+  (* 2 60 1000))
 
 (def default-http-socket-timeout
   "The default number of milliseconds that the client will allow for no data to
