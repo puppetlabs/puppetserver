@@ -1,5 +1,48 @@
 #!/usr/bin/env bash
 
-"${JAVA_BIN}" -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
+function parse_config_file() {
+    awk 'BEGIN{FS="="} /^[[:space:]]*'$1'/ {gsub(/ /, "",$2) ; print $2}' < "$(puppet config print confdir)/puppet.conf"
+}
+
+function parse_env() {
+    echo $http_proxy| awk "$1"
+}
+
+if [ -n "$http_proxy" ] ; then
+    HTTP_PROXY_HOST=$(parse_env 'BEGIN{FS=".*//(.+@)?"} {split($2,a,":"); print a[1]}')
+    HTTP_PROXY_PORT=$(parse_env 'BEGIN{FS=".*//(.+@)?"} {split($2,a,":"); print a[2]}')
+    HTTP_PROXY_USER=$(parse_env 'BEGIN{FS="//|@"} /@/ {split($2,a,":"); print a[1]}')
+    HTTP_PROXY_PASSWORD=$(parse_env 'BEGIN{FS="//|@"} /@/ {split($2,a,":"); print a[2]}')
+    SOURCE="http_proxy environment variable"
+else
+    HTTP_PROXY_HOST=$(parse_config_file http_proxy_host)
+    HTTP_PROXY_PORT=$(parse_config_file http_proxy_port)
+    HTTP_PROXY_USER=$(parse_config_file http_proxy_user)
+    HTTP_PROXY_PASSWORD=$(parse_config_file http_proxy_password)
+    SOURCE="$(puppet config print confdir)/puppet.conf"
+fi
+
+JVM_EXTRA=""
+if [ -n "$HTTP_PROXY_HOST" ] ; then
+    echo "Using proxy server specified in ${SOURCE}"
+    JVM_EXTRA+="-Dhttp.proxyHost=${HTTP_PROXY_HOST} "
+    JVM_EXTRA+="-Dhttps.proxyHost=${HTTP_PROXY_HOST} "
+
+    if [ -n "$HTTP_PROXY_PORT" ] ; then
+        JVM_EXTRA+="-Dhttp.proxyPort=${HTTP_PROXY_PORT} "
+        JVM_EXTRA+="-Dhttps.proxyPort=${HTTP_PROXY_PORT} "
+    fi
+
+    if [ -n "$HTTP_PROXY_USER" ] ; then
+        JVM_EXTRA+="-Dhttp.proxyUser=${HTTP_PROXY_USER} "
+    fi
+
+    if [ -n "$HTTP_PROXY_PASSWORD" ] ; then
+        JVM_EXTRA+="-Dhttp.proxyPassword=${HTTP_PROXY_PASSWORD} "
+    fi
+fi
+
+"${JAVA_BIN}" ${JVM_EXTRA} \
+    -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
     clojure.main -m puppetlabs.puppetserver.cli.gem \
     --config "${CONFIG}" -- "$@"
