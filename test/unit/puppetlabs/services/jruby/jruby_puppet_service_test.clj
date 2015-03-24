@@ -20,10 +20,10 @@
   {:jruby-puppet (jruby-testutils/jruby-puppet-config {:max-active-instances 1})})
 
 (defn jruby-service-test-config-with-timeouts
-  [connect-timeout socket-timeout]
+  [connect-timeout idle-timeout]
   (assoc jruby-service-test-config
-    :http-client {:connect-timeout connect-timeout
-                  :socket-timeout  socket-timeout}))
+    :http-client {:connect-timeout-milliseconds connect-timeout
+                  :idle-timeout-milliseconds    idle-timeout}))
 
 (deftest test-error-during-init
   (testing
@@ -140,8 +140,8 @@
         (let [service          (app/get-service app :JRubyPuppetService)
               context          (services/service-context service)
               pool-context-cfg (get-in context [:pool-context :config])]
-          (is (= connect-timeout (:http-client-connect-timeout pool-context-cfg)))
-          (is (= socket-timeout  (:http-client-socket-timeout pool-context-cfg)))))))
+          (is (= connect-timeout (:http-client-connect-timeout-milliseconds pool-context-cfg)))
+          (is (= socket-timeout  (:http-client-idle-timeout-milliseconds pool-context-cfg)))))))
 
   (testing "default values are set"
     (bootstrap/with-app-with-config
@@ -152,6 +152,6 @@
             context          (services/service-context service)
             pool-context-cfg (get-in context [:pool-context :config])]
         (is (= default-http-connect-timeout
-               (:http-client-connect-timeout pool-context-cfg)))
+               (:http-client-connect-timeout-milliseconds pool-context-cfg)))
         (is (= default-http-socket-timeout
-               (:http-client-socket-timeout pool-context-cfg)))))))
+               (:http-client-idle-timeout-milliseconds pool-context-cfg)))))))

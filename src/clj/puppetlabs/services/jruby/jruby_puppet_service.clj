@@ -44,11 +44,11 @@
                                      (get-in-config [:http-client :ssl-protocols]))
                               (assoc :http-client-cipher-suites
                                      (get-in-config [:http-client :cipher-suites]))
-                              (assoc :http-client-connect-timeout
-                                     (get-in-config [:http-client :connect-timeout]
+                              (assoc :http-client-connect-timeout-milliseconds
+                                     (get-in-config [:http-client :connect-timeout-milliseconds]
                                                     default-http-connect-timeout))
-                              (assoc :http-client-socket-timeout
-                                     (get-in-config [:http-client :socket-timeout]
+                              (assoc :http-client-idle-timeout-milliseconds
+                                     (get-in-config [:http-client :idle-timeout-milliseconds]
                                                     default-http-socket-timeout)))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)

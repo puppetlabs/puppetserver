@@ -97,14 +97,15 @@ http-client: {
     # The amount of time, in milliseconds, that an outbound HTTP connection
     # will wait for data to be available before closing the socket. If not
     # defined, defaults to 20 minutes. If 0, the timeout is infinite and if
-    # negative, the value is undefined (system default).
-    #socket-timeout: 1200000
+    # negative, the value is undefined by the application and governed by the 
+    # system default behavior. 
+    #idle-timeout-milliseconds: 1200000
 
     # The amount of time, in milliseconds, that an outbound HTTP connection will
     # wait to connect before giving up. Defaults to 2 minutes if not set. If 0,
     # the timeout is infinite and if negative, the value is undefined in the
     # application and governed by the system default behavior.
-    #connect-timeout: 120000
+    #connect-timeout-milliseconds: 120000
 }
 
 # settings related to profiling the puppet Ruby code

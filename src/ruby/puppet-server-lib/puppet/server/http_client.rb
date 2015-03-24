@@ -22,8 +22,8 @@ class Puppet::Server::HttpClient
     @settings = settings.select { |k,v|
       ["ssl_protocols",
        "cipher_suites",
-       "http_connect_timeout",
-       "http_socket_timeout"].include? k
+       "http_connect_timeout_milliseconds",
+       "http_idle_timeout_milliseconds"].include? k
     }
   end
 
@@ -79,12 +79,12 @@ class Puppet::Server::HttpClient
   def configure_timeouts(request_options)
     settings = self.class.settings
 
-    if settings.has_key?("http_connect_timeout")
-      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout"])
+    if settings.has_key?("http_connect_timeout_milliseconds")
+      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
     end
 
-    if settings.has_key?("http_socket_timeout")
-      request_options.set_socket_timeout_milliseconds(settings["http_socket_timeout"])
+    if settings.has_key?("http_idle_timeout_milliseconds")
+      request_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
     end
   end
 
