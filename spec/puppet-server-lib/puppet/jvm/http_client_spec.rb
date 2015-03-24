@@ -17,8 +17,8 @@ describe Puppet::Server::HttpClient do
       client = Puppet::Server::HttpClient.new(nil, 0, {})
       request_options = SimpleRequestOptions.new("http://i.love.ruby")
       client.send(:configure_timeouts, request_options)
-      request_options.get_socket_timeout_milliseconds.should == socket_timeout
-      request_options.get_connect_timeout_milliseconds.should == connect_timeout
+      expect(request_options.get_socket_timeout_milliseconds).to equal(socket_timeout)
+      expect(request_options.get_connect_timeout_milliseconds).to equal(connect_timeout)
     end
   end
 end
