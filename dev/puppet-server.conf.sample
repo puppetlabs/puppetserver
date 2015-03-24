@@ -67,15 +67,15 @@ http-client: {
     #                TLS_RSA_WITH_AES_128_CBC_SHA]
 
     # The amount of time, in milliseconds, that an outbound HTTP connection
-    # will wait for no data to be available before closing the socket. If not
+    # will wait for data to be available before closing the socket. If not
     # defined, defaults to 20 minutes. If 0, the timeout is infinite and if
     # negative, the value is undefined (system default).
     #socket-timeout: 1200000
 
-    # The amount of time, in milliseconds, that an output HTTP connection will
-    # wait to connect before giving up. It not defined, defaults to 2 minutes.
-    # If 0, the timeout is infinite and if negative, the value is undefined (
-    # system default).
+    # The amount of time, in milliseconds, that an outbound HTTP connection will
+    # wait to connect before giving up. Defaults to 2 minutes if not set. If 0,
+    # the timeout is infinite and if negative, the value is undefined in the
+    # application and governed by the system default behavior.
     #connect-timeout: 120000
 }
 

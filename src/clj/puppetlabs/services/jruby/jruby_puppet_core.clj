@@ -72,15 +72,17 @@
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made.
 
-    * :http-client-connect-timeout - The amount of time, in milliseconds, that
-        an outbound HTTP connection will wait for no data to be available before
-        closing the socket. Defaults to 2 minutes. If 0, the timeout is infinite
-        and if negative, the value is undefined (system default).
+    * :http-client-connect-timeout - The amount of time, in milliseconds, that an
+        outbound HTTP connection will wait to connect before giving up. Defaults
+        to 2 minutes if not set. If 0, the timeout is infinite and if negative,
+        the value is undefined in the application and governed by the system
+        default behavior.
 
-    * :http-client-socket-timeout - The amount of time, in milliseconds, that an
-        output HTTP connection will wait to connect before giving up. Defaults
-        to 20 minutes if not set. If 0, the timeout is infinite and if negative,
-        the value is undefined (system default).
+    * :http-client-socket-timeout - The amount of time, in milliseconds, that
+        an outbound HTTP connection will wait for data to be available after a
+        request is sent before closing the socket. Defaults to 2 minutes. If 0,
+        the timeout is infinite and if negative, the value is undefined by the
+        application and is governed by the default system behavior.
 
     * :borrow-timeout - The timeout when borrowing instances from the JRuby Pool
         in milliseconds. Defaults to 1200000."
