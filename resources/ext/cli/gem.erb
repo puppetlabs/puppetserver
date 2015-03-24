@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 PATH=/opt/puppet/bin:$PATH
 
 function parse_config_file() {
@@ -17,7 +16,9 @@ if [ ! -n "$http_proxy" ] ; then
     HTTP_PROXY_USER=$(parse_config_file http_proxy_user)
     HTTP_PROXY_PASSWORD=$(parse_config_file http_proxy_password)
     SOURCE="$(puppet config print confdir)/puppet.conf"
-    export http_proxy="http://${HTTP_PROXY_USER}:${HTTP_PROXY_PASSWORD}@${HTTP_PROXY_HOST}:${HTTP_PROXY_PORT}"
+    if [ -n "$HTTP_PROXY_HOST" ] && [ -n "$HTTP_PROXY_PORT" ] ; then
+        export http_proxy="http://${HTTP_PROXY_USER}:${HTTP_PROXY_PASSWORD}@${HTTP_PROXY_HOST}:${HTTP_PROXY_PORT}"
+    fi
 fi
 
 "${JAVA_BIN}" -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
