@@ -8,6 +8,8 @@
     (.setArgv (into-array String args))
     (.setEnvironment
       (hash-map
+        "http_proxy" (System/getenv "http_proxy")
+        "https_proxy" (System/getenv "https_proxy")
         "GEM_HOME" (get-in config [:jruby-puppet :gem-home])
         "JARS_NO_REQUIRE" "true"))
     (.runScriptlet "load 'META-INF/jruby.home/bin/gem'")))
