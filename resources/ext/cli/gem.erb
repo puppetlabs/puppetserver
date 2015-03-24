@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
+PATH=/opt/puppet/bin:$PATH
 
 function parse_config_file() {
-    awk 'BEGIN{FS="="} /^[[:space:]]*'$1'/ {gsub(/ /, "",$2) ; print $2}' < "$(puppet config print confdir)/puppet.conf"
+    VALUE=$(puppet config print --section user $1)
+    if [ "$VALUE" == "none" ] ; then
+        # remove any 'none' values
+        VALUE=""
+    fi
+    echo $VALUE
 }
 
 function parse_env() {
@@ -23,24 +29,19 @@ else
 fi
 
 JVM_EXTRA=""
-if [ -n "$HTTP_PROXY_HOST" ] ; then
+if [ -n "$HTTP_PROXY_USER" ] || [ "$HTTP_PROXY_PASSWORD" ] ; then
+    echo "This tool does not yet support proxies requiring authentication"
+    exit 1
+fi
+
+if [ -n "$HTTP_PROXY_HOST" ] && [ -n "$HTTP_PROXY_PORT" ] ; then
     echo "Using proxy server specified in ${SOURCE}"
     JVM_EXTRA+="-Dhttp.proxyHost=${HTTP_PROXY_HOST} "
     JVM_EXTRA+="-Dhttps.proxyHost=${HTTP_PROXY_HOST} "
-
-    if [ -n "$HTTP_PROXY_PORT" ] ; then
-        JVM_EXTRA+="-Dhttp.proxyPort=${HTTP_PROXY_PORT} "
-        JVM_EXTRA+="-Dhttps.proxyPort=${HTTP_PROXY_PORT} "
-    fi
-
-    if [ -n "$HTTP_PROXY_USER" ] ; then
-        JVM_EXTRA+="-Dhttp.proxyUser=${HTTP_PROXY_USER} "
-    fi
-
-    if [ -n "$HTTP_PROXY_PASSWORD" ] ; then
-        JVM_EXTRA+="-Dhttp.proxyPassword=${HTTP_PROXY_PASSWORD} "
-    fi
+    JVM_EXTRA+="-Dhttp.proxyPort=${HTTP_PROXY_PORT} "
+    JVM_EXTRA+="-Dhttps.proxyPort=${HTTP_PROXY_PORT} "
 fi
+
 
 "${JAVA_BIN}" ${JVM_EXTRA} \
     -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
