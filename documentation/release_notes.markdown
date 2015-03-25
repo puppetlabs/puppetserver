@@ -4,6 +4,71 @@ title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
+## Puppet Server 1.0.8
+
+###New Features
+
+#### Added new http-client timeout settings
+
+We've exposed two new HTTP client timeout settings, for idle and connection timeouts.
+
+* [SERVER-449](https://tickets.puppetlabs.com/browse/SERVER-449) - Expose http-client timeouts from Puppet Server http_connect_timeout and http_read_timeout.
+
+####Enabled HTTP traffic logs 
+
+This version of Puppet Server has a special-purpose logfile to capture only the HTTP traffic. This should work out of the box, but you can [configure the location and the format](./configuration.markdown#http-traffic) of the logfile.
+
+* [SERVER-319](https://tickets.puppetlabs.com/browse/SERVER-319)
+
+#### Added Puppet Server JRuby tuning guide
+
+We've added a new [Tuning Guide](./tuning_guide.markdown) to help you improve your Puppet Server performance by tuning your number of JRubies and your JVM heap size.
+
+* [SERVER-379](https://tickets.puppetlabs.com/browse/SERVER-379) - Tuning guide for JRubies, Heap size, etc.
+
+###Bug Fixes
+
+####Fixed an issue where Puppet Server couldn't start after reboot
+
+Previously, Puppet Server failed to start after a reboot on some systems (notably RHEL 7 and Ubuntu 14.4). This was because the `/var/run/` directory, needed by Puppet Server, was being destroyed on reboot. This issue has been fixed.
+
+* [SERVER-404](https://tickets.puppetlabs.com/browse/SERVER-404) - Properly create /var/run/puppetserver dir in FOSS packaging
+
+####JRuby default borrow timeouts are significantly extended
+
+The default JRuby pool borrow timeout was extended from 60 seconds to 20 minutes. This allows enough time for realistic expensive catalog compilations while avoiding indefinite hanging.
+
+* [SERVER-408](https://tickets.puppetlabs.com/browse/SERVER-408) - backport jruby borrow timeout changes to stable branch
+
+#### Startup scripts now use 'runuser'.
+
+We've added 'runuser' to the startup scripts to allow Puppet Server command line utilities to run on systems with restricted login capability. The scripts will first try to use 'runuser', then 'sudo', then 'su'.
+
+* [SERVER-344](https://tickets.puppetlabs.com/browse/SERVER-344) - Startup scripts should use 'runuser' not 'su'.
+
+####`puppetserver foreground` now produces output
+
+Running the `puppetserver foreground` subcommand produced no output. It should now provide its usual output again.
+
+* [SERVER-356](https://tickets.puppetlabs.com/browse/SERVER-356) - puppetserver foreground produces no output
+
+#### CA handling fixed
+
+We've fixed an issue where Puppet Server was mishandling some CAs. Specifically, if you brought up a Puppet CA on a master where you wanted to use an external Puppet CA, the local CA superseded the certificate from the external CA. This issue has been fixed.
+
+* [SERVER-345](https://tickets.puppetlabs.com/browse/SERVER-345) - Fixup usages of cacert / localcacert in master
+
+#### Default maximum JRuby instances capped at 4
+
+The default maximum number of JRuby instances has been capped at 4. This is a safer maximum for use with the default 2GB JVM memory.
+
+* [SERVER-448](https://tickets.puppetlabs.com/browse/SERVER-448) - Change default max-active-instances to not exceed 4 JRubies
+
+
+## Puppet Server 1.0.3 -- 1.0.7
+
+Puppet Server 1.0.6 is a Puppet Enterprise-only release, which is included in PE 3.7.2. The only change from Puppet Server 1.0.2 is that [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262) was reverted; this change is also included in Puppet Server 1.0.8. Other version numbers between 1.0.3 and 1.0.7 were never released.
+
 ## Puppet Server 1.0.2
 
 The 1.0.2 release of Puppet Server includes several bug fixes. It also improves logging functionality by allowing Logback changes to take effect without a restart.
