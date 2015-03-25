@@ -1,0 +1,30 @@
+---
+HOSTS:
+  redhat7-64-1:
+    roles:
+    - agent
+    - master
+    hypervisor: vcloud
+    pe_dir: 
+    pe_ver: 
+    pe_upgrade_dir: 
+    pe_upgrade_ver: 
+    platform: el-7-x86_64
+    template: Delivery/Quality Assurance/Templates/vCloud/redhat-7-x86_64
+  windows2008r2-64-2:
+    roles:
+    - agent
+    hypervisor: vcloud
+    pe_dir: 
+    pe_ver: 
+    pe_upgrade_dir: 
+    pe_upgrade_ver: 
+    platform: windows-2008r2-64
+    template: Delivery/Quality Assurance/Templates/vCloud/win-2008r2-x86_64
+CONFIG:
+  nfs_server: none
+  consoleport: 443
+  datastore: instance0
+  folder: Delivery/Quality Assurance/Enterprise/Dynamic
+  resourcepool: delivery/Quality Assurance/Enterprise/Dynamic
+  pooling_api: http://vcloud.delivery.puppetlabs.net/
