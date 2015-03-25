@@ -15,9 +15,7 @@ gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
-  # gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || '~> 2.2')
-  # See: SERVER-435 for the reasoning behind this specific version
-  gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || 'git://github.com/puppetlabs/beaker#beaker2.7.1')
+  gem 'beaker', *location_for(ENV['BEAKER_LOCATION'] || '2.7.1')
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '~> 0.11'
   end
