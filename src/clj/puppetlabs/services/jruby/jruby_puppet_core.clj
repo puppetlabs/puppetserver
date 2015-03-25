@@ -72,16 +72,31 @@
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made.
 
+    * :http-client-connect-timeout-milliseconds - The amount of time, in
+        milliseconds, that an outbound HTTP connection will wait to connect
+        before giving up. Defaults to 2 minutes if not set. If 0, the timeout is
+        infinite and if negative, the value is undefined in the application and
+        governed by the system default behavior.
+
+    * :http-client-idle-timeout-milliseconds - The amount of time, in
+        milliseconds, that an outbound HTTP connection will wait for data to be
+        available after a request is sent before closing the socket. Defaults to
+        2 minutes. If 0, the timeout is infinite and if negative, the value is
+        undefined by the application and is governed by the default system
+        behavior.
+
     * :borrow-timeout - The timeout when borrowing instances from the JRuby Pool
         in milliseconds. Defaults to 1200000."
-  {:ruby-load-path                                  [schema/Str]
-   :gem-home                                        schema/Str
-   (schema/optional-key :master-conf-dir)           schema/Str
-   (schema/optional-key :master-var-dir)            schema/Str
-   (schema/optional-key :max-active-instances)      schema/Int
-   (schema/optional-key :http-client-ssl-protocols) [schema/Str]
-   (schema/optional-key :http-client-cipher-suites) [schema/Str]
-   (schema/optional-key :borrow-timeout)            schema/Int})
+  {:ruby-load-path                                                 [schema/Str]
+   :gem-home                                                       schema/Str
+   (schema/optional-key :master-conf-dir)                          schema/Str
+   (schema/optional-key :master-var-dir)                           schema/Str
+   (schema/optional-key :max-active-instances)                     schema/Int
+   (schema/optional-key :http-client-ssl-protocols)                [schema/Str]
+   (schema/optional-key :http-client-cipher-suites)                [schema/Str]
+   (schema/optional-key :http-client-connect-timeout-milliseconds) schema/Int
+   (schema/optional-key :http-client-idle-timeout-milliseconds)    schema/Int
+   (schema/optional-key :borrow-timeout)                           schema/Int})
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -180,7 +195,9 @@
    config   :- JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
-                http-client-ssl-protocols http-client-cipher-suites]} config]
+                http-client-ssl-protocols http-client-cipher-suites
+                http-client-connect-timeout-milliseconds
+                http-client-idle-timeout-milliseconds]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
@@ -200,6 +217,10 @@
         (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
+      (.put puppet-server-config "http_connect_timeout_milliseconds"
+            http-client-connect-timeout-milliseconds)
+      (.put puppet-server-config "http_idle_timeout_milliseconds"
+            http-client-idle-timeout-milliseconds)
 
       (let [instance (map->JRubyPuppetInstance
                        {:pool                 pool
