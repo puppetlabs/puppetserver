@@ -35,13 +35,17 @@ Nov 12 17:46:12 fqdn.com java[56495]: Failed to load feature test for posix: can
 Nov 12 17:46:12 fqdn.com java[56495]: Cannot run on Microsoft Windows without the win32-process, win32-dir and win32-service gems: Win32API only supported on win32
 Nov 12 17:46:12 fqdn.com java[56495]: Puppet::Error: Cannot determine basic system flavour
 ```
+
 This is caused by the fact that JRuby contains some embedded files which need to be
 copied somewhere on the filesystem before they can be executed
-([see this JRuby issue](https://github.com/jruby/jruby/issues/2186)).  To work 
+([see this JRuby issue](https://github.com/jruby/jruby/issues/2186)). To work 
 around this  issue, you can either mount the `/tmp` directory without 
 `noexec`, or you can choose a different directory to use as the temporary 
-directory for the Puppet Server process. If you want to use a different directory,
-you can set the following JVM property:
+directory for the Puppet Server process. 
+
+Either way, you'll need to set the permissions of the directory to `1777`. This allows the Puppet Server JRuby process to write a file to `/tmp` and then execute it. If permissions are set incorrectly, you'll get a massive stack trace without much useful information in it.
+
+To use a different temporary directory, you can set the following JVM property:
 
 ```
 -Djava.io.tmpdir=/some/other/temporary/directory
@@ -49,7 +53,7 @@ you can set the following JVM property:
 
 When Puppet Server is installed from packages, this property should be added
 to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
-or `/etc/default/puppetserver`, depending on upon your distribution.  Note that 
+or `/etc/default/puppetserver`, depending on upon your distribution. Note that 
 the service will need to be restarted in order for this change to take effect.
 
 
