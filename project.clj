@@ -10,7 +10,7 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
-(defproject puppetlabs/puppet-server ps-version
+(defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
@@ -83,7 +83,7 @@
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
-             :ezbake {:dependencies ^:replace [[puppetlabs/puppet-server ~ps-version]
+             :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
                       :plugins [[puppetlabs/lein-ezbake "0.2.6"]]

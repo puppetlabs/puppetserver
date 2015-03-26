@@ -10,7 +10,7 @@
 
 (deftest test-get-coords
   (testing "group-id should use the default if not specified"
-    (is (= {:group-id    "puppetlabs.packages"
+    (is (= {:group-id    "puppetlabs"
             :artifact-id "foo"}
            (get-coords "foo"))))
   (testing "should use group-id if specified"
