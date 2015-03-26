@@ -6,6 +6,8 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 1.0.8
 
+In addition to several bug fixes, this release adds new HTTP client timeout settings, a special logfile to capture only HTTP traffic, and a JRuby tuning guide to help you get the best performance from Puppet Server.
+
 ###New Features
 
 #### Added new http-client timeout settings
