@@ -21,4 +21,19 @@ describe Puppet::Server::HttpClient do
       expect(request_options.get_connect_timeout_milliseconds).to equal(connect_timeout)
     end
   end
+
+  context "requests" do
+    it "throw Ruby SocketErrors instead of Java exceptions" do
+      client = Puppet::Server::HttpClient.new("localhost", 0, {})
+      [lambda { client.get('/', nil) },
+       lambda { client.post('/', nil, nil) }
+      ].each do |request_block|
+        expect(&request_block).to raise_error { |error|
+          expect(error).to be_a(SocketError)
+          expect(error).to be_a(Puppet::Server::HttpClientError)
+          expect(error.message).to eq('com.puppetlabs.http.client.HttpClientException: Error executing http request')
+        }
+      end
+    end
+  end
 end

@@ -126,17 +126,27 @@
              {:cipher-suites ~cipher-suites}))
     ~@body))
 
+(defn raise-caught-http-error
+  "Returns a Ruby script string that executes `script', rescues the expected
+   Puppet::Server::HttpClientError, and raises the nested exception for testing
+   the underlying cause."
+  [script]
+  (str "begin;"
+       script
+       ";rescue Puppet::Server::HttpClientError => e;"
+       "  raise e.cause.getCause;"
+       "end"))
+
 (deftest https-tls-defaults
   (testing "requests fail without an SSL client"
     (with-webserver-with-protocols nil nil
-       (let [sc (create-scripting-container 10080)]
-         (logutils/with-test-logging
-           (try
-             (.runScriptlet sc "response = c.get('/', {})")
-             (is (true? false) "Expected HTTP connection to HTTPS port to fail")
-             (catch EvalFailedException e
-               (is (instance? HttpClientException (.. e getCause)))
-               (is (instance? ConnectionClosedException (.. e getCause getCause)))))))))
+      (let [sc (create-scripting-container 10080)]
+        (logutils/with-test-logging
+          (try
+            (.runScriptlet sc (raise-caught-http-error "c.get('/', {})"))
+            (is false "Expected HTTP connection to HTTPS port to fail")
+           (catch EvalFailedException e
+             (is (instance? ConnectionClosedException (.getCause e)))))))))
 
   (testing "Can connect via TLSv1 by default"
     (with-webserver-with-protocols ["TLSv1"] nil
@@ -165,11 +175,10 @@
       (testing "Cannot connect via SSLv3 by default"
         (let [sc (create-scripting-container-with-ssl-client 10080)]
           (try
-            (.runScriptlet sc "response = c.get('/', {})")
-            (is (true? false) "Expected HTTP connection to HTTPS port to fail")
+            (.runScriptlet sc (raise-caught-http-error "c.get('/', {})"))
+            (is false "Expected HTTP connection to HTTPS port to fail")
             (catch EvalFailedException e
-              (is (instance? HttpClientException (.. e getCause)))
-              (is (instance? SSLHandshakeException (.. e getCause getCause)))))))
+              (is (instance? SSLHandshakeException (.getCause e)))))))
 
       (testing "Can connect via SSLv3 when specified"
         (let [sc (create-scripting-container-with-ssl-client
@@ -188,11 +197,11 @@
                   {:ssl-protocols ["SSLv3"]
                    :cipher-suites ["SSL_RSA_WITH_RC4_128_MD5"]})]
           (try
-            (.runScriptlet sc "response = c.get('/', {})")
-            (is (true? false) "Expected HTTP connection to HTTPS port to fail")
+            (.runScriptlet sc (raise-caught-http-error "c.get('/', {})"))
+            (is false "Expected HTTP connection to HTTPS port to fail")
             (catch EvalFailedException e
-              (is (instance? HttpClientException (.. e getCause)))
-              (is (instance? ConnectionClosedException (.. e getCause getCause)))))))
+              (is (instance? ConnectionClosedException (.getCause e)))))))
+
       (testing "Should be able to connect if explicit matching ciphers are configured"
         (let [sc (create-scripting-container-with-ssl-client
                   10080
