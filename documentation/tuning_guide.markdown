@@ -76,8 +76,7 @@ then it might make sense to have more JRuby instances than the number of cores. 
 
 At this point you may be wondering, "What's the downside to just setting
 `max-active-instances` to a really high value?" The answer to this question, in
-a nutshell, is "memory usage". This brings us to the other extremely important
-Puppet Server.
+a nutshell, is "memory usage". This brings us to the other extremely important setting to consider for Puppet Server.
 
 ### JVM Heap Size
 

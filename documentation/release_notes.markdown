@@ -10,9 +10,9 @@ In addition to several bug fixes, this release adds new HTTP client timeout sett
 
 ###New Features
 
-#### Added new http-client timeout settings
+####Added new http-client timeout settings
 
-We've exposed two new HTTP client timeout settings, for idle and connection timeouts.
+We've exposed two new HTTP client timeout settings: `idle-timeout-milliseconds` and `connect-timeout-milliseconds`. These new settings can be configured in the http-client section of the [puppetserver.conf file](./configuration.markdown#puppetserverconf).
 
 * [SERVER-449](https://tickets.puppetlabs.com/browse/SERVER-449) - Expose http-client timeouts from Puppet Server http_connect_timeout and http_read_timeout.
 
@@ -21,6 +21,12 @@ We've exposed two new HTTP client timeout settings, for idle and connection time
 This version of Puppet Server has a special-purpose logfile to capture only the HTTP traffic. This should work out of the box, but you can [configure the location and the format](./configuration.markdown#http-traffic) of the logfile.
 
 * [SERVER-319](https://tickets.puppetlabs.com/browse/SERVER-319)
+
+####Added new JRuby default borrow timeout setting
+
+Previously, the JRuby pool borrow timeout was indefinite and wasn't configurable. As of SERVER 1.0.8, there is a new `borrow-timeout` setting in the http-client section of the [puppetserver.conf file](./configuration.markdown#puppetserverconf). If you don't specify a value for that setting, Puppet Server will use 20 minutes as a default. This allows enough time for realistic expensive catalog compilations while avoiding indefinite hanging.
+
+* [SERVER-408](https://tickets.puppetlabs.com/browse/SERVER-408) - Expose configurable `borrow-timeout` to allow JRuby pool borrows to timeout
 
 #### Added Puppet Server JRuby tuning guide
 
@@ -36,11 +42,6 @@ Previously, Puppet Server failed to start after a reboot on some systems (notabl
 
 * [SERVER-404](https://tickets.puppetlabs.com/browse/SERVER-404) - Properly create /var/run/puppetserver dir in FOSS packaging
 
-####JRuby default borrow timeouts are significantly extended
-
-The default JRuby pool borrow timeout was extended from 60 seconds to 20 minutes. This allows enough time for realistic expensive catalog compilations while avoiding indefinite hanging.
-
-* [SERVER-408](https://tickets.puppetlabs.com/browse/SERVER-408) - backport jruby borrow timeout changes to stable branch
 
 #### Startup scripts now use 'runuser'.
 
@@ -56,7 +57,7 @@ Running the `puppetserver foreground` subcommand produced no output. It should n
 
 #### CA handling fixed
 
-We've fixed an issue where Puppet Server was mishandling some CAs. Specifically, if you brought up a Puppet CA on a master where you wanted to use an external Puppet CA, the local CA superseded the certificate from the external CA. This issue has been fixed.
+Previously, Puppet Server was mishandling some CAs. Specifically, if you brought up a Puppet CA on a master where you wanted to use an external Puppet CA, but you hadn't already configured the disabled CA service in the `bootstrap.cfg` file, the local CA superseded the certificate from the external CA. This issue has now been fixed.
 
 * [SERVER-345](https://tickets.puppetlabs.com/browse/SERVER-345) - Fixup usages of cacert / localcacert in master
 
@@ -69,7 +70,9 @@ The default maximum number of JRuby instances has been capped at 4. This is a sa
 
 ## Puppet Server 1.0.3 -- 1.0.7
 
-Puppet Server 1.0.6 is a Puppet Enterprise-only release, which is included in PE 3.7.2. The only change from Puppet Server 1.0.2 is that [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262) was reverted; this change is also included in Puppet Server 1.0.8. Other version numbers between 1.0.3 and 1.0.7 were never released.
+Puppet Server versions 1.0.3 -- 1.0.7 were never released. 
+
+However, Puppet Enterprise 3.7.2 included a version of Puppet Server that was labeled as version 1.0.6. The only change from Puppet Server 1.0.2 was that the fix for [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262) was reverted in [SERVER-522](https://tickets.puppetlabs.com/browse/SERVER-522). This change is also included in the release of Puppet Server 1.0.8.
 
 ## Puppet Server 1.0.2
 
