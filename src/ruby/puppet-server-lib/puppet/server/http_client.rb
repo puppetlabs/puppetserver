@@ -88,13 +88,13 @@ class Puppet::Server::HttpClient
   def client_get(request_options)
     SyncHttpClient.get(request_options)
   rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
-    raise Puppet::Server::HttpClientError.new(e.inspect, e)
+    raise Puppet::Server::HttpClientError.new(e.message, e)
   end
 
   def client_post(request_options)
     SyncHttpClient.post(request_options)
   rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
-    raise Puppet::Server::HttpClientError.new(e.inspect, e)
+    raise Puppet::Server::HttpClientError.new(e.message, e)
   end
 
   def configure_timeouts(request_options)
