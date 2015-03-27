@@ -9,6 +9,15 @@ SyncHttpClient = com.puppetlabs.http.client.Sync
 java_import com.puppetlabs.http.client.SimpleRequestOptions
 java_import com.puppetlabs.http.client.ResponseBodyType
 
+class Puppet::Server::HttpClientError < SocketError
+  attr_reader :cause
+
+  def initialize(message, cause = nil)
+    super(message)
+    @cause = cause
+  end
+end
+
 class Puppet::Server::HttpClient
 
   OPTION_DEFAULTS = {
@@ -50,8 +59,8 @@ class Puppet::Server::HttpClient
       end
 
       # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
-      headers["Authorization"] =
-          "Basic #{Base64.strict_encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
+      encoded = Base64.strict_encode64("#{credentials[:user]}:#{credentials[:password]}")
+      headers["Authorization"] = "Basic #{encoded}"
     end
 
     request_options = SimpleRequestOptions.new(build_url(url))
@@ -60,7 +69,7 @@ class Puppet::Server::HttpClient
     request_options.set_body(body)
     configure_timeouts(request_options)
     configure_ssl(request_options)
-    response = SyncHttpClient.post(request_options)
+    response = client_post(request_options)
     ruby_response(response)
   end
 
@@ -70,11 +79,23 @@ class Puppet::Server::HttpClient
     request_options.set_as(ResponseBodyType::TEXT)
     configure_timeouts(request_options)
     configure_ssl(request_options)
-    response = SyncHttpClient.get(request_options)
+    response = client_get(request_options)
     ruby_response(response)
   end
 
   private
+
+  def client_get(request_options)
+    SyncHttpClient.get(request_options)
+  rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
+    raise Puppet::Server::HttpClientError.new(e.message, e)
+  end
+
+  def client_post(request_options)
+    SyncHttpClient.post(request_options)
+  rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
+    raise Puppet::Server::HttpClientError.new(e.message, e)
+  end
 
   def configure_timeouts(request_options)
     settings = self.class.settings
