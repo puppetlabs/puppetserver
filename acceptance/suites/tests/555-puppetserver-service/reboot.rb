@@ -6,8 +6,8 @@ end
 
 test_name "Validates the ability of the #{pssn} service to reliably start after a reboot."
 
-max=10
-sleeptime=40
+max=3
+sleeptime=45
 retryCounter=0
 step "\n-----------\nValidate #{pssn} is up and running, then reboot, repeat #{max} times\n-----------"
 
@@ -29,10 +29,8 @@ for i in 1..max
     raise Beaker::DSL::FailTest, 'Could not SSH into puppet master within 2 minutes after reboot'
   end
 
-  step "look at uptime"
+  step "look at uptime to ensure that we actually rebooted"
   secondUptime=on(master, "awk '{print $1}' /proc/uptime").stdout.chomp.to_i
-
-  step "Checking for uptime sanity"
   assert_operator(origUptime, :>, secondUptime, "Expect original uptime #{secondUptime} to be greater than original uptime #{origUptime} ")
   
   step "sleeping for #{sleeptime} seconds and waiting for #{pssn} to start."
@@ -51,13 +49,7 @@ for i in 1..max
   step "Post loop check"
   on(master,"service #{pssn} status")
 
-  step "Modifing sleeptime"
-  puts "  sleeptime is currently #{sleeptime}  retryCounter is currently #{retryCounter}"
-  sleeptime = sleeptime + retryCounter
-  puts "  Now sleeptime is #{sleeptime}"
-
 end
 
-puts "We should modify sleeptime to #{sleeptime}"
 
 

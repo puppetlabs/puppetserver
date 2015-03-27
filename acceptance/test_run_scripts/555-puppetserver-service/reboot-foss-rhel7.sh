@@ -9,21 +9,17 @@ fi
 export PACKAGE_BUILD_VERSION=1.0.4.SNAPSHOT.2015.03.24T0146
 
 configYaml=acceptance/config/beaker/jenkins/redhat-7-x86_64-mdca.cfg
-helper=acceptance/lib/helper.rb
-options=acceptance/config/beaker/options.rb
 tests=acceptance/suites/tests/555-puppetserver-service/reboot.rb
 presuite=acceptance/suites/pre_suite/foss
-postsuite=acceptance/suites/post_suite
-BEAKER_TYPE=foss
 
 BEAKEROPTS="--debug \
 --keyfile ~/.ssh/id_rsa-acceptance \
---helper $helper \
+--helper acceptance/lib/helper.rb \
 --load-path ruby/puppet/acceptance/lib \
---options $options \
+--options acceptance/config/beaker/options.rb \
 --tests $tests \
---post-suite $postsuite \
---type $BEAKER_TYPE "
+--post-suite acceptance/suites/post_suite \
+--type foss "
 
 
 #########
