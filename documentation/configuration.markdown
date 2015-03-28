@@ -187,6 +187,33 @@ The default Logback configuration file is at `/etc/puppetserver/logback.xml` or 
 
 Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
 
+### HTTP Traffic
+
+Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate
+file than the main log file. By default, this is located at
+`/var/log/puppetserver/puppetserver-access.log` (open source releases) and
+`/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
+
+By default, the following information is logged for each HTTP request:
+* remote host
+* remote log name
+* remote user
+* date of the logging event
+* URL requested
+* status code of the request
+* response content length
+* remote IP address
+* local port
+* elapsed time to serve the request, in milliseconds
+
+The Logback configuration file is at `/etc/puppetserver/request-logging.xml` or
+`/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to
+change the logging behavior, and/or specify a different Logback configuration
+file in [`webserver.conf`](#webserverconf) with the
+[`access-log-config`](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#access-log-config)
+setting. For more information on configuring the logged data, see the
+[Logback Access Pattern Layout](http://logback.qos.ch/manual/layouts.html#AccessPatternLayout).
+
 ## Service Bootstrapping
 
 Puppet Server is built on top of our open-source Clojure application framework,
