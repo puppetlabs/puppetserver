@@ -36,6 +36,9 @@
   {:working-dir                                 schema/Str
    (schema/optional-key :http-push-enabled)   Boolean})
 
+(def GitRepos
+  {schema/Keyword GitRepo})
+
 (def FileSyncServiceRawConfig
   "Schema defining the full content of the JGit service configuration.
 
@@ -47,9 +50,9 @@
     * :repos     - A vector with metadata about each of the individual
                    Git repositories that the server manages."
   {:base-path                               schema/Str
-   :repos                                   {schema/Keyword GitRepo}})
+   :repos                                   GitRepos})
 
-(def PublishBody
+(def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
 
   The body is optional, but if supplied it must be a map with the
@@ -62,6 +65,26 @@
     {(schema/optional-key "message") schema/Str
      (schema/optional-key "author") {(schema/required-key "name") schema/Str
                                      (schema/required-key "email") schema/Str}}))
+
+(def PublishError
+  "Schema defining an error when attempting to publish a repo."
+  {:error {:type (schema/enum :puppetlabs.enterprise.file-sync-storage/publish-error
+                              :puppetlabs.enterprise.file-sync-storage/repo-not-found-error)
+           :message schema/Str}})
+
+(def PublishRepoResult
+  "Schema defining the result of publishing a single repo, which is
+  either a SHA for the new commit on the storage server, or an error."
+  (schema/if map?
+    PublishError
+    schema/Str))
+
+(def PublishResponseBody
+  "Schema defining the body of a response to the publish content endpoint.
+
+  The response is a map of repo name to repo status, which is either a
+  SHA or an error map."
+  {schema/Keyword PublishRepoResult})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -156,11 +179,14 @@
       .getNewObjectId
       .getName))
 
-(defn publish-repo
+(schema/defn publish-repo :- PublishRepoResult
   "Add and commit all unversioned files and push to origin. Return the
   SHA of the commit if successful, or a map with an error message if
   not."
-  [git sub-path message author]
+  [git :- Git
+   sub-path :- schema/Str
+   message :- schema/Str
+   author :- PersonIdent]
   (try
     (log/debugf "Adding and commiting unversioned files for working directory %s" sub-path)
     (client/add-and-commit git message author)
@@ -174,13 +200,15 @@
                :message (str "Failed to publish " sub-path ":"
                           (.getMessage e))}})))
 
-(defn publish-repos
+(schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit
   author, perform an add, commit, and push for each working directory.
   Returns the newest SHA for each working directory that was
   successfully pushed, an error if there was no existing git repository
   in the directory, or an error that the add/commit/push failed."
-  [sub-paths message author]
+  [sub-paths :- [schema/Str]
+   message :- schema/Str
+   author :- PersonIdent]
   (for [sub-path sub-paths]
     (do
       (log/infof "Publishing working directory %s to file sync storage service" sub-path)
@@ -193,13 +221,14 @@
              {:error {:type :puppetlabs.enterprise.file-sync-storage/repo-not-found-error
                       :message (.getMessage e)}})))))
 
-(schema/defn ^:always-validate publish-content
+(schema/defn ^:always-validate publish-content :- PublishResponseBody
   "Given a map of repositories and the JSON body of the request, publish
   each working directory to the file sync storage service, using the
   contents of the body - if provided - for the commit author and
   message. Returns a map of repository name to status - either SHA of
   latest commit or error."
-  [repos body :- PublishBody]
+  [repos :- GitRepos
+   body :- PublishRequestBody]
   (let [author (commit-author (get body "author"))
         message (get body "message" "Publish content to file sync storage service")
         res (publish-repos (map :working-dir (vals repos)) message author)]
