@@ -17,6 +17,13 @@
             [cheshire.core :as json]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Defaults
+
+(def default-commit-author-name "PE File Sync Service")
+
+(def default-commit-author-email "")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
 (def GitRepo
@@ -132,8 +139,8 @@
   "Create PersonIdent instance using provided name and email, or
   defaults if not provided."
   [author]
-  (let [name (get author "name" "PE File Sync Service")
-        email (get author "email" "")]
+  (let [name (get author "name" default-commit-author-name)
+        email (get author "email" default-commit-author-email)]
    (PersonIdent. name email)))
 
 (defn push-and-return-sha
