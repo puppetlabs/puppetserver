@@ -70,7 +70,8 @@
                        :group "puppet"
                        :start-timeout "120"
                        :build-type "foss"
-                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
+                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
+                       :repo-target "PC1"}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"}
 
