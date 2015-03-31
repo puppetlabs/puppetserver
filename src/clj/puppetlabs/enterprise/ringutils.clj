@@ -2,6 +2,7 @@
 ;; probably be moved into a shared library or some such.
 (ns puppetlabs.enterprise.ringutils
   (:require [clojure.tools.logging :as log]
+            [slingshot.slingshot :refer [try+]]
             [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -30,16 +31,19 @@
   response with the details"
   [handler]
   (fn [request]
-    (try (handler request)
-         (catch clojure.lang.ExceptionInfo e
-           (let [message (.getMessage e)]
-             (if (re-find #"does not match schema" message)
-               {:status 400
-                :body {:error {:type :schema-error
-                               :message (str "Request body did not match schema: "
-                                             (.getData e))}}}
-               ;; re-throw exceptions that aren't schema errors
-               (throw e)))))))
+    (try+ (handler request)
+          (catch [:type :user-data-invalid] e
+            {:status 400
+             :body {:error e}})
+          (catch clojure.lang.ExceptionInfo e
+            (let [message (.getMessage e)]
+              (if (re-find #"does not match schema" message)
+                {:status 500
+                 :body {:error {:type :application-error
+                                :message (str "Something unexpected happened: "
+                                              (:error (.getData e)))}}}
+                ;; re-throw exceptions that aren't schema errors
+                (throw e)))))))
 
 (defn wrap-errors
   "A ring middleware that catches all otherwise uncaught errors and

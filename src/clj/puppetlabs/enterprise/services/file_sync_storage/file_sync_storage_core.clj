@@ -10,7 +10,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.ringutils :as ringutils]
             [schema.core :as schema]
-            [slingshot.slingshot :refer [try+]]
+            [slingshot.slingshot :refer [try+ throw+]]
             [compojure.core :as compojure]
             [ring.middleware.json :as ring-json]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -229,11 +229,15 @@
   message. Returns a map of repository name to status - either SHA of
   latest commit or error."
   [repos :- GitRepos
-   body :- PublishRequestBody]
-  (let [author (commit-author (:author body))
-        message (:message body default-commit-message)
-        new-commits (publish-repos (map :working-dir (vals repos)) message author)]
-    (zipmap (keys repos) new-commits)))
+   body]
+  (if-let [checked-body (schema/check PublishRequestBody body)]
+    (throw+ {:type    :user-data-invalid
+             :message (str "Request body did not match schema: "
+                           checked-body)})
+    (let [author (commit-author (:author body))
+          message (:message body default-commit-message)
+          new-commits (publish-repos (map :working-dir (vals repos)) message author)]
+      (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
