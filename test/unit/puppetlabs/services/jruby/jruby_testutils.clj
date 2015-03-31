@@ -2,9 +2,10 @@
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
            (org.jruby.embed ScriptingContainer LocalContextScope))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as profiler-core]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]))
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -12,6 +13,7 @@
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
 
 (def conf-dir "./target/master-conf")
+(def var-dir "./target/master-var")
 
 (def gem-home "./target/jruby-gem-home")
 
@@ -52,24 +54,27 @@
   JRubyPuppet pool size with be included with the config, otherwise no size
   will be specified."
   ([]
-   {:ruby-load-path  ruby-load-path
-    :gem-home        gem-home
-    :master-conf-dir conf-dir})
+   (jruby-core/initialize-config
+     {:jruby-puppet {:gem-home        gem-home
+                     :master-conf-dir conf-dir
+                     :master-var-dir  var-dir}
+      :os-settings  {:ruby-load-path ruby-load-path}}))
   ([options]
    (merge (jruby-puppet-config) options)))
 
-(def default-config-no-size
-  (jruby-puppet-config))
-
 (def default-profiler
   nil)
+
+(defn default-shutdown-fn
+  [f]
+  (f))
 
 (defn create-pool-instance
   ([]
    (create-pool-instance (jruby-puppet-config {:max-active-instances 1})))
   ([config]
-   (let [pool (jruby-core/instantiate-free-pool 1)]
-     (jruby-core/create-pool-instance! pool 1 config default-profiler))))
+   (let [pool (jruby-internal/instantiate-free-pool 1)]
+     (jruby-internal/create-pool-instance! pool 1 config default-profiler))))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -81,10 +86,11 @@
       (Object.))))
 
 (defn create-mock-pool-instance
-  [pool _ _ _]
-  (let [instance (jruby-core/map->JRubyPuppetInstance
+  [pool id _ _]
+  (let [instance (jruby-schemas/map->JRubyPuppetInstance
                    {:pool                 pool
-                    :id                   1
+                    :id                   id
+                    :state                (atom {:request-count 0})
                     :jruby-puppet         (create-mock-jruby-instance)
                     :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
@@ -96,13 +102,13 @@
   mock JRubyPuppet instances."
   [f]
   (with-redefs
-    [jruby-core/create-pool-instance! create-mock-pool-instance]
+    [jruby-internal/create-pool-instance! create-mock-pool-instance]
     (f)))
 
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."
-  [pool size]
-  (mapv (fn [_] (jruby-core/borrow-from-pool pool)) (range size)))
+  [pool-context size]
+  (mapv (fn [_] (jruby-core/borrow-from-pool pool-context)) (range size)))
 
 (defn fill-drained-pool
   "Returns a list of JRubyPuppet instances back to their pool."
@@ -118,8 +124,8 @@
 
   Returns a vector containing the results of executing the scripts against the
   JRuby instances."
-  [pool size f]
-  (let [jrubies (drain-pool pool size)
+  [pool-context size f]
+  (let [jrubies (drain-pool pool-context size)
         result  (reduce
                   (fn [acc jruby-offset]
                     (let [sc (:scripting-container (nth jrubies jruby-offset))
