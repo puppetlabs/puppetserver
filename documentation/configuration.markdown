@@ -195,6 +195,7 @@ file than the main log file. By default, this is located at
 `/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
 
 By default, the following information is logged for each HTTP request:
+
 * remote host
 * remote log name
 * remote user
