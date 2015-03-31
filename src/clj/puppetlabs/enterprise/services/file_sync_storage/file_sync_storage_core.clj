@@ -23,6 +23,8 @@
 
 (def default-commit-author-email "")
 
+(def default-commit-message "Publish content to file sync storage service")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
@@ -58,18 +60,18 @@
   The body is optional, but if supplied it must be a map with the
   following optional values:
 
-    * \"message\" - Commit message
+    * :message - Commit message
 
-    * \"author\"  - Map containing \"name\" and \"email\" of author for commit "
+    * :author  - Map containing :name and :email of author for commit "
   (schema/maybe
-    {(schema/optional-key "message") schema/Str
-     (schema/optional-key "author") {(schema/required-key "name") schema/Str
-                                     (schema/required-key "email") schema/Str}}))
+    {(schema/optional-key :message) schema/Str
+     (schema/optional-key :author) {:name schema/Str
+                                    :email schema/Str}}))
 
 (def PublishError
   "Schema defining an error when attempting to publish a repo."
-  {:error {:type (schema/enum :puppetlabs.enterprise.file-sync-storage/publish-error
-                              :puppetlabs.enterprise.file-sync-storage/repo-not-found-error)
+  {:error {:type (schema/enum ::publish-error
+                              ::repo-not-found-error)
            :message schema/Str}})
 
 (def PublishRepoResult
@@ -162,8 +164,8 @@
   "Create PersonIdent instance using provided name and email, or
   defaults if not provided."
   [author]
-  (let [name (get author "name" default-commit-author-name)
-        email (get author "email" default-commit-author-email)]
+  (let [name (:name author default-commit-author-name)
+        email (:email author default-commit-author-email)]
    (PersonIdent. name email)))
 
 (defn push-and-return-sha
@@ -192,13 +194,7 @@
     (client/add-and-commit git message author)
 
     (log/debugf "Pushing working directory %s" sub-path)
-    (push-and-return-sha git)
-
-    (catch GitAPIException e
-      (log/errorf "Failed to publish %s: %s" sub-path (.getMessage e))
-      {:error {:type :puppetlabs.enterprise.file-sync-storage/publish-error
-               :message (str "Failed to publish " sub-path ":"
-                          (.getMessage e))}})))
+    (push-and-return-sha git)))
 
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit
@@ -218,8 +214,13 @@
              (publish-repo git sub-path message author))
            (catch RepositoryNotFoundException e
              (log/errorf "Unable to find git repository %s" sub-path)
-             {:error {:type :puppetlabs.enterprise.file-sync-storage/repo-not-found-error
-                      :message (.getMessage e)}})))))
+             {:error {:type ::repo-not-found-error
+                      :message (.getMessage e)}})
+           (catch GitAPIException e
+             (log/errorf "Failed to publish %s: %s" sub-path (.getMessage e))
+             {:error {:type ::publish-error
+                      :message (str "Failed to publish " sub-path ":"
+                                    (.getMessage e))}})))))
 
 (schema/defn ^:always-validate publish-content :- PublishResponseBody
   "Given a map of repositories and the JSON body of the request, publish
@@ -229,10 +230,10 @@
   latest commit or error."
   [repos :- GitRepos
    body :- PublishRequestBody]
-  (let [author (commit-author (get body "author"))
-        message (get body "message" "Publish content to file sync storage service")
-        res (publish-repos (map :working-dir (vals repos)) message author)]
-    (zipmap (keys repos) res)))
+  (let [author (commit-author (:author body))
+        message (:message body default-commit-message)
+        new-commits (publish-repos (map :working-dir (vals repos)) message author)]
+    (zipmap (keys repos) new-commits)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
@@ -240,21 +241,27 @@
   "Builds the compojure routes from the given configuration values."
   [base-path repos]
   (compojure/routes
-    (compojure/POST common/publish-content-sub-path {body :body}
+    (compojure/POST common/publish-content-sub-path {body :body headers :headers}
                     ;; The body can either be empty - in which a
                     ;; "Content-Type" header should not be required - or
                     ;; it can be JSON. If it is empty, JSON parsing will
                     ;; still work (since it is the empty string), so we
                     ;; can just try to parse this as JSON and return an
                     ;; error if that fails.
-                    (try
-                      (let [json-body (json/parse-string (slurp body))]
-                        {:status 200
-                         :body (publish-content repos json-body)})
-                      (catch com.fasterxml.jackson.core.JsonParseException e
+                    (let [content-type (headers "content-type")]
+                      (if (or (nil? content-type)
+                              (re-matches #"application/json.*" content-type))
+                        (try
+                          (let [json-body (json/parse-string (slurp body) true)]
+                            {:status 200
+                             :body (publish-content repos json-body)})
+                          (catch com.fasterxml.jackson.core.JsonParseException e
+                            {:status 400
+                             :body {:error {:type :json-parse-error
+                                            :message "Could not parse body as JSON."}}}))
                         {:status 400
-                         :body {:error {:type :json-parse-error
-                                        :message "Could not parse body as JSON."}}})))
+                         :body {:error {:type :content-type-error
+                                        :message "Content type must be JSON."}}})))
     (compojure/ANY common/latest-commits-sub-path []
                    {:status 200
                     :body (compute-latest-commits base-path (keys repos))})))

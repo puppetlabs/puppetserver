@@ -148,11 +148,12 @@
                   (str "Unexpected response body: " body)))
             (let [commit (get-commit server-repo)]
               (testing "commit message is correct"
-                (is (= "Publish content to file sync storage service"
+                (is (= default-commit-message
                        (.getFullMessage commit))))
               (testing "commit author is correct"
-                (is (= "PE File Sync Service" (.getName (.getAuthorIdent commit))))
-                (is (= "" (.getEmailAddress (.getAuthorIdent commit))))))))
+                (is (= default-commit-author-name (.getName (.getAuthorIdent commit))))
+                (is (= default-commit-author-email
+                       (.getEmailAddress (.getAuthorIdent commit))))))))
 
         (testing "with just author supplied"
           (let [author {:name "Tester"
@@ -165,7 +166,7 @@
                   (str "Unexpected response body: " body)))
             (let [commit (get-commit server-repo)]
               (testing "commit message is correct"
-                (is (= "Publish content to file sync storage service"
+                (is (= default-commit-message
                        (.getFullMessage commit))))
               (testing "commit author is correct"
                 (is (= (:name author) (.getName (.getAuthorIdent commit))))
@@ -197,14 +198,14 @@
         {:repo-name {:working-dir (helpers/temp-dir-as-string)}}
         false)
 
-      (testing "when body does not match schema"
+      (testing "when request body does not match schema"
         (let [response (make-publish-request {:author "bad"})
               body (slurp (:body response))]
           (is (= (:status response) 400))
-          (is (= "schema-error" (get-in (json/parse-string body) ["error" "type"]))
+          (is (= "user-data-invalid" (get-in (json/parse-string body) ["error" "type"]))
               (str "Unexpected response body: " body))))
 
-      (testing "when body is malformed json"
+      (testing "when request body is malformed json"
         (let [response (sync/post publish-url
                                   {:body "malformed"
                                    :headers {"Content-Type" "application/json"}})
@@ -213,12 +214,12 @@
           (is (= "json-parse-error" (get-in (json/parse-string body) ["error" "type"]))
               (str "Unexpected response body: " body))))
 
-      (testing "when body is not json"
+      (testing "when request body is not json"
         (let [response (sync/post publish-url {:body "not json"
                                                :headers {"Content-Type" "text/plain"}})
               body (slurp (:body response))]
           (is (= (:status response) 400))
-          (is (= "json-parse-error" (get-in (json/parse-string body) ["error" "type"]))
+          (is (= "content-type-error" (get-in (json/parse-string body) ["error" "type"]))
               (str "Unexpected response body: " body)))))))
 
 (deftest publish-content-endpoint-response-test
@@ -256,10 +257,10 @@
                        (get data success-repo))
                     (str "Could not find correct body for " failed-repo " in " body)))
               (testing "for nonexistent repo"
-                (is (= "puppetlabs.enterprise.file-sync-storage/repo-not-found-error"
+                (is (re-matches #".*repo-not-found-error"
                        (get-in data [nonexistent-repo "error" "type"]))
                     (str "Could not find correct body for " nonexistent-repo " in " body)))
               (testing "for repo that failed to publish"
-                (is (= "puppetlabs.enterprise.file-sync-storage/publish-error"
+                (is (re-matches #".*publish-error"
                        (get-in data [failed-repo "error" "type"]))
                     (str "Could not find correct body for " failed-repo " in " body))))))))))
