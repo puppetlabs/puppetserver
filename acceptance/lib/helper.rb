@@ -1,5 +1,4 @@
 require 'beaker/dsl/install_utils'
-require 'beaker/dsl/ezbake_utils'
 
 module PuppetServerExtensions
 
