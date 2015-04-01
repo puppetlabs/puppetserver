@@ -275,6 +275,7 @@
   [base-path sub-paths]
   (-> (build-routes base-path sub-paths)
       ringutils/wrap-request-logging
+      ringutils/wrap-user-data-errors
       ringutils/wrap-schema-errors
       ringutils/wrap-errors
       ring-json/wrap-json-response

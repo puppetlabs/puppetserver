@@ -26,24 +26,31 @@
       (log/trace "Computed response:" resp)
       resp)))
 
-(defn wrap-schema-errors
-  "A ring middleware that catches schema errors and returns a 400
-  response with the details"
+(defn wrap-user-data-errors
+  "A rignt middleware that catches slingshot errors of :type
+  :user-dava-invalid and returns a 400."
   [handler]
   (fn [request]
     (try+ (handler request)
           (catch [:type :user-data-invalid] e
             {:status 400
-             :body {:error e}})
-          (catch clojure.lang.ExceptionInfo e
-            (let [message (.getMessage e)]
-              (if (re-find #"does not match schema" message)
-                {:status 500
-                 :body {:error {:type :application-error
-                                :message (str "Something unexpected happened: "
-                                              (:error (.getData e)))}}}
-                ;; re-throw exceptions that aren't schema errors
-                (throw e)))))))
+             :body {:error e}}))))
+
+(defn wrap-schema-errors
+  "A ring middleware that catches schema errors and returns a 500
+  response with the details"
+  [handler]
+  (fn [request]
+    (try (handler request)
+         (catch clojure.lang.ExceptionInfo e
+           (let [message (.getMessage e)]
+             (if (re-find #"does not match schema" message)
+               {:status 500
+                :body {:error {:type :application-error
+                               :message (str "Something unexpected happened: "
+                                             (:error (.getData e)))}}}
+               ;; re-throw exceptions that aren't schema errors
+               (throw e)))))))
 
 (defn wrap-errors
   "A ring middleware that catches all otherwise uncaught errors and
