@@ -93,7 +93,7 @@
   "Enables anonymous push access on each repo for ease of testing."
   [base-path repos]
   {:base-path base-path
-   :repos     (map enable-push repos)})
+   :repos     (ks/mapvals enable-push repos)})
 
 (defn file-sync-storage-config
   [base-path repos]
@@ -257,19 +257,28 @@
      client-repo-dir)))
 
 (defn init-repo!
-  [path]
   "Creates a new Git repository at the given path.  Like `git init`."
+  [path]
   (-> (Git/init)
       (.setDirectory path)
       (.call)))
 
 (defn init-bare-repo!
-  [path]
   "Creates a new Git repository at the given path.  Like `git init`."
+  [path]
   (-> (Git/init)
       (.setDirectory path)
       (.setBare true)
       (.call)))
+
+(defn add-remote!
+  "Adds a remote named `name` with url `url` to a git instance."
+  [git name url]
+  (let [config (-> git
+                   .getRepository
+                   .getConfig)]
+    (.setString config "remote" name "url" url)
+    (.save config)))
 
 (defn add-watch-and-deliver-new-state
   [ref* promise*]

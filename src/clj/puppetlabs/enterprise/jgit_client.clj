@@ -2,7 +2,6 @@
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository)
-           (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
@@ -117,7 +116,7 @@
   remote, if specified. If no remote is specified, follows the
   repository's configuration or the push default configuration. Returns
   an iteration over PushResult objects or may throw one of the following
-  Exceptions from the org.eclipse.api.errors namespace:
+  Exceptions from the org.eclipse.jgit.api.errors namespace:
 
   * TransportException -
     - when a protocol error occurred during fetching of objects (e.g., an

@@ -54,7 +54,7 @@
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
                    (helpers/temp-dir-as-string)
-                   [{:sub-path repo}]
+                   {(keyword repo) {:working-dir repo}}
                    true)
                  (helpers/client-service-config-with-repos
                    {(keyword repo) (str client-repo-dir)}
@@ -87,7 +87,7 @@
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config-with-repos
                             (helpers/temp-dir-as-string)
-                            [{:sub-path repo}]
+                            {(keyword repo) {:working-dir repo}}
                             false)))]
       (try
         (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
