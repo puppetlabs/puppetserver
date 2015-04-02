@@ -12,7 +12,9 @@
             [clojure.stacktrace :as stacktrace]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
@@ -30,7 +32,7 @@
       (str "If there as an exception while putting a JRubyPuppet instance in "
            "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-puppet-core/create-pool-instance!
+      (with-redefs [jruby-internal/create-pool-instance!
                     (fn [& _] (throw (Exception. "42")))]
                    (let [got-expected-exception (atom false)]
                      (try
@@ -98,7 +100,9 @@
           service
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
-        (is (= 1 (jruby-protocol/free-instance-count service)))))))
+        (is (= 1 (jruby-protocol/free-instance-count service)))
+        (let [jruby (jruby-protocol/borrow-instance service)]
+          (is (= 2 (:request-count (jruby-core/instance-state jruby)))))))))
 
 (deftest test-borrow-timeout-configuration
   (testing "configured :borrow-timeout is honored by the borrow-instance service function"
@@ -112,22 +116,21 @@
         config
         (let [service (app/get-service app :JRubyPuppetService)
               context (services/service-context service)
-              pool-context (:pool-context context)
-              pool (jruby-puppet-core/get-pool pool-context)]
-          (jruby-testutils/drain-pool pool pool-size)
+              pool-context (:pool-context context)]
+          (jruby-testutils/drain-pool pool-context pool-size)
           (let [test-start-in-millis (System/currentTimeMillis)]
             (is (nil? (jruby-protocol/borrow-instance service)))
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
             (is (= (:borrow-timeout context) timeout)))))))
 
-  (testing (str ":borrow-timeout defaults to " default-borrow-timeout " milliseconds")
+  (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
       app
       [jruby-puppet-pooled-service profiler/puppet-profiler-service]
       jruby-service-test-config
       (let [service (app/get-service app :JRubyPuppetService)
             context (services/service-context service)]
-        (is (= (:borrow-timeout context) default-borrow-timeout))))))
+        (is (= (:borrow-timeout context) jruby-core/default-borrow-timeout))))))
 
 (deftest timeout-settings-applied
   (testing "timeout settings are properly plumbed"
@@ -151,7 +154,7 @@
       (let [service          (app/get-service app :JRubyPuppetService)
             context          (services/service-context service)
             pool-context-cfg (get-in context [:pool-context :config])]
-        (is (= default-http-connect-timeout
+        (is (= jruby-core/default-http-connect-timeout
                (:http-client-connect-timeout-milliseconds pool-context-cfg)))
-        (is (= default-http-socket-timeout
+        (is (= jruby-core/default-http-socket-timeout
                (:http-client-idle-timeout-milliseconds pool-context-cfg)))))))
