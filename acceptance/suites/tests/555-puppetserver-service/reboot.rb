@@ -8,7 +8,7 @@ test_name "Validates the ability of the #{puppetserverServiceName} service to re
 
 max=3
 sleeptime=45
-retryCounter=0
+
 step "Ensure #{puppetserverServiceName} is enabled."
 on(master, "puppet resource service #{puppetserverServiceName} enable=true")
 
@@ -44,7 +44,7 @@ for i in 1..max
 
   retryCounter = 0
   while (ec != 0 and retryCounter < 30) do
-    sleep 2
+    sleep 1
     retryCounter += 1
     ec = on(master,"service #{puppetserverServiceName} status", :acceptable_exit_codes => 0..99).exit_code
   end
