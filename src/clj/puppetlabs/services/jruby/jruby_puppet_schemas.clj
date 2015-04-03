@@ -51,7 +51,11 @@
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
         be used when https client requests are made."
-  {:ruby-load-path              (schema/both [schema/Str] (schema/pred vector?))
+  ;; NOTE: there is a bug in the version of schema we're using, which causes
+  ;; the order of things that you put into a `both` to be very important.
+  ;; The `vector?` pred here MUST come before the `[schema/Str]`.  For more info
+  ;; see https://github.com/Prismatic/schema/issues/68
+  {:ruby-load-path              (schema/both (schema/pred vector?) [schema/Str])
    :gem-home                    schema/Str
    :master-conf-dir             (schema/maybe schema/Str)
    :master-var-dir              (schema/maybe schema/Str)

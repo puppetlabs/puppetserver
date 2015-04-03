@@ -1,11 +1,13 @@
 (ns puppetlabs.services.jruby.jruby-testutils
-  (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)
-           (org.jruby.embed ScriptingContainer LocalContextScope))
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [schema.core :as schema])
+  (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
+           (org.jruby.embed ScriptingContainer LocalContextScope)
+           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -41,7 +43,10 @@
 
 (defn jruby-puppet-tk-config
   "Create a JRubyPuppet pool config with the given pool config.  Suitable for use
-  in bootstrapping trapperkeeper."
+  in bootstrapping trapperkeeper (in other words, returns a representation of the
+  config that matches what would be read directly from the config files on disk,
+  as opposed to a version that has been processed and transformed to comply
+  with the JRubyPuppetConfig schema)."
   [pool-config]
   {:os-settings  {:ruby-load-path ruby-load-path}
    :product     {:name "puppet-server"
@@ -49,10 +54,14 @@
    :jruby-puppet pool-config
    :certificate-authority {:certificate-status {:client-whitelist []}}})
 
-(defn jruby-puppet-config
-  "Create a JRubyPuppet pool config. If `pool-size` is provided then the
-  JRubyPuppet pool size with be included with the config, otherwise no size
-  will be specified."
+(schema/defn ^:always-validate
+  jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig
+  "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
+  contain a map, which, if present, will be merged into the final JRubyPuppetConfig
+  map.  (This function differs from `jruby-puppet-tk-config` in
+  that it returns a map that complies with the JRubyPuppetConfig schema, which
+  differs slightly from the raw format that would be read from config files
+  on disk.)"
   ([]
    (jruby-core/initialize-config
      {:jruby-puppet {:gem-home        gem-home
@@ -81,8 +90,12 @@
     (getSetting [_ _]
       (Object.))))
 
-(defn create-mock-pool-instance
-  [pool id _ _]
+(schema/defn ^:always-validate
+  create-mock-pool-instance :- JRubyPuppetInstance
+  [pool :- jruby-schemas/pool-queue-type
+   id :- schema/Int
+   config :- jruby-schemas/JRubyPuppetConfig
+   profiler :- (schema/maybe PuppetProfiler)]
   (let [instance (jruby-schemas/map->JRubyPuppetInstance
                    {:pool                 pool
                     :id                   id
