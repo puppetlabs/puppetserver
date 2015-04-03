@@ -20,7 +20,7 @@ export PACKAGE_BUILD_VERSION=1.0.8
 
 #TODO: read configYaml and tests in from the enviornment and perhaps command line
 #  and only assign defalut values that are very general 
-configYaml=acceptance/config/beaker/jenkins/redhat-7-x86_64-mdca.cfg
+configYaml=acceptance/config/beaker/jenkins/el-7-x86_64-mdca.cfg
 tests=acceptance/suites/tests/555-puppetserver-service/reboot.rb
 presuite=acceptance/suites/pre_suite/foss
 

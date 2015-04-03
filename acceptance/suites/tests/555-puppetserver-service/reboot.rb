@@ -1,3 +1,12 @@
+
+
+# rebooting with on(master, 'reboot') causes Beaker::..::host.connection et all to throw IOError: closed stream.
+# using ruby's system call and executing an ssh command on the beaker host's shell works for now.
+# when BKR-70 is resolved, method should be set to beaker, or this script should be modified
+# and the system ssh method should be deleted.
+#method=beaker
+rebootMethod='system'
+
 if (options[:type] == 'pe') then
   puppetserverServiceName='pe-puppetserver'
 else
@@ -8,6 +17,12 @@ test_name "Validates the ability of the #{puppetserverServiceName} service to re
 
 max=3
 sleeptime=45
+
+# "ps auxww | grep '[s]shd:' | awk '{print $2}' | xargs kill -9" simulates 
+#    the problem where sshd kills the connection too quickly for Ruby 
+#    Net::SSH.  We get an IOError: stream end.
+# rebootCmd="ps auxww | grep '[s]shd:' | awk '{print $2}' | xargs kill -9"
+rebootCmd="reboot"
 
 step "Ensure #{puppetserverServiceName} is enabled."
 on(master, "puppet resource service #{puppetserverServiceName} enable=true")
@@ -21,16 +36,26 @@ for i in 1..max
   origUptime=on(master, "awk '{print $1}' /proc/uptime").stdout.chomp.to_i
 
   step "reboot"
-  #rebooting with on(master,'reboot') causes an IOError: stream end.  This seems like a sane workaround.
-  #QENG-1914 for more...
-  system "ssh -i #{options[:keyfile]} -o StrictHostKeyChecking=no root@#{master.reachable_name} \'reboot\'"
+    #rebooting with on(master,'reboot') causes an IOError: stream end.  This seems like a sane workaround.
+    #QENG-1914/BKR-70 for more...  
+    if (rebootMethod == 'system') then 
+      system "ssh -i #{options[:keyfile]} -o StrictHostKeyChecking=no root@#{master.reachable_name} \'reboot\'"
+    else
+      begin
+        on(master, rebootCmd)
+      rescue IOError => detail
+        if !( detail.message == 'closed stream' ) then
+          raise detail
+        else
+          master.connection.close
+        end
+      end
+    end
 
   step "sleeping for 15 seconds and waiting for reboot."
-  sleep 15
-
-  unless port_open_within?(master,22,120)
-    raise Beaker::DSL::FailTest, 'Port 22 did not open on the puppet master host within 2 minutes after reboot'
-  end
+  sleep 1
+  
+  master.connection.connect if (rebootMethod != 'system')
 
   step "look at uptime to ensure that we actually rebooted"
   secondUptime=on(master, "awk '{print $1}' /proc/uptime").stdout.chomp.to_i
