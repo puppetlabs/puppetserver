@@ -56,9 +56,9 @@
 
 (schema/defn ^:always-validate
   jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig
-  "Create a JRubyPuppet pool config. If `pool-size` is provided then the
-  JRubyPuppet pool size with be included with the config, otherwise no size
-  will be specified.  (This function differs from `jruby-puppet-tk-config` in
+  "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
+  contain a map, which, if present, will be merged into the final JRubyPuppetConfig
+  map.  (This function differs from `jruby-puppet-tk-config` in
   that it returns a map that complies with the JRubyPuppetConfig schema, which
   differs slightly from the raw format that would be read from config files
   on disk.)"

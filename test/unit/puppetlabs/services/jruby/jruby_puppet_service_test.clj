@@ -125,7 +125,7 @@
               pool-context (:pool-context context)]
           (let [jrubies (jruby-testutils/drain-pool pool-context pool-size)]
             (is (= 1 (count jrubies)))
-            (is (every? #(jruby-schemas/jruby-puppet-instance? %) jrubies)))
+            (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
           (let [test-start-in-millis (System/currentTimeMillis)]
             (is (nil? (jruby-protocol/borrow-instance service)))
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
