@@ -433,11 +433,12 @@
         (is (= (slurp localcacert) cacert-text)
             (str "Unexpected content for localcacert: " localcacert)))
 
-      (testing "Copied cacert to localcacert when different localcacert present"
-        (spit (:localcacert settings) "12345")
-        (retrieve-ca-cert! cacert localcacert)
-        (is (= (slurp localcacert) cacert-text)
-            (str "Unexpected content for localcacert: " localcacert)))
+      (testing "Doesn't copy cacert over localcacert when different localcacert present"
+        (let [localcacert-contents "12345"]
+          (spit (:localcacert settings) localcacert-contents)
+          (retrieve-ca-cert! cacert localcacert)
+          (is (= (slurp localcacert) localcacert-contents)
+              (str "Unexpected content for localcacert: " localcacert))))
 
       (testing "Throws exception if no localcacert and no cacert to copy"
         (fs/delete localcacert)

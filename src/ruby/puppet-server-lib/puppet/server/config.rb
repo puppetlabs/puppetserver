@@ -22,7 +22,7 @@ class Puppet::Server::Config
       @profiler = Puppet::Server::JvmProfiler.new(puppet_server_config["profiler"])
       Puppet::Util::Profiler.add_profiler(@profiler)
     end
-    
+
     Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
