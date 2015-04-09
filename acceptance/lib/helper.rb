@@ -27,10 +27,9 @@ module PuppetServerExtensions
 
     # SERVER-339, SERVER-386 - puppet-agent version corresponds to packaged
     # development version located at http://builds.puppetlabs.lan/puppet-agent/
-    # TODO: This build version needs to be updated to a released version
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "1166ad687883061f8f7133634144759d2b9eb37b")
+                         "PUPPET_BUILD_VERSION", "1.0.0")
 
     @config = {
       :base_dir => base_dir,
