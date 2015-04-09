@@ -199,10 +199,11 @@ Puppet Server relies on `logrotate` to manage the log file, and installs a confi
 
 Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate
 file than the main log file. By default, this is located at
-`/var/log/puppetserver/puppetserver-access.log` (open source releases) and
+`/var/log/puppetlabs/puppetserver/puppetserver-access.log` (open source releases) and
 `/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
 
 By default, the following information is logged for each HTTP request:
+
 * remote host
 * remote log name
 * remote user
@@ -214,7 +215,7 @@ By default, the following information is logged for each HTTP request:
 * local port
 * elapsed time to serve the request, in milliseconds
 
-The Logback configuration file is at `/etc/puppetserver/request-logging.xml` or
+The Logback configuration file is at
 `/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to
 change the logging behavior, and/or specify a different Logback configuration
 file in [`webserver.conf`](#webserverconf) with the
