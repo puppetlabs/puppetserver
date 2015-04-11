@@ -28,6 +28,7 @@
     :cert-inventory
     :certname
     :csrdir
+    :keylength
     :hostcert
     :hostprivkey
     :hostpubkey

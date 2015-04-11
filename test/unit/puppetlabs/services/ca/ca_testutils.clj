@@ -22,7 +22,8 @@
         :hostpubkey     (str ssldir "/public_keys/" hostname ".pem")
         :localcacert    (str ssldir "/certs/ca.pem")
         :requestdir     (str ssldir "/certificate_requests")
-        :csr-attributes (str confdir "/csr_attributes.yaml")})))
+        :csr-attributes (str confdir "/csr_attributes.yaml")
+        :keylength      512})))
 
 (defn ca-settings
   "CA configuration settings with defaults appropriate for testing.
@@ -40,6 +41,7 @@
    :capub                 (str cadir "/ca_pub.pem")
    :cert-inventory        (str cadir "/inventory.txt")
    :csrdir                (str cadir "/requests")
+   :keylength             512
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
    :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]})
