@@ -51,12 +51,12 @@
     flush-complete))
 
 (defn set-constants-and-verify
-  [pool-context]
+  [pool-context num-instances]
   ;; here we set a constant called 'InstanceId' in each instance
-  (jruby-testutils/reduce-over-jrubies! pool-context 4 #(format "InstanceID = %s" %))
+  (jruby-testutils/reduce-over-jrubies! pool-context num-instances #(format "InstanceID = %s" %))
   ;; and validate that we can read that value back from each instance
-  (= #{0 1 2 3}
-     (-> (jruby-testutils/reduce-over-jrubies! pool-context 4 (constantly "InstanceID"))
+  (= (set (range num-instances))
+     (-> (jruby-testutils/reduce-over-jrubies! pool-context num-instances (constantly "InstanceID"))
          set)))
 
 (defn constant-defined?
@@ -64,15 +64,27 @@
   (let [sc (:scripting-container jruby-instance)]
     (.runScriptlet sc script-to-check-if-constant-is-defined)))
 
+(defn check-all-jrubies-for-constants
+  [pool-context num-instances]
+  (jruby-testutils/reduce-over-jrubies!
+    pool-context
+    num-instances
+    (constantly script-to-check-if-constant-is-defined)))
+
+(defn check-jrubies-for-constant-counts
+  [pool-context expected-num-true expected-num-false]
+  (let [constants (check-all-jrubies-for-constants
+                    pool-context
+                    (+ expected-num-false expected-num-true))]
+    (and (= (+ expected-num-false expected-num-true) (count constants))
+         (= expected-num-true (count (filter true? constants)))
+         (= expected-num-false (count (filter false? constants))))))
+
 (defn verify-no-constants
-  [pool-context]
+  [pool-context num-instances]
   ;; verify that the constants are cleared out from the instances by looping
   ;; over them and expecting a 'NameError' when we reference the constant by name.
-  (every? false?
-          (jruby-testutils/reduce-over-jrubies!
-            pool-context
-            4
-            (constantly script-to-check-if-constant-is-defined))))
+  (every? false? (check-all-jrubies-for-constants pool-context num-instances)))
 
 (defn trigger-flush
   []
@@ -80,6 +92,24 @@
                    "https://localhost:8140/puppet-admin-api/v1/jruby-pool"
                    ssl-request-options)]
     (= 204 (:status response))))
+
+(defn wait-for-new-pool
+  [jruby-service]
+  ;; borrow until we get an instance that doesn't have a constant,
+  ;; so we'll know that the new pool is online
+  (loop [instance (jruby-protocol/borrow-instance jruby-service)]
+    (let [has-constant? (constant-defined? instance)]
+      (jruby-protocol/return-instance jruby-service instance)
+      (when has-constant?
+        (recur (jruby-protocol/borrow-instance jruby-service))))))
+
+(defn borrow-until-desired-request-count
+  [jruby-service desired-request-count]
+  (loop [instance (jruby-protocol/borrow-instance jruby-service)]
+    (let [request-count (:request-count @(:state instance))]
+      (jruby-protocol/return-instance jruby-service instance)
+      (if (< (inc request-count) desired-request-count)
+        (recur (jruby-protocol/borrow-instance jruby-service))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -94,12 +124,12 @@
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
         ;; set a ruby constant in each instance so that we can recognize them
-        (is (true? (set-constants-and-verify pool-context)))
+        (is (true? (set-constants-and-verify pool-context 4)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)]
           (is (true? (trigger-flush)))
           @flush-complete)
         ;; now the pool is flushed, so the constants should be cleared
-        (is (true? (verify-no-constants pool-context)))))))
+        (is (true? (verify-no-constants pool-context 4)))))))
 
 (deftest ^:integration hold-instance-while-pool-flush-in-progress-test
   (testing "instance borrowed from old pool before pool flush begins and returned *after* new pool is available"
@@ -111,23 +141,81 @@
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
         ;; set a ruby constant in each instance so that we can recognize them
-        (is (true? (set-constants-and-verify pool-context)))
+        (is (true? (set-constants-and-verify pool-context 4)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)
               ;; borrow an instance and hold the reference to it.
               instance (jruby-protocol/borrow-instance jruby-service)]
           ;; trigger a flush
           (is (true? (trigger-flush)))
-          ;; borrow until we get an instance that doesn't have a constant,
-          ;; so we'll know that the new pool is online
-          (loop [instance (jruby-protocol/borrow-instance jruby-service)]
-            (let [has-constant? (constant-defined? instance)]
-              (jruby-protocol/return-instance jruby-service instance)
-              (when has-constant?
-                (recur (jruby-protocol/borrow-instance jruby-service)))))
+          ;; wait for the new pool to become available
+          (wait-for-new-pool jruby-service)
           ;; return the instance
           (jruby-protocol/return-instance jruby-service instance)
           ;; wait until the flush is complete
           @flush-complete)
         ;; now the pool is flushed, and the constants should be cleared
-        (is (true? (verify-no-constants pool-context)))))))
+        (is (true? (verify-no-constants pool-context 4)))))))
 
+(deftest ^:integration max-requests-flush-while-pool-flush-in-progress-test
+  (testing "instance from new pool hits max-requests while flush in progress"
+    (bootstrap/with-puppetserver-running
+      app
+      {:puppet-admin {:client-whitelist ["localhost"]}
+       :jruby-puppet {:max-active-instances 4
+                      :max-requests-per-instance 10}}
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            context (tk-services/service-context jruby-service)
+            pool-context (:pool-context context)]
+        ;; set a ruby constant in each instance so that we can recognize them.
+        ;; this counts as one request for each instance.
+        (is (true? (set-constants-and-verify pool-context 4)))
+        (let [flush-complete (add-watch-for-flush-complete pool-context)
+              ;; borrow one instance and hold the reference to it, to prevent
+              ;; the flush operation from completing
+              instance1 (jruby-protocol/borrow-instance jruby-service)]
+          ;; we are going to borrow and return a second instance until we get its
+          ;; request count up to max-requests - 1, so that we can use it to test
+          ;; flushing behavior the next time we return it.
+          (borrow-until-desired-request-count jruby-service 9)
+          ;; now we grab a reference to that instance and hold onto it for later.
+          (let [instance2 (jruby-protocol/borrow-instance jruby-service)]
+            (is (= 9 (:request-count @(:state instance2))))
+
+            ;; trigger a flush
+            (is (true? (trigger-flush)))
+            ;; wait for the new pool to become available
+            (wait-for-new-pool jruby-service)
+            ;; there will only be two instances in the new pool, because we are holding
+            ;; references to two from the old pool.
+            (is (true? (set-constants-and-verify pool-context 2)))
+            ;; borrow and return instance from the new pool until an instance flush is triggered
+            (borrow-until-desired-request-count jruby-service 10)
+
+            ;; at this point, we still have the main flush in progress, waiting for us
+            ;; to release the two instances from the old pool.  we should also have
+            ;; caused a flush of one of the two instances in the new pool, meaning that
+            ;; exactly one of the two in the new pool should have the ruby constant defined.
+            (is (true? (check-jrubies-for-constant-counts pool-context 1 1)))
+
+            ;; now we'll set the ruby constants on both instances in the new pool
+            (is (true? (set-constants-and-verify pool-context 2)))
+
+            ;; now we're going to return instance2 to the pool.  This should cause it
+            ;; to get flushed, but after that, the main pool flush operation should
+            ;; pull it out of the old pool and create a new instance in the new pool
+            ;; to replace it.  So we should end up with 3 instances in the new pool,
+            ;; two of which should have the ruby constants and one of which should not.
+            (jruby-protocol/return-instance jruby-service instance2)
+            (is (true? (check-jrubies-for-constant-counts pool-context 2 1))))
+
+          ;; now we'll set the ruby constances on the 3 instances in the new pool
+          (is (true? (set-constants-and-verify pool-context 3)))
+
+          ;; and finally, we return the last instance from the old pool
+          (jruby-protocol/return-instance jruby-service instance1)
+
+          ;; wait until the flush is complete
+          @flush-complete)
+
+        ;; we should have three instances with the constant and one without.
+        (is (true? (check-jrubies-for-constant-counts pool-context 3 1)))))))
