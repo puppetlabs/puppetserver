@@ -154,14 +154,6 @@
    pool :- jruby-schemas/pool-queue-type]
   (.pollFirst pool timeout TimeUnit/MILLISECONDS))
 
-(schema/defn borrowed-poison-pill
-  [pool :- jruby-schemas/pool-queue-type
-   instance :- PoisonPill]
-  (.putFirst pool instance)
-  (throw (IllegalStateException.
-           "Unable to borrow JRuby instance from pool"
-           (:err instance))))
-
 (schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
   If successful, updates the state information and returns the JRuby instance.
@@ -171,7 +163,11 @@
    pool :- jruby-schemas/pool-queue-type]
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
-          (borrowed-poison-pill pool instance)
+          (do
+            (.putFirst pool instance)
+            (throw (IllegalStateException.
+                     "Unable to borrow JRuby instance from pool"
+                     (:err instance))))
 
           (jruby-schemas/jruby-puppet-instance? instance)
           instance

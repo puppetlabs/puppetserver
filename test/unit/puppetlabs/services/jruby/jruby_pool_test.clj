@@ -128,8 +128,8 @@
   ([max-requests]
     (create-pool-context max-requests 1))
   ([max-requests max-instances]
-   (let [config (-> (jruby-testutils/jruby-puppet-config {:max-active-instances max-instances})
-                    (assoc :max-requests-per-instance max-requests))
+   (let [config (jruby-testutils/jruby-puppet-config {:max-active-instances max-instances
+                                                      :max-requests-per-instance max-requests})
          profiler jruby-testutils/default-profiler
          pool-context (jruby-core/create-pool-context
                         config profiler jruby-testutils/default-shutdown-fn)]
