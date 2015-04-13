@@ -125,14 +125,16 @@
       (is (= (jruby-core/default-pool-size (ks/num-cpus)) (:size pool-state))))))
 
 (defn create-pool-context
-  [max-requests]
-  (let [config (-> (jruby-testutils/jruby-puppet-config {:max-active-instances 1})
-                   (assoc :max-requests-per-instance max-requests))
-        profiler jruby-testutils/default-profiler
-        pool-context (jruby-core/create-pool-context
-                       config profiler jruby-testutils/default-shutdown-fn)]
-    (jruby-agents/prime-pool! pool-context config profiler)
-    pool-context))
+  ([max-requests]
+    (create-pool-context max-requests 1))
+  ([max-requests max-instances]
+   (let [config (-> (jruby-testutils/jruby-puppet-config {:max-active-instances max-instances})
+                    (assoc :max-requests-per-instance max-requests))
+         profiler jruby-testutils/default-profiler
+         pool-context (jruby-core/create-pool-context
+                        config profiler jruby-testutils/default-shutdown-fn)]
+     (jruby-agents/prime-pool! pool-context config profiler)
+     pool-context)))
 
 (deftest flush-jruby-after-max-requests
   (testing "JRuby instance is not flushed if it has not exceeded max requests"
@@ -155,4 +157,19 @@
           id            (:id instance)]
       (jruby-core/return-to-pool instance)
       (let [instance (jruby-core/borrow-from-pool pool-context)]
-        (is (= id (:id instance)))))))
+        (is (= id (:id instance))))))
+  (testing "Can flush a JRuby instance that is not the first one in the pool"
+    (let [pool-context  (create-pool-context 2 3)
+          instance1     (jruby-core/borrow-from-pool pool-context)
+          instance2     (jruby-core/borrow-from-pool pool-context)
+          id            (:id instance2)]
+      (jruby-core/return-to-pool instance2)
+      ;; borrow it a second time and confirm we get the same instance
+      (let [instance2 (jruby-core/borrow-from-pool pool-context)]
+        (is (= id (:id instance2)))
+        (jruby-core/return-to-pool instance2))
+      ;; borrow it a third time and confirm that we get a different instance
+      (let [instance2 (jruby-core/borrow-from-pool pool-context)]
+        (is (not= id (:id instance2)))
+        (jruby-core/return-to-pool instance2))
+      (jruby-core/return-to-pool instance1))))
