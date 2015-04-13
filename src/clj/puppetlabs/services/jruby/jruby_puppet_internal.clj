@@ -2,13 +2,15 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
            (org.jruby CompatVersion RubyInstanceConfig$CompileMode)
            (org.jruby.embed ScriptingContainer LocalContextScope)
-           (java.util.concurrent LinkedBlockingDeque TimeUnit)))
+           (java.util.concurrent LinkedBlockingDeque TimeUnit)
+           (clojure.lang IFn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -35,7 +37,7 @@
   (LinkedBlockingDeque. size))
 
 (schema/defn ^:always-validate
-             create-pool-from-config :- jruby-schemas/PoolState
+  create-pool-from-config :- jruby-schemas/PoolState
   "Create a new PoolData based on the config input."
   [{size :max-active-instances} :- jruby-schemas/JRubyPuppetConfig]
   {:pool (instantiate-free-pool size)
@@ -84,6 +86,7 @@
   [pool     :- jruby-schemas/pool-queue-type
    id       :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
+   flush-instance-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
                 http-client-ssl-protocols http-client-cipher-suites]} config]
@@ -110,6 +113,8 @@
       (let [instance (jruby-schemas/map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id
+                        :max-requests         (:max-requests-per-instance config)
+                        :flush-instance-fn    flush-instance-fn
                         :state                (atom {:request-count 0})
                         :jruby-puppet         (.callMethod scripting-container
                                                            ruby-puppet-class
@@ -123,7 +128,7 @@
         instance))))
 
 (schema/defn ^:always-validate
-             get-pool-state :- jruby-schemas/PoolState
+  get-pool-state :- jruby-schemas/PoolState
   "Gets the PoolState from the pool context."
   [context :- jruby-schemas/PoolContext]
   @(:pool-state context))
@@ -133,6 +138,12 @@
   "Gets the JRubyPuppet pool object from the pool context."
   [context :- jruby-schemas/PoolContext]
   (:pool (get-pool-state context)))
+
+(schema/defn ^:always-validate
+  get-pool-size :- schema/Int
+  "Gets the size of the JRubyPuppet pool from the pool context."
+  [context :- jruby-schemas/PoolContext]
+  (get-in context [:config :max-active-instances]))
 
 (schema/defn borrow-without-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
   [pool :- jruby-schemas/pool-queue-type]
@@ -149,13 +160,7 @@
   Returns nil if the borrow function returns nil; throws an exception if
   the borrow function's return value indicates an error condition."
   [borrow-fn :- (schema/pred ifn?)
-   ;; it looks unusual that we accept both the pool and the pool-context
-   ;; as arguments, since the PoolContext contains a reference to a pool.  However,
-   ;; in cases such as a full pool flush operation, there may be two distinct
-   ;; pools in play, and the one in the pool-context may be different from the
-   ;; one we're borrowing from.
-   pool :- jruby-schemas/pool-queue-type
-   pool-context :- jruby-schemas/PoolContext]
+   pool :- jruby-schemas/pool-queue-type]
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
           (do
@@ -165,9 +170,7 @@
                      (:err instance))))
 
           (jruby-schemas/jruby-puppet-instance? instance)
-          (do
-            (swap! (:state instance) (fn [m] (update-in m [:request-count] inc)))
-            instance)
+          instance
 
           ((some-fn nil? jruby-schemas/retry-poison-pill?) instance)
           instance
@@ -182,7 +185,7 @@
   left in the pool then this function will block until there is one available."
   [pool-context :- jruby-schemas/PoolContext]
   (borrow-from-pool!* borrow-without-timeout-fn
-                      (get-pool pool-context) pool-context))
+                      (get-pool pool-context)))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
@@ -196,10 +199,24 @@
    timeout :- schema/Int]
   {:pre  [(>= timeout 0)]}
   (borrow-from-pool!* (partial borrow-with-timeout-fn timeout)
-                      (get-pool pool-context) pool-context))
+                      (get-pool pool-context)))
 
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
-  (.putFirst (:pool instance) instance))
+  (if (jruby-schemas/jruby-puppet-instance? instance)
+    (let [new-state (swap! (:state instance)
+                           update-in [:request-count] inc)
+          {:keys [max-requests flush-instance-fn pool]} instance]
+      (if (and (pos? max-requests)
+               (>= (:request-count new-state) max-requests))
+        (do
+          (log/infof (str "Flushing JRuby instance %s because it has exceeded the "
+                          "maximum number of requests (%s)")
+                     (:id instance)
+                     max-requests)
+          (flush-instance-fn pool instance))
+        (.putFirst pool instance)))
+    ;; if we get here, we got a Retry, so we just put it back into the pool.
+    (.putFirst (:pool instance) instance)))

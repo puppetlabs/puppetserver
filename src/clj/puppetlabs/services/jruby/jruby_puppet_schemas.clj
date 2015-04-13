@@ -2,7 +2,7 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env])
   (:import (java.util.concurrent BlockingDeque)
-           (clojure.lang Atom Agent)
+           (clojure.lang Atom Agent IFn)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (org.jruby.embed ScriptingContainer)))
 
@@ -75,7 +75,7 @@
                    (let [state @a]
                      (and
                        (map? state)
-                       ((some-fn nil? ifn?) (:shutdown-on-error state))))))))
+                       (ifn? (:shutdown-on-error state))))))))
 
 (def PoolState
   "A map that describes all attributes of a particular JRubyPuppet pool."
@@ -90,10 +90,11 @@
 
 (def PoolContext
   "The data structure that stores all JRubyPuppet pools and the original configuration."
-  {:config     JRubyPuppetConfig
-   :profiler   (schema/maybe PuppetProfiler)
-   :pool-agent JRubyPoolAgent
-   :pool-state PoolStateContainer})
+  {:config                JRubyPuppetConfig
+   :profiler              (schema/maybe PuppetProfiler)
+   :pool-agent            JRubyPoolAgent
+   :flush-instance-agent  JRubyPoolAgent
+   :pool-state            PoolStateContainer})
 
 (def JRubyInstanceState
   "State metadata for an individual JRubyPuppet instance"
@@ -109,6 +110,8 @@
 (schema/defrecord JRubyPuppetInstance
                   [pool :- pool-queue-type
                    id :- schema/Int
+                   max-requests :- schema/Int
+                   flush-instance-fn :- IFn
                    state :- JRubyInstanceStateContainer
                    jruby-puppet :- JRubyPuppet
                    scripting-container :- ScriptingContainer
@@ -118,7 +121,7 @@
                                                #(satisfies? puppet-env/EnvironmentStateContainer %)))]
                   Object
                   (toString [this] (format "%s@%s {:id %s :state (Atom: %s)}"
-                                           "puppetlabs.services.jruby.jruby_puppet_core.JRubyPuppetInstance"
+                                           (.getName JRubyPuppetInstance)
                                            (Integer/toHexString (.hashCode this))
                                            id
                                            @state)))
