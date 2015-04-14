@@ -37,7 +37,6 @@
                  [commons-codec "1.9"]
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
                  [slingshot "0.10.3"]
-                 [ring/ring-codec "1.0.0"]
                  [cheshire "5.3.1"]
                  [trptcolin/versioneer "0.1.0"]]
 
