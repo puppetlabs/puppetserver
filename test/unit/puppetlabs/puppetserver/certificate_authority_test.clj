@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream))
+  (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream)
+           (java.security InvalidParameterException))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
@@ -346,7 +347,7 @@
 (deftest initialize!-test
   (let [settings (testutils/ca-settings (ks/temp-dir))]
 
-    (initialize! settings 512)
+    (initialize! settings)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->cadir-paths settings))]
@@ -390,9 +391,22 @@
                       (dissoc :csrdir :signeddir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
-        (initialize! settings 512)
+        (initialize! settings)
         (doseq [f files] (is (= "testable string" (slurp f))
                              "File was replaced"))))))
+
+(deftest initialize!-test-with-keylength-in-settings
+  (let [settings (assoc (testutils/ca-settings (ks/temp-dir)) :keylength 768)]
+    (initialize! settings)
+    (testing "cakey with keylength"
+      (let [key (-> settings :cakey utils/pem->private-key)]
+        (is (utils/private-key? key))
+        (is (= 768 (utils/keylength key)))))
+
+    (testing "capub with keylength"
+      (let [key (-> settings :capub utils/pem->public-key)]
+        (is (utils/public-key? key))
+        (is (= 768 (utils/keylength key)))))))
 
 (deftest ca-fail-fast-test
   (testing "Directories not required but are created if absent"
@@ -400,13 +414,13 @@
       (testing dir
         (let [settings (testutils/ca-sandbox! cadir)]
           (fs/delete-dir (get settings dir))
-          (is (nil? (initialize! settings 512)))
+          (is (nil? (initialize! settings)))
           (is (true? (fs/exists? (get settings dir))))))))
 
   (testing "CA public key not required"
     (let [settings (testutils/ca-sandbox! cadir)]
       (fs/delete (:capub settings))
-      (is (nil? (initialize! settings 512)))))
+      (is (nil? (initialize! settings)))))
 
   (testing "Exception is thrown when required file is missing"
     (doseq [file required-ca-files]
@@ -417,7 +431,7 @@
           (is (thrown-with-msg?
                IllegalStateException
                (re-pattern (str "Missing:\n" path))
-               (initialize! settings 512))))))))
+               (initialize! settings))))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
@@ -485,7 +499,7 @@
 
     (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
     (retrieve-ca-crl! (:cacrl ca-settings) (:hostcrl settings))
-    (initialize-master-ssl! settings "master" ca-settings 512)
+    (initialize-master-ssl! settings "master" ca-settings)
 
     (testing "Generated SSL file"
       (doseq [file (vals (settings->ssldir-paths settings))]
@@ -524,7 +538,7 @@
                       (dissoc :certdir :requestdir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
-        (initialize-master-ssl! settings "master" ca-settings 512)
+        (initialize-master-ssl! settings "master" ca-settings)
         (doseq [f files] (is (= "testable string" (slurp f))
                              "File was replaced"))))
 
@@ -537,8 +551,46 @@
             (is (thrown-with-msg?
                  IllegalStateException
                  (re-pattern (str "Missing:\n" path))
-                 (initialize-master-ssl! settings "master" ca-settings 512)))
+                 (initialize-master-ssl! settings "master" ca-settings)))
             (fs/copy copy path)))))))
+
+(deftest initialize-master-ssl!-test-with-keylength-settings
+  (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+        settings (-> (testutils/master-settings tmp-confdir)
+                     (assoc :keylength 768))
+        ca-settings (assoc (testutils/ca-settings (str tmp-confdir "/ssl/ca")) :keylength 768)]
+
+  (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
+  (initialize-master-ssl! settings "master" ca-settings)
+
+  (testing "hostprivkey should have correct keylength"
+    (let [key (-> settings :hostprivkey utils/pem->private-key)]
+      (is (utils/private-key? key))
+      (is (= 768 (utils/keylength key)))))
+
+  (testing "hostpubkey should have correct keylength"
+    (let [key (-> settings :hostpubkey utils/pem->public-key)]
+      (is (utils/public-key? key))
+      (is (= 768 (utils/keylength key)))))))
+
+(deftest initialize-master-ssl!-test-with-incorrect-keylength
+  (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+        settings (testutils/master-settings tmp-confdir)
+        ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
+
+    (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
+
+    (testing "should throw an error message with too short keylength"
+      (is (thrown-with-msg?
+        InvalidParameterException
+        #".*RSA keys must be at least 512 bits long.*"
+          (initialize-master-ssl! (assoc settings :keylength 128) "master" ca-settings))))
+
+    (testing "should throw an error message with too large keylength"
+      (is (thrown-with-msg?
+        InvalidParameterException
+        #".*RSA keys must be no longer than 16384 bits.*"
+          (initialize-master-ssl! (assoc settings :keylength 32768) "master" ca-settings))))))
 
 (deftest parse-serial-number-test
   (is (= (parse-serial-number "0001") 1))
