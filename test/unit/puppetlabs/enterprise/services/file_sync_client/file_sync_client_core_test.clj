@@ -7,7 +7,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.enterprise.jgit-client :as client]
             [me.raynes.fs :as fs]
-            [slingshot.slingshot :refer [try+]]
+            [slingshot.test :refer :all]
             [schema.test :as schema-test])
   (:import (org.eclipse.jgit.transport HttpTransport)
            (java.net URL)
@@ -25,29 +25,19 @@
         "Unexpected body received for get request"))
 
   (testing "Can't get latest commits for bad content type"
-    (let [got-expected-error? (atom false)]
-      (try+
-        (get-body-from-latest-commits-payload
-          {:status  200
-           :headers {"content-type" "bogus"}
-           :body    "{\"repo1\": \"123456\""})
-        (catch map? error
-          (reset! got-expected-error? true)
-          (is (re-matches #"Response for latest commits unexpected.*content-type.*bogus.*"
-                          (:message error)))))
-      (is @got-expected-error?)))
+    (is (thrown+-with-msg? map?
+                           #"Response for latest commits unexpected.*content-type.*bogus.*"
+                           (get-body-from-latest-commits-payload
+                             {:status  200
+                              :headers {"content-type" "bogus"}
+                              :body    "{\"repo1\": \"123456\""}))))
 
   (testing "Can't get latest commits for no body"
-    (let [got-expected-error? (atom false)]
-      (try+
-        (get-body-from-latest-commits-payload
-          {:status  200
-           :headers {"content-type" "application/json"}})
-        (catch map? error
-          (reset! got-expected-error? true)
-          (is (re-matches #"Response for latest commits unexpected.*body.*missing.*"
-                          (:message error)))))
-      (is @got-expected-error?))))
+    (is (thrown+-with-msg? map?
+                           #"Response for latest commits unexpected.*body.*missing.*"
+                           (get-body-from-latest-commits-payload
+                             {:status  200
+                              :headers {"content-type" "application/json"}})))))
 
 (deftest apply-updates-to-repo-test
   (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
@@ -60,25 +50,15 @@
 
     (testing "Throws appropriate slingshot error for a failed fetch"
       (helpers/init-bare-repo! client-target-repo)
-      (let [got-expected-error? (atom false)]
-        (try+
-          (apply-updates-to-repo! repo-name repo-url "" client-target-repo)
-          (catch map? error
-            (reset! got-expected-error? true)
-            (is (re-matches #"File sync was unable to fetch from server repo.*"
-                            (:message error)))))
-        (is @got-expected-error?)))
+      (is (thrown+-with-msg? map?
+                             #"File sync was unable to fetch from server repo.*"
+                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))
 
     (testing "Throws appropriate slingshot error for a failed clone"
       (fs/delete-dir client-target-repo)
-      (let [got-expected-error? (atom false)]
-        (try+
-          (apply-updates-to-repo! repo-name repo-url "" client-target-repo)
-          (catch map? error
-            (reset! got-expected-error? true)
-            (is (re-matches #"File sync was unable to clone from server repo.*"
-                            (:message error)))))
-        (is @got-expected-error?)))))
+      (is (thrown+-with-msg? map?
+                             #"File sync was unable to clone from server repo.*"
+                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))))
 
 (deftest process-repo-for-updates-test
   (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
