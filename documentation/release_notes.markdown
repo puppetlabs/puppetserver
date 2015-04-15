@@ -25,12 +25,6 @@ Puppet Server 2.0 ships for the following supported platforms:
 
 ### What's New in Puppet Server 2.0 
 
-#### Package Name
-
-Puppet Server's package name is no longer `puppet-server`, it is
-`puppetserver`. Use this when installing using `apt-get install` or
-`yum install`.
-
 #### Repository Location and Pre-Installation
 
 As with Puppet 4.0, Puppet Server 2.0 is now distributed via the new
