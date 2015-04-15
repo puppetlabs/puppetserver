@@ -151,7 +151,7 @@ For a list of all changes in this release, see this JIRA page:
 
 * [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.0.0%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
 
-[layout]: https://github.com/puppetlabs/puppet-specifications/blob/master/file_paths.md
+[layout]: https://github.com/puppetlabs/puppet-specifications/blob/2818c90163837ae6a45eb070cf9f6edfb39a1e3f/file_paths.md
 [current-install-docs]: /guides/install_puppet/install_el.html
 [pup4install]: /puppet/4.0/reference/install_linux.html
 [semver]: http://semver.org/
