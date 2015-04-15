@@ -1,147 +1,157 @@
 ---
 layout: default
-title: "Puppet Server: Release Notes"
+title: "Puppet Server 2.0: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
-## Puppet Server 1.0.2
+## Puppet Server 2.0
 
-The 1.0.2 release of Puppet Server includes several bug fixes. It also improves logging functionality by allowing Logback changes to take effect without a restart.
+In keeping with [semantic versioning][semver] practices, this release
+of Puppet Server introduces changes that break compatibility with
+Puppet 3.x agents. Please carefully read these release notes before
+attempting to upgrade your Puppet installation, as the locations of
+key files have moved, and changes to the Puppet Server API may require
+configuration changes.
+
+### Supported Platforms
+
+Puppet Server 2.0 ships for the following supported platforms:
+
+ * Enterprise Linux 7
+ * Enterprise Linux 6
+ * Ubuntu 14.04
+ * Ubuntu 12.04
+ * Debian 7
+
+### What's New in Puppet Server 2.0 
+
+#### Package Name
+
+Puppet Server's package name is no longer `puppet-server`, it is
+`puppetserver`. Use this when installing using `apt-get install` or
+`yum install`.
+
+#### Repository Location and Pre-Installation
+
+As with Puppet 4.0, Puppet Server 2.0 is now distributed via the new
+Puppet Collection repositories. Puppet Server 2.0 is part of Puppet
+Collection 1.
+
+In order to install Puppet Server 2.0, you'll need to install a
+release package appropriate to your operating system. See the
+[Puppet 4 installation guide][pup4install] for information on how to
+prepare your system for installation, and specific installation
+instructions.
+
+* [SERVER-524](https://tickets.puppetlabs.com/browse/SERVER-524) - Set
+  repo-target to PC1 for 2.0 release
+
+#### Changes to Library and File Locations
+
+> **Note:** These changes affect your ability to upgrade
+> agents. Please consult the [Puppet installation layout][layout]
+> document for guidance on where to move files before upgrading.
+
+As part of the move to a unified all-in-one configuration layout, the
+locations of configuration files and directories has changed.
+
+Due to changes in the location of Ruby gems in Puppet Server 2.0,
+you'll need to move your SSL certificates and any extensions you've
+installed, as well. 
+
+* [SERVER-370](https://tickets.puppetlabs.com/browse/SERVER-370) -
+  Change ruby-load-path to /opt/puppetlabs/puppet/lib/ruby/vendor_ruby
+* [SERVER-371](https://tickets.puppetlabs.com/browse/SERVER-371) -
+  Change gem_home to /opt/puppetlabs/puppet/cache/jruby-gems
+* [SERVER-387](https://tickets.puppetlabs.com/browse/SERVER-387)-
+  Update puppet-server config directory
+* [SERVER-409](https://tickets.puppetlabs.com/browse/SERVER-409) -
+  Plumb confdir, vardir, codedir, logdir, rundir values
+
+#### REST auth.conf
+
+As a result of the REST API URL changes between Puppet Server 1.x
+and 2.0, Puppet Server 1.x users who have modified their `auth.conf` will
+need to make changes when upgrading to Puppet Server 2.0.  See
+[SERVER-526](https://tickets.puppetlabs.com/browse/SERVER-526) for
+some additional information.
+
+These auth.conf changes follow the same changes required for any users
+upgrading from Puppet 3.x to Puppet 4.x. 
+
+#### Backwards Compatibility
+
+Puppet Server 2.0 is not backwards compatible with Puppet 3.x agents.
+Version 2.0 of Puppet Server is only compatible with Puppet 4.x
+agents. If upgrading all your agents and masters in concert will be a
+problem for you, please consider waiting until we release Puppet
+Server 2.1.
+
+### Known Issues
+
+#### Installing gems when Puppet Server is behind a proxy requires manual download of gems
+
+When a Puppet master must access the Internet via a proxy server, it
+is not possible to use the `puppetserver gem` command to install
+gems. To work around this issue until we release a fix:
+
+1. Use [rubygems.org](http://rubygems.org) to search for and download
+   the gem you want to install.
+2. Run the command `puppetserver gem install --local <PATH to GEM>`.
+
+* [SERVER-377](https://tickets.puppetlabs.com/browse/SERVER-377) -
+  `puppetserver gem` command doesn't work from behind a proxy server
 
 ### Bug Fixes
 
-#### Filebucket files treated as binary data
+#### Puppet Server now reports when new versions are available.
 
-Puppet Server now treats filebucket files as binary data. This prevents possible data alteration resulting from Puppet Server inappropriately treating all filebucket files as text data.
+Due to a mismatch in naming conventions, Puppet Server was unable to
+report the availability of new versions. We've addressed this bug by
+adopting the increasing preference to eliminate hyphens from assorted
+project and package names.
 
-* [SERVER-269](https://tickets.puppetlabs.com/browse/SERVER-269): Puppet Server aggressively coerces request data to UTF-8
+* [SERVER-520](https://tickets.puppetlabs.com/browse/SERVER-520) -
+  Apply artifact-id updates to version checks in master
+* [SERVER-457](https://tickets.puppetlabs.com/browse/SERVER-457) - Get
+  dujour working with Puppet Server 2.0.0 RC
 
-#### `puppetserver gem env` command now works
+#### Fix inconsistent behavior around `always_cache_features` setting
 
-This release fixes functionality of the `puppetserver gem env` command. Previously, this command was throwing an error because the entire system environment was being cleared. 
+We've fixed a bug in puppetserver where always\_cache\_features was not always
+overridden because it could be changed in puppet.conf. The behavior is
+now explicitly managed in code rather than configuration.
 
-* [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262): `puppetserver gem env` does not work, useful for troubleshooting
+* [SERVER-410](https://tickets.puppetlabs.com/browse/SERVER-410) -
+  Explicitly override `always\_cache\_features` in puppetserver
 
-#### Startup time extended for systemd 
+#### Fix unreliable puppetserver start behavior
 
-In 1.0.0, we extended the allowed startup time from 60 to 120 seconds, but we missed the systemd configuration. Now both the init script and systemd configs have the same timeout. 
+We've Fixed a bug where puppetserver was not starting reliably from
+the service management framework due to the "rundir" not being
+writable.
 
-* [SERVER-166](https://tickets.puppetlabs.com/browse/SERVER-166): Set START_TIMEOUT to 120 seconds for sysv init scripts and systemd.
+* [SERVER-414](https://tickets.puppetlabs.com/browse/SERVER-414) -
+  Handle rundir creation for puppet and puppetserver in Puppet
+  Server 2.x
 
-### Improvements
+#### Fix misleading silence from `puppetserver foreground` command 
 
-Puppet Server now picks up changes to logging levels at runtime, rather than requiring a system restart to detect Logback changes.
+We've fixed a bug where the puppetserver foreground command would not
+produce any output, making it appear as if the command had not started
+or was stalled. The foreground command produces debugging output
+in 2.0.0.
 
-* [SERVER-275](https://tickets.puppetlabs.com/browse/SERVER-275): Fixed an issue where logback levels weren't changed unless you restarted Puppet Server. 
-
-## Puppet Server 1.0.1 (Skipped)
-
-This version number was not released.
-
-## Puppet Server 1.0.0
-
-This release is the official "one point oh" version of Puppet Server. In
-accordance with the [Semantic Versioning](http://semver.org) specification,
-we're declaring the existing public API of this version to be the
-baseline for backwards-incompatible changes, which will trigger another
-major version number. (No backwards-incompatible changes were introduced
-between 0.4.0 and this version.)
-
-In addition, this release adds HTTP endpoints to refresh data and CLI tools for working with the JRuby runtime.
-
-### Compatibility Note
-
-Puppet Server 1.x works with Puppet 3.7.3 and all subsequent Puppet 3.x versions. (When Puppet 4 is released, we’ll release a new Puppet Server version to support it.)
-
-### New Feature: Admin API for Refreshing Environments
-
-This release adds two new HTTP endpoints to speed up deployment of Puppet code changes. Previously, such changes might require a restart of the entire Puppet Server instance, which can be rather slow. These new endpoints allow you to refresh the environment without restarting it.
-
-If you need this feature, you should probably use the `environment-cache` endpoint, since it’s faster than the `jruby-pool` endpoint. To use it, you’ll need to get a valid certificate from Puppet’s CA, add that certificate’s name to the `puppet-admin -> client-whitelist` setting in `puppetserver.conf`, and use that certificate to do an HTTP DELETE request at the `environment-cache` endpoint. For more details, see [the API docs for `environment-cache`.](./admin-api/v1/environment-cache.markdown)
-
-* [SERVER-150](https://tickets.puppetlabs.com/browse/SERVER-150): Add functionality to JRuby service to trash instance.
-* [SERVER-151](https://tickets.puppetlabs.com/browse/SERVER-151): Add an HTTP endpoint to call flush jruby pool function.
-* [SERVER-112](https://tickets.puppetlabs.com/browse/SERVER-112): Create environment cache entry factory implementation that allows flushing all environments.
-* [SERVER-114](https://tickets.puppetlabs.com/browse/SERVER-114): Add `flush_environment_cache` admin endpoint.
-
-### New Feature: `puppetserver ruby` and `puppetserver irb` Commands
-
-This release adds two new CLI commands: `puppetserver ruby` and `puppetserver irb`. These work like the normal `ruby` and `irb` commands, except they use Puppet Server’s JRuby environment instead of your operating system’s version of Ruby. This makes it easier to develop and test Ruby code for use with Puppet Server.
-
-* [SERVER-204](https://tickets.puppetlabs.com/browse/SERVER-204): `puppetserver ruby` cli tool.
-* [SERVER-222](https://tickets.puppetlabs.com/browse/SERVER-222): Add `puppetserver irb` cli command.
-
-### New Feature: `puppetserver foreground` Command
-
-The new `puppetserver foreground` command will start an instance of Puppet Server in the foreground, which will log directly to the console with higher-than-normal detail.
-
-This behavior is similar to the traditional `puppet master --verbose --no-daemonize` command, and it’s useful for developing extensions, tracking down problems, and other tasks that are a little outside the day-to-day work of running Puppet.
-
-* [SERVER-141](https://tickets.puppetlabs.com/browse/SERVER-141): Add `foreground` subcommand.
-
-### General Bug Fixes
-
-The `service puppetserver start` and `restart` commands will now block until Puppet Server is actually started and ready to work. (Previously, the init script would return with success before Puppet Server was actually online.) This release also fixes bugs that could cause startup to hang or to timeout prematurely, and a subtle settings bug.
-
-* [SERVER-205](https://tickets.puppetlabs.com/browse/SERVER-205): `wait_for_app` functions occasionally fails to read pidfile on debian and hangs indefinitely.
-* [SERVER-166](https://tickets.puppetlabs.com/browse/SERVER-166): Set `START_TIMEOUT` to 120 seconds for sysv init scripts and systemd.
-* [SERVER-221](https://tickets.puppetlabs.com/browse/SERVER-221): Run mode not initialized properly
-
-### Performance Improvements
-
-This release improves performance of the certificate status check. Previously, the CRL file was converted to an object once per CSR and signed certificate; as of this release, the object will be reused across checks instead of created for every check.
-
-* [SERVER-137](https://tickets.puppetlabs.com/browse/SERVER-137): Compose X509CRL once and reuse for get-certificate-statuses.
+* [SERVER-356](https://tickets.puppetlabs.com/browse/SERVER-356) -
+  puppetserver foreground produces no output
 
 ### All Changes
 
-For a list of all changes in this release, see the following Jira pages:
+For a list of all changes in this release, see this JIRA page:
 
-* [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/browse/SERVER/fixforversion/12023/)
-* [All Trapperkeeper issues targeted at this release](https://tickets.puppetlabs.com/browse/TK/fixforversion/12131/)
+* [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.0.0%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
 
-## Puppet Server 0.4.0
-This release contains improvements based on feedback from the community and
-Puppet Labs QA testing. It has usability and correctness improvements, mainly
-around SSL and our interaction with systemd. Notable changes:
-
-* (SERVER-89) The Puppet Server CA now creates a 'puppet' Subject Alternate
-  Name for master certificates for closer compatibility with the Ruby CA.
-* (SERVER-86) The CA no longer uses the 'ca_pub.pem' (which isn't guaranteed
-  to exist) when signing or revoking; instead it extracts the key from the
-  certificate directly (which IS guaranteed to be there).
-* (SERVER-70, SERVER-8, SERVER-84) Improvements around packaging will make
-  the Puppet Server behave better under OSes which use systemd and will now
-  preserve local changes to the /etc/sysconfig/puppetserver config on
-  upgrade.
-
-For a full list of bugs fixed in this release, check out the JIRA release page:
-https://tickets.puppetlabs.com/browse/SERVER/fixforversion/12014
-
-## Puppet Server 0.3.0
-This is the first feature update since the initial Puppet Server release.
-Notable user-facing improvements are:
-
-* (SERVER-18, SERVER-39) Puppet Server now supports externally-terminated SSL
-  in the same way as external termination on Apache+Passenger does.
-* (SERVER-4) Improve error messages and user feedback when starting on systems
-  with low memory. (We recommend at least 2GB RAM)
-* (SERVER-43) Add support for HTTP "basic" authentication; this was preventing
-  the 'http' report processor used by Dashboard from working.
-
-For a full list of bugs fixed in the release, check out this JIRA page:
-https://tickets.puppetlabs.com/browse/SERVER/fixforversion/11955
-
-## Puppet Server 0.2.2
-* (SERVER-13) Fix for file descriptor leak during report processing
-* (SERVER-7) Add licensing and copyright info
-* HTTP client connections from the master use the `localcacert` puppet.conf
-  setting to find the CA certs to use for validating a server.  Previously, the
-  `cacert` puppet.conf setting was used to find the CA certs used to validate
-  the server.
-
-## Puppet Server 0.2.1
-* (SERVER-9) Privileged data is accessible to non-privileged local users [CVE-2014-7170]
-
-## Puppet Server 0.2.0
- Initial Open Source Release
+[layout]: https://github.com/puppetlabs/puppet-specifications/blob/master/file_paths.md
+[current-install-docs]: /guides/install_puppet/install_el.html
+[pup4install]: /puppet/4.0/reference/install_linux.html
+[semver]: http://semver.org/
