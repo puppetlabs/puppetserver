@@ -76,7 +76,12 @@
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
      (if (nil? pool-instance#)
        (throw (IllegalStateException.
-                "Error: Attempt to borrow a JRuby instance from the pool timed out")))
+                (str "Attempt to borrow a JRuby instance from the pool "
+                     "timed out; Puppet Server is temporarily overloaded. If "
+                     "you get this error repeatedly, your server might be "
+                     "misconfigured or trying to serve too many agent nodes. "
+                     "Check Puppet Server settings: "
+                     "jruby-puppet.max-active-instances."))))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)
