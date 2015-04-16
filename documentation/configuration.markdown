@@ -59,7 +59,7 @@ This file contains the settings for Puppet Server itself.
     * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
     * `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
-      uses the Puppet default `/opt/puppetlabs/puppet/cache/jruby-gems`.
+      uses the Puppet default of `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
     * `master-conf-dir`: Optionally, set the path to the Puppet configuration
       directory. If not specified, uses the Puppet default `/etc/puppetlabs/puppet`.
     * `master-code-dir`: Optionally, set the path to the Puppet code directory.
@@ -72,7 +72,8 @@ This file contains the settings for Puppet Server itself.
     * `master-log-dir`: Optionally, set the path to the Puppet log directory.
       If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby
-      instances to allow. Defaults to 'num-cpus+2'.
+      instances to allow. Defaults to 'num-cpus - 1', with a minimum default
+      value of 1 and a maximum default value of 4'.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
       an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
@@ -92,7 +93,7 @@ This file contains the settings for Puppet Server itself.
 
 jruby-puppet: {
     ruby-load-path: [/opt/puppetlabs/puppet/lib/ruby/vendor_ruby]
-    gem-home: /opt/puppetlabs/puppet/cache/jruby-gems
+    gem-home: /opt/puppetlabs/server/data/puppetserver/jruby-gems
     master-conf-dir: /etc/puppetlabs/puppet
     master-code-dir: /etc/puppetlabs/code
     master-var-dir: /opt/puppetlabs/server/data/puppetserver
@@ -112,6 +113,19 @@ http-client: {
     #                TLS_RSA_WITH_AES_256_CBC_SHA,
     #                TLS_RSA_WITH_AES_128_CBC_SHA256,
     #                TLS_RSA_WITH_AES_128_CBC_SHA]
+
+    # The amount of time, in milliseconds, that an outbound HTTP connection
+    # will wait for data to be available before closing the socket. If not
+    # defined, defaults to 20 minutes. If 0, the timeout is infinite and if
+    # negative, the value is undefined by the application and governed by the
+    # system default behavior.
+    #idle-timeout-milliseconds: 1200000
+
+    # The amount of time, in milliseconds, that an outbound HTTP connection will
+    # wait to connect before giving up. Defaults to 2 minutes if not set. If 0,
+    # the timeout is infinite and if negative, the value is undefined in the
+    # application and governed by the system default behavior.
+    #connect-timeout-milliseconds: 120000
 }
 
 # settings related to profiling the puppet Ruby code
@@ -180,6 +194,34 @@ All of Puppet Server's logging is routed through the JVM [Logback](http://logbac
 The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
 
 Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
+
+### HTTP Traffic
+
+Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate
+file than the main log file. By default, this is located at
+`/var/log/puppetlabs/puppetserver/puppetserver-access.log` (open source releases) and
+`/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
+
+By default, the following information is logged for each HTTP request:
+
+* remote host
+* remote log name
+* remote user
+* date of the logging event
+* URL requested
+* status code of the request
+* response content length
+* remote IP address
+* local port
+* elapsed time to serve the request, in milliseconds
+
+The Logback configuration file is at
+`/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to
+change the logging behavior, and/or specify a different Logback configuration
+file in [`webserver.conf`](#webserverconf) with the
+[`access-log-config`](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#access-log-config)
+setting. For more information on configuring the logged data, see the
+[Logback Access Pattern Layout](http://logback.qos.ch/manual/layouts.html#AccessPatternLayout).
 
 ## Service Bootstrapping
 
