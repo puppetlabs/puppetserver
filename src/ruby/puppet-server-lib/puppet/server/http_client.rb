@@ -10,6 +10,15 @@ java_import com.puppetlabs.http.client.ClientOptions
 java_import com.puppetlabs.http.client.ResponseBodyType
 SyncHttpClient = com.puppetlabs.http.client.Sync
 
+class Puppet::Server::HttpClientError < SocketError
+  attr_reader :cause
+
+  def initialize(message, cause = nil)
+    super(message)
+    @cause = cause
+  end
+end
+
 class Puppet::Server::HttpClient
 
   OPTION_DEFAULTS = {
@@ -21,7 +30,10 @@ class Puppet::Server::HttpClient
   # Store a java HashMap of settings related to the http client
   def self.initialize_settings(settings)
     @settings = settings.select { |k,v|
-      ["ssl_protocols", "cipher_suites"].include? k
+      ["ssl_protocols",
+       "cipher_suites",
+       "http_connect_timeout_milliseconds",
+       "http_idle_timeout_milliseconds"].include? k
     }
   end
 
@@ -48,8 +60,8 @@ class Puppet::Server::HttpClient
       end
 
       # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
-      headers["Authorization"] =
-          "Basic #{Base64.strict_encode64 "#{credentials[:user]}:#{credentials[:password]}"}"
+      encoded = Base64.strict_encode64("#{credentials[:user]}:#{credentials[:password]}")
+      headers["Authorization"] = "Basic #{encoded}"
     end
 
     # Ensure multiple requests are not made on the same connection
@@ -59,6 +71,7 @@ class Puppet::Server::HttpClient
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
+    configure_timeouts(request_options)
     response = self.class.client_post(request_options)
     ruby_response(response)
   end
@@ -70,6 +83,7 @@ class Puppet::Server::HttpClient
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
+    configure_timeouts(request_options)
     response = self.class.client_get(request_options)
     ruby_response(response)
   end
@@ -81,6 +95,18 @@ class Puppet::Server::HttpClient
   end
 
   private
+
+  def configure_timeouts(request_options)
+    settings = self.class.settings
+
+    if settings.has_key?("http_connect_timeout_milliseconds")
+      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
+    end
+
+    if settings.has_key?("http_idle_timeout_milliseconds")
+      request_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
+    end
+  end
 
   def self.configure_ssl(request_options)
     request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
@@ -137,10 +163,13 @@ class Puppet::Server::HttpClient
 
   def self.client_post(request_options)
     self.client.post(request_options)
+  rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
+    raise Puppet::Server::HttpClientError.new(e.message, e)
   end
 
   def self.client_get(request_options)
     self.client.get(request_options)
+  rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
+    raise Puppet::Server::HttpClientError.new(e.message, e)
   end
-
 end

@@ -146,11 +146,11 @@
 
 (def required-master-files
   "The set of SSL files that are required on the master."
-  [:hostprivkey :hostcert])
+  #{:hostprivkey :hostcert})
 
 (def required-ca-files
   "The set of SSL related files that are required on the CA."
-  [:cacert :cacrl :cakey :cert-inventory :serial])
+  #{:cacert :cacrl :cakey :cert-inventory :serial})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -600,7 +600,7 @@
   copied to."
   ([cacert :- schema/Str
     localcacert :- schema/Str]
-   (if (fs/exists? cacert)
+   (if (and (fs/exists? cacert) (not (fs/exists? localcacert)))
      (do
        (ks/mkdirs! (fs/parent localcacert))
        (fs/copy cacert localcacert))
