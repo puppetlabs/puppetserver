@@ -79,7 +79,7 @@ class Puppet::Server::Master
       # translate the Java List into a Ruby Array so that the request
       # handling logic in Ruby can make use of it.
 
-      # For example, a query string of 'arr[]=one&arr[]=two" will be translated
+      # For example, a query string of 'arr=one&arr=two" will be translated
       # at the Clojure Ring layer into an element with a key of "arr" and
       # value of '["one", "two"]' as a Clojure PersistentVector.  This
       # PersistentVector needs to be converted into a Ruby Array before
