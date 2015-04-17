@@ -15,8 +15,8 @@
    (core/validate-memory-requirements!)
    (let [path           (get-route this)
          config         (get-config)
-         certname       (get-in config    [:puppet-server :certname])
-         localcacert    (get-in config    [:puppet-server :localcacert])
+         certname       (get-in config [:puppet-server :certname])
+         localcacert    (get-in config [:puppet-server :localcacert])
          puppet-version (get-in config [:puppet-server :puppet-version])
          settings       (ca/config->master-settings config)]
 
