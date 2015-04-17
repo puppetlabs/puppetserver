@@ -3,8 +3,8 @@ for Puppet Server.  This information is up-to-date as of 2015-03-06.
 
 ## THE MOST IMPORTANT THING TO KNOW
 
-tl;dr: we are putting a freeze on merging up changes from `stable` to `master`
-until Puppet Server 2.0 ships.
+tl;dr: *we are putting a freeze on merging up changes from `stable` to `master`
+until Puppet Server 2.1 ships.*
 
 ## Puppet Server Branches
 
@@ -15,8 +15,10 @@ only be two branches that are relevant at all in the puppetlabs github repo:
 In the case of Puppet Server, the `stable` branch maps to the 1.x series of
 OSS Puppet Server releases.  These releases are compatible with Puppet 3.x.
 
-The `master` branch maps to the 2.1.x series of OSS Puppet Server releases.
-These releases are compatible with Puppet 4.x and Puppet 3.x.
+The `master` branch maps to the 2.x series of OSS Puppet Server releases.  The
+2.0 release is compatible with Puppet 4.x as part of Puppet Collection 1 (PC1).
+The 2.1 release and later are intended to be compatible with Puppet 3.x and
+Puppet 4.x.
 
 ## Important Notes About Upcoming Releases
 
@@ -30,17 +32,19 @@ them are too risky to introduce into the `master` branch given our proximity to
 the 2.1 release.  Therefore, it is critical that we do *not* do any merges from
 `stable` to `master` until after 2.1 has shipped.
 
-Work on new functionality intended for the 2.1 release has commenced prior to
-the 2.0 release.  The `master` branch is where active development on 2.1
-functionality needs to land during the period before the 2.1.0 release.  
+The `master` branch is where active development on 2.1 functionality needs to
+land during the period before the 2.1.0 release.
 
 There will be a quick turnaround for a 2.1 release following the 2.0 release.
 This 2.1 release will be 2.0, plus the bugfixes in 1.0.8, plus a URL
 compatibility layer that will allow Puppet 3.x agents to talk to Puppet Server
 2.x (for more info see https://tickets.puppetlabs.com/browse/SERVER-526).
 
-NOTE: once 2.0 has been released *we'll still be under a merge freeze from
-stable to `master` and `2.1.x` until 2.1 ships*.
+Other than a one-time merge up from stable to master of the changes which landed
+in the 1.0.8 release, *we'll still be under a merge freeze from the stable to
+master branches until 2.1 ships*. Prior to 2.1 shipping, changes not related to
+enabling Puppet 3.x agents to talk to Puppet Server 2.x should generally be
+targeted at the stable branch.
 
 Some time following the release of 2.1, we'll do a 1.1 and 2.2 release,
 hopefully in close proximity to one another.  These will be the next major
