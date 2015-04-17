@@ -25,13 +25,6 @@
              "for repo-dir: "
              repo-dir))))
 
-(defn validate-exception-info-for-initialize-repos!
-  [message config]
-  (is (thrown-with-msg?
-        ExceptionInfo
-        message
-        (initialize-repos! config))))
-
 (defn get-http-recievepack
   [repo]
   (-> repo
@@ -82,17 +75,5 @@
         (fs/delete (fs/file base-dir sub-path "config")))
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (validate-receive-pack-setting (fs/file base-dir sub-path))))
-    (testing "ExceptionInfo thrown for missing base-path in config"
-      (validate-exception-info-for-initialize-repos!
-        #":base-path missing-required-key"
-        (dissoc config :base-path)))
-    (testing "ExceptionInfo thrown for missing repos in config"
-      (validate-exception-info-for-initialize-repos!
-        #":repos missing-required-key"
-        (dissoc config :repos)))
-    (testing "ExceptionInfo thrown for missing repos sub-dir in config"
-      (validate-exception-info-for-initialize-repos!
-        #":working-dir missing-required-key"
-        (assoc config :repos {:test-repo-name {}})))))
+        (validate-receive-pack-setting (fs/file base-dir sub-path))))))
 
