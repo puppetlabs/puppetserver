@@ -94,21 +94,21 @@
 (deftest ssl-configuration-test
   (testing "file sync storage service cannot perform git operations over
             plaintext when the server is configured using SSL"
-    (let [repo-name "ssl-configuration-test"]
+    (let [repo-name "ssl-configuration-test"
+          config (helpers/storage-service-config-with-repos
+                   (helpers/temp-dir-as-string)
+                   {(keyword repo-name) {:working-dir repo-name}}
+                   true)]
+      ;; Ensure that JGit's global config is initially using plaintext.
       (helpers/configure-JGit-SSL! false)
+      ;; Starting the storage service with SSL in the config should
+      ;; reconfigure JGit's global state to allow access over SSL.
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
-        app
-        (helpers/storage-service-config-with-repos
-          (helpers/temp-dir-as-string)
-          {(keyword repo-name) {:working-dir repo-name}}
-          true)
-        (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-              server-repo-url (str
-                                (helpers/repo-base-url true)
-                                "/"
-                                repo-name)]
-          (is (thrown? TransportException
-                       (jgit-client/clone server-repo-url client-orig-repo-dir))))))))
+        app config
+        (is (thrown? TransportException
+                     (jgit-client/clone
+                       (str (helpers/repo-base-url) "/" repo-name)
+                       (helpers/temp-dir-as-string))))))))
 
 (deftest configurable-endpoints-test
   (let [repo-path             "/test-repo-path"
