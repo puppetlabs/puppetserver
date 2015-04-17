@@ -13,18 +13,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(defn validate-receive-pack-setting
-  [repo-dir]
-  (let [http-receive-pack (-> (fs/file repo-dir)
-                              (Git/open)
-                              (.getRepository)
-                              (.getConfig)
-                              (.getInt "http" "receivepack" -2))]
-    (is (= 1 http-receive-pack)
-        (str "Http receive pack was not set to 1 during initialization "
-             "for repo-dir: "
-             repo-dir))))
-
 (defn get-http-recievepack
   [repo]
   (-> repo
@@ -58,7 +46,7 @@
     (testing "Vector of repos can be initialized"
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (validate-receive-pack-setting (fs/file base-dir sub-path))))
+        (is (= 1 (get-http-recievepack (fs/file base-dir sub-path))))))
     (testing "Content in repos not wiped out during reinitialization"
       (doseq [sub-path (map name (keys repos))]
         (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
@@ -75,5 +63,5 @@
         (fs/delete (fs/file base-dir sub-path "config")))
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (validate-receive-pack-setting (fs/file base-dir sub-path))))))
+        (is (= 1 (get-http-recievepack (fs/file base-dir sub-path))))))))
 
