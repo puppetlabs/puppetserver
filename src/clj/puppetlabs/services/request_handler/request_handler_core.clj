@@ -265,7 +265,8 @@
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
   (when (map? x)
     (= (:type x)
-       ::jruby/jruby-timeout)))
+       :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
+
 
 (defn output-error
   [{:keys [uri]} {:keys [message]} http-status]
