@@ -267,7 +267,6 @@
     (= (:type x)
        :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
 
-
 (defn output-error
   [{:keys [uri]} {:keys [message]} http-status]
   (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
