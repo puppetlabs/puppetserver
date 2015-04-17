@@ -122,7 +122,7 @@
   []
   (.getPath (ks/temp-dir)))
 
-(defn write-test-file
+(defn write-test-file!
   [file]
   (spit file file-text))
 
@@ -232,7 +232,7 @@
   ([repo repo-dir]
    (create-and-push-file repo repo-dir (str "test-file" (ks/uuid))))
   ([repo repo-dir file]
-    (write-test-file (str repo-dir "/" file))
+    (write-test-file! (str repo-dir "/" file))
     (commit-and-push-files repo
                            "update via lein test run"
                            author

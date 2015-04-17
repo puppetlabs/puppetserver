@@ -99,7 +99,7 @@
   [message name directory]
   (str message ".  Name: " name ".  Directory: " directory "."))
 
-(defn do-fetch
+(defn do-fetch!
   "Fetch the latest content for a repository from the server.  'name' is
   the name of the repository.  'latest-commit-id' is the ID of the latest
   commit on the server for the repository.  'target-dir' is the location
@@ -119,7 +119,7 @@
                name
                target-dir)))))
 
-(defn do-clone
+(defn do-clone!
   "Clone the latest content for a repository from the server.  'name' is
   the name of the repository.  'server-repo-url' is the URL under which
   the repository resides on the server.  'target-dir' is the directory in which
@@ -131,7 +131,7 @@
       (str "File sync clone of '" name "' successful.  New latest commit: "
            (jgit-client/head-rev-id (.getRepository git))))))
 
-(defn apply-updates-to-repo
+(defn apply-updates-to-repo!
   "Apply updates from the server to the client repository.  'name' is the
   name of the repository.  'server-repo-url' is the URL under which the
   repository resides on the server.  'latest-commit-id' is the id of the
@@ -141,8 +141,8 @@
   (let [fetch? (fs/exists? target-dir)]
     (try
       (if fetch?
-        (do-fetch name latest-commit-id target-dir)
-        (do-clone name server-repo-url target-dir))
+        (do-fetch! name latest-commit-id target-dir)
+        (do-clone! name server-repo-url target-dir))
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
@@ -153,7 +153,7 @@
                             target-dir)
                  :cause e})))))
 
-(defn process-repo-for-updates
+(defn process-repo-for-updates!
   "Process a repository for any possible updates which may need to be applied.
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'name' is the name of the repository.  'target-dir' is the location in
@@ -162,9 +162,9 @@
   [server-repo-url name target-dir latest-commit-id]
   (let [server-repo-url  (str server-repo-url "/" name)
         target-dir       (fs/file target-dir)]
-    (apply-updates-to-repo name server-repo-url latest-commit-id target-dir)))
+    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)))
 
-(defn process-repos-for-updates
+(defn process-repos-for-updates!
   "Process through all of the repos configured with the
   service for any updates which may be available on the server.
   'server-repo-url' is the base URL at which the repository is hosted on the
@@ -175,10 +175,10 @@
     (doseq [[repo-name target-dir] repos]
       (let [name (name repo-name)]
         (if (contains? latest-commits name)
-          (process-repo-for-updates server-repo-base-url
-                                    name
-                                    target-dir
-                                    (latest-commits name))
+          (process-repo-for-updates! server-repo-base-url
+                                     name
+                                     target-dir
+                                     (latest-commits name))
           (log/errorf
             "File sync did not find matching server repo for client repo: %s"
             name))))))
@@ -195,7 +195,7 @@
           server-api-path (:server-api-path config)
           repos (:repos config)]
       (log/debugf "File sync client repos: %s" repos)
-      (process-repos-for-updates
+      (process-repos-for-updates!
         http-client
         (str filesync-server-url server-repo-path)
         (str filesync-server-url server-api-path)
