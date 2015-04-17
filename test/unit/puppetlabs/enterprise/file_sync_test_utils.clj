@@ -24,20 +24,20 @@
 
 (def default-repo-path-prefix "/git")
 
-(def http-port                    8080)
+(def http-port 8080)
 
-(def https-port                   10080)
+(def https-port 10080)
 
-(def file-text                    "here is some text")
+(def file-text "here is some text")
 
-(def server-base-url              (str "http://localhost:" http-port))
+(def server-base-url (str "http://localhost:" http-port))
 
-(def server-base-url-ssl          (str "https://localhost:" https-port))
+(def server-base-url-ssl (str "https://localhost:" https-port))
 
-(def server-repo-url              (str server-base-url default-repo-path-prefix))
+(def server-repo-url (str server-base-url default-repo-path-prefix))
 
-(def author                       (PersonIdent.
-                                    "lein tester" "lein.tester@bogus.com"))
+(def author (PersonIdent.
+              "lein tester" "lein.tester@bogus.com"))
 
 (defn base-url
   [ssl?]
