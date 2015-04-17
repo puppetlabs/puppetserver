@@ -5,7 +5,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -115,3 +116,14 @@
     (if (client-allowed-access? settings req)
       (handler req)
       {:status 401 :body "Unauthorized"})))
+
+(defn wrap-with-puppet-version-header
+  "Function that returns a middleware that adds an
+  X-Puppet-Version header to the response."
+  [handler version]
+  (fn [request]
+    (let [response (handler request)]
+      ; Our compojure app returns nil responses sometimes.
+      ; In that case, don't add the header.
+      (when response
+        (rr/header response "X-Puppet-Version" version)))))

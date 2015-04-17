@@ -8,7 +8,7 @@
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
-        app         (build-ring-handler handler)
+        app         (build-ring-handler handler "1.2.3")
         request     (fn r ([path] (r :get path))
                           ([method path] (app (mock/request method path))))]
     (is (nil? (request "/v2.0/foo")))
@@ -42,7 +42,7 @@
   (testing (str "that the content-type in the ring request is replaced with "
                 "application/octet-stream for a file_bucket_file put request")
     (let [handler     (fn ([req] {:request req}))
-          app         (build-ring-handler handler)
+          app         (build-ring-handler handler "1.2.3")
           resp        (app {:request-method :put
                             :content-type   "text/plain"
                             :uri            "/foo/file_bucket_file/bar"})]

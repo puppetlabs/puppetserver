@@ -108,8 +108,9 @@
 
 (defn build-ring-handler
   "Creates the entire compojure application (all routes and middleware)."
-  [request-handler]
+  [request-handler puppet-version]
   {:pre [(fn? request-handler)]}
   (-> (root-routes request-handler)
       ringutils/wrap-request-logging
-      ringutils/wrap-response-logging))
+      ringutils/wrap-response-logging
+      (ringutils/wrap-with-puppet-version-header puppet-version)))
