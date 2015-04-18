@@ -27,26 +27,15 @@
                                              :repos {(keyword server-repo-subpath)
                                                      {:working-dir server-repo-subpath}}}})]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
-        app
-        config
-        (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-              server-repo-url      (str
-                                     (helpers/repo-base-url)
-                                     "/"
-                                     server-repo-subpath)
-              repo-test-file       "some random file contents"
-              client-orig-repo     (jgit-client/clone
-                                     server-repo-url
-                                     client-orig-repo-dir)]
-
+        app config
+        (let [test-clone-dir (helpers/temp-dir-as-string)
+              server-repo-url (str (helpers/repo-base-url) "/" server-repo-subpath)]
+          (jgit-client/clone server-repo-url test-clone-dir)
           (testing "An attempt to push to the repo should fail"
             (is (thrown-with-msg?
                   TransportException
                   #"Git access forbidden"
-                  (helpers/create-and-push-file
-                    client-orig-repo
-                    client-orig-repo-dir
-                    repo-test-file)))))))))
+                  (helpers/push-test-commit! test-clone-dir)))))))))
 
 (deftest file-sync-storage-service-simple-workflow-test
   (let [git-base-dir (helpers/temp-dir-as-string)
@@ -64,19 +53,11 @@
                                 (helpers/repo-base-url)
                                 "/"
                                 server-repo-subpath)
-              repo-test-file "tester"
-              client-orig-repo (jgit-client/clone
-                                 server-repo-url
-                                 client-orig-repo-dir)]
-          (helpers/create-and-push-file
-            client-orig-repo
-            client-orig-repo-dir
-            repo-test-file)
-          (let [client-second-repo-dir
-                (helpers/temp-dir-as-string)]
-            (jgit-client/clone
-              server-repo-url
-              client-second-repo-dir)
+              repo-test-file "test-file"]
+          (jgit-client/clone server-repo-url client-orig-repo-dir)
+          (helpers/push-test-commit! client-orig-repo-dir repo-test-file)
+          (let [client-second-repo-dir (helpers/temp-dir-as-string)]
+            (jgit-client/clone  server-repo-url client-second-repo-dir)
             (is (= helpers/file-text
                    (slurp (str client-second-repo-dir "/" repo-test-file)))
                 "Unexpected file text found in second repository clone")))))))

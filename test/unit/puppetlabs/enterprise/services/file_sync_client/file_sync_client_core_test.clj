@@ -86,7 +86,7 @@
               (is (.isBare repo))
               (is (= initial-commit (jgit-client/head-rev-id repo))))))
         (testing "Files fetched for update"
-          (helpers/create-and-push-file test-clone-dir)
+          (helpers/push-test-commit! test-clone-dir)
           (let [new-commit (jgit-client/head-rev-id test-clone-repo)]
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name

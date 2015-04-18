@@ -247,6 +247,18 @@
        (create-and-push-file client-orig-repo client-repo-dir))
      client-repo-dir)))
 
+(defn push-test-commit!
+  "Given a path on disk to Git repository, creates a test file in that repo,
+  adds it, commits it, and pushes it
+  (via 'jgit-client/push' with no remote specified.)"
+  ([repo-path]
+   (push-test-commit! repo-path (str "test-file" (ks/uuid))))
+  ([repo-path file-name]
+   (write-test-file! (str repo-path "/" file-name))
+   (let [repo (Git. (jgit-client/get-repository-from-working-tree (fs/file repo-path)))]
+     (jgit-client/add-and-commit repo "update via test" author)
+     (jgit-client/push repo))))
+
 (defn init-repo!
   "Creates a new Git repository at the given path.  Like `git init`."
   [path]

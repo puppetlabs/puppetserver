@@ -159,7 +159,7 @@
                 (is (= 200 (:status (latest-commits-response))))
 
                 ;; push a new commit up to the storage service
-                (helpers/create-and-push-file local-repo-dir)
+                (helpers/push-test-commit! local-repo-dir)
 
                 ;; At this point, the storage service should have one more commit than
                 ;; the client, since the client has not yet had time to sync with it,
