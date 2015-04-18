@@ -134,11 +134,10 @@
          (keyword server-repo-subpath-no-commits) {:working-dir server-repo-subpath-no-commits}}
         false)
 
-      (let [client-orig-repo-dir-1 (helpers/clone-repo-and-push-test-files
+      (let [client-orig-repo-dir-1 (helpers/clone-and-push-test-commit!
                                      server-repo-subpath-1)
-            client-orig-repo-dir-2 (helpers/clone-repo-and-push-test-files
-                                     server-repo-subpath-2
-                                     2)]
+            client-orig-repo-dir-2 (helpers/clone-and-push-test-commit!
+                                     server-repo-subpath-2)]
 
         (testing "Validate /latest-commits endpoint"
           (let [response (http-client/get (str

@@ -60,7 +60,7 @@
                    {(keyword repo) (str client-repo-dir)}
                    true))
 
-          (let [local-repo-dir (helpers/clone-repo-and-push-test-files repo 1 true)
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo true)
                 sync-agent (helpers/get-sync-agent app)
                 p (promise)]
             (helpers/add-watch-and-deliver-new-state sync-agent p)
@@ -94,7 +94,7 @@
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
-              local-repo-dir (helpers/clone-repo-and-push-test-files repo)]
+              local-repo-dir (helpers/clone-and-push-test-commit! repo)]
 
           (testing "file sync storage service is running"
             ;; Ensure that a commit pushed to the server is reflected by the
