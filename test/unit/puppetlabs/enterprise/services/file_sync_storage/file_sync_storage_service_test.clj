@@ -35,7 +35,7 @@
                                      "/"
                                      server-repo-subpath)
               repo-test-file       "some random file contents"
-              client-orig-repo     (helpers/clone-and-validate
+              client-orig-repo     (jgit-client/clone
                                      server-repo-url
                                      client-orig-repo-dir)]
 
@@ -65,7 +65,7 @@
                                 "/"
                                 server-repo-subpath)
               repo-test-file "tester"
-              client-orig-repo (helpers/clone-and-validate
+              client-orig-repo (jgit-client/clone
                                  server-repo-url
                                  client-orig-repo-dir)]
           (helpers/create-and-push-file
@@ -74,7 +74,7 @@
             repo-test-file)
           (let [client-second-repo-dir
                 (helpers/temp-dir-as-string)]
-            (helpers/clone-and-validate
+            (jgit-client/clone
               server-repo-url
               client-second-repo-dir)
             (is (= helpers/file-text
@@ -123,9 +123,11 @@
         (testing "The URL path at which the service mounts "
                   "the JGit servlet is configurable"
           (testing "Clone and verify the repo"
-            (helpers/clone-and-validate
-              server-repo-url
-              client-orig-repo-dir)))
+            (let [local-repo (jgit-client/clone server-repo-url client-orig-repo-dir)]
+              (is (not (nil? local-repo))
+                  (format "Repository cloned from server (%s) to (%s) should be non-nil"
+                          server-repo-url
+                          client-orig-repo-dir)))))
 
         (testing "The URL path at which the service mounts "
                  "the ring app is configurable"

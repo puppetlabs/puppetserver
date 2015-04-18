@@ -156,15 +156,6 @@
          (do
            ~@body)))))
 
-(defn clone-and-validate
-  [server-repo-url local-repo-dir]
-  (let [local-repo (jgit-client/clone server-repo-url local-repo-dir)]
-    (is (not (nil? local-repo))
-        (format "Repository cloned from server (%s) to (%s) should be non-nil"
-                server-repo-url
-                local-repo-dir))
-    local-repo))
-
 (defn validate-files-in-commit
   [repo rev-commit expected-names-of-files-committed message]
   (let [tree      (.getTree rev-commit)
