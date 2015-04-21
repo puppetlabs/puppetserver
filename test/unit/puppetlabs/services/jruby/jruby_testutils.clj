@@ -110,7 +110,7 @@
                     :id                   id
                     :max-requests         (:max-requests-per-instance config)
                     :flush-instance-fn    flush-instance-fn
-                    :state                (atom {:request-count 0})
+                    :state                (atom {:borrow-count 0})
                     :jruby-puppet         (create-mock-jruby-instance)
                     :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]

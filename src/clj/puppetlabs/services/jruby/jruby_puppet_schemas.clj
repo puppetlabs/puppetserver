@@ -98,7 +98,7 @@
 
 (def JRubyInstanceState
   "State metadata for an individual JRubyPuppet instance"
-  {:request-count schema/Int})
+  {:borrow-count schema/Int})
 
 (def JRubyInstanceStateContainer
   "An atom containing the current state of a given JRubyPuppet instance."

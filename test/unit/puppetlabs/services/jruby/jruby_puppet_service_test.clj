@@ -113,7 +113,7 @@
           ;; the counter gets incremented when the instance is returned to the
           ;; pool, so right now it should be at 2 since we've called
           ;; `with-jruby-puppet` twice.
-          (is (= 2 (:request-count (jruby-core/instance-state jruby))))
+          (is (= 2 (:borrow-count (jruby-core/instance-state jruby))))
           (jruby-protocol/return-instance service jruby))))))
 
 (deftest test-borrow-timeout-configuration

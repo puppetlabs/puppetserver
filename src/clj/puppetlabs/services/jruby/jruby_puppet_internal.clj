@@ -115,7 +115,7 @@
                         :id                   id
                         :max-requests         (:max-requests-per-instance config)
                         :flush-instance-fn    flush-instance-fn
-                        :state                (atom {:request-count 0})
+                        :state                (atom {:borrow-count 0})
                         :jruby-puppet         (.callMethod scripting-container
                                                            ruby-puppet-class
                                                            "new"
@@ -207,10 +207,10 @@
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
   (if (jruby-schemas/jruby-puppet-instance? instance)
     (let [new-state (swap! (:state instance)
-                           update-in [:request-count] inc)
+                           update-in [:borrow-count] inc)
           {:keys [max-requests flush-instance-fn pool]} instance]
       (if (and (pos? max-requests)
-               (>= (:request-count new-state) max-requests))
+               (>= (:borrow-count new-state) max-requests))
         (do
           (log/infof (str "Flushing JRuby instance %s because it has exceeded the "
                           "maximum number of requests (%s)")

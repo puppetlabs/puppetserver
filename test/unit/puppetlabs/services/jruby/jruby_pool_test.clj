@@ -78,7 +78,7 @@
       (let [drain-via   (fn [borrow-fn] (doall (repeatedly pool-size borrow-fn)))
             assoc-count (fn [acc jruby]
                           (assoc acc (:id jruby)
-                                     (:request-count @(:state jruby))))
+                                     (:borrow-count @(:state jruby))))
             get-counts  (fn [jrubies] (reduce assoc-count {} jrubies))]
         (doseq [drain-fn [#(jruby-core/borrow-from-pool pool-context)
                           #(jruby-core/borrow-from-pool-with-timeout pool-context 20000)]]
