@@ -125,6 +125,11 @@
     [jruby-internal/create-pool-instance! create-mock-pool-instance]
     (f)))
 
+(defmacro with-mock-pool-instance-fixture
+  [& body]
+  `(let [f# (fn [] (do ~@body))]
+     (mock-pool-instance-fixture f#)))
+
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."
   [pool-context size]
