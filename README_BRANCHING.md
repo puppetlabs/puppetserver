@@ -18,7 +18,8 @@ OSS Puppet Server releases.  These releases are compatible with Puppet 3.x.
 The `master` branch maps to the 2.x series of OSS Puppet Server releases.  The
 2.0 release is compatible with Puppet 4.x as part of Puppet Collection 1 (PC1).
 The 2.1 release and later are intended to be compatible with Puppet 3.x and
-Puppet 4.x.
+Puppet 4.x.  Puppet 3.x is supported for remote agents only, only Puppet 4.x
+satisfies the package dependency between Puppet Server and Puppet.
 
 ## Important Notes About Upcoming Releases
 
