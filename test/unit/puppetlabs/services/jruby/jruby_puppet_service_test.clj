@@ -105,7 +105,9 @@
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
         (is (= 1 (jruby-protocol/free-instance-count service)))
-        ;; borrow and return one more time
+        ;; borrow and return one more time: we're using `with-jruby-puppet`
+        ;; here even though it looks a bit strange, because that is what this
+        ;; test is intended to cover.
         (with-jruby-puppet
           jruby-puppet
           service)
