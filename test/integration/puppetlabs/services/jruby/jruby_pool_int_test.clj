@@ -229,7 +229,7 @@
                 (jruby-protocol/return-instance jruby-service instance2)
                 (is (true? (check-jrubies-for-constant-counts pool-context 2 1))))
 
-              ;; now we'll set the ruby constances on the 3 instances in the new pool
+              ;; now we'll set the ruby constant on the 3 instances in the new pool
               (is (true? (set-constants-and-verify pool-context 3)))
 
               ;; and finally, we return the last instance from the old pool
