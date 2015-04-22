@@ -14,7 +14,8 @@
             [puppetlabs.services.puppet-admin.puppet-admin-service :as puppet-admin]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.http.client.sync :as http-client]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [clojure.tools.logging :as log]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -41,7 +42,7 @@
    :ssl-ca-cert ca-cert})
 
 (def script-to-check-if-constant-is-defined
-  "begin; InstanceID; true; rescue NameError; false; end")
+  "! $instance_id.nil?")
 
 (defn add-watch-for-flush-complete
   [pool-context]
@@ -55,11 +56,17 @@
 
 (defn set-constants-and-verify
   [pool-context num-instances]
-  ;; here we set a constant called 'InstanceId' in each instance
-  (jruby-testutils/reduce-over-jrubies! pool-context num-instances #(format "InstanceID = %s" %))
+  ;; here we set a variable called 'instance_id' in each instance
+  (jruby-testutils/reduce-over-jrubies!
+    pool-context
+    num-instances
+    #(format "$instance_id = %s" %))
   ;; and validate that we can read that value back from each instance
   (= (set (range num-instances))
-     (-> (jruby-testutils/reduce-over-jrubies! pool-context num-instances (constantly "InstanceID"))
+     (-> (jruby-testutils/reduce-over-jrubies!
+           pool-context
+           num-instances
+           (constantly "$instance_id"))
          set)))
 
 (defn constant-defined?
