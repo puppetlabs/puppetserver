@@ -34,5 +34,18 @@ describe Puppet::Server::Network::HTTP::Handler do
       result = handler.body({"body" => nil})
       expect(result).to be_nil
     end
+
+    it "should convert param values from a Java list to a Ruby array" do
+      somestuff = java.util.ArrayList.new
+      somestuff.add "one fish"
+      somestuff.add "two fish"
+      request = {"params" => {"something" => somestuff}}
+      parsed_params = TestHandler.new().params(request)
+      something = parsed_params[:something]
+      expect(something.class).to eq Array
+      expect(something[0]).to eq "one fish"
+      expect(something[1]).to eq "two fish"
+    end
+
   end
 end
