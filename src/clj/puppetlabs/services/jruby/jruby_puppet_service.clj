@@ -6,6 +6,7 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [slingshot.slingshot :as sling]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -75,8 +76,14 @@
   [jruby-puppet jruby-service & body]
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
      (if (nil? pool-instance#)
-       (throw (IllegalStateException.
-                "Error: Attempt to borrow a JRuby instance from the pool timed out")))
+       (sling/throw+
+         {:type    ::jruby-timeout
+          :message (str "Attempt to borrow a JRuby instance from the pool "
+                        "timed out; Puppet Server is temporarily overloaded. If "
+                        "you get this error repeatedly, your server might be "
+                        "misconfigured or trying to serve too many agent nodes. "
+                        "Check Puppet Server settings: "
+                        "jruby-puppet.max-active-instances.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)

@@ -13,11 +13,12 @@
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path        (get-route this)
-         config      (get-config)
-         certname    (get-in config [:puppet-server :certname])
-         localcacert (get-in config [:puppet-server :localcacert])
-         settings    (ca/config->master-settings config)]
+   (let [path           (get-route this)
+         config         (get-config)
+         certname       (get-in config [:puppet-server :certname])
+         localcacert    (get-in config [:puppet-server :localcacert])
+         puppet-version (get-in config [:puppet-server :puppet-version])
+         settings       (ca/config->master-settings config)]
 
      (retrieve-ca-cert! localcacert)
      (initialize-master-ssl! settings certname)
@@ -25,7 +26,7 @@
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/build-ring-handler handle-request))))
+      (compojure/context path [] (core/build-ring-handler handle-request puppet-version))))
    context)
   (start
     [this context]

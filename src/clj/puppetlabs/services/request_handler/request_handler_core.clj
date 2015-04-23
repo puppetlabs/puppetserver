@@ -9,7 +9,8 @@
             [ring.middleware.params :as ring-params]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
-            [slingshot.slingshot :as sling]))
+            [slingshot.slingshot :as sling]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -259,21 +260,35 @@
     (= (:type x)
        :puppetlabs.services.request-handler.request-handler-core/bad-request)))
 
+(defn jruby-timeout?
+  [x]
+  "Determine if the supplied slingshot message is for a JRuby borrow timeout."
+  (when (map? x)
+    (= (:type x)
+       :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
+
+(defn output-error
+  [{:keys [uri]} {:keys [message]} http-status]
+  (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
+  (-> (ring-response/response message)
+      (ring-response/status http-status)
+      (ring-response/content-type "text/plain")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn handle-request
-  [request jruby-instance config]
+  [request jruby-service config]
   (sling/try+
-    (->> request
-         wrap-params-for-jruby
-         (as-jruby-request config)
-         clojure.walk/stringify-keys
-         make-request-mutable
-         (.handleRequest jruby-instance)
-         response->map)
-    (catch bad-request? {:keys [message]}
-      (log/errorf "Error 400 on SERVER at %s: %s" (:uri request) message)
-      (-> (ring-response/response message)
-          (ring-response/status 400)
-          (ring-response/content-type "text/plain")))))
+    (jruby/with-jruby-puppet jruby-instance jruby-service
+      (->> request
+           wrap-params-for-jruby
+           (as-jruby-request config)
+           clojure.walk/stringify-keys
+           make-request-mutable
+           (.handleRequest jruby-instance)
+           response->map))
+    (catch bad-request? e
+      (output-error request e 400))
+    (catch jruby-timeout? e
+      (output-error request e 503))))

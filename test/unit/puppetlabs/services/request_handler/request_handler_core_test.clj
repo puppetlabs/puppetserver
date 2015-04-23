@@ -6,8 +6,8 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [clojure.test :refer :all]
             [ring.util.codec :as ring-codec]
-            [slingshot.slingshot :as sling]
-            [slingshot.test :refer :all]))
+            [slingshot.test :refer :all]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -234,6 +234,22 @@
                         ring-codec/url-encode))))))
 
 (deftest handle-request-test
+  (def dummy-service
+    (reify jruby/JRubyPuppetService
+      (borrow_instance [_] {})
+      (return_instance [_ _])
+      (free_instance_count [_])
+      (mark_all_environments_expired_BANG_ [_])
+      (flush_jruby_pool_BANG_ [_])))
+
+  (def dummy-service-with-timeout
+    (reify jruby/JRubyPuppetService
+      (borrow_instance [_] nil)
+      (return_instance [_ _])
+      (free_instance_count [_])
+      (mark_all_environments_expired_BANG_ [_])
+      (flush_jruby_pool_BANG_ [_])))
+
   (logutils/with-test-logging
     (testing "slingshot bad requests translated to ring response"
       (let [bad-message "it's real bad"]
@@ -241,7 +257,14 @@
                                               (core/throw-bad-request!
                                                bad-message))]
           (let [response (core/handle-request {:body (StringReader. "blah")}
-                                              {}
+                                              dummy-service
                                               {})]
             (is (= 400 (:status response)) "Unexpected response status")
-            (is (= bad-message (:body response)) "Unexpected response body")))))))
+            (is (= bad-message (:body response)) "Unexpected response body"))
+          (let [response (core/handle-request {:body (StringReader. "")}
+                                              dummy-service-with-timeout
+                                              {})]
+            (is (= 503 (:status response)) "Unexpected response status")
+            (is (.startsWith
+                  (:body response)
+                  "Attempt to borrow a JRuby instance from the pool"))))))))
