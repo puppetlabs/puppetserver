@@ -69,7 +69,7 @@
           config (helpers/storage-service-config-with-repos
                    (helpers/temp-dir-as-string)
                    {(keyword repo-name) {:working-dir repo-name}}
-                   true)]
+                   true)] ; 'true' results in config with Jetty listening on over HTTPS only
       ;; Ensure that JGit's global config is initially using plaintext.
       (helpers/configure-JGit-SSL! false)
       ;; Starting the storage service with SSL in the config should
