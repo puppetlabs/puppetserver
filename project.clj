@@ -1,7 +1,7 @@
-(def tk-version "1.0.1")
-(def tk-jetty-version "1.1.1")
+(def tk-version "1.1.0")
+(def tk-jetty-version "1.3.0")
 (def ks-version "1.0.0")
-(def ps-version "2.0.1-SNAPSHOT")
+(def ps-version "2.1.0-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -17,9 +17,9 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.0"]
-                 [puppetlabs/http-client "0.4.2"]
+                 [puppetlabs/http-client "0.4.3"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
-                 [org.jruby/jruby-core "1.7.18"
+                 [org.jruby/jruby-core "1.7.19"
                   :exclusions
                   [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
                    org.ow2.asm/asm org.ow2.asm/asm-commons org.ow2.asm/asm-analysis
@@ -36,7 +36,7 @@
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.18"]
+                 [org.jruby/jruby-stdlib "1.7.19"]
                  [clj-time "0.5.1" :exclusions [joda-time]]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
@@ -102,7 +102,8 @@
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
-             :ci {:plugins [[lein-pprint "1.1.1"]]}}
+             :ci {:plugins [[lein-pprint "1.1.1"]]}
+             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
