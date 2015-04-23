@@ -1,13 +1,12 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
-            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
-             :refer :all]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :refer :all]
+            [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [puppetlabs.enterprise.jgit-client :as client]
             [me.raynes.fs :as fs]
-            [slingshot.slingshot :refer [try+]]
+            [slingshot.test :refer :all]
             [schema.test :as schema-test])
   (:import (org.eclipse.jgit.transport HttpTransport)
            (java.net URL)
@@ -25,29 +24,19 @@
         "Unexpected body received for get request"))
 
   (testing "Can't get latest commits for bad content type"
-    (let [got-expected-error? (atom false)]
-      (try+
-        (get-body-from-latest-commits-payload
-          {:status  200
-           :headers {"content-type" "bogus"}
-           :body    "{\"repo1\": \"123456\""})
-        (catch map? error
-          (reset! got-expected-error? true)
-          (is (re-matches #"Response for latest commits unexpected.*content-type.*bogus.*"
-                          (:message error)))))
-      (is @got-expected-error?)))
+    (is (thrown+-with-msg? map?
+                           #"Response for latest commits unexpected.*content-type.*bogus.*"
+                           (get-body-from-latest-commits-payload
+                             {:status  200
+                              :headers {"content-type" "bogus"}
+                              :body    "{\"repo1\": \"123456\""}))))
 
   (testing "Can't get latest commits for no body"
-    (let [got-expected-error? (atom false)]
-      (try+
-        (get-body-from-latest-commits-payload
-          {:status  200
-           :headers {"content-type" "application/json"}})
-        (catch map? error
-          (reset! got-expected-error? true)
-          (is (re-matches #"Response for latest commits unexpected.*body.*missing.*"
-                          (:message error)))))
-      (is @got-expected-error?))))
+    (is (thrown+-with-msg? map?
+                           #"Response for latest commits unexpected.*body.*missing.*"
+                           (get-body-from-latest-commits-payload
+                             {:status  200
+                              :headers {"content-type" "application/json"}})))))
 
 (deftest apply-updates-to-repo-test
   (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
@@ -56,73 +45,73 @@
 
     (testing "Throws appropriate error when directory exists but has no git repo"
       (is (thrown? IllegalStateException
-                   (apply-updates-to-repo repo-name repo-url "" client-target-repo))))
+                   (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))
 
     (testing "Throws appropriate slingshot error for a failed fetch"
       (helpers/init-bare-repo! client-target-repo)
-      (let [got-expected-error? (atom false)]
-        (try+
-          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
-          (catch map? error
-            (reset! got-expected-error? true)
-            (is (re-matches #"File sync was unable to fetch from server repo.*"
-                            (:message error)))))
-        (is @got-expected-error?)))
+      (is (thrown+-with-msg? map?
+                             #"File sync was unable to fetch from server repo.*"
+                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))
 
     (testing "Throws appropriate slingshot error for a failed clone"
       (fs/delete-dir client-target-repo)
-      (let [got-expected-error? (atom false)]
-        (try+
-          (apply-updates-to-repo repo-name repo-url "" client-target-repo)
-          (catch map? error
-            (reset! got-expected-error? true)
-            (is (re-matches #"File sync was unable to clone from server repo.*"
-                            (:message error)))))
-        (is @got-expected-error?)))))
+      (is (thrown+-with-msg? map?
+                             #"File sync was unable to clone from server repo.*"
+                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))))
+
+(defn temp-file-name
+  "Returns a unique name to a temporary file, but does not actually create the file."
+  [file-name-prefix]
+  (fs/file (fs/tmpdir) (fs/temp-name file-name-prefix)))
 
 (deftest process-repo-for-updates-test
-  (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
-        repo-name "process-repo-test.git"
-        update-repo (fn [commit-id]
-                      (process-repo-for-updates helpers/server-repo-url
-                                                     repo-name
-                                                     client-target-repo
-                                                     commit-id))]
+  (let [repo-name "process-repo-test.git"
+        server-repo-url (str helpers/server-repo-url "/" repo-name)
+        client-repo-path (temp-file-name repo-name)
+        config (helpers/storage-service-config-with-repos
+                 (helpers/temp-dir-as-string)
+                 {(keyword repo-name) {:working-dir repo-name}}
+                 false)]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
-      app
-      (helpers/storage-service-config-with-repos
-        (helpers/temp-dir-as-string)
-        {(keyword repo-name) {:working-dir repo-name}}
-        false)
-      (let [local-repo-dir (fs/file (helpers/temp-dir-as-string))
-            local-repo (.getRepository (helpers/clone-and-validate
-                                         (str helpers/server-repo-url "/" repo-name)
-                                         local-repo-dir))]
+      app config
+      (let [test-clone-dir (fs/file (helpers/temp-dir-as-string))
+            test-clone-repo (.getRepository (jgit-client/clone server-repo-url test-clone-dir))]
         (testing "Validate initial repo update"
-          (fs/delete-dir client-target-repo)
-          (let [initial-commit (client/head-rev-id local-repo)]
-            (update-repo initial-commit)
-            (let [repo (client/get-repository-from-git-dir client-target-repo)]
+          (let [initial-commit (jgit-client/head-rev-id test-clone-repo)]
+            (process-repo-for-updates! helpers/server-repo-url
+                                       repo-name
+                                       client-repo-path
+                                       initial-commit)
+            (let [repo (jgit-client/get-repository-from-git-dir client-repo-path)]
               (is (.isBare repo))
-              (is (= initial-commit (client/head-rev-id repo))))))
+              (is (= initial-commit (jgit-client/head-rev-id repo))))))
         (testing "Files fetched for update"
-          (helpers/create-and-push-file local-repo-dir)
-          (let [new-commit (client/head-rev-id local-repo)]
-            (update-repo new-commit)
-            (is (= new-commit (client/head-rev-id-from-git-dir client-target-repo)))))
+          (helpers/push-test-commit! test-clone-dir)
+          (let [new-commit (jgit-client/head-rev-id test-clone-repo)]
+            (process-repo-for-updates! helpers/server-repo-url
+                                       repo-name
+                                       client-repo-path
+                                       new-commit)
+            (is (= new-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)))))
         (testing "No change when nothing pushed"
-          (let [current-commit (client/head-rev-id-from-git-dir client-target-repo)]
-            (update-repo current-commit)
-            (is (= current-commit (client/head-rev-id-from-git-dir client-target-repo)))))
+          (let [current-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)]
+            (process-repo-for-updates! helpers/server-repo-url
+                                       repo-name
+                                       client-repo-path
+                                       current-commit)
+            (is (= current-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)))))
         (testing "Files restored after repo directory deleted"
-          (let [commit-id (client/head-rev-id-from-git-dir client-target-repo)]
-            (fs/delete-dir client-target-repo)
-            (update-repo commit-id)
-            (is (= (client/head-rev-id-from-git-dir client-target-repo) commit-id))))))))
+          (let [commit-id (jgit-client/head-rev-id-from-git-dir client-repo-path)]
+            (fs/delete-dir client-repo-path)
+            (process-repo-for-updates! helpers/server-repo-url
+                                       repo-name
+                                       client-repo-path
+                                       commit-id)
+            (is (= (jgit-client/head-rev-id-from-git-dir client-repo-path) commit-id))))))))
 
 (defn process-repos
   [repos client ssl?]
-  (process-repos-for-updates
+  (process-repos-for-updates!
     client
     (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
     (str (helpers/base-url ssl?) helpers/default-api-path-prefix)

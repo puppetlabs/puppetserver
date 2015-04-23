@@ -17,7 +17,7 @@
         (is (= nil (head-rev-id repo))))
 
       (testing "It should return the correct commit id for a repo with commits"
-        (helpers/write-test-file (str repo-dir "/test.txt"))
+        (helpers/write-test-file! (str repo-dir "/test.txt"))
         (let [commit (add-and-commit git "a test commit" helpers/author)
               id (commit-id commit)]
           (is (= (head-rev-id repo) id)))))))
@@ -31,7 +31,7 @@
         (is (= nil (head-rev-id-from-working-tree repo-dir))))
 
       (testing "It should return the correct commit id for a repo with commits"
-        (helpers/write-test-file (str repo-dir "/test.txt"))
+        (helpers/write-test-file! (str repo-dir "/test.txt"))
         (let [commit (add-and-commit git "a test commit" helpers/author)
               id (commit-id commit)]
           (is (= (head-rev-id-from-working-tree repo-dir) id)))))))
@@ -46,7 +46,7 @@
         (is (= nil (head-rev-id-from-git-dir repo-dir))))
 
       (testing "It should return the correct commit id for a repo with commits"
-        (helpers/write-test-file (str local-repo-dir "/test.txt"))
+        (helpers/write-test-file! (str local-repo-dir "/test.txt"))
         (let [local-repo (helpers/init-repo! local-repo-dir)
               commit (add-and-commit local-repo "a test commit" helpers/author)
               commit-id (commit-id commit)]
