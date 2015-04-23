@@ -7,7 +7,8 @@
             [schema.core :as schema])
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
            (org.jruby.embed ScriptingContainer LocalContextScope)
-           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)))
+           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
+           (clojure.lang IFn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -74,12 +75,19 @@
 (def default-profiler
   nil)
 
+(defn default-shutdown-fn
+  [f]
+  (f))
+
+(def default-flush-fn
+  identity)
+
 (defn create-pool-instance
   ([]
    (create-pool-instance (jruby-puppet-config {:max-active-instances 1})))
   ([config]
    (let [pool (jruby-internal/instantiate-free-pool 1)]
-     (jruby-internal/create-pool-instance! pool 1 config default-profiler))))
+     (jruby-internal/create-pool-instance! pool 1 config default-flush-fn default-profiler))))
 
 (defn create-mock-jruby-instance
   "Creates a mock implementation of the JRubyPuppet interface."
@@ -95,11 +103,14 @@
   [pool :- jruby-schemas/pool-queue-type
    id :- schema/Int
    config :- jruby-schemas/JRubyPuppetConfig
+   flush-instance-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
   (let [instance (jruby-schemas/map->JRubyPuppetInstance
                    {:pool                 pool
                     :id                   id
-                    :state                (atom {:request-count 0})
+                    :max-requests         (:max-requests-per-instance config)
+                    :flush-instance-fn    flush-instance-fn
+                    :state                (atom {:borrow-count 0})
                     :jruby-puppet         (create-mock-jruby-instance)
                     :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
@@ -113,6 +124,11 @@
   (with-redefs
     [jruby-internal/create-pool-instance! create-mock-pool-instance]
     (f)))
+
+(defmacro with-mock-pool-instance-fixture
+  [& body]
+  `(let [f# (fn [] (do ~@body))]
+     (mock-pool-instance-fixture f#)))
 
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."

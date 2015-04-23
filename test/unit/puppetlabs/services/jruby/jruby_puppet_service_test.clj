@@ -27,8 +27,7 @@
 
 (defn jruby-service-test-config-with-timeouts
   [connect-timeout idle-timeout]
-  (merge (jruby-testutils/jruby-puppet-tk-config
-           (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+  (merge (jruby-service-test-config 1)
          {:http-client {:connect-timeout-milliseconds connect-timeout
                         :idle-timeout-milliseconds    idle-timeout}}))
 
@@ -106,8 +105,18 @@
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
         (is (= 1 (jruby-protocol/free-instance-count service)))
+        ;; borrow and return one more time: we're using `with-jruby-puppet`
+        ;; here even though it looks a bit strange, because that is what this
+        ;; test is intended to cover.
+        (with-jruby-puppet
+          jruby-puppet
+          service)
         (let [jruby (jruby-protocol/borrow-instance service)]
-          (is (= 2 (:request-count (jruby-core/instance-state jruby)))))))))
+          ;; the counter gets incremented when the instance is returned to the
+          ;; pool, so right now it should be at 2 since we've called
+          ;; `with-jruby-puppet` twice.
+          (is (= 2 (:borrow-count (jruby-core/instance-state jruby))))
+          (jruby-protocol/return-instance service jruby))))))
 
 (deftest test-borrow-timeout-configuration
   (testing "configured :borrow-timeout is honored by the borrow-instance service function"
