@@ -34,7 +34,6 @@ class Puppet::Server::Master
 
   def handleRequest(request)
     response = {}
-
     process(request, response)
     # 'process' returns only the status -
     # `response` now contains all of the response data
@@ -67,4 +66,5 @@ class Puppet::Server::Master
   def run_mode()
     Puppet.run_mode.name.to_s
   end
+
 end
