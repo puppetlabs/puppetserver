@@ -17,8 +17,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [schema.test :as schema-test])
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging with-test-logging-debug]]
+            [schema.test :as schema-test]
+            [me.raynes.fs :as fs])
   (:import (java.net ConnectException)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -184,3 +185,85 @@
                        (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))
 
         (finally (tk-app/stop storage-app))))))
+
+(deftest ^:integration server-side-corruption-test
+  (let [repo1 "repo1"
+        repo2 "repo2"
+        repo3 "repo3"
+        repos [repo1 repo2 repo3]
+        server-base-path (helpers/temp-dir-as-string)]
+    ;; This is used to silence the error logged when the server-side repo is corrupted,
+    ;; but unfortunately, it doesn't seem to actually allow that message to be matched
+    (with-test-logging
+      (bootstrap/with-app-with-config
+        app
+        [jetty-service/jetty9-service
+         file-sync-storage-service/file-sync-storage-service
+         webrouting-service/webrouting-service]
+        (helpers/storage-service-config-with-repos
+          server-base-path
+          (into {} (for [repo repos]
+                     {(keyword repo) {:working-dir repo}}))
+          false)
+        (let [repos-map (into {} (for [repo repos]
+                                   {repo {:client-dir (str (helpers/temp-dir-as-string) "/" repo)
+                                          :local-dir  (helpers/clone-and-push-test-commit! repo)}}))]
+          (bootstrap/with-app-with-config
+            app
+            [file-sync-client-service/file-sync-client-service
+             scheduler-service/scheduler-service]
+            (helpers/client-service-config-with-repos
+              (into {} (for [repo repos]
+                         {(keyword repo) (str (get-in repos-map [repo :client-dir]))}))
+              false)
+
+            (let [sync-agent (helpers/get-sync-agent app)]
+
+              (testing "file sync client service is running"
+                (let [p (promise)]
+                  (helpers/add-watch-and-deliver-new-state sync-agent p)
+                  (let [new-state (deref p)]
+                    (is (= :successful (:status new-state))))
+                  (doseq [repo repos]
+                    (is (= (get-latest-commits-for-repo repo)
+                           (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo :client-dir])))))))
+
+              (testing "client-side repo recovers after server-side repo becomes corrupt"
+                (let [corrupt-repo-path (str server-base-path "/corrupted")
+                      original-repo-path (str server-base-path "/" repo1 ".git")]
+                  (doseq [repo repos]
+                    (helpers/push-test-commit! (get-in repos-map [repo :local-dir])))
+                  ;; "Corrupt" the server-side repo by moving it to a different location
+                  (fs/rename original-repo-path corrupt-repo-path)
+                  (testing "corruption of one repo does not affect syncing of other repos"
+                    (let [p (promise)]
+                      (helpers/add-watch-and-deliver-new-state sync-agent p)
+                      (let [new-state (deref p)]
+                        ;; This should be successful, as syncing should continue even if one repo cannot
+                        ;; be synced
+                        (is (= :successful (:status new-state))))
+                      (testing "all repos but the corrupted one are synced"
+                        ;; This should be nil, as the directory that is supposed to contain
+                        ;; repo1 no longer exists
+                        (is (nil? (get-latest-commits-for-repo repo1)))
+                        ;; The moved server-side repo should have newer commits than the client directory
+                        ;; as it was moved before syncing happened
+                        (is (not= (jgit-utils/head-rev-id-from-git-dir corrupt-repo-path)
+                                  (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo1 :client-dir]))))
+                        (is (= (get-latest-commits-for-repo repo2)
+                               (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo2 :client-dir]))))
+                        (is (= (get-latest-commits-for-repo repo3)
+                               (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo3 :client-dir]))))))
+                    ;; "Restore" the server-side repo by moving it back to its original location
+                    (fs/rename corrupt-repo-path original-repo-path)
+                    (doseq [repo repos]
+                      (helpers/push-test-commit! (get-in repos-map [repo :local-dir])))
+                    (testing "client recovers when the server-side repo is fixed"
+                      (let [p (promise)]
+                        (helpers/add-watch-and-deliver-new-state sync-agent p)
+                        (let [new-state (deref p)]
+                          (is (= :successful (:status new-state))))
+                        (testing "all repos including the previously corrupted one are synced"
+                          (doseq [repo repos]
+                            (is (= (get-latest-commits-for-repo repo)
+                                   (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo :client-dir]))))))))))))))))))

@@ -162,7 +162,12 @@
   [server-repo-url name target-dir latest-commit-id]
   (let [server-repo-url  (str server-repo-url "/" name)
         target-dir       (fs/file target-dir)]
-    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)))
+    (try+
+      (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
+      (catch agent-error? e
+        (log/errorf
+          (str "Error syncing repo: " (:message e))
+          name)))))
 
 (defn process-repos-for-updates!
   "Process through all of the repos configured with the

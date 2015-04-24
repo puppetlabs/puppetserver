@@ -139,12 +139,11 @@
   [git-dir]
   {:pre [(instance? File git-dir)]
    :post [(or (string? %) (nil? %))]}
-  (when-let [ref (-> git-dir
-                     (jgit-utils/get-repository-from-git-dir)
-                     (.getRef "refs/heads/master"))]
-    (-> ref
-        (.getObjectId)
-        (jgit-utils/commit-id))))
+  (when-let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
+    (when-let [ref (.getRef repo "refs/heads/master")]
+      (-> ref
+          (.getObjectId)
+          (jgit-utils/commit-id)))))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in `sub-paths`."
