@@ -49,12 +49,21 @@
 
 (defn agent-error? [x] (not (schema/check AgentError x)))
 
+(def RepoState
+  "A schema which describes a valid state of a repo after a sync"
+  (schema/if #(= (:status %) :failed)
+    {:status (schema/eq :failed)
+     :cause AgentError}
+    {:status (schema/eq :successful)
+     :latest-commit schema/Str}))
+
 (def AgentState
   "A schema which describes a valid state of the agent."
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
      :error  AgentError}
-    {:status (schema/enum :successful :created)}))
+    {:status (schema/enum :successful :created)
+     :repos  {schema/Str RepoState}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -162,12 +171,8 @@
   [server-repo-url name target-dir latest-commit-id]
   (let [server-repo-url  (str server-repo-url "/" name)
         target-dir       (fs/file target-dir)]
-    (try+
-      (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
-      (catch agent-error? e
-        (log/errorf
-          (str "Error syncing repo: " (:message e))
-          name)))))
+    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
+    latest-commit-id))
 
 (defn process-repos-for-updates!
   "Process through all of the repos configured with the
@@ -177,16 +182,27 @@
   [client server-repo-base-url server-api-url repos]
   (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
-    (doseq [[repo-name target-dir] repos]
-      (let [name (name repo-name)]
-        (if (contains? latest-commits name)
-          (process-repo-for-updates! server-repo-base-url
-                                     name
-                                     target-dir
-                                     (latest-commits name))
-          (log/errorf
-            "File sync did not find matching server repo for client repo: %s"
-            name))))))
+    (into {}
+          (for [[repo-name target-dir] repos]
+            (let [name (name repo-name)
+                  latest-commit (latest-commits name)]
+              (if (contains? latest-commits name)
+                (try+
+                  (process-repo-for-updates! server-repo-base-url
+                                             name
+                                             target-dir
+                                             latest-commit)
+                  {name {:status        :successful
+                         :latest-commit latest-commit}}
+                  (catch agent-error? e
+                    (log/errorf
+                      (str "Error syncing repo: " (:message e))
+                      name)
+                    {name {:status :failed
+                           :cause  e}}))
+                (log/errorf
+                  "File sync did not find matching server repo for client repo: %s"
+                  name)))))))
 
 ; This function is marked 'always-validate' to ensure that the agent is always
 ; left in a valid state.
@@ -200,12 +216,13 @@
           server-api-path (:server-api-path config)
           repos (:repos config)]
       (log/debugf "File sync client repos: %s" repos)
-      (process-repos-for-updates!
-        http-client
-        (str filesync-server-url server-repo-path)
-        (str filesync-server-url server-api-path)
-        repos)
-      {:status :successful})
+      (let [repo-status-map (process-repos-for-updates!
+                              http-client
+                              (str filesync-server-url server-repo-path)
+                              (str filesync-server-url server-api-path)
+                              repos)]
+        {:status :successful
+         :repos repo-status-map}))
     (catch agent-error? error
       (let [message (str "File sync failure: " (:message error))]
         (if-let [cause (:cause error)]
@@ -244,7 +261,7 @@
                      (request-shutdown))))
 
 (schema/defn ^:always-validate start-periodic-sync-process!
-  "Synchronizes the repositories sypecified in 'config' by sending the agent an
+  "Synchronizes the repositories specified in 'config' by sending the agent an
   action.  It is important that this function only be called once, during service
   startup.  (Although, note that one-off sync runs can be triggered by sending
   the agent a 'sync-on-agent' action.)

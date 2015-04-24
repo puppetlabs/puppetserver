@@ -17,7 +17,7 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging with-test-logging-debug]]
+            [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs])
   (:import (java.net ConnectException)))
@@ -68,15 +68,16 @@
 
             (testing "client is able to successfully sync with storage service"
               (let [new-state (deref p)]
-               (is (= :successful (:status new-state)))))
-
-            (testing "client repo revision matches server local repo"
-              ;; The client syncs with the storage service, and the
-              ;; storage service repo was updated from the working copy
-              ;; of the local repo. Thus, this test assures that the whole
-              ;; process was successful.
-              (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-dir)
-                     (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))))))))
+               (is (= :successful (:status new-state)))
+               (testing "client repo revision matches server local repo"
+                 ;; The client syncs with the storage service, and the
+                 ;; storage service repo was updated from the working copy
+                 ;; of the local repo. Thus, this test assures that the whole
+                 ;; process was successful.
+                 (is (= :successful (get-in new-state [:repos repo :status])))
+                 (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-dir)
+                        (get-in new-state [:repos repo :latest-commit])
+                        (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))))))))))
 
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
@@ -124,9 +125,11 @@
                   ;; Block until we are sure that the periodic sync process
                   ;; has completed.
                   (let [new-state (deref p)]
-                    (is (= :successful (:status new-state))))
-                  (is (= (get-latest-commits-for-repo repo)
-                         (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))
+                    (is (= :successful (:status new-state)))
+                    (is (= :successful (get-in new-state [:repos repo :status])))
+                    (is (= (get-latest-commits-for-repo repo)
+                           (get-in new-state [:repos repo :latest-commit])
+                           (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))))
 
               (testing "kill storage service and verify client has errors"
                 ;; Stop the storage service - the next time the sync runs, it
@@ -146,6 +149,7 @@
                       ;; The sync process failed, and we were delivered an error.
                       ;; Verify that it is what it should be.
                       (is (= :failed (:status new-state)))
+                      (is (= nil (:repos new-state)))
                       (let [error (:error new-state)]
                         (testing "the delivered error describes a network connectivity problem"
                           (is (map? error))
@@ -180,10 +184,11 @@
                   ;; Block until we are sure that the periodic sync process
                   ;; has completed.
                   (let [new-state (deref p)]
-                    (is (= :successful (:status new-state)))))
-                (is (= (get-latest-commits-for-repo repo)
-                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))
-
+                    (is (= :successful (:status new-state)))
+                    (is (= :successful (get-in new-state [:repos repo :status])))
+                    (is (= (get-latest-commits-for-repo repo)
+                           (get-in new-state [:repos repo :latest-commit])
+                           (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))))
         (finally (tk-app/stop storage-app))))))
 
 (deftest ^:integration server-side-corruption-test
@@ -223,10 +228,12 @@
                 (let [p (promise)]
                   (helpers/add-watch-and-deliver-new-state sync-agent p)
                   (let [new-state (deref p)]
-                    (is (= :successful (:status new-state))))
-                  (doseq [repo repos]
-                    (is (= (get-latest-commits-for-repo repo)
-                           (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo :client-dir])))))))
+                    (is (= :successful (:status new-state)))
+                    (doseq [repo repos]
+                      (is (= (get-latest-commits-for-repo repo)
+                             (get-in new-state [:repos repo :latest-commit])
+                             (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo :client-dir]))))
+                      (is (= :successful (get-in new-state [:repos repo :status])))))))
 
               (testing "client-side repo recovers after server-side repo becomes corrupt"
                 (let [corrupt-repo-path (str server-base-path "/corrupted")
@@ -241,19 +248,23 @@
                       (let [new-state (deref p)]
                         ;; This should be successful, as syncing should continue even if one repo cannot
                         ;; be synced
-                        (is (= :successful (:status new-state))))
-                      (testing "all repos but the corrupted one are synced"
-                        ;; This should be nil, as the directory that is supposed to contain
-                        ;; repo1 no longer exists
-                        (is (nil? (get-latest-commits-for-repo repo1)))
-                        ;; The moved server-side repo should have newer commits than the client directory
-                        ;; as it was moved before syncing happened
-                        (is (not= (jgit-utils/head-rev-id-from-git-dir corrupt-repo-path)
-                                  (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo1 :client-dir]))))
-                        (is (= (get-latest-commits-for-repo repo2)
-                               (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo2 :client-dir]))))
-                        (is (= (get-latest-commits-for-repo repo3)
-                               (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo3 :client-dir]))))))
+                        (is (= :successful (:status new-state)))
+                        (is (= :failed (get-in new-state [:repos repo1 :status])))
+                        (is (re-matches #"File sync was unable to fetch from server repo.*" (get-in new-state [:repos repo1 :cause :message])))
+                        (testing "all repos but the corrupted one are synced"
+                          ;; This should be nil, as the directory that is supposed to contain
+                          ;; repo1 no longer exists
+                          (is (nil? (get-latest-commits-for-repo repo1)))
+                          ;; The moved server-side repo should have newer commits than the client directory
+                          ;; as it was moved before syncing happened
+                          (is (not= (jgit-utils/head-rev-id-from-git-dir corrupt-repo-path)
+                                    (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo1 :client-dir]))))
+                          (is (= (get-latest-commits-for-repo repo2)
+                                 (get-in new-state [:repos repo2 :latest-commit])
+                                 (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo2 :client-dir]))))
+                          (is (= (get-latest-commits-for-repo repo3)
+                                 (get-in new-state [:repos repo3 :latest-commit])
+                                 (jgit-utils/head-rev-id-from-git-dir (get-in repos-map [repo3 :client-dir])))))))
                     ;; "Restore" the server-side repo by moving it back to its original location
                     (fs/rename corrupt-repo-path original-repo-path)
                     (doseq [repo repos]
