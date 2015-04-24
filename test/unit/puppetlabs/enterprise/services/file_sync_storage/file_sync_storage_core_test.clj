@@ -18,18 +18,18 @@
       (.getConfig)
       (.getInt "http" "receivepack" (Integer/MIN_VALUE))))
 
-(deftest initialize-repo!-test
+(deftest initialize-bare-repo!-test
   (testing "The repo's 'http.receivepack' setting should be 0 when the
            'allow-anonymous-push?' parameter is false."
     (let [repo (ks/temp-dir)]
-      (initialize-repo! repo false)
+      (initialize-bare-repo! repo false)
       (let [receivepack (get-http-recievepack repo)]
         (is (= 0 receivepack)))))
 
   (testing "The repo's 'http.receivepack' setting should be 1 when the
            'allow-anonymous-push?' parameter is true."
     (let [repo (ks/temp-dir)]
-    (initialize-repo! repo true)
+    (initialize-bare-repo! repo true)
     (let [receivepack (get-http-recievepack repo)]
       (is (= 1 receivepack))))))
 

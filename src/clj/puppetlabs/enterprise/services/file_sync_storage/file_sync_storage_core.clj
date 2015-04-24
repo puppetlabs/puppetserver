@@ -112,28 +112,23 @@
                     (.getMessage e)) e))))
   nil)
 
-(defn initialize-repo!
-  "Initialize a directory (specified by the `repo-path` parameter) for git
-  repository content to be hosted on the server.   `repo-path` should be
-  something that is coercible to a File.  If the `allow-anonymous-push?` flag
-  is set, the 'http.receive-pack' setting in the git directory configuration to
-  '1' so that the directory is exported for anonymous access.  Otherwise,
-  http.receivepack will be set to 0, which disables all pushes to the repository
-  over HTTP.  Returns nil."
+(defn initialize-bare-repo!
+  "Initialize a bare Git repository in the directory specified by 'path'.
+  'path' must be something that is coercible to a File.
+  If `allow-anonymous-push?` is true, the 'http.receive-pack' setting on
+  the repository will be '1' so that the directory is exported for anonymous
+  access.  Otherwise, 'http.receivepack' will be set to 0,
+  which disables all pushes to the repository over HTTP."
   [repo-path allow-anonymous-push?]
-  {:post [(nil? %)]}
   (doto
-      ; On the server-side, the git repo has to be initialized
-      ; as bare in order to be served up to remote clients
-      (-> (InitCommand.)
-          (.setDirectory (fs/file repo-path))
-          (.setBare true)
-          (.call)
-          (.getRepository)
-          (.getConfig))
+    (.. (new InitCommand)
+        (setDirectory (fs/file repo-path))
+        (setBare true)
+        (call)
+        (getRepository)
+        (getConfig))
     (.setInt "http" nil "receivepack" (if allow-anonymous-push? 1 0))
-    (.save))
-  nil)
+    (.save)))
 
 (defn latest-commit-on-master
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
@@ -296,4 +291,4 @@
       (let [repo-path (fs/file base-path (str (name repo-id) ".git"))
             http-push-enabled (:http-push-enabled repo-info)]
         (log/infof "Initializing file sync repository path: %s" repo-path)
-        (initialize-repo! repo-path http-push-enabled)))))
+        (initialize-bare-repo! repo-path http-push-enabled)))))
