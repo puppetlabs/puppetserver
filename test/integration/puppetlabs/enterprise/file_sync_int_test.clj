@@ -42,7 +42,7 @@
 
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
-    (let [repo "ssl-integration-test.git"
+    (let [repo "ssl-integration-test"
           client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -79,7 +79,7 @@
 
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
-    (let [repo "network-partition-test.git"
+    (let [repo "network-partition-test"
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service

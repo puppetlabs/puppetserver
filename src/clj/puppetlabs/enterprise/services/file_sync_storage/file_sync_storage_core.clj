@@ -154,7 +154,7 @@
   [base-path sub-paths]
   (reduce
     (fn [acc sub-path]
-      (let [repo-path (fs/file base-path (name sub-path))
+      (let [repo-path (fs/file base-path (str (name sub-path) ".git"))
             rev (latest-commit-on-master repo-path)]
         (assoc acc sub-path rev)))
     {}
@@ -284,17 +284,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(schema/defn ^:always-validate initialize-repos! :- nil
-  "Initialize a vector of git repository directories on the server.  The
-  repositories to initialize as well as the base directory under which the
-  repositories should reside should be specified in the supplied config."
+(schema/defn ^:always-validate initialize-repos!
+  "Initialize Git repositories.  The repository directories, as well as
+  the base directory under which the repositories should reside,
+  must be specified in 'config'."
   [config :- FileSyncServiceRawConfig]
   (let [base-path (:base-path config)]
     (log/infof "Initializing file sync server base path: %s" base-path)
     (initialize-server-base-path! (fs/file base-path))
-    (doseq [repo  (:repos config)]
-      (let [repo-path (fs/file base-path (name (key repo)))
-            http-push-enabled (:http-push-enabled (val repo))]
+    (doseq [[repo-id repo-info] (:repos config)]
+      (let [repo-path (fs/file base-path (str (name repo-id) ".git"))
+            http-push-enabled (:http-push-enabled repo-info)]
         (log/infof "Initializing file sync repository path: %s" repo-path)
-        (initialize-repo! repo-path http-push-enabled))))
-  nil)
+        (initialize-repo! repo-path http-push-enabled)))))

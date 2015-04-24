@@ -1,6 +1,4 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core-test
-  (:import (clojure.lang ExceptionInfo)
-           (org.eclipse.jgit.api Git))
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
@@ -46,7 +44,7 @@
     (testing "Vector of repos can be initialized"
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir sub-path)))
+        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
             (str "Repo at " sub-path "has incorrect http-recievepack setting"))))
     (testing "Content in repos not wiped out during reinitialization"
       (doseq [sub-path (map name (keys repos))]
@@ -64,6 +62,6 @@
         (fs/delete (fs/file base-dir sub-path "config")))
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir sub-path)))
+        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
             (str "Repo at " sub-path "has incorrect http-recievepack setting"))))))
 

@@ -40,7 +40,7 @@
 
 (deftest apply-updates-to-repo-test
   (let [client-target-repo (fs/file (helpers/temp-dir-as-string))
-        repo-name "apply-updates-test.git"
+        repo-name "apply-updates-test"
         repo-url (str helpers/server-repo-url "/" repo-name)]
 
     (testing "Throws appropriate error when directory exists but has no git repo"
@@ -65,7 +65,7 @@
   (fs/file (fs/tmpdir) (fs/temp-name file-name-prefix)))
 
 (deftest process-repo-for-updates-test
-  (let [repo-name "process-repo-test.git"
+  (let [repo-name "process-repo-test"
         server-repo-url (str helpers/server-repo-url "/" repo-name)
         client-repo-path (temp-file-name repo-name)
         config (helpers/storage-service-config-with-repos
@@ -120,7 +120,7 @@
 (deftest process-repos-for-updates-test
   (let [client-target-repo-on-server (helpers/temp-dir-as-string)
         client-target-repo-nonexistent (helpers/temp-dir-as-string)
-        server-repo "process-repos-test.git"
+        server-repo "process-repos-test"
         client (sync/create-client {})]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
@@ -133,7 +133,7 @@
 
       (with-test-logging
         (process-repos {(keyword server-repo) client-target-repo-on-server
-                        :process-repos-test-nonexistent.git client-target-repo-nonexistent}
+                        :process-repos-test-nonexistent client-target-repo-nonexistent}
                        client false)
 
         (testing "Client directory created when match on server"
@@ -144,7 +144,7 @@
               "Found client directory despite no matching repo on server")
           (is
             (logged?
-              #"^File sync did not find.*process-repos-test-nonexistent.git"
+              #"^File sync did not find.*process-repos-test-nonexistent"
               :error)))))))
 
 (deftest ssl-configuration-test

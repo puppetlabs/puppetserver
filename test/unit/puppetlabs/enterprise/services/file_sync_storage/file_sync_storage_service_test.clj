@@ -21,7 +21,7 @@
 
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes unless configured to do so"
-    (let [server-repo-subpath "push-disabled-test.git"
+    (let [server-repo-subpath "push-disabled-test"
           config (merge helpers/webserver-plaintext-config
                         {:file-sync-storage {:base-path (helpers/temp-dir-as-string)
                                              :repos {(keyword server-repo-subpath)
@@ -39,7 +39,7 @@
 
 (deftest file-sync-storage-service-simple-workflow-test
   (let [git-base-dir (helpers/temp-dir-as-string)
-        server-repo-subpath "file-sync-storage-service-simple-workflow.git"]
+        server-repo-subpath "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
@@ -84,7 +84,7 @@
 (deftest configurable-endpoints-test
   (let [repo-path             "/test-repo-path"
         api-path              "/test-api-path"
-        server-repo-subpath   "file-sync-storage-service-simple-workflow.git"
+        server-repo-subpath   "file-sync-storage-service-simple-workflow"
         config                {:file-sync-storage
                                  {:base-path (helpers/temp-dir-as-string)
                                   :repos {(keyword server-repo-subpath)
@@ -122,9 +122,9 @@
 
 (deftest latest-commits-test
   (let [git-base-dir (helpers/temp-dir-as-string)
-        server-repo-subpath-1 "latest-commits-test-1.git"
-        server-repo-subpath-2 "latest-commits-test-2.git"
-        server-repo-subpath-no-commits "latest-commits-test-3.git"]
+        server-repo-subpath-1 "latest-commits-test-1"
+        server-repo-subpath-2 "latest-commits-test-2"
+        server-repo-subpath-no-commits "latest-commits-test-3"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
@@ -196,7 +196,7 @@
 
 (deftest publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
-    (let [repo "test-commit.git"
+    (let [repo "test-commit"
           working-dir (helpers/temp-dir-as-string)
           base-path (helpers/temp-dir-as-string)
           server-repo (fs/file base-path repo)]
@@ -296,9 +296,9 @@
 
 (deftest publish-content-endpoint-response-test
   (testing "publish content endpoint returns correct response"
-    (let [failed-repo "publish-failed.git"
-          nonexistent-repo "publish-non-existent.git"
-          success-repo "publish-success.git"
+    (let [failed-repo "publish-failed"
+          nonexistent-repo "publish-non-existent"
+          success-repo "publish-success"
           working-dir-failed (helpers/temp-dir-as-string)
           working-dir-success (helpers/temp-dir-as-string)
           base-path (helpers/temp-dir-as-string)]
