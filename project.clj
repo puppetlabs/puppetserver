@@ -1,6 +1,7 @@
 (def tk-version "1.1.0")
 (def tk-jetty-version "1.2.0")
 (def ks-version "1.0.0")
+(def jgit-version "3.7.0.201502260915-r")
 
 (defn deploy-info
   [url]
@@ -20,10 +21,10 @@
                  [commons-io "2.1"]
                  [overtone/at-at "1.2.0"]
                  [ring/ring-json "0.3.1" :exclusions [commons-io]]
-                 [org.eclipse.jgit/org.eclipse.jgit.http.server
-                    "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
-                 [org.eclipse.jgit/org.eclipse.jgit.http.apache
-                    "3.4.1.201406201815-r" :exclusions [org.apache.httpcomponents/httpclient]]
+                 [org.eclipse.jgit/org.eclipse.jgit.http.server ~jgit-version
+                  :exclusions [org.apache.httpcomponents/httpclient]]
+                 [org.eclipse.jgit/org.eclipse.jgit.http.apache ~jgit-version
+                  :exclusions [org.apache.httpcomponents/httpclient]]
                  [puppetlabs/ssl-utils "0.8.0"]]
 
   :pedantic? :abort
