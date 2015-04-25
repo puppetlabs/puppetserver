@@ -35,8 +35,8 @@
 
     * :working-dir  - The path under the Git server's data directory where the
                       repository's working tree resides."
-  {:working-dir                                 schema/Str
-   (schema/optional-key :http-push-enabled)   Boolean})
+  {:working-dir                             schema/Str
+   (schema/optional-key :http-push-enabled) Boolean})
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -49,10 +49,12 @@
     * :base-path - The base path on the Git server under which all of the
                    repositories it is managing should reside.
 
-    * :repos     - A vector with metadata about each of the individual
+    * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:base-path                               schema/Str
-   :repos                                   GitRepos})
+  {:base-path (schema/pred
+                (fn [x] (or (instance? String x) (instance? File x)))
+                "String or File")
+   :repos     GitRepos})
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
