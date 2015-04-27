@@ -55,7 +55,7 @@
     {:status (schema/eq :failed)
      :cause AgentError}
     {:status (schema/eq :successful)
-     :latest-commit schema/Str}))
+     :latest-commit (schema/maybe schema/Str)}))
 
 (def AgentState
   "A schema which describes a valid state of the agent."
