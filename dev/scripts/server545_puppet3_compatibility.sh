@@ -18,8 +18,8 @@ bundle exec beaker \
   --preserve-hosts never \
   --type aio \
   --config acceptance/nodes/redhat7-64m-64a.yaml \
-  --pre-suite acceptance/suites/pre_suite/backwards_compatibility \
-  --tests acceptance/suites/backwards_compatibility/010_hello_world \
+  --pre-suite acceptance/suites/pre_suite/puppet3_compat \
+  --tests acceptance/suites/puppet3_tests \
   --keyfile ~/.ssh/id_rsa-acceptance \
   --helper acceptance/lib/helper.rb \
   --options-file acceptance/config/beaker/options.rb \
