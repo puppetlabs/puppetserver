@@ -2,12 +2,11 @@
   (:require [clojure.tools.logging :as log]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.trapperkeeper.services :as tks]
             [puppetlabs.ssl-utils.core :as ssl]))
 
-; This is unfortunate, but needed for testing.  In tests, we call
-; '(tk-app/get-service app :FileSyncClientService)', and that does not work
-; unless this service implements a protocol.
-(defprotocol FileSyncClientService)
+(defprotocol FileSyncClientService
+  (register-callback [this repo-id callback-fn]))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
@@ -24,11 +23,17 @@
       (core/configure-jgit-client-ssl! ssl-context)
 
       (let [schedule-fn (partial after poll-interval)
-            http-client (core/create-http-client ssl-context)]
+            http-client (core/create-http-client ssl-context)
+            callbacks   (atom {})]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client)
+          sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
-                       :http-client http-client))))
+                       :http-client http-client
+                       :callbacks callbacks))))
+
+  (register-callback [this repo-id callback-fn]
+    (let [context (tks/service-context this)]
+      (swap! (:callbacks context) #(assoc % repo-id callback-fn))))
 
   (stop [this context]
     (log/info "Stopping file sync client service")

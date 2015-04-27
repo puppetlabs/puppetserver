@@ -74,7 +74,7 @@
                  ;; storage service repo was updated from the working copy
                  ;; of the local repo. Thus, this test assures that the whole
                  ;; process was successful.
-                 (is (= :successful (get-in new-state [:repos repo :status])))
+                 (is (= :synced (get-in new-state [:repos repo :status])))
                  (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-dir)
                         (get-in new-state [:repos repo :latest-commit])
                         (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))))))))))
@@ -126,7 +126,7 @@
                   ;; has completed.
                   (let [new-state (deref p)]
                     (is (= :successful (:status new-state)))
-                    (is (= :successful (get-in new-state [:repos repo :status])))
+                    (is (= :synced (get-in new-state [:repos repo :status])))
                     (is (= (get-latest-commits-for-repo repo)
                            (get-in new-state [:repos repo :latest-commit])
                            (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))))
@@ -185,7 +185,7 @@
                   ;; has completed.
                   (let [new-state (deref p)]
                     (is (= :successful (:status new-state)))
-                    (is (= :successful (get-in new-state [:repos repo :status])))
+                    (is (= :synced (get-in new-state [:repos repo :status])))
                     (is (= (get-latest-commits-for-repo repo)
                            (get-in new-state [:repos repo :latest-commit])
                            (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))))
@@ -233,13 +233,13 @@
                            (get-in new-state [:repos repo1 :latest-commit])
                            (jgit-utils/head-rev-id-from-git-dir
                              client-dir-repo-1)))
-                    (is (= :successful (get-in new-state
+                    (is (= :synced (get-in new-state
                                                [:repos repo1 :status])))
                     (is (= (get-latest-commits-for-repo repo2)
                            (get-in new-state [:repos repo2 :latest-commit])
                            (jgit-utils/head-rev-id-from-git-dir
                              client-dir-repo-2)))
-                    (is (= :successful (get-in new-state
+                    (is (= :synced (get-in new-state
                                                [:repos repo2 :status]))))))
 
               (testing (str "client-side repo recovers after server-side"
@@ -299,13 +299,73 @@
                                            [:repos repo1 :latest-commit])
                                    (jgit-utils/head-rev-id-from-git-dir
                                      client-dir-repo-1)))
-                            (is (= :successful (get-in new-state
+                            (is (= :synced (get-in new-state
                                                        [:repos repo1 :status])))
                             (is (= (get-latest-commits-for-repo repo2)
                                    (get-in new-state
                                            [:repos repo2 :latest-commit])
                                    (jgit-utils/head-rev-id-from-git-dir
                                      client-dir-repo-2)))
-                            (is (= :successful
+                            (is (= :synced
                                    (get-in new-state
                                            [:repos repo2 :status])))))))))))))))))
+
+(deftest ^:integration callback-registration-test
+  (testing "callback functions can be registered with the client service"
+    (let [repo "repo"]
+      (with-test-logging
+        (bootstrap/with-app-with-config
+          app
+          [jetty-service/jetty9-service
+           file-sync-storage-service/file-sync-storage-service
+           webrouting-service/webrouting-service]
+          (helpers/storage-service-config-with-repos
+            (helpers/temp-dir-as-string)
+            {(keyword repo) {:working-dir repo}}
+            false)
+          (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+                local-repo-dir (helpers/clone-and-push-test-commit! repo)]
+            (bootstrap/with-app-with-config
+              app
+              [file-sync-client-service/file-sync-client-service
+               scheduler-service/scheduler-service]
+              (helpers/client-service-config-with-repos
+                {(keyword repo) (str client-repo-dir)}
+                false)
+              (let [client-service (tk-app/get-service app :FileSyncClientService)
+                    sync-agent (helpers/get-sync-agent app)
+                    repo-atom (atom {})]
+                (file-sync-client-service/register-callback client-service :repo
+                                                            (fn [repo-id repo-status]
+                                                              (swap! repo-atom
+                                                                     #(assoc % :repo-id repo-id
+                                                                               :repo-status repo-status))))
+                (testing "registered callback is called when repo is cloned"
+                  (let [p (promise)]
+                    (helpers/add-watch-and-deliver-new-state sync-agent p)
+                    (let [new-state (deref p)]
+                      (is (= :successful (:status new-state))))
+                    (is (= :repo (:repo-id @repo-atom)))
+                    (is (= :synced (get-in @repo-atom [:repo-status :status])))
+                    (is (= (get-latest-commits-for-repo repo)
+                           (get-in @repo-atom [:repo-status :latest-commit])))))
+
+                (testing "registered callback is not called no fetch or clone is performed"
+                  (let [p (promise)]
+                    (swap! repo-atom (fn [_] {}))
+                    (helpers/add-watch-and-deliver-new-state sync-agent p)
+                    (let [new-state (deref p)]
+                      (is (= :successful (:status new-state))))
+                    (is (= {} @repo-atom))))
+
+                (testing "registered callback is called when a fetch is performed"
+                  (helpers/push-test-commit! local-repo-dir)
+                  (swap! repo-atom (fn [_] {}))
+                  (let [p (promise)]
+                    (helpers/add-watch-and-deliver-new-state sync-agent p)
+                    (let [new-state (deref p)]
+                      (is (= :successful (:status new-state))))
+                    (is (= :repo (:repo-id @repo-atom)))
+                    (is (= :synced (get-in @repo-atom [:repo-status :status])))
+                    (is (= (get-latest-commits-for-repo repo)
+                           (get-in @repo-atom [:repo-status :latest-commit])))))))))))))

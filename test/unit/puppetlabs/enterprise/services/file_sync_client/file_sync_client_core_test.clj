@@ -81,7 +81,8 @@
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
-                                       initial-commit)
+                                       initial-commit
+                                       nil)
             (let [repo (jgit-utils/get-repository-from-git-dir client-repo-path)]
               (is (.isBare repo))
               (is (= initial-commit (jgit-utils/head-rev-id repo))))))
@@ -91,14 +92,16 @@
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
-                                       new-commit)
+                                       new-commit
+                                       nil)
             (is (= new-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "No change when nothing pushed"
           (let [current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
-                                       current-commit)
+                                       current-commit
+                                       nil)
             (is (= current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "Files restored after repo directory deleted"
           (let [commit-id (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
@@ -106,22 +109,26 @@
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
-                                       commit-id)
+                                       commit-id
+                                       nil)
             (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-path) commit-id))))))))
 
 (defn process-repos
-  [repos client ssl?]
+  [repos client ssl? callbacks]
   (process-repos-for-updates!
     client
     (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
     (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
-    repos))
+    repos
+    callbacks))
 
 (deftest process-repos-for-updates-test
   (let [client-target-repo-on-server (helpers/temp-dir-as-string)
         client-target-repo-nonexistent (helpers/temp-dir-as-string)
         server-repo "process-repos-test"
-        client (sync/create-client {})]
+        client (sync/create-client {})
+        server-repo-atom (atom {})
+        nonexistent-repo-atom (atom {})]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
@@ -134,7 +141,11 @@
       (with-test-logging
         (process-repos {(keyword server-repo) client-target-repo-on-server
                         :process-repos-test-nonexistent client-target-repo-nonexistent}
-                       client false)
+                       client false
+                       (atom {(keyword server-repo) (fn [repo-id repo-state]
+                                                      (swap! server-repo-atom #(assoc % :repo-id repo-id :repo-state repo-state)))
+                              :nonexistent-repo     (fn [repo-id repo-state]
+                                                      (swap! nonexistent-repo-atom #(assoc % :repo-id repo-id :repo-state repo-state)))}))
 
         (testing "Client directory created when match on server"
           (is (fs/exists? client-target-repo-on-server)))
@@ -145,7 +156,14 @@
           (is
             (logged?
               #"^File sync did not find.*process-repos-test-nonexistent"
-              :error)))))))
+              :error)))
+        (testing "Repo callback called when match on server"
+          (let [status @server-repo-atom]
+            (is (= (keyword server-repo) (:repo-id status)))
+            (is (= :synced (get-in status [:repo-state :status])))
+            (is (= nil (get-in status [:repo-state :latest-commit])))))
+        (testing "Repo callback not called when no match on server"
+          (is (= {} @nonexistent-repo-atom)))))))
 
 (deftest ssl-configuration-test
   (testing "JGit's ConnectionFactory hands-out instances of our own

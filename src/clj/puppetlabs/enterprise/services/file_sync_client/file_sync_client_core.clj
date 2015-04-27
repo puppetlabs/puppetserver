@@ -9,7 +9,7 @@
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
-           (clojure.lang IFn Agent)
+           (clojure.lang IFn Agent Atom)
            (java.io IOException)
            (org.eclipse.jgit.api.errors GitAPIException)))
 
@@ -54,12 +54,10 @@
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
      :cause AgentError}
-    ;; Successful means that either a sync occurred, or no changes
-    ;; were made to the client's copy of the repo. It's possible
-    ;; for the latest commit to be nil if no commits have been made
-    ;; against the server-side repo, as the server's bare repo will
-    ;; still be cloned on the client-side.
-    {:status (schema/eq :successful)
+    ;; It's possible for the latest commit to be nil if no
+    ;; commits have been made against the server-side repo, as the
+    ;; server's bare repo will still be cloned on the client-side.
+    {:status (schema/enum :synced :unchanged)
      :latest-commit (schema/maybe schema/Str)}))
 
 (def AgentState
@@ -117,7 +115,8 @@
   "Fetch the latest content for a repository from the server.  'name' is
   the name of the repository.  'latest-commit-id' is the ID of the latest
   commit on the server for the repository.  'target-dir' is the location
-  in which the repository is intended to reside."
+  in which the repository is intended to reside. Returns true if new
+  commits were fetched, else false."
   [name latest-commit-id target-dir]
   (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
     (when-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
@@ -125,7 +124,8 @@
       (jgit-utils/fetch repo)
       (log/info
         (str "File sync fetch of '" name "' successful.  New latest commit: "
-             (jgit-utils/head-rev-id repo))))
+             (jgit-utils/head-rev-id repo)))
+      true)
     (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a directory that already exists but does "
@@ -143,14 +143,16 @@
   (let [git (jgit-utils/clone server-repo-url target-dir true)]
     (log/info
       (str "File sync clone of '" name "' successful.  New latest commit: "
-           (jgit-utils/head-rev-id (.getRepository git))))))
+           (jgit-utils/head-rev-id (.getRepository git))))
+    true))
 
 (defn apply-updates-to-repo!
   "Apply updates from the server to the client repository.  'name' is the
   name of the repository.  'server-repo-url' is the URL under which the
   repository resides on the server.  'latest-commit-id' is the id of the
   latest commit on the server for the repository.  'target-dir' is the
-  location in which the client repository is intended to reside."
+  location in which the client repository is intended to reside. Returns
+  true if on-disk changes were made."
   [name server-repo-url latest-commit-id target-dir]
   (let [fetch? (fs/exists? target-dir)]
     (try
@@ -172,18 +174,24 @@
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'name' is the name of the repository.  'target-dir' is the location in
   which the client repository is intended to reside.  'latest-commit-id' is
-  the commit id of the latest commit in the server repo."
-  [server-repo-url name target-dir latest-commit-id]
-  (let [server-repo-url  (str server-repo-url "/" name)
-        target-dir       (fs/file target-dir)]
-    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)))
+  the commit id of the latest commit in the server repo. Returns status information
+  about the sync process for the repo."
+  [server-repo-url name target-dir latest-commit-id callback-fn]
+  (let [server-repo-url (str server-repo-url "/" name)
+        target-dir (fs/file target-dir)
+        changed? (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
+        status {:status        (if changed? :synced :unchanged)
+                :latest-commit latest-commit-id}]
+    (when (and callback-fn changed?)
+      (callback-fn (keyword name) status))
+    status))
 
 (defn process-repos-for-updates!
   "Process through all of the repos configured with the
   service for any updates which may be available on the server.
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'repos' is the repos section of the file sync client configuration."
-  [client server-repo-base-url server-api-url repos]
+  [client server-repo-base-url server-api-url repos callbacks]
   (let [latest-commits (get-latest-commits-from-server client server-api-url)]
     (log/debugf "File sync latest commits from server: %s" latest-commits)
     (into {}
@@ -192,12 +200,11 @@
               (if (contains? latest-commits name)
                 (let [latest-commit (latest-commits name)]
                   (try+
-                    (process-repo-for-updates! server-repo-base-url
-                                               name
-                                               target-dir
-                                               latest-commit)
-                    {name {:status        :successful
-                           :latest-commit latest-commit}}
+                    {name (process-repo-for-updates! server-repo-base-url
+                                                     name
+                                                     target-dir
+                                                     latest-commit
+                                                     (get @callbacks repo-name))}
                     (catch agent-error? e
                       (log/errorf
                         (str "Error syncing repo: " (:message e))
@@ -212,7 +219,7 @@
 ; left in a valid state.
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
-  [agent-state config http-client]
+  [agent-state config http-client callbacks]
   (log/debug "file sync process running ...")
   (try+
     (let [filesync-server-url (:server-url config)
@@ -224,7 +231,8 @@
                               http-client
                               (str filesync-server-url server-repo-path)
                               (str filesync-server-url server-api-path)
-                              repos)
+                              repos
+                              callbacks)
             partial-success? (> (count (filter #(= (:status %) :failed)
                                                (vals repo-status-map))) 0)]
         {:status (if partial-success? :partial-success :successful)
@@ -277,11 +285,12 @@
   [sync-agent :- Agent
    schedule-fn :- IFn
    config :- FileSyncClientServiceRawConfig
-   http-client :- http-client/HTTPClient]
+   http-client :- http-client/HTTPClient
+   callbacks :- Atom]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))
-        send-to-agent #(send-off sync-agent periodic-sync config http-client)]
+        send-to-agent #(send-off sync-agent periodic-sync config http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]
