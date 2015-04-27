@@ -1,0 +1,91 @@
+;; This file provides a sample `user` namespace that shows some things that
+;; can be useful during development; especially if you'd like to develop
+;; via the REPL.  To use this, simply make a copy of this file named `user.clj`
+;; and modify it to your liking.
+(ns user
+  (:require [puppetlabs.trapperkeeper.config :as config]))
+
+;; The `user_repl.clj` file has utility functions for starting, stopping, and
+;; loading the file sync services from the REPL.  If you define no-arg functions here that return
+;; configuration data for the file sync services, it will use those configs instead of the
+;; defaults.  You could just supply a map literal here, but I like to parse
+;; the config from my config files on disk
+(defn file-sync-storage-conf
+  []
+  (config/load-config "/Users/prebeningvaldsen/.file-sync/storage.conf"))
+
+(defn file-sync-client-conf
+  []
+  (config/load-config "/Users/prebeningvaldsen/.file-sync/client.conf"))
+
+;; The `go` function in the `user-repl` namespace  will start up an instance of
+;; the file sync storage and client services..  This function will load that namespace,
+;; switch to it, and call `go`.
+;; Here's an example REPL session:
+;;
+;;    $ lein repl
+;;    user=> (go)
+;;       2015-04-27 16:24:09,665 INFO  [p.t.s.w.jetty9-service] Initializing web server(s).
+;;       2015-04-27 16:24:09,666 INFO  [p.e.s.f.file-sync-storage-core] Initializing file sync server base path: .file-sync/.file-sync-server
+;;       2015-04-27 16:24:09,666 INFO  [p.e.s.f.file-sync-storage-core] Initializing file sync repository path: /Users/prebeningvaldsen/code/pe-file-sync/.file-sync/.file-sync-server/repl-repo
+;;       2015-04-27 16:24:09,668 INFO  [p.e.s.f.file-sync-storage-service] File sync storage service mounting repositories at /git
+;;       2015-04-27 16:24:09,668 INFO  [p.e.s.f.file-sync-storage-service] Registering file sync storage HTTP API at /file-sync
+;;       2015-04-27 16:24:09,702 INFO  [p.t.s.w.jetty9-service] Starting web server(s).
+;;       ...
+;;       2015-04-27 16:24:09,780 INFO  [p.e.s.f.file-sync-client-service] Starting file sync client service
+;;       2015-04-27 16:24:09,782 DEBUG [p.e.s.f.file-sync-client-core] file sync process running ...
+;;       2015-04-27 16:24:09,782 DEBUG [p.e.s.f.file-sync-client-core] File sync client repos: {:repl-repo ".file-sync/.file-sync-client/repl-repo"}
+;;       ...
+;;    user-repl=> (reset)
+;;       2015-04-27 16:24:11,144 INFO  [p.t.internal] Beginning shutdown sequence
+;;       2015-04-27 16:24:11,144 INFO  [p.e.s.f.file-sync-client-service] Stopping file sync client service
+;;       2015-04-27 16:24:11,146 INFO  [p.t.internal] Finished shutdown sequence
+;;       2015-04-27 16:24:11,146 INFO  [p.t.internal] Beginning shutdown sequence
+;;       ...
+;;       2015-04-27 16:24:11,147 INFO  [p.t.s.w.jetty9-service] Shutting down web server(s)
+;;       ...
+;;       2015-04-27 16:24:11,149 INFO  [p.t.internal] Finished shutdown sequence
+;;       :reloading (puppetlabs.enterprise.file-sync-common puppetlabs.enterprise.ringutils puppetlabs.enterprise.jgit-client puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service puppetlabs.enterprise.services.scheduler.scheduler-core puppetlabs.enterprise.services.protocols.scheduler puppetlabs.enterprise.services.scheduler.scheduler-service puppetlabs.enterprise.services.file-sync-client.file-sync-client-core puppetlabs.enterprise.services.file-sync-client.file-sync-client-service puppetlabs.enterprise.file-sync-test-utils puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core-test user-repl puppetlabs.enterprise.services.file-sync-client.file-sync-client-core-test puppetlabs.enterprise.jgit-client-test puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service-test puppetlabs.enterprise.file-sync-int-test puppetlabs.enterprise.services.scheduler.scheduler-core-test puppetlabs.enterprise.services.file-sync-client.file-sync-client-service-test puppetlabs.enterprise.services.scheduler.scheduler-service-test)
+;;       2015-04-27 16:24:12,016 INFO  [p.t.s.w.jetty9-service] Initializing web server(s).
+;;       2015-04-27 16:24:12,019 INFO  [p.e.s.f.file-sync-storage-core] Initializing file sync server base path: .file-sync/.file-sync-server
+;;       2015-04-27 16:24:12,020 INFO  [p.e.s.f.file-sync-storage-core] Initializing file sync repository path: /Users/prebeningvaldsen/code/pe-file-sync/.file-sync/.file-sync-server/repl-repo
+;;       2015-04-27 16:24:12,021 INFO  [p.e.s.f.file-sync-storage-service] File sync storage service mounting repositories at /git
+;;       2015-04-27 16:24:12,025 INFO  [p.e.s.f.file-sync-storage-service] Registering file sync storage HTTP API at /file-sync
+;;       2015-04-27 16:24:12,063 INFO  [p.t.s.w.jetty9-service] Starting web server(s).
+;;       ...
+;;    user-repl=> (stop)
+;;       2015-04-27 16:24:12,874 INFO  [p.t.internal] Beginning shutdown sequence
+;;       2015-04-27 16:24:12,876 INFO  [p.e.s.f.file-sync-client-service] Stopping file sync client service
+;;       2015-04-27 16:24:12,879 INFO  [p.t.internal] Finished shutdown sequence
+;;       2015-04-27 16:24:12,879 INFO  [p.t.internal] Beginning shutdown sequence
+;;       ...
+;;       2015-04-27 16:24:12,882 INFO  [p.t.internal] Finished shutdown sequence
+;;    user-repl=>
+(defn go
+  []
+  (load-file "./dev/user_repl.clj")
+  (ns user-repl)
+  ((-> 'user-repl/go resolve deref)))
+
+;; Leiningen allows users to add plugins at a global level by modifying a
+;; file in a user's home directory called '.lein/profiles.clj'. This will allow
+;; a developer to use their favorite plugins without adding unneeded
+;; dependencies to individual projects.
+;;
+;; At Puppet we use a couple plugins during development there are incredibly
+;; helpful. The first being
+;; [Humane Test Output](https://github.com/pjstadig/humane-test-output) which
+;; prints out test failures in a much more readable way so a developer can
+;; easily determine what the failed output looks like and what it was supposed
+;; to look like.
+;; The other one is [Pretty](https://github.com/AvisoNovate/pretty) which
+;; displays stack traces in a nicely formatted and human readable form.
+;;
+;; To enable these, paste the following into a file under your home directory
+;; called '.lein/profiles.clj'
+;;
+;; {:user {:dependencies [[io.aviso/pretty "0.1.12" :exclusions [org.clojure/clojure]]
+;;                        [pjstadig/humane-test-output "0.6.0"]]
+;;         :repl-options {:nrepl-middleware [io.aviso.nrepl/pretty-middleware]}
+;;         :injections   [(require 'pjstadig.humane-test-output)
+;;                        (pjstadig.humane-test-output/activate!)]}}
