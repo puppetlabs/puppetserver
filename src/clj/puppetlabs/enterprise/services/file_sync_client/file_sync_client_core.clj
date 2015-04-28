@@ -171,8 +171,7 @@
   [server-repo-url name target-dir latest-commit-id]
   (let [server-repo-url  (str server-repo-url "/" name)
         target-dir       (fs/file target-dir)]
-    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
-    latest-commit-id))
+    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)))
 
 (defn process-repos-for-updates!
   "Process through all of the repos configured with the
@@ -184,22 +183,22 @@
     (log/debugf "File sync latest commits from server: %s" latest-commits)
     (into {}
           (for [[repo-name target-dir] repos]
-            (let [name (name repo-name)
-                  latest-commit (latest-commits name)]
+            (let [name (name repo-name)]
               (if (contains? latest-commits name)
-                (try+
-                  (process-repo-for-updates! server-repo-base-url
-                                             name
-                                             target-dir
-                                             latest-commit)
-                  {name {:status        :successful
-                         :latest-commit latest-commit}}
-                  (catch agent-error? e
-                    (log/errorf
-                      (str "Error syncing repo: " (:message e))
-                      name)
-                    {name {:status :failed
-                           :cause  e}}))
+                (let [latest-commit (latest-commits name)]
+                  (try+
+                    (process-repo-for-updates! server-repo-base-url
+                                               name
+                                               target-dir
+                                               latest-commit)
+                    {name {:status        :successful
+                           :latest-commit latest-commit}}
+                    (catch agent-error? e
+                      (log/errorf
+                        (str "Error syncing repo: " (:message e))
+                        name)
+                      {name {:status :failed
+                             :cause  e}})))
                 (log/errorf
                   "File sync did not find matching server repo for client repo: %s"
                   name)))))))
