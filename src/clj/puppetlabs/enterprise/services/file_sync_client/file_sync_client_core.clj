@@ -54,6 +54,11 @@
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
      :cause AgentError}
+    ;; Successful means that either a sync occurred, or no changes
+    ;; were made to the client's copy of the repo. It's possible
+    ;; for the latest commit to be nil if no commits have been made
+    ;; against the server-side repo, as the server's bare repo will
+    ;; still be cloned on the client-side.
     {:status (schema/eq :successful)
      :latest-commit (schema/maybe schema/Str)}))
 
