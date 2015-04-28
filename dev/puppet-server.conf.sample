@@ -31,11 +31,17 @@ web-router-service: {
     "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": "/puppet-ca"
     "puppetlabs.services.master.master-service/master-service": {master-routes:       "/puppet"
 
-                                                                 # The following controls 404 errors and should not
-                                                                 # be modified
-                                                                 invalid-in-puppet-4: "/" }
+                                                                 # The following controls 404 errors and should
+                                                                 # only be enabled if the legacy routes service is disabled
+                                                                 #invalid-in-puppet-4: "/"
+                                                                 }
     # This controls the mount point for the puppet admin API.
     "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
+
+    # 3.x agent compatibility routes. The legacy routes are only mounted if the
+    # puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service
+    # service is in the bootstrap.cfg
+    "puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service": ""
 }
 
 # configuration for the JRuby interpreters

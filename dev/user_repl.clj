@@ -36,13 +36,13 @@
      :webserver             {:client-auth "want"
                              :ssl-host    "localhost"
                              :ssl-port    8140}
-     :certificate-authority {:certificate-status {:client-whitelist []
+     :certificate-authority {:certificate-status {:client-whitelist       []
                                                   :authorization-required false}}
      :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
-                             :puppetlabs.services.master.master-service/master-service {:master-routes "/puppet"
-                                                                                        :invalid-in-puppet-4 "/"}
-                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/admin"}
-     :puppet-admin          {:client-whitelist []
+                             :puppetlabs.services.master.master-service/master-service "/puppet"
+                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/admin"
+                             :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service "/"}
+     :puppet-admin          {:client-whitelist       []
                              :authorization-required false}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
