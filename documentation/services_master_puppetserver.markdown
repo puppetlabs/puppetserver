@@ -77,7 +77,11 @@ Additionally, if you need to test or debug code that will be used by Puppet Serv
 
 To handle parallel requests from agent nodes, Puppet Server maintains several separate JRuby interpreters, all independently running Puppet's application code, and distributes agent requests among them. Today, agent requests are distributed more or less randomly, without regard to their environment; this may change in the future.
 
-You can configure the JRuby interpreters in the `jruby-puppet` section of [the `puppetserver.conf` file.](./configuration.markdown#puppetserverconf)
+You can configure the JRuby interpreters in the `jruby-puppet` section of [the `puppetserver.conf` file.](./configuration.markdown#puppetserverconf) 
+
+####Tuning Guide
+
+You can maximize Puppet Server's performance by tuning your JRuby configuration. To learn more about tuning your configuration, see our Puppet Server [Tuning Guide](./tuning_guide.markdown).
 
 ### User
 
