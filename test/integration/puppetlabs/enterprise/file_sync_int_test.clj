@@ -55,7 +55,7 @@
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
                    (helpers/temp-dir-as-string)
-                   {(keyword repo) {:working-dir repo}}
+                   {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                    true)
                  (helpers/client-service-config-with-repos
                    {(keyword repo) (.getPath client-repo-dir)}
@@ -89,7 +89,7 @@
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config-with-repos
                             (helpers/temp-dir-as-string)
-                            {(keyword repo) {:working-dir repo}}
+                            {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                             false)))]
       (try
         (let [client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)
@@ -206,8 +206,8 @@
          webrouting-service/webrouting-service]
         (helpers/storage-service-config-with-repos
           server-base-path
-          {(keyword repo1) {:working-dir repo1}
-           (keyword repo2) {:working-dir repo2}}
+          {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
+           (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}}
           false)
         (let [client-dir-repo-1 (fs/file (helpers/temp-dir-as-string) repo1)
               client-dir-repo-2 (fs/file (helpers/temp-dir-as-string) repo2)
