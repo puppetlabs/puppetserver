@@ -88,18 +88,18 @@
 
 (defn file-sync-storage-config-payload
   "Enables anonymous push access on each repo for ease of testing."
-  [base-path repos]
-  {:base-path base-path
-   :repos     (ks/mapvals enable-push repos)})
+  [data-dir repos]
+  {:data-dir data-dir
+   :repos    (ks/mapvals enable-push repos)})
 
 (defn file-sync-storage-config
-  [base-path repos]
-  {:file-sync-storage (file-sync-storage-config-payload base-path repos)})
+  [data-dir repos]
+  {:file-sync-storage (file-sync-storage-config-payload data-dir repos)})
 
 (defn storage-service-config-with-repos
-  [base-path repos ssl?]
+  [data-dir repos ssl?]
   (merge (if ssl? webserver-ssl-config webserver-plaintext-config)
-         (file-sync-storage-config base-path repos)))
+         (file-sync-storage-config data-dir repos)))
 
 (defn file-sync-client-config-payload
   [repos ssl?]

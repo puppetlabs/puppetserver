@@ -12,7 +12,7 @@
 
   (init [this context]
     (let [config            (get-in-config [:file-sync-storage])
-          base-path         (:base-path config)
+          data-dir          (:data-dir config)
           api-path-prefix   (get-route this :api)
           repo-path-prefix  (get-route this :repo-servlet)
           ; JGit servlet uses 'export-all' setting to decide
@@ -30,11 +30,11 @@
       (add-servlet-handler
         this
         (GitServlet.)
-        {:servlet-init-params {"base-path" base-path "export-all" export-all}
+        {:servlet-init-params {"base-path" data-dir "export-all" export-all}
          :route-id            :repo-servlet})
 
       (let [repos (:repos config)
-            handler (core/build-handler base-path repos)]
+            handler (core/build-handler data-dir repos)]
 
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
 

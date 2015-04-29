@@ -46,12 +46,12 @@
 
   The keys should have the following values:
 
-    * :base-path - The base path on the Git server under which all of the
-                   repositories it is managing should reside.
+    * :data-dir - The data directory on the Git server under which all of the
+                  repositories it is managing should reside.
 
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:base-path (schema/pred
+  {:data-dir (schema/pred
                 (fn [x] (or (instance? String x) (instance? File x)))
                 "String or File")
    :repos     GitRepos})
@@ -93,24 +93,24 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
-(defn initialize-server-base-path!
+(defn initialize-server-data-dir!
   "Initialize the base path on the server under which all other git
   repositories will be hosted.  Expects, as an argument, a File representing
   the server base path.  Returns nil if initialization was successful or
   throws an Exception on failure."
-  [server-base-path]
-  {:pre  [(instance? File server-base-path)]
+  [server-data-dir]
+  {:pre  [(instance? File server-data-dir)]
    :post [(nil? %)]}
   (try+
-    (ks/mkdirs! server-base-path)
+    (ks/mkdirs! server-data-dir)
     (catch map? m
       (throw
         (Exception.
-          (str "Problem occurred creating jgit server base-path: "
+          (str "Problem occurred creating jgit server data-dir: "
                (:message m)))))
     (catch Exception e
       (throw (Exception.
-               (str "Problem occurred creating jgit server base-path: "
+               (str "Problem occurred creating jgit server data-dir: "
                     (.getMessage e)) e))))
   nil)
 
@@ -147,10 +147,10 @@
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in `sub-paths`."
-  [base-path sub-paths]
+  [data-dir sub-paths]
   (reduce
     (fn [acc sub-path]
-      (let [repo-path (fs/file base-path (str (name sub-path) ".git"))
+      (let [repo-path (fs/file data-dir (str (name sub-path) ".git"))
             rev (latest-commit-on-master repo-path)]
         (assoc acc sub-path rev)))
     {}
@@ -239,7 +239,7 @@
 ;;; Compojure app
 (defn build-routes
   "Builds the compojure routes from the given configuration values."
-  [base-path repos]
+  [data-dir repos]
   (compojure/routes
     (compojure/POST common/publish-content-sub-path {body :body headers :headers}
                     ;; The body can either be empty - in which a
@@ -264,12 +264,12 @@
                                         :message "Content type must be JSON."}}})))
     (compojure/ANY common/latest-commits-sub-path []
                    {:status 200
-                    :body (compute-latest-commits base-path (keys repos))})))
+                    :body (compute-latest-commits data-dir (keys repos))})))
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
-  [base-path sub-paths]
-  (-> (build-routes base-path sub-paths)
+  [data-dir sub-paths]
+  (-> (build-routes data-dir sub-paths)
       ringutils/wrap-request-logging
       ringutils/wrap-user-data-errors
       ringutils/wrap-schema-errors
@@ -285,11 +285,11 @@
   the base directory under which the repositories should reside,
   must be specified in 'config'."
   [config :- FileSyncServiceRawConfig]
-  (let [base-path (:base-path config)]
-    (log/infof "Initializing file sync server base path: %s" base-path)
-    (initialize-server-base-path! (fs/file base-path))
+  (let [data-dir (:data-dir config)]
+    (log/infof "Initializing file sync server base path: %s" data-dir)
+    (initialize-server-data-dir! (fs/file data-dir))
     (doseq [[repo-id repo-info] (:repos config)]
-      (let [repo-path (fs/file base-path (str (name repo-id) ".git"))
+      (let [repo-path (fs/file data-dir (str (name repo-id) ".git"))
             http-push-enabled (:http-push-enabled repo-info)]
         (log/infof "Initializing file sync repository path: %s" repo-path)
         (initialize-bare-repo! repo-path http-push-enabled)))))

@@ -22,7 +22,7 @@
   (testing "The JGit servlet should not accept pushes unless configured to do so"
     (let [server-repo-subpath "push-disabled-test"
           config (merge helpers/webserver-plaintext-config
-                        {:file-sync-storage {:base-path (helpers/temp-dir-as-string)
+                        {:file-sync-storage {:data-dir (helpers/temp-dir-as-string)
                                              :repos {(keyword server-repo-subpath)
                                                      {:working-dir server-repo-subpath}}}})]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
@@ -37,14 +37,14 @@
                   (helpers/push-test-commit! test-clone-dir)))))))))
 
 (deftest file-sync-storage-service-simple-workflow-test
-  (let [git-base-dir (helpers/temp-dir-as-string)
+  (let [data-dir (helpers/temp-dir-as-string)
         server-repo-subpath "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          git-base-dir
+          data-dir
           {(keyword server-repo-subpath) {:working-dir server-repo-subpath}}
           false)
         (let [client-orig-repo-dir (helpers/temp-dir-as-string)
@@ -85,7 +85,7 @@
         api-path              "/test-api-path"
         server-repo-subpath   "file-sync-storage-service-simple-workflow"
         config                {:file-sync-storage
-                                 {:base-path (helpers/temp-dir-as-string)
+                                 {:data-dir (helpers/temp-dir-as-string)
                                   :repos {(keyword server-repo-subpath)
                                           {:working-dir server-repo-subpath}}}
                                :webserver {:port helpers/http-port}
@@ -120,14 +120,14 @@
               (is (= 200 (:status response))))))))))
 
 (deftest latest-commits-test
-  (let [git-base-dir (helpers/temp-dir-as-string)
+  (let [data-dir (helpers/temp-dir-as-string)
         server-repo-subpath-1 "latest-commits-test-1"
         server-repo-subpath-2 "latest-commits-test-2"
         server-repo-subpath-no-commits "latest-commits-test-3"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
-        git-base-dir
+        data-dir
         {(keyword server-repo-subpath-1) {:working-dir server-repo-subpath-1}
          (keyword server-repo-subpath-2) {:working-dir server-repo-subpath-2}
          (keyword server-repo-subpath-no-commits) {:working-dir server-repo-subpath-no-commits}}
@@ -197,8 +197,8 @@
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
           working-dir (helpers/temp-dir-as-string)
-          base-path (helpers/temp-dir-as-string)
-          server-repo (fs/file base-path repo)]
+          data-dir (helpers/temp-dir-as-string)
+          server-repo (fs/file data-dir repo)]
 
       (helpers/add-remote! (helpers/init-repo! (fs/file working-dir))
                            "origin"
@@ -207,7 +207,7 @@
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          base-path
+          data-dir
           {(keyword repo) {:working-dir working-dir}}
           false)
         (testing "with no body supplied"
@@ -300,7 +300,7 @@
           success-repo "publish-success"
           working-dir-failed (helpers/temp-dir-as-string)
           working-dir-success (helpers/temp-dir-as-string)
-          base-path (helpers/temp-dir-as-string)]
+          data-dir (helpers/temp-dir-as-string)]
 
       (helpers/init-repo! (fs/file working-dir-failed))
       (helpers/add-remote! (helpers/init-repo! (fs/file working-dir-success))
@@ -310,7 +310,7 @@
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          base-path
+          data-dir
           {(keyword failed-repo)      {:working-dir working-dir-failed}
            (keyword nonexistent-repo) {:working-dir "not/a/directory"}
            (keyword success-repo)     {:working-dir working-dir-success}}

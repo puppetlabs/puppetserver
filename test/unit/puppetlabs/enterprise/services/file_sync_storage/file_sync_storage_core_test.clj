@@ -34,34 +34,34 @@
       (is (= 1 receivepack))))))
 
 (deftest initialize-repos!-test
-  (let [base-dir (fs/file (ks/temp-dir) "base")
+  (let [data-dir (fs/file (ks/temp-dir) "base")
         repos {:sub1 {:working-dir "sub1-dir"}
                :sub2 {:working-dir "sub2-dir"}
                :sub3 {:working-dir "sub3-dir/subsub3"}}
         config   (helpers/file-sync-storage-config-payload
-                   (.getPath base-dir)
+                   (.getPath data-dir)
                    repos)]
     (testing "Vector of repos can be initialized"
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
+        (is (= 1 (get-http-recievepack (fs/file data-dir (str sub-path ".git"))))
             (str "Repo at " sub-path "has incorrect http-recievepack setting"))))
     (testing "Content in repos not wiped out during reinitialization"
       (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
+        (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
           (ks/mkdirs! (.getParentFile file-to-check))
           (fs/touch file-to-check)))
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
+        (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
           (is (fs/exists? file-to-check)
             (str "Expected file missing after repo reinitialization: "
                  file-to-check)))))
     (testing "Http receive pack for repos restored to 1 after reinitialization"
       (doseq [sub-path (map name (keys repos))]
-        (fs/delete (fs/file base-dir sub-path "config")))
+        (fs/delete (fs/file data-dir sub-path "config")))
       (initialize-repos! config)
       (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
+        (is (= 1 (get-http-recievepack (fs/file data-dir (str sub-path ".git"))))
             (str "Repo at " sub-path "has incorrect http-recievepack setting"))))))
 
