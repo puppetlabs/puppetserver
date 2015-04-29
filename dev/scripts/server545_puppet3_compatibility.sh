@@ -17,7 +17,7 @@ bundle exec beaker \
   --repo-proxy \
   --preserve-hosts never \
   --type aio \
-  --config acceptance/config/beaker/jenkins/redhat7-64m-64a.yaml \
+  --config acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg \
   --pre-suite acceptance/suites/pre_suite/puppet3_compat \
   --tests acceptance/suites/puppet3_tests \
   --keyfile ~/.ssh/id_rsa-acceptance \
