@@ -117,7 +117,7 @@
   [message name directory]
   (str message ".  Name: " name ".  Directory: " directory "."))
 
-(defn do-fetch!
+(defn do-fetch
   "Fetch the latest content for a repository from the server.  'name' is
   the name of the repository.  'latest-commit-id' is the ID of the latest
   commit on the server for the repository.  'target-dir' is the location
@@ -125,13 +125,16 @@
   commits were fetched, else false."
   [name latest-commit-id target-dir]
   (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
-    (when-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
-      (log/infof "File sync updating '%s' to %s" name latest-commit-id)
-      (jgit-utils/fetch repo)
-      (log/info
-        (str "File sync fetch of '" name "' successful.  New latest commit: "
-             (jgit-utils/head-rev-id repo)))
-      true)
+    (if-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
+      (do
+        (log/infof "File sync updating '%s' to %s" name latest-commit-id)
+        (jgit-utils/fetch repo)
+        (let [current-commit (jgit-utils/head-rev-id repo)]
+          (log/info
+            (str "File sync fetch of '" name "' successful.  New latest commit: "
+                 current-commit))
+          current-commit))
+      false)
     (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a directory that already exists but does "
@@ -139,32 +142,33 @@
                name
                target-dir)))))
 
-(defn do-clone!
+(defn do-clone
   "Clone the latest content for a repository from the server.  'name' is
   the name of the repository.  'server-repo-url' is the URL under which
   the repository resides on the server.  'target-dir' is the directory in which
   the client repository should be stored."
   [name server-repo-url target-dir]
   (log/infof "File sync cloning '%s' to: %s" name target-dir)
-  (let [git (jgit-utils/clone server-repo-url target-dir true)]
+  (let [git (jgit-utils/clone server-repo-url target-dir true)
+        current-commit (jgit-utils/head-rev-id (.getRepository git))]
     (log/info
       (str "File sync clone of '" name "' successful.  New latest commit: "
            (jgit-utils/head-rev-id (.getRepository git))))
-    true))
+    current-commit))
 
-(defn apply-updates-to-repo!
+(defn apply-updates-to-repo
   "Apply updates from the server to the client repository.  'name' is the
   name of the repository.  'server-repo-url' is the URL under which the
   repository resides on the server.  'latest-commit-id' is the id of the
   latest commit on the server for the repository.  'target-dir' is the
   location in which the client repository is intended to reside. Returns
-  true if on-disk changes were made."
+  the latest commit id if on disk changes were made, otherwise returns false."
   [name server-repo-url latest-commit-id target-dir]
   (let [fetch? (fs/exists? target-dir)]
     (try
       (if fetch?
-        (do-fetch! name latest-commit-id target-dir)
-        (do-clone! name server-repo-url target-dir))
+        (do-fetch name latest-commit-id target-dir)
+        (do-clone name server-repo-url target-dir))
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
@@ -175,7 +179,7 @@
                             target-dir)
                  :cause e})))))
 
-(defn process-repo-for-updates!
+(defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'name' is the name of the repository.  'target-dir' is the location in
@@ -185,9 +189,13 @@
   [server-repo-url name target-dir latest-commit-id callback-fn]
   (let [server-repo-url (str server-repo-url "/" name)
         target-dir (fs/file target-dir)
-        changed? (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)
+        latest-commit (apply-updates-to-repo name
+                                             server-repo-url
+                                             latest-commit-id
+                                             target-dir)
+        changed? (not (false? latest-commit))
         status {:status        (if changed? :synced :unchanged)
-                :latest-commit latest-commit-id}]
+                :latest-commit (if changed? latest-commit latest-commit-id)}]
     (when (and callback-fn changed?)
       (callback-fn (keyword name) status))
     status))
@@ -205,7 +213,7 @@
             (if (contains? latest-commits name)
               (let [latest-commit (latest-commits name)]
                 (try+
-                  {name (process-repo-for-updates! repo-base-url
+                  {name (process-repo-for-updates repo-base-url
                                                    name
                                                    target-dir
                                                    latest-commit

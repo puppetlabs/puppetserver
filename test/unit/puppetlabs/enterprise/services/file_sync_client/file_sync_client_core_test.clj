@@ -45,19 +45,19 @@
 
     (testing "Throws appropriate error when directory exists but has no git repo"
       (is (thrown? IllegalStateException
-                   (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))
+                   (apply-updates-to-repo repo-name repo-url "" client-target-repo))))
 
     (testing "Throws appropriate slingshot error for a failed fetch"
       (helpers/init-bare-repo! client-target-repo)
       (is (thrown+-with-msg? map?
                              #"File sync was unable to fetch from server repo.*"
-                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))
+                             (apply-updates-to-repo repo-name repo-url "" client-target-repo))))
 
     (testing "Throws appropriate slingshot error for a failed clone"
       (fs/delete-dir client-target-repo)
       (is (thrown+-with-msg? map?
                              #"File sync was unable to clone from server repo.*"
-                             (apply-updates-to-repo! repo-name repo-url "" client-target-repo))))))
+                             (apply-updates-to-repo repo-name repo-url "" client-target-repo))))))
 
 (defn temp-file-name
   "Returns a unique name to a temporary file, but does not actually create the file."
@@ -78,7 +78,7 @@
             test-clone-repo (.getRepository (jgit-utils/clone server-repo-url test-clone-dir))]
         (testing "Validate initial repo update"
           (let [initial-commit (jgit-utils/head-rev-id test-clone-repo)]
-            (process-repo-for-updates! helpers/server-repo-url
+            (process-repo-for-updates helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        initial-commit
@@ -89,7 +89,7 @@
         (testing "Files fetched for update"
           (helpers/push-test-commit! test-clone-dir)
           (let [new-commit (jgit-utils/head-rev-id test-clone-repo)]
-            (process-repo-for-updates! helpers/server-repo-url
+            (process-repo-for-updates helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        new-commit
@@ -97,7 +97,7 @@
             (is (= new-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "No change when nothing pushed"
           (let [current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
-            (process-repo-for-updates! helpers/server-repo-url
+            (process-repo-for-updates helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        current-commit
@@ -106,7 +106,7 @@
         (testing "Files restored after repo directory deleted"
           (let [commit-id (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (fs/delete-dir client-repo-path)
-            (process-repo-for-updates! helpers/server-repo-url
+            (process-repo-for-updates helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        commit-id
