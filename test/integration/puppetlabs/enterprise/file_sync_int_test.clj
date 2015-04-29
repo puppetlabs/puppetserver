@@ -44,7 +44,7 @@
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
-          client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
+          client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -58,7 +58,7 @@
                    {(keyword repo) {:working-dir repo}}
                    true)
                  (helpers/client-service-config-with-repos
-                   {(keyword repo) (str client-repo-dir)}
+                   {(keyword repo) (.getPath client-repo-dir)}
                    true))
 
           (let [local-repo-dir (helpers/clone-and-push-test-commit! repo true)
@@ -92,7 +92,7 @@
                             {(keyword repo) {:working-dir repo}}
                             false)))]
       (try
-        (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+        (let [client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
@@ -109,7 +109,7 @@
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
             (helpers/client-service-config-with-repos
-              {(keyword repo) (str client-repo-dir)}
+              {(keyword repo) (.getPath client-repo-dir)}
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]
@@ -209,8 +209,8 @@
           {(keyword repo1) {:working-dir repo1}
            (keyword repo2) {:working-dir repo2}}
           false)
-        (let [client-dir-repo-1 (str (helpers/temp-dir-as-string) "/" repo1)
-              client-dir-repo-2 (str (helpers/temp-dir-as-string) "/" repo2)
+        (let [client-dir-repo-1 (fs/file (helpers/temp-dir-as-string) repo1)
+              client-dir-repo-2 (fs/file (helpers/temp-dir-as-string) repo2)
               local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1)
               local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2)]
           (bootstrap/with-app-with-config
@@ -218,8 +218,8 @@
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
             (helpers/client-service-config-with-repos
-              {(keyword repo1) client-dir-repo-1
-               (keyword repo2) client-dir-repo-2}
+              {(keyword repo1) (.getPath client-dir-repo-1)
+               (keyword repo2) (.getPath client-dir-repo-2)}
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]
