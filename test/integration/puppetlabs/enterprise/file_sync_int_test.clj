@@ -195,8 +195,9 @@
   (let [repo1 "repo1"
         repo2 "repo2"
         server-base-path (helpers/temp-dir-as-string)]
-    ;; This is used to silence the error logged when the server-side repo is corrupted,
-    ;; but unfortunately, it doesn't seem to actually allow that message to be matched
+    ;; This is used to silence the error logged when the server-side repo is
+    ;; corrupted, but unfortunately, it doesn't seem to actually allow that
+    ;; message to be matched
     (with-test-logging
       (bootstrap/with-app-with-config
         app
@@ -230,55 +231,81 @@
                     (is (= :successful (:status new-state)))
                     (is (= (get-latest-commits-for-repo repo1)
                            (get-in new-state [:repos repo1 :latest-commit])
-                           (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-                    (is (= :successful (get-in new-state [:repos repo1 :status])))
+                           (jgit-utils/head-rev-id-from-git-dir
+                             client-dir-repo-1)))
+                    (is (= :successful (get-in new-state
+                                               [:repos repo1 :status])))
                     (is (= (get-latest-commits-for-repo repo2)
                            (get-in new-state [:repos repo2 :latest-commit])
-                           (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))
-                    (is (= :successful (get-in new-state [:repos repo2 :status]))))))
+                           (jgit-utils/head-rev-id-from-git-dir
+                             client-dir-repo-2)))
+                    (is (= :successful (get-in new-state
+                                               [:repos repo2 :status]))))))
 
-              (testing "client-side repo recovers after server-side repo becomes corrupt"
+              (testing (str "client-side repo recovers after server-side"
+                            "repo becomes corrupt")
                 (let [corrupt-repo-path (str server-base-path "/corrupted")
                       original-repo-path (str server-base-path "/" repo1 ".git")]
                   (helpers/push-test-commit! local-dir-repo-1)
                   (helpers/push-test-commit! local-dir-repo-2)
-                  ;; "Corrupt" the server-side repo by moving it to a different location
+                  ;; "Corrupt" the server-side repo by moving it
+                  ;; to a different location
                   (fs/rename original-repo-path corrupt-repo-path)
-                  (testing "corruption of one repo does not affect syncing of other repos"
+                  (testing (str "corruption of one repo does not affect "
+                                "syncing of other repos")
                     (let [p (promise)]
                       (helpers/add-watch-and-deliver-new-state sync-agent p)
                       (let [new-state (deref p)]
-                        ;; This should be successful, as syncing should continue even if one repo cannot
-                        ;; be synced
+                        ;; This should be successful, as syncing should continue
+                        ;; even if one repo cannot be synced
                         (is (= :successful (:status new-state)))
-                        (is (= :failed (get-in new-state [:repos repo1 :status])))
-                        (is (re-matches #"File sync was unable to fetch from server repo.*" (get-in new-state [:repos repo1 :cause :message])))
+                        (is (= :failed (get-in new-state
+                                               [:repos repo1 :status])))
+                        (is (re-matches
+                              #"File sync was unable to fetch from server repo.*"
+                              (get-in new-state
+                                      [:repos repo1 :cause :message])))
                         (testing "all repos but the corrupted one are synced"
-                          ;; This should be nil, as the directory that is supposed to contain
-                          ;; repo1 no longer exists
+                          ;; This should be nil, as the directory that is
+                          ;; supposed to contain repo1 no longer exists
                           (is (nil? (get-latest-commits-for-repo repo1)))
-                          ;; The moved server-side repo should have newer commits than the client directory
+                          ;; The moved server-side repo should have newer
+                          ;; commits than the client directory
                           ;; as it was moved before syncing happened
-                          (is (not= (jgit-utils/head-rev-id-from-git-dir corrupt-repo-path)
-                                    (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
+                          (is (not= (jgit-utils/head-rev-id-from-git-dir
+                                      corrupt-repo-path)
+                                    (jgit-utils/head-rev-id-from-git-dir
+                                      client-dir-repo-1)))
                           (is (= (get-latest-commits-for-repo repo2)
-                                 (get-in new-state [:repos repo2 :latest-commit])
-                                 (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))))
-                    ;; "Restore" the server-side repo by moving it back to its original location
+                                 (get-in new-state
+                                         [:repos repo2 :latest-commit])
+                                 (jgit-utils/head-rev-id-from-git-dir
+                                   client-dir-repo-2))))))
+                    ;; "Restore" the server-side repo by moving it back to
+                    ;; its original location
                     (fs/rename corrupt-repo-path original-repo-path)
                     (helpers/push-test-commit! local-dir-repo-1)
                     (helpers/push-test-commit! local-dir-repo-2)
-                    (testing "client recovers when the server-side repo is fixed"
+                    (testing (str "client recovers when the server-side "
+                                  "repo is fixed")
                       (let [p (promise)]
                         (helpers/add-watch-and-deliver-new-state sync-agent p)
                         (let [new-state (deref p)]
                           (is (= :successful (:status new-state)))
-                          (testing "all repos including the previously corrupted one are synced"
+                          (testing (str "all repos including the previously "
+                                        "corrupted one are synced")
                             (is (= (get-latest-commits-for-repo repo1)
-                                   (get-in new-state [:repos repo1 :latest-commit])
-                                   (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-                            (is (= :successful (get-in new-state [:repos repo1 :status])))
+                                   (get-in new-state
+                                           [:repos repo1 :latest-commit])
+                                   (jgit-utils/head-rev-id-from-git-dir
+                                     client-dir-repo-1)))
+                            (is (= :successful (get-in new-state
+                                                       [:repos repo1 :status])))
                             (is (= (get-latest-commits-for-repo repo2)
-                                   (get-in new-state [:repos repo2 :latest-commit])
-                                   (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))
-                            (is (= :successful (get-in new-state [:repos repo2 :status])))))))))))))))))
+                                   (get-in new-state
+                                           [:repos repo2 :latest-commit])
+                                   (jgit-utils/head-rev-id-from-git-dir
+                                     client-dir-repo-2)))
+                            (is (= :successful
+                                   (get-in new-state
+                                           [:repos repo2 :status])))))))))))))))))
