@@ -115,11 +115,12 @@
 
 (defn process-repos
   [repos client ssl? callbacks]
-  (process-repos-for-updates!
-    client
-    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-    (str (helpers/base-url ssl?) helpers/default-api-path-prefix)
+  (process-repos-for-updates
     repos
+    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
+    (get-latest-commits-from-server
+      client
+      (str (helpers/base-url ssl?) helpers/default-api-path-prefix))
     callbacks))
 
 (deftest process-repos-for-updates-test

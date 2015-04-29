@@ -16,7 +16,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
 
-(def FileSyncClientServiceRawConfig
+(def ReposConfig
+  "A schema describing the configuration data for the repositories managed by
+  this service.  Each repository is a key-value pair; the key is the repo ID,
+  the value is the filesystem path to the repository."
+  {schema/Keyword schema/Str})
+
+(def Config
   "Schema defining the full content of the file sync client service
   configuration.
 
@@ -37,7 +43,7 @@
    :server-url                        schema/Str
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
-   :repos                             {schema/Keyword schema/Str}
+   :repos                             ReposConfig
    (schema/optional-key :ssl-cert)    schema/Str
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
@@ -186,57 +192,56 @@
       (callback-fn (keyword name) status))
     status))
 
-(defn process-repos-for-updates!
-  "Process through all of the repos configured with the
-  service for any updates which may be available on the server.
-  'server-repo-url' is the base URL at which the repository is hosted on the
-  server.  'repos' is the repos section of the file sync client configuration."
-  [client server-repo-base-url server-api-url repos callbacks]
-  (let [latest-commits (get-latest-commits-from-server client server-api-url)]
-    (log/debugf "File sync latest commits from server: %s" latest-commits)
-    (into {}
-          (for [[repo-name target-dir] repos]
-            (let [name (name repo-name)]
-              (if (contains? latest-commits name)
-                (let [latest-commit (latest-commits name)]
-                  (try+
-                    {name (process-repo-for-updates! server-repo-base-url
-                                                     name
-                                                     target-dir
-                                                     latest-commit
-                                                     (get @callbacks repo-name))}
-                    (catch agent-error? e
-                      (log/errorf
-                        (str "Error syncing repo: " (:message e))
-                        name)
-                      {name {:status :failed
-                             :cause  e}})))
-                (log/errorf
-                  "File sync did not find matching server repo for client repo: %s"
-                  name)))))))
+(schema/defn process-repos-for-updates
+  "Process the repositories for any updates which may be available on the server."
+  [repos :- ReposConfig
+   repo-base-url :- String
+   latest-commits :- common/LatestCommitsPayload
+   callbacks :- Atom]
+  (log/debugf "File sync latest commits from server: %s" latest-commits)
+  (into {}
+        (for [[repo-name target-dir] repos]
+          (let [name (name repo-name)]
+            (if (contains? latest-commits name)
+              (let [latest-commit (latest-commits name)]
+                (try+
+                  {name (process-repo-for-updates! repo-base-url
+                                                   name
+                                                   target-dir
+                                                   latest-commit
+                                                   (get @callbacks repo-name))}
+                  (catch agent-error? e
+                    (log/errorf
+                      (str "Error syncing repo: " (:message e))
+                      name)
+                    {name {:status :failed
+                           :cause  e}})))
+              (log/errorf
+                "File sync did not find matching server repo for client repo: %s"
+                name))))))
 
 ; This function is marked 'always-validate' to ensure that the agent is always
 ; left in a valid state.
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
-  [agent-state config http-client callbacks]
-  (log/debug "file sync process running ...")
+  [agent-state
+   {:keys [server-url server-repo-path server-api-path repos]} :- Config
+   http-client
+   callbacks :- Atom]
+  (log/debug "File sync process running on repos " repos)
   (try+
-    (let [filesync-server-url (:server-url config)
-          server-repo-path (:server-repo-path config)
-          server-api-path (:server-api-path config)
-          repos (:repos config)]
-      (log/debugf "File sync client repos: %s" repos)
-      (let [repo-status-map (process-repos-for-updates!
-                              http-client
-                              (str filesync-server-url server-repo-path)
-                              (str filesync-server-url server-api-path)
-                              repos
-                              callbacks)
-            partial-success? (> (count (filter #(= (:status %) :failed)
-                                               (vals repo-status-map))) 0)]
-        {:status (if partial-success? :partial-success :successful)
-         :repos repo-status-map}))
+    (let [latest-commits (get-latest-commits-from-server
+                           http-client
+                           (str server-url server-api-path))
+          repo-status-map (process-repos-for-updates
+                            repos
+                            (str server-url server-repo-path)
+                            latest-commits
+                            callbacks)
+          partial-success? (> (count (filter #(= (:status %) :failed)
+                                             (vals repo-status-map))) 0)]
+      {:status (if partial-success? :partial-success :successful)
+       :repos repo-status-map})
     (catch agent-error? error
       (let [message (str "File sync failure: " (:message error))]
         (if-let [cause (:cause error)]
@@ -284,7 +289,7 @@
   sync process to schedule the next iteration."
   [sync-agent :- Agent
    schedule-fn :- IFn
-   config :- FileSyncClientServiceRawConfig
+   config :- Config
    http-client :- http-client/HTTPClient
    callbacks :- Atom]
   (let [periodic-sync (fn [& args]
