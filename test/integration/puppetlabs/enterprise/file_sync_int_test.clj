@@ -244,7 +244,7 @@
 
               (testing (str "client-side repo recovers after server-side"
                             "repo becomes corrupt")
-                (let [corrupt-repo-path (str server-base-path "/corrupted")
+                (let [corrupt-repo-path (helpers/temp-dir-as-string)
                       original-repo-path (str server-base-path "/" repo1 ".git")]
                   (helpers/push-test-commit! local-dir-repo-1)
                   (helpers/push-test-commit! local-dir-repo-2)
@@ -258,7 +258,7 @@
                       (let [new-state (deref p)]
                         ;; This should be successful, as syncing should continue
                         ;; even if one repo cannot be synced
-                        (is (= :successful (:status new-state)))
+                        (is (= :partial-success (:status new-state)))
                         (is (= :failed (get-in new-state
                                                [:repos repo1 :status])))
                         (is (re-matches

@@ -67,7 +67,7 @@
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
      :error  AgentError}
-    {:status (schema/enum :successful :created)
+    {:status (schema/enum :successful :created :partial-success)
      :repos  {schema/Str RepoState}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -224,8 +224,10 @@
                               http-client
                               (str filesync-server-url server-repo-path)
                               (str filesync-server-url server-api-path)
-                              repos)]
-        {:status :successful
+                              repos)
+            partial-success? (> (count (filter #(= (:status %) :failed)
+                                               (vals repo-status-map))) 0)]
+        {:status (if partial-success? :partial-success :successful)
          :repos repo-status-map}))
     (catch agent-error? error
       (let [message (str "File sync failure: " (:message error))]
