@@ -7,14 +7,14 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
              :refer :all]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.enterprise.jgit-client :as client]))
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
 (defn get-http-recievepack
   [repo]
   (-> repo
-      (client/get-repository-from-git-dir)
+      (jgit-utils/get-repository-from-git-dir)
       (.getConfig)
       (.getInt "http" "receivepack" (Integer/MIN_VALUE))))
 

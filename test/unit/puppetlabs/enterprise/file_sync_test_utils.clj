@@ -1,14 +1,11 @@
 (ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.transport RemoteRefUpdate$Status)
-           (org.eclipse.jgit.treewalk.filter PathFilter)
-           (org.eclipse.jgit.treewalk TreeWalk)
            (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport HttpTransport)
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory))
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
@@ -66,7 +63,7 @@
 (defn configure-JGit-SSL!
   [ssl?]
   (let [connection-factory (if ssl?
-                             (jgit-client/create-connection-factory ssl-context)
+                             (jgit-utils/create-connection-factory ssl-context)
                              (JDKHttpConnectionFactory.))]
     (HttpTransport/setConnectionFactory connection-factory)))
 
@@ -159,14 +156,14 @@
 (defn push-test-commit!
   "Given a path on disk to Git repository, creates a test file in that repo,
   adds it, commits it, and pushes it
-  (via 'jgit-client/push' with no remote specified.)"
+  (via 'jgit-utils/push' with no remote specified.)"
   ([repo-path]
    (push-test-commit! repo-path (str "test-file" (ks/uuid))))
   ([repo-path file-name]
    (write-test-file! (str repo-path "/" file-name))
-   (let [repo (Git. (jgit-client/get-repository-from-working-tree (fs/file repo-path)))]
-     (jgit-client/add-and-commit repo "update via test" author)
-     (jgit-client/push repo))))
+   (let [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
+     (jgit-utils/add-and-commit repo "update via test" author)
+     (jgit-utils/push repo))))
 
 (defn clone-and-push-test-commit!
   "Clones the specified repo, pushes a test commit, and returns the directory
@@ -175,7 +172,7 @@
     (clone-and-push-test-commit! repo-name false))
   ([repo-name https?]
    (let [repo-dir (fs/temp-dir repo-name)]
-     (jgit-client/clone (str (repo-base-url https?) "/" repo-name) repo-dir)
+     (jgit-utils/clone (str (repo-base-url https?) "/" repo-name) repo-dir)
      (push-test-commit! repo-dir)
      repo-dir)))
 

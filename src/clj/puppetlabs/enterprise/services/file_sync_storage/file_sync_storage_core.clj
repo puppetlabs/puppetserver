@@ -6,7 +6,7 @@
            (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.jgit-client :as client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.ringutils :as ringutils]
             [schema.core :as schema]
@@ -140,11 +140,11 @@
   {:pre [(instance? File git-dir)]
    :post [(or (string? %) (nil? %))]}
   (when-let [ref (-> git-dir
-                     (client/get-repository-from-git-dir)
+                     (jgit-utils/get-repository-from-git-dir)
                      (.getRef "refs/heads/master"))]
     (-> ref
         (.getObjectId)
-        (client/commit-id))))
+        (jgit-utils/commit-id))))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in `sub-paths`."
@@ -171,7 +171,7 @@
   [git]
   {:pre [(instance? Git git)]}
   (-> git
-      client/push
+      jgit-utils/push
       first
       .getRemoteUpdates
       first
@@ -188,7 +188,7 @@
    author :- PersonIdent]
   (try
     (log/debugf "Adding and commiting unversioned files for working directory %s" sub-path)
-    (client/add-and-commit git message author)
+    (jgit-utils/add-and-commit git message author)
 
     (log/debugf "Pushing working directory %s" sub-path)
     (push-and-return-sha git)))

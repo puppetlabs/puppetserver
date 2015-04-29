@@ -4,9 +4,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
-            [puppetlabs.enterprise.jgit-client :as client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.http.client.sync :as http-client]
             [me.raynes.fs :as fs]
@@ -30,7 +29,7 @@
         app config
         (let [test-clone-dir (helpers/temp-dir-as-string)
               server-repo-url (str (helpers/repo-base-url) "/" server-repo-subpath)]
-          (jgit-client/clone server-repo-url test-clone-dir)
+          (jgit-utils/clone server-repo-url test-clone-dir)
           (testing "An attempt to push to the repo should fail"
             (is (thrown-with-msg?
                   TransportException
@@ -54,10 +53,10 @@
                                 "/"
                                 server-repo-subpath)
               repo-test-file "test-file"]
-          (jgit-client/clone server-repo-url client-orig-repo-dir)
+          (jgit-utils/clone server-repo-url client-orig-repo-dir)
           (helpers/push-test-commit! client-orig-repo-dir repo-test-file)
           (let [client-second-repo-dir (helpers/temp-dir-as-string)]
-            (jgit-client/clone  server-repo-url client-second-repo-dir)
+            (jgit-utils/clone  server-repo-url client-second-repo-dir)
             (is (= helpers/file-text
                    (slurp (str client-second-repo-dir "/" repo-test-file)))
                 "Unexpected file text found in second repository clone")))))))
@@ -77,7 +76,7 @@
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app config
         (is (thrown? TransportException
-                     (jgit-client/clone
+                     (jgit-utils/clone
                        (str (helpers/repo-base-url) "/" repo-name)
                        (helpers/temp-dir-as-string))))))))
 
@@ -104,7 +103,7 @@
         (testing "The URL path at which the service mounts "
                   "the JGit servlet is configurable"
           (testing "Clone and verify the repo"
-            (let [local-repo (jgit-client/clone server-repo-url client-orig-repo-dir)]
+            (let [local-repo (jgit-utils/clone server-repo-url client-orig-repo-dir)]
               (is (not (nil? local-repo))
                   (format "Repository cloned from server (%s) to (%s) should be non-nil"
                           server-repo-url
@@ -163,13 +162,13 @@
 
                 (testing "the first repo"
                   (let [actual-rev (get body server-repo-subpath-1)
-                        expected-rev (client/head-rev-id-from-working-tree
+                        expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-1)]
                     (is (= actual-rev expected-rev))))
 
                 (testing "The second repo"
                   (let [actual-rev (get body server-repo-subpath-2)
-                        expected-rev (client/head-rev-id-from-working-tree
+                        expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-2)]
                     (is (= actual-rev expected-rev))))))))))))
 
@@ -325,7 +324,7 @@
             (let [data (json/parse-string body)]
               (testing "for repo that was successfully published"
                 (is (not= nil (get data success-repo)))
-                (is (= (client/head-rev-id-from-working-tree (fs/file working-dir-success))
+                (is (= (jgit-utils/head-rev-id-from-working-tree (fs/file working-dir-success))
                        (get data success-repo))
                     (str "Could not find correct body for " failed-repo " in " body)))
               (testing "for nonexistent repo"

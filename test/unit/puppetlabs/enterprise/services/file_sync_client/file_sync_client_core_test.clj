@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :refer :all]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [me.raynes.fs :as fs]
@@ -75,39 +75,39 @@
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app config
       (let [test-clone-dir (fs/file (helpers/temp-dir-as-string))
-            test-clone-repo (.getRepository (jgit-client/clone server-repo-url test-clone-dir))]
+            test-clone-repo (.getRepository (jgit-utils/clone server-repo-url test-clone-dir))]
         (testing "Validate initial repo update"
-          (let [initial-commit (jgit-client/head-rev-id test-clone-repo)]
+          (let [initial-commit (jgit-utils/head-rev-id test-clone-repo)]
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        initial-commit)
-            (let [repo (jgit-client/get-repository-from-git-dir client-repo-path)]
+            (let [repo (jgit-utils/get-repository-from-git-dir client-repo-path)]
               (is (.isBare repo))
-              (is (= initial-commit (jgit-client/head-rev-id repo))))))
+              (is (= initial-commit (jgit-utils/head-rev-id repo))))))
         (testing "Files fetched for update"
           (helpers/push-test-commit! test-clone-dir)
-          (let [new-commit (jgit-client/head-rev-id test-clone-repo)]
+          (let [new-commit (jgit-utils/head-rev-id test-clone-repo)]
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        new-commit)
-            (is (= new-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)))))
+            (is (= new-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "No change when nothing pushed"
-          (let [current-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)]
+          (let [current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        current-commit)
-            (is (= current-commit (jgit-client/head-rev-id-from-git-dir client-repo-path)))))
+            (is (= current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "Files restored after repo directory deleted"
-          (let [commit-id (jgit-client/head-rev-id-from-git-dir client-repo-path)]
+          (let [commit-id (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (fs/delete-dir client-repo-path)
             (process-repo-for-updates! helpers/server-repo-url
                                        repo-name
                                        client-repo-path
                                        commit-id)
-            (is (= (jgit-client/head-rev-id-from-git-dir client-repo-path) commit-id))))))))
+            (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-path) commit-id))))))))
 
 (defn process-repos
   [repos client ssl?]

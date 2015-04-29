@@ -5,7 +5,7 @@
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+ throw+]]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
@@ -105,13 +105,13 @@
   commit on the server for the repository.  'target-dir' is the location
   in which the repository is intended to reside."
   [name latest-commit-id target-dir]
-  (if-let [repo (jgit-client/get-repository-from-git-dir target-dir)]
-    (when-not (= (jgit-client/head-rev-id repo) latest-commit-id)
+  (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+    (when-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
       (log/infof "File sync updating '%s' to %s" name latest-commit-id)
-      (jgit-client/fetch repo)
+      (jgit-utils/fetch repo)
       (log/info
         (str "File sync fetch of '" name "' successful.  New latest commit: "
-             (jgit-client/head-rev-id repo))))
+             (jgit-utils/head-rev-id repo))))
     (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a directory that already exists but does "
@@ -126,10 +126,10 @@
   the client repository should be stored."
   [name server-repo-url target-dir]
   (log/infof "File sync cloning '%s' to: %s" name target-dir)
-  (let [git (jgit-client/clone server-repo-url target-dir true)]
+  (let [git (jgit-utils/clone server-repo-url target-dir true)]
     (log/info
       (str "File sync clone of '" name "' successful.  New latest commit: "
-           (jgit-client/head-rev-id (.getRepository git))))))
+           (jgit-utils/head-rev-id (.getRepository git))))))
 
 (defn apply-updates-to-repo!
   "Apply updates from the server to the client repository.  'name' is the
@@ -222,7 +222,7 @@
   currently allow this - see https://bugs.eclipse.org/bugs/show_bug.cgi?id=460483"
   [ssl-context :- common/SSLContextOrNil]
   (-> ssl-context
-      (jgit-client/create-connection-factory)
+      (jgit-utils/create-connection-factory)
       (HttpTransport/setConnectionFactory)))
 
 (defn create-agent
