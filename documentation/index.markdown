@@ -17,6 +17,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
 * [Using Ruby Gems](./gems.markdown)
 * [Using an External CA](./external_ca_configuration.markdown)
 * [External SSL Termination](./external_ssl_termination.markdown)
+* [Tuning Guide](./tuning_guide.markdown)
 * **Known Issues and Workarounds**
     * [Known Issues](./known_issues.markdown)
     * [SSL Problems With Load-Balanced PuppetDB Servers ("Server Certificate Change" error)](./ssl_server_certificate_change_and_virtual_ips.markdown)
