@@ -3,7 +3,8 @@
 ;; via the REPL.  To use this, simply make a copy of this file named `user.clj`
 ;; and modify it to your liking.
 (ns user
-  (:require [puppetlabs.trapperkeeper.config :as config]))
+  (:require [puppetlabs.trapperkeeper.config :as config]
+            [me.raynes.fs :as fs]))
 
 ;; The `user_repl.clj` file has utility functions for starting, stopping, and
 ;; loading the file sync services from the REPL.  If you define no-arg functions here that return
@@ -12,11 +13,15 @@
 ;; the config from my config files on disk
 (defn file-sync-storage-conf
   []
-  (config/load-config "/Users/prebeningvaldsen/.file-sync/storage.conf"))
+  (let [config-path "/Users/prebeningvaldsen/.file-sync/storage.conf"]
+    (when (fs/exists? config-path)
+      (config/load-config config-path))))
 
 (defn file-sync-client-conf
   []
-  (config/load-config "/Users/prebeningvaldsen/.file-sync/client.conf"))
+  (let [config-path "/Users/prebeningvaldsen/.file-sync/client.conf"]
+    (when (fs/exists? config-path)
+      (config/load-config "/Users/prebeningvaldsen/.file-sync/client.conf"))))
 
 ;; The `go` function in the `user-repl` namespace  will start up an instance of
 ;; the file sync storage and client services..  This function will load that namespace,

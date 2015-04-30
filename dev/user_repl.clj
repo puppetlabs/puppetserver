@@ -6,44 +6,33 @@
             [puppetlabs.enterprise.services.scheduler.scheduler-service :refer [scheduler-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
+            [puppetlabs.trapperkeeper.config :as tkc]
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.pprint :as pprint]))
 
 (defn file-sync-storage-conf
   "This function returns a map of config settings that will be used
-   when running the file sync services in the repl. It provides some reasonable
-   defaults but if you'd like to use your own settings you can define a var
-   `file-sync-fong` in your `user` namespace and those settings will be used instead.
-   (If there is a `user.clj` on the classpath, lein will automatically load it
-   the REPL is started"
+   when running the file sync storage service in the REPL. It provides some
+   reasonable defaults but if you'd like to use your own settings you can define
+   a var `file-sync-storage-conf` in your `user` namespace and those settings
+   will be used instead. (If there is a `user.clj` on the classpath, lein will
+   automatically load it when the REPL is started"
   []
-  (if-let [conf (resolve 'user/file-sync-storage-conf)]
-    ((deref conf))
-    {:global             {:logging-config "./dev/logback.xml"}
-     :webserver          {:port 8080}
-     :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
-                          {:api          "/file-sync"
-                           :repo-servlet "/git"}}
-     :file-sync-storage  {:base-path ".file-sync/.file-sync-server"
-                          :repos     {:repl-repo {:working-dir       "repl-repo-working"
-                                                  :http-push-enabled true}}}}))
+  (let [user-conf (when-let [conf (resolve 'user/file-sync-storage-conf)]
+                    ((deref conf)))]
+    (or user-conf (tkc/load-config "./dev/dev.conf"))))
 
 (defn file-sync-client-conf
   "This function returns a map of config settings that will be used
-   when running the file sync services in the repl. It provides some reasonable
-   defaults but if you'd like to use your own settings you can define a var
-   `file-sync-fong` in your `user` namespace and those settings will be used instead.
-   (If there is a `user.clj` on the classpath, lein will automatically load it
-   the REPL is started"
+   when running the file sync client service in the REPL. It provides some
+   reasonable defaults but if you'd like to use your own settings you can define
+   a var `file-sync-client-conf` in your `user` namespace and those settings
+   will be used instead. (If there is a `user.clj` on the classpath, lein will
+   automatically load it when the REPL is started"
   []
-  (if-let [conf (resolve 'user/file-sync-client-conf)]
-    ((deref conf))
-    {:global             {:logging-config "./dev/logback.xml"}
-     :file-sync-client   {:server-url       "http://localhost:8080"
-                          :poll-interval    1
-                          :server-api-path  "/file-sync"
-                          :server-repo-path "/git"
-                          :repos            {:repl-repo ".file-sync/.file-sync-client/repl-repo"}}}))
+  (let [user-conf (when-let [conf (resolve 'user/file-sync-client-conf)]
+                    ((deref conf)))]
+    (or user-conf (tkc/load-config "./dev/dev.conf"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
