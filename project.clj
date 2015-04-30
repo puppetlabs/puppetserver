@@ -27,7 +27,9 @@
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.19"]
-                 [clj-time "0.5.1" :exclusions [joda-time]]
+                 [joda-time "2.5"]
+                 [clj-time "0.6.0"]
+                 [ring/ring-core "1.3.2"]
                  [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
                  [me.raynes/fs "1.4.5"]
