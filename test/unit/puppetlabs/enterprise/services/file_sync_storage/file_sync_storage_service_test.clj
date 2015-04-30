@@ -80,45 +80,6 @@
                        (str (helpers/repo-base-url) "/" repo-name)
                        (helpers/temp-dir-as-string))))))))
 
-(deftest configurable-endpoints-test
-  (let [repo-path             "/test-repo-path"
-        api-path              "/test-api-path"
-        server-repo-subpath   "file-sync-storage-service-simple-workflow"
-        config                {:file-sync-storage
-                                 {:data-dir (helpers/temp-dir-as-string)
-                                  :repos {(keyword server-repo-subpath)
-                                          {:working-dir server-repo-subpath}}}
-                               :webserver {:port helpers/http-port}
-                               :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
-                                                     {:api          api-path
-                                                      :repo-servlet repo-path}}}]
-
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http app config
-      (let [client-orig-repo-dir  (helpers/temp-dir-as-string)
-            server-repo-url       (str
-                                    (helpers/repo-base-url repo-path false)
-                                    "/"
-                                    server-repo-subpath)]
-
-        (testing "The URL path at which the service mounts "
-                  "the JGit servlet is configurable"
-          (testing "Clone and verify the repo"
-            (let [local-repo (jgit-utils/clone server-repo-url client-orig-repo-dir)]
-              (is (not (nil? local-repo))
-                  (format "Repository cloned from server (%s) to (%s) should be non-nil"
-                          server-repo-url
-                          client-orig-repo-dir)))))
-
-        (testing "The URL path at which the service mounts "
-                 "the ring app is configurable"
-          (testing "We can make a basic HTTP request to the server"
-            (let [response (http-client/get
-                             (str
-                               helpers/server-base-url
-                               api-path
-                               common/latest-commits-sub-path))]
-              (is (= 200 (:status response))))))))))
-
 (deftest latest-commits-test
   (let [data-dir (helpers/temp-dir-as-string)
         server-repo-subpath-1 "latest-commits-test-1"
