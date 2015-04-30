@@ -47,8 +47,9 @@
   (let [repo-name "apply-updates-test"
         server-repo-url (str helpers/server-repo-url "/" repo-name)
         client-repo-path (temp-file-name repo-name)
+        data-dir (helpers/temp-dir-as-string)
         config (helpers/storage-service-config-with-repos
-                 (helpers/temp-dir-as-string)
+                 data-dir
                  {(keyword repo-name) {:working-dir repo-name}}
                  false)]
     (testing "Throws appropriate error when directory exists but has no git repo"
@@ -74,7 +75,8 @@
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app config
       (let [test-clone-dir (fs/file (helpers/temp-dir-as-string))
-            test-clone-repo (.getRepository (jgit-utils/clone server-repo-url test-clone-dir))]
+            test-clone-repo (.getRepository (helpers/clone-from-data-dir
+                                              data-dir repo-name test-clone-dir))]
         (testing "Validate initial repo update"
           (fs/delete-dir client-repo-path)
           (let [initial-commit (jgit-utils/head-rev-id test-clone-repo)

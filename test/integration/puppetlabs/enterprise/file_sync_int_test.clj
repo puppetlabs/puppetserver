@@ -44,6 +44,7 @@
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
+          data-dir (helpers/temp-dir-as-string)
           client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -54,14 +55,14 @@
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
-                   (helpers/temp-dir-as-string)
+                   data-dir
                    {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                    true)
                  (helpers/client-service-config-with-repos
                    {(keyword repo) (.getPath client-repo-dir)}
                    true))
 
-          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo true)
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)
                 sync-agent (helpers/get-sync-agent app)]
 
             (testing "client is able to successfully sync with storage service"
@@ -79,13 +80,14 @@
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
     (let [repo "network-partition-test"
+          data-dir (helpers/temp-dir-as-string)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config-with-repos
-                            (helpers/temp-dir-as-string)
+                            data-dir
                             {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                             false)))]
       (try
@@ -93,7 +95,7 @@
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
-              local-repo-dir (helpers/clone-and-push-test-commit! repo)]
+              local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)]
 
           (testing "file sync storage service is running"
             ;; Ensure that a commit pushed to the server is reflected by the
@@ -182,7 +184,7 @@
 (deftest ^:integration server-side-corruption-test
   (let [repo1 "repo1"
         repo2 "repo2"
-        server-base-path (helpers/temp-dir-as-string)
+        data-dir (helpers/temp-dir-as-string)
         client-dir-repo-1 (fs/file (helpers/temp-dir-as-string) repo1)
         client-dir-repo-2 (fs/file (helpers/temp-dir-as-string) repo2)]
     ;; This is used to silence the error logged when the server-side repo is
@@ -197,7 +199,7 @@
          file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
         (merge (helpers/storage-service-config-with-repos
-                 server-base-path
+                 data-dir
                  {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
                   (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}}
                  false)
@@ -205,8 +207,8 @@
                  {(keyword repo1) (.getPath client-dir-repo-1)
                   (keyword repo2) (.getPath client-dir-repo-2)}
                  false))
-        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1)
-              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2)
+        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1 data-dir)
+              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2 data-dir)
               sync-agent (helpers/get-sync-agent app)]
 
           (testing "file sync client service is running"
@@ -220,7 +222,7 @@
           (testing (str "client-side repo recovers after server-side"
                         "repo becomes corrupt")
             (let [corrupt-repo-path (helpers/temp-dir-as-string)
-                  original-repo-path (str server-base-path "/" repo1 ".git")]
+                  original-repo-path (str data-dir "/" repo1 ".git")]
               (helpers/push-test-commit! local-dir-repo-1)
               (helpers/push-test-commit! local-dir-repo-2)
               ;; "Corrupt" the server-side repo by moving it
@@ -264,6 +266,7 @@
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
     (let [repo "repo"
+          data-dir (helpers/temp-dir-as-string)
           client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -274,13 +277,13 @@
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
-                   (helpers/temp-dir-as-string)
+                   data-dir
                    {(keyword repo) {:working-dir repo}}
                    false)
                  (helpers/client-service-config-with-repos
                    {(keyword repo) (str client-repo-dir)}
                    false))
-          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo)
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)
                 client-service (tk-app/get-service app :FileSyncClientService)
                 sync-agent (helpers/get-sync-agent app)
                 repo-atom (atom {})]

@@ -80,21 +80,10 @@
                         {:api          default-api-path-prefix
                          :repo-servlet default-repo-path-prefix}}})
 
-(defn enable-push
-  "Given the config map for a repo, return an updated config map that
-  enables anonymous push access on it."
-  [repo]
-  (assoc repo :http-push-enabled true))
-
-(defn file-sync-storage-config-payload
-  "Enables anonymous push access on each repo for ease of testing."
-  [data-dir repos]
-  {:data-dir data-dir
-   :repos    (ks/mapvals enable-push repos)})
-
 (defn file-sync-storage-config
   [data-dir repos]
-  {:file-sync-storage (file-sync-storage-config-payload data-dir repos)})
+  {:file-sync-storage {:data-dir data-dir
+                       :repos    repos}})
 
 (defn storage-service-config-with-repos
   [data-dir repos ssl?]
@@ -153,6 +142,11 @@
          (do
            ~@body)))))
 
+(defn clone-from-data-dir
+  [data-dir repo-id path]
+  (let [repo-url (str "file://" data-dir "/" repo-id ".git")]
+    (jgit-utils/clone repo-url path)))
+
 (defn push-test-commit!
   "Given a path on disk to Git repository, creates a test file in that repo,
   adds it, commits it, and pushes it
@@ -168,12 +162,14 @@
 (defn clone-and-push-test-commit!
   "Clones the specified repo, pushes a test commit, and returns the directory
   to which the repo was cloned."
-  ([repo-name]
-    (clone-and-push-test-commit! repo-name false))
-  ([repo-name https?]
-   (let [repo-dir (fs/temp-dir repo-name)]
-     (jgit-utils/clone (str (repo-base-url https?) "/" repo-name) repo-dir)
-     (push-test-commit! repo-dir)
+  ([repo-id data-dir]
+    (clone-and-push-test-commit! repo-id data-dir nil))
+  ([repo-id data-dir file-name]
+   (let [repo-dir (fs/temp-dir repo-id)]
+     (clone-from-data-dir data-dir repo-id repo-dir)
+     (if file-name
+       (push-test-commit! repo-dir file-name)
+       (push-test-commit! repo-dir))
      repo-dir)))
 
 (defn init-repo!

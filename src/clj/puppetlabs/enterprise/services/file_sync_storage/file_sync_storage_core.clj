@@ -33,10 +33,8 @@
 
   The keys should have the following values:
 
-    * :working-dir  - The path under the Git server's data directory where the
-                      repository's working tree resides."
-  {:working-dir                             schema/Str
-   (schema/optional-key :http-push-enabled) Boolean})
+    * :working-dir  - The path where the repository's working tree resides."
+  {:working-dir schema/Str})
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -116,21 +114,12 @@
 
 (defn initialize-bare-repo!
   "Initialize a bare Git repository in the directory specified by 'path'.
-  'path' must be something that is coercible to a File.
-  If `allow-anonymous-push?` is true, the 'http.receive-pack' setting on
-  the repository will be '1' so that the directory is exported for anonymous
-  access.  Otherwise, 'http.receivepack' will be set to 0,
-  which disables all pushes to the repository over HTTP."
-  [repo-path allow-anonymous-push?]
-  (doto
-    (.. (new InitCommand)
-        (setDirectory (fs/file repo-path))
-        (setBare true)
-        (call)
-        (getRepository)
-        (getConfig))
-    (.setInt "http" nil "receivepack" (if allow-anonymous-push? 1 0))
-    (.save)))
+  'path' must be something that is coercible to a File."
+  [repo-path]
+  (.. (new InitCommand)
+      (setDirectory (fs/file repo-path))
+      (setBare true)
+      (call)))
 
 (defn latest-commit-on-master
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
@@ -289,7 +278,6 @@
     (log/infof "Initializing file sync server base path: %s" data-dir)
     (initialize-server-data-dir! (fs/file data-dir))
     (doseq [[repo-id repo-info] (:repos config)]
-      (let [repo-path (fs/file data-dir (str (name repo-id) ".git"))
-            http-push-enabled (:http-push-enabled repo-info)]
+      (let [repo-path (fs/file data-dir (str (name repo-id) ".git"))]
         (log/infof "Initializing file sync repository path: %s" repo-path)
-        (initialize-bare-repo! repo-path http-push-enabled)))))
+        (initialize-bare-repo! repo-path)))))

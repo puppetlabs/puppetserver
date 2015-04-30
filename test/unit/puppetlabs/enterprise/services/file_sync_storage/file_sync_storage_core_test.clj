@@ -2,50 +2,21 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.file-sync-test-utils
-             :as helpers]
-            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
-             :refer :all]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.enterprise.jgit-utils :as jgit-utils]))
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
+            [puppetlabs.kitchensink.core :as ks]))
 
 (use-fixtures :once schema-test/validate-schemas)
-
-(defn get-http-recievepack
-  [repo]
-  (-> repo
-      (jgit-utils/get-repository-from-git-dir)
-      (.getConfig)
-      (.getInt "http" "receivepack" (Integer/MIN_VALUE))))
-
-(deftest initialize-bare-repo!-test
-  (testing "The repo's 'http.receivepack' setting should be 0 when the
-           'allow-anonymous-push?' parameter is false."
-    (let [repo (ks/temp-dir)]
-      (initialize-bare-repo! repo false)
-      (let [receivepack (get-http-recievepack repo)]
-        (is (= 0 receivepack)))))
-
-  (testing "The repo's 'http.receivepack' setting should be 1 when the
-           'allow-anonymous-push?' parameter is true."
-    (let [repo (ks/temp-dir)]
-    (initialize-bare-repo! repo true)
-    (let [receivepack (get-http-recievepack repo)]
-      (is (= 1 receivepack))))))
 
 (deftest initialize-repos!-test
   (let [data-dir (fs/file (ks/temp-dir) "base")
         repos {:sub1 {:working-dir "sub1-dir"}
                :sub2 {:working-dir "sub2-dir"}
                :sub3 {:working-dir "sub3-dir/subsub3"}}
-        config   (helpers/file-sync-storage-config-payload
-                   (.getPath data-dir)
-                   repos)]
-    (testing "Vector of repos can be initialized"
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file data-dir (str sub-path ".git"))))
-            (str "Repo at " sub-path "has incorrect http-recievepack setting"))))
+        config {:data-dir data-dir
+                :repos    repos}]
+    (testing "Multiple repos can be initialized"
+      (initialize-repos! config))
     (testing "Content in repos not wiped out during reinitialization"
       (doseq [sub-path (map name (keys repos))]
         (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
@@ -56,12 +27,5 @@
         (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
           (is (fs/exists? file-to-check)
             (str "Expected file missing after repo reinitialization: "
-                 file-to-check)))))
-    (testing "Http receive pack for repos restored to 1 after reinitialization"
-      (doseq [sub-path (map name (keys repos))]
-        (fs/delete (fs/file data-dir sub-path "config")))
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file data-dir (str sub-path ".git"))))
-            (str "Repo at " sub-path "has incorrect http-recievepack setting"))))))
+                 file-to-check)))))))
 

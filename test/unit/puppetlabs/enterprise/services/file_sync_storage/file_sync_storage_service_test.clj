@@ -19,42 +19,40 @@
   (json/parse-string (slurp (:body response))))
 
 (deftest push-disabled-test
-  (testing "The JGit servlet should not accept pushes unless configured to do so"
-    (let [server-repo-subpath "push-disabled-test"
+  (testing "The JGit servlet should not accept pushes"
+    (let [repo-id "push-disabled-test"
           config (merge helpers/webserver-plaintext-config
                         {:file-sync-storage {:data-dir (helpers/temp-dir-as-string)
-                                             :repos {(keyword server-repo-subpath)
-                                                     {:working-dir server-repo-subpath}}}})]
+                                             :repos {(keyword repo-id)
+                                                     {:working-dir repo-id}}}})]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app config
-        (let [test-clone-dir (helpers/temp-dir-as-string)
-              server-repo-url (str (helpers/repo-base-url) "/" server-repo-subpath)]
-          (jgit-utils/clone server-repo-url test-clone-dir)
+        (let [clone-dir (helpers/temp-dir-as-string)
+              server-repo-url (str (helpers/repo-base-url) "/" repo-id)]
+          (jgit-utils/clone server-repo-url clone-dir)
           (testing "An attempt to push to the repo should fail"
             (is (thrown-with-msg?
                   TransportException
-                  #"Git access forbidden"
-                  (helpers/push-test-commit! test-clone-dir)))))))))
+                  #"authentication not supported"
+                  (helpers/push-test-commit! clone-dir)))))))))
 
 (deftest file-sync-storage-service-simple-workflow-test
   (let [data-dir (helpers/temp-dir-as-string)
-        server-repo-subpath "file-sync-storage-service-simple-workflow"]
+        repo-id "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
           data-dir
-          {(keyword server-repo-subpath) {:working-dir server-repo-subpath}}
+          {(keyword repo-id) {:working-dir repo-id}}
           false)
-        (let [client-orig-repo-dir (helpers/temp-dir-as-string)
-              server-repo-url (str
+        (let [server-repo-url (str
                                 (helpers/repo-base-url)
                                 "/"
-                                server-repo-subpath)
+                                repo-id)
               repo-test-file "test-file"]
-          (jgit-utils/clone server-repo-url client-orig-repo-dir)
-          (helpers/push-test-commit! client-orig-repo-dir repo-test-file)
+          (helpers/clone-and-push-test-commit! repo-id data-dir repo-test-file)
           (let [client-second-repo-dir (helpers/temp-dir-as-string)]
             (jgit-utils/clone  server-repo-url client-second-repo-dir)
             (is (= helpers/file-text
@@ -82,22 +80,20 @@
 
 (deftest latest-commits-test
   (let [data-dir (helpers/temp-dir-as-string)
-        server-repo-subpath-1 "latest-commits-test-1"
-        server-repo-subpath-2 "latest-commits-test-2"
-        server-repo-subpath-no-commits "latest-commits-test-3"]
+        repo1-id "latest-commits-test-1"
+        repo2-id "latest-commits-test-2"
+        repo3-id "latest-commits-test-3"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
         data-dir
-        {(keyword server-repo-subpath-1) {:working-dir server-repo-subpath-1}
-         (keyword server-repo-subpath-2) {:working-dir server-repo-subpath-2}
-         (keyword server-repo-subpath-no-commits) {:working-dir server-repo-subpath-no-commits}}
+        {(keyword repo1-id) {:working-dir repo1-id}
+         (keyword repo2-id) {:working-dir repo2-id}
+         (keyword repo3-id) {:working-dir repo3-id}}
         false)
 
-      (let [client-orig-repo-dir-1 (helpers/clone-and-push-test-commit!
-                                     server-repo-subpath-1)
-            client-orig-repo-dir-2 (helpers/clone-and-push-test-commit!
-                                     server-repo-subpath-2)]
+      (let [client-orig-repo-dir-1 (helpers/clone-and-push-test-commit! repo1-id data-dir)
+            client-orig-repo-dir-2 (helpers/clone-and-push-test-commit! repo2-id data-dir)]
 
         (testing "Validate /latest-commits endpoint"
           (let [response (http-client/get (str
@@ -116,19 +112,19 @@
               (let [body (parse-response-body response)]
                 (is (map? body))
 
-                (testing "A repository with no commits in it returns a null ID"
-                  (is (contains? body server-repo-subpath-no-commits))
-                  (let [rev (get body server-repo-subpath-no-commits)]
+                (testing "A repository with no commits in it returns a nil ID"
+                  (is (contains? body repo3-id))
+                  (let [rev (get body repo3-id)]
                     (is (= rev nil))))
 
                 (testing "the first repo"
-                  (let [actual-rev (get body server-repo-subpath-1)
+                  (let [actual-rev (get body repo1-id)
                         expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-1)]
                     (is (= actual-rev expected-rev))))
 
                 (testing "The second repo"
-                  (let [actual-rev (get body server-repo-subpath-2)
+                  (let [actual-rev (get body repo2-id)
                         expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-2)]
                     (is (= actual-rev expected-rev))))))))))))
@@ -163,7 +159,7 @@
 
       (helpers/add-remote! (helpers/init-repo! (fs/file working-dir))
                            "origin"
-                           (str (helpers/repo-base-url) "/" repo))
+                           (str "file://" data-dir "/" repo ".git"))
 
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
@@ -266,7 +262,7 @@
       (helpers/init-repo! (fs/file working-dir-failed))
       (helpers/add-remote! (helpers/init-repo! (fs/file working-dir-success))
                            "origin"
-                           (str (helpers/repo-base-url) "/" success-repo))
+                           (str "file://" data-dir "/" success-repo ".git"))
 
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
@@ -287,7 +283,7 @@
                 (is (not= nil (get data success-repo)))
                 (is (= (jgit-utils/head-rev-id-from-working-tree (fs/file working-dir-success))
                        (get data success-repo))
-                    (str "Could not find correct body for " failed-repo " in " body)))
+                    (str "Could not find correct body for " success-repo " in " body)))
               (testing "for nonexistent repo"
                 (is (re-matches #".*repo-not-found-error"
                                 (get-in data [nonexistent-repo "error" "type"]))
