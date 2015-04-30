@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.jgit-client
+(ns puppetlabs.enterprise.jgit-utils
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository)

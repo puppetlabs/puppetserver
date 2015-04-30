@@ -1,6 +1,6 @@
-(ns puppetlabs.enterprise.jgit-client-test
+(ns puppetlabs.enterprise.jgit-utils-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.enterprise.jgit-client :refer :all]
+            [puppetlabs.enterprise.jgit-utils :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.kitchensink.core :as ks]
             [schema.test :as schema-test]))

@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.file-sync-int-test
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-common :as common]
-            [puppetlabs.enterprise.jgit-client :as jgit-client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
              :as file-sync-client-core]
@@ -42,7 +42,7 @@
 
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
-    (let [repo "ssl-integration-test.git"
+    (let [repo "ssl-integration-test"
           client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -74,12 +74,12 @@
               ;; storage service repo was updated from the working copy
               ;; of the local repo. Thus, this test assures that the whole
               ;; process was successful.
-              (is (= (jgit-client/head-rev-id-from-git-dir client-repo-dir)
-                     (jgit-client/head-rev-id-from-working-tree local-repo-dir))))))))))
+              (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-dir)
+                     (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))))))))
 
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
-    (let [repo "network-partition-test.git"
+    (let [repo "network-partition-test"
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
@@ -100,7 +100,7 @@
             ;; Ensure that a commit pushed to the server is reflected by the
             ;; latest-commits endpoint
             (is (= (get-latest-commits-for-repo repo)
-                   (jgit-client/head-rev-id-from-working-tree local-repo-dir))))
+                   (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))
 
           (bootstrap/with-app-with-config
             app
@@ -125,7 +125,7 @@
                   (let [new-state (deref p)]
                     (is (= :successful (:status new-state))))
                   (is (= (get-latest-commits-for-repo repo)
-                         (jgit-client/head-rev-id-from-git-dir client-repo-dir)))))
+                         (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))
 
               (testing "kill storage service and verify client has errors"
                 ;; Stop the storage service - the next time the sync runs, it
@@ -166,7 +166,7 @@
                 ;; so the SHA returned from latest-commits and the revision ID for the
                 ;; client should not be the same
                 (is (not= (get-latest-commits-for-repo repo)
-                          (jgit-client/head-rev-id-from-git-dir client-repo-dir))))
+                          (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "verify client recovers"
                 ;; Same deal as above - wait until the client polls again, then
@@ -181,6 +181,6 @@
                   (let [new-state (deref p)]
                     (is (= :successful (:status new-state)))))
                 (is (= (get-latest-commits-for-repo repo)
-                       (jgit-client/head-rev-id-from-git-dir client-repo-dir)))))))
+                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))
 
         (finally (tk-app/stop storage-app))))))

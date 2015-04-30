@@ -6,7 +6,7 @@
            (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.jgit-client :as client]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.ringutils :as ringutils]
             [schema.core :as schema]
@@ -35,8 +35,8 @@
 
     * :working-dir  - The path under the Git server's data directory where the
                       repository's working tree resides."
-  {:working-dir                                 schema/Str
-   (schema/optional-key :http-push-enabled)   Boolean})
+  {:working-dir                             schema/Str
+   (schema/optional-key :http-push-enabled) Boolean})
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -49,10 +49,12 @@
     * :base-path - The base path on the Git server under which all of the
                    repositories it is managing should reside.
 
-    * :repos     - A vector with metadata about each of the individual
+    * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:base-path                               schema/Str
-   :repos                                   GitRepos})
+  {:base-path (schema/pred
+                (fn [x] (or (instance? String x) (instance? File x)))
+                "String or File")
+   :repos     GitRepos})
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
@@ -112,28 +114,23 @@
                     (.getMessage e)) e))))
   nil)
 
-(defn initialize-repo!
-  "Initialize a directory (specified by the `repo-path` parameter) for git
-  repository content to be hosted on the server.   `repo-path` should be
-  something that is coercible to a File.  If the `allow-anonymous-push?` flag
-  is set, the 'http.receive-pack' setting in the git directory configuration to
-  '1' so that the directory is exported for anonymous access.  Otherwise,
-  http.receivepack will be set to 0, which disables all pushes to the repository
-  over HTTP.  Returns nil."
+(defn initialize-bare-repo!
+  "Initialize a bare Git repository in the directory specified by 'path'.
+  'path' must be something that is coercible to a File.
+  If `allow-anonymous-push?` is true, the 'http.receive-pack' setting on
+  the repository will be '1' so that the directory is exported for anonymous
+  access.  Otherwise, 'http.receivepack' will be set to 0,
+  which disables all pushes to the repository over HTTP."
   [repo-path allow-anonymous-push?]
-  {:post [(nil? %)]}
   (doto
-      ; On the server-side, the git repo has to be initialized
-      ; as bare in order to be served up to remote clients
-      (-> (InitCommand.)
-          (.setDirectory (fs/file repo-path))
-          (.setBare true)
-          (.call)
-          (.getRepository)
-          (.getConfig))
+    (.. (new InitCommand)
+        (setDirectory (fs/file repo-path))
+        (setBare true)
+        (call)
+        (getRepository)
+        (getConfig))
     (.setInt "http" nil "receivepack" (if allow-anonymous-push? 1 0))
-    (.save))
-  nil)
+    (.save)))
 
 (defn latest-commit-on-master
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
@@ -143,18 +140,18 @@
   {:pre [(instance? File git-dir)]
    :post [(or (string? %) (nil? %))]}
   (when-let [ref (-> git-dir
-                     (client/get-repository-from-git-dir)
+                     (jgit-utils/get-repository-from-git-dir)
                      (.getRef "refs/heads/master"))]
     (-> ref
         (.getObjectId)
-        (client/commit-id))))
+        (jgit-utils/commit-id))))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in `sub-paths`."
   [base-path sub-paths]
   (reduce
     (fn [acc sub-path]
-      (let [repo-path (fs/file base-path (name sub-path))
+      (let [repo-path (fs/file base-path (str (name sub-path) ".git"))
             rev (latest-commit-on-master repo-path)]
         (assoc acc sub-path rev)))
     {}
@@ -174,7 +171,7 @@
   [git]
   {:pre [(instance? Git git)]}
   (-> git
-      client/push
+      jgit-utils/push
       first
       .getRemoteUpdates
       first
@@ -191,7 +188,7 @@
    author :- PersonIdent]
   (try
     (log/debugf "Adding and commiting unversioned files for working directory %s" sub-path)
-    (client/add-and-commit git message author)
+    (jgit-utils/add-and-commit git message author)
 
     (log/debugf "Pushing working directory %s" sub-path)
     (push-and-return-sha git)))
@@ -284,17 +281,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(schema/defn ^:always-validate initialize-repos! :- nil
-  "Initialize a vector of git repository directories on the server.  The
-  repositories to initialize as well as the base directory under which the
-  repositories should reside should be specified in the supplied config."
+(schema/defn ^:always-validate initialize-repos!
+  "Initialize Git repositories.  The repository directories, as well as
+  the base directory under which the repositories should reside,
+  must be specified in 'config'."
   [config :- FileSyncServiceRawConfig]
   (let [base-path (:base-path config)]
     (log/infof "Initializing file sync server base path: %s" base-path)
     (initialize-server-base-path! (fs/file base-path))
-    (doseq [repo  (:repos config)]
-      (let [repo-path (fs/file base-path (name (key repo)))
-            http-push-enabled (:http-push-enabled (val repo))]
+    (doseq [[repo-id repo-info] (:repos config)]
+      (let [repo-path (fs/file base-path (str (name repo-id) ".git"))
+            http-push-enabled (:http-push-enabled repo-info)]
         (log/infof "Initializing file sync repository path: %s" repo-path)
-        (initialize-repo! repo-path http-push-enabled))))
-  nil)
+        (initialize-bare-repo! repo-path http-push-enabled)))))
