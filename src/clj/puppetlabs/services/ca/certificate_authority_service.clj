@@ -4,8 +4,7 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
-            [compojure.core :as compojure]
-            [me.raynes.fs :as fs]))
+            [puppetlabs.comidi :as comidi]))
 
 (tk/defservice certificate-authority-service
   CaService
@@ -20,7 +19,10 @@
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/build-ring-handler settings puppet-version))))
+       (-> (core/web-routes settings)
+           (#(comidi/context path %))
+           comidi/routes->handler
+           (core/wrap-middleware puppet-version))))
    context)
 
   (initialize-master-ssl!

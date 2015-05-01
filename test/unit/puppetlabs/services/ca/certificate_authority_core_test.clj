@@ -1,7 +1,6 @@
 (ns puppetlabs.services.ca.certificate-authority-core-test
   (:require [cheshire.core :as json]
             [clojure.java.io :as io]
-            [clojure.string :as str]
             [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.ssl-utils.core :as utils]
@@ -11,7 +10,8 @@
             [puppetlabs.services.ca.certificate-authority-core :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [ring.mock.request :as mock]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.comidi :as comidi]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -34,6 +34,12 @@
 
 (def localhost-cert
   (utils/pem->cert (test-pem-file "localhost-cert.pem")))
+
+(defn build-ring-handler
+  [settings puppet-version]
+  (-> (web-routes settings)
+       (comidi/routes->handler)
+       (wrap-middleware puppet-version)))
 
 (defn wrap-with-ssl-client-cert
   "Wrap a compojure app so all requests will include the

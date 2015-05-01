@@ -4,10 +4,9 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
-            [compojure.core :as compojure]
-            [compojure.route :as route]
             [liberator.core :refer [defresource]]
-            [liberator.dev :as liberator-dev]))
+            ;[liberator.dev :as liberator-dev]
+            [puppetlabs.comidi :as comidi]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -81,17 +80,17 @@
 (defn v1-routes
   [jruby-service]
   "Routes for v1 of the Puppet Admin HTTP API."
-  (compojure/routes
-    (compojure/ANY "/environment-cache" []
+  (comidi/routes
+    (comidi/ANY "/environment-cache" []
       (environment-cache-resource jruby-service))
-    (compojure/ANY "/jruby-pool" []
+    (comidi/ANY "/jruby-pool" []
        (jruby-pool-resource jruby-service))))
 
 (defn versioned-routes
   [jruby-service]
-  (compojure/routes
-    (compojure/context "/v1" [] (v1-routes jruby-service))
-    (route/not-found "Not Found")))
+  (comidi/routes
+    (comidi/context "/v1" (v1-routes jruby-service))
+    (comidi/not-found "Not Found")))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -111,10 +110,9 @@
   "Returns the ring handler for the Puppet Admin API."
   [path :- schema/Str
    settings :- PuppetAdminSettings
-   jruby-service :- jruby-puppet/JRubyPuppetService]
-  (-> (compojure/context
-        path
-        []
-        (versioned-routes jruby-service))
+   jruby-service :- (schema/protocol jruby-puppet/JRubyPuppetService)]
+  (-> (versioned-routes jruby-service)
+      (#(comidi/context path %))
+      (comidi/routes->handler)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
       (ringutils/wrap-with-cert-whitelist-check settings)))

@@ -1,6 +1,6 @@
-(def tk-version "1.1.0")
-(def tk-jetty-version "1.3.0")
-(def ks-version "1.0.0")
+(def tk-version "1.1.1")
+(def tk-jetty-version "1.3.1")
+(def ks-version "1.1.0")
 (def ps-version "1.0.9-SNAPSHOT")
 
 (defn deploy-info
@@ -17,7 +17,7 @@
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.0"]
-                 [puppetlabs/http-client "0.4.3"]
+                 [puppetlabs/http-client "0.4.4"]
                  [org.jruby/jruby-core "1.7.19"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  [com.github.jnr/jffi "1.2.7"]
@@ -27,13 +27,14 @@
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.19"]
+                 [org.clojure/data.json "0.2.3"]
+                 [org.clojure/tools.macro "0.1.5"]
                  [joda-time "2.5"]
                  [clj-time "0.6.0"]
-                 [ring/ring-core "1.3.2"]
-                 [compojure "1.1.8" :exclusions [org.clojure/tools.macro]]
                  [liberator "0.12.0"]
+                 [puppetlabs/comidi "0.1.1"]
                  [me.raynes/fs "1.4.5"]
-                 [prismatic/schema "0.2.2"]
+                 [prismatic/schema "0.4.0"]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [commons-codec "1.9"]
