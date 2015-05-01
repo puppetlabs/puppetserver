@@ -14,6 +14,10 @@
    [:ShutdownService request-shutdown]
    [:SchedulerService after stop-job]]
 
+  (init [this context]
+    (log/info "Initializing file sync client service")
+    (assoc context :callbacks (atom {})))
+
   (start [this context]
     (log/info "Starting file sync client service")
     (let [config (get-in-config [:file-sync-client])
@@ -24,12 +28,11 @@
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callbacks   (atom {})]
+            callbacks   (:callbacks context)]
         (core/start-periodic-sync-process!
           sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
-                       :http-client http-client
-                       :callbacks callbacks))))
+                       :http-client http-client))))
 
   (register-callback [this repo-id callback-fn]
     (let [context (tks/service-context this)]

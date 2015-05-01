@@ -48,31 +48,36 @@
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
 
-(def AgentError
+(def SyncError
   {:type                        (schema/eq ::error)
    :message                     String
    (schema/optional-key :cause) Exception})
 
-(defn agent-error? [x] (not (schema/check AgentError x)))
+(defn sync-error? [x] (not (schema/check SyncError x)))
 
-(def RepoState
+(def SingleRepoState
   "A schema which describes a valid state of a repo after a sync"
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
-     :cause AgentError}
+     :cause SyncError}
     ;; It's possible for the latest commit to be nil if no
     ;; commits have been made against the server-side repo, as the
     ;; server's bare repo will still be cloned on the client-side.
     {:status (schema/enum :synced :unchanged)
      :latest-commit (schema/maybe schema/Str)}))
 
+(def RepoStates
+  "A schema which describes a map containing valid states for
+  numerous repos after a sync"
+  {schema/Str SingleRepoState})
+
 (def AgentState
   "A schema which describes a valid state of the agent."
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
-     :error  AgentError}
+     :error  SyncError}
     {:status (schema/enum :successful :created :partial-success)
-     :repos  {schema/Str RepoState}}))
+     :repos  RepoStates}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -95,7 +100,7 @@
   "Request information about the latest commits available from the server.
   The latest commits are requested from the URL in the supplied
   `server-api-url` argument.  Returns the payload from the response.
-  Throws an 'AgentError' if an error occurs."
+  Throws an 'SyncError' if an error occurs."
   [client :- http-client/HTTPClient
    server-api-url :- schema/Str]
   (let [latest-commits-url (str
@@ -153,7 +158,7 @@
         current-commit (jgit-utils/head-rev-id (.getRepository git))]
     (log/info
       (str "File sync clone of '" name "' successful.  New latest commit: "
-           (jgit-utils/head-rev-id (.getRepository git))))
+           current-commit))
     current-commit))
 
 (defn apply-updates-to-repo
@@ -200,7 +205,7 @@
       (callback-fn (keyword name) status))
     status))
 
-(schema/defn process-repos-for-updates
+(schema/defn process-repos-for-updates :- RepoStates
   "Process the repositories for any updates which may be available on the server."
   [repos :- ReposConfig
    repo-base-url :- String
@@ -214,11 +219,11 @@
               (let [latest-commit (latest-commits name)]
                 (try+
                   {name (process-repo-for-updates repo-base-url
-                                                   name
-                                                   target-dir
-                                                   latest-commit
-                                                   (get @callbacks repo-name))}
-                  (catch agent-error? e
+                                                  name
+                                                  target-dir
+                                                  latest-commit
+                                                  (get @callbacks repo-name))}
+                  (catch sync-error? e
                     (log/errorf
                       (str "Error syncing repo: " (:message e))
                       name)
@@ -241,16 +246,16 @@
     (let [latest-commits (get-latest-commits-from-server
                            http-client
                            (str server-url server-api-path))
-          repo-status-map (process-repos-for-updates
+          repo-states (process-repos-for-updates
                             repos
                             (str server-url server-repo-path)
                             latest-commits
                             callbacks)
-          partial-success? (> (count (filter #(= (:status %) :failed)
-                                             (vals repo-status-map))) 0)]
-      {:status (if partial-success? :partial-success :successful)
-       :repos repo-status-map})
-    (catch agent-error? error
+          full-success? (every? #(not= (:status %) :failed)
+                                   (vals repo-states))]
+      {:status (if full-success? :successful :partial-success)
+       :repos repo-states})
+    (catch sync-error? error
       (let [message (str "File sync failure: " (:message error))]
         (if-let [cause (:cause error)]
           (log/error cause message)

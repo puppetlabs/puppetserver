@@ -129,7 +129,19 @@
         server-repo "process-repos-test"
         client (sync/create-client {})
         server-repo-atom (atom {})
-        nonexistent-repo-atom (atom {})]
+        nonexistent-repo-atom (atom {})
+        server-repo-callback (fn [repo-id repo-state]
+                               (swap! server-repo-atom
+                                      #(assoc % :repo-id
+                                                repo-id
+                                                :repo-state
+                                                repo-state)))
+        nonexistent-repo-callback (fn [repo-id repo-state]
+                                    (swap! nonexistent-repo-atom
+                                           #(assoc % :repo-id
+                                                     repo-id
+                                                     :repo-state
+                                                     repo-state)))]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
@@ -143,10 +155,8 @@
         (process-repos {(keyword server-repo) client-target-repo-on-server
                         :process-repos-test-nonexistent client-target-repo-nonexistent}
                        client false
-                       (atom {(keyword server-repo) (fn [repo-id repo-state]
-                                                      (swap! server-repo-atom #(assoc % :repo-id repo-id :repo-state repo-state)))
-                              :nonexistent-repo     (fn [repo-id repo-state]
-                                                      (swap! nonexistent-repo-atom #(assoc % :repo-id repo-id :repo-state repo-state)))}))
+                       (atom {(keyword server-repo) server-repo-callback
+                              :nonexistent-repo     nonexistent-repo-callback}))
 
         (testing "Client directory created when match on server"
           (is (fs/exists? client-target-repo-on-server)))
