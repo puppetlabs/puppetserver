@@ -7,7 +7,8 @@
             [cheshire.core :as json]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/puppet_environments_int_test")
@@ -24,6 +25,8 @@
 
 (def localhost-key
   (bootstrap/pem-file "private_keys" "localhost.pem"))
+
+(def num-jrubies 2)
 
 (defn write-site-pp-file
   [site-pp-contents]
@@ -61,7 +64,7 @@
       service-id))
 
 (defn wait-for-jrubies
-  [app num-jrubies]
+  [app]
   (let [pool-context (-> (service-context app :JRubyPuppetService)
                          :pool-context)]
     (while (< (count (jruby-core/pool->vec pool-context))
@@ -69,12 +72,48 @@
       (Thread/sleep 100))))
 
 (defn get-catalog
+  "Make an HTTP request to get a catalog."
   []
   (-> (http-client/get
         "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
         catalog-request-options)
       :body
       json/parse-string))
+
+(defn get-catalog-and-borrow-jruby
+  "Gets a catalog, and then borrows a JRuby instance from a pool to ensure that
+  a subsequent catalog request will be directed to a different JRuby.  Returns a
+  map containing both the catalog and the JRuby instance.  This function
+  relies on the fact that we are using a LIFO algorithm for allocating JRuby
+  instances to handle requests."
+  [borrow-jruby-fn]
+  (let [catalog (get-catalog)
+        jruby   (borrow-jruby-fn)]
+    {:catalog catalog
+     :jruby   jruby}))
+
+(defn get-catalog-and-return-jruby
+  "Given a map containing a catalog and a JRuby instance, return the JRuby
+  instance to the pool and return the catalog."
+  [return-jruby-fn m]
+  (return-jruby-fn (:jruby m))
+  (:catalog m))
+
+(defn get-catalog-from-each-jruby
+  "Iterates through all of the JRuby instances and gets a catalog from each of
+  them.  Returns the sequence of catalogs."
+  [borrow-jruby-fn return-jruby-fn]
+  ;; iterate over all of the jrubies and call get-catalog-and-borrow-jruby.  It's
+  ;; important that this is not done lazily, otherwise the jrubies could be returned
+  ;; to the pool before the next borrow occurs.
+  (let [jrubies-and-catalogs (doall
+                               (repeatedly
+                                 num-jrubies
+                                (partial get-catalog-and-borrow-jruby borrow-jruby-fn)))]
+    ;; now we can return the jrubies to the pool, and return the seq of catalogs
+    ;; to our caller
+    (map (partial get-catalog-and-return-jruby return-jruby-fn)
+         jrubies-and-catalogs)))
 
 (defn resource-matches?
   [resource-type resource-title resource]
@@ -85,6 +124,10 @@
   [catalog resource-type resource-title]
   (let [resources (get catalog "resources")]
     (some (partial resource-matches? resource-type resource-title) resources)))
+
+(defn num-catalogs-containing
+  [catalogs resource-type resource-title]
+  (count (filter #(catalog-contains? % resource-type resource-title) catalogs)))
 
 ;; This test is written in a way that relies on knowledge about
 ;; the underlying implementation of the JRuby pool. That is admittedly
@@ -110,46 +153,43 @@
     ;; two of them so that we can illustrate that the cache can
     ;; be out of sync between the two of them.
     (bootstrap/with-puppetserver-running app {:jruby-puppet
-                                               {:max-active-instances 2}}
-      ;; if we start making requests before we know that all of the
-      ;; jruby instances are ready, we won't be able to predict which
-      ;; instance is handling our request, so we need to wait for them.
-      (wait-for-jrubies app 2)
-      ;; Now we grab a catalog from the first jruby instance.  This
-      ;; catalog should contain the 'hello1' notify, and will cause
-      ;; the first jruby instance to cache the manifests.
-      (let [catalog1 (get-catalog)]
-        (is (catalog-contains? catalog1 "Notify" "hello1"))
-        (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
-      ;; Now we modify the class definition to have a 'hello2' notify,
-      ;; instead of 'hello1'.
-      (write-foo-pp-file "class foo { notify {'hello2': } }")
-      ;; Retrieving the catalog a second time will route us to the
-      ;; second jruby instance, which hasn't cached the manifest yet,
-      ;; so we should get 'hello2'.
-      (let [catalog2 (get-catalog)]
-        (is (not (catalog-contains? catalog2 "Notify" "hello1")))
-        (is (catalog-contains? catalog2 "Notify" "hello2")))
-      ;; The next catalog request goes back to the first jruby instance,
-      ;; which still has 'hello1' cached.
-      (let [catalog1 (get-catalog)]
-        (is (catalog-contains? catalog1 "Notify" "hello1"))
-        (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
-      ;; Now, make a DELETE request to the /environment-cache endpoint.
-      ;; This flushes Puppet's cache for all environments.
-      (let [response (http-client/delete
-                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
-                       ssl-request-options)]
-        (testing "A successful DELETE request to /environment-cache returns an HTTP 204"
-          (is (= 204 (:status response))
-              (ks/pprint-to-string response))))
-      ;; Next catalog request goes to the second jruby instance,
-      ;; where we should see 'hello2' regardless of caching.
-      (let [catalog2 (get-catalog)]
-        (is (not (catalog-contains? catalog2 "Notify" "hello1")))
-        (is (catalog-contains? catalog2 "Notify" "hello2")))
-      ;; And the final catalog request goes back to the first jruby instance,
-      ;; where we expect the cache to have been cleared so that we will get 'hello2'.
-      (let [catalog1 (get-catalog)]
-        (is (not (catalog-contains? catalog1 "Notify" "hello1")))
-        (is (catalog-contains? catalog1 "Notify" "hello2"))))))
+                                              {:max-active-instances num-jrubies}}
+      (let [jruby-service   (tk-app/get-service app :JRubyPuppetService)
+            borrow-jruby-fn (partial jruby-protocol/borrow-instance jruby-service)
+            return-jruby-fn (partial jruby-protocol/return-instance jruby-service)]
+        ;; wait for all of the jrubies to be ready so that we can
+        ;; validate cache state differences between them.
+        (wait-for-jrubies app)
+
+        ;;; Now we grab a catalog from the first jruby instance.  This
+        ;;; catalog should contain the 'hello1' notify, and will cause
+        ;;; the first jruby instance to cache the manifests.
+        (let [catalog1 (get-catalog)]
+          (is (catalog-contains? catalog1 "Notify" "hello1"))
+          (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
+
+        ;; Now we modify the class definition to have a 'hello2' notify,
+        ;; instead of 'hello1'.
+        (write-foo-pp-file "class foo { notify {'hello2': } }")
+
+        ;; Now we grab a catalog from both of the jrubies.  One should have the
+        ;; old, cached state, and one should have the new state.
+        (let [catalogs (get-catalog-from-each-jruby borrow-jruby-fn return-jruby-fn)]
+          (is (= 1 (num-catalogs-containing catalogs "Notify" "hello1")))
+          (is (= 1 (num-catalogs-containing catalogs "Notify" "hello2"))))
+
+        ;; Now, make a DELETE request to the /environment-cache endpoint.
+        ;; This flushes Puppet's cache for all environments.
+        (let [response (http-client/delete
+                         "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                         ssl-request-options)]
+          (testing "A successful DELETE request to /environment-cache returns an HTTP 204"
+            (is (= 204 (:status response))
+                (ks/pprint-to-string response))))
+
+        ;; Now if we get catalogs from both of the JRubies again, we should get
+        ;; the 'hello2' catalog from both, since the cache should have been
+        ;; cleared.
+        (let [catalogs (get-catalog-from-each-jruby borrow-jruby-fn return-jruby-fn)]
+          (is (= 0 (num-catalogs-containing catalogs "Notify" "hello1")))
+          (is (= 2 (num-catalogs-containing catalogs "Notify" "hello2"))))))))

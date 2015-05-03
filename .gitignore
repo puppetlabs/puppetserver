@@ -11,6 +11,7 @@ pom.xml
 .lein-failures
 target/
 log
+.bundle
 .vagrant
 vendor
 .nrepl-port
@@ -18,6 +19,7 @@ profiles.clj
 dev/user.clj
 .lein-repl-history
 ext/packaging
+checkouts
 
 # Bundler local state files
 Gemfile.lock

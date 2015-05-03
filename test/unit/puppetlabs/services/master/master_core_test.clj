@@ -8,7 +8,7 @@
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
-        app         (build-ring-handler handler)
+        app         (build-ring-handler handler "1.2.3")
         request     (fn r ([path] (r :get path))
                           ([method path] (app (mock/request method path))))]
     (is (= 200 (:status (request "/v3/environments"))))
@@ -41,7 +41,7 @@
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
                 "is not overwritten, and simply passed through unmodified.")
     (let [handler     (fn ([req] {:request req}))
-          app         (build-ring-handler handler)
+          app         (build-ring-handler handler "1.2.3")
           resp        (app {:request-method :put
                             :content-type   "application/octet-stream"
                             :uri            "/v3/file_bucket_file/bar"})]

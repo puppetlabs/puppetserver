@@ -54,3 +54,11 @@ more details.
 
 See [External SSL termination](external_ssl_termination.markdown) for details on
 how to get this working in Puppet Server.
+
+## `/status/` endpoint not exposed
+
+The Puppet masters's HTTP API provides a [`/:environment/status/` endpoint](http://docs.puppetlabs.com/references/3.7.latest/developer/file.http_status.html) 
+which returns a minimalistic but useful message if the master is alive and well. This endpoint is not exposed on masters running under
+Puppet Server. Users wanting a quick health-check URL, for use by load balancers or monitoring systems, can retrieve the CA certificate.
+Construct a URL like:  `https://puppet:8140/production/certificate/ca` and check for a non-zero-byte response with a HTTP 200 code.
+The work to construct a replacement for the `/status` endpoint is tracked in JIRA at [SERVER-475](https://tickets.puppetlabs.com/browse/SERVER-475).

@@ -6,10 +6,11 @@
             [clojure.string :as string]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [ring.middleware.params :as ring-params]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
-            [slingshot.slingshot :as sling]))
+            [slingshot.slingshot :as sling]
+            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -91,22 +92,10 @@
    body into the ring request map.  Includes some special processing for
    a request destined for JRubyPuppet."
   [request]
-  ; Need to slurp the request body before invoking any of the ring
-  ; middleware functions because a handle to the body payload needs to be passed
-  ; through to JRubyPuppet and the body won't be around to slurp if any of
-  ; the ring functions happen to slurp it up first.  This would happen for a
-  ; 'application/x-www-form-urlencoded' form post where ring needs to slurp
-  ; in the body of the request in order to parse out parameters from the form.
   (let [body-for-jruby (body-for-jruby request)]
     (->
       request
-      ; Leave the slurped content under an alternate key so that it
-      ; is available to be proxied on to the JRubyPuppet request.
-      (assoc :body-for-jruby body-for-jruby)
-      ; Body content has been slurped already so wrap it in a new reader
-      ; so that a copy of it can be obtained by ring middleware functions,
-      ; if needed.
-      (assoc :body (if (string? body-for-jruby) (StringReader. body-for-jruby)))
+      (assoc :body body-for-jruby)
       ; Compojure request may have destructured parameters from subportions
       ; of the URL into the params map by this point.  Clear this out
       ; before invoking the ring middleware param functions so that keys
@@ -115,7 +104,7 @@
       (assoc :params {})
       ; Defer to ring middleware to pull out parameters from the query
       ; string and/or form body.
-      ring-params/params-request)))
+      pl-ring-params/params-request)))
 
 (def unauthenticated-client-info
   "Return a map with default info for an unauthenticated client"
@@ -237,7 +226,7 @@
                    :params         (:params request)
                    :remote-addr    (:remote-addr request)
                    :headers        headers
-                   :body           (:body-for-jruby request)
+                   :body           (:body request)
                    :request-method (-> (:request-method request)
                                        name
                                        string/upper-case)}]
@@ -259,21 +248,35 @@
     (= (:type x)
        :puppetlabs.services.request-handler.request-handler-core/bad-request)))
 
+(defn jruby-timeout?
+  [x]
+  "Determine if the supplied slingshot message is for a JRuby borrow timeout."
+  (when (map? x)
+    (= (:type x)
+       :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
+
+(defn output-error
+  [{:keys [uri]} {:keys [message]} http-status]
+  (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
+  (-> (ring-response/response message)
+      (ring-response/status http-status)
+      (ring-response/content-type "text/plain")))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn handle-request
-  [request jruby-instance config]
+  [request jruby-service config]
   (sling/try+
-    (->> request
-         wrap-params-for-jruby
-         (as-jruby-request config)
-         clojure.walk/stringify-keys
-         make-request-mutable
-         (.handleRequest jruby-instance)
-         response->map)
-    (catch bad-request? {:keys [message]}
-      (log/errorf "Error 400 on SERVER at %s: %s" (:uri request) message)
-      (-> (ring-response/response message)
-          (ring-response/status 400)
-          (ring-response/content-type "text/plain")))))
+    (jruby/with-jruby-puppet jruby-instance jruby-service
+      (->> request
+           wrap-params-for-jruby
+           (as-jruby-request config)
+           clojure.walk/stringify-keys
+           make-request-mutable
+           (.handleRequest jruby-instance)
+           response->map))
+    (catch bad-request? e
+      (output-error request e 400))
+    (catch jruby-timeout? e
+      (output-error request e 503))))

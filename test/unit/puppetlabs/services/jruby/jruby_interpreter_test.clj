@@ -1,48 +1,48 @@
 (ns puppetlabs.services.jruby.jruby-interpreter-test
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :refer :all]
-            [puppetlabs.services.jruby.jruby-testutils :as testutils]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (use-fixtures :once
-              (testutils/with-puppet-conf
+              (jruby-testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/jruby/jruby_interpreter_test/puppet.conf"))
 
 (deftest create-jruby-instance-test
 
   (testing "Var dir is not required (it will be read from puppet.conf)"
-    (let [vardir (-> (testutils/jruby-puppet-config)
-                     (dissoc :master-var-dir)
-                     (testutils/create-pool-instance)
+    (let [vardir (-> (jruby-testutils/jruby-puppet-config)
+                     (assoc :master-var-dir nil)
+                     (jruby-testutils/create-pool-instance)
                      (:jruby-puppet)
                      (.getSetting "vardir"))]
       (is (= (fs/absolute-path "target/master-var-jruby-int-test") vardir))))
 
   (testing "Directories can be configured programatically
             (and take precedence over puppet.conf)"
-    (let [puppet (-> {:ruby-load-path  testutils/ruby-load-path
-                      :gem-home        testutils/gem-home
-                      :master-conf-dir testutils/conf-dir
-                      :master-code-dir testutils/code-dir
-                      :master-var-dir  testutils/var-dir
-                      :master-run-dir  testutils/run-dir
-                      :master-log-dir  testutils/log-dir}
-                     (testutils/create-pool-instance)
+    (let [puppet (-> (jruby-testutils/jruby-puppet-config
+                       {:ruby-load-path  jruby-testutils/ruby-load-path
+                        :gem-home        jruby-testutils/gem-home
+                        :master-conf-dir jruby-testutils/conf-dir
+                        :master-code-dir jruby-testutils/code-dir
+                        :master-var-dir  jruby-testutils/var-dir
+                        :master-run-dir  jruby-testutils/run-dir
+                        :master-log-dir  jruby-testutils/log-dir})
+                     (jruby-testutils/create-pool-instance)
                      (:jruby-puppet))]
       (are [setting expected] (= (-> expected
                                      (fs/normalized-path)
                                      (fs/absolute-path))
                                  (.getSetting puppet setting))
-           "confdir" testutils/conf-dir
-           "codedir" testutils/code-dir
-           "vardir" testutils/var-dir
-           "rundir" testutils/run-dir
-           "logdir" testutils/log-dir)))
+           "confdir" jruby-testutils/conf-dir
+           "codedir" jruby-testutils/code-dir
+           "vardir" jruby-testutils/var-dir
+           "rundir" jruby-testutils/run-dir
+           "logdir" jruby-testutils/log-dir)))
 
   (testing "Settings from Ruby Puppet are available"
-    (let [jruby-puppet (-> (testutils/jruby-puppet-config)
-                           (testutils/create-pool-instance)
+    (let [jruby-puppet (-> (jruby-testutils/jruby-puppet-config)
+                           (jruby-testutils/create-pool-instance)
                            (:jruby-puppet))]
       (testing "Various data types"
         (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
@@ -51,9 +51,9 @@
 
 (deftest jruby-env-vars
   (testing "the environment used by the JRuby interpreters"
-    (let [jruby-interpreter (create-scripting-container
-                              testutils/ruby-load-path
-                              testutils/gem-home)
+    (let [jruby-interpreter (jruby-internal/create-scripting-container
+                              jruby-testutils/ruby-load-path
+                              jruby-testutils/gem-home)
           jruby-env (.runScriptlet jruby-interpreter "ENV")]
 
       ;; $HOME and $PATH are left in by `jruby-puppet-env`

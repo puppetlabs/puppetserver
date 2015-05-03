@@ -6,8 +6,8 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [clojure.test :refer :all]
             [ring.util.codec :as ring-codec]
-            [slingshot.slingshot :as sling]
-            [slingshot.test :refer :all]))
+            [slingshot.test :refer :all]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -51,7 +51,7 @@
                              :content-type "text/plain"})]
       (is (= {} (:params wrapped-request))
           "Unexpected params in wrapped request")
-      (is (= "" (:body-for-jruby wrapped-request))
+      (is (= "" (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
   (testing "get with query parameters returns expected values"
     (let [wrapped-request (core/wrap-params-for-jruby
@@ -62,7 +62,7 @@
       (is (= {"one" "1 1", "two" "2", "arr[]" ["3", "4"]}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
-      (is (= "" (:body-for-jruby wrapped-request))
+      (is (= "" (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
   (testing "post with form parameters returns expected values"
     (let [body-string "one=1&two=2%202&arr[]=3&arr[]=4"
@@ -73,7 +73,7 @@
       (is (= {"one" "1", "two" "2 2", "arr[]" ["3" "4"]}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
-      (is (= body-string (:body-for-jruby wrapped-request))
+      (is (= body-string (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
   (testing "post with plain text in default encoding returns expected values"
     (let [body-string "some random text"
@@ -83,7 +83,7 @@
                              :params       {:bogus ""}})]
       (is (= {} (:params wrapped-request))
           "Unexpected params in wrapped request")
-      (is (= body-string (:body-for-jruby wrapped-request))
+      (is (= body-string (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
   (testing "post with plain text in UTF-16 returns expected values"
     (let [body-string-from-utf16 (String. (.getBytes
@@ -99,7 +99,7 @@
                              :params             {:bogus ""}})]
       (is (= {} (:params wrapped-request))
           "Unexpected params in wrapped request")
-      (is (= body-string-from-utf16 (:body-for-jruby wrapped-request))
+      (is (= body-string-from-utf16 (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
   (testing "request with binary content type does not consume body"
     (let [body-string "some random text"]
@@ -109,7 +109,7 @@
               wrapped-request (core/wrap-params-for-jruby
                                 {:body         body-reader
                                  :content-type content-type})]
-          (is (identical? body-reader (:body-for-jruby wrapped-request))
+          (is (identical? body-reader (:body wrapped-request))
               "Unexpected body for jruby instance in wrapped request")
           (is (= body-string (slurp body-reader))
               "Unexpected body for jruby content in wrapped request"))))))
@@ -234,6 +234,22 @@
                         ring-codec/url-encode))))))
 
 (deftest handle-request-test
+  (def dummy-service
+    (reify jruby/JRubyPuppetService
+      (borrow_instance [_] {})
+      (return_instance [_ _])
+      (free_instance_count [_])
+      (mark_all_environments_expired_BANG_ [_])
+      (flush_jruby_pool_BANG_ [_])))
+
+  (def dummy-service-with-timeout
+    (reify jruby/JRubyPuppetService
+      (borrow_instance [_] nil)
+      (return_instance [_ _])
+      (free_instance_count [_])
+      (mark_all_environments_expired_BANG_ [_])
+      (flush_jruby_pool_BANG_ [_])))
+
   (logutils/with-test-logging
     (testing "slingshot bad requests translated to ring response"
       (let [bad-message "it's real bad"]
@@ -241,7 +257,14 @@
                                               (core/throw-bad-request!
                                                bad-message))]
           (let [response (core/handle-request {:body (StringReader. "blah")}
-                                              {}
+                                              dummy-service
                                               {})]
             (is (= 400 (:status response)) "Unexpected response status")
-            (is (= bad-message (:body response)) "Unexpected response body")))))))
+            (is (= bad-message (:body response)) "Unexpected response body"))
+          (let [response (core/handle-request {:body (StringReader. "")}
+                                              dummy-service-with-timeout
+                                              {})]
+            (is (= 503 (:status response)) "Unexpected response status")
+            (is (.startsWith
+                  (:body response)
+                  "Attempt to borrow a JRuby instance from the pool"))))))))

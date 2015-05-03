@@ -109,3 +109,14 @@
         (-> (ring/response (format "Internal Server Error: %s" e))
             (ring/status 500)
             (ring/content-type "text/plain"))))))
+
+(defn wrap-with-puppet-version-header
+  "Function that returns a middleware that adds an
+  X-Puppet-Version header to the response."
+  [handler version]
+  (fn [request]
+    (let [response (handler request)]
+      ; Our compojure app returns nil responses sometimes.
+      ; In that case, don't add the header.
+      (when response
+        (ring/header response "X-Puppet-Version" version)))))
