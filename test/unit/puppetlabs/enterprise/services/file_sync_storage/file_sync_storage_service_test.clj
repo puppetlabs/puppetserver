@@ -131,14 +131,11 @@
 
 (defn get-commit
   [repo]
-  (try (-> repo
-           Git/open
-           .log
-           .call
-           first)
-       ;; Want all tests to run even if one test has an error
-       (catch GitAPIException e
-         "Could not get git commit for repo " repo "Error: " e)))
+  (-> repo
+      Git/open
+      .log
+      .call
+      first))
 
 (def publish-url (str helpers/server-base-url
                       helpers/default-api-path-prefix
@@ -150,16 +147,16 @@
              {:body    (json/encode body)
               :headers {"Content-Type" "application/json"}}))
 
+(defn write-test-file!
+  [path]
+  (spit (fs/file path (str "test-file" (System/currentTimeMillis))) "foo"))
+
 (deftest publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
           working-dir (helpers/temp-dir-as-string)
           data-dir (helpers/temp-dir-as-string)
-          server-repo (fs/file data-dir repo)]
-
-      (helpers/add-remote! (helpers/init-repo! (fs/file working-dir))
-                           "origin"
-                           (str "file://" data-dir "/" repo ".git"))
+          server-repo (fs/file data-dir (str repo ".git"))]
 
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
@@ -168,6 +165,7 @@
           {(keyword repo) {:working-dir working-dir}}
           false)
         (testing "with no body supplied"
+          (write-test-file! working-dir)
           (let [response (http-client/post publish-url)
                 body (slurp (:body response))]
             (testing "get expected response"
@@ -189,6 +187,7 @@
                 response (make-publish-request {:author author})
                 body (slurp (:body response))]
             (testing "get expected response"
+              (write-test-file! working-dir)
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
                   (str "Unexpected response body: " body)))
@@ -207,6 +206,7 @@
                 response (make-publish-request {:author author :message message})
                 body (slurp (:body response))]
             (testing "get expected response"
+              (write-test-file! working-dir)
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
                   (str "Unexpected response body: " body)))
@@ -253,25 +253,25 @@
 (deftest publish-content-endpoint-response-test
   (testing "publish content endpoint returns correct response"
     (let [failed-repo "publish-failed"
-          nonexistent-repo "publish-non-existent"
           success-repo "publish-success"
           working-dir-failed (helpers/temp-dir-as-string)
           working-dir-success (helpers/temp-dir-as-string)
           data-dir (helpers/temp-dir-as-string)]
-
-      (helpers/init-repo! (fs/file working-dir-failed))
-      (helpers/add-remote! (helpers/init-repo! (fs/file working-dir-success))
-                           "origin"
-                           (str "file://" data-dir "/" success-repo ".git"))
-
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
           data-dir
           {(keyword failed-repo)      {:working-dir working-dir-failed}
-           (keyword nonexistent-repo) {:working-dir "not/a/directory"}
            (keyword success-repo)     {:working-dir working-dir-success}}
           false)
+
+        ; Write a test file into the success repo -
+        ; this'll enable the commit/publish to succeed
+        (write-test-file! working-dir-success)
+
+        ; Delete the failed repo entirely - this'll cause the publish to fail
+        (fs/delete-dir (fs/file data-dir (str failed-repo ".git")))
+
         (with-test-logging
           (let [response (http-client/post publish-url)
                 body (slurp (:body response))]
@@ -281,13 +281,11 @@
             (let [data (json/parse-string body)]
               (testing "for repo that was successfully published"
                 (is (not= nil (get data success-repo)))
-                (is (= (jgit-utils/head-rev-id-from-working-tree (fs/file working-dir-success))
+                (is (= (-> (fs/file data-dir (str success-repo ".git"))
+                           (jgit-utils/get-repository-from-git-dir)
+                           (jgit-utils/head-rev-id))
                        (get data success-repo))
                     (str "Could not find correct body for " success-repo " in " body)))
-              (testing "for nonexistent repo"
-                (is (re-matches #".*repo-not-found-error"
-                                (get-in data [nonexistent-repo "error" "type"]))
-                    (str "Could not find correct body for " nonexistent-repo " in " body)))
               (testing "for repo that failed to publish"
                 (is (re-matches #".*publish-error"
                                 (get-in data [failed-repo "error" "type"]))

@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.lib PersonIdent RepositoryBuilder)
            (org.eclipse.jgit.api.errors GitAPIException)
            (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
@@ -73,8 +73,7 @@
 
 (def PublishError
   "Schema defining an error when attempting to publish a repo."
-  {:error {:type (schema/enum ::publish-error
-                              ::repo-not-found-error)
+  {:error {:type    (schema/eq :publish-error)
            :message schema/Str}})
 
 (def PublishRepoResult
@@ -155,59 +154,33 @@
         email (:email author default-commit-author-email)]
    (PersonIdent. name email)))
 
-(defn push-and-return-sha
-  "Perform git push on git instance and return SHA of latest commit for
-  updated remote."
-  [git]
-  {:pre [(instance? Git git)]}
-  (-> git
-      jgit-utils/push
-      first
-      .getRemoteUpdates
-      first
-      .getNewObjectId
-      .getName))
-
-(schema/defn publish-repo :- PublishRepoResult
-  "Add and commit all unversioned files and push to origin. Return the
-  SHA of the commit if successful, or a map with an error message if
-  not."
-  [git :- Git
-   sub-path :- schema/Str
-   message :- schema/Str
-   author :- PersonIdent]
-  (try
-    (log/debugf "Adding and commiting unversioned files for working directory %s" sub-path)
-    (jgit-utils/add-and-commit git message author)
-
-    (log/debugf "Pushing working directory %s" sub-path)
-    (push-and-return-sha git)))
-
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit
-  author, perform an add, commit, and push for each working directory.
+  author, perform an add and commit for each working directory.
   Returns the newest SHA for each working directory that was
-  successfully pushed, an error if there was no existing git repository
-  in the directory, or an error that the add/commit/push failed."
-  [sub-paths :- [schema/Str]
+  successfully committed, an error if there was no existing git repository
+  in the directory, or an error that the add/commit failed."
+  [repos :- GitRepos
+   data-dir :- schema/Str
    message :- schema/Str
    author :- PersonIdent]
-  (for [sub-path sub-paths]
-    (do
-      (log/infof "Publishing working directory %s to file sync storage service" sub-path)
-      (try (let [git (-> sub-path
-                         fs/file
-                         Git/open)]
-             (publish-repo git sub-path message author))
-           (catch RepositoryNotFoundException e
-             (log/errorf "Unable to find git repository %s" sub-path)
-             {:error {:type ::repo-not-found-error
-                      :message (.getMessage e)}})
-           (catch GitAPIException e
-             (log/errorf "Failed to publish %s: %s" sub-path (.getMessage e))
-             {:error {:type ::publish-error
-                      :message (str "Failed to publish " sub-path ":"
-                                    (.getMessage e))}})))))
+  (for [[repo-id {:keys [working-dir]}] repos]
+    (try
+      (log/infof "Publishing working directory %s to file sync storage service"
+                 working-dir)
+      (let [repo (.. (RepositoryBuilder.)
+                     (setGitDir (fs/file data-dir (str (name repo-id) ".git")))
+                     (setWorkTree (io/as-file working-dir))
+                     (build))]
+        (-> repo
+            (Git/wrap)
+            (jgit-utils/add-and-commit message author)
+            (jgit-utils/commit-id)))
+      (catch GitAPIException e
+        (log/error e (str "Failed to publish " working-dir))
+        {:error {:type    :publish-error
+                 :message (str "Failed to publish " working-dir ":"
+                               (.getMessage e))}}))))
 
 (schema/defn ^:always-validate publish-content :- PublishResponseBody
   "Given a map of repositories and the JSON body of the request, publish
@@ -216,14 +189,15 @@
   message. Returns a map of repository name to status - either SHA of
   latest commit or error."
   [repos :- GitRepos
-   body]
+   body
+   data-dir]
   (if-let [checked-body (schema/check PublishRequestBody body)]
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
     (let [author (commit-author (:author body))
           message (:message body default-commit-message)
-          new-commits (publish-repos (map :working-dir (vals repos)) message author)]
+          new-commits (publish-repos repos data-dir message author)]
       (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -245,7 +219,7 @@
                         (try
                           (let [json-body (json/parse-string (slurp body) true)]
                             {:status 200
-                             :body (publish-content repos json-body)})
+                             :body (publish-content repos json-body data-dir)})
                           (catch com.fasterxml.jackson.core.JsonParseException e
                             {:status 400
                              :body {:error {:type :json-parse-error
