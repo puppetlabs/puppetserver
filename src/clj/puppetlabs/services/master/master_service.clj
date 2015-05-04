@@ -5,9 +5,11 @@
             [puppetlabs.services.master.master-core :as core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.dujour.version-check :as version-check]))
+            [puppetlabs.dujour.version-check :as version-check]
+            [puppetlabs.services.protocols.master :as master]))
 
 (defservice master-service
+  master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
