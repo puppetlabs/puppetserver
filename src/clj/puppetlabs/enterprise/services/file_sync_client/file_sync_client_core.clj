@@ -122,44 +122,46 @@
   [message name directory]
   (str message ".  Name: " name ".  Directory: " directory "."))
 
-(defn do-fetch
+(defn do-fetch!
   "Fetch the latest content for a repository from the server.  'name' is
   the name of the repository.  'latest-commit-id' is the ID of the latest
   commit on the server for the repository.  'target-dir' is the location
   in which the repository is intended to reside. Returns true if new
   commits were fetched, else false."
-  [name latest-commit-id target-dir]
-  (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
-    (if-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
-      (do
-        (log/infof "File sync updating '%s' to %s" name latest-commit-id)
-        (jgit-utils/fetch repo)
-        (let [current-commit (jgit-utils/head-rev-id repo)]
-          (log/info
-            (str "File sync fetch of '" name "' successful.  New latest commit: "
-                 current-commit))
-          current-commit))
-      false)
-    (throw (IllegalStateException.
-             (message-with-repo-info
-               (str "File sync found a directory that already exists but does "
-                    "not have a repository in it")
-               name
-               target-dir)))))
+  [name latest-commit-id repo]
+  (log/infof "File sync updating '%s' to %s" name latest-commit-id)
+  (jgit-utils/fetch repo))
 
-(defn do-clone
+(defn do-clone!
   "Clone the latest content for a repository from the server.  'name' is
   the name of the repository.  'server-repo-url' is the URL under which
-  the repository resides on the server.  'target-dir' is the directory in which
+  the repository resides on the server. 'target-dir' is the directory in which
   the client repository should be stored."
   [name server-repo-url target-dir]
   (log/infof "File sync cloning '%s' to: %s" name target-dir)
-  (let [git (jgit-utils/clone server-repo-url target-dir true)
-        current-commit (jgit-utils/head-rev-id (.getRepository git))]
-    (log/info
-      (str "File sync clone of '" name "' successful.  New latest commit: "
-           current-commit))
-    current-commit))
+  (jgit-utils/clone server-repo-url target-dir true))
+
+(defn log-and-generate-repo-status
+  "Logs if the file sync repo was successfully updated and
+   generates status information for the desired repo. Repo is the
+   JGit repo in question, initial-commit is its commit when the
+   sync operation was begun, and fetch? indicates whether or not a fetch
+   operation was performed."
+  [repo initial-commit fetch?]
+  (let [current-commit (jgit-utils/head-rev-id repo)]
+    (if (or (not= current-commit initial-commit) (not fetch?))
+      (do
+        (if-not fetch?
+          (log/info
+            (str "File sync clone of '" name "' successful.  New latest commit: "
+                 current-commit))
+          (log/info
+            (str "File sync fetch of '" name "' successful.  New latest commit: "
+                 current-commit)))
+        {:status        :synced
+         :latest-commit current-commit})
+      {:status        :unchanged
+       :latest-commit current-commit})))
 
 (defn apply-updates-to-repo
   "Apply updates from the server to the client repository.  'name' is the
@@ -171,9 +173,20 @@
   [name server-repo-url latest-commit-id target-dir]
   (let [fetch? (fs/exists? target-dir)]
     (try
-      (if fetch?
-        (do-fetch name latest-commit-id target-dir)
-        (do-clone name server-repo-url target-dir))
+      (if (not fetch?)
+        (do-clone! name server-repo-url target-dir))
+      (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+        (let [initial-commit (if fetch? (jgit-utils/head-rev-id repo) nil)]
+          (if fetch?
+            (if-not (= initial-commit latest-commit-id)
+              (do-fetch! name latest-commit-id repo)))
+          (log-and-generate-repo-status repo initial-commit fetch?))
+        (throw (IllegalStateException.
+                 (message-with-repo-info
+                   (str "File sync found a directory that already exists but does "
+                        "not have a repository in it")
+                   name
+                   target-dir))))
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
@@ -194,16 +207,29 @@
   [server-repo-url name target-dir latest-commit-id callback-fn]
   (let [server-repo-url (str server-repo-url "/" name)
         target-dir (fs/file target-dir)
-        latest-commit (apply-updates-to-repo name
+        status (apply-updates-to-repo name
                                              server-repo-url
                                              latest-commit-id
-                                             target-dir)
-        changed? (not (false? latest-commit))
-        status {:status        (if changed? :synced :unchanged)
-                :latest-commit (if changed? latest-commit latest-commit-id)}]
-    (when (and callback-fn changed?)
+                                             target-dir)]
+    (when (and callback-fn (= :synced (:status status)))
       (callback-fn (keyword name) status))
     status))
+
+(defn process-repo-and-catch-errors
+  [repo-name repo-base-url target-dir latest-commit callbacks]
+  (let [name (name repo-name)]
+    (try+
+      {name (process-repo-for-updates repo-base-url
+                                      name
+                                      target-dir
+                                      latest-commit
+                                      (get @callbacks repo-name))}
+      (catch sync-error? e
+        (log/errorf
+          (str "Error syncing repo: " (:message e))
+          name)
+        {name {:status :failed
+               :cause  e}}))))
 
 (schema/defn process-repos-for-updates :- RepoStates
   "Process the repositories for any updates which may be available on the server."
@@ -217,18 +243,11 @@
           (let [name (name repo-name)]
             (if (contains? latest-commits name)
               (let [latest-commit (latest-commits name)]
-                (try+
-                  {name (process-repo-for-updates repo-base-url
-                                                  name
-                                                  target-dir
-                                                  latest-commit
-                                                  (get @callbacks repo-name))}
-                  (catch sync-error? e
-                    (log/errorf
-                      (str "Error syncing repo: " (:message e))
-                      name)
-                    {name {:status :failed
-                           :cause  e}})))
+                (process-repo-and-catch-errors repo-name
+                                               repo-base-url
+                                               target-dir
+                                               latest-commit
+                                               callbacks))
               (log/errorf
                 "File sync did not find matching server repo for client repo: %s"
                 name))))))
