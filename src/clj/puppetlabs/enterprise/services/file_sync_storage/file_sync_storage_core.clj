@@ -5,7 +5,8 @@
            (org.eclipse.jgit.api.errors GitAPIException)
            (org.eclipse.jgit.errors RepositoryNotFoundException))
   (:require [clojure.tools.logging :as log]
-            [me.raynes.fs :as fs]
+            [clojure.java.io :as io]
+            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.ringutils :as ringutils]
@@ -13,7 +14,7 @@
             [slingshot.slingshot :refer [try+ throw+]]
             [compojure.core :as compojure]
             [ring.middleware.json :as ring-json]
-            [puppetlabs.enterprise.file-sync-common :as common]
+            [me.raynes.fs :as fs]
             [cheshire.core :as json]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,13 +29,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
+(def StringOrFile (schema/pred
+                    (fn [x] (or (instance? String x) (instance? File x)))
+                    "String or File"))
+
 (def GitRepo
   "Schema defining a Git repository.
 
   The keys should have the following values:
 
     * :working-dir  - The path where the repository's working tree resides."
-  {:working-dir schema/Str})
+  {:working-dir StringOrFile})
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -49,10 +54,8 @@
 
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:data-dir (schema/pred
-                (fn [x] (or (instance? String x) (instance? File x)))
-                "String or File")
-   :repos     GitRepos})
+  {:data-dir StringOrFile
+   :repos    GitRepos})
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
@@ -91,33 +94,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
-(defn initialize-server-data-dir!
-  "Initialize the base path on the server under which all other git
-  repositories will be hosted.  Expects, as an argument, a File representing
-  the server base path.  Returns nil if initialization was successful or
-  throws an Exception on failure."
-  [server-data-dir]
-  {:pre  [(instance? File server-data-dir)]
-   :post [(nil? %)]}
+(defn initialize-data-dir!
+  "Initialize the data directory under which all git repositories will be hosted."
+  [data-dir]
   (try+
-    (ks/mkdirs! server-data-dir)
+    (ks/mkdirs! data-dir)
     (catch map? m
       (throw
-        (Exception.
-          (str "Problem occurred creating jgit server data-dir: "
-               (:message m)))))
+        (Exception. (str "Unable to create file sync data-dir:" (:message m)))))
     (catch Exception e
-      (throw (Exception.
-               (str "Problem occurred creating jgit server data-dir: "
-                    (.getMessage e)) e))))
-  nil)
+      (throw (Exception. "Unable to create file sync data-dir." e)))))
+
+(defn initialize-working-dir!
+  [working-dir]
+  (try
+    (ks/mkdirs! working-dir)
+    (catch Exception swallowed
+      ; The working directory could not be created.  Swallow the exception -
+      ; this should not cause the server to crash - it's reasonable to expect
+      ; a user to create this on their own.
+      )))
 
 (defn initialize-bare-repo!
-  "Initialize a bare Git repository in the directory specified by 'path'.
-  'path' must be something that is coercible to a File."
-  [repo-path]
+  "Initialize a bare Git repository in the directory specified by 'path'."
+  [path]
   (.. (new InitCommand)
-      (setDirectory (fs/file repo-path))
+      (setDirectory (io/as-file path))
       (setBare true)
       (call)))
 
@@ -270,14 +272,20 @@
 ;;; Public
 
 (schema/defn ^:always-validate initialize-repos!
-  "Initialize Git repositories.  The repository directories, as well as
-  the base directory under which the repositories should reside,
-  must be specified in 'config'."
+  "Initialize the repositories managed by this service.  For each repository ...
+    * There is a directory under data-dir (specified in config) which is actual Git
+      repository (git dir).
+    * If working-dir does not exist, it will be created.
+    * If there is not an existing Git repo under data-dir,
+      'git init' will be used to create one."
   [config :- FileSyncServiceRawConfig]
   (let [data-dir (:data-dir config)]
-    (log/infof "Initializing file sync server base path: %s" data-dir)
-    (initialize-server-data-dir! (fs/file data-dir))
+    (log/infof "Initializing file sync server data dir: %s" data-dir)
+    (initialize-data-dir! (fs/file data-dir))
     (doseq [[repo-id repo-info] (:repos config)]
-      (let [repo-path (fs/file data-dir (str (name repo-id) ".git"))]
-        (log/infof "Initializing file sync repository path: %s" repo-path)
-        (initialize-bare-repo! repo-path)))))
+      (let [working-dir (:working-dir repo-info)
+            git-dir (fs/file data-dir (str (name repo-id) ".git"))]
+        ; If the working dir doesn't exist, try to create it
+        (initialize-working-dir! working-dir)
+        (log/infof "Initializing Git repository at %s" git-dir )
+        (initialize-bare-repo! git-dir)))))

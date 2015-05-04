@@ -151,38 +151,32 @@
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
-(defn get-repository-from-working-tree
+(schema/defn get-repository-from-working-tree :- (schema/maybe Repository)
   "Get a JGit Repository object using the supplied directory as the
   working tree. Returns nil if no repository exists with the supplied
   directory as working tree."
   [repo-dir]
-  {:pre [(instance? File repo-dir)]
-   :post [(or (nil? %) (instance? Repository %))]}
-  (if-let [repo (-> (RepositoryBuilder.)
-                    (.setWorkTree repo-dir)
-                    (.build))]
-    (if (-> repo
-            (.getObjectDatabase)
-            (.exists))
-      repo
-      nil)))
+  (if-let [repo (.. (RepositoryBuilder.)
+                    (setWorkTree repo-dir)
+                    (build))]
+    (when (.. repo
+              (getObjectDatabase)
+              (exists))
+      repo)))
 
-(defn get-repository-from-git-dir
+(schema/defn get-repository-from-git-dir :- (schema/maybe Repository)
   "Get a JGit Repository object using the supplied directory as the git
   dir (for instance, when the supplied directory is a bare repo).
   Returns nil if no repository exists with the supplied directory as git
   dir."
   [repo-dir]
-  {:pre [(instance? File repo-dir)]
-   :post [(or (nil? %) (instance? Repository %))]}
-  (if-let [repo (-> (RepositoryBuilder.)
-                    (.setGitDir repo-dir)
-                    (.build))]
-    (if (-> repo
-            (.getObjectDatabase)
-            (.exists))
-      repo
-      nil)))
+  (if-let [repo (.. (RepositoryBuilder.)
+                    (setGitDir repo-dir)
+                    (build))]
+    (when (.. repo
+              (getObjectDatabase)
+              (exists))
+      repo)))
 
 (defn head-rev-id
   "Returns the SHA-1 revision ID of a repository on disk.  Like
