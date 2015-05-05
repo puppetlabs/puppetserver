@@ -35,24 +35,41 @@
                 (Git/wrap repo) "test commit" (PersonIdent. "me" "me@you.com")))
           (is (jgit-utils/head-rev-id repo)))))))
 
+(defn commit!
+  [& repos]
+  (doseq [repo repos]
+    (jgit-utils/add-and-commit
+      (Git/wrap repo)
+      "test commit"
+      (PersonIdent. "test" "test@test.com"))))
+
 (deftest reinitialize-repos-test
-  (let [data-dir (fs/file (ks/temp-dir) "base")
-        repos {:sub1 {:working-dir "sub1-dir"}
-               :sub2 {:working-dir "sub2-dir"}
-               :sub3 {:working-dir "sub3-dir/subsub3"}}
-        config {:data-dir data-dir
-                :repos    repos}]
+  (let [data-dir          (fs/temp-dir "data")
+        repo1-id          "repo1"
+        repo2-id          "repo2"
+        repo1-working-dir (fs/temp-dir repo1-id)
+        repo2-working-dir (fs/temp-dir repo2-id)
+        config            {:data-dir data-dir
+                           :repos    {:repo1 {:working-dir repo1-working-dir}
+                                      :repo2 {:working-dir repo2-working-dir}}}]
     (testing "Multiple repos can be initialized"
       (initialize-repos! config))
     (testing "Content in repos not wiped out during reinitialization"
-      (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
-          (ks/mkdirs! (.getParentFile file-to-check))
-          (fs/touch file-to-check)))
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file data-dir sub-path (str sub-path ".txt"))]
-          (is (fs/exists? file-to-check)
-              (str "Expected file missing after repo reinitialization: "
-                   file-to-check)))))))
-
+      (let [repo1-git-dir (fs/file data-dir (str repo1-id ".git"))
+            repo2-git-dir (fs/file data-dir (str repo2-id ".git"))
+            repo1 (jgit-utils/get-repository repo1-git-dir repo1-working-dir)
+            repo2 (jgit-utils/get-repository repo2-git-dir repo2-working-dir)]
+        (spit (fs/file repo1-working-dir "test-file1") "foo")
+        (spit (fs/file repo2-working-dir "test-file2") "bar")
+        (commit! repo1 repo2)
+        (let [head-rev-id1 (jgit-utils/head-rev-id repo1)
+              head-rev-id2 (jgit-utils/head-rev-id repo2)]
+          (initialize-repos! config)
+          (testing "Git repos have same HEAD after reinitialization."
+            (is (= head-rev-id1 (jgit-utils/head-rev-id repo1)))
+            (is (= head-rev-id2 (jgit-utils/head-rev-id repo2))))
+          (testing "Working dirs are unnaffected."
+            (is (= ["test-file1"] (fs/list-dir repo1-working-dir)))
+            (is (= "foo" (slurp (fs/file repo1-working-dir "test-file1"))))
+            (is (= ["test-file2"] (fs/list-dir repo2-working-dir)))
+            (is (= "bar" (slurp (fs/file repo2-working-dir "test-file2"))))))))))
