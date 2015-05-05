@@ -1,10 +1,9 @@
-# Agent running on the master is current, not legacy.
-legacy_agents = agents.reject { |agent| agent == master }
+require 'puppetserver/acceptance/compat_utils'
 
 step "Install Legacy Puppet Agents."
 
 tmp_hosts = hosts
-legacy_agents.each do |host|
+nonmaster_agents().each do |host|
   platform = host.platform
 
   puppet_version = ENV['PUPPET_LEGACY_VERSION']
