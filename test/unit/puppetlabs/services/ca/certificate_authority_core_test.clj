@@ -38,8 +38,8 @@
 (defn build-ring-handler
   [settings puppet-version]
   (-> (web-routes settings)
-       (comidi/routes->handler)
-       (wrap-middleware puppet-version)))
+      (comidi/routes->handler)
+      (wrap-middleware puppet-version)))
 
 (defn wrap-with-ssl-client-cert
   "Wrap a compojure app so all requests will include the

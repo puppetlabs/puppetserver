@@ -1,8 +1,10 @@
 (ns puppetlabs.services.master.master-core
-  (:import (java.io FileInputStream))
+  (:import (java.io FileInputStream)
+           (clojure.lang IFn))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.comidi :as comidi]))
+            [puppetlabs.comidi :as comidi]
+            [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -107,8 +109,10 @@
     (comidi/context ["/" :environment]
                      (legacy-routes request-handler))))
 
-(defn wrap-middleware
-  [handler puppet-version]
+(schema/defn ^:always-validate
+  wrap-middleware :- IFn
+  [handler :- IFn
+   puppet-version :- schema/Str]
   (-> handler
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging

@@ -1,5 +1,6 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import  [java.io InputStream])
+  (:import [java.io InputStream]
+           (clojure.lang IFn))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as utils]
@@ -11,6 +12,7 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
+            ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.response :as rr]))
 
@@ -253,8 +255,9 @@
          (handle-get-certificate-revocation-list ca-settings))))
 
 (schema/defn ^:always-validate
-  wrap-middleware
-  [handler puppet-version]
+  wrap-middleware :- IFn
+  [handler :- IFn
+   puppet-version :- schema/Str]
   (-> handler
     ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
     (ringutils/wrap-with-puppet-version-header puppet-version)
