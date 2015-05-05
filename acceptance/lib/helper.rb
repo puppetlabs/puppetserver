@@ -190,6 +190,10 @@ module PuppetServerExtensions
     on(host, "source #{defaults_file}; echo -n $#{varname}")
     stdout
   end
+
+  def nonmaster_agents()
+    agents.reject { |agent| agent == master }
+  end
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)

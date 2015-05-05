@@ -1,5 +1,5 @@
 # Agent running on the master is current, not legacy.
-legacy_agents = agents.reject { |agent| agent == master }
+legacy_agents = nonmaster_agents()
 
 step "Install Legacy Puppet Agents."
 legacy_agents.each do |host|

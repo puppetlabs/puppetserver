@@ -1,7 +1,7 @@
 test_name "Testing Master/Agent backwards compatibility"
 
 # Agent running on the master is current, not legacy.
-legacy_agents = agents.reject { |agent| agent == master }
+legacy_agents = nonmaster_agents()
 
 step "Check that legacy agents have Puppet 3.x installed"
 on(legacy_agents, puppet("--version")) do
