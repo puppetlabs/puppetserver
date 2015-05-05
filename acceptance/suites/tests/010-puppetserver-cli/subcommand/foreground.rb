@@ -20,7 +20,7 @@ timeout_cmd = "timeout -s INT #{timout_length} #{foreground_cmd}"
 expected_messages = {
   /Initializing the JRuby service/ => "JRuby didn't initialize",
   /Starting web server/ => "Expected web server to start",
-  /Finished creating JRubyPuppet instance 4 of 4/ => "Expected to find 4 JRubyPuppet instances",
+  /Puppet Server has successfully started and is now ready to handle requests/ => "puppetserver never finished starting",
   /Finished shutdown sequence/ => "Test ended without puppetserver shutting down gracefully"
 }
 
