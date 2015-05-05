@@ -8,5 +8,6 @@
 (deftest ^:integration test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
     (bootstrap/with-puppetserver-running app {}
+      ;; this is just here to validate that the server came up successfully
       (is (true? true)))
     (is (true? true))))

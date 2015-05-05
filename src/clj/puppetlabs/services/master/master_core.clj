@@ -2,7 +2,9 @@
   (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
             [me.raynes.fs :as fs]
-            [puppetlabs.puppetserver.ringutils :as ringutils]))
+            [puppetlabs.puppetserver.ringutils :as ringutils]
+            [schema.core :as schema]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -105,6 +107,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+;; TODO: this should come from the status service itself.
+(def StatusCallbackResponse schema/Any)
+
+(schema/defn ^:always-validate
+  v1-status-callback :- StatusCallbackResponse
+  [level :- status-core/ServiceStatusDetailLevel]
+  ;; TODO: presumably once TK-209 lands, need to make sure this conforms to
+  ;; the schema
+  {:is_running :true
+   :data {:foo "foo"
+          :bar "bar"}})
 
 (defn build-ring-handler
   "Creates the entire compojure application (all routes and middleware)."

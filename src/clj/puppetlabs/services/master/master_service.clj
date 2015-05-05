@@ -3,13 +3,15 @@
             [compojure.core :as compojure]
             [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.services.master.master-core :as core]
-            [puppetlabs.puppetserver.certificate-authority :as ca]))
+            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 (defservice master-service
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:CaService initialize-master-ssl! retrieve-ca-cert!]]
+   [:CaService initialize-master-ssl! retrieve-ca-cert!]
+   [:StatusService register-status]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -26,7 +28,11 @@
      (log/info "Master Service adding a ring handler")
      (add-ring-handler
        this
-      (compojure/context path [] (core/build-ring-handler handle-request puppet-version))))
+      (compojure/context path [] (core/build-ring-handler handle-request puppet-version)))
+     (register-status "puppet-server"
+                      (status-core/get-service-version "puppetlabs" "puppetserver")
+                      1
+                      core/v1-status-callback))
    context)
   (start
     [this context]
