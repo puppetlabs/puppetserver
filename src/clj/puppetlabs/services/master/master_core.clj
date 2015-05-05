@@ -2,7 +2,9 @@
   (:import (java.io FileInputStream))
   (:require [compojure.core :as compojure]
             [me.raynes.fs :as fs]
-            [puppetlabs.puppetserver.ringutils :as ringutils]))
+            [puppetlabs.puppetserver.ringutils :as ringutils]
+            [schema.core :as schema]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -105,6 +107,13 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(schema/defn ^:always-validate
+  v1-status-callback :- status-core/StatusCallbackResponse
+  [level :- status-core/ServiceStatusDetailLevel]
+  {:is-running :true
+   :status {:foo "foo"
+            :bar "bar"}})
 
 (defn build-ring-handler
   "Creates the entire compojure application (all routes and middleware)."
