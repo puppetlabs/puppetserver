@@ -1,9 +1,8 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.lib PersonIdent RepositoryBuilder)
-           (org.eclipse.jgit.api.errors GitAPIException)
-           (org.eclipse.jgit.errors RepositoryNotFoundException))
+           (org.eclipse.jgit.lib PersonIdent)
+           (org.eclipse.jgit.api.errors GitAPIException))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -168,11 +167,8 @@
     (try
       (log/infof "Publishing working directory %s to file sync storage service"
                  working-dir)
-      (let [repo (.. (RepositoryBuilder.)
-                     (setGitDir (fs/file data-dir (str (name repo-id) ".git")))
-                     (setWorkTree (io/as-file working-dir))
-                     (build))]
-        (-> repo
+      (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))]
+        (-> (jgit-utils/get-repository git-dir working-dir)
             (Git/wrap)
             (jgit-utils/add-and-commit message author)
             (jgit-utils/commit-id)))

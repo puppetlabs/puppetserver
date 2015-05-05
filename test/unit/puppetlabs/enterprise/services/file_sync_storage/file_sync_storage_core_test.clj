@@ -30,12 +30,10 @@
         (is (nil? (jgit-utils/head-rev-id-from-git-dir git-dir))))
       (testing "The working dir can be used as a git working tree"
         (spit (fs/file working-dir "test-file") "howdy")
-        (let [git (Git/wrap (.. (RepositoryBuilder.)
-                                (setGitDir git-dir)
-                                (setWorkTree working-dir)
-                                (build)))]
+        (let [repo (jgit-utils/get-repository git-dir working-dir)]
           (is (jgit-utils/add-and-commit
-                git "test commit" (PersonIdent. "me" "me@you.com"))))))))
+                (Git/wrap repo) "test commit" (PersonIdent. "me" "me@you.com")))
+          (is (jgit-utils/head-rev-id repo)))))))
 
 (deftest reinitialize-repos-test
   (let [data-dir (fs/file (ks/temp-dir) "base")

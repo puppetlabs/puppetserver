@@ -151,13 +151,20 @@
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
+(schema/defn get-repository :- Repository
+  "Given a path to a Git repository and a working tree, return a Repository instance."
+  [repo working-tree]
+  (.. (RepositoryBuilder.)
+      (setGitDir (io/as-file repo))
+      (setWorkTree (io/as-file working-tree))
+      (build)))
+
 (schema/defn get-repository-from-working-tree :- (schema/maybe Repository)
-  "Get a JGit Repository object using the supplied directory as the
-  working tree. Returns nil if no repository exists with the supplied
-  directory as working tree."
-  [repo-dir]
+  "Given a path to a working tree, return a Repository instance,
+   or nil if no repository exists in $path/.git."
+  [path]
   (if-let [repo (.. (RepositoryBuilder.)
-                    (setWorkTree repo-dir)
+                    (setWorkTree (io/as-file path))
                     (build))]
     (when (.. repo
               (getObjectDatabase)
@@ -165,13 +172,11 @@
       repo)))
 
 (schema/defn get-repository-from-git-dir :- (schema/maybe Repository)
-  "Get a JGit Repository object using the supplied directory as the git
-  dir (for instance, when the supplied directory is a bare repo).
-  Returns nil if no repository exists with the supplied directory as git
-  dir."
-  [repo-dir]
+  "Given a path to a Git repository (i.e., a .git directory) return a
+   Repository instance, or nil if no repository exists at path."
+  [path]
   (if-let [repo (.. (RepositoryBuilder.)
-                    (setGitDir repo-dir)
+                    (setGitDir (io/as-file path))
                     (build))]
     (when (.. repo
               (getObjectDatabase)
