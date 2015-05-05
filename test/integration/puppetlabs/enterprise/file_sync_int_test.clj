@@ -124,7 +124,7 @@
                   (helpers/add-watch-and-deliver-new-state sync-agent p)
                   ;; Block until we are sure that the periodic sync process
                   ;; has completed.
-                  (let [{:keys [:status :repos] :as new-state} (deref p)]
+                  (let [new-state (deref p)]
                     (is (= {:status :successful
                             :repos  {repo {:status        :synced
                                            :latest-commit (get-latest-commits-for-repo repo)}}}

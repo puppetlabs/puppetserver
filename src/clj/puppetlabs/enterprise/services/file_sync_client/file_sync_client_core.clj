@@ -144,7 +144,7 @@
   repository resides on the server.  'latest-commit-id' is the id of the
   latest commit on the server for the repository.  'target-dir' is the
   location in which the client repository is intended to reside. Returns
-  the latest commit id if on disk changes were made."
+  the status information for the repo."
   [name server-repo-url latest-commit-id target-dir]
   (let [fetch? (fs/exists? target-dir)
         clone? (not fetch?)
@@ -180,9 +180,9 @@
   (let [server-repo-url (str server-repo-url "/" name)
         target-dir (fs/file target-dir)
         status (apply-updates-to-repo name
-                                             server-repo-url
-                                             latest-commit-id
-                                             target-dir)]
+                                      server-repo-url
+                                      latest-commit-id
+                                      target-dir)]
     (when (and callback-fn (= :synced (:status status)))
       (callback-fn (keyword name) status))
     status))
@@ -234,16 +234,14 @@
    callbacks :- Atom]
   (log/debug "File sync process running on repos " repos)
   (try+
-    (let [latest-commits (get-latest-commits-from-server
-                           http-client
-                           (str server-url server-api-path))
-          repo-states (process-repos-for-updates
-                            repos
-                            (str server-url server-repo-path)
-                            latest-commits
-                            callbacks)
+    (let [latest-commits (get-latest-commits-from-server http-client
+                                                         (str server-url server-api-path))
+          repo-states (process-repos-for-updates repos
+                                                 (str server-url server-repo-path)
+                                                 latest-commits
+                                                 callbacks)
           full-success? (every? #(not= (:status %) :failed)
-                                   (vals repo-states))]
+                                (vals repo-states))]
       {:status (if full-success? :successful :partial-success)
        :repos repo-states})
     (catch sync-error? error
