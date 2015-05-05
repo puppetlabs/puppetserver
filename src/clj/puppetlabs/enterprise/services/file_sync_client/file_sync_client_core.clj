@@ -187,22 +187,6 @@
       (callback-fn (keyword name) status))
     status))
 
-(defn process-repo-and-catch-errors
-  [repo-name repo-base-url target-dir latest-commit callbacks]
-  (let [name (name repo-name)]
-    (try+
-      {name (process-repo-for-updates repo-base-url
-                                      name
-                                      target-dir
-                                      latest-commit
-                                      (get @callbacks repo-name))}
-      (catch sync-error? e
-        (log/errorf
-          (str "Error syncing repo: " (:message e))
-          name)
-        {name {:status :failed
-               :cause  e}}))))
-
 (schema/defn process-repos-for-updates :- RepoStates
   "Process the repositories for any updates which may be available on the server."
   [repos :- ReposConfig
@@ -215,11 +199,18 @@
           (let [name (name repo-name)]
             (if (contains? latest-commits name)
               (let [latest-commit (latest-commits name)]
-                (process-repo-and-catch-errors repo-name
-                                               repo-base-url
-                                               target-dir
-                                               latest-commit
-                                               callbacks))
+                (try+
+                  {name (process-repo-for-updates repo-base-url
+                                                  name
+                                                  target-dir
+                                                  latest-commit
+                                                  (get @callbacks repo-name))}
+                  (catch sync-error? e
+                    (log/errorf
+                      (str "Error syncing repo: " (:message e))
+                      name)
+                    {name {:status :failed
+                           :cause  e}})))
               (log/errorf
                 "File sync did not find matching server repo for client repo: %s"
                 name))))))
