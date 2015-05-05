@@ -62,12 +62,10 @@
                    true))
 
           (let [local-repo-dir (helpers/clone-and-push-test-commit! repo true)
-                sync-agent (helpers/get-sync-agent app)
-                p (promise)]
-            (helpers/add-watch-and-deliver-new-state sync-agent p)
+                sync-agent (helpers/get-sync-agent app)]
 
             (testing "client is able to successfully sync with storage service"
-              (let [new-state (deref p)]
+              (let [new-state (helpers/wait-for-new-state sync-agent)]
                 (is (= :successful (:status new-state)))))
 
             (testing "client repo revision matches server local repo"
@@ -116,17 +114,15 @@
               (testing "file sync client service is running"
                 ;; Test the result of the periodic sync by checking the SHA for
                 ;; the latest commit returned from the storage service's
-                ;; latest-commits endpoint against the client's latest commit
-                (let [p (promise)]
-                  ;; Make the agent running the periodic sync process 'deliver'
-                  ;; our promise once it's done.
-                  (helpers/add-watch-and-deliver-new-state sync-agent p)
-                  ;; Block until we are sure that the periodic sync process
-                  ;; has completed.
-                  (let [new-state (deref p)]
-                    (is (= :successful (:status new-state))))
-                  (is (= (get-latest-commits-for-repo repo)
-                         (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))
+                ;; latest-commits endpoint against the client's latest commit.
+                ;; Make the agent running the periodic sync process 'deliver'
+                ;; our promise once it's done.
+                ;; Block until we are sure that the periodic sync process
+                ;; has completed.
+                (let [new-state (helpers/wait-for-new-state sync-agent)]
+                  (is (= :successful (:status new-state))))
+                (is (= (get-latest-commits-for-repo repo)
+                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "kill storage service and verify client has errors"
                 ;; Stop the storage service - the next time the sync runs, it
@@ -140,21 +136,18 @@
                   ;; accomplished by adding a watch on the
                   ;; agent which simply delivers a promise.  This test then
                   ;; deref's that promise, thereby blocking until the error occurs.
-                  (let [p (promise)]
-                    (helpers/add-watch-and-deliver-new-state sync-agent p)
-                    (let [new-state (deref p)]
-                      ;; The sync process failed, and we were delivered an error.
-                      ;; Verify that it is what it should be.
-                      (is (= :failed (:status new-state)))
-                      (is (= nil (:repos new-state)))
-                      (let [error (:error new-state)]
-                        (testing "the delivered error describes a network connectivity problem"
-                          (is (map? error))
-                          (let [cause (:cause error)]
-                            (is (instance? ConnectException cause))
-                            (is (re-matches
-                                  #"Connection refused.*"
-                                  (.getMessage cause))))))))))
+                  (let [new-state (helpers/wait-for-new-state sync-agent)]
+                    ;; The sync process failed, and we were delivered an error.
+                    ;; Verify that it is what it should be.
+                    (is (= :failed (:status new-state)))
+                    (let [error (:error new-state)]
+                      (testing "the delivered error describes a network connectivity problem"
+                        (is (map? error))
+                        (let [cause (:cause error)]
+                          (is (instance? ConnectException cause))
+                          (is (re-matches
+                                #"Connection refused.*"
+                                (.getMessage cause)))))))))
 
               (testing "start storage service again"
                 (tk-app/start storage-app)
@@ -217,14 +210,12 @@
               sync-agent (helpers/get-sync-agent app)]
 
           (testing "file sync client service is running"
-            (let [p (promise)]
-              (helpers/add-watch-and-deliver-new-state sync-agent p)
-              (let [new-state (deref p)]
-                (is (= :successful (:status new-state))))
-              (is (= (get-latest-commits-for-repo repo1)
-                     (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-              (is (= (get-latest-commits-for-repo repo2)
-                     (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))))
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+            (is (= (get-latest-commits-for-repo repo1)
+                   (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
+            (is (= (get-latest-commits-for-repo repo2)
+                   (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))
 
           (testing (str "client-side repo recovers after server-side"
                         "repo becomes corrupt")
@@ -261,16 +252,14 @@
                 (helpers/push-test-commit! local-dir-repo-2)
                 (testing (str "client recovers when the server-side "
                               "repo is fixed")
-                  (let [p (promise)]
-                    (helpers/add-watch-and-deliver-new-state sync-agent p)
-                    (let [new-state (deref p)]
-                      (is (= :successful (:status new-state))))
-                    (testing (str "all repos including the previously "
-                                  "corrupted ones are synced")
-                      (is (= (get-latest-commits-for-repo repo1)
-                             (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-                      (is (= (get-latest-commits-for-repo repo2)
-                             (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))))))))))))
+                  (let [new-state (helpers/wait-for-new-state sync-agent)]
+                    (is (= :successful (:status new-state))))
+                  (testing (str "all repos including the previously "
+                                "corrupted ones are synced")
+                    (is (= (get-latest-commits-for-repo repo1)
+                           (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
+                    (is (= (get-latest-commits-for-repo repo2)
+                           (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))))))))))))
 
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
@@ -305,12 +294,10 @@
             ;; a clone is performed, as that is handled in the process-repos-for-updates-test
             ;; in the file-sync-client-core-test namespace.
             (testing "file sync client service is running"
-              (let [p (promise)]
-                (helpers/add-watch-and-deliver-new-state sync-agent p)
-                (let [new-state (deref p)]
-                  (is (= :successful (:status new-state))))
-                (is (= (get-latest-commits-for-repo repo)
-                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))
+              (let [new-state (helpers/wait-for-new-state sync-agent)]
+                (is (= :successful (:status new-state))))
+              (is (= (get-latest-commits-for-repo repo)
+                     (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
 
             (testing "registered callback is not called when no fetch or clone is performed"
               (let [p (promise)]
