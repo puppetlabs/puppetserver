@@ -105,13 +105,13 @@
 
 (defn initialize-working-dir!
   [working-dir]
-  (try
+  (try+
     (ks/mkdirs! working-dir)
-    (catch Exception swallowed
+    (catch [:type :puppetlabs.kitchensink.core/io-error] {:keys [message]}
       ; The working directory could not be created.  Swallow the exception -
       ; this should not cause the server to crash - it's reasonable to expect
       ; a user to create this on their own.
-      )))
+      (log/warn "Working directory" working-dir "could not be created:" message))))
 
 (defn initialize-bare-repo!
   "Initialize a bare Git repository in the directory specified by 'path'."
