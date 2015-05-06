@@ -23,9 +23,9 @@
    CA service."
   [request-handler]
   (comidi/routes
-    (comidi/GET ["/node/" :node] request
+    (comidi/GET ["/node/" [#".*" :rest]] request
                    (request-handler request))
-    (comidi/GET ["/facts/" :node] request
+    (comidi/GET ["/facts/" [#".*" :rest]] request
                    (request-handler request))
     (comidi/GET ["/file_content/" [#".*" :rest]] request
                    (request-handler request))
@@ -54,11 +54,11 @@
     (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
                    (request-handler request))
 
-    (comidi/GET ["/catalog/" :node] request
+    (comidi/GET ["/catalog/" [#".*" :rest]] request
                    (request-handler request))
-    (comidi/POST ["/catalog/" :node] request
+    (comidi/POST ["/catalog/" [#".*" :rest]] request
                     (request-handler request))
-    (comidi/PUT ["/report/" :node] request
+    (comidi/PUT ["/report/" [#".*" :rest]] request
                    (request-handler request))
     (comidi/GET ["/resource_type/" [#".*" :rest]] request
                    (request-handler request))
