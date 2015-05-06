@@ -147,10 +147,6 @@
              {:body    (json/encode body)
               :headers {"Content-Type" "application/json"}}))
 
-(defn write-test-file!
-  [path]
-  (spit (fs/file path (str "test-file" (System/currentTimeMillis))) "foo"))
-
 (deftest publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
@@ -165,7 +161,6 @@
           {(keyword repo) {:working-dir working-dir}}
           false)
         (testing "with no body supplied"
-          (write-test-file! working-dir)
           (let [response (http-client/post publish-url)
                 body (slurp (:body response))]
             (testing "get expected response"
@@ -187,7 +182,6 @@
                 response (make-publish-request {:author author})
                 body (slurp (:body response))]
             (testing "get expected response"
-              (write-test-file! working-dir)
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
                   (str "Unexpected response body: " body)))
@@ -206,7 +200,6 @@
                 response (make-publish-request {:author author :message message})
                 body (slurp (:body response))]
             (testing "get expected response"
-              (write-test-file! working-dir)
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
                   (str "Unexpected response body: " body)))
@@ -264,10 +257,6 @@
           {(keyword failed-repo)      {:working-dir working-dir-failed}
            (keyword success-repo)     {:working-dir working-dir-success}}
           false)
-
-        ; Write a test file into the success repo -
-        ; this'll enable the commit/publish to succeed
-        (write-test-file! working-dir-success)
 
         ; Delete the failed repo entirely - this'll cause the publish to fail
         (fs/delete-dir (fs/file data-dir (str failed-repo ".git")))
