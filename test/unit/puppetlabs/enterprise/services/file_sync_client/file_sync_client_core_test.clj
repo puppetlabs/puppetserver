@@ -124,9 +124,12 @@
     callbacks))
 
 (deftest process-repos-for-updates-test
-  (let [client-target-repo-on-server (helpers/temp-dir-as-string)
+  (let [server-base-path (helpers/temp-dir-as-string)
+        client-target-repo-on-server (helpers/temp-dir-as-string)
         client-target-repo-nonexistent (helpers/temp-dir-as-string)
+        client-target-repo-error (helpers/temp-dir-as-string)
         server-repo "process-repos-test"
+        error-repo  "process-repos-error"
         client (sync/create-client {})
         server-repo-atom (atom {})
         nonexistent-repo-atom (atom {})
@@ -145,18 +148,27 @@
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
-        (helpers/temp-dir-as-string)
-        {(keyword server-repo) {:working-dir server-repo}}
+        server-base-path
+        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)}
+         (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}}
         false)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
+      (fs/delete-dir client-target-repo-error)
+      (fs/delete-dir (fs/file server-base-path (str error-repo ".git")))
 
       (with-test-logging
-        (process-repos {(keyword server-repo) client-target-repo-on-server
-                        :process-repos-test-nonexistent client-target-repo-nonexistent}
-                       client false
-                       (atom {(keyword server-repo) server-repo-callback
-                              :nonexistent-repo     nonexistent-repo-callback}))
+        (let [state (process-repos {(keyword server-repo)           client-target-repo-on-server
+                                    (keyword error-repo)            client-target-repo-error
+                                    :process-repos-test-nonexistent client-target-repo-nonexistent}
+                                   client false
+                                   (atom {(keyword server-repo) server-repo-callback
+                                          :nonexistent-repo     nonexistent-repo-callback}))]
+          (testing "process-repos-for-updates returns correct state info"
+            (is (= (get state server-repo) {:status        :synced
+                                                      :latest-commit nil}))
+            (is (= :failed (get-in state [error-repo :status])))
+            (is (not (nil? (get-in state [error-repo :cause]))))))
 
         (testing "Client directory created when match on server"
           (is (fs/exists? client-target-repo-on-server)))
@@ -168,11 +180,18 @@
             (logged?
               #"^File sync did not find.*process-repos-test-nonexistent"
               :error)))
+
+        (testing "Error logged when repo cannot be synced"
+          (is (logged?
+                #"^Error syncing repo.*"
+                :error)))
+
         (testing "Repo callback called when match on server"
           (let [status @server-repo-atom]
             (is (= (keyword server-repo) (:repo-id status)))
             (is (= :synced (get-in status [:repo-state :status])))
             (is (= nil (get-in status [:repo-state :latest-commit])))))
+
         (testing "Repo callback not called when no match on server"
           (is (= {} @nonexistent-repo-atom)))))))
 
