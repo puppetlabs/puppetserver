@@ -43,8 +43,7 @@
         if not specified, will use the puppet default.
 
     * :max-active-instances - The maximum number of JRubyPuppet instances that
-        will be pooled. If not specified, the system's
-        number of CPUs+2 will be used.
+        will be pooled.
 
     * :http-client-ssl-protocols - A list of legal SSL protocols that may be used
         when https client requests are made.
