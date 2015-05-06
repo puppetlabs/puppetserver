@@ -1,23 +1,15 @@
 test_name "Puppetserver 'foreground' subcommand tests."
 
-# --------------------------------------------------------------------------
-# This behavior needs to be baked into Beaker but is not yet. SERVER-79 tracks
-# the need to fix this once Beaker has been modified to make the paths to these
-# commands available.
-#
-if master.is_pe?
-  cli = "pe-puppetserver"
-else
-  cli = "puppetserver"
-end
-# --------------------------------------------------------------------------
+cli = "puppetserver"
+service = "puppetserver"
 
 # puppetserver seems to take about 45s to start up
 timout_length = "60s"
-foreground_cmd = "#{cli} foreground"
+foreground_cmd = "#{cli} foreground --debug"
 timeout_cmd = "timeout -s INT #{timout_length} #{foreground_cmd}"
 
 expected_messages = {
+  / DEBUG .*Debug logging enabled/ => "Debug logging isn't enabled",
   /Initializing the JRuby service/ => "JRuby didn't initialize",
   /Starting web server/ => "Expected web server to start",
   /Puppet Server has successfully started and is now ready to handle requests/ => "puppetserver never finished starting",
@@ -26,7 +18,7 @@ expected_messages = {
 
 # Start of test
 step "Stop puppetserver"
-on(master, puppet("resource service #{cli} ensure=stopped"))
+on(master, puppet("resource service #{service} ensure=stopped"))
 
 step "Run #{cli} with foreground subcommand, wait for #{timout_length}"
 on(master, timeout_cmd, :acceptable_exit_codes => [124]) do |result|
@@ -40,5 +32,5 @@ end
 
 teardown do
   step "Teardown: Start puppetserver again"
-  on(master, puppet("resource service #{cli} ensure=running"))
+  on(master, puppet("resource service #{service} ensure=running"))
 end
