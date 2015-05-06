@@ -111,7 +111,7 @@
   "Returns the ring handler for the Puppet Admin API."
   [path :- schema/Str
    settings :- PuppetAdminSettings
-   jruby-service :- jruby-puppet/JRubyPuppetService]
+   jruby-service :- (schema/protocol jruby-puppet/JRubyPuppetService)]
   (-> (compojure/context
         path
         []

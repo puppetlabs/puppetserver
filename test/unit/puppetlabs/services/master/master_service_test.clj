@@ -4,10 +4,10 @@
     [puppetlabs.services.master.master-service :refer :all]
     [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-    [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
+    [puppetlabs.trapperkeeper.services.status.status-service :refer [status-service]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
@@ -34,7 +34,8 @@
              request-handler-service
              profiler/puppet-profiler-service
              version-check-service/version-check-service
-             certificate-authority-service]
+             certificate-authority-service
+             status-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
@@ -42,8 +43,9 @@
                           "dev-resources/puppetlabs/services/master/master_service_test/conf")
                 (assoc :webserver {:port 8081})
                 (assoc :web-router-service
-                       { :puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                        :puppetlabs.services.master.master-service/master-service ""}))
+                       {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                        :puppetlabs.services.master.master-service/master-service ""
+                        :puppetlabs.trapperkeeper.services.status.status-service/status-service "/status"}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet

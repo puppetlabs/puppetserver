@@ -10,10 +10,10 @@
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
             [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
             [puppetlabs.services.puppet-admin.puppet-admin-service :refer [puppet-admin-service]]
+            [puppetlabs.trapperkeeper.services.status.status-service :refer [status-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
@@ -57,7 +57,8 @@
                request-handler-service
                puppet-server-config-service
                certificate-authority-service
-               puppet-admin-service]
+               puppet-admin-service
+               status-service]
               (puppet-server-conf))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
