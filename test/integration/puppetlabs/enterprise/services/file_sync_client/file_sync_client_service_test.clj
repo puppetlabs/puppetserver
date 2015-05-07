@@ -25,10 +25,8 @@
         helpers/webserver-ssl-config
         ring-handler
         file-sync-client-ssl-config
-        (let [sync-agent (helpers/get-sync-agent app)
-              p (promise)]
-          (helpers/add-watch-and-deliver-new-state sync-agent p)
-          (let [new-state (deref p)]
+        (let [sync-agent (helpers/get-sync-agent app)]
+          (let [new-state (helpers/wait-for-new-state sync-agent)]
             (is (= :successful (:status new-state)))))))))
 
 (deftest ^:integration polling-client-no-ssl-test
@@ -40,11 +38,9 @@
         ring-handler
         (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
         (let [sync-agent (helpers/get-sync-agent app)
-              p (promise)]
-          (helpers/add-watch-and-deliver-new-state sync-agent p)
-          (let [new-state (deref p)]
-            (is (= :failed (:status new-state)))
-            (is (instance? SSLException (:cause (:error new-state))))))))))
+              new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :failed (:status new-state)))
+          (is (instance? SSLException (:cause (:error new-state)))))))))
 
 (deftest ^:integration ssl-config-test
   (testing "SSL configuration fails when not all options are provided"

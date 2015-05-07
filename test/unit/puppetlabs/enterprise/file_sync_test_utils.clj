@@ -201,15 +201,26 @@
     (.save config)))
 
 (defn add-watch-and-deliver-new-state
+  "Given a agent/atom/ref/var and a promise, add a watch to ref* and deliver the
+   new state to promise* the first time the watch is triggered.
+   The watch will be removed after it's triggered."
   [ref* promise*]
   (let [key* (keyword (str "test-watcher-" (System/currentTimeMillis)))]
     (add-watch
       ref*
       key*
-      (fn [key ref old-state new-state]
-        (when (= key* key)
+      (fn [k _ old-state new-state]
+        (when (= key* k)
           (deliver promise* new-state)
-          (remove-watch ref* key))))))
+          (remove-watch ref* k))))))
+
+(defn wait-for-new-state
+  "Given a agent/atom/ref/var, add a watch and return the new state the first
+   time the watch is triggered.  The watch will be removed after it's triggered."
+  [ref*]
+  (let [promise* (promise)]
+    (add-watch-and-deliver-new-state ref* promise*)
+    (deref promise*)))
 
 (defn get-sync-agent [app]
   (->> :FileSyncClientService
