@@ -10,7 +10,7 @@
 
 (defservice master-service
   master/MasterService
-  [[:WebroutingService add-ring-handler get-route]
+  [[:WebroutingService add-ring-handler get-route get-registered-endpoints]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
@@ -20,6 +20,10 @@
    (core/validate-memory-requirements!)
    (let [path              (get-route this :master-routes)
          config            (get-config)
+         upgrade-error-path (get-in config
+                              [:web-router-service
+                               ::master-service
+                               :invalid-in-puppet-4])
          certname          (get-in config [:puppet-server :certname])
          localcacert       (get-in config [:puppet-server :localcacert])
          hostcrl           (get-in config [:puppet-server :hostcrl])
@@ -30,7 +34,6 @@
                                 :artifact-id "puppetserver"})
          upgrade-error     (core/construct-404-error-message jruby-service product-name)
          update-server-url (get-in config [:product :update-server-url])]
-
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -42,7 +45,12 @@
        this
       (compojure/context path [] (core/build-ring-handler handle-request))
       {:route-id :master-routes})
-     (add-ring-handler this (core/construct-invalid-request-handler upgrade-error) {:route-id :invalid-in-puppet-4}))
+
+     (when upgrade-error-path
+       (add-ring-handler
+         this
+         (core/construct-invalid-request-handler upgrade-error)
+         {:route-id :invalid-in-puppet-4})))
    context)
   (start
     [this context]
