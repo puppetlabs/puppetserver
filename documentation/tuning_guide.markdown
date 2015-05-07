@@ -126,8 +126,13 @@ that further in the future.
 ### Tying Together `max-active-instances` and Heap Size
 
 We're still gathering data on what the best default settings are, to try to provide
-an out-of-the-box configuration that works well in most environments. As of
-Puppet Server 1.0.8, if you don't provide an explicit value for this setting,
+an out-of-the-box configuration that works well in most environments. In versions
+prior to 1.0.8 in the 1.x series (compatible with Puppet 3.x), and prior to 2.1.0
+in the 2.x series (compatible with Puppet 4.x), the default
+value is `num-cpus + 2`.  This value will be far too high if you're running on
+a system with a large number of CPU cores.
+
+As of Puppet Server 1.0.8 and 2.1.0, if you don't provide an explicit value for this setting,
 we'll default to `num-cpus - 1`, with a minimum value of `1` and a maximum value of
 `4`. The maximum value of `4` is probably too low for production environments
 with beefy hardware and a high number of Puppet agents checking in, but our
