@@ -9,10 +9,13 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (puppetlabs.services.jruby.jruby_puppet_core RetryPoisonPill)
+  (:import (puppetlabs.services.jruby.jruby_puppet_schemas RetryPoisonPill)
            (com.puppetlabs.puppetserver JRubyPuppet)
-           (java.util.concurrent ArrayBlockingQueue)))
+           (java.util.concurrent LinkedBlockingDeque)))
 
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
@@ -27,22 +30,20 @@
             (jruby-testutils/jruby-puppet-config {:max-active-instances 4})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
-            pool-context (:pool-context context)
-            pool (jruby-core/get-pool pool-context)]
-        (jruby-testutils/reduce-over-jrubies! pool 4 #(format "InstanceID = %s" %))
+            pool-context (:pool-context context)]
+        (jruby-testutils/reduce-over-jrubies! pool-context 4 #(format "InstanceID = %s" %))
         (is (= #{0 1 2 3}
-               (-> (jruby-testutils/reduce-over-jrubies! pool 4 (constantly "InstanceID"))
+               (-> (jruby-testutils/reduce-over-jrubies! pool-context 4 (constantly "InstanceID"))
                    set)))
         (jruby-protocol/flush-jruby-pool! jruby-service)
         ; wait until the flush is complete
-        (await (:pool-agent context))
-        (let [new-pool (jruby-core/get-pool pool-context)]
-          (is (every? true?
-                      (jruby-testutils/reduce-over-jrubies!
-                        new-pool
-                        4
-                        (constantly
-                          "begin; InstanceID; false; rescue NameError; true; end")))))))))
+        (await (:pool-agent pool-context))
+        (is (every? true?
+                    (jruby-testutils/reduce-over-jrubies!
+                      pool-context
+                      4
+                      (constantly
+                        "begin; InstanceID; false; rescue NameError; true; end"))))))))
 
 (deftest retry-poison-pill-test
   (testing "Flush puts a retry poison pill into the old pool"
@@ -68,9 +69,11 @@
         ; wait until we know the new pool has been swapped in
         @pool-state-swapped
         ; wait until the flush is complete
-        (await (:pool-agent context))
-        (let [old-pool-instance (jruby-core/borrow-from-pool old-pool)]
-          (is (jruby-core/retry-poison-pill? old-pool-instance)))))))
+        (await (:pool-agent pool-context))
+        (let [old-pool-instance (jruby-internal/borrow-from-pool!*
+                                  jruby-internal/borrow-without-timeout-fn
+                                  old-pool)]
+          (is (jruby-schemas/retry-poison-pill? old-pool-instance)))))))
 
 (deftest with-jruby-retry-test-via-mock-get-pool
   (testing "with-jruby-puppet retries if it encounters a RetryPoisonPill"
@@ -84,19 +87,31 @@
             real-pool     (-> (tk-services/service-context jruby-service)
                               :pool-context
                               (jruby-core/get-pool))
-            retry-pool    (ArrayBlockingQueue. 1)
+            retry-pool    (LinkedBlockingDeque. 1)
             _             (-> retry-pool (RetryPoisonPill.) jruby-core/return-to-pool)
             mock-pools    [retry-pool retry-pool retry-pool real-pool]
             num-borrows   (atom 0)
             get-mock-pool (fn [_] (let [result (nth mock-pools @num-borrows)]
                                     (swap! num-borrows inc)
                                     result))]
-        (with-redefs [jruby-core/get-pool get-mock-pool]
+        (with-redefs [jruby-internal/get-pool get-mock-pool]
           (jruby/with-jruby-puppet
             jruby-puppet
             jruby-service
             (is (instance? JRubyPuppet jruby-puppet))))
         (is (= 4 @num-borrows))))))
+
+(deftest next-instance-id-test
+  (let [pool-context (jruby-core/create-pool-context
+                       (jruby-testutils/jruby-puppet-config {:max-active-instances 8})
+                       jruby-testutils/default-profiler
+                       jruby-testutils/default-shutdown-fn)]
+    (testing "next instance id should be based on the pool size"
+      (is (= 10 (jruby-agents/next-instance-id 2 pool-context)))
+      (is (= 100 (jruby-agents/next-instance-id 92 pool-context))))
+    (testing "next instance id should wrap after max int"
+      (let [id (- Integer/MAX_VALUE 1)]
+        (is (= (mod id 8) (jruby-agents/next-instance-id id pool-context)))))))
 
 (deftest master-termination-test
   (testing "Flushing the pool causes masters to be terminated"
@@ -111,5 +126,5 @@
               context (tk-services/service-context jruby-service)]
           (jruby-protocol/flush-jruby-pool! jruby-service)
           ; wait until the flush is complete
-          (await (:pool-agent context))
+          (await (get-in context [:pool-context :pool-agent]))
           (is (logged? #"Terminating Master")))))))

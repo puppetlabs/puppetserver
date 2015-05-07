@@ -2,7 +2,7 @@
   (:import (org.jruby Main RubyInstanceConfig CompatVersion)
            (java.util HashMap))
   (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet]))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
 
 (defn new-jruby-main
   [config]

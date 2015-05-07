@@ -5,25 +5,9 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Constants
-
-(def default-borrow-timeout
-  "Default timeout when borrowing instances from the JRuby pool in
-   milliseconds. Current value is 1200000ms, or 20 minutes."
-  1200000)
-
-(def default-http-connect-timeout
-  "The default number of milliseconds that the client will wait for a connection
-  to be established. Currently set to 2 minutes."
-  (* 2 60 1000))
-
-(def default-http-socket-timeout
-  "The default number of milliseconds that the client will allow for no data to
-  be available on the socket. Currently set to 20 minutes."
-  (* 20 60 1000))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [slingshot.slingshot :as sling]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -33,43 +17,28 @@
 
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
-                          [[:ConfigService get-in-config]
+                          [[:ConfigService get-config]
                            [:ShutdownService shutdown-on-error]
                            [:PuppetProfilerService get-profiler]]
   (init
     [this context]
-    (let [config            (-> (get-in-config [:jruby-puppet])
-                              (assoc :http-client-ssl-protocols
-                                     (get-in-config [:http-client :ssl-protocols]))
-                              (assoc :http-client-cipher-suites
-                                     (get-in-config [:http-client :cipher-suites]))
-                              (assoc :http-client-connect-timeout-milliseconds
-                                     (get-in-config [:http-client :connect-timeout-milliseconds]
-                                                    default-http-connect-timeout))
-                              (assoc :http-client-idle-timeout-milliseconds
-                                     (get-in-config [:http-client :idle-timeout-milliseconds]
-                                                    default-http-socket-timeout)))
+    (let [config            (core/initialize-config (get-config))
           service-id        (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
-          pool-agent        (jruby-agents/pool-agent agent-shutdown-fn)
-          profiler          (get-profiler)
-          borrow-timeout    (get-in-config [:jruby-puppet :borrow-timeout]
-                                           default-borrow-timeout)]
+          profiler          (get-profiler)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
-      (let [pool-context (core/create-pool-context config profiler)]
-        (jruby-agents/send-prime-pool! pool-context pool-agent)
+      (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
+        (jruby-agents/send-prime-pool! pool-context)
         (-> context
             (assoc :pool-context pool-context)
-            (assoc :pool-agent pool-agent)
-            (assoc :borrow-timeout borrow-timeout)))))
+            (assoc :borrow-timeout (:borrow-timeout config))))))
 
   (borrow-instance
     [this]
-    (let [pool-context   (:pool-context (tk-services/service-context this))
-          pool           (core/get-pool pool-context)
+    (let [pool-context (:pool-context (tk-services/service-context this))
           borrow-timeout (:borrow-timeout (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool borrow-timeout)))
+      (core/borrow-from-pool-with-timeout pool-context borrow-timeout)))
 
   (return-instance
     [this jruby-instance]
@@ -89,8 +58,8 @@
   (flush-jruby-pool!
     [this]
     (let [service-context (tk-services/service-context this)
-          {:keys [pool-context pool-agent]} service-context]
-      (jruby-agents/send-flush-pool! pool-context pool-agent))))
+          {:keys [pool-context]} service-context]
+      (jruby-agents/send-flush-pool! pool-context))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
@@ -107,9 +76,15 @@
   [jruby-puppet jruby-service & body]
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
      (if (nil? pool-instance#)
-       (throw (IllegalStateException.
-                "Error: Attempt to borrow a JRuby instance from the pool timed out")))
-     (if (core/retry-poison-pill? pool-instance#)
+       (sling/throw+
+         {:type    ::jruby-timeout
+          :message (str "Attempt to borrow a JRuby instance from the pool "
+                        "timed out; Puppet Server is temporarily overloaded. If "
+                        "you get this error repeatedly, your server might be "
+                        "misconfigured or trying to serve too many agent nodes. "
+                        "Check Puppet Server settings: "
+                        "jruby-puppet.max-active-instances.")}))
+     (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby-core/return-to-pool pool-instance#)
          (recur (jruby/borrow-instance ~jruby-service)))
