@@ -1,37 +1,39 @@
 (ns puppetlabs.services.master.master-core
-  (:import (java.io FileInputStream))
-  (:require [compojure.core :as compojure]
-            [me.raynes.fs :as fs]
-            [puppetlabs.puppetserver.ringutils :as ringutils]))
+  (:import (java.io FileInputStream)
+           (clojure.lang IFn))
+  (:require [me.raynes.fs :as fs]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.comidi :as comidi]
+            [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
 (defn v2_0-routes
-  "Creates the compojure routes to handle the master's '/v2.0' routes."
+  "Creates the web routes to handle the master's '/v2.0' routes."
   [request-handler]
-  (compojure/routes
-    (compojure/GET "/environments" request
+  (comidi/routes
+    (comidi/GET "/environments" request
                    (request-handler request))))
 
 (defn legacy-routes
-  "Creates the compojure routes to handle the master's 'legacy' routes
+  "Creates the web routes to handle the master's 'legacy' routes
    - ie, any route without a version in its path (eg, /v2.0/whatever) - but
    excluding the CA-related endpoints, which are handled separately by the
    CA service."
   [request-handler]
-  (compojure/routes
-    (compojure/GET "/node/*" request
+  (comidi/routes
+    (comidi/GET ["/node/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/facts/*" request
+    (comidi/GET ["/facts/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/file_content/*" request
+    (comidi/GET ["/file_content/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/file_metadatas/*" request
+    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/file_metadata/*" request
+    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/file_bucket_file/*" request
+    (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
                    (request-handler request))
 
     ;; TODO: file_bucket_file request PUTs from Puppet agents currently use a
@@ -44,38 +46,30 @@
     ;; Content-Type to describe the input payload - see PUP-3812 for the core
     ;; Puppet work and SERVER-294 for the related Puppet Server work that
     ;; would be done.
-    (compojure/PUT "/file_bucket_file/*" request
+    (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
                    (request-handler (assoc request
                                            :content-type
                                            "application/octet-stream")))
 
-    (compojure/HEAD "/file_bucket_file/*" request
+    (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/catalog/*" request
+
+    (comidi/GET ["/catalog/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/POST "/catalog/*" request
+    (comidi/POST ["/catalog/" [#".*" :rest]] request
                     (request-handler request))
-    (compojure/PUT "/report/*" request
+    (comidi/PUT ["/report/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/resource_type/*" request
+    (comidi/GET ["/resource_type/" [#".*" :rest]] request
                    (request-handler request))
-    (compojure/GET "/resource_types/*" request
+    (comidi/GET ["/resource_types/" [#".*" :rest]] request
                    (request-handler request))
 
     ;; TODO: when we get rid of the legacy dashboard after 3.4, we should remove
     ;; this endpoint as well.  It makes more sense for this type of query to be
     ;; directed to PuppetDB.
-    (compojure/GET "/facts_search/*" request
+    (comidi/GET ["/facts_search/" [#".*" :rest]] request
                    (request-handler request))))
-
-(defn root-routes
-  "Creates all of the compojure routes for the master."
-  [request-handler]
-  (compojure/routes
-    (compojure/context "/v2.0" request
-                       (v2_0-routes request-handler))
-    (compojure/context "/:environment" [environment]
-                       (legacy-routes request-handler))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -106,11 +100,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn build-ring-handler
-  "Creates the entire compojure application (all routes and middleware)."
-  [request-handler puppet-version]
-  {:pre [(fn? request-handler)]}
-  (-> (root-routes request-handler)
+(defn root-routes
+  "Creates all of the web routes for the master."
+  [request-handler]
+  (comidi/routes
+    (comidi/context "/v2.0"
+                     (v2_0-routes request-handler))
+    (comidi/context ["/" :environment]
+                     (legacy-routes request-handler))))
+
+(schema/defn ^:always-validate
+  wrap-middleware :- IFn
+  [handler :- IFn
+   puppet-version :- schema/Str]
+  (-> handler
       ringutils/wrap-request-logging
       ringutils/wrap-response-logging
       (ringutils/wrap-with-puppet-version-header puppet-version)))
+
