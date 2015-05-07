@@ -18,7 +18,8 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
-            [schema.test :as schema-test])
+            [schema.test :as schema-test]
+            [me.raynes.fs :as fs])
   (:import (java.net ConnectException)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -43,7 +44,7 @@
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
-          client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
+          client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -54,10 +55,10 @@
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
                    (helpers/temp-dir-as-string)
-                   {(keyword repo) {:working-dir repo}}
+                   {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                    true)
                  (helpers/client-service-config-with-repos
-                   {(keyword repo) (str client-repo-dir)}
+                   {(keyword repo) (.getPath client-repo-dir)}
                    true))
 
           (let [local-repo-dir (helpers/clone-and-push-test-commit! repo true)
@@ -67,7 +68,7 @@
 
             (testing "client is able to successfully sync with storage service"
               (let [new-state (deref p)]
-               (is (= :successful (:status new-state)))))
+                (is (= :successful (:status new-state)))))
 
             (testing "client repo revision matches server local repo"
               ;; The client syncs with the storage service, and the
@@ -87,10 +88,10 @@
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config-with-repos
                             (helpers/temp-dir-as-string)
-                            {(keyword repo) {:working-dir repo}}
+                            {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                             false)))]
       (try
-        (let [client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+        (let [client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
@@ -107,7 +108,7 @@
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
             (helpers/client-service-config-with-repos
-              {(keyword repo) (str client-repo-dir)}
+              {(keyword repo) (.getPath client-repo-dir)}
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]
@@ -145,6 +146,7 @@
                       ;; The sync process failed, and we were delivered an error.
                       ;; Verify that it is what it should be.
                       (is (= :failed (:status new-state)))
+                      (is (= nil (:repos new-state)))
                       (let [error (:error new-state)]
                         (testing "the delivered error describes a network connectivity problem"
                           (is (map? error))
@@ -179,8 +181,154 @@
                   ;; Block until we are sure that the periodic sync process
                   ;; has completed.
                   (let [new-state (deref p)]
-                    (is (= :successful (:status new-state)))))
-                (is (= (get-latest-commits-for-repo repo)
-                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))))
-
+                    (is (= :successful (:status new-state))))
+                  (is (= (get-latest-commits-for-repo repo)
+                         (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))))))
         (finally (tk-app/stop storage-app))))))
+
+(deftest ^:integration server-side-corruption-test
+  (let [repo1 "repo1"
+        repo2 "repo2"
+        server-base-path (helpers/temp-dir-as-string)
+        client-dir-repo-1 (fs/file (helpers/temp-dir-as-string) repo1)
+        client-dir-repo-2 (fs/file (helpers/temp-dir-as-string) repo2)]
+    ;; This is used to silence the error logged when the server-side repo is
+    ;; corrupted, but unfortunately, it doesn't seem to actually allow that
+    ;; message to be matched
+    (with-test-logging
+      (bootstrap/with-app-with-config
+        app
+        [jetty-service/jetty9-service
+         file-sync-storage-service/file-sync-storage-service
+         webrouting-service/webrouting-service
+         file-sync-client-service/file-sync-client-service
+         scheduler-service/scheduler-service]
+        (merge (helpers/storage-service-config-with-repos
+                 server-base-path
+                 {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
+                  (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}}
+                 false)
+               (helpers/client-service-config-with-repos
+                 {(keyword repo1) (.getPath client-dir-repo-1)
+                  (keyword repo2) (.getPath client-dir-repo-2)}
+                 false))
+        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1)
+              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2)
+              sync-agent (helpers/get-sync-agent app)]
+
+          (testing "file sync client service is running"
+            (let [p (promise)]
+              (helpers/add-watch-and-deliver-new-state sync-agent p)
+              (let [new-state (deref p)]
+                (is (= :successful (:status new-state))))
+              (is (= (get-latest-commits-for-repo repo1)
+                     (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
+              (is (= (get-latest-commits-for-repo repo2)
+                     (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))))
+
+          (testing (str "client-side repo recovers after server-side"
+                        "repo becomes corrupt")
+            (let [corrupt-repo-path (helpers/temp-dir-as-string)
+                  original-repo-path (str server-base-path "/" repo1 ".git")]
+              (helpers/push-test-commit! local-dir-repo-1)
+              (helpers/push-test-commit! local-dir-repo-2)
+              ;; "Corrupt" the server-side repo by moving it
+              ;; to a different location
+              (fs/rename original-repo-path corrupt-repo-path)
+              (testing (str "corruption of one repo does not affect "
+                            "syncing of other repos")
+                (let [p (promise)]
+                  (helpers/add-watch-and-deliver-new-state sync-agent p)
+                  (deref p)
+                  (testing "all repos but the corrupted one are synced"
+                    ;; This should be nil, as the directory that is
+                    ;; supposed to contain repo1 no longer exists
+                    (is (nil? (get-latest-commits-for-repo repo1)))
+                    ;; The moved server-side repo should have newer
+                    ;; commits than the client directory
+                    ;; as it was moved before syncing happened
+                    (is (not= (jgit-utils/head-rev-id-from-git-dir
+                                corrupt-repo-path)
+                              (jgit-utils/head-rev-id-from-git-dir
+                                client-dir-repo-1)))
+                    (is (= (get-latest-commits-for-repo repo2)
+                           (jgit-utils/head-rev-id-from-git-dir
+                             client-dir-repo-2)))))
+                ;; "Restore" the server-side repo by moving it back to
+                ;; its original location
+                (fs/rename corrupt-repo-path original-repo-path)
+                (helpers/push-test-commit! local-dir-repo-1)
+                (helpers/push-test-commit! local-dir-repo-2)
+                (testing (str "client recovers when the server-side "
+                              "repo is fixed")
+                  (let [p (promise)]
+                    (helpers/add-watch-and-deliver-new-state sync-agent p)
+                    (let [new-state (deref p)]
+                      (is (= :successful (:status new-state))))
+                    (testing (str "all repos including the previously "
+                                  "corrupted ones are synced")
+                      (is (= (get-latest-commits-for-repo repo1)
+                             (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
+                      (is (= (get-latest-commits-for-repo repo2)
+                             (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))))))))))))
+
+(deftest ^:integration callback-registration-test
+  (testing "callback functions can be registered with the client service"
+    (let [repo "repo"
+          client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
+      (with-test-logging
+        (bootstrap/with-app-with-config
+          app
+          [jetty-service/jetty9-service
+           file-sync-storage-service/file-sync-storage-service
+           webrouting-service/webrouting-service
+           file-sync-client-service/file-sync-client-service
+           scheduler-service/scheduler-service]
+          (merge (helpers/storage-service-config-with-repos
+                   (helpers/temp-dir-as-string)
+                   {(keyword repo) {:working-dir repo}}
+                   false)
+                 (helpers/client-service-config-with-repos
+                   {(keyword repo) (str client-repo-dir)}
+                   false))
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo)
+                client-service (tk-app/get-service app :FileSyncClientService)
+                sync-agent (helpers/get-sync-agent app)
+                repo-atom (atom {})]
+            (file-sync-client-service/register-callback client-service :repo
+                                                        (fn [repo-id repo-status]
+                                                          (swap! repo-atom
+                                                                 #(assoc % :repo-id repo-id
+                                                                           :repo-status repo-status))))
+
+            ;; This test does not test that the callback function is called when
+            ;; a clone is performed, as that is handled in the process-repos-for-updates-test
+            ;; in the file-sync-client-core-test namespace.
+            (testing "file sync client service is running"
+              (let [p (promise)]
+                (helpers/add-watch-and-deliver-new-state sync-agent p)
+                (let [new-state (deref p)]
+                  (is (= :successful (:status new-state))))
+                (is (= (get-latest-commits-for-repo repo)
+                       (jgit-utils/head-rev-id-from-git-dir client-repo-dir)))))
+
+            (testing "registered callback is not called when no fetch or clone is performed"
+              (let [p (promise)]
+                (reset! repo-atom {})
+                (helpers/add-watch-and-deliver-new-state sync-agent p)
+                (let [new-state (deref p)]
+                  (is (= :successful (:status new-state))))
+                (is (= {} @repo-atom))))
+
+            (testing "registered callback is called when a fetch is performed"
+              (helpers/push-test-commit! local-repo-dir)
+              (reset! repo-atom {})
+              (let [p (promise)]
+                (helpers/add-watch-and-deliver-new-state sync-agent p)
+                (let [new-state (deref p)
+                      repo-state @repo-atom]
+                  (is (= :successful (:status new-state)))
+                  (is (= :repo (:repo-id repo-state)))
+                  (is (= :synced (get-in repo-state [:repo-status :status])))
+                  (is (= (get-latest-commits-for-repo repo)
+                         (get-in repo-state [:repo-status :latest-commit]))))))))))))

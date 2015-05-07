@@ -9,14 +9,20 @@
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
-           (clojure.lang IFn Agent)
+           (clojure.lang IFn Agent Atom)
            (java.io IOException)
            (org.eclipse.jgit.api.errors GitAPIException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
 
-(def FileSyncClientServiceRawConfig
+(def ReposConfig
+  "A schema describing the configuration data for the repositories managed by
+  this service.  Each repository is a key-value pair; the key is the repo ID,
+  the value is the filesystem path to the repository."
+  {schema/Keyword schema/Str})
+
+(def Config
   "Schema defining the full content of the file sync client service
   configuration.
 
@@ -37,24 +43,41 @@
    :server-url                        schema/Str
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
-   :repos                             {schema/Keyword schema/Str}
+   :repos                             ReposConfig
    (schema/optional-key :ssl-cert)    schema/Str
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
 
-(def AgentError
+(def SyncError
   {:type                        (schema/eq ::error)
    :message                     String
    (schema/optional-key :cause) Exception})
 
-(defn agent-error? [x] (not (schema/check AgentError x)))
+(defn sync-error? [x] (not (schema/check SyncError x)))
+
+(def SingleRepoState
+  "A schema which describes a valid state of a repo after a sync"
+  (schema/if #(= (:status %) :failed)
+    {:status (schema/eq :failed)
+     :cause SyncError}
+    ;; It's possible for the latest commit to be nil if no
+    ;; commits have been made against the server-side repo, as the
+    ;; server's bare repo will still be cloned on the client-side.
+    {:status (schema/enum :synced :unchanged)
+     :latest-commit (schema/maybe schema/Str)}))
+
+(def RepoStates
+  "A schema which describes a map containing valid states for
+  numerous repos after a sync"
+  {schema/Str SingleRepoState})
 
 (def AgentState
   "A schema which describes a valid state of the agent."
   (schema/if #(= (:status %) :failed)
     {:status (schema/eq :failed)
-     :error  AgentError}
-    {:status (schema/enum :successful :created)}))
+     :error  SyncError}
+    {:status (schema/enum :successful :created :partial-success)
+     :repos  RepoStates}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -77,7 +100,7 @@
   "Request information about the latest commits available from the server.
   The latest commits are requested from the URL in the supplied
   `server-api-url` argument.  Returns the payload from the response.
-  Throws an 'AgentError' if an error occurs."
+  Throws an 'SyncError' if an error occurs."
   [client :- http-client/HTTPClient
    server-api-url :- schema/Str]
   (let [latest-commits-url (str
@@ -99,19 +122,15 @@
   [message name directory]
   (str message ".  Name: " name ".  Directory: " directory "."))
 
-(defn do-fetch!
-  "Fetch the latest content for a repository from the server.  'name' is
-  the name of the repository.  'latest-commit-id' is the ID of the latest
-  commit on the server for the repository.  'target-dir' is the location
-  in which the repository is intended to reside."
-  [name latest-commit-id target-dir]
+(defn fetch-if-necessary!
+  "Open target-dir as a Git repo; if latest-commit-id is different than the
+   latest commit ID in that repo, run 'git fetch'.  name is only used for
+   logging and error messages."
+  [name target-dir latest-commit-id]
   (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
-    (when-not (= (jgit-utils/head-rev-id repo) latest-commit-id)
-      (log/infof "File sync updating '%s' to %s" name latest-commit-id)
-      (jgit-utils/fetch repo)
-      (log/info
-        (str "File sync fetch of '" name "' successful.  New latest commit: "
-             (jgit-utils/head-rev-id repo))))
+    (when-not (= latest-commit-id (jgit-utils/head-rev-id repo))
+      (log/infof "Fetching '%s' to %s" name latest-commit-id)
+      (jgit-utils/fetch repo))
     (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a directory that already exists but does "
@@ -119,30 +138,27 @@
                name
                target-dir)))))
 
-(defn do-clone!
-  "Clone the latest content for a repository from the server.  'name' is
-  the name of the repository.  'server-repo-url' is the URL under which
-  the repository resides on the server.  'target-dir' is the directory in which
-  the client repository should be stored."
-  [name server-repo-url target-dir]
-  (log/infof "File sync cloning '%s' to: %s" name target-dir)
-  (let [git (jgit-utils/clone server-repo-url target-dir true)]
-    (log/info
-      (str "File sync clone of '" name "' successful.  New latest commit: "
-           (jgit-utils/head-rev-id (.getRepository git))))))
-
-(defn apply-updates-to-repo!
+(defn apply-updates-to-repo
   "Apply updates from the server to the client repository.  'name' is the
   name of the repository.  'server-repo-url' is the URL under which the
   repository resides on the server.  'latest-commit-id' is the id of the
   latest commit on the server for the repository.  'target-dir' is the
-  location in which the client repository is intended to reside."
+  location in which the client repository is intended to reside. Returns
+  the status information for the repo."
   [name server-repo-url latest-commit-id target-dir]
-  (let [fetch? (fs/exists? target-dir)]
+  (let [fetch? (fs/exists? target-dir)
+        clone? (not fetch?)
+        initial-commit-id (jgit-utils/head-rev-id-from-git-dir target-dir)]
     (try
-      (if fetch?
-        (do-fetch! name latest-commit-id target-dir)
-        (do-clone! name server-repo-url target-dir))
+      (if clone?
+        (jgit-utils/clone server-repo-url target-dir true)
+        (fetch-if-necessary! name target-dir latest-commit-id))
+      (let [current-commit-id (jgit-utils/head-rev-id-from-git-dir target-dir)
+            changed? (or clone? (not= current-commit-id initial-commit-id))]
+        (log/info (str (if fetch? "fetch" "clone") "of '" name
+                       "' successful.  New latest commit: " current-commit-id))
+        {:status        (if changed? :synced :unchanged)
+         :latest-commit current-commit-id})
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
@@ -151,57 +167,75 @@
                                  " from server repo")
                             name
                             target-dir)
-                 :cause e})))))
+                 :cause   e})))))
 
-(defn process-repo-for-updates!
+(defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'name' is the name of the repository.  'target-dir' is the location in
   which the client repository is intended to reside.  'latest-commit-id' is
-  the commit id of the latest commit in the server repo."
-  [server-repo-url name target-dir latest-commit-id]
-  (let [server-repo-url  (str server-repo-url "/" name)
-        target-dir       (fs/file target-dir)]
-    (apply-updates-to-repo! name server-repo-url latest-commit-id target-dir)))
+  the commit id of the latest commit in the server repo. Returns status information
+  about the sync process for the repo."
+  [server-repo-url name target-dir latest-commit-id callback-fn]
+  (let [server-repo-url (str server-repo-url "/" name)
+        target-dir (fs/file target-dir)
+        status (apply-updates-to-repo name
+                                      server-repo-url
+                                      latest-commit-id
+                                      target-dir)]
+    (when (and callback-fn (= :synced (:status status)))
+      (callback-fn (keyword name) status))
+    status))
 
-(defn process-repos-for-updates!
-  "Process through all of the repos configured with the
-  service for any updates which may be available on the server.
-  'server-repo-url' is the base URL at which the repository is hosted on the
-  server.  'repos' is the repos section of the file sync client configuration."
-  [client server-repo-base-url server-api-url repos]
-  (let [latest-commits (get-latest-commits-from-server client server-api-url)]
-    (log/debugf "File sync latest commits from server: %s" latest-commits)
-    (doseq [[repo-name target-dir] repos]
-      (let [name (name repo-name)]
-        (if (contains? latest-commits name)
-          (process-repo-for-updates! server-repo-base-url
-                                     name
-                                     target-dir
-                                     (latest-commits name))
-          (log/errorf
-            "File sync did not find matching server repo for client repo: %s"
-            name))))))
+(schema/defn process-repos-for-updates :- RepoStates
+  "Process the repositories for any updates which may be available on the server."
+  [repos :- ReposConfig
+   repo-base-url :- String
+   latest-commits :- common/LatestCommitsPayload
+   callbacks :- Atom]
+  (log/debugf "File sync latest commits from server: %s" latest-commits)
+  (into {}
+        (for [[repo-name target-dir] repos]
+          (let [name (name repo-name)]
+            (if (contains? latest-commits name)
+              (let [latest-commit (latest-commits name)]
+                (try+
+                  {name (process-repo-for-updates repo-base-url
+                                                  name
+                                                  target-dir
+                                                  latest-commit
+                                                  (get @callbacks repo-name))}
+                  (catch sync-error? e
+                    (log/errorf
+                      (str "Error syncing repo: " (:message e))
+                      name)
+                    {name {:status :failed
+                           :cause  e}})))
+              (log/errorf
+                "File sync did not find matching server repo for client repo: %s"
+                name))))))
 
 ; This function is marked 'always-validate' to ensure that the agent is always
 ; left in a valid state.
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
-  [agent-state config http-client]
-  (log/debug "file sync process running ...")
+  [agent-state
+   {:keys [server-url server-repo-path server-api-path repos]} :- Config
+   http-client
+   callbacks :- Atom]
+  (log/debug "File sync process running on repos " repos)
   (try+
-    (let [filesync-server-url (:server-url config)
-          server-repo-path (:server-repo-path config)
-          server-api-path (:server-api-path config)
-          repos (:repos config)]
-      (log/debugf "File sync client repos: %s" repos)
-      (process-repos-for-updates!
-        http-client
-        (str filesync-server-url server-repo-path)
-        (str filesync-server-url server-api-path)
-        repos)
-      {:status :successful})
-    (catch agent-error? error
+    (let [latest-commits (get-latest-commits-from-server http-client
+                                                         (str server-url server-api-path))
+          repo-states (process-repos-for-updates repos
+                                                 (str server-url server-repo-path)
+                                                 latest-commits
+                                                 callbacks)
+          full-success? (every? #(not= (:status %) :failed)
+                                (vals repo-states))]
+      {:status (if full-success? :successful :partial-success)
+       :repos repo-states})
+    (catch sync-error? error
       (let [message (str "File sync failure: " (:message error))]
         (if-let [cause (:cause error)]
           (log/error cause message)
@@ -239,7 +273,7 @@
                      (request-shutdown))))
 
 (schema/defn ^:always-validate start-periodic-sync-process!
-  "Synchronizes the repositories sypecified in 'config' by sending the agent an
+  "Synchronizes the repositories specified in 'config' by sending the agent an
   action.  It is important that this function only be called once, during service
   startup.  (Although, note that one-off sync runs can be triggered by sending
   the agent a 'sync-on-agent' action.)
@@ -248,12 +282,13 @@
   sync process to schedule the next iteration."
   [sync-agent :- Agent
    schedule-fn :- IFn
-   config :- FileSyncClientServiceRawConfig
-   http-client :- http-client/HTTPClient]
+   config :- Config
+   http-client :- http-client/HTTPClient
+   callbacks :- Atom]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))
-        send-to-agent #(send-off sync-agent periodic-sync config http-client)]
+        send-to-agent #(send-off sync-agent periodic-sync config http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]
