@@ -79,10 +79,10 @@
         (testing "Validate initial repo update"
           (let [initial-commit (jgit-utils/head-rev-id test-clone-repo)]
             (process-repo-for-updates helpers/server-repo-url
-                                       repo-name
-                                       client-repo-path
-                                       initial-commit
-                                       nil)
+                                      repo-name
+                                      client-repo-path
+                                      initial-commit
+                                      nil)
             (let [repo (jgit-utils/get-repository-from-git-dir client-repo-path)]
               (is (.isBare repo))
               (is (= initial-commit (jgit-utils/head-rev-id repo))))))
@@ -90,27 +90,27 @@
           (helpers/push-test-commit! test-clone-dir)
           (let [new-commit (jgit-utils/head-rev-id test-clone-repo)]
             (process-repo-for-updates helpers/server-repo-url
-                                       repo-name
-                                       client-repo-path
-                                       new-commit
-                                       nil)
+                                      repo-name
+                                      client-repo-path
+                                      new-commit
+                                      nil)
             (is (= new-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "No change when nothing pushed"
           (let [current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (process-repo-for-updates helpers/server-repo-url
-                                       repo-name
-                                       client-repo-path
-                                       current-commit
-                                       nil)
+                                      repo-name
+                                      client-repo-path
+                                      current-commit
+                                      nil)
             (is (= current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))))
         (testing "Files restored after repo directory deleted"
           (let [commit-id (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (fs/delete-dir client-repo-path)
             (process-repo-for-updates helpers/server-repo-url
-                                       repo-name
-                                       client-repo-path
-                                       commit-id
-                                       nil)
+                                      repo-name
+                                      client-repo-path
+                                      commit-id
+                                      nil)
             (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-path) commit-id))))))))
 
 (defn process-repos
@@ -166,7 +166,7 @@
                                           :nonexistent-repo     nonexistent-repo-callback}))]
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get state server-repo) {:status        :synced
-                                                      :latest-commit nil}))
+                                            :latest-commit nil}))
             (is (= :failed (get-in state [error-repo :status])))
             (is (not (nil? (get-in state [error-repo :cause]))))))
 
