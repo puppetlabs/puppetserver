@@ -28,7 +28,7 @@
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callbacks   (:callbacks context)]
+            callbacks   (deref (:callbacks context))]
         (core/start-periodic-sync-process!
           sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
