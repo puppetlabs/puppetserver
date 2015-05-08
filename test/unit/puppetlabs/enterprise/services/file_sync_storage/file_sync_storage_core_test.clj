@@ -2,66 +2,74 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
-            [puppetlabs.enterprise.file-sync-test-utils
-             :as helpers]
-            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
-             :refer :all]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.enterprise.jgit-utils :as jgit-utils]))
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils])
+  (:import (org.eclipse.jgit.api Git)
+           (org.eclipse.jgit.lib PersonIdent RepositoryBuilder)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(defn get-http-recievepack
-  [repo]
-  (-> repo
-      (jgit-utils/get-repository-from-git-dir)
-      (.getConfig)
-      (.getInt "http" "receivepack" (Integer/MIN_VALUE))))
+(deftest initialize-repos-test
+  (testing "A single repo"
+    (let [data-dir (helpers/temp-file-name "data")
+          repo-id "single-repo"
+          working-dir (helpers/temp-file-name repo-id)
+          git-dir (fs/file data-dir (str repo-id ".git"))]
+      (initialize-repos! {:data-dir data-dir
+                          :repos    {:single-repo {:working-dir working-dir}}})
+      (testing "The data dir is created"
+        (is (fs/exists? data-dir)))
+      (testing "The working dir and git dirs are created"
+        (is (fs/exists? working-dir))
+        (is (fs/exists? git-dir)))
+      (testing "The git dir is initialized correctly"
+        (is (not (nil? (jgit-utils/get-repository-from-git-dir git-dir))))
+        (is (.isBare (jgit-utils/get-repository-from-git-dir git-dir)))
+        (is (nil? (jgit-utils/head-rev-id-from-git-dir git-dir))))
+      (testing "The working dir can be used as a git working tree"
+        (spit (fs/file working-dir "test-file") "howdy")
+        (let [repo (jgit-utils/get-repository git-dir working-dir)]
+          (is (jgit-utils/add-and-commit
+                (Git/wrap repo) "test commit" (PersonIdent. "me" "me@you.com")))
+          (is (jgit-utils/head-rev-id repo)))))))
 
-(deftest initialize-bare-repo!-test
-  (testing "The repo's 'http.receivepack' setting should be 0 when the
-           'allow-anonymous-push?' parameter is false."
-    (let [repo (ks/temp-dir)]
-      (initialize-bare-repo! repo false)
-      (let [receivepack (get-http-recievepack repo)]
-        (is (= 0 receivepack)))))
+(defn commit!
+  [& repos]
+  (doseq [repo repos]
+    (jgit-utils/add-and-commit
+      (Git/wrap repo)
+      "test commit"
+      (PersonIdent. "test" "test@test.com"))))
 
-  (testing "The repo's 'http.receivepack' setting should be 1 when the
-           'allow-anonymous-push?' parameter is true."
-    (let [repo (ks/temp-dir)]
-    (initialize-bare-repo! repo true)
-    (let [receivepack (get-http-recievepack repo)]
-      (is (= 1 receivepack))))))
-
-(deftest initialize-repos!-test
-  (let [base-dir (fs/file (ks/temp-dir) "base")
-        repos {:sub1 {:working-dir "sub1-dir"}
-               :sub2 {:working-dir "sub2-dir"}
-               :sub3 {:working-dir "sub3-dir/subsub3"}}
-        config   (helpers/file-sync-storage-config-payload
-                   (.getPath base-dir)
-                   repos)]
-    (testing "Vector of repos can be initialized"
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
-            (str "Repo at " sub-path "has incorrect http-recievepack setting"))))
+(deftest reinitialize-repos-test
+  (let [data-dir          (fs/temp-dir "data")
+        repo1-id          "repo1"
+        repo2-id          "repo2"
+        repo1-working-dir (fs/temp-dir repo1-id)
+        repo2-working-dir (fs/temp-dir repo2-id)
+        config            {:data-dir data-dir
+                           :repos    {:repo1 {:working-dir repo1-working-dir}
+                                      :repo2 {:working-dir repo2-working-dir}}}]
+    (testing "Multiple repos can be initialized"
+      (initialize-repos! config))
     (testing "Content in repos not wiped out during reinitialization"
-      (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
-          (ks/mkdirs! (.getParentFile file-to-check))
-          (fs/touch file-to-check)))
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (let [file-to-check (fs/file base-dir sub-path (str sub-path ".txt"))]
-          (is (fs/exists? file-to-check)
-            (str "Expected file missing after repo reinitialization: "
-                 file-to-check)))))
-    (testing "Http receive pack for repos restored to 1 after reinitialization"
-      (doseq [sub-path (map name (keys repos))]
-        (fs/delete (fs/file base-dir sub-path "config")))
-      (initialize-repos! config)
-      (doseq [sub-path (map name (keys repos))]
-        (is (= 1 (get-http-recievepack (fs/file base-dir (str sub-path ".git"))))
-            (str "Repo at " sub-path "has incorrect http-recievepack setting"))))))
-
+      (let [repo1-git-dir (fs/file data-dir (str repo1-id ".git"))
+            repo2-git-dir (fs/file data-dir (str repo2-id ".git"))
+            repo1 (jgit-utils/get-repository repo1-git-dir repo1-working-dir)
+            repo2 (jgit-utils/get-repository repo2-git-dir repo2-working-dir)]
+        (spit (fs/file repo1-working-dir "test-file1") "foo")
+        (spit (fs/file repo2-working-dir "test-file2") "bar")
+        (commit! repo1 repo2)
+        (let [head-rev-id1 (jgit-utils/head-rev-id repo1)
+              head-rev-id2 (jgit-utils/head-rev-id repo2)]
+          (initialize-repos! config)
+          (testing "Git repos have same HEAD after reinitialization."
+            (is (= head-rev-id1 (jgit-utils/head-rev-id repo1)))
+            (is (= head-rev-id2 (jgit-utils/head-rev-id repo2))))
+          (testing "Working dirs are unnaffected."
+            (is (= ["test-file1"] (fs/list-dir repo1-working-dir)))
+            (is (= "foo" (slurp (fs/file repo1-working-dir "test-file1"))))
+            (is (= ["test-file2"] (fs/list-dir repo2-working-dir)))
+            (is (= "bar" (slurp (fs/file repo2-working-dir "test-file2"))))))))))

@@ -151,38 +151,37 @@
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
-(defn get-repository-from-working-tree
-  "Get a JGit Repository object using the supplied directory as the
-  working tree. Returns nil if no repository exists with the supplied
-  directory as working tree."
-  [repo-dir]
-  {:pre [(instance? File repo-dir)]
-   :post [(or (nil? %) (instance? Repository %))]}
-  (if-let [repo (-> (RepositoryBuilder.)
-                    (.setWorkTree repo-dir)
-                    (.build))]
-    (if (-> repo
-            (.getObjectDatabase)
-            (.exists))
-      repo
-      nil)))
+(schema/defn get-repository :- Repository
+  "Given a path to a Git repository and a working tree, return a Repository instance."
+  [repo working-tree]
+  (.. (RepositoryBuilder.)
+      (setGitDir (io/as-file repo))
+      (setWorkTree (io/as-file working-tree))
+      (build)))
 
-(defn get-repository-from-git-dir
-  "Get a JGit Repository object using the supplied directory as the git
-  dir (for instance, when the supplied directory is a bare repo).
-  Returns nil if no repository exists with the supplied directory as git
-  dir."
-  [repo-dir]
-  {:pre [(instance? File repo-dir)]
-   :post [(or (nil? %) (instance? Repository %))]}
-  (if-let [repo (-> (RepositoryBuilder.)
-                    (.setGitDir repo-dir)
-                    (.build))]
-    (if (-> repo
-            (.getObjectDatabase)
-            (.exists))
-      repo
-      nil)))
+(schema/defn get-repository-from-working-tree :- (schema/maybe Repository)
+  "Given a path to a working tree, return a Repository instance,
+   or nil if no repository exists in $path/.git."
+  [path]
+  (if-let [repo (.. (RepositoryBuilder.)
+                    (setWorkTree (io/as-file path))
+                    (build))]
+    (when (.. repo
+              (getObjectDatabase)
+              (exists))
+      repo)))
+
+(schema/defn get-repository-from-git-dir :- (schema/maybe Repository)
+  "Given a path to a Git repository (i.e., a .git directory) return a
+   Repository instance, or nil if no repository exists at path."
+  [path]
+  (if-let [repo (.. (RepositoryBuilder.)
+                    (setGitDir (io/as-file path))
+                    (build))]
+    (when (.. repo
+              (getObjectDatabase)
+              (exists))
+      repo)))
 
 (defn head-rev-id
   "Returns the SHA-1 revision ID of a repository on disk.  Like
