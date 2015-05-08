@@ -164,8 +164,8 @@
                                     (keyword error-repo)            client-target-repo-error
                                     :process-repos-test-nonexistent client-target-repo-nonexistent}
                                    client false
-                                   (atom {(keyword server-repo) server-repo-callback
-                                          :nonexistent-repo     nonexistent-repo-callback}))]
+                                   {(keyword server-repo) server-repo-callback
+                                    :nonexistent-repo     nonexistent-repo-callback})]
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get state server-repo) {:status        :synced
                                             :latest-commit nil}))
@@ -222,3 +222,9 @@
         ; These two assertions are equivalent.
         (is shutdown-requested?)
         (is @shutdown-atom)))))
+
+(deftest register-callback-test
+  (testing "register-callback! throws an error if callback is not a function"
+    (is (thrown?
+          IllegalArgumentException
+          (register-callback! {} :test 123)))))

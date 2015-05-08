@@ -9,7 +9,7 @@
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
-           (clojure.lang IFn Agent Atom)
+           (clojure.lang IFn Agent)
            (java.io IOException)
            (org.eclipse.jgit.api.errors GitAPIException)))
 
@@ -192,7 +192,7 @@
   [repos :- ReposConfig
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
-   callbacks :- Atom]
+   callbacks]
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
         (for [[repo-name target-dir] repos]
@@ -204,7 +204,7 @@
                                                   name
                                                   target-dir
                                                   latest-commit
-                                                  (get @callbacks repo-name))}
+                                                  (get callbacks repo-name))}
                   (catch sync-error? e
                     (log/errorf
                       (str "Error syncing repo: " (:message e))
@@ -222,7 +222,7 @@
   [agent-state
    {:keys [server-url server-repo-path server-api-path repos]} :- Config
    http-client
-   callbacks :- Atom]
+   callbacks]
   (log/debug "File sync process running on repos " repos)
   (try+
     (let [latest-commits (get-latest-commits-from-server http-client
@@ -245,6 +245,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(defn register-callback!
+  "Given the client service's context, registers a callback function.
+   Throws an exception if the callback is not a function."
+  [context repo-id callback-fn]
+  (when-not (instance? IFn callback-fn)
+    (throw
+      (IllegalArgumentException.
+        "Error: callback must be a function")))
+  (swap! (:callbacks context) assoc repo-id callback-fn))
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
   "Ensures that the JGit client is configured for SSL, if necessary.  The JGit
@@ -284,7 +294,7 @@
    schedule-fn :- IFn
    config :- Config
    http-client :- http-client/HTTPClient
-   callbacks :- Atom]
+   callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))

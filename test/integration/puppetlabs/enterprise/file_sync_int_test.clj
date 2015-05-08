@@ -14,6 +14,7 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
@@ -263,6 +264,22 @@
                     (is (= (get-latest-commits-for-repo repo2)
                            (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))))))))))))
 
+(defprotocol CallbackService)
+
+;; Used to register a callback, since they can only be
+;; registered in the init phase
+(tk/defservice callback-service
+  CallbackService
+  [[:FileSyncClientService register-callback]]
+  (init [this context]
+    (let [repo-atom (atom {})]
+      (register-callback :repo
+                         (fn [repo-id repo-status]
+                           (swap! repo-atom
+                                  #(assoc % :repo-id repo-id
+                                            :repo-status repo-status))))
+      (assoc context :atom repo-atom))))
+
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
     (let [repo "repo"
@@ -275,7 +292,8 @@
            file-sync-storage-service/file-sync-storage-service
            webrouting-service/webrouting-service
            file-sync-client-service/file-sync-client-service
-           scheduler-service/scheduler-service]
+           scheduler-service/scheduler-service
+           callback-service]
           (merge (helpers/storage-service-config-with-repos
                    data-dir
                    {(keyword repo) {:working-dir repo}}
@@ -284,14 +302,9 @@
                    {(keyword repo) (str client-repo-dir)}
                    false))
           (let [local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)
-                client-service (tk-app/get-service app :FileSyncClientService)
                 sync-agent (helpers/get-sync-agent app)
-                repo-atom (atom {})]
-            (file-sync-client-service/register-callback client-service :repo
-                                                        (fn [repo-id repo-status]
-                                                          (swap! repo-atom
-                                                                 #(assoc % :repo-id repo-id
-                                                                           :repo-status repo-status))))
+                svc (tk-app/get-service app :CallbackService)
+                repo-atom (:atom (tk-services/service-context svc))]
 
             ;; This test does not test that the callback function is called when
             ;; a clone is performed, as that is handled in the process-repos-for-updates-test
