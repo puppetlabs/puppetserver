@@ -249,8 +249,8 @@
        :puppetlabs.services.request-handler.request-handler-core/bad-request)))
 
 (defn jruby-timeout?
-  [x]
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
+  [x]
   (when (map? x)
     (= (:type x)
        :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
