@@ -246,6 +246,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+(defn register-callback!
+  "Given the client service's context, registers a callback function.
+   Throws an exception if the callback is not a function."
+  [context repo-id callback-fn]
+  (when-not (instance? IFn callback-fn)
+    (throw
+      (IllegalArgumentException.
+        "Error: callback must be a function")))
+  (swap! (:callbacks context) assoc repo-id callback-fn))
+
 (schema/defn ^:always-validate configure-jgit-client-ssl!
   "Ensures that the JGit client is configured for SSL, if necessary.  The JGit
   client's connection is configured through global state, via the static

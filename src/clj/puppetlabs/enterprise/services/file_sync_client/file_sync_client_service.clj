@@ -3,7 +3,8 @@
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tks]
-            [puppetlabs.ssl-utils.core :as ssl]))
+            [puppetlabs.ssl-utils.core :as ssl]
+            [schema.core :as schema]))
 
 (defprotocol FileSyncClientService
   (register-callback [this repo-id callback-fn]))
@@ -36,7 +37,7 @@
 
   (register-callback [this repo-id callback-fn]
     (let [context (tks/service-context this)]
-      (swap! (:callbacks context) #(assoc % repo-id callback-fn))))
+      (core/register-callback! context repo-id callback-fn)))
 
   (stop [this context]
     (log/info "Stopping file sync client service")

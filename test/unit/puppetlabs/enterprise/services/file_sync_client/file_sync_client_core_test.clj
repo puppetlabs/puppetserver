@@ -222,3 +222,9 @@
         ; These two assertions are equivalent.
         (is shutdown-requested?)
         (is @shutdown-atom)))))
+
+(deftest register-callback-test
+  (testing "register-callback! throws an error if callback is not a function"
+    (is (thrown?
+          IllegalArgumentException
+          (register-callback! {} :test 123)))))
