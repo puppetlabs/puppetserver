@@ -103,16 +103,6 @@
     (catch Exception e
       (throw (Exception. "Unable to create file sync data-dir." e)))))
 
-(defn initialize-working-dir!
-  [working-dir]
-  (try+
-    (ks/mkdirs! working-dir)
-    (catch [:type :puppetlabs.kitchensink.core/io-error] {:keys [message]}
-      ; The working directory could not be created.  Swallow the exception -
-      ; this should not cause the server to crash - it's reasonable to expect
-      ; a user to create this on their own.
-      (log/warn "Working directory" working-dir "could not be created:" message))))
-
 (defn initialize-bare-repo!
   "Initialize a bare Git repository in the directory specified by 'path'."
   [path]
@@ -255,7 +245,8 @@
     (doseq [[repo-id repo-info] (:repos config)]
       (let [working-dir (:working-dir repo-info)
             git-dir (fs/file data-dir (str (name repo-id) ".git"))]
-        ; If the working dir doesn't exist, try to create it
-        (initialize-working-dir! working-dir)
+        ; Create the working dir, if it does not already exist.
+        (when-not (fs/exists? working-dir)
+          (ks/mkdirs! working-dir))
         (log/infof "Initializing Git repository at %s" git-dir )
         (initialize-bare-repo! git-dir)))))
