@@ -64,6 +64,8 @@
                    (request-handler request))
     (comidi/GET ["/resource_types/" [#".*" :rest]] request
                    (request-handler request))
+    (comidi/GET ["/status/" [#".*" :rest]] request
+                   (request-handler request))
 
     ;; TODO: when we get rid of the legacy dashboard after 3.4, we should remove
     ;; this endpoint as well.  It makes more sense for this type of query to be

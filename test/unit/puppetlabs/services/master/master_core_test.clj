@@ -32,6 +32,7 @@
                    "file_bucket_file"
                    "resource_type"
                    "resource_types"
+                   "status"
                    "facts_search"]
              :post ["catalog"]
              :put ["file_bucket_file"
