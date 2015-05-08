@@ -7,7 +7,8 @@
             [schema.core :as schema]))
 
 (defprotocol FileSyncClientService
-  (register-callback [this repo-id callback-fn]))
+  (register-callback [this repo-id callback-fn])
+  (sync-working-dir [this repo-id working-dir]))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
@@ -33,11 +34,17 @@
         (core/start-periodic-sync-process!
           sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
-                       :http-client http-client))))
+                       :http-client http-client
+                       :config config))))
 
   (register-callback [this repo-id callback-fn]
     (let [context (tks/service-context this)]
       (core/register-callback! context repo-id callback-fn)))
+
+  (sync-working-dir [this repo-id working-dir]
+    (core/sync-working-dir! (get-in (tks/service-context this) [:config :repos])
+                            repo-id
+                            working-dir))
 
   (stop [this context]
     (log/info "Stopping file sync client service")

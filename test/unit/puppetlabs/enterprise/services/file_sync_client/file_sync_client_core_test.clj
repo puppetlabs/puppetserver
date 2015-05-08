@@ -228,3 +228,64 @@
     (is (thrown?
           IllegalArgumentException
           (register-callback! {} :test 123)))))
+
+(deftest sync-working-dir-test
+  (let [git-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        local-repo-dir (helpers/temp-dir-as-string)
+        repo-config {:test-repo git-dir}]
+    (helpers/init-bare-repo! (fs/file git-dir))
+    (let [local-temp-file (str local-repo-dir "/temp-test")
+          working-temp-file (str working-dir "/temp-test")
+          local-temp-file-2 (str local-repo-dir "/temp-test-2")
+          working-temp-file-2 (str working-dir "/temp-test-2")
+          temp-file-1-content "temp file 1 content"
+          temp-file-2-content "temp file 2 content"
+          local-repo (helpers/init-repo! (fs/file local-repo-dir))]
+
+      (fs/touch local-temp-file)
+      (spit local-temp-file temp-file-1-content)
+      (fs/touch local-temp-file-2)
+      (spit local-temp-file-2 temp-file-2-content)
+      (jgit-utils/add-and-commit local-repo "a test commit" helpers/author)
+      (jgit-utils/push local-repo git-dir)
+
+      (testing "working dir should not have test file"
+        (is (fs/exists? local-temp-file))
+        (is (fs/exists? local-temp-file-2))
+        (is (= temp-file-1-content (slurp local-temp-file)))
+        (is (= temp-file-2-content (slurp local-temp-file-2)))
+        (is (not (fs/exists? working-temp-file)))
+        (is (not (fs/exists? working-temp-file-2))))
+
+      (testing (str "sync-working-dir! successfully instantiates the contents of "
+                    "a bare repo into a working directory")
+        (sync-working-dir! repo-config :test-repo working-dir)
+        (is (fs/exists? working-temp-file))
+        (is (fs/exists? working-temp-file-2))
+        (is (= temp-file-1-content (slurp working-temp-file)))
+        (is (= temp-file-2-content (slurp working-temp-file-2))))
+
+      (testing (str "sync-working-dir! should reflect changes made in the "
+                    "bare repo when the working dir was previously instantiated")
+
+        (fs/delete local-temp-file-2)
+        (jgit-utils/add-and-commit local-repo
+                                   "a second test commit"
+                                   helpers/author)
+        (jgit-utils/push local-repo git-dir)
+
+        (testing "working dir should still contain the deleted test file"
+          (is (fs/exists? working-temp-file-2))
+          (is (not (fs/exists? local-temp-file-2))))
+
+        (testing "contents of working-dir should be overridden when synced"
+          (sync-working-dir! repo-config :test-repo working-dir)
+          (is (fs/exists? working-temp-file))
+          (is (not (fs/exists? working-temp-file-2)))
+          (is (= temp-file-1-content (slurp working-temp-file)))))
+
+      (testing (str "sync-working-dir! should throw an exception if the "
+                    "desired repo doesn't exist")
+        (is (thrown? IllegalArgumentException
+                     (sync-working-dir! repo-config :fake working-dir)))))))

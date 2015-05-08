@@ -335,3 +335,51 @@
                   (is (= :synced (get-in repo-state [:repo-status :status])))
                   (is (= (get-latest-commits-for-repo repo)
                          (get-in repo-state [:repo-status :latest-commit]))))))))))))
+
+(deftest ^:integration working-dir-sync-test
+  (let [repo "repo"
+        data-dir (helpers/temp-dir-as-string)
+        client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+        client-working-dir (fs/file (helpers/temp-dir-as-string))]
+    (with-test-logging
+      (bootstrap/with-app-with-config
+        app
+        [jetty-service/jetty9-service
+         file-sync-storage-service/file-sync-storage-service
+         webrouting-service/webrouting-service
+         file-sync-client-service/file-sync-client-service
+         scheduler-service/scheduler-service]
+        (merge (helpers/storage-service-config-with-repos
+                 data-dir
+                 {(keyword repo) {:working-dir repo}}
+                 false)
+               (helpers/client-service-config-with-repos
+                 {(keyword repo) (str client-repo-dir)}
+                 false))
+        (let [local-repo-dir (fs/file (helpers/clone-and-push-test-commit! repo data-dir))
+              client-service (tk-app/get-service app :FileSyncClientService)
+              sync-agent (helpers/get-sync-agent app)]
+
+          (fs/mkdir client-working-dir)
+
+          ;; A sync needs to be performed so that we can then sync the working
+          ;; dir
+          (testing "file sync client service is running"
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+            (is (= (get-latest-commits-for-repo repo)
+                   (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
+
+          (testing "local dir and client working dir should have correct contents"
+            (is (nil? (fs/list-dir client-working-dir)))
+            (is (not (nil? (fs/list-dir local-repo-dir)))))
+
+          (testing (str "client working dir is properly synced when "
+                        "service function is called")
+            (file-sync-client-service/sync-working-dir client-service
+                                                       (keyword repo)
+                                                       (str client-working-dir))
+            (is (= (fs/list-dir client-working-dir)
+                   (filter #(not= ".git" %)
+                           (fs/list-dir local-repo-dir))))
+            (is (not (nil? (fs/list-dir client-working-dir))))))))))

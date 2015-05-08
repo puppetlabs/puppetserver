@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.jgit-utils
-  (:import (org.eclipse.jgit.api Git)
+  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
-                                 Repository)
+                                 Repository Ref)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
@@ -109,6 +109,21 @@
       (Git.)
       (.fetch)
       (.setRemote "origin")
+      (.call)))
+
+(schema/defn ^:always-validate
+  hard-reset :- Ref
+  "Perform a hard git-reset of the provided repo. Returns a Ref or
+  throws one of the following Exceptions from the org.eclipse.jgit.api.errors
+  package:
+
+  * GitAPIException
+  * CheckoutConflictException"
+  [repo :- Repository]
+  (-> repo
+      (Git.)
+      (.reset)
+      (.setMode ResetCommand$ResetType/HARD)
       (.call)))
 
 (defn push
