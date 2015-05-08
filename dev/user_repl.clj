@@ -10,6 +10,7 @@
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
             [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
             [puppetlabs.services.puppet-admin.puppet-admin-service :refer [puppet-admin-service]]
+            [puppetlabs.services.legacy-routes.legacy-routes-service :refer [legacy-routes-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
@@ -61,7 +62,8 @@
                request-handler-service
                puppet-server-config-service
                certificate-authority-service
-               puppet-admin-service]
+               puppet-admin-service
+               legacy-routes-service]
               (puppet-server-conf))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
