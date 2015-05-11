@@ -288,4 +288,13 @@
       (testing (str "sync-working-dir! should throw an exception if the "
                     "desired repo doesn't exist")
         (is (thrown? IllegalArgumentException
-                     (sync-working-dir! repo-config :fake working-dir)))))))
+                     (sync-working-dir! repo-config :fake working-dir))))
+
+      (testing (str "sync-working-dir! should throw an exception if the "
+                    "desired working dir doesn't exist")
+        (let [fake-dir (fs/temp-name "test")]
+          (is (not (fs/exists? fake-dir)))
+          (is (thrown-with-msg?
+                IllegalStateException
+                #"Directory test.*must exist on disk to be synced as a working directory"
+                (sync-working-dir! repo-config :test-repo fake-dir))))))))
