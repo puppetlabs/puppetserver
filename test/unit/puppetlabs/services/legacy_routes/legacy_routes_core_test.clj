@@ -31,6 +31,7 @@
 (def accept-header-s-pson-examples
   (assoc accept-header-common-examples
     "s, pson, raw" "binary"
+    "pson, s, raw, foo" "binary, foo"
     "s, pson, foo" "binary, foo"))
 
 ;

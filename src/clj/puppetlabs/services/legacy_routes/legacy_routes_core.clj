@@ -26,17 +26,29 @@
         (str/join ", " (distinct (replace {"raw" "binary"} vals)))))
     request))
 
-(defn- map-accept-s-pson-to-binary
-  "Convert Accept: s, pson media types to Accept: binary given a ring request
-  map.  This method should only be used to munge file_bucket_file API requests
-  from legacy agents speaking to a contemporary master."
+(defn- map-accept-s-to-binary
+  "Convert Accept: s media types to Accept: binary given a ring request map.
+  This method should only be used to munge file_bucket_file API requests from
+  legacy agents speaking to a contemporary master."
   [request]
   (if-let [accept (get-in request [:headers "accept"])]
-    (let [v4-accept-val "binary"
-          vals (str/split accept #"\s*,\s*")                ; BAD! see RFC-2616
+    (let [vals (str/split accept #"\s*,\s*")                ; BAD! see RFC-2616
           munged-accept (->> vals
-                          (replace {"s" v4-accept-val "pson" v4-accept-val})
+                          (replace {"s" "binary"})
                           (distinct)
+                          (str/join ", "))]
+      (assoc-in request [:headers "accept"] munged-accept))
+    request))
+
+(defn- remove-accept-pson
+  "Remove Accept: pson values given a ring request map. This method should only
+  be used to munge file_bucket_file API requests from legacy agents speaking to
+  a contemporary master."
+  [request]
+  (if-let [accept (get-in request [:headers "accept"])]
+    (let [vals (str/split accept #"\s*,\s*")                ; BAD! see RFC-2616
+          munged-accept (->> vals
+                          (remove #(= "pson" (str/lower-case %)))
                           (str/join ", "))]
       (assoc-in request [:headers "accept"] munged-accept))
     request))
@@ -85,7 +97,10 @@
     (compojure/GET "/file_metadatas/*" request (master-request-handler request))
     (compojure/GET "/file_metadata/*" request (master-request-handler request))
     (compojure/GET "/file_bucket_file/*" request
-      (master-request-handler (map-accept-s-pson-to-binary request)))
+      (master-request-handler
+        (-> request
+          (map-accept-s-to-binary)
+          (remove-accept-pson))))
     ;; TODO: file_bucket_file request PUTs from Puppet agents currently use a
     ;; Content-Type of 'text/plain', which, per HTTP specification, would imply
     ;; a default character encoding of ISO-8859-1 or US-ASCII be used to decode
@@ -99,11 +114,15 @@
     (compojure/PUT "/file_bucket_file/*" request
       (master-request-handler
         (-> request
-          (map-accept-s-pson-to-binary)
+          (map-accept-s-to-binary)
+          (remove-accept-pson)
           (assoc :content-type "application/octet-stream") ; deprecated in ring >= 1.2
           (assoc-in [:headers "content-type"] "application/octet-stream")))) ; ring >= 1.2 spec
     (compojure/HEAD "/file_bucket_file/*" request
-      (master-request-handler (map-accept-s-pson-to-binary request)))
+      (master-request-handler
+        (-> request
+          (map-accept-s-to-binary)
+          (remove-accept-pson))))
     (compojure/GET "/catalog/*" request (master-request-handler request))
     (compojure/POST "/catalog/*" request (master-request-handler request))
     (compojure/PUT "/report/*" request (master-request-handler request))
