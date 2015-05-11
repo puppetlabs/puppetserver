@@ -17,8 +17,8 @@
   neither does Accept: raw or Accept: binary
 
   The split on `,` is naive, the method should take into account `;` parameters
-  and the such to be RFC compliant, but puppet agent does not use this format
-  so implementing the full spec is unnecessary."
+  and such to be RFC compliant, but puppet agent does not use this format so
+  implementing the full spec is unnecessary."
   [request]
   (if-let [accept (get-in request [:headers "accept"])]
     (let [vals (str/split accept #"\s*,\s*")]               ; BAD! See RFC-2616
@@ -133,8 +133,8 @@
 ;;; Public
 
 (defn build-ring-handler
-  [master-handler master-mount master-api-verion
+  [master-handler master-mount master-api-version
    ca-handler ca-mount ca-api-version]
   (legacy-routes
-    #(request-compatibility-wrapper master-handler master-mount master-api-verion %)
+    #(request-compatibility-wrapper master-handler master-mount master-api-version %)
     #(request-compatibility-wrapper ca-handler ca-mount ca-api-version %)))

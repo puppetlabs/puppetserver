@@ -33,8 +33,12 @@
     "s, pson, raw" "binary"
     "s, pson, foo" "binary, foo"))
 
-; [path [method [example expected]]]
+;
 (def accept-header-test-data
+  "Nested map of request data.  The map keys represent URI paths, the request
+  method, the example input, and the expected output.
+
+  {path {method {example expected}}}"
   {
    "/" {:head {"raw" "raw"}
         :post {"raw" "raw"}
@@ -57,7 +61,7 @@
     (handler req)))
 
 (defn validating-app
-  "Return a ring app with the results of build-ring-handler wrapped around a an
+  "Return a ring app with the results of build-ring-handler wrapped around an
   assertion-wrapper middleware as the master-handler.  The identity function is
   the ca-handler."
   [assertion]
