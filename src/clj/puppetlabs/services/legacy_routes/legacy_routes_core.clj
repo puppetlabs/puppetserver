@@ -101,16 +101,8 @@
         (-> request
           (map-accept-s-to-binary)
           (remove-accept-pson))))
-    ;; TODO: file_bucket_file request PUTs from Puppet agents currently use a
-    ;; Content-Type of 'text/plain', which, per HTTP specification, would imply
-    ;; a default character encoding of ISO-8859-1 or US-ASCII be used to decode
-    ;; the data.  This would be incorrect to do in this case, however, because
-    ;; the actual payload is "binary".  Coercing this to
-    ;; "application/octet-stream" for now as this is synonymous with "binary".
-    ;; This should be removed when/if Puppet agents start using an appropriate
-    ;; Content-Type to describe the input payload - see PUP-3812 for the core
-    ;; Puppet work and SERVER-294 for the related Puppet Server work that
-    ;; would be done.
+    ;; Coercing Content-Type to "application/octet-stream" for Puppet 4
+    ;; compatibility.
     (compojure/PUT "/file_bucket_file/*" request
       (master-request-handler
         (-> request
