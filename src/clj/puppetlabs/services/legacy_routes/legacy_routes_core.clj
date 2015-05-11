@@ -11,46 +11,21 @@
 
 ; TODO: Improve the naive parsing here with a real library like
 ; https://github.com/ToBeReplaced/http-accept-headers
-(defn- map-accept-raw-to-binary
-  "Convert Accept: raw media types to Accept: binary.  NOTE: This method does
-  not conform to RFC-2616 Accept: header specification, but then again
-  neither does Accept: raw or Accept: binary
+(defn- map-accept-header
+  "Convert Accept: raw, s media types to Accept: binary.  NOTE: This method does
+  not conform to RFC-2616 Accept: header specification.
 
   The split on `,` is naive, the method should take into account `;` parameters
   and such to be RFC compliant, but puppet agent does not use this format so
   implementing the full spec is unnecessary."
   [request]
   (if-let [accept (get-in request [:headers "accept"])]
-    (let [vals (str/split accept #"\s*,\s*")]               ; BAD! See RFC-2616
+    (let [vals (map str/lower-case (str/split accept #"\s*,\s*"))]
       (assoc-in request [:headers "accept"]
-        (str/join ", " (distinct (replace {"raw" "binary"} vals)))))
-    request))
-
-(defn- map-accept-s-to-binary
-  "Convert Accept: s media types to Accept: binary given a ring request map.
-  This method should only be used to munge file_bucket_file API requests from
-  legacy agents speaking to a contemporary master."
-  [request]
-  (if-let [accept (get-in request [:headers "accept"])]
-    (let [vals (str/split accept #"\s*,\s*")                ; BAD! see RFC-2616
-          munged-accept (->> vals
-                          (replace {"s" "binary"})
-                          (distinct)
-                          (str/join ", "))]
-      (assoc-in request [:headers "accept"] munged-accept))
-    request))
-
-(defn- remove-accept-pson
-  "Remove Accept: pson values given a ring request map. This method should only
-  be used to munge file_bucket_file API requests from legacy agents speaking to
-  a contemporary master."
-  [request]
-  (if-let [accept (get-in request [:headers "accept"])]
-    (let [vals (str/split accept #"\s*,\s*")                ; BAD! see RFC-2616
-          munged-accept (->> vals
-                          (remove #(= "pson" (str/lower-case %)))
-                          (str/join ", "))]
-      (assoc-in request [:headers "accept"] munged-accept))
+        (->> vals
+          (replace {"raw" "binary", "s" "binary"})
+          (distinct)
+          (str/join ", "))))
     request))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -67,7 +42,7 @@
                        (ring-codec/form-decode query-string))]
     (let [compat-request
           (-> request
-              (map-accept-raw-to-binary)
+              (map-accept-header)
               (assoc :path-info    (str "/" api-version path-info)
                      :context      mount-point
                      :uri          (str mount-point "/" api-version path-info)
@@ -96,25 +71,15 @@
     (compojure/GET "/file_content/*" request (master-request-handler request))
     (compojure/GET "/file_metadatas/*" request (master-request-handler request))
     (compojure/GET "/file_metadata/*" request (master-request-handler request))
-    (compojure/GET "/file_bucket_file/*" request
-      (master-request-handler
-        (-> request
-          (map-accept-s-to-binary)
-          (remove-accept-pson))))
+    (compojure/GET "/file_bucket_file/*" request (master-request-handler request))
     ;; Coercing Content-Type to "application/octet-stream" for Puppet 4
     ;; compatibility.
     (compojure/PUT "/file_bucket_file/*" request
       (master-request-handler
         (-> request
-          (map-accept-s-to-binary)
-          (remove-accept-pson)
           (assoc :content-type "application/octet-stream") ; deprecated in ring >= 1.2
           (assoc-in [:headers "content-type"] "application/octet-stream")))) ; ring >= 1.2 spec
-    (compojure/HEAD "/file_bucket_file/*" request
-      (master-request-handler
-        (-> request
-          (map-accept-s-to-binary)
-          (remove-accept-pson))))
+    (compojure/HEAD "/file_bucket_file/*" request (master-request-handler request))
     (compojure/GET "/catalog/*" request (master-request-handler request))
     (compojure/POST "/catalog/*" request (master-request-handler request))
     (compojure/PUT "/report/*" request (master-request-handler request))

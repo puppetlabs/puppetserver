@@ -26,13 +26,13 @@
 
 (def accept-header-raw-examples
   (assoc accept-header-common-examples
-    "s, pson, raw" "s, pson, binary"))
+    "s, pson, raw" "binary, pson"))
 
 (def accept-header-s-pson-examples
   (assoc accept-header-common-examples
-    "s, pson, raw" "binary"
-    "pson, s, raw, foo" "binary, foo"
-    "s, pson, foo" "binary, foo"))
+    "s, pson, raw" "binary, pson"
+    "pson, s, raw, foo" "pson, binary, foo"
+    "s, pson, foo" "binary, pson, foo"))
 
 ;
 (def accept-header-test-data
