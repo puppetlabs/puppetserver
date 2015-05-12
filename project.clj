@@ -25,6 +25,7 @@
                   :exclusions [org.apache.httpcomponents/httpclient]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.apache ~jgit-version
                   :exclusions [org.apache.httpcomponents/httpclient]]
+                 [prismatic/schema "0.4.0"]
                  [puppetlabs/ssl-utils "0.8.0"]]
 
   :pedantic? :abort
