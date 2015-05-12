@@ -10,7 +10,8 @@
             [puppetlabs.services.master.master-service :as master-service]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
@@ -33,3 +34,17 @@
       (is (= 200 (:status (http-get "/production/node/localhost"))))
       (is (= 200 (:status (http-get "/production/certificate_statuses/all")))))))
 
+(deftest ^:integration old-master-route-config
+  (testing "The old map-style route configuration map still works."
+    (bootstrap/with-puppetserver-running app
+      {:web-router-service {::master-service/master-service {:master-routes "/puppet"}}}
+      (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
+
+  (testing "An exception is thrown if an improper master service route is found."
+    (logutils/with-test-logging
+      (is (thrown-with-msg?
+            IllegalArgumentException
+            #"Could not find a properly configured route for the master service"
+            (bootstrap/with-puppetserver-running app
+                                                 {:web-router-service {::master-service/master-service {:foo "/bar"}}}
+                                                 (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))

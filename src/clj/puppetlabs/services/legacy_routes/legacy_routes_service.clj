@@ -7,21 +7,23 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.master.master-core :as master-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.legacy-routes :as legacy-routes]))
+            [puppetlabs.services.protocols.legacy-routes :as legacy-routes]
+            [puppetlabs.services.master.master-service :as master-service]))
 
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
-   [:PuppetServerConfigService get-config get-in-config]
+   [:PuppetServerConfigService get-config]
    [:MasterService]
    [:CaService]]
   (init
     [this context]
     (let [path (get-route this)
-          puppet-version (get-in-config [:puppet-server :puppet-version])
+          config (get-config)
+          puppet-version (get-in config [:puppet-server :puppet-version])
           ca-settings (ca/config->ca-settings (get-config))
           ca-mount (get-route (tk-services/get-service this :CaService))
-          master-mount (get-route (tk-services/get-service this :MasterService))
+          master-mount (master-service/get-master-path config)
           master-handler (master-core/build-ring-handler handle-request)
           ca-handler (ca-core/build-ring-handler ca-settings puppet-version)
           ring-handler (legacy-routes-core/build-ring-handler
