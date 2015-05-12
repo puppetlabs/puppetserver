@@ -1,6 +1,3 @@
-# require 'test/unit/assertions'
-# require 'puppet/acceptance/module_utils'
-
 test_name "3.x agent running against 4.x master"
 
 studio = "/tmp/simmons-studio-#{Process.pid}"
@@ -10,9 +7,8 @@ teardown do
 end
 
 step "Install modules" do
-  simmons_version = '0.2.0'
+  simmons_version = '0.2.4'
   on(master, puppet("module install nwolfe-simmons --version #{simmons_version}"))
-  on(master, puppet("module list"))
 end
 
 step "Configure file serving" do
@@ -35,11 +31,9 @@ AUTHCONF
   on(master, "chmod 644 #{authconf}")
 end
 
-step "Perform agent upgrade steps" do
-  step "Enable structured facts" do
-    agents.each do |agent|
-      on(agent, puppet("config set stringify_facts false --section agent"))
-    end
+step "Perform agent upgrade steps: enable structured facts" do
+  agents.each do |agent|
+    on(agent, puppet("config set stringify_facts false --section agent"))
   end
 end
 
@@ -69,13 +63,25 @@ end
 step "Validate source-file" do
   contents = on(agent, "cat #{studio}/source-file").stdout.chomp
   assert_equal('Static source file contents', contents)
-  # TODO test filebucket backup
+end
+
+step "Validate source-file filebucket backup" do
+  old_md5 = on(agent, "openssl dgst -md5 #{studio}/source-file-old | awk '{print $2}'").stdout.chomp
+  on(agent, puppet("filebucket restore #{studio}/source-file-backup #{old_md5} --server #{agent}"))
+  diff = on(agent, "diff #{studio}/source-file-old #{studio}/source-file-backup").exit_code
+  assert_equal(0, diff, 'source-file was not backed up to filebucket')
 end
 
 step "Validate binary-file" do
-  md5 = on(agent, "openssl dgst -md5 #{studio}/binary-file").stdout.chomp
-  assert_equal("MD5(#{studio}/binary-file)= 7cfc2db80222ef224d99648716cea8e4", md5)
-  # TODO test filebucket backup
+  md5 = on(agent, "openssl dgst -md5 #{studio}/binary-file | awk '{print $2}'").stdout.chomp
+  assert_equal('7cfc2db80222ef224d99648716cea8e4', md5)
+end
+
+step "Validate binary-file filebucket backup" do
+  old_md5 = on(agent, "openssl dgst -md5 #{studio}/binary-file-old | awk '{print $2}'").stdout.chomp
+  on(agent, puppet("filebucket restore #{studio}/binary-file-backup #{old_md5} --server #{agent}"))
+  diff = on(agent, "diff #{studio}/binary-file-old #{studio}/binary-file-backup").exit_code
+  assert_equal(0, diff, 'binary-file was not backed up to filebucket')
 end
 
 step "Validate recursive-directory" do
@@ -101,8 +107,8 @@ step "Validate mount-point-source-file" do
 end
 
 step "Validate mount-point-binary-file" do
-  md5 = on(agent, "openssl dgst -md5 #{studio}/mount-point-binary-file").stdout.chomp
-  assert_equal("MD5(#{studio}/mount-point-binary-file)= 4b392568e0c19886bf274663a63b7d18", md5)
+  md5 = on(agent, "openssl dgst -md5 #{studio}/mount-point-binary-file | awk '{print $2}'").stdout.chomp
+  assert_equal('4b392568e0c19886bf274663a63b7d18', md5)
 end
 
 step "Validate custom-fact-output" do
