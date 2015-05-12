@@ -18,12 +18,8 @@
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path              (get-route this :master-routes)
+   (let [path (get-route this)
          config            (get-config)
-         upgrade-error-path (get-in config
-                              [:web-router-service
-                               ::master-service
-                               :invalid-in-puppet-4])
          certname          (get-in config [:puppet-server :certname])
          localcacert       (get-in config [:puppet-server :localcacert])
          hostcrl           (get-in config [:puppet-server :hostcrl])
@@ -43,14 +39,7 @@
      (log/info "Master Service adding ring handlers")
      (add-ring-handler
        this
-      (compojure/context path [] (core/build-ring-handler handle-request))
-      {:route-id :master-routes})
-
-     (when upgrade-error-path
-       (add-ring-handler
-         this
-         (core/construct-invalid-request-handler upgrade-error)
-         {:route-id :invalid-in-puppet-4})))
+       (compojure/context path [] (core/build-ring-handler handle-request))))
    context)
   (start
     [this context]

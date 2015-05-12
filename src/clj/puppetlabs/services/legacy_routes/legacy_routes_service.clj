@@ -21,9 +21,7 @@
           puppet-version (get-in-config [:puppet-server :puppet-version])
           ca-settings (ca/config->ca-settings (get-config))
           ca-mount (get-route (tk-services/get-service this :CaService))
-          master-mount (get-route
-                         (tk-services/get-service this :MasterService)
-                         :master-routes)
+          master-mount (get-route (tk-services/get-service this :MasterService))
           master-handler (master-core/build-ring-handler handle-request)
           ca-handler (ca-core/build-ring-handler ca-settings puppet-version)
           ring-handler (legacy-routes-core/build-ring-handler
