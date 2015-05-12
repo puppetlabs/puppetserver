@@ -4,11 +4,7 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tks]
             [puppetlabs.ssl-utils.core :as ssl]
-            [schema.core :as schema]))
-
-(defprotocol FileSyncClientService
-  (register-callback [this repo-id callback-fn])
-  (sync-working-dir [this repo-id working-dir]))
+            [puppetlabs.enterprise.services.protocols.file-sync-client :refer :all]))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
@@ -37,11 +33,11 @@
                        :http-client http-client
                        :config config))))
 
-  (register-callback [this repo-id callback-fn]
+  (register-callback! [this repo-id callback-fn]
     (let [context (tks/service-context this)]
       (core/register-callback! context repo-id callback-fn)))
 
-  (sync-working-dir [this repo-id working-dir]
+  (sync-working-dir! [this repo-id working-dir]
     (core/sync-working-dir! (get-in (tks/service-context this) [:config :repos])
                             repo-id
                             working-dir))

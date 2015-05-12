@@ -2,8 +2,17 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [cheshire.core :as json]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.enterprise.file-sync-test-utils :as helpers])
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
+             :as file-sync-client-service]
+            [puppetlabs.enterprise.services.scheduler.scheduler-service
+             :as scheduler-service]
+            [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
+            [me.raynes.fs :as fs])
   (:import (javax.net.ssl SSLException)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -51,3 +60,47 @@
                      helpers/webserver-ssl-config
                      ring-handler
                      (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
+
+
+
+(deftest ^:integration working-dir-sync-test
+  (let [repo "repo"
+        client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+        client-working-dir (fs/file (helpers/temp-dir-as-string))
+        local-repo-dir (helpers/temp-dir-as-string)
+        local-repo (helpers/init-repo! (fs/file local-repo-dir))]
+    (logging/with-test-logging
+      (helpers/init-bare-repo! (fs/file client-repo-dir))
+
+      ;; Commit a test file so the repo has contents to sync
+      (fs/touch (fs/file local-repo-dir "test"))
+      (jgit-utils/add-and-commit local-repo "a test commit" helpers/author)
+      (jgit-utils/push local-repo client-repo-dir)
+      (bootstrap/with-app-with-config
+        app
+        [file-sync-client-service/file-sync-client-service
+         scheduler-service/scheduler-service]
+        (assoc-in (helpers/client-service-config-with-repos
+                    {(keyword repo) (str client-repo-dir)}
+                    false)
+                  [:file-sync-client :poll-interval]
+                  300)
+
+        (let [client-service (tk-app/get-service app :FileSyncClientService)]
+
+          (fs/mkdir client-working-dir)
+
+          (testing "local dir and client working dir should have correct contents"
+            (is (nil? (fs/list-dir client-working-dir)))
+            (is (not (nil? (fs/list-dir local-repo-dir))))
+            (is (= 2 (count (fs/list-dir local-repo-dir)))))
+
+          (testing (str "client working dir is properly synced when "
+                        "service function is called")
+            (client-protocol/sync-working-dir! client-service
+                                               (keyword repo)
+                                               (str client-working-dir))
+            (is (= (fs/list-dir client-working-dir)
+                   (filter #(not= ".git" %)
+                           (fs/list-dir local-repo-dir))))
+            (is (not (nil? (fs/list-dir client-working-dir))))))))))

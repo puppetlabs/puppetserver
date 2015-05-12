@@ -322,7 +322,8 @@
              "as a working directory"))))
   (if-let [git-dir (get repos repo-id)]
     (do
-      (log/info (str "Syncing working directory for repository " repo-id))
+      (log/info (str "Syncing working directory at " working-dir
+                     "for repository " repo-id))
       (jgit-utils/hard-reset (jgit-utils/get-repository git-dir working-dir)))
     (throw
       (IllegalArgumentException.

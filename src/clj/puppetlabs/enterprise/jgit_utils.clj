@@ -114,17 +114,13 @@
 (schema/defn ^:always-validate
   hard-reset :- Ref
   "Perform a hard git-reset of the provided repo. Returns a Ref or
-  throws one of the following Exceptions from the org.eclipse.jgit.api.errors
-  package:
-
-  * GitAPIException
-  * CheckoutConflictException"
+  throws a GitAPIException from the org.eclipse.jgit.api.errors
+  package."
   [repo :- Repository]
-  (-> repo
-      (Git.)
-      (.reset)
-      (.setMode ResetCommand$ResetType/HARD)
-      (.call)))
+  (.. (Git. repo)
+      (reset)
+      (setMode ResetCommand$ResetType/HARD)
+      (call)))
 
 (defn push
   "Perform a git-push of pending commits in the supplied repository to a
