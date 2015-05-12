@@ -61,8 +61,6 @@
                      ring-handler
                      (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
 
-
-
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
@@ -80,14 +78,11 @@
         app
         [file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
-        (assoc-in (helpers/client-service-config-with-repos
-                    {(keyword repo) (str client-repo-dir)}
-                    false)
-                  [:file-sync-client :poll-interval]
-                  300)
+        (helpers/client-service-config-with-repos
+          {(keyword repo) (str client-repo-dir)}
+          false)
 
         (let [client-service (tk-app/get-service app :FileSyncClientService)]
-
           (fs/mkdir client-working-dir)
 
           (testing "local dir and client working dir should have correct contents"

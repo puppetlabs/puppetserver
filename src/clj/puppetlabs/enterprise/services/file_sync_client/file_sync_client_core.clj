@@ -318,12 +318,12 @@
   (when-not (fs/exists? working-dir)
     (throw
       (IllegalStateException.
-        (str "Directory " working-dir "must exist on disk to be synced "
+        (str "Directory " working-dir " must exist on disk to be synced "
              "as a working directory"))))
   (if-let [git-dir (get repos repo-id)]
     (do
       (log/info (str "Syncing working directory at " working-dir
-                     "for repository " repo-id))
+                     " for repository " repo-id))
       (jgit-utils/hard-reset (jgit-utils/get-repository git-dir working-dir)))
     (throw
       (IllegalArgumentException.
