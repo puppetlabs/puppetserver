@@ -1,7 +1,7 @@
 (ns puppetlabs.enterprise.jgit-utils
-  (:import (org.eclipse.jgit.api Git)
+  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
-                                 Repository)
+                                 Repository Ref)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
@@ -110,6 +110,17 @@
       (.fetch)
       (.setRemote "origin")
       (.call)))
+
+(schema/defn ^:always-validate
+  hard-reset :- Ref
+  "Perform a hard git-reset of the provided repo. Returns a Ref or
+  throws a GitAPIException from the org.eclipse.jgit.api.errors
+  package."
+  [repo :- Repository]
+  (.. (Git. repo)
+      (reset)
+      (setMode ResetCommand$ResetType/HARD)
+      (call)))
 
 (defn push
   "Perform a git-push of pending commits in the supplied repository to a

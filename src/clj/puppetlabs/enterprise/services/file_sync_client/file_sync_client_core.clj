@@ -307,3 +307,24 @@
                    (schedule-fn send-to-agent))))
     ; The watch is in place, now send the initial action.
     (send-to-agent)))
+
+(schema/defn ^:always-validate sync-working-dir!
+  "Synchronizes the contents of the working directory specified by
+  working-dir with the most recent contents of the bare repo specified by
+  repo-id"
+  [repos :- ReposConfig
+   repo-id :- schema/Keyword
+   working-dir :- schema/Str]
+  (when-not (fs/exists? working-dir)
+    (throw
+      (IllegalStateException.
+        (str "Directory " working-dir " must exist on disk to be synced "
+             "as a working directory"))))
+  (if-let [git-dir (get repos repo-id)]
+    (do
+      (log/info (str "Syncing working directory at " working-dir
+                     " for repository " repo-id))
+      (jgit-utils/hard-reset (jgit-utils/get-repository git-dir working-dir)))
+    (throw
+      (IllegalArgumentException.
+        (str "No repository exists with id " repo-id)))))

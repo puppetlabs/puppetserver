@@ -270,10 +270,10 @@
 ;; registered in the init phase
 (tk/defservice callback-service
   CallbackService
-  [[:FileSyncClientService register-callback]]
+  [[:FileSyncClientService register-callback!]]
   (init [this context]
     (let [repo-atom (atom {})]
-      (register-callback :repo
+      (register-callback! :repo
                          (fn [repo-id repo-status]
                            (swap! repo-atom
                                   #(assoc % :repo-id repo-id
