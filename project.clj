@@ -16,13 +16,12 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/http-client "0.4.4"]
+                 [puppetlabs/http-client "0.4.4" :exclusions [commons-io]]
                  [puppetlabs/ssl-utils "0.8.0"]
                  [prismatic/schema "0.4.0"]
-                 [compojure "1.1.8" :exclusions [commons-io org.clojure/tools.macro]]
-                 [commons-io "2.1"]
+                 [compojure "1.1.8"]
                  [overtone/at-at "1.2.0"]
-                 [ring/ring-json "0.3.1" :exclusions [commons-io]]
+                 [ring/ring-json "0.3.1"]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server ~jgit-version
                   :exclusions [org.apache.httpcomponents/httpclient]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.apache ~jgit-version
