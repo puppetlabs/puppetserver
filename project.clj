@@ -1,5 +1,5 @@
-(def tk-version "1.1.0")
-(def tk-jetty-version "1.2.0")
+(def tk-version "1.1.1")
+(def tk-jetty-version "1.3.1")
 (def ks-version "1.0.0")
 (def jgit-version "3.7.0.201502260915-r")
 
@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/http-client "0.4.1"]
+                 [puppetlabs/http-client "0.4.4"]
                  [compojure "1.1.8" :exclusions [commons-io org.clojure/tools.macro]]
                  [commons-io "2.1"]
                  [overtone/at-at "1.2.0"]

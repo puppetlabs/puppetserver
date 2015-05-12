@@ -101,7 +101,7 @@
   The latest commits are requested from the URL in the supplied
   `server-api-url` argument.  Returns the payload from the response.
   Throws an 'SyncError' if an error occurs."
-  [client :- http-client/HTTPClient
+  [client :- (schema/protocol http-client/HTTPClient)
    server-api-url :- schema/Str]
   (let [latest-commits-url (str
                              server-api-url
@@ -293,7 +293,7 @@
   [sync-agent :- Agent
    schedule-fn :- IFn
    config :- Config
-   http-client :- http-client/HTTPClient
+   http-client :- (schema/protocol http-client/HTTPClient)
    callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
