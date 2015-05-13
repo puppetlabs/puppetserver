@@ -10,7 +10,7 @@
    :password :env/nexus_jenkins_password
    :sign-releases false})
 
-(defproject puppetlabs/pe-file-sync "0.0.2"
+(defproject puppetlabs/pe-file-sync "0.0.3-SNAPSHOT"
   :description "PE File Synchronization Services"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
