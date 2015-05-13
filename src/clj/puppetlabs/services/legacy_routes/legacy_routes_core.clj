@@ -67,7 +67,6 @@
   [master-request-handler ca-request-handler]
   (compojure/routes
     (compojure/GET "/node/*" request (master-request-handler request))
-    (compojure/GET "/facts/*" request (master-request-handler request))
     (compojure/GET "/file_content/*" request (master-request-handler request))
     (compojure/GET "/file_metadatas/*" request (master-request-handler request))
     (compojure/GET "/file_metadata/*" request (master-request-handler request))
@@ -93,8 +92,7 @@
     (compojure/GET "/certificate/*" request (ca-request-handler request))
     (compojure/GET "/certificate_revocation_list/*" request (ca-request-handler request))
     (compojure/GET "/certificate_request/*" request (ca-request-handler request))
-    (compojure/PUT "/certificate_request/*" request (ca-request-handler request))
-    (compojure/GET "/certificate_requests/*" request (ca-request-handler request))))
+    (compojure/PUT "/certificate_request/*" request (ca-request-handler request))))
 
 (defn legacy-routes
   "Creates all of the compojure routes for the master."
