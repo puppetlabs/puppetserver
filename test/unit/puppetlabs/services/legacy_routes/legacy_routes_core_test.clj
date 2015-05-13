@@ -124,8 +124,10 @@
                     "certificate_requests"]]
         (let [resp (request (str "/" environment "/" path "/" route-val))]
           (is (= 200 (:status resp)))
-          (is (= (str ca-mount "/" ca-api-version "/" path "/" route-val)))
-          (is (= (ring-codec/form-encode {:environment environment}))))))))
+          (is (= (str ca-mount "/" ca-api-version "/" path "/" route-val)
+                 (:uri resp)))
+          (is (= (ring-codec/form-encode {:environment environment})
+                 (:query-string resp))))))))
 
 (deftest test-v3-header-munging
   (testing "(SERVER-548) Header munging"
