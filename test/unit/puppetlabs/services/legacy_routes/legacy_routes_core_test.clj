@@ -4,8 +4,7 @@
             [puppetlabs.services.legacy-routes.legacy-routes-core :refer :all]
             [puppetlabs.services.master.master-core :as master-core]
             [ring.mock.request :as mock]
-            [ring.util.codec :as ring-codec]
-            [clojure.string :as str]))
+            [ring.util.codec :as ring-codec]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -34,7 +33,6 @@
     "pson, s, raw, foo" "pson, binary, foo"
     "s, pson, foo" "binary, pson, foo"))
 
-;
 (def accept-header-test-data
   "Nested map of request data.  The map keys represent URI paths, the request
   method, the example input, and the expected output.
@@ -51,33 +49,21 @@
                                              :put accept-header-s-pson-examples}
    })
 
-(defn assertion-wrapper
-  "ring middleware that asserts by passing the request as the first argument
-  to assertion"
-  [handler assertion]
-  (fn [req]
-    (assertion req)
-    (handler req)))
+(defn build-app
+  "Build a ring app with handler as the handler and the identity function as
+  the ca-handler"
+  [handler]
+  (build-ring-handler
+    handler master-mount master-api-version identity ca-mount ca-api-version))
 
-(defn validating-app
-  "Return a ring app with the results of build-ring-handler wrapped around an
-  assertion-wrapper middleware as the master-handler.  The identity function is
-  the ca-handler."
-  [assertion]
-  (let [handler (assertion-wrapper identity assertion)]
-    (build-ring-handler
-      handler master-mount master-api-version
-      identity ca-mount ca-api-version)))
-
-(defn test-munged-request
-  "Validate a request by threading it through the legacy-routes request handler
-  into an assertion-wrapper ring middleware."
-  [request assertion]
+(defn munged-request
+  "Return the request that would be sent to the master-handler after processing
+  by the legacy-routes handler."
+  [request]
   (let [mem (atom {:tested false})
-        wrapped-assertion #((swap! mem assoc :tested true) (assertion %))
-        response ((validating-app wrapped-assertion) request)]
-    (is (true? (:tested @mem)) (str "request not tested: " (pr-str request)))
-    response))
+        tapped-app (build-app #(swap! mem assoc :request %))]
+    (tapped-app request)
+    (:request @mem)))
 
 (deftest test-legacy-routes
   (let [app     (build-ring-handler
@@ -136,17 +122,13 @@
               [method examples] methods
               [example expected] examples
               :let [mockreq (mock/request method path)
-                    request (assoc-in mockreq accept-header example)]]
-        (test-munged-request request
-          (fn [munged-request] ; ring middleware
-            (let [actual (get-in munged-request accept-header)
-                  msg (str/join " "
-                        ["data:" path method example "=>" expected])]
-              (is (= expected actual) msg))))))
-    (testing (str "Content-Type: application/octet-stream "
-               "is added to file_bucket_file put requests")
-      (let [request (mock/request :put "/production/file_bucket_file/foo")]
-        (test-munged-request request
-          (fn [munged-request] ; ring middleware
-            (let [actual (get-in munged-request content-type-request-header)]
-              (is (= "application/octet-stream" actual)))))))))
+                    request (assoc-in mockreq accept-header example)
+                    subject (get-in (munged-request request) accept-header)]]
+        (is (= expected subject))))))
+
+(deftest test-v3-file-bucket-file-put
+  (testing (str "file_bucket_file put requests have application/octet-stream")
+    (let [request (mock/request :put "/production/file_bucket_file/foo")
+          munged-req (munged-request request)
+          content-type (get-in munged-req [:headers "content-type"])]
+      (is (= "application/octet-stream" content-type)))))
