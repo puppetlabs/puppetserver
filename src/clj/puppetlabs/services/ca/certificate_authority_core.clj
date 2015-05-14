@@ -1,20 +1,21 @@
 (ns puppetlabs.services.ca.certificate-authority-core
-  (:import  [java.io InputStream])
+  (:import [java.io InputStream]
+           (clojure.lang IFn))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
+            [puppetlabs.comidi :as comidi :refer [GET ANY PUT]]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [clojure.string :as string]
             [schema.core :as schema]
             [cheshire.core :as cheshire]
-            [compojure.core :as compojure :refer [GET ANY PUT]]
-            [compojure.route :as route]
             [liberator.core :refer [defresource]]
+    ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
-            [liberator.dev :as liberator-dev]
-            [ring.util.response :as rr]))
+            [ring.util.response :as rr]
+            [compojure.route :as route]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
@@ -54,7 +55,7 @@
       (rr/content-type "text/plain")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Compojure app
+;;; Web app
 
 (defn try-to-parse
   [body]
@@ -237,35 +238,29 @@
       (ca/get-certificate-statuses settings)
       (as-json-or-pson context))))
 
-(schema/defn v1-routes
+(schema/defn ^:always-validate web-routes :- comidi/BidiRoute
   [ca-settings :- ca/CaSettings]
-  (compojure/routes
-    (ANY "/certificate_status/:subject" [subject]
+  (comidi/context ["/" :environment]
+    (ANY ["/certificate_status/" :subject] [subject]
          (certificate-status subject ca-settings))
-    (ANY "/certificate_statuses/:ignored-but-required" [do-not-use]
+    (ANY ["/certificate_statuses/" :ignored-but-required] []
          (certificate-statuses ca-settings))
-    (GET "/certificate/:subject" [subject]
+    (GET ["/certificate/" :subject] [subject]
          (handle-get-certificate subject ca-settings))
-    (compojure/context "/certificate_request/:subject" [subject]
-                       (GET "/" []
-                            (handle-get-certificate-request subject ca-settings))
-                       (PUT "/" {body :body}
-                            (handle-put-certificate-request! subject body ca-settings)))
-    (GET "/certificate_revocation_list/:ignored-node-name" []
+    (comidi/context ["/certificate_request/" :subject]
+      (GET [""] [subject]
+           (handle-get-certificate-request subject ca-settings))
+      (PUT [""] [subject :as {body :body}]
+           (handle-put-certificate-request! subject body ca-settings)))
+    (GET ["/certificate_revocation_list/" :ignored-node-name] []
          (handle-get-certificate-revocation-list ca-settings))))
 
-(defn routes
-  [ca-settings]
-  (compojure/routes
-    (compojure/context "/v1" [] (v1-routes ca-settings))
-    (route/not-found "Not Found")))
-
 (schema/defn ^:always-validate
-  build-ring-handler
-  [ca-settings :- ca/CaSettings
+  wrap-middleware :- IFn
+  [handler :- IFn
    puppet-version :- schema/Str]
-  (-> (routes ca-settings)
-      ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
+  (-> handler
+    ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
       (ringutils/wrap-exception-handling)
       (ringutils/wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
