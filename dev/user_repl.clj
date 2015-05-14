@@ -42,7 +42,7 @@
      :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
                              :puppetlabs.services.master.master-service/master-service "/puppet"
                              :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/admin"
-                             :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service "/"}
+                             :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service ""}
      :puppet-admin          {:client-whitelist       []
                              :authorization-required false}}))
 
