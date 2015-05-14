@@ -14,7 +14,7 @@
 (def master-api-version master-core/puppet-API-versions)
 (def ca-api-version master-core/puppet-ca-API-versions)
 (def accept-header [:headers "accept"])
-(def content-type-header [:headers "content-type"])
+(def content-type-request-header [:headers "content-type"])
 
 (def accept-header-common-examples
   {"raw" "binary"
@@ -127,7 +127,12 @@
           (is (= (str ca-mount "/" ca-api-version "/" path "/" route-val)
                  (:uri resp)))
           (is (= (ring-codec/form-encode {:environment environment})
-                 (:query-string resp))))))))
+                 (:query-string resp))))))
+
+    (testing "file_bucket_file GET responses are Content-Type: text/plain"
+      (let [resp (request :get (str "/production/file_bucket_file/" route-val))]
+        (is (= 200 (:status resp)))
+        (is (= "text/plain" (get-in resp [:headers "Content-Type"])))))))
 
 (deftest test-v3-header-munging
   (testing "(SERVER-548) Header munging"
@@ -148,5 +153,5 @@
       (let [request (mock/request :put "/production/file_bucket_file/foo")]
         (test-munged-request request
           (fn [munged-request] ; ring middleware
-            (let [actual (get-in munged-request content-type-header)]
+            (let [actual (get-in munged-request content-type-request-header)]
               (is (= "application/octet-stream" actual)))))))))

@@ -3,6 +3,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :as compojure]
             [ring.util.codec :as ring-codec]
+            [ring.util.response :as ring-response]
             [compojure.route :as route]
             [clojure.tools.logging :as log]))
 
@@ -27,6 +28,14 @@
           (distinct)
           (str/join ", "))))
     request))
+
+(defn- respond-with-content-type-text-plain
+  "Return a new ring handler with a ring middleware wrapped around `handler`
+  that unconditionally adds the Content-Type: text/plain header to the
+  response."
+  [handler]
+  (fn [request]
+    (ring-response/content-type (handler request) "text/plain")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler wrapper
@@ -70,7 +79,8 @@
     (compojure/GET "/file_content/*" request (master-request-handler request))
     (compojure/GET "/file_metadatas/*" request (master-request-handler request))
     (compojure/GET "/file_metadata/*" request (master-request-handler request))
-    (compojure/GET "/file_bucket_file/*" request (master-request-handler request))
+    (compojure/GET "/file_bucket_file/*" request
+      ((respond-with-content-type-text-plain master-request-handler) request))
     ;; Coercing Content-Type to "application/octet-stream" for Puppet 4
     ;; compatibility.
     (compojure/PUT "/file_bucket_file/*" request
