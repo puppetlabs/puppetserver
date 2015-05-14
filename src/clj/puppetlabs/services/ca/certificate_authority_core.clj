@@ -240,20 +240,22 @@
 
 (schema/defn ^:always-validate web-routes :- comidi/BidiRoute
   [ca-settings :- ca/CaSettings]
-  (comidi/context ["/" :environment]
-    (ANY ["/certificate_status/" :subject] [subject]
-         (certificate-status subject ca-settings))
-    (ANY ["/certificate_statuses/" :ignored-but-required] []
-         (certificate-statuses ca-settings))
-    (GET ["/certificate/" :subject] [subject]
-         (handle-get-certificate subject ca-settings))
-    (comidi/context ["/certificate_request/" :subject]
-      (GET [""] [subject]
-           (handle-get-certificate-request subject ca-settings))
-      (PUT [""] [subject :as {body :body}]
-           (handle-put-certificate-request! subject body ca-settings)))
-    (GET ["/certificate_revocation_list/" :ignored-node-name] []
-         (handle-get-certificate-revocation-list ca-settings))))
+  (comidi/routes
+    (comidi/context ["/" :environment]
+      (ANY ["/certificate_status/" :subject] [subject]
+        (certificate-status subject ca-settings))
+      (ANY ["/certificate_statuses/" :ignored-but-required] []
+        (certificate-statuses ca-settings))
+      (GET ["/certificate/" :subject] [subject]
+        (handle-get-certificate subject ca-settings))
+      (comidi/context ["/certificate_request/" :subject]
+        (GET [""] [subject]
+          (handle-get-certificate-request subject ca-settings))
+        (PUT [""] [subject :as {body :body}]
+          (handle-put-certificate-request! subject body ca-settings)))
+      (GET ["/certificate_revocation_list/" :ignored-node-name] []
+        (handle-get-certificate-revocation-list ca-settings)))
+    (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
