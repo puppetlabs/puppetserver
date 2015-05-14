@@ -113,7 +113,7 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
 
   ; tests use a lot of PermGen (jruby instances)
-  :jvm-opts ["-XX:MaxPermSize=256m"]
+  :jvm-opts ["-XX:MaxPermSize=256m" "-Xmx1024M"]
 
   :repl-options {:init-ns user}
 
