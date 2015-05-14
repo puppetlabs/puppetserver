@@ -117,7 +117,7 @@
 
 (deftest test-v3-header-munging
   (testing "(SERVER-548) Header munging"
-    (testing "Accept: raw is munged to Accept: binary for all paths"
+    (testing "Accept: header is translated for use with the master-handler"
       (doseq [[path methods] accept-header-test-data
               [method examples] methods
               [example expected] examples
