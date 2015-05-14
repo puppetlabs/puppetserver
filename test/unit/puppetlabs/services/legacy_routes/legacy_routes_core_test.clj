@@ -43,8 +43,6 @@
   {
    "/production/node/anode" { :get {"raw" "binary"
                                     "foo,bar" "foo, bar"}}
-   "/production/facts/anode" { :get {"raw" "binary"
-                                     "foo,bar" "foo, bar"}}
    "/production/catalog/anode" {:get accept-header-raw-examples
                                 :post accept-header-raw-examples}
    "/production/file_content/something" {:get accept-header-raw-examples}
@@ -91,19 +89,17 @@
         environment "production"
         route-val "foo"]
     (is (= 200 (:status (request :get "/v2.0/environments"))))
-    (is (= 404 (:status (request :get "/does/not/exist"))))
+    (is (nil? (request :get "/does/not/exist")))
 
     (testing "Legacy master routes"
       (doseq [[method paths] {:get ["node"
-                                    "facts"
                                     "file_content"
                                     "file_metadatas"
                                     "file_metadata"
                                     "file_bucket_file"
                                     "catalog"
                                     "resource_type"
-                                    "resource_types"
-                                    "facts_search"]
+                                    "resource_types"]
                               :put ["report"]
                               :head ["file_bucket_file"]
                               :post ["catalog"]}
@@ -120,8 +116,7 @@
                     "certificate_statuses"
                     "certificate"
                     "certificate_revocation_list"
-                    "certificate_request"
-                    "certificate_requests"]]
+                    "certificate_request"]]
         (let [resp (request (str "/" environment "/" path "/" route-val))]
           (is (= 200 (:status resp)))
           (is (= (str ca-mount "/" ca-api-version "/" path "/" route-val)
