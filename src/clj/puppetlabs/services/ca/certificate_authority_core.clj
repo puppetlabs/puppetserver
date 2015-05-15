@@ -241,7 +241,7 @@
 (schema/defn ^:always-validate web-routes :- comidi/BidiRoute
   [ca-settings :- ca/CaSettings]
   (comidi/routes
-    (comidi/context ["/" :environment]
+    (comidi/context ["/v1"]
       (ANY ["/certificate_status/" :subject] [subject]
         (certificate-status subject ca-settings))
       (ANY ["/certificate_statuses/" :ignored-but-required] []
