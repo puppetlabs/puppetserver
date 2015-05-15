@@ -8,7 +8,8 @@
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.config :as tkc]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [clojure.pprint :as pprint]))
+            [clojure.pprint :as pprint]
+            [clojure.tools.logging :as log]))
 
 (defn file-sync-storage-conf
   "This function returns a map of config settings that will be used
@@ -18,8 +19,16 @@
    will be used instead. (If there is a `user.clj` on the classpath, lein will
    automatically load it when the REPL is started"
   []
-  (let [user-conf (when-let [conf (resolve 'user/file-sync-storage-conf)]
-                    ((deref conf)))]
+  (let [conf-path (when-let [conf (resolve 'user/file-sync-storage-conf-path)]
+                    (deref conf))
+        user-conf (when conf-path
+                    (try
+                      (tkc/load-config conf-path)
+                      (catch Exception e
+                        (log/error (str "User-specified storage config path "
+                                        "cannot be loaded. Using the contents "
+                                        "of dev.conf instead."))
+                        nil)))]
     (or user-conf (tkc/load-config "./dev/dev.conf"))))
 
 (defn file-sync-client-conf
@@ -30,8 +39,16 @@
    will be used instead. (If there is a `user.clj` on the classpath, lein will
    automatically load it when the REPL is started"
   []
-  (let [user-conf (when-let [conf (resolve 'user/file-sync-client-conf)]
-                    ((deref conf)))]
+  (let [conf-path (when-let [conf (resolve 'user/file-sync-client-conf-path)]
+                    (deref conf))
+        user-conf (when conf-path
+                    (try
+                      (tkc/load-config conf-path)
+                      (catch Exception e
+                        (log/error (str "User-specified client config path "
+                                        "cannot be loaded. Using the contents "
+                                        "of dev.conf instead."))
+                        nil)))]
     (or user-conf (tkc/load-config "./dev/dev.conf"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
