@@ -827,7 +827,9 @@
   [subject :- schema/Str
    csr :- CertificateRequest
    csrdir :- schema/Str]
-  (utils/obj->pem! csr (path-to-cert-request csrdir subject)))
+  (let [csr-path (path-to-cert-request csrdir subject)]
+    (log/debugf "Saving CSR to '%s'" csr-path)
+    (utils/obj->pem! csr csr-path)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false

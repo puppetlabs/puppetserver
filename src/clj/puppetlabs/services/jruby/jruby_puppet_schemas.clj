@@ -42,6 +42,9 @@
   * :master-code-dir - file path to puppetmaster's code dir;
     if not specified, will use the puppet default.
 
+  * :max-active-instances - The maximum number of JRubyPuppet instances that
+      will be pooled.
+  
   * :master-var-dir - path to the puppetmaster's var dir;
     if not specified, will use the puppet default.
 

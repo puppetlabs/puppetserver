@@ -2,9 +2,16 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.master.master-core :refer :all]
             [ring.mock.request :as mock]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.comidi :as comidi]))
 
 (use-fixtures :once schema-test/validate-schemas)
+
+(defn build-ring-handler
+  [request-handler puppet-version]
+  (-> (root-routes request-handler)
+      (comidi/routes->handler)
+      (wrap-middleware puppet-version)))
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
@@ -24,6 +31,7 @@
                    "file_bucket_file"
                    "resource_type"
                    "resource_types"
+                   "status"
                    "facts_search"]
              :post ["catalog"]
              :put ["file_bucket_file"
