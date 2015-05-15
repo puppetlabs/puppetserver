@@ -53,6 +53,8 @@
                    (request-handler request))
     (compojure/GET "/environments" request
                    (request-handler request))
+    (compojure/GET "/status/*" request
+                   (request-handler request))
 
     ;; TODO: when we get rid of the legacy dashboard after 3.4, we should remove
     ;; this endpoint as well.  It makes more sense for this type of query to be
