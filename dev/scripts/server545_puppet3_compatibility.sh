@@ -5,7 +5,7 @@
 
 
 # Puppet Server package version (from http://builds.puppetlabs.lan/puppetserver/)
-export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
+export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.05.14T1222'
 # Legacy means pre-aio (4.0) in this case
 export PUPPET_LEGACY_VERSION='3.7.5'
 
@@ -15,7 +15,7 @@ bundle exec beaker \
   --root-keys \
   --no-color \
   --repo-proxy \
-  --preserve-hosts never \
+  --preserve-hosts onfail \
   --type aio \
   --config acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg \
   --pre-suite acceptance/suites/pre_suite/puppet3_compat \
