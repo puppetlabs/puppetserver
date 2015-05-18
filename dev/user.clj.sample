@@ -1,0 +1,23 @@
+;; This file allows you to start and stop the file sync storage and client
+;; services from the REPL.
+;; To use this, simply make a copy of this file named `user.clj`
+;; and modify it to your liking.
+(ns user)
+
+;; These should provide paths to the configuration files you want to use
+;; for the storage and client services. If these are nil or point to a file
+;; that doesn't exist, the contents of 'dev.conf' will be used instead.
+(def file-sync-storage-conf-path
+  "/Users/prebeningvaldsen/.file-sync/storage.conf")
+
+(def file-sync-client-conf-path
+  "/Users/prebeningvaldsen/.file-sync/client.conf")
+
+;; The `go` function in the `user-repl` namespace  will start up an instance of
+;; the file sync storage and client services.  This function will load that namespace,
+;; switch to it, and call `go`.
+(defn go
+  []
+  (load-file "./dev/user_repl.clj")
+  (ns user-repl)
+  ((-> 'user-repl/go resolve deref)))
