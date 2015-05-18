@@ -20,8 +20,11 @@
                  [puppetlabs/http-client "0.4.4"]
                  [org.jruby/jruby-core "1.7.20"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
-                 [com.github.jnr/jffi "1.2.7"]
-                 [com.github.jnr/jffi "1.2.7" :classifier "native"]
+                 ;; jffi and jnr-x86asm are explicit dependencies because,
+                 ;; in JRuby's poms, they are defined using version ranges,
+                 ;; and :pedantic? :abort won't tolerate this.
+                 [com.github.jnr/jffi "1.2.9"]
+                 [com.github.jnr/jffi "1.2.9" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
