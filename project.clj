@@ -19,24 +19,18 @@
                  [puppetlabs/ssl-utils "0.8.0"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.4.4"]
-                 [org.jruby/jruby-core "1.7.19"
-                  :exclusions
-                  [com.github.jnr/jffi com.github.jnr/jnr-x86asm com.github.jnr/jnr-ffi
-                   org.ow2.asm/asm org.ow2.asm/asm-commons org.ow2.asm/asm-analysis
-                   org.ow2.asm/asm-util com.github.jnr/jnr-constants]]
-                 ;; NOTE: the JRuby poms (as of 1.7.18) had some conflicting transitive dependencies
-                 ;; which necessitated the above exclusions and the following explicit versions of
-                 ;; those transitive deps.  We should check to see if this issue is resolved
-                 ;; in 1.7.19.
-                 [com.github.jnr/jffi "1.2.7"]
-                 [com.github.jnr/jffi "1.2.7" :classifier "native"]
+                 [org.jruby/jruby-core "1.7.20"
+                  :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
+                 ;; jffi and jnr-x86asm are explicit dependencies because,
+                 ;; in JRuby's poms, they are defined using version ranges,
+                 ;; and :pedantic? :abort won't tolerate this.
+                 [com.github.jnr/jffi "1.2.9"]
+                 [com.github.jnr/jffi "1.2.9" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
-                 [com.github.jnr/jnr-ffi "2.0.1"]
-                 [com.github.jnr/jnr-constants "0.8.6"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.19"]
+                 [org.jruby/jruby-stdlib "1.7.20"]
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
                  [joda-time "2.5"]
