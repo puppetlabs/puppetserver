@@ -12,7 +12,8 @@
         jruby-config (new RubyInstanceConfig)
         env          (doto (HashMap. (.getEnvironment jruby-config))
                        (.put "GEM_HOME" gem-home)
-                       (.put "JARS_NO_REQUIRE" "true"))]
+                       (.put "JARS_NO_REQUIRE" "true")
+                       (.put "JARS_REQUIRE" "false"))]
     (doto jruby-config
       (.setEnvironment env)
       (.setLoadPaths load-path)
@@ -21,7 +22,8 @@
 
 (defn run!
   [config ruby-args]
-  (-> (new-jruby-main config)
+  (doto (new-jruby-main config)
+    (.run (into-array String ["-e" "require 'jar-dependencies'"]))
     (.run (into-array String ruby-args))))
 
 (defn -main

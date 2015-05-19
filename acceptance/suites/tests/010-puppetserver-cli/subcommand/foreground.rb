@@ -1,5 +1,9 @@
 test_name "Puppetserver 'foreground' subcommand tests."
 
+if (master['platform'] =~ /el-5/)
+  skip_test("RHEL5 is not supported by this test case. See SERVER-653")
+end
+
 cli = "puppetserver"
 service = "puppetserver"
 
