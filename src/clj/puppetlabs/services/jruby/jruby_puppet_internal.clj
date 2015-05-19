@@ -50,8 +50,17 @@
                          (map fs/absolute-path ruby-load-path)))
     (.setCompatVersion (CompatVersion/RUBY1_9))
     (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+    ;; We need to set the JARS..REQUIRE variables in order to instruct
+    ;; JRuby's 'jar-dependencies' to not try to load any dependent jars.  This
+    ;; is being done specifically to avoid JRuby trying to load its own version
+    ;; of Bouncy Castle, which may not the same as the one that
+    ;; 'puppetlabs/ssl-utils' uses. JARS_NO_REQUIRE was the legacy way to turn
+    ;; off jar loading but is being phased out in favor of JARS_REQUIRE.  As of
+    ;; JRuby 1.7.20, only JARS_NO_REQUIRE is honored.  Setting both of those
+    ;; here for forward compatibility.
     (.setEnvironment (merge {"GEM_HOME" gem-home
-                             "JARS_NO_REQUIRE" "true"}
+                             "JARS_NO_REQUIRE" "true"
+                             "JARS_REQUIRE" "false"}
                             jruby-puppet-env))))
 
 (defn empty-scripting-container
@@ -78,6 +87,13 @@
   ;; I'm convinced that this is the safest and most reasonable value
   ;; to use here, but we could potentially explore optimizations in the future.
   (doto (empty-scripting-container ruby-load-path gem-home)
+    ;; As of JRuby 1.7.20 (and the associated 'jruby-openssl' it pulls in),
+    ;; we need to explicitly require 'jar-dependencies' so that it is used
+    ;; to manage jar loading.  We do this so that we can instruct
+    ;; 'jar-dependencies' to not actually load any jars.  See the environment
+    ;; variable configuration in 'prep-scripting-container' for more
+    ;; information.
+    (.runScriptlet "require 'jar-dependencies'")
     (.runScriptlet "require 'puppet/server/master'")))
 
 (schema/defn ^:always-validate
