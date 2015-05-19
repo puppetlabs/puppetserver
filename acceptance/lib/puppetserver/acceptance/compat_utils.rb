@@ -18,5 +18,8 @@ end
 
 def cleanup(studio)
   on(agents, "rm -rf #{studio}")
-  on(hosts, 'rm -rf $(puppet config print vardir)')
+  hosts.each do |host|
+    var_dir = on(host, puppet("config print vardir")).stdout.chomp
+    on(host, "rm -fr #{var_dir}")
+  end
 end

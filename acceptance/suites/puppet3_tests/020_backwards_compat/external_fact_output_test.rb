@@ -2,10 +2,13 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'executable external fact'
 
-skip_test 'Executable external facts broken until PUP-4420'
-
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+
+# This skip should be removed when executable external facts work for Puppet 4.x
+# on Linux-based platforms again (PUP-4420)
+skip_test unless agent['platform'] =~ /windows/
+
+studio = agent.tmpdir('external_fact_output_test')
 
 teardown do
   cleanup(studio)

@@ -2,8 +2,8 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'custom fact'
 
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+studio = agent.tmpdir('custom_fact_output_test')
 
 teardown do
   cleanup(studio)

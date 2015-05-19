@@ -2,8 +2,8 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'source file resource from custom mount point'
 
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+studio = agent.tmpdir('mount_point_source_file_test')
 
 teardown do
   cleanup(studio)
