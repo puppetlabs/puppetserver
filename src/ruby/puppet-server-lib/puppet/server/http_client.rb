@@ -71,7 +71,6 @@ class Puppet::Server::HttpClient
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
-    configure_timeouts(request_options)
     response = self.class.client_post(request_options)
     ruby_response(response)
   end
@@ -83,7 +82,6 @@ class Puppet::Server::HttpClient
     request_options = RequestOptions.new(build_url(url))
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
-    configure_timeouts(request_options)
     response = self.class.client_get(request_options)
     ruby_response(response)
   end
@@ -96,8 +94,8 @@ class Puppet::Server::HttpClient
 
   private
 
-  def configure_timeouts(request_options)
-    settings = self.class.settings
+  def self.configure_timeouts(request_options)
+    settings = self.settings
 
     if settings.has_key?("http_connect_timeout_milliseconds")
       request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
@@ -151,9 +149,15 @@ class Puppet::Server::HttpClient
     result
   end
 
-  def self.create_client
+  def self.create_client_options
     client_options = ClientOptions.new
+    self.configure_timeouts(client_options)
     self.configure_ssl(client_options)
+    client_options
+  end
+
+  def self.create_client
+    client_options = create_client_options
     SyncHttpClient.createClient(client_options)
   end
 

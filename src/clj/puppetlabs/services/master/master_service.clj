@@ -5,9 +5,28 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.dujour.version-check :as version-check]))
+            [puppetlabs.dujour.version-check :as version-check]
+            [puppetlabs.services.protocols.master :as master]))
+
+(defn get-master-route-config
+  [config]
+  (get-in config [:web-router-service ::master-service]))
+
+(defn get-master-path
+  [config]
+  (let [config-route (get-master-route-config config)]
+    (cond
+      (map? config-route)
+      (:master-routes config-route)
+
+      (string? config-route)
+      config-route
+
+      :else
+      nil)))
 
 (defservice master-service
+  master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
@@ -16,8 +35,7 @@
   (init
    [this context]
    (core/validate-memory-requirements!)
-   (let [path (get-route this :master-routes)
-         config (get-config)
+   (let [config (get-config)
          certname (get-in config [:puppet-server :certname])
          localcacert (get-in config [:puppet-server :localcacert])
          puppet-version (get-in config [:puppet-server :puppet-version])
@@ -37,14 +55,22 @@
      (initialize-master-ssl! settings certname)
 
      (log/info "Master Service adding ring handlers")
-     (add-ring-handler
-       this
-       (-> (core/root-routes handle-request)
-           (#(comidi/context path %))
-           comidi/routes->handler
-           (core/wrap-middleware puppet-version))
-       {:route-id :master-routes})
-     (add-ring-handler this (core/construct-invalid-request-handler upgrade-error) {:route-id :invalid-in-puppet-4}))
+     (let [path (get-master-path config)
+           route-config (get-master-route-config config)
+           ring-handler (when path (-> (core/root-routes handle-request)
+                                       (#(comidi/context path %))
+                                       comidi/routes->handler
+                                       (core/wrap-middleware puppet-version)))]
+       (when (nil? path)
+         (throw
+           (IllegalArgumentException.
+             "Could not find a properly configured route for the master service")))
+       (cond 
+         (map? route-config)
+         (add-ring-handler this ring-handler {:route-id :master-routes})
+         
+         (string? route-config)
+         (add-ring-handler this ring-handler))))
    context)
   (start
     [this context]

@@ -100,7 +100,7 @@
              :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.3.3"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.3.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
@@ -115,7 +115,7 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
 
   ; tests use a lot of PermGen (jruby instances)
-  :jvm-opts ["-XX:MaxPermSize=256m"]
+  :jvm-opts ["-XX:MaxPermSize=256m" "-Xmx1024M"]
 
   :repl-options {:init-ns user}
 
