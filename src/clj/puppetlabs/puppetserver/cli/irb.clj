@@ -15,7 +15,8 @@
         gem-home     (get-in config [:jruby-puppet :gem-home])
         env          (doto (HashMap. (.getEnvironment jruby-config))
                        (.put "GEM_HOME" gem-home)
-                       (.put "JARS_NO_REQUIRE" "true"))
+                       (.put "JARS_NO_REQUIRE" "true")
+                       (.put "JARS_REQUIRE" "false"))
         jruby-home   (.getJRubyHome jruby-config)
         load-path    (->> (get-in config [:os-settings :ruby-load-path])
                           (cons jruby-internal/ruby-code-dir)
@@ -26,8 +27,9 @@
       (.setEnvironment env)
       (.setLoadPaths load-path)
       (.setCompatVersion (CompatVersion/RUBY1_9)))
-    (-> (Main. jruby-config)
-        (.run args))))
+    (doto (Main. jruby-config)
+      (.run (into-array String ["-e" "require 'jar-dependencies'"]))
+      (.run args))))
 
 (defn -main
   [& args]
