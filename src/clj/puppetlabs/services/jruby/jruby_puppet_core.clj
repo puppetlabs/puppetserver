@@ -98,6 +98,9 @@
     (update-in [:borrow-timeout] #(or % default-borrow-timeout))
     (update-in [:master-conf-dir] #(or % nil))
     (update-in [:master-var-dir] #(or % nil))
+    (update-in [:master-code-dir] #(or % nil))
+    (update-in [:master-run-dir] #(or % nil))
+    (update-in [:master-log-dir] #(or % nil))
     (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
     (update-in [:max-requests-per-instance] #(or % 0))))
 

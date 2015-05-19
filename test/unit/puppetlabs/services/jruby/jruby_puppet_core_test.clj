@@ -5,6 +5,14 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
+(def min-config
+  {:product
+   {:name "puppet-server", :update-server-url "http://localhost:11111"},
+   :jruby-puppet
+   {:gem-home "./target/jruby-gem-home",
+    :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"]},
+   :certificate-authority {:certificate-status {:client-whitelist []}}})
+
 (deftest default-num-cpus-test
   (testing "1 jruby instance for a 1 or 2-core box"
     (is (= 1 (jruby-core/default-pool-size 1)))
@@ -19,3 +27,13 @@
     (is (= 4 (jruby-core/default-pool-size 16)))
     (is (= 4 (jruby-core/default-pool-size 32)))
     (is (= 4 (jruby-core/default-pool-size 64)))))
+
+(deftest initialize-config-test
+  (let [subject (fn [] (jruby-core/initialize-config min-config))]
+    (testing "master-{conf,var}-dir settings are optional"
+      (is (nil? (:master-conf-dir (subject))))
+      (is (nil? (:master-var-dir (subject)))))
+    (testing "(SERVER-647) master-{code,run,log}-dir settings are optional"
+      (is (nil? (:master-code-dir (subject))))
+      (is (nil? (:master-run-dir (subject))))
+      (is (nil? (:master-log-dir (subject)))))))
