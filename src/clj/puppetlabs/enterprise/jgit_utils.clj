@@ -1,7 +1,8 @@
 (ns puppetlabs.enterprise.jgit-utils
-  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType)
+  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType PullResult)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository Ref)
+           (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
@@ -121,6 +122,32 @@
       (reset)
       (setMode ResetCommand$ResetType/HARD)
       (call)))
+
+(defn pull
+  "Perform a git-pull of remote commits into the supplied repository.  Does not
+  do a rebase of current content on top of the new content being fetched.  Uses
+  a merge strategy of 'THEIRS' to defer to give remote content precedence over
+  any local content in the event of a merge conflict.  Returns a PullResult or
+  throws one of the following Exceptions from the org.eclipse.api.errors
+  package:
+
+  * WrongRepositoryStateException
+  * InvalidConfigurationException
+  * DetachedHeadException
+  * InvalidRemoteException
+  * CanceledException
+  * RefNotFoundException
+  * TransportException
+  * GitAPIException"
+  [repo]
+  {:pre [(instance? Repository repo)]
+   :post [(instance? PullResult %)]}
+  (-> repo
+      (Git.)
+      (.pull)
+      (.setRebase false)
+      (.setStrategy MergeStrategy/THEIRS)
+      (.call)))
 
 (defn push
   "Perform a git-push of pending commits in the supplied repository to a
