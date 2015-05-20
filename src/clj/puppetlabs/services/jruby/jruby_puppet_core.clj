@@ -85,21 +85,24 @@
   initialize-config :- jruby-schemas/JRubyPuppetConfig
   [config :- {schema/Keyword schema/Any}]
   (-> (get-in config [:jruby-puppet])
-      (assoc :http-client-ssl-protocols
-             (get-in config [:http-client :ssl-protocols]))
-      (assoc :http-client-cipher-suites
-             (get-in config [:http-client :cipher-suites]))
-      (assoc :http-client-connect-timeout-milliseconds
-             (get-in config [:http-client :connect-timeout-milliseconds]
-                            default-http-connect-timeout))
-      (assoc :http-client-idle-timeout-milliseconds
-             (get-in config [:http-client :idle-timeout-milliseconds]
-                            default-http-socket-timeout))
-      (update-in [:borrow-timeout] #(or % default-borrow-timeout))
-      (update-in [:master-conf-dir] #(or % nil))
-      (update-in [:master-var-dir] #(or % nil))
-      (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
-      (update-in [:max-requests-per-instance] #(or % 0))))
+    (assoc :http-client-ssl-protocols
+      (get-in config [:http-client :ssl-protocols]))
+    (assoc :http-client-cipher-suites
+      (get-in config [:http-client :cipher-suites]))
+    (assoc :http-client-connect-timeout-milliseconds
+      (get-in config [:http-client :connect-timeout-milliseconds]
+        default-http-connect-timeout))
+    (assoc :http-client-idle-timeout-milliseconds
+      (get-in config [:http-client :idle-timeout-milliseconds]
+        default-http-socket-timeout))
+    (update-in [:borrow-timeout] #(or % default-borrow-timeout))
+    (update-in [:master-conf-dir] #(or % nil))
+    (update-in [:master-var-dir] #(or % nil))
+    (update-in [:master-code-dir] #(or % nil))
+    (update-in [:master-run-dir] #(or % nil))
+    (update-in [:master-log-dir] #(or % nil))
+    (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
+    (update-in [:max-requests-per-instance] #(or % 0))))
 
 (schema/defn ^:always-validate
   create-pool-context :- jruby-schemas/PoolContext
