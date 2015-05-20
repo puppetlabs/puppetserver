@@ -2,7 +2,7 @@
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
            (org.eclipse.jgit.lib PersonIdent)
-           (org.eclipse.jgit.api.errors GitAPIException))
+           (org.eclipse.jgit.api.errors GitAPIException JGitInternalException))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -37,8 +37,21 @@
 
   The keys should have the following values:
 
-    * :working-dir  - The path where the repository's working tree resides."
-  {:working-dir StringOrFile})
+    * :working-dir  - The path where the repository's working tree resides.
+
+    * :submodules-dir - The relative path within the repository's working tree
+                        where submodules will be added.
+
+    * :submodules-working-dir - The path in which to look for directories to
+                                be added as submodules to the repository.
+
+  `submodules-dir` and `submodules-working-dir` are optional, but if one is
+  present the other must be too."
+  (schema/if :submodules-dir
+    {:working-dir StringOrFile
+     :submodules-dir StringOrFile
+     :submodules-working-dir StringOrFile}
+    {:working-dir StringOrFile}))
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -50,6 +63,8 @@
 
     * :data-dir - The data directory on the Git server under which all of the
                   repositories it is managing should reside.
+
+    * :server-url - Base URL of the repository server.
 
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
@@ -76,12 +91,24 @@
   {:error {:type    (schema/eq :publish-error)
            :message schema/Str}})
 
+(def PublishSubmoduleResult
+  "Schema defining the result of publishing a single submodule, which is
+  either a SHA for the new commit or an error map."
+  {schema/Str (schema/if map? PublishError schema/Str)})
+
+(def PublishSuccess
+  "Schema defining the result of successfully adding and commiting a single
+  repo, including the status of publishing any submodules the repo has."
+  {:commit schema/Str
+   (schema/optional-key :submodules) PublishSubmoduleResult})
+
 (def PublishRepoResult
-  "Schema defining the result of publishing a single repo, which is
-  either a SHA for the new commit on the storage server, or an error."
-  (schema/if map?
-    PublishError
-    schema/Str))
+  "Schema defining the result of publishing a single repo, which is either a
+  map with the SHA for the new commit and the status of any submodules, if
+  there are any on the storage server, or an error map."
+  (schema/if :commit
+    PublishSuccess
+    PublishError))
 
 (def PublishResponseBody
   "Schema defining the body of a response to the publish content endpoint.
@@ -144,31 +171,105 @@
         email (:email author default-commit-author-email)]
    (PersonIdent. name email)))
 
+(defn failed-to-publish
+  [path error]
+  (log/error error (str "Failed to publish " path))
+  {:error {:type :publish-error
+           :message (str "Failed to publish " path ": "
+                      (.getMessage error))}})
+
+(defn publish-submodules
+  "Given a list of subdirectories, checks to see whether each subdirectory is
+  already a submodule of the parent repo. If so, does an add and commit on the
+  subdirectory and a git pull on its directory within the parent repo to
+  update it. If not, initializes a bare repo for it, does an initial add and
+  commit, then adds it as a submodule of the parent repo. Returns a list with
+  the either the an error or the new SHA for each submodule."
+  [submodules [repo {:keys [submodules-dir submodules-working-dir working-dir]}] data-dir server-url message author]
+  (for [submodule submodules]
+    (let [repo-name (name repo)
+          submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
+          submodule-working-dir (fs/file submodules-working-dir submodule)
+          submodule-within-superproject (fs/file working-dir submodules-dir submodule)
+          submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
+          git (-> (fs/file data-dir (str repo-name ".git"))
+                (jgit-utils/get-repository working-dir)
+                Git/wrap)]
+
+      (log/infof "Publishing submodule %s/%s" submodules-dir submodule)
+      ;; Check whether the submodule exists on the parent repo. If it does
+      ;; then we add and commit the submodule in its repo, then do a pull
+      ;; within the parent repo to update it there. If it does not exist, then
+      ;; we need to initialize a new bare repo for the submodule and do a
+      ;; "submodule add".
+      (try
+        (if (empty? (.. git
+                      submoduleStatus
+                      (addPath (str submodules-dir "/" submodule))
+                      call))
+          (do
+            ;; initialize a bare repo for the new submodule
+            (log/debugf "Initializing bare repo for submodule %s of repo %s" submodule repo-name)
+            (initialize-bare-repo! submodule-git-dir)
+
+            ;; add and commit the new submodule
+            (log/debugf "Committing submodule %s " submodule-working-dir)
+            (let [commit (jgit-utils/add-and-commit submodule-git message author)]
+
+              ;; do a submodule add on the parent repo
+              (log/debugf "Adding submodule %s to repo %s" submodule repo-name)
+              (.. git
+                submoduleAdd
+                (setPath (str "./" submodules-dir "/" submodule))
+                (setURI (str server-url "/file-sync-git/" (name repo) "/" submodule ".git"))
+                call)
+              (jgit-utils/commit-id commit)))
+          (do
+            ;; add and commit the repo for the submodule
+            (log/debugf "Committing submodule %s " submodule-working-dir)
+            (let [commit (jgit-utils/add-and-commit submodule-git message author)]
+
+              ;; do a pull for the submodule within the parent repo to update it
+              (log/debugf "Updating submodule %s in repo %s" submodule repo-name)
+              (jgit-utils/pull (jgit-utils/get-repository-from-working-tree submodule-within-superproject))
+
+              ;; return the sha from the commit
+              (jgit-utils/commit-id commit))))
+        (catch JGitInternalException e
+          (failed-to-publish submodule-within-superproject e))
+        (catch GitAPIException e
+          (failed-to-publish submodule-within-superproject e))))))
+
 (schema/defn publish-repos :- [PublishRepoResult]
-  "Given a list of working directories, a commit message, and a commit
-  author, perform an add and commit for each working directory.
-  Returns the newest SHA for each working directory that was
-  successfully committed, an error if there was no existing git repository
-  in the directory, or an error that the add/commit failed."
+  "Given a list of working directories, a commit message, and a commit author,
+  perform an add and commit for each working directory.  Returns the newest
+  SHA for each working directory that was successfully committed and the
+  status of any submodules in the repo, or an error that the add/commit
+  failed."
   [repos :- GitRepos
    data-dir :- schema/Str
    server-url :- schema/Str
    message :- schema/Str
    author :- PersonIdent]
-  (for [[repo-id {:keys [working-dir]}] repos]
-    (try
+  (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
+    (do
       (log/infof "Publishing working directory %s to file sync storage service"
-                 working-dir)
-      (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))]
-        (-> (jgit-utils/get-repository git-dir working-dir)
-            (Git/wrap)
-            (jgit-utils/add-and-commit message author)
-            (jgit-utils/commit-id)))
-      (catch GitAPIException e
-        (log/error e (str "Failed to publish " working-dir))
-        {:error {:type    :publish-error
-                 :message (str "Failed to publish " working-dir ":"
-                               (.getMessage e))}}))))
+        working-dir)
+      (let [submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
+            submodules-status (doall (publish-submodules submodules repo data-dir server-url message author))]
+        (try
+          (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
+                git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
+                commit (jgit-utils/add-and-commit git message author)
+                parent-status {:commit (jgit-utils/commit-id commit)}]
+            (if-not (empty? submodules-status)
+              (assoc parent-status :submodules
+                (zipmap (map #(str submodules-dir "/" %) submodules) submodules-status))
+              parent-status))
+          (catch JGitInternalException e
+            (failed-to-publish working-dir e))
+          (catch GitAPIException e
+            (failed-to-publish working-dir e)))))))
 
 (schema/defn ^:always-validate publish-content :- PublishResponseBody
   "Given a map of repositories and the JSON body of the request, publish

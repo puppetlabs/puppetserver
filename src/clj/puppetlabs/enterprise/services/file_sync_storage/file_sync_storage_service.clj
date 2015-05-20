@@ -11,11 +11,11 @@
              [:WebroutingService add-servlet-handler add-ring-handler get-route]]
 
   (init [this context]
-    (let [config            (get-in-config [:file-sync-storage])
-          data-dir          (:data-dir config)
+    (let [config (get-in-config [:file-sync-storage])
+          data-dir (:data-dir config)
           server-url (:server-url config)
-          api-path-prefix   (get-route this :api)
-          repo-path-prefix  (get-route this :repo-servlet)
+          api-path-prefix (get-route this :api)
+          repo-path-prefix (get-route this :repo-servlet)
           ; JGit servlet uses 'export-all' setting to decide
           ; whether to allow all repositories to be eligible
           ; for external access.  Using a value of '1' for now
