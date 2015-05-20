@@ -42,8 +42,7 @@
                 (assoc :webserver {:port 8081})
                 (assoc :web-router-service
                        {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                        :puppetlabs.services.master.master-service/master-service {:master-routes "/puppet"
-                                                                                   :invalid-in-puppet-4 "/"}}))
+                        :puppetlabs.services.master.master-service/master-service "/puppet"}))
 
             (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
               (jruby/with-jruby-puppet
@@ -103,8 +102,7 @@
                   (assoc :webserver {:port 8081})
                   (assoc :web-router-service
                          {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                          :puppetlabs.services.master.master-service/master-service                           {:master-routes       "/puppet"
-                                                                                                               :invalid-in-puppet-4 "/"}})
+                          :puppetlabs.services.master.master-service/master-service "/puppet"})
                   (assoc :product {:update-server-url "http://notarealurl/"
                                    :name              {:group-id    "puppets"
                                                        :artifact-id "yoda"}}))

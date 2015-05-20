@@ -2,7 +2,6 @@ require 'spec_helper'
 
 require 'puppet/server/http_client'
 require 'java'
-java_import com.puppetlabs.http.client.SimpleRequestOptions
 
 describe 'Puppet::Server::HttpClient' do
   let :client do
@@ -22,9 +21,7 @@ describe 'Puppet::Server::HttpClient' do
     end
 
     subject do
-      request_options = SimpleRequestOptions.new("http://i.love.ruby")
-      client.send(:configure_timeouts, request_options)
-      request_options
+      Puppet::Server::HttpClient.create_client_options
     end
 
     it 'then get_socket_timeout_milliseconds is 24' do

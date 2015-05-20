@@ -2,7 +2,6 @@
   (:import (java.io FileInputStream)
            (clojure.lang IFn))
   (:require [me.raynes.fs :as fs]
-            [compojure.route :as route]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.services.config.puppet-server-config-core :as config]
