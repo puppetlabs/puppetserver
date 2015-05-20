@@ -2,8 +2,8 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'content file resource'
 
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+studio = agent.tmpdir('content_file_test')
 
 teardown do
   cleanup(studio)

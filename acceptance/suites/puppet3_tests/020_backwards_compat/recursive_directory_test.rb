@@ -2,8 +2,8 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'recursive directory file resource'
 
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+studio = agent.tmpdir('recursive_directory_test')
 
 teardown do
   cleanup(studio)

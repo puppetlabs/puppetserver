@@ -2,8 +2,8 @@ require 'puppetserver/acceptance/compat_utils'
 
 test_name 'source file resource'
 
-studio = "/tmp/simmons-studio-#{Process.pid}"
 agent = nonmaster_agents().first
+studio = agent.tmpdir('source_file_test')
 
 teardown do
   cleanup(studio)
@@ -19,7 +19,7 @@ step "Validate source-file" do
 end
 
 step "Validate source-file filebucket backup" do
-  old_md5 = on(agent, "openssl dgst -md5 #{studio}/source-file-old | awk '{print $2}'").stdout.chomp
+  old_md5 = on(agent, "md5sum #{studio}/source-file-old | awk '{print $1}'").stdout.chomp
   on(agent, puppet("filebucket restore #{studio}/source-file-backup #{old_md5} --server #{master}"))
   diff = on(agent, "diff #{studio}/source-file-old #{studio}/source-file-backup").exit_code
   assert_equal(0, diff, 'source-file was not backed up to filebucket')
