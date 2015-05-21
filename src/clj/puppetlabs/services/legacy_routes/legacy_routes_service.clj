@@ -13,9 +13,7 @@
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
-   [:PuppetServerConfigService get-config]
-   [:MasterService]
-   [:CaService]]
+   [:PuppetServerConfigService get-config]]
   (init
     [this context]
     (let [path (get-route this)
