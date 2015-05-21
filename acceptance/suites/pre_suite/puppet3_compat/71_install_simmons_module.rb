@@ -1,4 +1,4 @@
-simmons_version = '0.3.1'
+simmons_version = '0.3.3'
 
 step "Install nwolfe-simmons module #{simmons_version}" do
   on(master, puppet("module install nwolfe-simmons --version #{simmons_version}"))
