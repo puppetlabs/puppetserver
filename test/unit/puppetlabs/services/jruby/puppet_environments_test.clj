@@ -32,6 +32,22 @@
       (is (true? (expired? reg :foo)))
       (is (true? (.isExpired reg "bar")))
       (is (true? (expired? reg :bar)))))
+  (testing "mark-environment-expired"
+    (let [reg (puppet-env/environment-registry)]
+      (.registerEnvironment reg "foo")
+      (.registerEnvironment reg "bar")
+      (is (false? (expired? reg :foo)))
+      (is (false? (expired? reg :bar)))
+      (puppet-env/mark-environment-expired! reg "foo")
+      (is (true? (.isExpired reg "foo")))
+      (is (true? (expired? reg :foo)))
+      (is (false? (.isExpired reg "bar")))
+      (is (false? (expired? reg :bar)))
+      (puppet-env/mark-environment-expired! reg "bar")
+      (is (true? (.isExpired reg "foo")))
+      (is (true? (expired? reg :foo)))
+      (is (true? (.isExpired reg "bar")))
+      (is (true? (expired? reg :bar)))))
   (testing "removing and re-registering an environment clears staleness"
     (let [reg (puppet-env/environment-registry)]
       (.registerEnvironment reg "foo")

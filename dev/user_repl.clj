@@ -121,6 +121,14 @@
   (pprint/pprint
     (map puppet-environment-state (jruby-pool))))
 
+(defn mark-environment-expired!
+  "Mark the specified environment, on all JRuby instances, stale so that it will
+  be flushed from the environment cache."
+  [env-name]
+  (jruby-protocol/mark-environment-expired!
+    (tka/get-service system :JRubyPuppetService)
+    env-name))
+
 (defn mark-all-environments-expired!
   "Mark all environments, on all JRuby instances, stale so that they will
   be flushed from the environment cache."
