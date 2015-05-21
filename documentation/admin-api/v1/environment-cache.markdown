@@ -17,7 +17,7 @@ request to this endpoint.
 
 ### Query Parameters
 
-(Introduced in Puppet Server 1.1/2.2)
+(Introduced in Puppet Server 1.1/2.1)
 
 This endpoint accepts an optional query parameter, `environment`, whose value
 may be set to the name of a specific Puppet environment.  If this parameter
