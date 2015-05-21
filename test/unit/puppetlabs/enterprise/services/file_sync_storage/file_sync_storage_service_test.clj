@@ -230,7 +230,7 @@
 
       (testing "when request body is malformed json"
         (let [response (http-client/post publish-url
-                                  {:body    "malformed"
+                                  {:body "malformed"
                                    :headers {"Content-Type" "application/json"}})
               body (slurp (:body response))]
           (is (= (:status response) 400))
@@ -238,8 +238,8 @@
               (str "Unexpected response body: " body))))
 
       (testing "when request body is not json"
-        (let [response (http-client/post publish-url {:body    "not json"
-                                               :headers {"Content-Type" "text/plain"}})
+        (let [response (http-client/post publish-url {:body "not json"
+                                                      :headers {"Content-Type" "text/plain"}})
               body (slurp (:body response))]
           (is (= (:status response) 400))
           (is (= "content-type-error" (get-in (json/parse-string body) ["error" "type"]))
@@ -256,8 +256,8 @@
         app
         (helpers/storage-service-config-with-repos
           data-dir
-          {(keyword failed-repo)      {:working-dir working-dir-failed}
-           (keyword success-repo)     {:working-dir working-dir-success}}
+          {(keyword failed-repo) {:working-dir working-dir-failed}
+           (keyword success-repo) {:working-dir working-dir-success}}
           false)
 
         ; Delete the failed repo entirely - this'll cause the publish to fail
