@@ -2,7 +2,7 @@ def nonmaster_agents()
   agents.reject { |agent| agent == master }
 end
 
-def apply_simmons_class(agent, master, studio, classname)
+def apply_simmons_class(agent, studio, classname)
   sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
   create_remote_file(master, sitepp, <<SITEPP)
 class { 'simmons':
@@ -16,10 +16,11 @@ SITEPP
   end
 end
 
-def cleanup(studio)
-  on(agents, "rm -rf #{studio}")
+def rm_vardirs()
+  # In order to prevent file caching and ensure agent-master HTTP communication
+  # during agent runs we blow away the vardirs, which contains the cached files
   hosts.each do |host|
-    var_dir = on(host, puppet("config print vardir")).stdout.chomp
-    on(host, "rm -fr #{var_dir}")
+    vardir = on(host, puppet("config print vardir")).stdout.chomp
+    on(host, "rm -rf #{vardir}")
   end
 end
