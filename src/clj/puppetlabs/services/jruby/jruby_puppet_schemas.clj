@@ -49,7 +49,19 @@
         when https client requests are made.
 
     * :http-client-cipher-suites - A list of legal SSL cipher suites that may
-        be used when https client requests are made."
+        be used when https client requests are made.
+
+    * :http-client-connect-timeout-milliseconds - The amount of time, in
+        milliseconds, that an outbound HTTP connection will wait to connect
+        before giving up.  If 0, the timeout is infinite and if negative, the
+        value is undefined in the application and governed by the system default
+        behavior.
+
+    * :http-client-idle-timeout-milliseconds - The amount of time, in
+        milliseconds, that an outbound HTTP connection will wait for data to be
+        available after a request is sent before closing the socket.  If 0, the
+        timeout is infinite and if negative, the value is undefined by the
+        application and is governed by the default system behavior."
   ;; NOTE: there is a bug in the version of schema we're using, which causes
   ;; the order of things that you put into a `both` to be very important.
   ;; The `vector?` pred here MUST come before the `[schema/Str]`.  For more info

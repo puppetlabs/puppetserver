@@ -105,7 +105,9 @@
    flush-instance-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
   (let [{:keys [ruby-load-path gem-home master-conf-dir master-var-dir
-                http-client-ssl-protocols http-client-cipher-suites]} config]
+                http-client-ssl-protocols http-client-cipher-suites
+                http-client-connect-timeout-milliseconds
+                http-client-idle-timeout-milliseconds]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
@@ -125,7 +127,10 @@
         (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
       (.put puppet-server-config "profiler" profiler)
       (.put puppet-server-config "environment_registry" env-registry)
-
+      (.put puppet-server-config "http_connect_timeout_milliseconds"
+        http-client-connect-timeout-milliseconds)
+      (.put puppet-server-config "http_idle_timeout_milliseconds"
+        http-client-idle-timeout-milliseconds)
       (let [instance (jruby-schemas/map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id
