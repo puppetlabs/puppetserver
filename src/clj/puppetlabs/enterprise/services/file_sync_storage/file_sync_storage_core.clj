@@ -54,6 +54,7 @@
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
   {:data-dir StringOrFile
+   :server-url schema/Str
    :repos    GitRepos})
 
 (def PublishRequestBody
@@ -151,6 +152,7 @@
   in the directory, or an error that the add/commit failed."
   [repos :- GitRepos
    data-dir :- schema/Str
+   server-url :- schema/Str
    message :- schema/Str
    author :- PersonIdent]
   (for [[repo-id {:keys [working-dir]}] repos]
@@ -176,21 +178,22 @@
   latest commit or error."
   [repos :- GitRepos
    body
-   data-dir]
+   data-dir
+   server-url]
   (if-let [checked-body (schema/check PublishRequestBody body)]
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
     (let [author (commit-author (:author body))
           message (:message body default-commit-message)
-          new-commits (publish-repos repos data-dir message author)]
+          new-commits (publish-repos repos data-dir server-url message author)]
       (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 (defn build-routes
   "Builds the compojure routes from the given configuration values."
-  [data-dir repos]
+  [data-dir repos server-url]
   (compojure/routes
     (compojure/context "/v1" []
       (compojure/POST common/publish-content-sub-path {body :body headers :headers}
@@ -206,7 +209,7 @@
             (try
               (let [json-body (json/parse-string (slurp body) true)]
                 {:status 200
-                 :body (publish-content repos json-body data-dir)})
+                 :body (publish-content repos json-body data-dir server-url)})
               (catch com.fasterxml.jackson.core.JsonParseException e
                 {:status 400
                  :body {:error {:type :json-parse-error
@@ -220,8 +223,8 @@
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
-  [data-dir sub-paths]
-  (-> (build-routes data-dir sub-paths)
+  [data-dir sub-paths server-url]
+  (-> (build-routes data-dir sub-paths server-url)
       ringutils/wrap-request-logging
       ringutils/wrap-user-data-errors
       ringutils/wrap-schema-errors

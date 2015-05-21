@@ -81,14 +81,18 @@
                          :repo-servlet default-repo-path-prefix}}})
 
 (defn file-sync-storage-config
-  [data-dir repos]
-  {:file-sync-storage {:data-dir data-dir
-                       :repos    repos}})
+  ([data-dir repos]
+   (file-sync-storage-config data-dir repos false))
+  ([data-dir repos ssl?]
+   {:file-sync-storage {:data-dir data-dir
+                        :server-url (base-url ssl?)
+                        :repos    repos}}))
 
 (defn storage-service-config-with-repos
   [data-dir repos ssl?]
-  (merge (if ssl? webserver-ssl-config webserver-plaintext-config)
-         (file-sync-storage-config data-dir repos)))
+  (if ssl?
+    (merge webserver-ssl-config (file-sync-storage-config data-dir repos true))
+    (merge webserver-plaintext-config (file-sync-storage-config data-dir repos))))
 
 (defn file-sync-client-config-payload
   [repos ssl?]

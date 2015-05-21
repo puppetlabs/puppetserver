@@ -21,10 +21,10 @@
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes"
     (let [repo-id "push-disabled-test"
-          config (merge helpers/webserver-plaintext-config
-                        {:file-sync-storage {:data-dir (helpers/temp-dir-as-string)
-                                             :repos {(keyword repo-id)
-                                                     {:working-dir repo-id}}}})]
+          config (helpers/storage-service-config-with-repos
+                   (helpers/temp-dir-as-string)
+                   {(keyword repo-id) {:working-dir repo-id}}
+                   false)]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app config
         (let [clone-dir (helpers/temp-dir-as-string)
