@@ -4,7 +4,8 @@
 
 (defprotocol EnvironmentStateContainer
   (environment-state [this])
-  (mark-all-environments-expired! [this]))
+  (mark-all-environments-expired! [this])
+  (mark-environment-expired! [this env-name]))
 
 (defn environment-registry
   []
@@ -36,4 +37,7 @@
       (environment-state [this] state)
       (mark-all-environments-expired! [this]
         (log/info "Marking all registered environments as expired.")
-        (swap! state mark-all-expired!)))))
+        (swap! state mark-all-expired!))
+      (mark-environment-expired! [this env-name]
+        (log/infof "Marking environment '%s' as expired." env-name)
+        (swap! state mark-expired! (keyword env-name))))))
