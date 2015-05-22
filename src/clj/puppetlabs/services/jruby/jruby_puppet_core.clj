@@ -131,6 +131,15 @@
   @(:state jruby-puppet))
 
 (schema/defn ^:always-validate
+  mark-environment-expired!
+  [context :- jruby-schemas/PoolContext
+   env-name :- schema/Str]
+  (doseq [jruby-instance (pool->vec context)]
+    (-> jruby-instance
+      :environment-registry
+      (puppet-env/mark-environment-expired! env-name))))
+
+(schema/defn ^:always-validate
   mark-all-environments-expired!
   [context :- jruby-schemas/PoolContext]
   (doseq [jruby-instance (pool->vec context)]

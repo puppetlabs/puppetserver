@@ -59,7 +59,7 @@ This file contains the settings for Puppet Server itself.
     * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
     * `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
-      uses the Puppet default of `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
+      uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
     * `master-conf-dir`: Optionally, set the path to the Puppet configuration
       directory. If not specified, uses the Puppet default `/etc/puppetlabs/puppet`.
     * `master-code-dir`: Optionally, set the path to the Puppet code directory.
@@ -73,7 +73,17 @@ This file contains the settings for Puppet Server itself.
       If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby
       instances to allow. Defaults to 'num-cpus - 1', with a minimum default
-      value of 1 and a maximum default value of 4'.
+      value of 1 and a maximum default value of 4.
+    * `max-requests-per-instance`: Optionally, limit how many HTTP requests a
+      given JRuby instance will handle in its lifetime. When a JRuby instance
+      reaches this limit, it gets flushed from memory and replaced with a fresh
+      one. Defaults to 0, which disables automatic JRuby flushing.
+
+      This can be useful for working around buggy module code that would
+      otherwise cause memory leaks, but it causes a slight performance penalty
+      whenever a new JRuby has to reload all of the Puppet Ruby code.  If memory
+      leaks from module code are not an issue in your deployment, the default
+      value will give the best performance.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
       an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
@@ -100,6 +110,7 @@ jruby-puppet: {
     master-run-dir: /var/run/puppetlabs/puppetserver
     master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
+    max-requests-per-instance: 0
 }
 
 # settings related to HTTP client requests made by Puppet Server

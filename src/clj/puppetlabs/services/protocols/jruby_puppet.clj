@@ -20,6 +20,10 @@
     [this]
     "The number of free JRubyPuppet instances left in the pool.")
 
+  (mark-environment-expired!
+    [this env-name]
+    "Mark the specified environment expired, in all JRuby instances.")
+
   (mark-all-environments-expired!
     [this]
     "Mark all cached environments expired, in all JRuby instances.")

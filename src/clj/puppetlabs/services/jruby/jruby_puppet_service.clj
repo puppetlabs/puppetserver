@@ -50,6 +50,11 @@
           pool         (core/get-pool pool-context)]
       (core/free-instance-count pool)))
 
+  (mark-environment-expired!
+    [this env-name]
+    (let [pool-context (:pool-context (tk-services/service-context this))]
+      (core/mark-environment-expired! pool-context env-name)))
+
   (mark-all-environments-expired!
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
