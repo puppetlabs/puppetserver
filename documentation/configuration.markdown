@@ -61,6 +61,12 @@ This file contains the settings for Puppet Server itself.
     * `master-var-dir`: Optionally, set the path to the Puppet variable directory. If not specified, uses the Puppet default `/var/lib/puppet`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus - 1', with a minimum default
       value of 1 and a maximum default value of 4.
+    * `max-requests-per-instance`: Optionally, set the maximum number of HTTP requests that may be handled by a given JRuby instance.  When a
+      given JRuby instance reaches this limit, it will be flushed from memory and replaced with a fresh one.  This can be useful for working around
+      buggy module code that would otherwise cause memory leaks, but comes at the cost of a slight performance penalty whenever a JRuby must be
+      flushed and must reload all of the Puppet Ruby code.  If this setting is not provided, the default value is 0 and the behavior is to not do any
+      automatic flushing of the JRuby instances; this configuration provides maximum performance for deployments where memory leaks from module code
+      are not an issue.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
     * `enabled`: if this is set to `true`, it enables profiling for the Puppet Ruby code. Defaults to `false`.
@@ -80,6 +86,7 @@ jruby-puppet: {
     master-conf-dir: /etc/puppet
     master-var-dir: /var/lib/puppet
     max-active-instances: 1
+    max-requests-per-instance: 0
 }
 
 # settings related to HTTP client requests made by Puppet Server
