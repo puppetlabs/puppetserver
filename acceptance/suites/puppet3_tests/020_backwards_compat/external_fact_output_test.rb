@@ -7,10 +7,6 @@ teardown do
 end
 
 agents.each do |agent|
-  # This skip should be removed when executable external facts work for Puppet 4.x
-  # on Linux-based platforms again (PUP-4420)
-  next unless agent.platform =~ /windows/
-
   studio = agent.tmpdir('external_fact_output_test')
 
   step "Apply simmons::external_fact_output to agent #{agent.platform}" do
