@@ -53,7 +53,7 @@ of puppet-server to install and test against.
    `0.1.4.SNAPSHOT.2014.05.15T1118`
 3. Copy the text (not the link address) - this will be `PACKAGE_BUILD_VERSION`
 4. Define ```PUPPET_VERSION``` as the packaged version of the puppet-agent
-   package that we're depending upon, which is currently `1.0.0`
+   package that we're depending upon, which is currently `1.1.0`
 
 If you are testing backwards compaitiblity against a specific release of
 puppet, the `PUPPET_LEGACY_VERSION` environment variable is also available for

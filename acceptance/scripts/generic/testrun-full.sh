@@ -26,6 +26,6 @@ bundle exec beaker \
   --pre-suite $BEAKER_PRESUITE \
   --keyfile $BEAKER_KEYFILE \
   --load-path "acceptance/lib" \
-  --preserve-hosts always \
+  --preserve-hosts onfail \
   --debug \
   --timeout 360
