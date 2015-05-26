@@ -35,13 +35,13 @@ particular should be configured:
 # auth.conf
 
 The REST API URL structure has changed starting in Puppet 4.  The major change
-is the introduction of a versioned API rooted at `/puppet`.  In the general
-case a Puppet 3 URL can be translated to Puppet 4 by stripping off the
-environment name prefix, pre-pending `/puppet/v3`, and then adding back the
-environment name as a query parameter.  If `auth.conf` has been customized and
-Puppet Server 2.1 is going to be used with Puppet 3 agents then the Puppet 3
-requests need to be translated in this way and expressed in auth.conf in their
-Puppet 4 form.
+is the introduction of a versioned API rooted at `/puppet`, with the CA API
+separated out at `/puppet-ca`.  In the general case a Puppet 3 URL can be
+translated to Puppet 4 by stripping off the environment name prefix, pre-pending
+`/puppet/v3`, and then adding back the environment name as a query parameter.
+If `auth.conf` has been customized and Puppet Server 2.1 is going to be used
+with Puppet 3 agents then the Puppet 3 requests need to be translated in this
+way and expressed in auth.conf in their Puppet 4 form.
 
 For example, consider a customized deployment that uses UUID's to uniquely
 identify certificates, but omits the UUID from the node-name to facilitate
