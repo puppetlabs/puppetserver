@@ -193,3 +193,41 @@
         (let [catalogs (get-catalog-from-each-jruby borrow-jruby-fn return-jruby-fn)]
           (is (= 0 (num-catalogs-containing catalogs "Notify" "hello1")))
           (is (= 2 (num-catalogs-containing catalogs "Notify" "hello2"))))))))
+
+(deftest ^:integration single-environment-flush-integration-test
+  (testing "a single environment is flushed after marking expired"
+    (write-site-pp-file "include foo")
+    (write-foo-pp-file "class foo { notify {'hello1': } }")
+    (bootstrap/with-puppetserver-running app {:jruby-puppet
+                                              {:max-active-instances 1}}
+      ;;; Validate that the catalog has `hello1`
+      (let [catalog1 (get-catalog)]
+        (is (catalog-contains? catalog1 "Notify" "hello1"))
+        (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
+
+      ;; Now we modify the class definition to have a 'hello2' notify,
+      ;; instead of 'hello1'.
+      (write-foo-pp-file "class foo { notify {'hello2': } }")
+
+      ;; Now, make a DELETE request to the /environment-cache endpoint, specifying
+      ;; an environment OTHER THAN the production environment.  This should not
+      ;; cause the cache to be flushed for the production environment.
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache?environment=foo"
+                       ssl-request-options)]
+        (is (= 204 (:status response)) (ks/pprint-to-string response)))
+
+      ;;; Validate that the catalog still has `hello1`
+      (let [catalog1 (get-catalog)]
+        (is (catalog-contains? catalog1 "Notify" "hello1"))
+        (is (not (catalog-contains? catalog1 "Notify" "hello2"))))
+
+      (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache?environment=production"
+                       ssl-request-options)]
+        (is (= 204 (:status response)) (ks/pprint-to-string response)))
+
+      ;;; Validate that the catalog now has `hello2`
+      (let [catalog1 (get-catalog)]
+        (is (not (catalog-contains? catalog1 "Notify" "hello1")))
+        (is (catalog-contains? catalog1 "Notify" "hello2"))))))
