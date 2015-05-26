@@ -11,6 +11,7 @@ install_dir = get_defaults_var(master, "INSTALL_DIR")
 
 jarfile = File.join(install_dir, "puppet-server-release.jar")
 
+on(master, "test -e \"#{jarfile}\"")
 install_package(master, "unzip")
 
 unzip_grep = "unzip -lf #{jarfile} "
