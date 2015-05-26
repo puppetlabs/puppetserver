@@ -5,8 +5,10 @@
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
             [liberator.core :refer [defresource]]
-            ;[liberator.dev :as liberator-dev]
-            [puppetlabs.comidi :as comidi]))
+    ;[liberator.dev :as liberator-dev]
+            [puppetlabs.comidi :as comidi]
+            [clojure.tools.logging :as log]
+            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -21,7 +23,7 @@
 ;;; Liberator resources
 
 (defresource environment-cache-resource
-  [jruby-service]
+  [jruby-service env-name]
   :allowed-methods [:delete]
 
   ;; If you need to define :available-media-types, see comment below.
@@ -44,7 +46,9 @@
 
   :delete!
   (fn [context]
-    (jruby-puppet/mark-all-environments-expired! jruby-service)))
+    (if env-name
+      (jruby-puppet/mark-environment-expired! jruby-service env-name)
+      (jruby-puppet/mark-all-environments-expired! jruby-service))))
 
 (defresource jruby-pool-resource
   [jruby-service]
@@ -81,8 +85,9 @@
   [jruby-service]
   "Routes for v1 of the Puppet Admin HTTP API."
   (comidi/routes
-    (comidi/ANY "/environment-cache" []
-      (environment-cache-resource jruby-service))
+    (comidi/ANY "/environment-cache" request
+      (environment-cache-resource jruby-service
+        (get-in request [:query-params "environment"])))
     (comidi/ANY "/jruby-pool" []
        (jruby-pool-resource jruby-service))))
 
@@ -115,4 +120,5 @@
       (#(comidi/context path %))
       (comidi/routes->handler)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-      (ringutils/wrap-with-cert-whitelist-check settings)))
+      (ringutils/wrap-with-cert-whitelist-check settings)
+      pl-ring-params/wrap-params))

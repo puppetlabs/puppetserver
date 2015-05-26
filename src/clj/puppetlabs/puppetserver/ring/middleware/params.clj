@@ -91,3 +91,19 @@
     (if (:query-params request)
       request
       (assoc-query-params request encoding))))
+
+(defn wrap-params
+  "Middleware to parse urlencoded parameters from the query string and form
+  body (if the request is a url-encoded form). Adds the following keys to
+  the request map:
+  :query-params - a map of parameters from the query string
+  :form-params  - a map of parameters from the body
+  :params       - a merged map of all types of parameter
+  Accepts the following options:
+  :encoding - encoding to use for url-decoding. If not specified, uses
+              the request character encoding, or \"UTF-8\" if no request
+              character encoding is set."
+  {:arglists '([handler] [handler options])}
+  [handler & [options]]
+  (fn [request]
+    (handler (params-request request options))))
