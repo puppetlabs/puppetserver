@@ -237,7 +237,7 @@ EOF
     when /^(fedora|el|centos)$/
       defaults_dir = "/etc/sysconfig/"
     when /^(debian|ubuntu)$/
-      defaults_dir = "/etc/defaults/"
+      defaults_dir = "/etc/default/"
     else
       logger.warn("#{platform}: Unsupported platform for puppetserver.")
     end
