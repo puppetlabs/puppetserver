@@ -66,7 +66,7 @@ follows:
     allow $1
 
 This configuration will not work in Puppet Server 2 with Puppet 3 because of
-the translation to Puppet 4 format URL's.  A working configuration looks like
+the translation to Puppet 4 format URLs.  A working configuration looks like
 so:
 
     # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1
