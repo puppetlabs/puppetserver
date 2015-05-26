@@ -15,6 +15,14 @@ endpoint to the master's HTTP API:
 To trigger a complete invalidation of the data in this cache, make an HTTP
 request to this endpoint.
 
+### Query Parameters
+
+(Introduced in Puppet Server 1.1/2.1)
+
+This endpoint accepts an optional query parameter, `environment`, whose value
+may be set to the name of a specific Puppet environment.  If this parameter
+is provided, only the specified environment will be flushed from the cache,
+as opposed to all environments.
 
 ### Response
 
@@ -26,6 +34,9 @@ The response body will be empty.
 
 ~~~
 $ curl -i --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X DELETE https://localhost:8140/puppet-admin-api/v1/environment-cache
+HTTP/1.1 204 No Content
+
+$ curl -i --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X DELETE https://localhost:8140/puppet-admin-api/v1/environment-cache?environment=production
 HTTP/1.1 204 No Content
 ~~~
 
