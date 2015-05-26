@@ -1,6 +1,4 @@
-install_opts = {
-  :dev_builds_repos => ["PC1"],
-  :dev_builds_url => 'http://builds.delivery.puppetlabs.net'}
+install_opts = options.merge( { :dev_builds_repos => ["PC1"] })
 repo_config_dir = 'tmp/repo_configs'
 
 case test_config[:puppetserver_install_type]
