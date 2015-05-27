@@ -4,6 +4,7 @@
   (:import (java.util.concurrent BlockingDeque)
            (clojure.lang Atom Agent IFn)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
+           (org.jruby Main)
            (org.jruby.embed ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -153,6 +154,10 @@
   [x]
   (instance? JRubyPuppetInstance x))
 
+(defn jruby-main-instance?
+  [x]
+  (instance? Main x))
+
 (defn poison-pill?
   [x]
   (instance? PoisonPill x))
@@ -172,3 +177,5 @@
                         retry-poison-pill?
                         jruby-puppet-instance?)))
 
+(def JRubyMain
+  (schema/pred jruby-main-instance?))

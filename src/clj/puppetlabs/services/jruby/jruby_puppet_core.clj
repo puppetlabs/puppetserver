@@ -190,3 +190,19 @@
   "Return a borrowed pool instance to its free pool."
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
   (jruby-internal/return-to-pool instance))
+
+(schema/defn ^:always-validate cli-ruby!
+  "Run JRuby as though native `ruby` were invoked with args on the CLI"
+  [config :- {schema/Keyword schema/Any}
+   args :- [schema/Str]]
+  (doto (jruby-internal/new-main (initialize-config config))
+    (.run (into-array String (concat ["-rjar-dependencies"] args)))))
+
+(schema/defn ^:always-validate cli-run!
+  "Run a JRuby CLI command, e.g. gem, irb, etc..."
+  [config :- {schema/Keyword schema/Any}
+   command :- schema/Str
+   args :- [schema/Str]]
+  (let [load-arg (format "load 'META-INF/jruby.home/bin/%s'" command)
+        load-args (concat ["-e" load-arg "--"] args)]
+    (cli-ruby! config load-args)))

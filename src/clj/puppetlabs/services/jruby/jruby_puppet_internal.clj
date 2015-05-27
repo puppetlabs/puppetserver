@@ -7,7 +7,7 @@
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
-           (org.jruby CompatVersion RubyInstanceConfig$CompileMode)
+           (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
            (org.jruby.embed ScriptingContainer LocalContextScope)
            (java.util.concurrent LinkedBlockingDeque TimeUnit)
            (clojure.lang IFn)))
@@ -15,20 +15,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
-(def jruby-puppet-env
-  "The environment variables that should be passed to the Puppet JRuby interpreters.
-  We don't want them to read any ruby environment variables, like $GEM_HOME or
-  $RUBY_LIB or anything like that, so pass it an empty environment map - except -
-  Puppet needs HOME and PATH for facter resolution, so leave those."
-  (select-keys (System/getenv) ["HOME" "PATH"]))
-
 (def ruby-code-dir
-  "The name of the directory containing the ruby code in this project.
-  This directory lives under src/ruby/"
-  "puppet-server-lib")
+  "The name of the directory containing the ruby code in this project."
+  "src/ruby/puppet-server-lib")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
+
+(schema/defn get-system-env :- {schema/Str schema/Str}
+  "Same as System/getenv, but returns a clojure persistent map instead of a
+  Java unmodifiable map."
+  []
+  (into {} (System/getenv)))
 
 (defn instantiate-free-pool
   "Instantiate a new queue object to use as the pool of free JRubyPuppet's."
@@ -43,25 +41,55 @@
   {:pool (instantiate-free-pool size)
    :size size})
 
+(schema/defn ^:always-validate managed-environment :- {schema/Str schema/Str}
+  "The environment variables that should be passed to the Puppet JRuby interpreters.
+
+  We don't want them to read any ruby environment variables, like $RUBY_LIB or
+  anything like that, so pass it an empty environment map - except - Puppet
+  needs HOME and PATH for facter resolution, so leave those, along with GEM_HOME
+  which is necessary for third party extensions that depend on gems.
+
+  We need to set the JARS..REQUIRE variables in order to instruct JRuby's
+  'jar-dependencies' to not try to load any dependent jars.  This is being
+  done specifically to avoid JRuby trying to load its own version of Bouncy
+  Castle, which may not the same as the one that 'puppetlabs/ssl-utils'
+  uses. JARS_NO_REQUIRE was the legacy way to turn off jar loading but is
+  being phased out in favor of JARS_REQUIRE.  As of JRuby 1.7.20, only
+  JARS_NO_REQUIRE is honored.  Setting both of those here for forward
+  compatibility."
+  [env :- {schema/Str schema/Str}
+   gem-home :- schema/Str]
+  (let [whitelist ["HOME" "PATH"]
+        clean-env (select-keys env whitelist)]
+    (assoc clean-env
+      "GEM_HOME" (fs/absolute-path gem-home)
+      "JARS_NO_REQUIRE" "true"
+      "JARS_REQUIRE" "false")))
+
+(schema/defn ^:always-validate managed-load-path :- [schema/Str]
+  "Return a list of ruby LOAD_PATH directories built from the
+  user-configurable ruby-load-path setting of the jruby-puppet configuration
+  section and prepending specific JRuby directories necessary for third party
+  extensions extensions.  See SERVER-297 and SERVER-538 for more info."
+  [ruby-load-path :- [schema/Str]
+   jruby-home :- schema/Str]
+  (let [load-path (->> ruby-load-path
+                    (cons ruby-code-dir)
+                    (cons (str jruby-home "/lib/ruby/1.9"))
+                    (cons (str jruby-home "/lib/ruby/shared"))
+                    (cons (str jruby-home "/lib/ruby/1.9/site_ruby")))]
+    (->> load-path
+      (map fs/absolute-path)
+      (map fs/normalized-path))))
+
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
-  (doto scripting-container
-    (.setLoadPaths (cons ruby-code-dir
-                         (map fs/absolute-path ruby-load-path)))
-    (.setCompatVersion (CompatVersion/RUBY1_9))
-    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-    ;; We need to set the JARS..REQUIRE variables in order to instruct
-    ;; JRuby's 'jar-dependencies' to not try to load any dependent jars.  This
-    ;; is being done specifically to avoid JRuby trying to load its own version
-    ;; of Bouncy Castle, which may not the same as the one that
-    ;; 'puppetlabs/ssl-utils' uses. JARS_NO_REQUIRE was the legacy way to turn
-    ;; off jar loading but is being phased out in favor of JARS_REQUIRE.  As of
-    ;; JRuby 1.7.20, only JARS_NO_REQUIRE is honored.  Setting both of those
-    ;; here for forward compatibility.
-    (.setEnvironment (merge {"GEM_HOME" gem-home
-                             "JARS_NO_REQUIRE" "true"
-                             "JARS_REQUIRE" "false"}
-                            jruby-puppet-env))))
+  (let [jruby-home (.getHomeDirectory scripting-container)]
+    (doto scripting-container
+      (.setLoadPaths (managed-load-path ruby-load-path jruby-home))
+      (.setCompatVersion (CompatVersion/RUBY1_9))
+      (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+      (.setEnvironment (managed-environment (get-system-env) gem-home)))))
 
 (defn empty-scripting-container
   "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
@@ -250,3 +278,20 @@
         (.putFirst pool instance)))
     ;; if we get here, we got a Retry, so we just put it back into the pool.
     (.putFirst (:pool instance) instance)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(schema/defn ^:always-validate new-main :- jruby-schemas/JRubyMain
+  "Return a new JRuby Main instance which should only be used for CLI purposes,
+  e.g. for the ruby, gem, and irb subcommands.  Internal core services should
+  use `create-scripting-container` instead of `new-main`."
+  [config :- jruby-schemas/JRubyPuppetConfig]
+  (let [jruby-config (RubyInstanceConfig.)
+        jruby-home   (.getJRubyHome jruby-config)
+        {:keys [ruby-load-path gem-home]} config]
+    (doto jruby-config
+      (.setEnvironment (managed-environment (get-system-env) gem-home))
+      (.setLoadPaths (managed-load-path ruby-load-path jruby-home))
+      (.setCompatVersion (CompatVersion/RUBY1_9)))
+    (Main. jruby-config)))
