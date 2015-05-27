@@ -8,23 +8,6 @@
             [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.services.protocols.master :as master]))
 
-(defn get-master-route-config
-  [config]
-  (get-in config [:web-router-service ::master-service]))
-
-(defn get-master-path
-  [config]
-  (let [config-route (get-master-route-config config)]
-    (cond
-      (map? config-route)
-      (:master-routes config-route)
-
-      (string? config-route)
-      config-route
-
-      :else
-      nil)))
-
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
@@ -41,11 +24,9 @@
          puppet-version (get-in config [:puppet-server :puppet-version])
          hostcrl (get-in config [:puppet-server :hostcrl])
          settings (ca/config->master-settings config)
-         jruby-service (tk-services/get-service this :JRubyPuppetService)
          product-name (or (get-in config [:product :name])
                           {:group-id    "puppetlabs"
                            :artifact-id "puppetserver"})
-         upgrade-error (core/construct-404-error-message jruby-service product-name)
          update-server-url (get-in config [:product :update-server-url])]
 
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
@@ -55,21 +36,14 @@
      (initialize-master-ssl! settings certname)
 
      (log/info "Master Service adding ring handlers")
-     (let [path (get-master-path config)
-           route-config (get-master-route-config config)
+     (let [route-config (core/get-master-route-config ::master-service config)
+           path (core/get-master-mount ::master-service route-config)
            ring-handler (when path (-> (core/root-routes handle-request)
                                        (#(comidi/context path %))
                                        comidi/routes->handler
                                        (core/wrap-middleware puppet-version)))]
-       (when (nil? path)
-         (throw
-           (IllegalArgumentException.
-             "Could not find a properly configured route for the master service")))
-       (cond 
-         (map? route-config)
+       (if (map? route-config)
          (add-ring-handler this ring-handler {:route-id :master-routes})
-         
-         (string? route-config)
          (add-ring-handler this ring-handler))))
    context)
   (start
