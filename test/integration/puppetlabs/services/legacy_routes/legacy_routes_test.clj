@@ -1,12 +1,7 @@
 (ns puppetlabs.services.legacy-routes.legacy-routes-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.trapperkeeper.app :as tka]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.legacy-routes.legacy-routes-service :as legacy-routes-service]
             [puppetlabs.services.master.master-service :as master-service]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
@@ -44,7 +39,7 @@
     (logutils/with-test-logging
       (is (thrown-with-msg?
             IllegalArgumentException
-            #"Could not find a properly configured route for the master service"
+            #"Route not found for service .*master-service"
             (bootstrap/with-puppetserver-running app
                                                  {:web-router-service {::master-service/master-service {:foo "/bar"}}}
                                                  (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))

@@ -3,8 +3,6 @@
            (clojure.lang IFn))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.dujour.version-check :as version-check]
-            [puppetlabs.services.config.puppet-server-config-core :as config]
             [puppetlabs.comidi :as comidi]
             [schema.core :as schema]))
 
@@ -63,19 +61,6 @@
     ;; directed to PuppetDB.
     (comidi/GET ["/facts_search/" [#".*" :rest]] request
                    (request-handler request))))
-
-(defn construct-404-error-message
-  [jruby-service product-name]
-  (str "Error: Invalid URL - Puppet Server expects requests that conform to the "
-       "/puppet and /puppet-ca APIs.\n\n"
-       "Note that Puppet 3 agents aren't compatible with this version; if you're "
-       "running Puppet 3, you must either upgrade your agents to match the server "
-       "or point them to a server running Puppet 3.\n\n"
-       "Server Info:\n"
-       "  Puppet Server version: " (version-check/get-version-string (:artifact-id product-name) (:group-id product-name)) "\n"
-       "  Puppet version: " (:puppet-version (config/get-puppet-config jruby-service)) "\n"
-       "  Supported /puppet API versions: " puppet-API-versions "\n"
-       "  Supported /puppet-ca API versions: " puppet-ca-API-versions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -142,11 +127,24 @@
       ringutils/wrap-response-logging
       (ringutils/wrap-with-puppet-version-header puppet-version)))
 
-(defn construct-invalid-request-handler
-  "Constructs a ring handler to handle an incorrectly formatted request and indicate to the user
-   they need to update to Puppet 4"
-  [error-message]
-  (fn
-    [_]
-    {:status 404
-     :body   error-message}))
+(schema/defn ^:always-validate get-master-route-config
+  "Get the webserver route configuration for the master service"
+  [master-ns :- schema/Keyword
+   config :- {schema/Keyword schema/Any}]
+  (get-in config [:web-router-service master-ns]))
+
+(schema/defn ^:always-validate
+  get-master-mount :- schema/Str
+  "Get the webserver mount point that the master service is rooted under"
+  [master-ns :- schema/Keyword
+   config-route]
+  (cond
+    (and (map? config-route) (contains? config-route :master-routes))
+    (:master-routes config-route)
+
+    (string? config-route)
+    config-route
+
+    :else
+    (throw (IllegalArgumentException.
+             (str "Route not found for service " master-ns)))))

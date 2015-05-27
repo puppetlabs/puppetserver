@@ -21,7 +21,14 @@
           puppet-version (get-in config [:puppet-server :puppet-version])
           ca-settings (ca/config->ca-settings (get-config))
           ca-mount (get-route (tk-services/get-service this :CaService))
-          master-mount (master-service/get-master-path config)
+          master-ns (keyword (tk-services/service-symbol
+                               (tk-services/get-service this :MasterService)))
+          master-route-config (master-core/get-master-route-config
+                                master-ns
+                                config)
+          master-mount (master-core/get-master-mount
+                         master-ns
+                         master-route-config)
           master-handler (-> (master-core/root-routes handle-request)
                              (#(comidi/context path %))
                              comidi/routes->handler
