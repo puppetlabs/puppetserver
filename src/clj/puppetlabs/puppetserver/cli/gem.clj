@@ -1,18 +1,10 @@
 (ns puppetlabs.puppetserver.cli.gem
-  (:import (org.jruby.embed ScriptingContainer))
-  (:require [puppetlabs.puppetserver.cli.subcommand :as cli]))
+  (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (defn run!
   [config args]
-  (doto (ScriptingContainer.)
-    (.setArgv (into-array String args))
-    (.setEnvironment
-      (hash-map
-        "GEM_HOME" (get-in config [:jruby-puppet :gem-home])
-        "JARS_NO_REQUIRE" "true"
-        "JARS_REQUIRE" "false"))
-    (.runScriptlet "require 'jar-dependencies'")
-    (.runScriptlet "load 'META-INF/jruby.home/bin/gem'")))
+  (jruby-core/cli-run! config "gem" args))
 
 (defn -main
   [& args]

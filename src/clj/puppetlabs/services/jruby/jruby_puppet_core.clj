@@ -4,7 +4,8 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
-            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents])
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
+            [clojure.java.io :as io])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)))
 
@@ -25,21 +26,6 @@
   "The default number of milliseconds that the client will allow for no data to
   be available on the socket. Currently set to 20 minutes."
   (* 20 60 1000))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Definitions
-
-(def jruby-puppet-env
-  "The environment variables that should be passed to the Puppet JRuby interpreters.
-  We don't want them to read any ruby environment variables, like $GEM_HOME or
-  $RUBY_LIB or anything like that, so pass it an empty environment map - except -
-  Puppet needs HOME and PATH for facter resolution, so leave those."
-  (select-keys (System/getenv) ["HOME" "PATH"]))
-
-(def ruby-code-dir
-  "The name of the directory containing the ruby code in this project.
-  This directory lives under src/ruby/"
-  "puppet-server-lib")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -173,3 +159,20 @@
   "Return a borrowed pool instance to its free pool."
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
   (jruby-internal/return-to-pool instance))
+
+(schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
+  "Run JRuby as though native `ruby` were invoked with args on the CLI"
+  [config :- {schema/Keyword schema/Any}
+   args :- [schema/Str]]
+  (let [main (jruby-internal/new-main (initialize-config config))
+        argv (into-array String (concat ["-rjar-dependencies"] args))]
+    (.run main argv)))
+
+(schema/defn ^:always-validate cli-run! :- (schema/maybe jruby-schemas/JRubyMainStatus)
+  "Run a JRuby CLI command, e.g. gem, irb, etc..."
+  [config :- {schema/Keyword schema/Any}
+   command :- schema/Str
+   args :- [schema/Str]]
+  (let [load-path (format "META-INF/jruby.home/bin/%s" command)]
+    (if-let [url (io/resource load-path (.getClassLoader org.jruby.Main))]
+      (cli-ruby! config (concat ["-e" (format "load '%s'" url) "--"] args)))))
