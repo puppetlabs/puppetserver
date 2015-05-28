@@ -94,7 +94,7 @@
                      :uri (str mount-point "/" api-version path-info)
                      :query-string (if environment
                                      (add-query-param query-string
-                                       :environment environment)
+                                       "environment" environment)
                                      query-string))
               (dissoc :params :route-params))]
       (handler compat-request))))
