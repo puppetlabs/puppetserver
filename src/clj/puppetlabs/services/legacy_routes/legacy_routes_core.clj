@@ -72,14 +72,14 @@
   [handler mount-point api-version request]
   (let [{{environment :environment} :params
          uri :uri
-         query-string               :query-string} request
+         query-string :query-string} request
         path-info (str "/" (-> (string/split uri #"/" 3) (nth 2)))]
     (let [compat-request
           (-> request
               (map-accept-header)
-              (assoc :path-info    (str "/" api-version path-info)
-                     :context      mount-point
-                     :uri          (str mount-point "/" api-version path-info)
+              (assoc :path-info (str "/" api-version path-info)
+                     :context mount-point
+                     :uri (str mount-point "/" api-version path-info)
                      :query-string (if environment
                                      (add-query-param query-string
                                        :environment environment)
