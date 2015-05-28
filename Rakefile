@@ -1,3 +1,14 @@
+## Starting with version 1.10.0 of bundler, the .gemspec file from core
+## Ruby Puppet is automatically validated at 'bundle install' startup.
+## The rubygems version in JRuby, 2.4.6, is not the same as the rubygems
+## version in the core Puppet repo's .gemspec file, 1.8.24.  This causes
+## validation to fail and, therefore, for the "bundle install" to fail.
+## Pinning to bundler version 1.9.9 for now because it doesn't
+## enforce validation.  Need to figure out a better long-term solution.
+## See SERVER-697 for follow-up.
+
+BUNDLER_VER = '1.9.9'
+
 PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
   File.join(PROJECT_ROOT, 'acceptance')
@@ -38,7 +49,7 @@ namespace :spec do
       ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
       gem_install_bundler = <<-CMD
       lein run -m org.jruby.Main \
-      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler
+      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler -v '#{BUNDLER_VER}'
       CMD
       sh gem_install_bundler
 
