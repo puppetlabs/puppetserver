@@ -5,8 +5,7 @@
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
             [compojure.route :as route]
-            [clojure.tools.logging :as log]
-            [clojure.string :as string]))
+            [clojure.tools.logging :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; v3 => v4 header translation support functions
@@ -38,18 +37,29 @@
   (fn [request]
     (ring-response/content-type (handler request) "text/plain")))
 
+(defn- decode-query-string
+  "Parses the given query string into a map. If `query-str` is nil then
+  an empty map is returned."
+  [query-str]
+  {:pre [(or (nil? query-str) (string? query-str))]
+   :post [(map? %)]}
+  (if (str/blank? query-str)
+    {}
+    (ring-codec/form-decode query-str)))
+
 (defn- add-query-param
-  "Given a query string, add the given key and value to it. If the given
-  query string is empty or nil then the resulting string will be the single
-  KEY=VALUE expression."
-  [query-str key value]
-  {:pre [(or (string? query-str) (nil? query-str))
+  "Given a query string or map of query parameters, add the given key and
+  value to it. If the given query string is empty or nil then the resulting
+  string will be the single KEY=VALUE expression. If the key already exists in
+  the query string its value will be replaced."
+  [query-params key value]
+  {:pre [(or (map? query-params) (string? query-params) (nil? query-params))
          (or (string? key) (keyword? key))
          (string? value)]
    :post [(string? %)]}
-  (let [param-pairs (if (str/blank? query-str)
-                      {}
-                      (ring-codec/form-decode query-str))]
+  (let [param-pairs (if (not (map? query-params))
+                      (decode-query-string query-params)
+                      query-params)]
     (ring-codec/form-encode (assoc param-pairs key value))))
 
 (defn- add-source-permissions-param
@@ -59,9 +69,11 @@
   [handler]
   (fn [request]
     (let [{:keys [query-string]} request
+          query-keys (decode-query-string query-string)
+          source-perms-val (or (get query-keys "source_permissions") "use")
           updated-request (assoc request :query-string
                             (add-query-param
-                              query-string :source_permissions "use"))]
+                              query-keys "source_permissions" source-perms-val))]
       (handler updated-request))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -73,7 +85,7 @@
   (let [{{environment :environment} :params
          uri :uri
          query-string :query-string} request
-        path-info (str "/" (-> (string/split uri #"/" 3) (nth 2)))]
+        path-info (str "/" (-> (str/split uri #"/" 3) (nth 2)))]
     (let [compat-request
           (-> request
               (map-accept-header)

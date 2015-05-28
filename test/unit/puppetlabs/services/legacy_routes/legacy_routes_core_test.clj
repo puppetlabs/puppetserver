@@ -121,7 +121,18 @@
                                                {"source_permissions" "use"}))
               (str
                "The " endpoint " endpoint should contain the query parameter "
-               "source_permissions=use")))))))
+               "source_permissions=use")))))
+
+    (testing (str
+               "If a source_permissions key is provided, use it instead of "
+               "setting the default")
+      (let [source-permissions-str "source_permissions=foo"
+            resp (request :get
+                   (str "/production/file_metadata/athing?"
+                     source-permissions-str))]
+        (is (.contains (:query-string resp) source-permissions-str))
+        (is (not (.contains (:query-string resp) "source_permissions=use"))
+          "The default source_permissions value of `use` was found.")))))
 
 (deftest test-v3-header-munging
   (testing "(SERVER-548) Header munging"
