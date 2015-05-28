@@ -1,4 +1,4 @@
-<configuration scan="true" debug="false">
+<configuration debug="false" scan="true">
   <appender name="FILE" class="ch.qos.logback.core.FileAppender">
     <file>./target/logs/puppetserver-access.log</file>
     <encoder>
