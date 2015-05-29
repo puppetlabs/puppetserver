@@ -44,9 +44,14 @@ Puppet Server is configured to use 2GB of RAM by default. If you'd like to just 
 
 ## Memory Allocation
 
-By default, Puppet Server will be configured to use 2GB of RAM. However, if you want to experiment with Puppet Server on a VM, you can safely allocate as little as 512MB of memory. To change the Puppet Server memory allocation:
+By default, Puppet Server will be configured to use 2GB of RAM. However, if you want to experiment with Puppet Server on a VM, you can safely allocate as little as 512MB of memory. To change the Puppet Server memory allocation, you can edit the init config file. 
 
-1. Open `/etc/sysconfig/puppetserver` and modify these settings:
+### Location 
+
+* `/etc/sysconfig/puppetserver` - RHEL
+* `/etc/default/puppetserver` - Debian 
+
+1. Open the init config file: 
 
         # Modify this if you'd like to change the memory allocation, enable JMX, etc
         JAVA_ARGS="-Xms2g -Xmx2g"
