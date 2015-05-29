@@ -42,21 +42,6 @@
   "/opt/puppetlabs/server/data/puppetserver")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Definitions
-
-(def jruby-puppet-env
-  "The environment variables that should be passed to the Puppet JRuby interpreters.
-  We don't want them to read any ruby environment variables, like $GEM_HOME or
-  $RUBY_LIB or anything like that, so pass it an empty environment map - except -
-  Puppet needs HOME and PATH for facter resolution, so leave those."
-  (select-keys (System/getenv) ["HOME" "PATH"]))
-
-(def ruby-code-dir
-  "The name of the directory containing the ruby code in this project.
-  This directory lives under src/ruby/"
-  "puppet-server-lib")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
 (defn default-pool-size
