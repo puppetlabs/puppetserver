@@ -5,7 +5,6 @@
             [puppetlabs.services.master.master-core :as master-core]
             [ring.mock.request :as mock]
             [ring.util.codec :as ring-codec]))
-
 (use-fixtures :once schema-test/validate-schemas)
 
 (def master-mount "/puppet")
@@ -94,8 +93,8 @@
           (is (= 200 (:status resp)))
           (is (= (str master-mount "/" master-api-version "/" path "/" route-val)
                  (:uri resp)))
-          (is (= (ring-codec/form-encode {:environment environment})
-                 (:query-string resp))))))
+          (is (.contains (:query-string resp) (ring-codec/form-encode
+                                                {:environment environment}))))))
 
     (testing "Legacy ca routes"
       (doseq [path ["certificate_status"
@@ -113,7 +112,27 @@
     (testing "file_bucket_file GET responses are Content-Type: text/plain"
       (let [resp (request :get (str "/production/file_bucket_file/" route-val))]
         (is (= 200 (:status resp)))
-        (is (= "text/plain" (get-in resp [:headers "Content-Type"])))))))
+        (is (= "text/plain" (get-in resp [:headers "Content-Type"])))))
+
+    (testing "file_metadata route contains proper query string"
+      (doseq [endpoint ["file_metadata" "file_metadatas"]]
+        (let [resp (request :get (str "/production/" endpoint "/some_file"))]
+          (is (.contains (:query-string resp) (ring-codec/form-encode
+                                               {"source_permissions" "use"}))
+              (str
+               "The " endpoint " endpoint should contain the query parameter "
+               "source_permissions=use")))))
+
+    (testing (str
+               "If a source_permissions key is provided, use it instead of "
+               "setting the default")
+      (let [source-permissions-str "source_permissions=foo"
+            resp (request :get
+                   (str "/production/file_metadata/athing?"
+                     source-permissions-str))]
+        (is (.contains (:query-string resp) source-permissions-str))
+        (is (not (.contains (:query-string resp) "source_permissions=use"))
+          "The default source_permissions value of `use` was found.")))))
 
 (deftest test-v3-header-munging
   (testing "(SERVER-548) Header munging"

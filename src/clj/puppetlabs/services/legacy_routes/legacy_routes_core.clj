@@ -5,8 +5,7 @@
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
             [compojure.route :as route]
-            [clojure.tools.logging :as log]
-            [clojure.string :as string]))
+            [clojure.tools.logging :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; v3 => v4 header translation support functions
@@ -38,6 +37,45 @@
   (fn [request]
     (ring-response/content-type (handler request) "text/plain")))
 
+(defn- decode-query-string
+  "Parses the given query string into a map. If `query-str` is nil then
+  an empty map is returned."
+  [query-str]
+  {:pre [(or (nil? query-str) (string? query-str))]
+   :post [(map? %)]}
+  (if (str/blank? query-str)
+    {}
+    (ring-codec/form-decode query-str)))
+
+(defn- add-query-param
+  "Given a query string or map of query parameters, add the given key and
+  value to it. If the given query string is empty or nil then the resulting
+  string will be the single KEY=VALUE expression. If the key already exists in
+  the query string its value will be replaced."
+  [query-params key value]
+  {:pre [(or (map? query-params) (string? query-params) (nil? query-params))
+         (or (string? key) (keyword? key))
+         (string? value)]
+   :post [(string? %)]}
+  (let [param-pairs (if (not (map? query-params))
+                      (decode-query-string query-params)
+                      query-params)]
+    (ring-codec/form-encode (assoc param-pairs key value))))
+
+(defn- add-source-permissions-param
+  "Add the source_permissions header to the request. This is needed since
+  this was considered a default in Puppet 3.x and is now turned off by default
+  in Puppet 4.x. See SERVER-684."
+  [handler]
+  (fn [request]
+    (let [{:keys [query-string]} request
+          query-keys (decode-query-string query-string)
+          source-perms-val (or (get query-keys "source_permissions") "use")
+          updated-request (assoc request :query-string
+                            (add-query-param
+                              query-keys "source_permissions" source-perms-val))]
+      (handler updated-request))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler wrapper
 
@@ -46,21 +84,18 @@
   [handler mount-point api-version request]
   (let [{{environment :environment} :params
          uri :uri
-         query-string               :query-string} request
-        path-info (str "/" (-> (string/split uri #"/" 3) (nth 2)))
-        query-params (if (str/blank? query-string)
-                       {}
-                       (ring-codec/form-decode query-string))]
+         query-string :query-string} request
+        path-info (str "/" (-> (str/split uri #"/" 3) (nth 2)))]
     (let [compat-request
           (-> request
               (map-accept-header)
-              (assoc :path-info    (str "/" api-version path-info)
-                     :context      mount-point
-                     :uri          (str mount-point "/" api-version path-info)
-                     :query-string (ring-codec/form-encode
-                                     (merge
-                                       query-params
-                                       (when environment {:environment environment}))))
+              (assoc :path-info (str "/" api-version path-info)
+                     :context mount-point
+                     :uri (str mount-point "/" api-version path-info)
+                     :query-string (if environment
+                                     (add-query-param query-string
+                                       "environment" environment)
+                                     query-string))
               (dissoc :params :route-params))]
       (handler compat-request))))
 
@@ -82,9 +117,9 @@
     (comidi/GET ["/file_content/" [#".*" :rest]] request
       (master-request-handler request))
     (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-      (master-request-handler request))
+      ((add-source-permissions-param master-request-handler) request))
     (comidi/GET ["/file_metadata/" [#".*" :rest]] request
-      (master-request-handler request))
+      ((add-source-permissions-param master-request-handler) request))
     (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
       ((respond-with-content-type-text-plain master-request-handler) request))
     ;; Coercing Content-Type to "application/octet-stream" for Puppet 4
