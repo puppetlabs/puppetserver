@@ -80,7 +80,8 @@
                     (cons (str jruby-home "/lib/ruby/1.9/site_ruby")))]
     (->> load-path
       (map fs/absolute-path)
-      (map fs/normalized-path))))
+      (map fs/normalized-path)
+      (map str))))
 
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
