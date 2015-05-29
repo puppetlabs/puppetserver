@@ -16,8 +16,17 @@
 ;;; Definitions
 
 (def ruby-code-dir
-  "The name of the directory containing the ruby code in this project."
-  "src/ruby/puppet-server-lib")
+  "The name of the directory containing the ruby code in this project.
+
+  This directory is relative to `src/ruby` and works from source because the
+  `src/ruby` directory is defined as a resource in `project.clj` which places
+  the directory on the classpath which in turn makes the directory available on
+  the JRuby load path.  Similarly, this works from the uberjar because this
+  directory is placed into the root of the jar structure which is on the
+  classpath.
+
+  See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
+  "puppet-server-lib")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -62,7 +71,7 @@
   (let [whitelist ["HOME" "PATH"]
         clean-env (select-keys env whitelist)]
     (assoc clean-env
-      "GEM_HOME" (fs/absolute-path gem-home)
+      "GEM_HOME" gem-home
       "JARS_NO_REQUIRE" "true"
       "JARS_REQUIRE" "false")))
 
@@ -73,15 +82,11 @@
   extensions extensions.  See SERVER-297 and SERVER-538 for more info."
   [ruby-load-path :- [schema/Str]
    jruby-home :- schema/Str]
-  (let [load-path (->> ruby-load-path
-                    (cons ruby-code-dir)
-                    (cons (str jruby-home "/lib/ruby/1.9"))
-                    (cons (str jruby-home "/lib/ruby/shared"))
-                    (cons (str jruby-home "/lib/ruby/1.9/site_ruby")))]
-    (->> load-path
-      (map fs/absolute-path)
-      (map fs/normalized-path)
-      (map str))))
+  (->> ruby-load-path
+    (cons ruby-code-dir)
+    (cons (str jruby-home "/lib/ruby/1.9"))
+    (cons (str jruby-home "/lib/ruby/shared"))
+    (cons (str jruby-home "/lib/ruby/1.9/site_ruby"))))
 
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
