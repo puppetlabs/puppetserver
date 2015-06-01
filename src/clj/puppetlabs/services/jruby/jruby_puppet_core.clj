@@ -176,14 +176,15 @@
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
   (jruby-internal/return-to-pool instance))
 
-(schema/defn ^:always-validate cli-ruby!
+(schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
   "Run JRuby as though native `ruby` were invoked with args on the CLI"
   [config :- {schema/Keyword schema/Any}
    args :- [schema/Str]]
-  (doto (jruby-internal/new-main (initialize-config config))
-    (.run (into-array String (concat ["-rjar-dependencies"] args)))))
+  (let [main (jruby-internal/new-main (initialize-config config))
+        argv (into-array String (concat ["-rjar-dependencies"] args))]
+    (.run main argv)))
 
-(schema/defn ^:always-validate cli-run!
+(schema/defn ^:always-validate cli-run! :- jruby-schemas/JRubyMainStatus
   "Run a JRuby CLI command, e.g. gem, irb, etc..."
   [config :- {schema/Keyword schema/Any}
    command :- schema/Str

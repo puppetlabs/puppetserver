@@ -51,7 +51,8 @@
    :size size})
 
 (schema/defn ^:always-validate managed-environment :- {schema/Str schema/Str}
-  "The environment variables that should be passed to the Puppet JRuby interpreters.
+  "The environment variables that should be passed to the Puppet JRuby
+  interpreters.
 
   We don't want them to read any ruby environment variables, like $RUBY_LIB or
   anything like that, so pass it an empty environment map - except - Puppet
