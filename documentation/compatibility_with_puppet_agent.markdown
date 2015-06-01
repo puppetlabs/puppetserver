@@ -1,4 +1,9 @@
-# Puppet 3 Backwards Compatibility
+---
+layout: default
+title: "Puppet Server: Backwards Compatibility With Puppet 3 Agents"
+canonical: "/puppetserver/latest/compatibility_with_puppet_agent.markdown"
+---
+
 
 Puppet Server 2.1 introduces a new feature that allows Puppet 3 agents to
 operate with puppetserver.  Puppet Server 1.x requires Puppet 3 while Puppet
@@ -19,7 +24,7 @@ Other implications of this implementation are discrepancies in the request and
 response REST API headers.   These differences are worth noting, but should
 have no effect on typical deployments.
 
-# Configuration settings
+## Configuration settings
 
 When operating Puppet 3 agents against Puppet Server 2.1, some configuration
 changes on the agents may be required ahead of time.  Two settings in
@@ -32,7 +37,7 @@ particular should be configured:
    existing Puppet code and the future parser should be resolved prior to
    upgrading to Puppet Server 2.1.
 
-# auth.conf
+## auth.conf
 
 The REST API URL structure has changed starting in Puppet 4.  The major change
 is the introduction of a versioned API rooted at `/puppet`, with the CA API
@@ -87,7 +92,7 @@ default Puppet 3.8.0 auth.conf is located
 [here](https://github.com/puppetlabs/puppet/blob/3.8.0/conf/auth.conf) for
 comparison.
 
-# HTTP Headers
+## HTTP Headers
 
 When Puppet Server 2.1 handles requests from Puppet 3 agents, there are some
 differences with respect to headers and "normal" Puppet 4 REST API requests.
