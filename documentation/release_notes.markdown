@@ -4,25 +4,66 @@ title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
+## Puppet Server 1.1.0
+Released June 2, 2015
+
+In addition to several bug fixes, this release adds a new feature which can be configured to allow the master to automatically flush individual JRuby pool instances after a specified number of web requests have been handled. This upgrades Puppet Server's dependency on JRuby to 1.7.20 in order to take advantage of memory optimizations and other fixes.
+
+### New Features
+#### Added setting to flush ruby instances after a configurable number of requests
+We added a setting that can be used by the master to limit how many HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. Defaults to 0, which disables automatic JRuby flushing. This can be useful for working around buggy module code that would otherwise cause memory leaks, however _it causes a slight performance penalty_ whenever a new JRuby has to reload all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value will give you the best performance.
+    * [SERVER-325](https://tickets.puppetlabs.com/browse/SERVER-325)
+
+#### Allow `environment-cache` to take an environment as an argument
+Added support to the `environment-cache` API for flushing an environment by name, as opposed to only having the ability to flush all environments.
+    * [SERVER-324](https://tickets.puppetlabs.com/browse/SERVER-324) 
+
+### Bug fixes
+#### Re-enabled the master `status` endpoint
+* [SERVER-564](https://tickets.puppetlabs.com/browse/SERVER-564)
+
+#### `ignore` parameters were being mishandled
+Fix for a problem where `file_metadatas` requests to the master which include multiple `ignore` parameters were being mishandled. This had previously led to an agent downloading files from the master which should have been ignored.
+  * [SERVER-442](https://tickets.puppetlabs.com/browse/SERVER-442)
+  * [SERVER-696](https://tickets.puppetlabs.com/browse/SERVER-696)
+
+#### `keylength` value now being determined by setting
+Previously, Puppet Server had always hardcoded the `keylength` to 4096 bits. Now, it properly honors the value in the `keylength` setting when determining the number of bits to use in the generation of keys.
+* [SERVER-157](https://tickets.puppetlabs.com/browse/SERVER-157)
+
+#### Verbose output disabled
+Disabled the display of verbose output that appeared during a package upgrade.
+* [SERVER-541](https://tickets.puppetlabs.com/browse/SERVER-541)
+
+#### Previous logback level issue fix had been reverted
+Fixed an issue where logback levels weren’t changed unless you restarted Puppet Server. This functionality had been provided in the Puppet Server 1.0.2 but inadvertently removed in Puppet Server 1.0.8.
+* [SERVER-682](https://tickets.puppetlabs.com/browse/SERVER-682)
+
+### Miscellaneous improvements
+* [SERVER-544](https://tickets.puppetlabs.com/browse/SERVER-544) - Reduced the amount of memory used by the master to cache the payload for incoming catalog requests.
+* [SERVER-680](https://tickets.puppetlabs.com/browse/SERVER-680) - Upgraded JRuby dependency to 1.7.20 in order to take advantage of some of the memory management improvements we’ve seen in our internal testing.
+* [SERVER-391](https://tickets.puppetlabs.com/browse/SERVER-391) - Made the error message displayed for a JRubyPool “borrow-timeout” a little more clear.
+
+
 ## Puppet Server 1.0.8
 
 In addition to several bug fixes, this release adds new HTTP client timeout settings, a special logfile to capture only HTTP traffic, and a JRuby tuning guide to help you get the best performance from Puppet Server.
 
-###New Features
+### New Features
 
-####Added new http-client timeout settings
+#### Added new http-client timeout settings
 
 We've exposed two new HTTP client timeout settings: `idle-timeout-milliseconds` and `connect-timeout-milliseconds`. These new settings can be configured in the http-client section of the [puppetserver.conf file](./configuration.markdown#puppetserverconf).
 
 * [SERVER-449](https://tickets.puppetlabs.com/browse/SERVER-449) - Expose http-client timeouts from Puppet Server http_connect_timeout and http_read_timeout.
 
-####Enabled HTTP traffic logs 
+#### Enabled HTTP traffic logs 
 
 This version of Puppet Server has a special-purpose logfile to capture only the HTTP traffic. This should work out of the box, but you can [configure the location and the format](./configuration.markdown#http-traffic) of the logfile.
 
 * [SERVER-319](https://tickets.puppetlabs.com/browse/SERVER-319)
 
-####Added new JRuby default borrow timeout setting
+#### Added new JRuby default borrow timeout setting
 
 Previously, the JRuby pool borrow timeout was indefinite and wasn't configurable. As of SERVER 1.0.8, there is a new `borrow-timeout` setting in the http-client section of the [puppetserver.conf file](./configuration.markdown#puppetserverconf). If you don't specify a value for that setting, Puppet Server will use 20 minutes as a default. This allows enough time for realistic expensive catalog compilations while avoiding indefinite hanging.
 
@@ -34,9 +75,9 @@ We've added a new [Tuning Guide](./tuning_guide.markdown) to help you improve yo
 
 * [SERVER-379](https://tickets.puppetlabs.com/browse/SERVER-379) - Tuning guide for JRubies, Heap size, etc.
 
-###Bug Fixes
+### Bug Fixes
 
-####Fixed an issue where Puppet Server couldn't start after reboot
+#### Fixed an issue where Puppet Server couldn't start after reboot
 
 Previously, Puppet Server failed to start after a reboot on some systems (notably RHEL 7 and Ubuntu 14.4). This was because the `/var/run/` directory, needed by Puppet Server, was being destroyed on reboot. This issue has been fixed.
 
@@ -49,7 +90,7 @@ We've added 'runuser' to the startup scripts to allow Puppet Server command line
 
 * [SERVER-344](https://tickets.puppetlabs.com/browse/SERVER-344) - Startup scripts should use 'runuser' not 'su'.
 
-####`puppetserver foreground` now produces output
+#### `puppetserver foreground` now produces output
 
 Running the `puppetserver foreground` subcommand produced no output. It should now provide its usual output again.
 
