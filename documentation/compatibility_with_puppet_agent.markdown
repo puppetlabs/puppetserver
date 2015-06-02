@@ -20,9 +20,11 @@ Backwards compatibility is enabled by default, but you should make sure your Pup
 Before migrating Puppet 3 nodes to Puppet Server 2, do all of the following:
 
 - Update Puppet to the most recent 3.x version on your agent nodes and existing Puppet master.
-- Set `stringify_facts = false` on all agent nodes, and fix your code if necessary.
-- Make sure you're already running with the future parser enabled, and fix your code if necessary.
+- Set `stringify_facts = false` on all nodes, and fix your code if necessary.
+- Set `parser = future` on your Puppet master(s), and fix your code if necessary.
 - Modify your custom auth.conf rules for the new Puppet Server version.
+
+Keep reading for more details.
 
 ### Update Puppet 3.x
 
@@ -30,7 +32,7 @@ Make sure your existing 3.x deployment is running the most recent Puppet 3 versi
 
 ### Stop Stringifying Facts
 
-Set `stringify_facts = false` in puppet.conf on every agent node in your deployment. This will match Puppet 4's behavior. If you want to edit puppet.conf using Puppet, you can use an [`inifile` resource](https://forge.puppetlabs.com/puppetlabs/inifile).
+Set `stringify_facts = false` in puppet.conf on every node in your deployment. This will match Puppet 4's behavior. If you want to edit puppet.conf using Puppet, you can use an [`inifile` resource](https://forge.puppetlabs.com/puppetlabs/inifile).
 
 **Note:** If any of your Puppet code _treats boolean facts like strings,_ this will break something. Search for comparisons like `if $::is_virtual == "true" {...}`. If you need to support 4.x and 3.x with the same code, you can use something like `if str2bool("$::is_virtual") {...}`.
 
