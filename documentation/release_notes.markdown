@@ -6,6 +6,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 
 ## Puppet Server 2.1
+
 Release June 2, 2015.
 
 This release contains several new features, improvements, and bug fixes. In keeping with [semantic versioning][semver] practices, this release of Puppet Server introduces changes that contain new backwards compatible functionality.
@@ -29,14 +30,18 @@ Puppet Server 2.1 now supports both Puppet 4 and Puppet 3 agents. This is new fu
 Please see [Compatibility with Puppet Agent](./compatibility_with_puppet_agent.markdown) for more information.
 
 #### New JRuby Pool features
+
 ##### Flush JRuby after max-requests reached
+
 Puppet Server 2.1 introduces a new feature that allows the JRuby containers and associated threads to be flushed and re-initialized after a configurable number of HTTP requests.  This functionality is similar to the PassengerMaxRequests functionality that is often tuned in Puppet+Passenger configurations.
 
 More info:
-  * [Tuning Guide](./tuning_guide.markdown)
-  * [SERVER-325](https://tickets.puppetlabs.com/browse/SERVER-325)
+
+* [Tuning Guide](./tuning_guide.markdown)
+* [SERVER-325](https://tickets.puppetlabs.com/browse/SERVER-325)
 
 ##### Other JRuby Pool Related Items
+
 * [SERVER-246](https://tickets.puppetlabs.com/browse/SERVER-246) - Add :borrow-timeout config option.
 * [SERVER-324](https://tickets.puppetlabs.com/browse/SERVER-324) - Added support to the `environment-cache` API for flushing an environment by name, as opposed to only having the ability to flush all environments.
 * [SERVER-389](https://tickets.puppetlabs.com/browse/SERVER-389) - Increase JRuby pool default-borrow-timeout.
@@ -51,6 +56,7 @@ As a result of the REST API URL changes between Puppet Server 1.x and 2.0, Puppe
 These auth.conf changes follow the same changes required for any users upgrading from Puppet 3.x to Puppet 4.x.
 
 ### Maintenance & Small Improvements
+
 * [SERVER-380](https://tickets.puppetlabs.com/browse/SERVER-380) - Upgrade Jetty to 9.2.x.
 * [SERVER-437](https://tickets.puppetlabs.com/browse/SERVER-437) - Upgrade stable branch to jvm-ssl-utils 0.8.0.
 * [SERVER-517](https://tickets.puppetlabs.com/browse/SERVER-517) - Re-raise HttpClientExceptions as Ruby SocketError from http-client handler.
@@ -63,6 +69,7 @@ These auth.conf changes follow the same changes required for any users upgrading
 * [SERVER-680](https://tickets.puppetlabs.com/browse/SERVER-680) - Upgraded JRuby dependency to 1.7.20 in order to take advantage of some of the memory management improvements we’ve seen in our internal testing.
 
 ### Misc Bug Fixes
+
 * [SERVER-157](http://tickets.puppetlabs.com/browse/SERVER-157) - Utilize keylength puppet conf value for generating SSL cert keys.
 * [SERVER-273](http://tickets.puppetlabs.com/browse/SERVER-273) - Upgrade to JRuby 1.7.19 / fix for jruby-pool DELETE memory leak.
 * [SERVER-345](http://tickets.puppetlabs.com/browse/SERVER-345) - Fixup usages of cacert / localcacert in master.
@@ -78,7 +85,7 @@ These auth.conf changes follow the same changes required for any users upgrading
 * [SERVER-682](http://tickets.puppetlabs.com/browse/SERVER-682) - Fixed an issue where logback levels weren’t changed unless you restarted Puppet Server. This functionality had been provided in Puppet Server 1.0.2 but was inadvertently removed in Puppet Server 1.0.8, then merged with 2.0.
 * [SERVER-683](http://tickets.puppetlabs.com/browse/SERVER-683) - Changed the logic in the `legacy-routes-service` to get the route of the master-service via the service protocol name rather than by a hard-coded service name. This allows for the `legacy-routes-service` to pull the route from whatever service implementing the MasterService protocol happens to be in the service stack, i.e., master-service for open source Puppet or pe-master-service for PE.
 * [SERVER-684](http://tickets.puppetlabs.com/browse/SERVER-684) - Append `source_permissions=use` to 3.x file_metadata requests.
-* [SERVER-685](http://tickets.puppetlabs.com/browse/SERVER-685) - Investigated `environment_scenario` test failures.
+
 
 
 
