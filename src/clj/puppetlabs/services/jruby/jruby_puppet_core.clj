@@ -4,7 +4,8 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
-            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents])
+            [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
+            [clojure.java.io :as io])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)))
 
@@ -184,11 +185,11 @@
         argv (into-array String (concat ["-rjar-dependencies"] args))]
     (.run main argv)))
 
-(schema/defn ^:always-validate cli-run! :- jruby-schemas/JRubyMainStatus
+(schema/defn ^:always-validate cli-run! :- jruby-schemas/JRubyMainStatusOrNil
   "Run a JRuby CLI command, e.g. gem, irb, etc..."
   [config :- {schema/Keyword schema/Any}
    command :- schema/Str
    args :- [schema/Str]]
-  (let [load-arg (format "load 'META-INF/jruby.home/bin/%s'" command)
-        load-args (concat ["-e" load-arg "--"] args)]
-    (cli-ruby! config load-args)))
+  (let [load-path (format "META-INF/jruby.home/bin/%s" command)]
+    (if-let [url (io/resource load-path (.getClassLoader org.jruby.Main))]
+      (cli-ruby! config (concat ["-e" (format "load '%s'" url) "--"] args)))))

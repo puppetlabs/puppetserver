@@ -110,7 +110,9 @@
             {:keys [return out]} m
             exit-code (.getStatus return)]
         (is (= 0 exit-code))
-        (is (re-find #"VERSION: \d+\.\d+\.\d+" out))))))
+        (is (re-find #"VERSION: \d+\.\d+\.\d+" out))))
+    (testing "non existing subcommand returns nil"
+      (is (nil? (jruby-core/cli-run! min-config "doesnotexist" []))))))
 
 (deftest ^:integration cli-ruby!-test
   (testing "jruby cli command output"

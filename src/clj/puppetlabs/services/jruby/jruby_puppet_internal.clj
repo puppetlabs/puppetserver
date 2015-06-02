@@ -290,6 +290,6 @@
         {:keys [ruby-load-path gem-home]} config]
     (doto jruby-config
       (.setEnvironment (managed-environment (get-system-env) gem-home))
-      (.setLoadPaths (managed-load-path ruby-load-path jruby-home))
+      (.setLoadPaths (managed-load-path ruby-load-path))
       (.setCompatVersion (CompatVersion/RUBY1_9)))
     (Main. jruby-config)))

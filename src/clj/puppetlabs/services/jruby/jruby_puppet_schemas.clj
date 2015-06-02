@@ -186,3 +186,7 @@
 
 (def JRubyMainStatus
   (schema/pred jruby-main-status-instance?))
+
+(def JRubyMainStatusOrNil
+  (schema/either JRubyMainStatus
+    (schema/pred nil? 'nil?)))
