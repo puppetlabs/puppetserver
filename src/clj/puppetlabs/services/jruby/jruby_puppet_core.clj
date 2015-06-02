@@ -26,6 +26,21 @@
   be available on the socket. Currently set to 20 minutes."
   (* 20 60 1000))
 
+(def default-master-conf-dir
+  "/etc/puppetlabs/puppet")
+
+(def default-master-code-dir
+  "/etc/puppetlabs/code")
+
+(def default-master-log-dir
+  "/var/log/puppetlabs/puppetserver")
+
+(def default-master-run-dir
+  "/var/run/puppetlabs/puppetserver")
+
+(def default-master-var-dir
+  "/opt/puppetlabs/server/data/puppetserver")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -96,11 +111,11 @@
       (get-in config [:http-client :idle-timeout-milliseconds]
         default-http-socket-timeout))
     (update-in [:borrow-timeout] #(or % default-borrow-timeout))
-    (update-in [:master-conf-dir] #(or % nil))
-    (update-in [:master-var-dir] #(or % nil))
-    (update-in [:master-code-dir] #(or % nil))
-    (update-in [:master-run-dir] #(or % nil))
-    (update-in [:master-log-dir] #(or % nil))
+    (update-in [:master-conf-dir] #(or % default-master-conf-dir))
+    (update-in [:master-var-dir] #(or % default-master-var-dir))
+    (update-in [:master-code-dir] #(or % default-master-code-dir))
+    (update-in [:master-run-dir] #(or % default-master-run-dir))
+    (update-in [:master-log-dir] #(or % default-master-log-dir))
     (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
     (update-in [:max-requests-per-instance] #(or % 0))))
 
