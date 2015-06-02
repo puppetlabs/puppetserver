@@ -126,7 +126,7 @@
     (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
     (get-latest-commits-from-server
       client
-      (str (helpers/base-url ssl?) helpers/default-api-path-prefix))
+      (str (helpers/base-url ssl?) helpers/default-api-path-prefix "/v1"))
     callbacks))
 
 (deftest process-repos-for-updates-test

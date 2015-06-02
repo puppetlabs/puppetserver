@@ -27,6 +27,7 @@
 
 (def latest-commits-url (str helpers/server-base-url
                              helpers/default-api-path-prefix
+                             "/v1"
                              common/latest-commits-sub-path))
 
 (defn latest-commits-response

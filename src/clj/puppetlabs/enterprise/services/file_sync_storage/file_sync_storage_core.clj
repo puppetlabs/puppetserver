@@ -192,30 +192,31 @@
   "Builds the compojure routes from the given configuration values."
   [data-dir repos]
   (compojure/routes
-    (compojure/POST common/publish-content-sub-path {body :body headers :headers}
-                    ;; The body can either be empty - in which a
-                    ;; "Content-Type" header should not be required - or
-                    ;; it can be JSON. If it is empty, JSON parsing will
-                    ;; still work (since it is the empty string), so we
-                    ;; can just try to parse this as JSON and return an
-                    ;; error if that fails.
-                    (let [content-type (headers "content-type")]
-                      (if (or (nil? content-type)
-                              (re-matches #"application/json.*" content-type))
-                        (try
-                          (let [json-body (json/parse-string (slurp body) true)]
-                            {:status 200
-                             :body (publish-content repos json-body data-dir)})
-                          (catch com.fasterxml.jackson.core.JsonParseException e
-                            {:status 400
-                             :body {:error {:type :json-parse-error
-                                            :message "Could not parse body as JSON."}}}))
-                        {:status 400
-                         :body {:error {:type :content-type-error
-                                        :message "Content type must be JSON."}}})))
-    (compojure/ANY common/latest-commits-sub-path []
-                   {:status 200
-                    :body (compute-latest-commits data-dir (keys repos))})))
+    (compojure/context "/v1" []
+      (compojure/POST common/publish-content-sub-path {body :body headers :headers}
+        ;; The body can either be empty - in which a
+        ;; "Content-Type" header should not be required - or
+        ;; it can be JSON. If it is empty, JSON parsing will
+        ;; still work (since it is the empty string), so we
+        ;; can just try to parse this as JSON and return an
+        ;; error if that fails.
+        (let [content-type (headers "content-type")]
+          (if (or (nil? content-type)
+                (re-matches #"application/json.*" content-type))
+            (try
+              (let [json-body (json/parse-string (slurp body) true)]
+                {:status 200
+                 :body (publish-content repos json-body data-dir)})
+              (catch com.fasterxml.jackson.core.JsonParseException e
+                {:status 400
+                 :body {:error {:type :json-parse-error
+                                :message "Could not parse body as JSON."}}}))
+            {:status 400
+             :body {:error {:type :content-type-error
+                            :message "Content type must be JSON."}}})))
+      (compojure/ANY common/latest-commits-sub-path []
+        {:status 200
+         :body (compute-latest-commits data-dir (keys repos))}))))
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
