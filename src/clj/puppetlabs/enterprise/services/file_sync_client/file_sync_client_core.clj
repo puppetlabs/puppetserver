@@ -1,5 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
   (:require [clojure.tools.logging :as log]
+            [clojure.java.io :as io]
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -133,10 +134,19 @@
       (jgit-utils/fetch repo))
     (throw (IllegalStateException.
              (message-with-repo-info
-               (str "File sync found a directory that already exists but does "
+               (str "File sync found a non-empty directory which does "
                     "not have a repository in it")
                name
                target-dir)))))
+
+(defn non-empty-dir?
+  "Returns true if path exists, is a directory, and contains at least 1 file."
+  [path]
+  (-> path
+    io/as-file
+    .listFiles
+    count
+    (> 0)))
 
 (defn apply-updates-to-repo
   "Apply updates from the server to the client repository.  'name' is the
@@ -146,7 +156,7 @@
   location in which the client repository is intended to reside. Returns
   the status information for the repo."
   [name server-repo-url latest-commit-id target-dir]
-  (let [fetch? (fs/exists? target-dir)
+  (let [fetch? (non-empty-dir? target-dir)
         clone? (not fetch?)
         initial-commit-id (jgit-utils/head-rev-id-from-git-dir target-dir)]
     (try
@@ -154,10 +164,11 @@
         (jgit-utils/clone server-repo-url target-dir true)
         (fetch-if-necessary! name target-dir latest-commit-id))
       (let [current-commit-id (jgit-utils/head-rev-id-from-git-dir target-dir)
-            changed? (or clone? (not= current-commit-id initial-commit-id))]
-        (log/info (str (if fetch? "fetch" "clone") "of '" name
-                       "' successful.  New latest commit: " current-commit-id))
-        {:status        (if changed? :synced :unchanged)
+            synced? (or clone? (not= current-commit-id initial-commit-id))]
+        (when synced?
+          (log/info (str (if fetch? "fetch" "clone") " of '" name
+                      "' successful.  New latest commit: " current-commit-id)))
+        {:status (if synced? :synced :unchanged)
          :latest-commit current-commit-id})
       (catch GitAPIException e
         (throw+ {:type    ::error
@@ -184,6 +195,7 @@
                                       latest-commit-id
                                       target-dir)]
     (when (and callback-fn (= :synced (:status status)))
+      (log/debug "Invoking callback function on repo " name)
       (callback-fn (keyword name) status))
     status))
 
