@@ -31,9 +31,9 @@
 (deftest initialize-config-test
   (let [subject (fn [] (jruby-core/initialize-config min-config))]
     (testing "master-{conf,var}-dir settings are optional"
-      (is (nil? (:master-conf-dir (subject))))
-      (is (nil? (:master-var-dir (subject)))))
+      (is (= "/etc/puppetlabs/puppet" (:master-conf-dir (subject))))
+      (is (= "/opt/puppetlabs/server/data/puppetserver" (:master-var-dir (subject)))))
     (testing "(SERVER-647) master-{code,run,log}-dir settings are optional"
-      (is (nil? (:master-code-dir (subject))))
-      (is (nil? (:master-run-dir (subject))))
-      (is (nil? (:master-log-dir (subject)))))))
+      (is (= "/etc/puppetlabs/code" (:master-code-dir (subject))))
+      (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir (subject))))
+      (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir (subject)))))))
