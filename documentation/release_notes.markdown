@@ -28,7 +28,7 @@ Fix for a problem where `file_metadatas` requests to the master which include mu
   * [SERVER-696](https://tickets.puppetlabs.com/browse/SERVER-696)
 
 #### `keylength` value now being determined by setting
-Previously, Puppet Server had always hardcoded the `keylength` to 4096 bits. Now, it properly honors the value in the `keylength` setting when determining the number of bits to use in the generation of keys.
+Previously, Puppet Server had always hardcoded the `keylength` to 4096 bits. Now, it properly honors the value in the `keylength` setting in puppet.conf when determining the number of bits to use in the generation of keys.
 * [SERVER-157](https://tickets.puppetlabs.com/browse/SERVER-157)
 
 #### Verbose output disabled
@@ -36,7 +36,7 @@ Disabled the display of verbose output that appeared during a package upgrade.
 * [SERVER-541](https://tickets.puppetlabs.com/browse/SERVER-541)
 
 #### Previous logback level issue fix had been reverted
-Fixed an issue where logback levels weren’t changed unless you restarted Puppet Server. This functionality had been provided in the Puppet Server 1.0.2 but inadvertently removed in Puppet Server 1.0.8.
+Fixed an issue where logback levels weren’t changed unless you restarted Puppet Server. This functionality had been provided in Puppet Server 1.0.2 but was inadvertently removed in Puppet Server 1.0.8.
 * [SERVER-682](https://tickets.puppetlabs.com/browse/SERVER-682)
 
 ### Miscellaneous improvements
