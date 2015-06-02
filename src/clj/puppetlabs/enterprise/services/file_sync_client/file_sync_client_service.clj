@@ -31,10 +31,14 @@
           sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
-                       :config config))))
+                       :config config
+                       :started? true))))
 
   (register-callback! [this repo-id callback-fn]
     (let [context (tks/service-context this)]
+      (when (:started? context)
+        (throw (IllegalStateException.
+                 "Callbacks must be registered before the File Sync Client is started")))
       (core/register-callback! context repo-id callback-fn)))
 
   (sync-working-dir! [this repo-id working-dir]
