@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [cheshire.core :as json]
-            [puppetlabs.trapperkeeper.core :refer [service]]
+            [puppetlabs.trapperkeeper.core :refer [service] :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
@@ -106,14 +106,16 @@
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
                          (register-callback! :foo (fn [& _] nil))))
-          config (helpers/client-service-config-with-repos {} false)]
+          config (helpers/client-service-config-with-repos {} false)
+          client-app (tk/build-app
+                       [file-sync-client-service/file-sync-client-service
+                        scheduler-service/scheduler-service
+                        my-service]
+                       config)]
       (logging/with-test-logging ; necessary because Trapperkeeper logs the error
+        (tk-app/init client-app)
         (is (thrown-with-msg?
               IllegalStateException
               #"Callbacks must be registered before the File Sync Client is started"
-              (bootstrap/with-app-with-config
-                app
-                [file-sync-client-service/file-sync-client-service
-                 scheduler-service/scheduler-service
-                 my-service]
-                config)))))))
+              (tk-app/start client-app)))
+        (tk-app/stop client-app)))))
