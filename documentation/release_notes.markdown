@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Puppet Server 2.0: Release Notes"
+title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
@@ -87,10 +87,4 @@ These auth.conf changes follow the same changes required for any users upgrading
 * [SERVER-684](http://tickets.puppetlabs.com/browse/SERVER-684) - Append `source_permissions=use` to 3.x file_metadata requests.
 
 
-
-
-
-[layout]: https://github.com/puppetlabs/puppet-specifications/blob/2818c90163837ae6a45eb070cf9f6edfb39a1e3f/file_paths.md
-[current-install-docs]: /guides/install_puppet/install_el.html
-[pup4install]: /puppet/4.0/reference/install_linux.html
 [semver]: http://semver.org/
