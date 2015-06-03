@@ -182,7 +182,7 @@
   update it. If not, initializes a bare repo for it, does an initial add and
   commit, then adds it as a submodule of the parent repo. Returns a list with
   the either the an error or the new SHA for each submodule."
-  [submodules [repo {:keys [submodules-dir submodules-working-dir working-dir]}] data-dir server-url message author]
+  [submodules [repo {:keys [submodules-dir submodules-working-dir working-dir]}] data-dir server-repo-url message author]
   (for [submodule submodules]
     (let [repo-name (name repo)
           submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
@@ -218,7 +218,7 @@
               (.. git
                 submoduleAdd
                 (setPath (str "./" submodules-dir "/" submodule))
-                (setURI (str server-url "/file-sync-git/" (name repo) "/" submodule ".git"))
+                (setURI (str server-repo-url "/" (name repo) "/" submodule ".git"))
                 call)
               (jgit-utils/commit-id commit)))
           (do
@@ -245,7 +245,7 @@
   failed."
   [repos :- GitRepos
    data-dir :- schema/Str
-   server-url :- schema/Str
+   server-repo-url :- schema/Str
    message :- schema/Str
    author :- PersonIdent]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
@@ -253,7 +253,7 @@
       (log/infof "Publishing working directory %s to file sync storage service"
         working-dir)
       (let [submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
-            submodules-status (doall (publish-submodules submodules repo data-dir server-url message author))]
+            submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url message author))]
         (try
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
@@ -277,21 +277,21 @@
   [repos :- GitRepos
    body
    data-dir
-   server-url]
+   server-repo-url]
   (if-let [checked-body (schema/check PublishRequestBody body)]
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
     (let [author (commit-author (:author body))
           message (:message body default-commit-message)
-          new-commits (publish-repos repos data-dir server-url message author)]
+          new-commits (publish-repos repos data-dir server-repo-url message author)]
       (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Compojure app
 (defn build-routes
   "Builds the compojure routes from the given configuration values."
-  [data-dir repos server-url]
+  [data-dir repos server-repo-url]
   (compojure/routes
     (compojure/context "/v1" []
       (compojure/POST common/publish-content-sub-path {body :body headers :headers}
@@ -307,7 +307,7 @@
             (try
               (let [json-body (json/parse-string (slurp body) true)]
                 {:status 200
-                 :body (publish-content repos json-body data-dir server-url)})
+                 :body (publish-content repos json-body data-dir server-repo-url)})
               (catch com.fasterxml.jackson.core.JsonParseException e
                 {:status 400
                  :body {:error {:type :json-parse-error
@@ -321,8 +321,8 @@
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."
-  [data-dir sub-paths server-url]
-  (-> (build-routes data-dir sub-paths server-url)
+  [data-dir sub-paths server-repo-url]
+  (-> (build-routes data-dir sub-paths server-repo-url)
       ringutils/wrap-request-logging
       ringutils/wrap-user-data-errors
       ringutils/wrap-schema-errors

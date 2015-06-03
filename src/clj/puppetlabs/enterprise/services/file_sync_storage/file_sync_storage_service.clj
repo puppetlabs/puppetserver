@@ -16,6 +16,7 @@
           server-url (get-in-config [:file-sync-common :server-url])
           api-path-prefix (get-route this :api)
           repo-path-prefix (get-route this :repo-servlet)
+          server-repo-url (str server-url repo-path-prefix)
           ; JGit servlet uses 'export-all' setting to decide
           ; whether to allow all repositories to be eligible
           ; for external access.  Using a value of '1' for now
@@ -35,7 +36,7 @@
          :route-id            :repo-servlet})
 
       (let [repos (:repos config)
-            handler (core/build-handler data-dir repos server-url)]
+            handler (core/build-handler data-dir repos server-repo-url)]
 
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
 
