@@ -141,13 +141,11 @@
       (setBare true)
       (call)))
 
-(defn latest-commit-on-master
+(schema/defn latest-commit-on-master :- (schema/maybe String)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
-   the repository specified by the given `git-dir`.  Returns `nil` if commits
+   the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
   [git-dir]
-  {:pre [(instance? File git-dir)]
-   :post [(or (string? %) (nil? %))]}
   (when-let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
     (when-let [ref (.getRef repo "refs/heads/master")]
       (-> ref
@@ -155,15 +153,18 @@
           (jgit-utils/commit-id)))))
 
 (defn compute-latest-commits
-  "Computes the latest commit for each repository in `sub-paths`."
+  "Computes the latest commit for each repository in sub-paths.  Returns a map
+   of sub-path -> commit ID."
   [data-dir sub-paths]
-  (reduce
-    (fn [acc sub-path]
-      (let [repo-path (fs/file data-dir (str (name sub-path) ".git"))
-            rev (latest-commit-on-master repo-path)]
-        (assoc acc sub-path rev)))
-    {}
-    sub-paths))
+  (let [map* (if (> (count sub-paths) 1) pmap map)
+        latest-commit (fn [sub-path]
+                        (let [repo-path (fs/file
+                                          data-dir
+                                          (str (name sub-path) ".git"))
+                              rev (latest-commit-on-master repo-path)]
+                          [sub-path rev]))]
+    (into {}
+      (map* latest-commit sub-paths))))
 
 (defn commit-author
   "Create PersonIdent instance using provided name and email, or
