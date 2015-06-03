@@ -78,25 +78,17 @@
 
 (schema/defn ^:always-validate managed-load-path :- [schema/Str]
   "Return a list of ruby LOAD_PATH directories built from the
-  user-configurable ruby-load-path setting of the jruby-puppet configuration
-  section and prepending specific JRuby directories necessary for third party
-  extensions extensions.  See SERVER-297 and SERVER-538 for more info."
-  [ruby-load-path :- [schema/Str]
-   jruby-home :- schema/Str]
-  (->> ruby-load-path
-    (cons ruby-code-dir)
-    (cons (str jruby-home "/lib/ruby/1.9"))
-    (cons (str jruby-home "/lib/ruby/shared"))
-    (cons (str jruby-home "/lib/ruby/1.9/site_ruby"))))
+  user-configurable ruby-load-path setting of the jruby-puppet configuration."
+  [ruby-load-path :- [schema/Str]]
+  (cons ruby-code-dir ruby-load-path))
 
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
-  (let [jruby-home (.getHomeDirectory scripting-container)]
-    (doto scripting-container
-      (.setLoadPaths (managed-load-path ruby-load-path jruby-home))
-      (.setCompatVersion (CompatVersion/RUBY1_9))
-      (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
-      (.setEnvironment (managed-environment (get-system-env) gem-home)))))
+  (doto scripting-container
+    (.setLoadPaths (managed-load-path ruby-load-path))
+    (.setCompatVersion (CompatVersion/RUBY1_9))
+    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+    (.setEnvironment (managed-environment (get-system-env) gem-home))))
 
 (defn empty-scripting-container
   "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
@@ -295,7 +287,6 @@
   use `create-scripting-container` instead of `new-main`."
   [config :- jruby-schemas/JRubyPuppetConfig]
   (let [jruby-config (RubyInstanceConfig.)
-        jruby-home   (.getJRubyHome jruby-config)
         {:keys [ruby-load-path gem-home]} config]
     (doto jruby-config
       (.setEnvironment (managed-environment (get-system-env) gem-home))
