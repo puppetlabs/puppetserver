@@ -99,6 +99,7 @@
           (let [response (http-client/get (str
                                             helpers/server-base-url
                                             helpers/default-api-path-prefix
+                                            "/v1"
                                             common/latest-commits-sub-path))
                 content-type (get-in response [:headers "content-type"])]
 
@@ -139,6 +140,7 @@
 
 (def publish-url (str helpers/server-base-url
                       helpers/default-api-path-prefix
+                      "/v1"
                       common/publish-content-sub-path))
 
 (defn make-publish-request

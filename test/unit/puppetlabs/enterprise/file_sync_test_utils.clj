@@ -19,7 +19,7 @@
 
 (def default-api-path-prefix "/file-sync")
 
-(def default-repo-path-prefix "/git")
+(def default-repo-path-prefix "/file-sync-git")
 
 (def http-port 8080)
 
@@ -96,7 +96,7 @@
     (merge ssl-opts
            {:server-url       (base-url ssl?)
             :poll-interval    1
-            :server-api-path  default-api-path-prefix
+            :server-api-path  (str default-api-path-prefix "/v1")
             :server-repo-path default-repo-path-prefix
             :repos            repos})))
 
