@@ -52,8 +52,9 @@
                  data-dir
                  {(keyword repo-name) {:working-dir repo-name}}
                  false)]
-    (testing "Throws appropriate error when directory exists but has no git repo"
+    (testing "Throws appropriate error when non-empty directory exists but has no git repo"
       (fs/mkdir client-repo-path)
+      (fs/touch (fs/file client-repo-path "foo"))
       (is (thrown? IllegalStateException
                    (apply-updates-to-repo repo-name server-repo-url
                                           "" client-repo-path))))
@@ -117,7 +118,16 @@
                                                 client-repo-path)]
               (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-path) commit-id))
               (is (= :synced (:status status)))
-              (is (= commit-id (:latest-commit status))))))))))
+              (is (= commit-id (:latest-commit status))))))
+        (testing "Can clone into existing empty directory"
+          (fs/delete-dir client-repo-path)
+          (is (not (fs/exists? client-repo-path)))
+          (fs/mkdir client-repo-path)
+          (let [status (apply-updates-to-repo repo-name
+                         server-repo-url
+                         nil
+                         client-repo-path)]
+            (is (= :synced (:status status)))))))))
 
 (defn process-repos
   [repos client ssl? callbacks]
