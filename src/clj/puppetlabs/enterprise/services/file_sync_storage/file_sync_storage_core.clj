@@ -114,6 +114,11 @@
   SHA or an error map."
   {schema/Keyword PublishRepoResult})
 
+(def CommitInfo
+  "Schema defining the necessary metadata for making a commit."
+  {:author PersonIdent
+   :message schema/Str})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -184,8 +189,7 @@
    submodule-path
    parent-git
    submodule-url
-   message
-   author]
+   commit-info]
 
   ;; initialize a bare repo for the new submodule
   (log/debugf "Initializing bare repo for submodule at %s" submodule-git-dir)
@@ -194,7 +198,7 @@
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
-        commit (jgit-utils/add-and-commit submodule-git message author)]
+        commit (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info))]
 
     ;; do a submodule add on the parent repo
     (log/debugf "Adding submodule to parent repo at %s" submodule-path)
@@ -212,13 +216,12 @@
   [submodule-git-dir
    submodule-working-dir
    submodule-within-parent
-   message
-   author]
+   commit-info]
 
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
-        commit (jgit-utils/add-and-commit submodule-git message author)]
+        commit (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info))]
 
     ;; do a pull for the submodule within the parent repo to update it
     (log/debugf "Updating submodule %s within parent repo" submodule-within-parent)
@@ -237,8 +240,7 @@
    [repo {:keys [submodules-dir submodules-working-dir working-dir]}]
    data-dir
    server-repo-url
-   message
-   author]
+   commit-info]
   (for [submodule submodules]
     (let [repo-name (name repo)
           submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
@@ -267,14 +269,12 @@
             submodule-path
             parent-git
             submodule-url
-            message
-            author)
+            commit-info)
           (publish-existing-submodule
             submodule-git-dir
             submodule-working-dir
             submodule-within-parent
-            message
-            author))
+            commit-info))
         (catch JGitInternalException e
           (failed-to-publish submodule-within-parent e))
         (catch GitAPIException e
@@ -288,19 +288,18 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
-   message :- schema/Str
-   author :- PersonIdent]
+   commit-info :- CommitInfo]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
     (do
       (log/infof "Publishing working directory %s to file sync storage service"
         working-dir)
       (let [submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
-            submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url message author))]
+            submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
         (try
           (log/infof "Committing repo %s" working-dir)
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (jgit-utils/add-and-commit git message author)
+                commit (jgit-utils/add-and-commit git (:message commit-info) (:author commit-info))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
@@ -325,9 +324,9 @@
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
-    (let [author (commit-author (:author body))
-          message (:message body default-commit-message)
-          new-commits (publish-repos repos data-dir server-repo-url message author)]
+    (let [commit-info {:author (commit-author (:author body))
+                       :message (:message body default-commit-message)}
+          new-commits (publish-repos repos data-dir server-repo-url commit-info)]
       (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
