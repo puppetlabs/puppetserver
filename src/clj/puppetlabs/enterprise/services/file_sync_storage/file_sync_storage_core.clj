@@ -81,7 +81,8 @@
   (schema/maybe
     {(schema/optional-key :message) schema/Str
      (schema/optional-key :author) {:name schema/Str
-                                    :email schema/Str}}))
+                                    :email schema/Str}
+     (schema/optional-key :repo-id) schema/Str}))
 
 (def PublishError
   "Schema defining an error when attempting to publish a repo."
@@ -338,7 +339,11 @@
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
-    (let [commit-info {:author (commit-author (:author body))
+    (let [repo-id (keyword (:repo-id body))
+          repos (if repo-id
+                  (select-keys repos [repo-id])
+                  repos)
+          commit-info {:author (commit-author (:author body))
                        :message (:message body default-commit-message)}
           new-commits (publish-repos repos data-dir server-repo-url commit-info)]
       (zipmap (keys repos) new-commits))))

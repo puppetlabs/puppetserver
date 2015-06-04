@@ -153,7 +153,9 @@
 (deftest publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
+          repo2 "test-commit-2"
           working-dir (helpers/temp-dir-as-string)
+          working-dir-2 (helpers/temp-dir-as-string)
           data-dir (helpers/temp-dir-as-string)
           server-repo (fs/file data-dir (str repo ".git"))]
 
@@ -161,15 +163,26 @@
         app
         (helpers/storage-service-config-with-repos
           data-dir
-          {(keyword repo) {:working-dir working-dir}}
+          {(keyword repo) {:working-dir working-dir}
+           (keyword repo2) {:working-dir working-dir-2}}
           false)
         (testing "with no body supplied"
           (let [response (http-client/post publish-url)
+                body (slurp (:body response))
+                parsed-body (json/parse-string body)]
+            (testing "get expected response"
+              (is (= (:status response) 200))
+              (is (contains? parsed-body repo))
+              (is (contains? parsed-body repo2)))))
+
+        (testing "with only repo-id supplied"
+          (let [response (make-publish-request {:repo-id (keyword repo)})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
-                  (str "Unexpected response body: " body)))
+                  (str "Unexpected response body: " body))
+              (is (= 1 (count (keys (json/parse-string body))))))
             (let [commit (get-commit server-repo)]
               (testing "commit message is correct"
                 (is (= core/default-commit-message
@@ -179,10 +192,11 @@
                 (is (= core/default-commit-author-email
                        (.getEmailAddress (.getAuthorIdent commit))))))))
 
-        (testing "with just author supplied"
+        (testing "with just author supplied and repo-id supplied"
           (let [author {:name  "Tester"
                         :email "test@example.com"}
-                response (make-publish-request {:author author})
+                response (make-publish-request {:author author
+                                                :repo-id (keyword repo)})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -196,11 +210,13 @@
                 (is (= (:name author) (.getName (.getAuthorIdent commit))))
                 (is (= (:email author) (.getEmailAddress (.getAuthorIdent commit))))))))
 
-        (testing "with author and message supplied"
+        (testing "with author, message and repo-id supplied"
           (let [author {:name  "Tester"
                         :email "test@example.com"}
                 message "This is a test commit"
-                response (make-publish-request {:author author :message message})
+                response (make-publish-request {:author author
+                                                :message message
+                                                :repo-id (keyword repo)})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
