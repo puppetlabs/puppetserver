@@ -28,6 +28,16 @@
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
   "puppet-server-lib")
 
+(def compile-mode
+  "The JRuby compile mode to use for all ruby components, e.g. the master
+  service and CLI tools."
+  RubyInstanceConfig$CompileMode/OFF)
+
+(def compat-version
+  "The JRuby compatibility version to use for all ruby components, e.g. the
+  master service and CLI tools."
+  (CompatVersion/RUBY1_9))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -77,10 +87,11 @@
 
 (defn prep-scripting-container
   [scripting-container ruby-load-path gem-home]
+  ; Note, this behavior should remain consistent with new-main
   (doto scripting-container
     (.setLoadPaths (managed-load-path ruby-load-path))
-    (.setCompatVersion (CompatVersion/RUBY1_9))
-    (.setCompileMode RubyInstanceConfig$CompileMode/OFF)
+    (.setCompatVersion compat-version)
+    (.setCompileMode compile-mode)
     (.setEnvironment (managed-environment (get-system-env) gem-home))))
 
 (defn empty-scripting-container
@@ -288,8 +299,10 @@
   [config :- jruby-schemas/JRubyPuppetConfig]
   (let [jruby-config (RubyInstanceConfig.)
         {:keys [ruby-load-path gem-home]} config]
+    ; Note, this behavior should remain consistent with prep-scripting-container
     (doto jruby-config
-      (.setEnvironment (managed-environment (get-system-env) gem-home))
       (.setLoadPaths (managed-load-path ruby-load-path))
-      (.setCompatVersion (CompatVersion/RUBY1_9)))
+      (.setCompatVersion compat-version)
+      (.setCompileMode compile-mode)
+      (.setEnvironment (managed-environment (get-system-env) gem-home)))
     (Main. jruby-config)))
