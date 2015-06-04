@@ -175,74 +175,116 @@
            :message (str "Failed to publish " path ": "
                       (.getMessage error))}})
 
+(defn init-new-submodule
+  "Initialize a new submodule by creating a git dir for it, adding and
+  commiting it, and adding it as a submodule to its parent repo. Returns the
+  submodule's new SHA."
+  [submodule-git-dir
+   submodule-working-dir
+   submodule-path
+   parent-git
+   submodule-url
+   message
+   author]
+
+  ;; initialize a bare repo for the new submodule
+  (log/debugf "Initializing bare repo for submodule at %s" submodule-git-dir)
+  (initialize-bare-repo! submodule-git-dir)
+
+  ;; add and commit the new submodule
+  (log/debugf "Committing submodule %s " submodule-working-dir)
+  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
+        commit (jgit-utils/add-and-commit submodule-git message author)]
+
+    ;; do a submodule add on the parent repo
+    (log/debugf "Adding submodule to parent repo at %s" submodule-path)
+    (.. parent-git
+      submoduleAdd
+      (setPath submodule-path)
+      (setURI submodule-url)
+      call)
+    (jgit-utils/commit-id commit)))
+
+(defn publish-existing-submodule
+  "Publishes an existing submodule by adding and commiting its git repo, and
+  then doing a git pull for it within the parent repo. Returns the submodule's
+  new SHA."
+  [submodule-git-dir
+   submodule-working-dir
+   submodule-within-parent
+   message
+   author]
+
+  ;; add and commit the repo for the submodule
+  (log/debugf "Committing submodule %s " submodule-working-dir)
+  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
+        commit (jgit-utils/add-and-commit submodule-git message author)]
+
+    ;; do a pull for the submodule within the parent repo to update it
+    (log/debugf "Updating submodule %s within parent repo" submodule-within-parent)
+    (jgit-utils/pull (jgit-utils/get-repository-from-working-tree submodule-within-parent))
+    ;; return the sha from the commit
+    (jgit-utils/commit-id commit)))
+
 (defn publish-submodules
   "Given a list of subdirectories, checks to see whether each subdirectory is
   already a submodule of the parent repo. If so, does an add and commit on the
   subdirectory and a git pull on its directory within the parent repo to
   update it. If not, initializes a bare repo for it, does an initial add and
   commit, then adds it as a submodule of the parent repo. Returns a list with
-  the either the an error or the new SHA for each submodule."
-  [submodules [repo {:keys [submodules-dir submodules-working-dir working-dir]}] data-dir server-repo-url message author]
+  either an error or the new SHA for each submodule."
+  [submodules
+   [repo {:keys [submodules-dir submodules-working-dir working-dir]}]
+   data-dir
+   server-repo-url
+   message
+   author]
   (for [submodule submodules]
     (let [repo-name (name repo)
           submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
           submodule-working-dir (fs/file submodules-working-dir submodule)
-          submodule-within-superproject (fs/file working-dir submodules-dir submodule)
-          submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
-          git (-> (fs/file data-dir (str repo-name ".git"))
-                (jgit-utils/get-repository working-dir)
-                Git/wrap)]
+          submodule-path (str submodules-dir "/" submodule)
+          submodule-within-parent (fs/file working-dir submodule-path)
+          submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule ".git")
+          parent-git (-> (fs/file data-dir (str repo-name ".git"))
+                       (jgit-utils/get-repository working-dir)
+                       Git/wrap)]
 
-      (log/infof "Publishing submodule %s/%s" submodules-dir submodule)
+      (log/infof "Publishing submodule %s for repo %s" submodule-path repo-name)
       ;; Check whether the submodule exists on the parent repo. If it does
       ;; then we add and commit the submodule in its repo, then do a pull
       ;; within the parent repo to update it there. If it does not exist, then
       ;; we need to initialize a new bare repo for the submodule and do a
       ;; "submodule add".
       (try
-        (if (empty? (.. git
+        (if (empty? (.. parent-git
                       submoduleStatus
-                      (addPath (str submodules-dir "/" submodule))
+                      (addPath submodule-path)
                       call))
-          (do
-            ;; initialize a bare repo for the new submodule
-            (log/debugf "Initializing bare repo for submodule %s of repo %s" submodule repo-name)
-            (initialize-bare-repo! submodule-git-dir)
-
-            ;; add and commit the new submodule
-            (log/debugf "Committing submodule %s " submodule-working-dir)
-            (let [commit (jgit-utils/add-and-commit submodule-git message author)]
-
-              ;; do a submodule add on the parent repo
-              (log/debugf "Adding submodule %s to repo %s" submodule repo-name)
-              (.. git
-                submoduleAdd
-                (setPath (str "./" submodules-dir "/" submodule))
-                (setURI (str server-repo-url "/" (name repo) "/" submodule ".git"))
-                call)
-              (jgit-utils/commit-id commit)))
-          (do
-            ;; add and commit the repo for the submodule
-            (log/debugf "Committing submodule %s " submodule-working-dir)
-            (let [commit (jgit-utils/add-and-commit submodule-git message author)]
-
-              ;; do a pull for the submodule within the parent repo to update it
-              (log/debugf "Updating submodule %s in repo %s" submodule repo-name)
-              (jgit-utils/pull (jgit-utils/get-repository-from-working-tree submodule-within-superproject))
-
-              ;; return the sha from the commit
-              (jgit-utils/commit-id commit))))
+          (init-new-submodule
+            submodule-git-dir
+            submodule-working-dir
+            submodule-path
+            parent-git
+            submodule-url
+            message
+            author)
+          (publish-existing-submodule
+            submodule-git-dir
+            submodule-working-dir
+            submodule-within-parent
+            message
+            author))
         (catch JGitInternalException e
-          (failed-to-publish submodule-within-superproject e))
+          (failed-to-publish submodule-within-parent e))
         (catch GitAPIException e
-          (failed-to-publish submodule-within-superproject e))))))
+          (failed-to-publish submodule-within-parent e))))))
 
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit author,
   perform an add and commit for each working directory.  Returns the newest
   SHA for each working directory that was successfully committed and the
-  status of any submodules in the repo, or an error that the add/commit
-  failed."
+  status of any submodules in the repo, or an error if the add/commit failed."
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
@@ -255,6 +297,7 @@
       (let [submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
             submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url message author))]
         (try
+          (log/infof "Committing repo %s" working-dir)
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
                 commit (jgit-utils/add-and-commit git message author)
