@@ -43,13 +43,6 @@
   {:post [(instance? jruby-schemas/pool-queue-type %)]}
   (LinkedBlockingDeque. size))
 
-(schema/defn ^:always-validate
-  create-pool-from-config :- jruby-schemas/PoolState
-  "Create a new PoolData based on the config input."
-  [{size :max-active-instances} :- jruby-schemas/JRubyPuppetConfig]
-  {:pool (instantiate-free-pool size)
-   :size size})
-
 (schema/defn ^:always-validate managed-environment :- {schema/Str schema/Str}
   "The environment variables that should be passed to the Puppet JRuby
   interpreters.
@@ -98,7 +91,7 @@
          (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
   (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-      (prep-scripting-container ruby-load-path gem-home)))
+    (prep-scripting-container ruby-load-path gem-home)))
 
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
@@ -136,6 +129,21 @@
       (if-let [value (get config setting)]
         (.put puppet-config dir (fs/absolute-path value))))
     puppet-config))
+
+(schema/defn borrow-with-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
+  [timeout :- schema/Int
+   pool :- jruby-schemas/pool-queue-type]
+  (.pollFirst pool timeout TimeUnit/MILLISECONDS))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(schema/defn ^:always-validate
+  create-pool-from-config :- jruby-schemas/PoolState
+  "Create a new PoolState based on the config input."
+  [{size :max-active-instances} :- jruby-schemas/JRubyPuppetConfig]
+  {:pool (instantiate-free-pool size)
+   :size size})
 
 (schema/defn ^:always-validate
   create-pool-instance! :- JRubyPuppetInstance
@@ -206,11 +214,6 @@
   [pool :- jruby-schemas/pool-queue-type]
   (.takeFirst pool))
 
-(schema/defn borrow-with-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
-  [timeout :- schema/Int
-   pool :- jruby-schemas/pool-queue-type]
-  (.pollFirst pool timeout TimeUnit/MILLISECONDS))
-
 (schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
   If successful, updates the state information and returns the JRuby instance.
@@ -277,9 +280,6 @@
         (.putFirst pool instance)))
     ;; if we get here, we got a Retry, so we just put it back into the pool.
     (.putFirst (:pool instance) instance)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public
 
 (schema/defn ^:always-validate new-main :- jruby-schemas/JRubyMain
   "Return a new JRuby Main instance which should only be used for CLI purposes,
