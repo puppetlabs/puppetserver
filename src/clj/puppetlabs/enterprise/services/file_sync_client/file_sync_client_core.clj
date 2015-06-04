@@ -33,15 +33,12 @@
                        should wait between attempts to poll the server for
                        latest available content.
 
-    * :server-url    - Base URL of the repository server.
-
     * :repos         - A map with metadata about each of the repositories
                        that the server manages. Each key should be the name
                        of a repository, and each value should be the directory
                        to which the repository content should be deployed as
                        a string."
   {:poll-interval                     schema/Int
-   :server-url                        schema/Str
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
    :repos                             ReposConfig
@@ -232,7 +229,8 @@
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
   [agent-state
-   {:keys [server-url server-repo-path server-api-path repos]} :- Config
+   {:keys [server-repo-path server-api-path repos]} :- Config
+   {:keys [server-url]} :- common/FileSyncCommonConfig
    http-client
    callbacks]
   (log/debug "File sync process running on repos " repos)
@@ -305,12 +303,13 @@
   [sync-agent :- Agent
    schedule-fn :- IFn
    config :- Config
+   common-config :- common/FileSyncCommonConfig
    http-client :- (schema/protocol http-client/HTTPClient)
    callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))
-        send-to-agent #(send-off sync-agent periodic-sync config http-client callbacks)]
+        send-to-agent #(send-off sync-agent periodic-sync config common-config http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]

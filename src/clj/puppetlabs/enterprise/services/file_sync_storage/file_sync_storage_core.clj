@@ -64,12 +64,9 @@
     * :data-dir - The data directory on the Git server under which all of the
                   repositories it is managing should reside.
 
-    * :server-url - Base URL of the repository server.
-
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
   {:data-dir StringOrFile
-   :server-url schema/Str
    :repos    GitRepos})
 
 (def PublishRequestBody

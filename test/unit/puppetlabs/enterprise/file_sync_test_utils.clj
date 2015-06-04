@@ -84,8 +84,8 @@
   ([data-dir repos]
    (file-sync-storage-config data-dir repos false))
   ([data-dir repos ssl?]
-   {:file-sync-storage {:data-dir data-dir
-                        :server-url (base-url ssl?)
+   {:file-sync-common {:server-url (base-url ssl?)}
+    :file-sync-storage {:data-dir data-dir
                         :repos    repos}}))
 
 (defn storage-service-config-with-repos
@@ -94,19 +94,15 @@
     (merge webserver-ssl-config (file-sync-storage-config data-dir repos true))
     (merge webserver-plaintext-config (file-sync-storage-config data-dir repos))))
 
-(defn file-sync-client-config-payload
-  [repos ssl?]
-  (let [ssl-opts (if ssl? ssl-options {})]
-    (merge ssl-opts
-           {:server-url       (base-url ssl?)
-            :poll-interval    1
-            :server-api-path  (str default-api-path-prefix "/v1")
-            :server-repo-path default-repo-path-prefix
-            :repos            repos})))
-
 (defn client-service-config-with-repos
   [repos ssl?]
-  {:file-sync-client (file-sync-client-config-payload repos ssl?)})
+  (let [ssl-opts (if ssl? ssl-options {})]
+    {:file-sync-common {:server-url (base-url ssl?)}
+     :file-sync-client (merge ssl-opts
+                         {:poll-interval    1
+                          :server-api-path  (str default-api-path-prefix "/v1")
+                          :server-repo-path default-repo-path-prefix
+                          :repos            repos})}))
 
 (defn temp-dir-as-string
   []
@@ -147,7 +143,7 @@
        client-app#
        [file-sync-client-service/file-sync-client-service
         scheduler-service/scheduler-service]
-       {:file-sync-client ~client-config}
+       ~client-config
        (let [~app client-app#]
          (do
            ~@body)))))

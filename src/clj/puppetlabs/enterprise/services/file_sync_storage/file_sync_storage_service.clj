@@ -13,7 +13,7 @@
   (init [this context]
     (let [config (get-in-config [:file-sync-storage])
           data-dir (:data-dir config)
-          server-url (:server-url config)
+          server-url (get-in-config [:file-sync-common :server-url])
           api-path-prefix (get-route this :api)
           repo-path-prefix (get-route this :repo-servlet)
           ; JGit servlet uses 'export-all' setting to decide

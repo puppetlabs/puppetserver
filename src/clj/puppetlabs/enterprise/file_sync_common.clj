@@ -11,6 +11,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
+
+(def FileSyncCommonConfig
+  "Schema defining the content of the configuration common to the File Sync
+  client and storage services.
+
+  The keys should have the following values:
+
+    * :server-url - Base URL of the repository server."
+  {:server-url schema/Str})
+
 (def LatestCommitsPayload
   "Schema defining the return payload of the server's 'latest-commits'
   endpoint.

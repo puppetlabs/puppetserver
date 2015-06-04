@@ -19,6 +19,7 @@
   (start [this context]
     (log/info "Starting file sync client service")
     (let [config (get-in-config [:file-sync-client])
+          common-config (get-in-config [:file-sync-common])
           poll-interval (* (:poll-interval config) 1000)
           ssl-context (ssl/generate-ssl-context config)
           sync-agent (core/create-agent request-shutdown)]
@@ -28,10 +29,11 @@
             http-client (core/create-http-client ssl-context)
             callbacks   (deref (:callbacks context))]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client callbacks)
+          sync-agent schedule-fn config common-config http-client callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
                        :config config
+                       :common-config common-config
                        :started? true))))
 
   (register-callback! [this repo-id callback-fn]

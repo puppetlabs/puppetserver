@@ -18,7 +18,6 @@
           working-dir (helpers/temp-file-name repo-id)
           git-dir (fs/file data-dir (str repo-id ".git"))]
       (initialize-repos! {:data-dir data-dir
-                          :server-url (helpers/base-url false)
                           :repos    {:single-repo {:working-dir working-dir}}})
       (testing "The data dir is created"
         (is (fs/exists? data-dir)))
@@ -51,7 +50,6 @@
         repo1-working-dir (fs/temp-dir repo1-id)
         repo2-working-dir (fs/temp-dir repo2-id)
         config            {:data-dir data-dir
-                           :server-url (helpers/base-url false)
                            :repos    {:repo1 {:working-dir repo1-working-dir}
                                       :repo2 {:working-dir repo2-working-dir}}}]
     (testing "Multiple repos can be initialized"
