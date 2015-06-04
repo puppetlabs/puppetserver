@@ -363,6 +363,28 @@
         (is (= (get-submodules-status git-dir-failed  working-dir-failed)
               (get-in parsed-body [failed-parent "submodules"])))))
 
+    (testing "can specify a single submodule to be published"
+      (let [submodules-orig-status (get-submodules-status (fs/file data-dir (str successful-parent ".git")) working-dir-success)
+            submodule-1-commit (get submodules-orig-status (str submodules-dir-name-1 "/" submodule-1))
+            submodule-2-commit (get submodules-orig-status (str submodules-dir-name-1 "/" submodule-2))
+            response (make-publish-request {:repo-id successful-parent
+                                            :submodule-id submodule-1})
+            parsed-body (parse-response-body response)]
+        (is (= 200 (:status response)))
+
+        (is (= (-> (fs/file data-dir (str successful-parent ".git"))
+                   (jgit-utils/head-rev-id-from-git-dir))
+               (get-in parsed-body [successful-parent "commit"])))
+        (let [submodules-status (get-submodules-status (fs/file data-dir (str successful-parent ".git")) working-dir-success)
+              submodule-name (str submodules-working-dir-1 "/" submodule-1)
+              submodule-1-new-commit (get submodules-status (str submodules-dir-name-1 "/" submodule-1))
+              submodule-2-new-commit (get submodules-status (str submodules-dir-name-1 "/" submodule-2))]
+          (is (= (get submodules-status submodule-name)
+                 (get-in parsed-body [successful-parent "submodules" submodule-name])))
+          (is (= 1 (count (keys (get-in parsed-body [successful-parent "submodules"])))))
+          (is (not= submodule-1-commit submodule-1-new-commit))
+          (is (= submodule-2-commit submodule-2-new-commit)))))
+
     (testing "publish endpoint returns correct errors"
       (with-test-logging
         ; Delete a submodule repo entirely - this'll cause the publish to fail
