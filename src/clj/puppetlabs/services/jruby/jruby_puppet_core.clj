@@ -185,7 +185,7 @@
         argv (into-array String (concat ["-rjar-dependencies"] args))]
     (.run main argv)))
 
-(schema/defn ^:always-validate cli-run! :- jruby-schemas/JRubyMainStatusOrNil
+(schema/defn ^:always-validate cli-run! :- (schema/maybe jruby-schemas/JRubyMainStatus)
   "Run a JRuby CLI command, e.g. gem, irb, etc..."
   [config :- {schema/Keyword schema/Any}
    command :- schema/Str
