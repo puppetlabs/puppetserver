@@ -19,7 +19,7 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
-  (helpers/file-sync-client-config-payload {:fake "fake"} true))
+  (helpers/client-service-config-with-repos {:fake "fake"} true))
 
 (defn ring-handler
   [_]
@@ -46,7 +46,7 @@
         app
         helpers/webserver-ssl-config
         ring-handler
-        (dissoc file-sync-client-ssl-config :ssl-ca-cert :ssl-cert :ssl-key)
+        (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert :ssl-cert :ssl-key)
         (let [sync-agent (helpers/get-sync-agent app)
               new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :failed (:status new-state)))
@@ -60,7 +60,7 @@
                      app
                      helpers/webserver-ssl-config
                      ring-handler
-                     (dissoc file-sync-client-ssl-config :ssl-ca-cert)))))))
+                     (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert)))))))
 
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
