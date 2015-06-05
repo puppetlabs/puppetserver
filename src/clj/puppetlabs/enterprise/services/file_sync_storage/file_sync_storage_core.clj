@@ -196,18 +196,19 @@
   (initialize-bare-repo! submodule-git-dir)
 
   ;; add and commit the new submodule
-  (log/debugf "Committing submodule %s " submodule-working-dir)
-  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
-        commit (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info))]
+  (log/debugf "Committing submodule %s" submodule-working-dir)
+  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
+    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
 
-    ;; do a submodule add on the parent repo
-    (log/debugf "Adding submodule to parent repo at %s" submodule-path)
-    (.. parent-git
-      submoduleAdd
-      (setPath submodule-path)
-      (setURI submodule-url)
-      call)
-    (jgit-utils/commit-id commit)))
+  ;; do a submodule add on the parent repo and return the SHA from the cloned
+  ;; submodule within the repo
+  (log/debugf "Adding submodule to parent repo at %s" submodule-path)
+  (let [repo  (.. parent-git
+                submoduleAdd
+                (setPath submodule-path)
+                (setURI submodule-url)
+                call)]
+    (jgit-utils/head-rev-id repo)))
 
 (defn publish-existing-submodule
   "Publishes an existing submodule by adding and commiting its git repo, and
@@ -220,14 +221,18 @@
 
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
-  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))
-        commit (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info))]
+  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
+    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
 
-    ;; do a pull for the submodule within the parent repo to update it
-    (log/debugf "Updating submodule %s within parent repo" submodule-within-parent)
-    (jgit-utils/pull (jgit-utils/get-repository-from-working-tree submodule-within-parent))
-    ;; return the sha from the commit
-    (jgit-utils/commit-id commit)))
+  ;; do a pull for the submodule within the parent repo to update it, and
+  ;; the return the SHA for the new HEAD of the submodule.
+  (log/debugf "Updating submodule %s within parent repo" submodule-within-parent)
+  (-> submodule-within-parent
+    jgit-utils/get-repository-from-working-tree
+    jgit-utils/pull
+    .getMergeResult
+    .getNewHead
+    jgit-utils/commit-id))
 
 (defn publish-submodules
   "Given a list of subdirectories, checks to see whether each subdirectory is
