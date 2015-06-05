@@ -300,23 +300,25 @@
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
         submodule-3 "submodule-3"
-        submodule-4 "submodule-4"
         working-dir-failed (helpers/temp-dir-as-string)
         working-dir-success (helpers/temp-dir-as-string)
         data-dir (helpers/temp-dir-as-string)
+        git-dir-success (fs/file data-dir (str successful-parent ".git"))
+        git-dir-failed (fs/file data-dir (str failed-parent ".git"))
         submodules-dir-name-1 "submodules1"
         submodules-dir-name-2 "submodules2"
         submodules-working-dir-1 (helpers/temp-dir-as-string)
         submodules-working-dir-2 (helpers/temp-dir-as-string)]
+
+  ;; set up submodules for "successful-parent"
   (ks/mkdirs! (fs/file submodules-working-dir-1 submodule-1))
   (helpers/write-test-file! (fs/file submodules-working-dir-1 submodule-1 "test.txt"))
   (ks/mkdirs! (fs/file submodules-working-dir-1 submodule-2))
   (helpers/write-test-file! (fs/file submodules-working-dir-1 submodule-2 "test.txt"))
 
+  ;; set up submodule for "failed-parent"
   (ks/mkdirs! (fs/file submodules-working-dir-2 submodule-3))
   (helpers/write-test-file! (fs/file submodules-working-dir-2 submodule-3 "test.txt"))
-  (ks/mkdirs! (fs/file submodules-working-dir-2 submodule-4))
-  (helpers/write-test-file! (fs/file submodules-working-dir-2 submodule-4 "test.txt"))
 
   (helpers/with-bootstrapped-file-sync-storage-service-for-http
     app
@@ -330,21 +332,19 @@
                                 :submodules-working-dir submodules-working-dir-2}}
     false)
 
-    (testing "successful publish returns shas for parent repos and submodules"
+    (testing "successful publish returns SHAs for parent repos and submodules"
       (let [response (http-client/post publish-url)
             parsed-body (parse-response-body response)]
         (is (= 200 (:status response)))
 
-        (is (= (-> (fs/file data-dir (str successful-parent ".git"))
-                 (jgit-utils/head-rev-id-from-git-dir))
+        (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-success)
               (get-in parsed-body [successful-parent "commit"])))
-        (is (= (get-submodules-status (fs/file data-dir (str successful-parent ".git")) working-dir-success)
+        (is (= (get-submodules-status git-dir-success working-dir-success)
               (get-in parsed-body [successful-parent "submodules"])))
 
-        (is (= (-> (fs/file data-dir (str failed-parent ".git"))
-                 (jgit-utils/head-rev-id-from-git-dir))
+        (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-failed)
               (get-in parsed-body [failed-parent "commit"])))
-        (is (= (get-submodules-status (fs/file data-dir (str failed-parent ".git")) working-dir-failed)
+        (is (= (get-submodules-status git-dir-failed  working-dir-failed)
               (get-in parsed-body [failed-parent "submodules"])))))
 
     (testing "publish endpoint returns correct errors"
@@ -352,7 +352,7 @@
         ; Delete a submodule repo entirely - this'll cause the publish to fail
         (fs/delete-dir (fs/file data-dir successful-parent (str submodule-1 ".git")))
         ; Delete a parent repo entirely - this'll cause the publish to fail
-        (fs/delete-dir (fs/file data-dir (str failed-parent ".git")))
+        (fs/delete-dir git-dir-failed)
 
         (let [response (http-client/post publish-url)
               body (slurp (:body response))
@@ -360,27 +360,34 @@
           (is (= 200 (:status response)))
 
           (testing "when one submodule failed to publish, but parent repo succeeded"
-            (let [successful-parent-repo (jgit-utils/get-repository (fs/file data-dir (str successful-parent ".git")) working-dir-success)
+            (let [successful-parent-repo (jgit-utils/get-repository
+                                           git-dir-success working-dir-success)
                   submodules-status (.. (Git/wrap successful-parent-repo)
                                       submoduleStatus
-                                      call)]
+                                      call)
+                  successful-parent-body (get parsed-body successful-parent)]
               (testing "returns sha for non-failed submodules"
-                (is (= (.getName (.getIndexId (get submodules-status (str submodules-dir-name-1 "/" submodule-2))))
-                    (get-in parsed-body [successful-parent "submodules" (str submodules-dir-name-1 "/" submodule-2)]))))
+                (let [submodule-2-path (str submodules-dir-name-1 "/" submodule-2)]
+                  (is (= (-> (get submodules-status submodule-2-path)
+                           .getIndexId
+                           .getName)
+                        (get-in successful-parent-body ["submodules" submodule-2-path]))
+                    (format "Could not find correct body for submodule %s of parent repo %s in %s"
+                      submodule-2-path successful-parent body))))
               (testing "returns sha for parent repo"
-                (is (= (-> (fs/file data-dir (str successful-parent ".git"))
-                        (jgit-utils/head-rev-id-from-git-dir))
-                      (get-in parsed-body [successful-parent "commit"]))))
+                (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-success)
+                      (get successful-parent-body "commit"))))
               (testing "returns error for failed submodule"
+                (let [submodule-1-path (str submodules-dir-name-1 "/" submodule-1)]
                 (is (re-matches #".*publish-error"
-                      (get-in parsed-body
-                        [successful-parent "submodules" (str submodules-dir-name-1 "/" submodule-1) "error" "type"]))
-                  (str "Could not find correct body for submodule "  (str submodules-dir-name-1 "/" submodule-1)
-                    " of parent repo " successful-parent " in " body)))))
+                      (get-in successful-parent-body ["submodules" submodule-1-path "error" "type"]))
+                  (format "Could not find correct body for submodule %s of parent repo %s in %s"
+                    submodule-1-path successful-parent body))))))
 
           (testing "when parent repo failed to publish"
             (testing "returns error for parent repo"
-              (is (re-matches #".*publish-error" (get-in parsed-body [failed-parent "error" "type"]))
+              (is (re-matches #".*publish-error"
+                    (get-in parsed-body [failed-parent "error" "type"]))
                 (str "Could not find correct body for repo " failed-parent " in " body)))
             (testing "returns nothing for submodules"
               (is (= ["error"] (keys (parsed-body failed-parent))))))))))))
@@ -396,6 +403,10 @@
           data-dir (helpers/temp-dir-as-string)
           git-dir (fs/file data-dir (str repo ".git"))]
 
+      ;; Set up working directory for submodule-1, the "existing-submodule"
+      ;; (that is, the submodule that exists before the storage service is
+      ;; started). Note that it won't actually get set up as a submodule of
+      ;; the parent repo until after a "publish" request is made.
       (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
 
@@ -416,6 +427,9 @@
            (is (empty? submodules))))
 
        (testing "publish works and initializes submodule"
+         ;; submodule-1 gets initialized because it already has a directory
+         ;; within the `submodules-working-dir`, created during the setup step
+         ;; before the storage service is started.
          (let [response (http-client/post publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
