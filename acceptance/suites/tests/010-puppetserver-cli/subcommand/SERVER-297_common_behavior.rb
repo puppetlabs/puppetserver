@@ -14,7 +14,7 @@ on(master, "puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'
 end
 
 step "irb: Check that PATH, HOME, GEM_HOME JARS_REQUIRE and JARS_NO_REQUIRE are present"
-on(master, "puppetserver irb -f -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do
+on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | puppetserver irb -f -rjson") do
   assert_match(/\bPATH\b/, stdout, "PATH missing")
   assert_match(/\bHOME\b/, stdout, "HOME missing")
   assert_match(/\bGEM_HOME\b/, stdout, "GEM_HOME missing")
