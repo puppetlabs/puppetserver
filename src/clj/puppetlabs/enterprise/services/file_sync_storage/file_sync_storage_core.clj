@@ -234,6 +234,15 @@
     .getNewHead
     jgit-utils/commit-id))
 
+(defn submodule-path
+  "Return the path to the submodule within the parent repo. If
+  'submodules-dir' is an empty string, then the submodule will be located at
+  the root of the repo, otherwise it will be underneath 'submodules-dir'."
+  [submodules-dir submodule]
+  (if (empty? submodules-dir)
+    submodule
+    (str submodules-dir "/" submodule)))
+
 (defn publish-submodules
   "Given a list of subdirectories, checks to see whether each subdirectory is
   already a submodule of the parent repo. If so, does an add and commit on the
@@ -250,7 +259,7 @@
     (let [repo-name (name repo)
           submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
           submodule-working-dir (fs/file submodules-working-dir submodule)
-          submodule-path (str submodules-dir "/" submodule)
+          submodule-path (submodule-path submodules-dir submodule)
           submodule-within-parent (fs/file working-dir submodule-path)
           submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule ".git")
           parent-git (-> (fs/file data-dir (str repo-name ".git"))
@@ -308,7 +317,7 @@
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
-                (zipmap (map #(str submodules-dir "/" %) submodules) submodules-status))
+                (zipmap (map #(submodule-path submodules-dir %) submodules) submodules-status))
               parent-status))
           (catch JGitInternalException e
             (failed-to-publish working-dir e))
