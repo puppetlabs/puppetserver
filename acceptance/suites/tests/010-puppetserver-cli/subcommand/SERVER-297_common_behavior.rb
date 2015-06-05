@@ -15,9 +15,9 @@ end
 
 step "irb: Check that PATH, HOME, GEM_HOME JARS_REQUIRE and JARS_NO_REQUIRE are present"
 on(master, "puppetserver irb -f -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do
-  assert_match(/\bPATH\b/, output, "PATH missing")
-  assert_match(/\bHOME\b/, output, "HOME missing")
-  assert_match(/\bGEM_HOME\b/, output, "GEM_HOME missing")
-  assert_match(/\bJARS_REQUIRE\b/, output, "JARS_REQUIRE missing")
-  assert_match(/\bJARS_NO_REQUIRE\b/, output, "JARS_NO_REQUIRE missing")
+  assert_match(/\bPATH\b/, stdout, "PATH missing")
+  assert_match(/\bHOME\b/, stdout, "HOME missing")
+  assert_match(/\bGEM_HOME\b/, stdout, "GEM_HOME missing")
+  assert_match(/\bJARS_REQUIRE\b/, stdout, "JARS_REQUIRE missing")
+  assert_match(/\bJARS_NO_REQUIRE\b/, stdout, "JARS_NO_REQUIRE missing")
 end
