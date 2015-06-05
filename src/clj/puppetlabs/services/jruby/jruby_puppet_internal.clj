@@ -41,7 +41,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
-(schema/defn get-system-env :- {schema/Str schema/Str}
+(schema/defn get-system-env :- jruby-schemas/EnvPersistentMap
   "Same as System/getenv, but returns a clojure persistent map instead of a
   Java unmodifiable map."
   []
@@ -53,7 +53,7 @@
   {:post [(instance? jruby-schemas/pool-queue-type %)]}
   (LinkedBlockingDeque. size))
 
-(schema/defn ^:always-validate managed-environment :- {schema/Str schema/Str}
+(schema/defn ^:always-validate managed-environment :- jruby-schemas/EnvMap
   "The environment variables that should be passed to the Puppet JRuby
   interpreters.
 
@@ -70,7 +70,7 @@
   being phased out in favor of JARS_REQUIRE.  As of JRuby 1.7.20, only
   JARS_NO_REQUIRE is honored.  Setting both of those here for forward
   compatibility."
-  [env :- {schema/Str schema/Str}
+  [env :- jruby-schemas/EnvMap
    gem-home :- schema/Str]
   (let [whitelist ["HOME" "PATH"]
         clean-env (select-keys env whitelist)]
