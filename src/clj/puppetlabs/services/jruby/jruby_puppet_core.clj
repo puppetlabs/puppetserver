@@ -1,5 +1,8 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core
-  (:require [schema.core :as schema]
+  (:require [clojure.tools.logging :as log]
+            [me.raynes.fs :as fs]
+            [schema.core :as schema]
+            [puppetlabs.kitchensink.classpath :as ks-classpath]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
@@ -118,6 +121,25 @@
     (update-in [:master-log-dir] #(or % default-master-log-dir))
     (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
     (update-in [:max-requests-per-instance] #(or % 0))))
+
+(def facter-jar
+  "Well-known name of the facter jar file"
+  "facter.jar")
+
+(schema/defn ^:always-validate
+  add-facter-jar-to-system-classloader
+  "Searches the ruby load path for a file whose name matches that of the
+  facter jar file.  The first one found is added to the system classloader's
+  classpath.  If no match is found, an info message is written to the log
+  but no failure is returned"
+  [ruby-load-path :- (schema/both (schema/pred vector?) [schema/Str]) ]
+  (if-let [facter-jar (first
+                        (filter fs/exists?
+                          (map #(fs/file % facter-jar) ruby-load-path)))]
+    (do
+      (log/debugf "Adding facter jar to classpath from: %s" facter-jar)
+      (ks-classpath/add-classpath facter-jar))
+    (log/info "Facter jar not found in ruby load path")))
 
 (schema/defn ^:always-validate
   create-pool-context :- jruby-schemas/PoolContext
