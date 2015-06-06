@@ -1,5 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
+            [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
@@ -28,6 +29,7 @@
           profiler          (get-profiler)]
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
+      (core/add-facter-jar-to-system-classloader (:ruby-load-path config))
       (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
         (jruby-agents/send-prime-pool! pool-context)
         (-> context
