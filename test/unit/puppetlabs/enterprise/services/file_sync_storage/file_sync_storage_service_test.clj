@@ -153,7 +153,9 @@
 (deftest publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
+          repo2 "test-commit-2"
           working-dir (helpers/temp-dir-as-string)
+          working-dir-2 (helpers/temp-dir-as-string)
           data-dir (helpers/temp-dir-as-string)
           server-repo (fs/file data-dir (str repo ".git"))]
 
@@ -161,15 +163,26 @@
         app
         (helpers/storage-service-config-with-repos
           data-dir
-          {(keyword repo) {:working-dir working-dir}}
+          {(keyword repo) {:working-dir working-dir}
+           (keyword repo2) {:working-dir working-dir-2}}
           false)
         (testing "with no body supplied"
           (let [response (http-client/post publish-url)
+                body (slurp (:body response))
+                parsed-body (json/parse-string body)]
+            (testing "get expected response"
+              (is (= (:status response) 200))
+              (is (contains? parsed-body repo))
+              (is (contains? parsed-body repo2)))))
+
+        (testing "with only repo-id supplied"
+          (let [response (make-publish-request {:repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
               (is (= repo (first (keys (json/parse-string body))))
-                  (str "Unexpected response body: " body)))
+                  (str "Unexpected response body: " body))
+              (is (= 1 (count (keys (json/parse-string body))))))
             (let [commit (get-commit server-repo)]
               (testing "commit message is correct"
                 (is (= core/default-commit-message
@@ -179,10 +192,11 @@
                 (is (= core/default-commit-author-email
                        (.getEmailAddress (.getAuthorIdent commit))))))))
 
-        (testing "with just author supplied"
+        (testing "with just author supplied and repo-id supplied"
           (let [author {:name  "Tester"
                         :email "test@example.com"}
-                response (make-publish-request {:author author})
+                response (make-publish-request {:author author
+                                                :repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -196,11 +210,13 @@
                 (is (= (:name author) (.getName (.getAuthorIdent commit))))
                 (is (= (:email author) (.getEmailAddress (.getAuthorIdent commit))))))))
 
-        (testing "with author and message supplied"
+        (testing "with author, message and repo-id supplied"
           (let [author {:name  "Tester"
                         :email "test@example.com"}
                 message "This is a test commit"
-                response (make-publish-request {:author author :message message})
+                response (make-publish-request {:author author
+                                                :message message
+                                                :repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -346,6 +362,40 @@
               (get-in parsed-body [failed-parent "commit"])))
         (is (= (get-submodules-status git-dir-failed  working-dir-failed)
               (get-in parsed-body [failed-parent "submodules"])))))
+
+    (testing "can specify a single submodule to be published"
+      (let [submodules-orig-status (get-submodules-status
+                                     git-dir-success
+                                     working-dir-success)
+            submodule-1-commit (get submodules-orig-status
+                                    (str submodules-dir-name-1 "/" submodule-1))
+            submodule-2-commit (get submodules-orig-status
+                                    (str submodules-dir-name-1 "/" submodule-2))
+            response (make-publish-request {:repo-id successful-parent
+                                            :submodule-id submodule-1})
+            parsed-body (parse-response-body response)]
+
+        (testing "publish was successful and returns correct commit for parent"
+          (is (= 200 (:status response)))
+          (is (= (-> git-dir-success
+                     (jgit-utils/head-rev-id-from-git-dir))
+                 (get-in parsed-body [successful-parent "commit"]))))
+
+        (let [submodules-status (get-submodules-status
+                                  git-dir-success
+                                  working-dir-success)
+              submodule-name (str submodules-working-dir-1 "/" submodule-1)
+              submodule-1-new-commit (get submodules-status
+                                          (str submodules-dir-name-1 "/" submodule-1))
+              submodule-2-new-commit (get submodules-status
+                                          (str submodules-dir-name-1 "/" submodule-2))]
+
+          (testing "only the specified submodule was published"
+            (is (= (get submodules-status submodule-name)
+                   (get-in parsed-body [successful-parent "submodules" submodule-name])))
+            (is (= 1 (count (keys (get-in parsed-body [successful-parent "submodules"])))))
+            (is (not= submodule-1-commit submodule-1-new-commit))
+            (is (= submodule-2-commit submodule-2-new-commit))))))
 
     (testing "publish endpoint returns correct errors"
       (with-test-logging

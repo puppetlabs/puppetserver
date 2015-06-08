@@ -69,6 +69,20 @@
   {:data-dir StringOrFile
    :repos    GitRepos})
 
+(def PublishRequestBase
+  {(schema/optional-key :message) schema/Str
+   (schema/optional-key :author) {:name  schema/Str
+                                  :email schema/Str}})
+(def PublishRequest
+  (schema/maybe
+    (merge PublishRequestBase
+           {(schema/optional-key :repo-id) schema/Str})))
+
+(def PublishRequestWithSubmodule
+  (merge PublishRequestBase
+         {:repo-id                       schema/Str
+          :submodule-id                  schema/Str}))
+
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
 
@@ -77,11 +91,19 @@
 
     * :message - Commit message
 
-    * :author  - Map containing :name and :email of author for commit "
-  (schema/maybe
-    {(schema/optional-key :message) schema/Str
-     (schema/optional-key :author) {:name schema/Str
-                                    :email schema/Str}}))
+    * :author  - Map containing :name and :email of author for commit
+
+    * :repo-id - The id of a specific repo to publish. When provided, only
+                 the specified repo will be published, rather than all repos.
+
+    * :submodule-id - The id of a specific submodule to publish within the
+                      repo specified by :repo-id. When provided, only the
+                      specified submodule will be published, rather than all
+                      submodules within the specified repo. If :submodule-id
+                      is present, :repo-id must be present as well."
+  (schema/if :submodule-id
+    PublishRequestWithSubmodule
+    PublishRequest))
 
 (def PublishError
   "Schema defining an error when attempting to publish a repo."
@@ -303,12 +325,16 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
-   commit-info :- CommitInfo]
+   commit-info :- CommitInfo
+   submodule-id :- (schema/maybe schema/Str)]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
     (do
       (log/infof "Publishing working directory %s to file sync storage service"
         working-dir)
-      (let [submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
+      (let [all-submodules (when submodules-working-dir (fs/list-dir (fs/file submodules-working-dir)))
+            submodules (if submodule-id
+                         (filter #(= % submodule-id) all-submodules)
+                         all-submodules)
             submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
         (try
           (log/infof "Committing repo %s" working-dir)
@@ -339,9 +365,14 @@
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
                            checked-body)})
-    (let [commit-info {:author (commit-author (:author body))
+    (let [repo-id (keyword (:repo-id body))
+          repos (if repo-id
+                  (select-keys repos [repo-id])
+                  repos)
+          submodule-id (:submodule-id body)
+          commit-info {:author (commit-author (:author body))
                        :message (:message body default-commit-message)}
-          new-commits (publish-repos repos data-dir server-repo-url commit-info)]
+          new-commits (publish-repos repos data-dir server-repo-url commit-info submodule-id)]
       (zipmap (keys repos) new-commits))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
