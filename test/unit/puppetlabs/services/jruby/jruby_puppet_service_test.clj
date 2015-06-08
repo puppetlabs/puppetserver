@@ -2,9 +2,9 @@
   (:import (com.puppetlabs.puppetserver JRubyPuppet))
   (:require [clojure.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as services]
@@ -15,6 +15,7 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [me.raynes.fs :as fs]
             [schema.test :as schema-test]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
@@ -175,3 +176,21 @@
                (:http-client-connect-timeout-milliseconds pool-context-cfg)))
         (is (= jruby-core/default-http-socket-timeout
                (:http-client-idle-timeout-milliseconds pool-context-cfg)))))))
+
+(deftest facter-jar-loaded-during-init
+  (testing (str "facter jar found from the ruby load path is properly "
+             "loaded into the system classpath")
+    (let [temp-dir (ks/temp-dir)
+          facter-jar (-> temp-dir
+                       (fs/file jruby-core/facter-jar)
+                       (fs/absolute-path))]
+      (fs/touch facter-jar)
+      (bootstrap/with-app-with-config
+        app
+        [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        (assoc-in (jruby-service-test-config 1)
+          [:jruby-puppet :ruby-load-path]
+          (into [] (cons (fs/absolute-path temp-dir)
+                     jruby-testutils/ruby-load-path)))
+        (is (true? (some #(= facter-jar (.getFile %))
+                     (.getURLs (ClassLoader/getSystemClassLoader)))))))))
