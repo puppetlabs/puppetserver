@@ -455,6 +455,21 @@
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 
+  (testing "a signing request w/ a 'application/json' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri "/production/certificate_status/test-agent"
+                       :request-method :put
+                       :headers {"content-type"
+                                 "application/json; charset=UTF-8"}
+                       :body (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
   (testing "a signing request w/ a 'text/pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (build-ring-handler settings "42.42.42")
@@ -469,6 +484,20 @@
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 
+  (testing "a signing request w/ a 'text/pson' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri "/production/certificate_status/test-agent"
+                       :request-method :put
+                       :headers {"content-type" "text/pson; charset=UTF-8"}
+                       :body (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
   (testing "a signing request w/ a 'pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (build-ring-handler settings "42.42.42")
@@ -480,6 +509,20 @@
                        :request-method :put
                        :headers        {"content-type" "pson"}
                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
+  (testing "a signing request w/ a 'pson' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                       {:uri "/production/certificate_status/test-agent"
+                        :request-method :put
+                        :headers {"content-type" "pson; charset=UTF-8"}
+                        :body (body-stream "{\"desired_state\":\"signed\"}")})]
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 

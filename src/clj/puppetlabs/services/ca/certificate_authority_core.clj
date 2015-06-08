@@ -14,6 +14,7 @@
             [liberator.core :refer [defresource]]
             ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
+            [ring.util.request :as request]
             [ring.util.response :as rr]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -90,7 +91,7 @@
 
 (defn content-type-valid?
   [context]
-  (let [content-type (get-in context [:request :headers "content-type"])]
+  (let [content-type (request/content-type (:request context))]
     (or
       (nil? content-type)
       (media-types content-type))))
