@@ -10,6 +10,7 @@
            (com.puppetlabs.enterprise HttpClientConnection))
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
+            [puppetlabs.kitchensink.core :as ks]
             [schema.core :as schema]))
 
 (schema/defn ^:always-validate create-connection :- HttpClientConnection
@@ -254,3 +255,13 @@
    :post [(or (nil? %) (string? %))]}
   (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (head-rev-id as-repo)))
+
+(defn get-submodules-status
+  "Given a path to a Git repository and a working tree, returns the
+  latest commit for all submodules in that repo"
+  [git-dir working-dir]
+  (let [submodule-status (-> (get-repository git-dir working-dir)
+                             Git/wrap
+                             .submoduleStatus
+                             .call)]
+    (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))

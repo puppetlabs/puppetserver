@@ -24,7 +24,7 @@
 (defn ring-handler
   [_]
   {:status  200
-   :body    (json/encode {:result "Successful connection over SSL"})
+   :body    (json/encode {:result {:commit "Successful connection over SSL"}})
    :headers {"content-type" "application/json"}})
 
 (deftest ^:integration polling-client-ssl-test

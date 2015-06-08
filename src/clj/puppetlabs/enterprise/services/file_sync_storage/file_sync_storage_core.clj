@@ -163,27 +163,36 @@
       (setBare true)
       (call)))
 
-(schema/defn latest-commit-on-master :- (schema/maybe String)
+(schema/defn latest-commit-on-master :- (schema/maybe common/LatestCommit)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
-  [git-dir]
+  [git-dir working-dir]
   (when-let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
     (when-let [ref (.getRef repo "refs/heads/master")]
-      (-> ref
-          (.getObjectId)
-          (jgit-utils/commit-id)))))
+      (let [latest-commit (-> ref
+                              (.getObjectId)
+                              (jgit-utils/commit-id))
+            submodules-status (jgit-utils/get-submodules-status git-dir
+                                                                working-dir)
+            base-data {"commit" latest-commit}]
+        (if (empty? submodules-status)
+          base-data
+          (assoc base-data "submodules" submodules-status))))))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in sub-paths.  Returns a map
    of sub-path -> commit ID."
-  [data-dir sub-paths]
-  (let [map* (if (> (count sub-paths) 1) pmap map)
+  [data-dir repos]
+  (let [sub-paths (keys repos)
+        map* (if (> (count sub-paths) 1) pmap map)
         latest-commit (fn [sub-path]
                         (let [repo-path (fs/file
                                           data-dir
                                           (str (name sub-path) ".git"))
-                              rev (latest-commit-on-master repo-path)]
+                              rev (latest-commit-on-master
+                                    repo-path
+                                    (get-in repos [sub-path :working-dir]))]
                           [sub-path rev]))]
     (into {}
       (map* latest-commit sub-paths))))
@@ -405,7 +414,7 @@
                             :message "Content type must be JSON."}}})))
       (compojure/ANY common/latest-commits-sub-path []
         {:status 200
-         :body (compute-latest-commits data-dir (keys repos))}))))
+         :body (compute-latest-commits data-dir repos)}))))
 
 (defn build-handler
   "Builds a ring handler from the given configuration values."

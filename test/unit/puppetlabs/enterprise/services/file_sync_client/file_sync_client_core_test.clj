@@ -16,11 +16,12 @@
 
 (deftest get-body-from-latest-commits-payload-test
   (testing "Can get latest commits"
-    (is (= {"repo1" "123456", "repo2" nil}
+    (is (= {"repo1" {"commit" "123456"
+                     "submodules" {}}, "repo2" nil}
            (get-body-from-latest-commits-payload
              {:status 200
               :headers {"content-type" "application/json"}
-              :body "{\"repo1\": \"123456\", \"repo2\":null}"}))
+              :body "{\"repo1\": {\"commit\": \"123456\", \"submodules\": {}}, \"repo2\":null}"}))
         "Unexpected body received for get request"))
 
   (testing "Can't get latest commits for bad content type"
