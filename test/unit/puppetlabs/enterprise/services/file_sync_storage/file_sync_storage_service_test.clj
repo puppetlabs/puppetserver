@@ -176,7 +176,7 @@
               (is (contains? parsed-body repo2)))))
 
         (testing "with only repo-id supplied"
-          (let [response (make-publish-request {:repo-id (keyword repo)})
+          (let [response (make-publish-request {:repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -196,7 +196,7 @@
           (let [author {:name  "Tester"
                         :email "test@example.com"}
                 response (make-publish-request {:author author
-                                                :repo-id (keyword repo)})
+                                                :repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -216,7 +216,7 @@
                 message "This is a test commit"
                 response (make-publish-request {:author author
                                                 :message message
-                                                :repo-id (keyword repo)})
+                                                :repo-id repo})
                 body (slurp (:body response))]
             (testing "get expected response"
               (is (= (:status response) 200))
@@ -364,26 +364,38 @@
               (get-in parsed-body [failed-parent "submodules"])))))
 
     (testing "can specify a single submodule to be published"
-      (let [submodules-orig-status (get-submodules-status (fs/file data-dir (str successful-parent ".git")) working-dir-success)
-            submodule-1-commit (get submodules-orig-status (str submodules-dir-name-1 "/" submodule-1))
-            submodule-2-commit (get submodules-orig-status (str submodules-dir-name-1 "/" submodule-2))
+      (let [submodules-orig-status (get-submodules-status
+                                     git-dir-success
+                                     working-dir-success)
+            submodule-1-commit (get submodules-orig-status
+                                    (str submodules-dir-name-1 "/" submodule-1))
+            submodule-2-commit (get submodules-orig-status
+                                    (str submodules-dir-name-1 "/" submodule-2))
             response (make-publish-request {:repo-id successful-parent
                                             :submodule-id submodule-1})
             parsed-body (parse-response-body response)]
-        (is (= 200 (:status response)))
 
-        (is (= (-> (fs/file data-dir (str successful-parent ".git"))
-                   (jgit-utils/head-rev-id-from-git-dir))
-               (get-in parsed-body [successful-parent "commit"])))
-        (let [submodules-status (get-submodules-status (fs/file data-dir (str successful-parent ".git")) working-dir-success)
+        (testing "publish was successful and returns correct commit for parent"
+          (is (= 200 (:status response)))
+          (is (= (-> git-dir-success
+                     (jgit-utils/head-rev-id-from-git-dir))
+                 (get-in parsed-body [successful-parent "commit"]))))
+
+        (let [submodules-status (get-submodules-status
+                                  git-dir-success
+                                  working-dir-success)
               submodule-name (str submodules-working-dir-1 "/" submodule-1)
-              submodule-1-new-commit (get submodules-status (str submodules-dir-name-1 "/" submodule-1))
-              submodule-2-new-commit (get submodules-status (str submodules-dir-name-1 "/" submodule-2))]
-          (is (= (get submodules-status submodule-name)
-                 (get-in parsed-body [successful-parent "submodules" submodule-name])))
-          (is (= 1 (count (keys (get-in parsed-body [successful-parent "submodules"])))))
-          (is (not= submodule-1-commit submodule-1-new-commit))
-          (is (= submodule-2-commit submodule-2-new-commit)))))
+              submodule-1-new-commit (get submodules-status
+                                          (str submodules-dir-name-1 "/" submodule-1))
+              submodule-2-new-commit (get submodules-status
+                                          (str submodules-dir-name-1 "/" submodule-2))]
+
+          (testing "only the specified submodule was published"
+            (is (= (get submodules-status submodule-name)
+                   (get-in parsed-body [successful-parent "submodules" submodule-name])))
+            (is (= 1 (count (keys (get-in parsed-body [successful-parent "submodules"])))))
+            (is (not= submodule-1-commit submodule-1-new-commit))
+            (is (= submodule-2-commit submodule-2-new-commit))))))
 
     (testing "publish endpoint returns correct errors"
       (with-test-logging

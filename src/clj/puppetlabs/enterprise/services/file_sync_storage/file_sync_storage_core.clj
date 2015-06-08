@@ -69,19 +69,19 @@
   {:data-dir StringOrFile
    :repos    GitRepos})
 
-(def PublishRequestNoSubmodule
-  (schema/maybe
-    {(schema/optional-key :message) schema/Str
-     (schema/optional-key :author) {:name  schema/Str
-                                    :email schema/Str}
-     (schema/optional-key :repo-id) schema/Str}))
-
-(def PublishRequestSubmodule
+(def PublishRequestBase
   {(schema/optional-key :message) schema/Str
    (schema/optional-key :author) {:name  schema/Str
-                                  :email schema/Str}
-   :repo-id schema/Str
-   :submodule-id schema/Str})
+                                  :email schema/Str}})
+(def PublishRequest
+  (schema/maybe
+    (merge PublishRequestBase
+           {(schema/optional-key :repo-id) schema/Str})))
+
+(def PublishRequestWithSubmodule
+  (merge PublishRequestBase
+         {:repo-id                       schema/Str
+          :submodule-id                  schema/Str}))
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
@@ -102,8 +102,8 @@
                       submodules within the specified repo. If :submodule-id
                       is present, :repo-id must be present as well."
   (schema/if :submodule-id
-    PublishRequestSubmodule
-    PublishRequestNoSubmodule))
+    PublishRequestWithSubmodule
+    PublishRequest))
 
 (def PublishError
   "Schema defining an error when attempting to publish a repo."
