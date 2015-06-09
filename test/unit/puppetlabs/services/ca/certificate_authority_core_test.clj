@@ -385,6 +385,9 @@
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
             (is (= 404 (:status response)))
+            (is (= "text/plain; charset=UTF-8"
+                  (get-in response [:headers "Content-Type"]))
+              "Unexpected content type for response")
             (is (= "Invalid certificate subject." (:body response)))))
 
         (testing "Additional error handling on PUT requests"
@@ -397,9 +400,11 @@
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
-
                 (is (= 409 (:status response))
                     (ks/pprint-to-string response))
+                (is (= "text/plain; charset=UTF-8"
+                      (get-in response [:headers "Content-Type"]))
+                  "Unexpected content type for response")
                 (is (= (:body response)
                        "Cannot revoke certificate for host test-agent without a signed certificate")
                     (ks/pprint-to-string response))))
@@ -410,6 +415,9 @@
                              :body           (body-stream "{\"desired_state\":\"signed\"}")}
                     response (test-app request)]
                 (is (= 409 (:status response)))
+                (is (= "text/plain; charset=UTF-8"
+                      (get-in response [:headers "Content-Type"]))
+                  "Unexpected content type for response")
                 (is (= (:body response)
                        "Cannot sign certificate for host localhost without a certificate request"))))
 
@@ -510,6 +518,9 @@
               response (test-app request)]
           (is (= 409 (:status response))
               (ks/pprint-to-string response))
+          (is (= "text/plain; charset=UTF-8"
+                (get-in response [:headers "Content-Type"]))
+            "Unexpected content type for response")
           (is (= (:body response)
                  (str "CSR 'hostwithaltnames' contains subject alternative names "
                       "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
@@ -523,6 +534,9 @@
               response (test-app request)]
           (is (= 409 (:status response))
               (ks/pprint-to-string response))
+          (is (= "text/plain; charset=UTF-8"
+                (get-in response [:headers "Content-Type"]))
+            "Unexpected content type for response")
           (is (= (:body response)
                  "Found extensions that are not permitted: 1.9.9.9.9.9.9")))))))
 
