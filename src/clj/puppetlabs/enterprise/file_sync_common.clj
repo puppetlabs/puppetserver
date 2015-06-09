@@ -1,8 +1,8 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext))
   (:require [cheshire.core :as json]
-            [plumbing.core :as plumbing]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
@@ -52,10 +52,10 @@
 
 (defn parse-latest-commits-response
   [response]
-  (-> response
-      :body
-      json/parse-string
-      ((partial plumbing/map-keys keyword))
-      ((partial plumbing/map-vals (fn [v]
-                                    (when v
-                                      (plumbing/map-keys keyword v)))))))
+  (->> response
+       :body
+       json/parse-string
+      (ks/mapkeys keyword)
+      (ks/mapvals (fn [v]
+                    (when v
+                      (ks/mapkeys keyword v))))))
