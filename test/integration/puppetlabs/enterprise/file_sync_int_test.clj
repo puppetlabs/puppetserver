@@ -41,7 +41,7 @@
 
 (defn get-latest-commits-for-repo
   [repo]
-  (get (get-latest-commits) repo))
+  (get-in (get-latest-commits) [(keyword repo) :commit]))
 
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"

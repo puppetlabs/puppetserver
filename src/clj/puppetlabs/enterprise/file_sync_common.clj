@@ -1,6 +1,8 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext))
-  (:require [schema.core :as schema]))
+  (:require [cheshire.core :as json]
+            [schema.core :as schema]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
@@ -21,13 +23,18 @@
     * :server-url - Base URL of the repository server."
   {:server-url schema/Str})
 
+(def LatestCommit
+  "Schema defining the result of computing the latest commit for a repo"
+  {:commit schema/Str
+   (schema/optional-key :submodules) {schema/Str schema/Str}})
+
 (def LatestCommitsPayload
   "Schema defining the return payload of the server's 'latest-commits'
   endpoint.
 
   The first Str in each pair represents a repository name.  The corresponding
   Str in the pair represents the id of the latest commit in the repository."
-  {schema/Str (schema/maybe schema/Str)})
+  {schema/Keyword (schema/maybe LatestCommit)})
 
 (def SSLContextOrNil
   (schema/maybe SSLContext))
@@ -39,3 +46,16 @@
              (schema/pred #(.startsWith % "application/json"))
              schema/Any schema/Any}
    schema/Any schema/Any})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions
+
+(defn parse-latest-commits-response
+  [response]
+  (->> response
+       :body
+       json/parse-string
+      (ks/mapkeys keyword)
+      (ks/mapvals (fn [v]
+                    (when v
+                      (ks/mapkeys keyword v))))))

@@ -4,10 +4,9 @@
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils])
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent RepositoryBuilder)))
+           (org.eclipse.jgit.lib PersonIdent)))
 
 (use-fixtures :once schema-test/validate-schemas)
 

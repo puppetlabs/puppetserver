@@ -1,7 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
-            [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+ throw+]]
@@ -91,7 +90,7 @@
   (when-let [failure (schema/check common/LatestCommitsResponse response)]
     (throw+ {:type    ::error
              :message (str "Response for latest commits unexpected, detail: " failure)}))
-  (cheshire/parse-string (:body response)))
+  (common/parse-latest-commits-response response))
 
 (schema/defn ^:always-validate get-latest-commits-from-server
   :- common/LatestCommitsPayload
@@ -206,8 +205,8 @@
   (into {}
         (for [[repo-name target-dir] repos]
           (let [name (name repo-name)]
-            (if (contains? latest-commits name)
-              (let [latest-commit (latest-commits name)]
+            (if (contains? latest-commits repo-name)
+              (let [latest-commit (latest-commits repo-name)]
                 (try+
                   {name (process-repo-for-updates repo-base-url
                                                   name
