@@ -175,10 +175,10 @@
                               (jgit-utils/commit-id))
             submodules-status (jgit-utils/get-submodules-status git-dir
                                                                 working-dir)
-            base-data {"commit" latest-commit}]
+            base-data {:commit latest-commit}]
         (if (empty? submodules-status)
           base-data
-          (assoc base-data "submodules" submodules-status))))))
+          (assoc base-data :submodules submodules-status))))))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in sub-paths.  Returns a map

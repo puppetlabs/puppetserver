@@ -15,10 +15,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(defn parse-response-body
-  [response]
-  (json/parse-string (slurp (:body response))))
-
 (deftest push-disabled-test
   (testing "The JGit servlet should not accept pushes"
     (let [repo-id "push-disabled-test"
@@ -103,7 +99,7 @@
             client-orig-repo-dir-2 (helpers/clone-and-push-test-commit! repo2-id data-dir)]
 
         (testing "Validate /latest-commits endpoint"
-          (let [response (http-client/get latest-commits-url)
+          (let [response (http-client/get latest-commits-url {:as :text})
                 content-type (get-in response [:headers "content-type"])]
 
             (testing "the endpoint returns JSON"
@@ -113,27 +109,27 @@
                     response)))
 
             (testing "the SHA-1 IDs it returns are correct"
-              (let [body (parse-response-body response)]
+              (let [body (common/parse-latest-commits-response response)]
                 (is (map? body))
 
                 (testing "A repository with no commits in it returns a nil ID"
-                  (is (contains? body repo3-id))
-                  (let [commit-data (get body repo3-id)]
+                  (is (contains? body (keyword repo3-id)))
+                  (let [commit-data (get body (keyword repo3-id))]
                     (is (= commit-data nil))))
 
                 (testing "the first repo"
-                  (let [actual-rev (get-in body [repo1-id "commit"])
+                  (let [actual-rev (get-in body [(keyword repo1-id) :commit])
                         expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-1)]
                     (is (= actual-rev expected-rev))
-                    (is (nil? (get-in body [repo1-id "submodules"])))))
+                    (is (nil? (get-in body [(keyword repo1-id) :submodules])))))
 
                 (testing "The second repo"
-                  (let [actual-rev (get-in body [repo2-id "commit"])
+                  (let [actual-rev (get-in body [(keyword repo2-id) :commit])
                         expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-2)]
                     (is (= actual-rev expected-rev))
-                    (is (nil? (get-in body [repo2-id "submodules"])))))))))))))
+                    (is (nil? (get-in body [(keyword repo2-id) :submodules])))))))))))))
 
 (def publish-url (str helpers/server-base-url
                       helpers/default-api-path-prefix
@@ -159,11 +155,12 @@
 
       (testing (str "Submodules will not appear in latest-commits response "
                     "until they are published")
-        (let [response (http-client/get latest-commits-url)
-              body (parse-response-body response)]
-          (is (= (get-in body [repo-id "commit"])
+        (let [response (http-client/get latest-commits-url {:as :text})
+              body (common/parse-latest-commits-response response)]
+          (is (contains? body (keyword repo-id)))
+          (is (= (get-in body [(keyword repo-id) :commit])
                  (jgit-utils/head-rev-id-from-git-dir git-dir)))
-          (is (nil? (get-in body [repo-id "submodules"])))))
+          (is (nil? (get-in body [(keyword repo-id) :submodules])))))
 
       (testing "latest-commits returns the latest commits for published submodules"
         ; Initialize the submodule directories and publish the submodule
@@ -171,10 +168,10 @@
         (helpers/write-test-file! (fs/file submodules-working-dir submodule-id "test.txt"))
         (http-client/post publish-url)
 
-        (let [response (http-client/get latest-commits-url)
-              body (parse-response-body response)
-              submodule-commits (get-in body [repo-id "submodules"])]
-          (is (= (get-in body [repo-id "commit"])
+        (let [response (http-client/get latest-commits-url {:as :text})
+              body (common/parse-latest-commits-response response)
+              submodule-commits (get-in body [(keyword repo-id) :submodules])]
+          (is (= (get-in body [(keyword repo-id) :commit])
                  (jgit-utils/head-rev-id-from-git-dir git-dir)))
           (is (not (nil? submodule-commits)))
           (is (= (count (keys submodule-commits)) 1))
@@ -384,7 +381,8 @@
 
     (testing "successful publish returns SHAs for parent repos and submodules"
       (let [response (http-client/post publish-url)
-            parsed-body (parse-response-body response)]
+            body (slurp (:body response))
+            parsed-body (json/parse-string body)]
         (is (= 200 (:status response)))
 
         (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-success)
@@ -409,7 +407,7 @@
                                     (str submodules-dir-name-1 "/" submodule-2))
             response (make-publish-request {:repo-id successful-parent
                                             :submodule-id submodule-1})
-            parsed-body (parse-response-body response)]
+            parsed-body (json/parse-string (slurp (:body response)))]
 
         (testing "publish was successful and returns correct commit for parent"
           (is (= 200 (:status response)))

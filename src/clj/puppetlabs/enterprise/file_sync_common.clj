@@ -1,6 +1,8 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext))
-  (:require [schema.core :as schema]))
+  (:require [cheshire.core :as json]
+            [plumbing.core :as plumbing]
+            [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
@@ -23,8 +25,8 @@
 
 (def LatestCommit
   "Schema defining the result of computing the latest commit for a repo"
-  {(schema/required-key "commit") schema/Str
-   (schema/optional-key "submodules") {schema/Str schema/Str}})
+  {:commit schema/Str
+   (schema/optional-key :submodules) {schema/Str schema/Str}})
 
 (def LatestCommitsPayload
   "Schema defining the return payload of the server's 'latest-commits'
@@ -32,7 +34,7 @@
 
   The first Str in each pair represents a repository name.  The corresponding
   Str in the pair represents the id of the latest commit in the repository."
-  {schema/Str (schema/maybe LatestCommit)})
+  {schema/Keyword (schema/maybe LatestCommit)})
 
 (def SSLContextOrNil
   (schema/maybe SSLContext))
@@ -44,3 +46,16 @@
              (schema/pred #(.startsWith % "application/json"))
              schema/Any schema/Any}
    schema/Any schema/Any})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Functions
+
+(defn parse-latest-commits-response
+  [response]
+  (-> response
+      :body
+      json/parse-string
+      ((partial plumbing/map-keys keyword))
+      ((partial plumbing/map-vals (fn [v]
+                                    (when v
+                                      (plumbing/map-keys keyword v)))))))

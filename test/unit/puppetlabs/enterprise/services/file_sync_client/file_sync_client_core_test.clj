@@ -16,8 +16,8 @@
 
 (deftest get-body-from-latest-commits-payload-test
   (testing "Can get latest commits"
-    (is (= {"repo1" {"commit" "123456"
-                     "submodules" {}}, "repo2" nil}
+    (is (= {:repo1 {:commit "123456"
+                    :submodules {}}, :repo2 nil}
            (get-body-from-latest-commits-payload
              {:status 200
               :headers {"content-type" "application/json"}
