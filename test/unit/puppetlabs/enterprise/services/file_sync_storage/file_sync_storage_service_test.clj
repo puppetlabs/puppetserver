@@ -1,5 +1,5 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service-test
-  (:import (org.eclipse.jgit.api.errors TransportException GitAPIException)
+  (:import (org.eclipse.jgit.api.errors TransportException)
            (org.eclipse.jgit.api Git))
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
