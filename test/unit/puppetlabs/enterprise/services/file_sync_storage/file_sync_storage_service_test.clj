@@ -153,6 +153,10 @@
                             :submodules-working-dir submodules-working-dir}}
         false)
 
+      ; Initialize the submodule
+      (ks/mkdirs! (fs/file submodules-working-dir submodule-id))
+      (helpers/write-test-file! (fs/file submodules-working-dir submodule-id "test.txt"))
+
       (testing (str "Submodules will not appear in latest-commits response "
                     "until they are published")
         (let [response (http-client/get latest-commits-url {:as :text})
@@ -163,9 +167,7 @@
           (is (nil? (get-in body [(keyword repo-id) :submodules])))))
 
       (testing "latest-commits returns the latest commits for published submodules"
-        ; Initialize the submodule directories and publish the submodule
-        (ks/mkdirs! (fs/file submodules-working-dir submodule-id))
-        (helpers/write-test-file! (fs/file submodules-working-dir submodule-id "test.txt"))
+        ; Publish the submodule
         (http-client/post publish-url)
 
         (let [response (http-client/get latest-commits-url {:as :text})
@@ -176,7 +178,7 @@
           (is (not (nil? submodule-commits)))
           (is (= (count (keys submodule-commits)) 1))
           (is (= submodule-commits
-                 (jgit-utils/get-submodules-status git-dir working-dir))))))))
+                 (jgit-utils/get-submodules-latest-commits git-dir working-dir))))))))
 
 (defn get-commit
   [repo]
@@ -387,18 +389,18 @@
 
         (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-success)
               (get-in parsed-body [successful-parent "commit"])))
-        (is (= (jgit-utils/get-submodules-status git-dir-success
+        (is (= (jgit-utils/get-submodules-latest-commits git-dir-success
                                                  working-dir-success)
               (get-in parsed-body [successful-parent "submodules"])))
 
         (is (= (jgit-utils/head-rev-id-from-git-dir git-dir-failed)
               (get-in parsed-body [failed-parent "commit"])))
-        (is (= (jgit-utils/get-submodules-status git-dir-failed
+        (is (= (jgit-utils/get-submodules-latest-commits git-dir-failed
                                                  working-dir-failed)
               (get-in parsed-body [failed-parent "submodules"])))))
 
     (testing "can specify a single submodule to be published"
-      (let [submodules-orig-status (jgit-utils/get-submodules-status
+      (let [submodules-orig-status (jgit-utils/get-submodules-latest-commits
                                      git-dir-success
                                      working-dir-success)
             submodule-1-commit (get submodules-orig-status
@@ -415,7 +417,7 @@
                      (jgit-utils/head-rev-id-from-git-dir))
                  (get-in parsed-body [successful-parent "commit"]))))
 
-        (let [submodules-status (jgit-utils/get-submodules-status
+        (let [submodules-status (jgit-utils/get-submodules-latest-commits
                                   git-dir-success
                                   working-dir-success)
               submodule-name (str submodules-working-dir-1 "/" submodule-1)
@@ -507,7 +509,7 @@
          (is (fs/exists? (fs/file data-dir (str repo ".git"))))
          (is (not (fs/exists? (fs/file data-dir repo (str submodule-1 ".git")))))
          (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))
-         (let [submodules (jgit-utils/get-submodules-status git-dir working-dir)]
+         (let [submodules (jgit-utils/get-submodules-latest-commits git-dir working-dir)]
            (is (empty? submodules))))
 
        (testing "publish works and initializes submodule"
@@ -519,7 +521,7 @@
            (is (= 200 (:status response)))
            (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))
            (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))
-           (is (= (jgit-utils/get-submodules-status git-dir working-dir)
+           (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 
        (testing "adding a new submodule and triggering another publish"
@@ -530,7 +532,7 @@
            (is (= 200 (:status response)))
            (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))
            (is (fs/exists? (fs/file data-dir repo (str submodule-2 ".git"))))
-           (is (= (jgit-utils/get-submodules-status git-dir working-dir)
+           (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 
        (testing "updating a submodule and triggering a publish"
@@ -538,7 +540,7 @@
          (let [response (http-client/post publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
-           (is (= (jgit-utils/get-submodules-status git-dir working-dir)
+           (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))
            (is (fs/exists? (fs/file working-dir submodules-dir-name submodule-1 "update.txt")))
            (is (= (slurp (fs/file submodules-working-dir submodule-1 "update.txt"))

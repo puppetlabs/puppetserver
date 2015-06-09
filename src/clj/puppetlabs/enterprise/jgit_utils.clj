@@ -256,7 +256,7 @@
   (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (head-rev-id as-repo)))
 
-(defn get-submodules-status
+(defn get-submodules-latest-commits
   "Given a path to a Git repository and a working tree, returns the
   latest commit for all submodules in that repo"
   [git-dir working-dir]

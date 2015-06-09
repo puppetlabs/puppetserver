@@ -173,7 +173,7 @@
       (let [latest-commit (-> ref
                               (.getObjectId)
                               (jgit-utils/commit-id))
-            submodules-status (jgit-utils/get-submodules-status git-dir
+            submodules-status (jgit-utils/get-submodules-latest-commits git-dir
                                                                 working-dir)
             base-data {:commit latest-commit}]
         (if (empty? submodules-status)
