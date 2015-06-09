@@ -6,7 +6,7 @@ teardown do
   rm_vardirs()
 end
 
-agents.each do |agent|
+valid_agents.each do |agent|
   studio = agent.tmpdir('recursive_directory_test')
 
   step "Apply simmons::recursive_directory to agent #{agent.platform}" do

@@ -6,7 +6,7 @@ teardown do
   rm_vardirs()
 end
 
-agents.each do |agent|
+valid_agents.each do |agent|
   studio = agent.tmpdir('mount_point_source_file_test')
 
   step "Apply simmons::mount_point_source_file to agent #{agent.platform}" do

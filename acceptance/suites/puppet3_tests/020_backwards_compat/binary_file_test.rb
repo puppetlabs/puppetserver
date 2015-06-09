@@ -6,7 +6,7 @@ teardown do
   rm_vardirs()
 end
 
-agents.each do |agent|
+valid_agents.each do |agent|
   studio = agent.tmpdir('binary_file_test')
 
   step "Apply simmons::binary_file to agent #{agent.platform}" do

@@ -6,7 +6,7 @@ teardown do
   rm_vardirs()
 end
 
-agents.each do |agent|
+valid_agents.each do |agent|
   studio = agent.tmpdir('content_file_test')
 
   step "Apply simmons::content_file to agent #{agent.platform}" do

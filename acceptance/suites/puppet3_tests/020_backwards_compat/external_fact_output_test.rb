@@ -6,7 +6,7 @@ teardown do
   rm_vardirs()
 end
 
-agents.each do |agent|
+valid_agents.each do |agent|
   studio = agent.tmpdir('external_fact_output_test')
 
   step "Apply simmons::external_fact_output to agent #{agent.platform}" do
