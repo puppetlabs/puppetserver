@@ -134,20 +134,6 @@
     (.runScriptlet "require 'jar-dependencies'")
     (.runScriptlet "require 'puppet/server/master'")))
 
-(schema/defn ^:always-validate config->puppet-config :- HashMap
-  "Given the raw jruby-puppet configuration section, return a
-  HashMap with the configuration necessary for ruby Puppet."
-  [config :- jruby-schemas/JRubyPuppetConfig]
-  (let [puppet-config (new HashMap)]
-    (doseq [[setting dir] [[:master-conf-dir "confdir"]
-                           [:master-code-dir "codedir"]
-                           [:master-var-dir "vardir"]
-                           [:master-run-dir "rundir"]
-                           [:master-log-dir "logdir"]]]
-      (if-let [value (get config setting)]
-        (.put puppet-config dir (fs/absolute-path value))))
-    puppet-config))
-
 (schema/defn borrow-with-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
   [timeout :- schema/Int
    pool :- jruby-schemas/pool-queue-type]
