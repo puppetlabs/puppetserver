@@ -1,7 +1,8 @@
 (ns puppetlabs.services.jruby.jruby-puppet-core-test
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core])
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (java.io ByteArrayOutputStream PrintStream ByteArrayInputStream)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -64,6 +65,12 @@
     (is (= 4 (jruby-core/default-pool-size 16)))
     (is (= 4 (jruby-core/default-pool-size 32)))
     (is (= 4 (jruby-core/default-pool-size 64)))))
+
+(deftest cli-run!-error-handling-test
+  (testing "when command is not found as a resource"
+    (logutils/with-test-logging
+      (is (nil? (jruby-core/cli-run! min-config "DNE" [])))
+      (is (logged? #"DNE could not be found" :error)))))
 
 (deftest ^:integration cli-run!-test
   (testing "jruby cli command output"

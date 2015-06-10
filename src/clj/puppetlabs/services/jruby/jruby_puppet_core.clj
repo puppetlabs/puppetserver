@@ -5,7 +5,8 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)))
 
@@ -173,6 +174,10 @@
   [config :- {schema/Keyword schema/Any}
    command :- schema/Str
    args :- [schema/Str]]
-  (let [load-path (format "META-INF/jruby.home/bin/%s" command)]
-    (if-let [url (io/resource load-path (.getClassLoader org.jruby.Main))]
-      (cli-ruby! config (concat ["-e" (format "load '%s'" url) "--"] args)))))
+  (let [bin-dir "META-INF/jruby.home/bin"
+        load-path (format "%s/%s" bin-dir command)
+        url (io/resource load-path (.getClassLoader org.jruby.Main))]
+    (if url
+      (cli-ruby! config
+        (concat ["-e" (format "load '%s'" url) "--"] args))
+      (log/errorf "command %s could not be found in %s" command bin-dir))))
