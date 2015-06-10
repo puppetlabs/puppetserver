@@ -12,7 +12,7 @@
 
   (init [this context]
     (let [config (get-in-config [:file-sync-storage])
-          data-dir (:data-dir config)
+          data-dir (str (get-in-config [:file-sync-common :data-dir]) "/storage")
           server-url (get-in-config [:file-sync-common :server-url])
           api-path-prefix (get-route this :api)
           repo-path-prefix (get-route this :repo-servlet)
@@ -24,7 +24,7 @@
           ; something different for security arises.
           export-all "1"]
 
-      (core/initialize-repos! config)
+      (core/initialize-repos! config data-dir)
 
       (log/info
          "File sync storage service mounting repositories at" repo-path-prefix)

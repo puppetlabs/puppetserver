@@ -46,8 +46,10 @@
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
-          data-dir (helpers/temp-dir-as-string)
-          client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)]
+          root-data-dir (helpers/temp-dir-as-string)
+          storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
+          client-data-dir (helpers/effective-client-data-dir root-data-dir)
+          client-repo-dir (fs/file client-data-dir (str repo ".git"))]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -57,14 +59,15 @@
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config-with-repos
-                   data-dir
+                   root-data-dir
                    {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                    true)
                  (helpers/client-service-config-with-repos
-                   {(keyword repo) (.getPath client-repo-dir)}
+                   root-data-dir
+                   [repo]
                    true))
 
-          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo storage-data-dir)
                 sync-agent (helpers/get-sync-agent app)]
 
             (testing "client is able to successfully sync with storage service"
@@ -82,22 +85,24 @@
 (deftest ^:integration network-partition-tolerance-test
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
     (let [repo "network-partition-test"
-          data-dir (helpers/temp-dir-as-string)
+          root-data-dir (helpers/temp-dir-as-string)
+          storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config-with-repos
-                            data-dir
+                            root-data-dir
                             {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                             false)))]
       (try
-        (let [client-repo-dir (fs/file (helpers/temp-dir-as-string) repo)
+        (let [client-data-dir (helpers/effective-client-data-dir root-data-dir)
+              client-repo-dir (fs/file client-data-dir (str repo ".git"))
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
-              local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)]
+              local-repo-dir (helpers/clone-and-push-test-commit! repo storage-data-dir)]
 
           (testing "file sync storage service is running"
             ;; Ensure that a commit pushed to the server is reflected by the
@@ -110,7 +115,8 @@
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
             (helpers/client-service-config-with-repos
-              {(keyword repo) (.getPath client-repo-dir)}
+              root-data-dir
+              [repo]
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]
@@ -186,9 +192,11 @@
 (deftest ^:integration server-side-corruption-test
   (let [repo1 "repo1"
         repo2 "repo2"
-        data-dir (helpers/temp-dir-as-string)
-        client-dir-repo-1 (fs/file (helpers/temp-dir-as-string) repo1)
-        client-dir-repo-2 (fs/file (helpers/temp-dir-as-string) repo2)]
+        root-data-dir (helpers/temp-dir-as-string)
+        storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
+        client-data-dir (helpers/effective-client-data-dir root-data-dir)
+        client-dir-repo-1 (fs/file client-data-dir (str repo1 ".git"))
+        client-dir-repo-2 (fs/file client-data-dir (str repo2 ".git"))]
     ;; This is used to silence the error logged when the server-side repo is
     ;; corrupted, but unfortunately, it doesn't seem to actually allow that
     ;; message to be matched
@@ -201,16 +209,16 @@
          file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
         (merge (helpers/storage-service-config-with-repos
-                 data-dir
+                 root-data-dir
                  {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
                   (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}}
                  false)
                (helpers/client-service-config-with-repos
-                 {(keyword repo1) (.getPath client-dir-repo-1)
-                  (keyword repo2) (.getPath client-dir-repo-2)}
+                 root-data-dir
+                 [repo1 repo2]
                  false))
-        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1 data-dir)
-              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2 data-dir)
+        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1 storage-data-dir)
+              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2 storage-data-dir)
               sync-agent (helpers/get-sync-agent app)]
 
           (testing "file sync client service is running"
@@ -224,7 +232,7 @@
           (testing (str "client-side repo recovers after server-side"
                         "repo becomes corrupt")
             (let [corrupt-repo-path (helpers/temp-dir-as-string)
-                  original-repo-path (str data-dir "/" repo1 ".git")]
+                  original-repo-path (str storage-data-dir "/" repo1 ".git")]
               (helpers/push-test-commit! local-dir-repo-1)
               (helpers/push-test-commit! local-dir-repo-2)
               ;; "Corrupt" the server-side repo by moving it
@@ -284,8 +292,10 @@
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
     (let [repo "repo"
-          data-dir (helpers/temp-dir-as-string)
-          client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)]
+          root-data-dir (helpers/temp-dir-as-string)
+          storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
+          client-data-dir (helpers/effective-client-data-dir root-data-dir)
+          client-repo-dir (str client-data-dir "/" repo ".git")]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -296,13 +306,14 @@
            scheduler-service/scheduler-service
            callback-service]
           (merge (helpers/storage-service-config-with-repos
-                   data-dir
+                   root-data-dir
                    {(keyword repo) {:working-dir repo}}
                    false)
                  (helpers/client-service-config-with-repos
-                   {(keyword repo) (str client-repo-dir)}
+                   root-data-dir
+                   [repo]
                    false))
-          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo data-dir)
+          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo storage-data-dir)
                 sync-agent (helpers/get-sync-agent app)
                 svc (tk-app/get-service app :CallbackService)
                 repo-atom (:atom (tk-services/service-context svc))]

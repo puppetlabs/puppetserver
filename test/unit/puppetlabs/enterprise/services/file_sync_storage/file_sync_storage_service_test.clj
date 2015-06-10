@@ -34,14 +34,15 @@
                   (helpers/push-test-commit! clone-dir)))))))))
 
 (deftest file-sync-storage-service-simple-workflow-test
-  (let [data-dir (helpers/temp-dir-as-string)
+  (let [root-data-dir (helpers/temp-dir-as-string)
+        data-dir (helpers/effective-storage-data-dir root-data-dir)
         repo-id "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          data-dir
+          root-data-dir
           {(keyword repo-id) {:working-dir repo-id}}
           false)
         (let [server-repo-url (str
@@ -82,14 +83,15 @@
                           common/latest-commits-sub-path))
 
 (deftest latest-commits-test
-  (let [data-dir (helpers/temp-dir-as-string)
+  (let [root-data-dir (helpers/temp-dir-as-string)
+        data-dir (helpers/effective-storage-data-dir root-data-dir)
         repo1-id "latest-commits-test-1"
         repo2-id "latest-commits-test-2"
         repo3-id "latest-commits-test-3"]
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
-        data-dir
+        root-data-dir
         {(keyword repo1-id) {:working-dir repo1-id}
          (keyword repo2-id) {:working-dir repo2-id}
          (keyword repo3-id) {:working-dir repo3-id}}
@@ -137,7 +139,8 @@
                       common/publish-content-sub-path))
 
 (deftest latest-commits-with-submodules-test
-  (let [data-dir (helpers/temp-dir-as-string)
+  (let [root-data-dir (helpers/temp-dir-as-string)
+        data-dir (helpers/effective-storage-data-dir root-data-dir)
         repo-id "latest-commits-submodules-test"
         git-dir (fs/file data-dir (str repo-id ".git"))
         working-dir (helpers/temp-dir-as-string)
@@ -147,7 +150,7 @@
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
-        data-dir
+        root-data-dir
         {(keyword repo-id) {:working-dir working-dir
                             :submodules-dir submodules-dir
                             :submodules-working-dir submodules-working-dir}}
@@ -200,13 +203,14 @@
           repo2 "test-commit-2"
           working-dir (helpers/temp-dir-as-string)
           working-dir-2 (helpers/temp-dir-as-string)
-          data-dir (helpers/temp-dir-as-string)
+          root-data-dir (helpers/temp-dir-as-string)
+          data-dir (helpers/effective-storage-data-dir root-data-dir)
           server-repo (fs/file data-dir (str repo ".git"))]
 
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          data-dir
+          root-data-dir
           {(keyword repo) {:working-dir working-dir}
            (keyword repo2) {:working-dir working-dir-2}}
           false)
@@ -312,11 +316,12 @@
           success-repo "publish-success"
           working-dir-failed (helpers/temp-dir-as-string)
           working-dir-success (helpers/temp-dir-as-string)
-          data-dir (helpers/temp-dir-as-string)]
+          root-data-dir (helpers/temp-dir-as-string)
+          data-dir (helpers/effective-storage-data-dir root-data-dir)]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          data-dir
+          root-data-dir
           {(keyword failed-repo) {:working-dir working-dir-failed}
            (keyword success-repo) {:working-dir working-dir-success}}
           false)
@@ -351,7 +356,8 @@
         submodule-3 "submodule-3"
         working-dir-failed (helpers/temp-dir-as-string)
         working-dir-success (helpers/temp-dir-as-string)
-        data-dir (helpers/temp-dir-as-string)
+        root-data-dir (helpers/temp-dir-as-string)
+        data-dir (helpers/effective-storage-data-dir root-data-dir)
         git-dir-success (fs/file data-dir (str successful-parent ".git"))
         git-dir-failed (fs/file data-dir (str failed-parent ".git"))
         submodules-dir-name-1 "submodules1"
@@ -372,7 +378,7 @@
   (helpers/with-bootstrapped-file-sync-storage-service-for-http
     app
     (helpers/storage-service-config-with-repos
-      data-dir
+      root-data-dir
       {(keyword successful-parent) {:working-dir working-dir-success
                                     :submodules-dir submodules-dir-name-1
                                     :submodules-working-dir submodules-working-dir-1}
@@ -486,7 +492,8 @@
           submodules-dir-name "submodules"
           submodule-1 "existing-submodule"
           submodule-2 "nonexistent-submodule"
-          data-dir (helpers/temp-dir-as-string)
+          root-data-dir (helpers/temp-dir-as-string)
+          data-dir (helpers/effective-storage-data-dir root-data-dir)
           git-dir (fs/file data-dir (str repo ".git"))]
 
       ;; Set up working directory for submodule-1, the "existing-submodule"
@@ -499,7 +506,7 @@
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
-          data-dir
+          root-data-dir
           {(keyword repo) {:working-dir working-dir
                            :submodules-dir submodules-dir-name
                            :submodules-working-dir submodules-working-dir}}

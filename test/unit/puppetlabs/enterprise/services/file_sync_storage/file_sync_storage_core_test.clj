@@ -16,8 +16,8 @@
           repo-id "single-repo"
           working-dir (helpers/temp-file-name repo-id)
           git-dir (fs/file data-dir (str repo-id ".git"))]
-      (initialize-repos! {:data-dir data-dir
-                          :repos    {:single-repo {:working-dir working-dir}}})
+      (initialize-repos! {:repos    {:single-repo {:working-dir working-dir}}}
+                         (str data-dir))
       (testing "The data dir is created"
         (is (fs/exists? data-dir)))
       (testing "The working dir and git dirs are created"
@@ -48,11 +48,10 @@
         repo2-id          "repo2"
         repo1-working-dir (fs/temp-dir repo1-id)
         repo2-working-dir (fs/temp-dir repo2-id)
-        config            {:data-dir data-dir
-                           :repos    {:repo1 {:working-dir repo1-working-dir}
+        config            {:repos    {:repo1 {:working-dir repo1-working-dir}
                                       :repo2 {:working-dir repo2-working-dir}}}]
     (testing "Multiple repos can be initialized"
-      (initialize-repos! config))
+      (initialize-repos! config (str data-dir)))
     (testing "Content in repos not wiped out during reinitialization"
       (let [repo1-git-dir (fs/file data-dir (str repo1-id ".git"))
             repo2-git-dir (fs/file data-dir (str repo2-id ".git"))
@@ -63,7 +62,7 @@
         (commit! repo1 repo2)
         (let [head-rev-id1 (jgit-utils/head-rev-id repo1)
               head-rev-id2 (jgit-utils/head-rev-id repo2)]
-          (initialize-repos! config)
+          (initialize-repos! config (str data-dir))
           (testing "Git repos have same HEAD after reinitialization."
             (is (= head-rev-id1 (jgit-utils/head-rev-id repo1)))
             (is (= head-rev-id2 (jgit-utils/head-rev-id repo2))))

@@ -18,9 +18,8 @@
 
 (def ReposConfig
   "A schema describing the configuration data for the repositories managed by
-  this service.  Each repository is a key-value pair; the key is the repo ID,
-  the value is the filesystem path to the repository."
-  {schema/Keyword schema/Str})
+  this service. This is just a list of repository names."
+  [schema/Str])
 
 (def Config
   "Schema defining the full content of the file sync client service
@@ -32,11 +31,9 @@
                        should wait between attempts to poll the server for
                        latest available content.
 
-    * :repos         - A map with metadata about each of the repositories
-                       that the server manages. Each key should be the name
-                       of a repository, and each value should be the directory
-                       to which the repository content should be deployed as
-                       a string."
+    * :repos         - A vector containing the ids of all repositories managed
+                       by the client service, each of which should correspond to
+                       the id of a repo in the storage service."
   {:poll-interval                     schema/Int
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
@@ -78,6 +75,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
+
+(defn construct-data-dir
+  [data-dir]
+  (str data-dir "/client"))
 
 (defn create-http-client
   [ssl-context]
@@ -200,11 +201,13 @@
   [repos :- ReposConfig
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
-   callbacks]
+   callbacks
+   data-dir]
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
-        (for [[repo-name target-dir] repos]
-          (let [name (name repo-name)]
+        (for [name repos]
+          (let [repo-name (keyword name)
+                target-dir (str data-dir "/" name ".git")]
             (if (contains? latest-commits repo-name)
               (let [latest-commit (latest-commits repo-name)]
                 (try+
@@ -231,7 +234,8 @@
    {:keys [server-repo-path server-api-path repos]} :- Config
    {:keys [server-url]} :- common/FileSyncCommonConfig
    http-client
-   callbacks]
+   callbacks
+   data-dir]
   (log/debug "File sync process running on repos " repos)
   (try+
     (let [latest-commits (get-latest-commits-from-server http-client
@@ -239,7 +243,8 @@
           repo-states (process-repos-for-updates repos
                                                  (str server-url server-repo-path)
                                                  latest-commits
-                                                 callbacks)
+                                                 callbacks
+                                                 data-dir)
           full-success? (every? #(not= (:status %) :failed)
                                 (vals repo-states))]
       {:status (if full-success? :successful :partial-success)
@@ -304,11 +309,13 @@
    config :- Config
    common-config :- common/FileSyncCommonConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callbacks]
+   callbacks
+   data-dir]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))
-        send-to-agent #(send-off sync-agent periodic-sync config common-config http-client callbacks)]
+        send-to-agent #(send-off sync-agent periodic-sync config common-config
+                                 http-client callbacks data-dir)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]
@@ -322,16 +329,17 @@
   "Synchronizes the contents of the working directory specified by
   working-dir with the most recent contents of the bare repo specified by
   repo-id"
-  [repos :- ReposConfig
-   repo-id :- schema/Keyword
+  [data-dir :- schema/Str
+   repos :- ReposConfig
+   repo-id :- schema/Str
    working-dir :- schema/Str]
   (when-not (fs/exists? working-dir)
     (throw
       (IllegalStateException.
         (str "Directory " working-dir " must exist on disk to be synced "
              "as a working directory"))))
-  (if-let [git-dir (get repos repo-id)]
-    (do
+  (if (some #(= repo-id %) repos)
+    (let [git-dir (str data-dir "/" repo-id ".git")]
       (log/info (str "Syncing working directory at " working-dir
                      " for repository " repo-id))
       (jgit-utils/hard-reset (jgit-utils/get-repository git-dir working-dir)))
