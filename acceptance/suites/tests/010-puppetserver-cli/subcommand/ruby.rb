@@ -17,10 +17,10 @@ on(master, cmd) do
   assert_no_match(/UHOH/, stdout)
 end
 
-step "Check that FOO_DEBUG is preserved"
-on(master, "FOO_DEBUG=OK #{cli} ruby -e 'puts ENV[%{FOO_DEBUG}] || %{BAD}'") do
-  assert_match(/^OK$/, stdout, "FOO_DEBUG is not being preserved")
-  assert_no_match(/BAD/, stdout, "FOO_DEBUG is being unset, it should not be")
+step "Check that FOO_DEBUG is filtered out"
+on(master, "FOO_DEBUG=BAD #{cli} ruby -e 'puts ENV[%{FOO_DEBUG}] || %{OK}'") do
+  assert_match(/^OK$/, stdout)
+  assert_no_match(/BAD/, stdout, "FOO_DEBUG is not being filtered out")
 end
 
 step "Check that puppet is loadable"

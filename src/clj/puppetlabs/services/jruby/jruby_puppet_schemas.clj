@@ -2,8 +2,9 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env])
   (:import (java.util.concurrent BlockingDeque)
-           (clojure.lang Atom Agent IFn)
+           (clojure.lang Atom Agent IFn PersistentArrayMap PersistentHashMap)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
+           (org.jruby Main Main$Status)
            (org.jruby.embed ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -141,6 +142,14 @@
   [x]
   (instance? JRubyPuppetInstance x))
 
+(defn jruby-main-instance?
+  [x]
+  (instance? Main x))
+
+(defn jruby-main-status-instance?
+  [x]
+  (instance? Main$Status x))
+
 (defn poison-pill?
   [x]
   (instance? PoisonPill x))
@@ -160,3 +169,17 @@
                         retry-poison-pill?
                         jruby-puppet-instance?)))
 
+(def JRubyMain
+  (schema/pred jruby-main-instance?))
+
+(def JRubyMainStatus
+  (schema/pred jruby-main-status-instance?))
+
+(def EnvMap
+  "System Environment variables have strings for the keys and values of a map"
+  {schema/Str schema/Str})
+
+(def EnvPersistentMap
+  "Schema for a clojure persistent map for the system environment"
+  (schema/both EnvMap
+    (schema/either PersistentArrayMap PersistentHashMap)))

@@ -67,3 +67,5 @@ initial_installed_gems.each do |gem_info|
   assert_send([final_installed_gems, :include?, gem_info])
 end
 
+step "Verify that gem env operates"
+on(master, "#{cli} gem env", :acceptable_exit_codes => [0])
