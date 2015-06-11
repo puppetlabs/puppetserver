@@ -3,7 +3,8 @@
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core])
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (java.io ByteArrayOutputStream PrintStream ByteArrayInputStream)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -65,15 +66,11 @@
     (is (= 4 (jruby-core/default-pool-size 32)))
     (is (= 4 (jruby-core/default-pool-size 64)))))
 
-(deftest initialize-config-test
-  (let [subject (fn [] (jruby-core/initialize-config min-config))]
-    (testing "master-{conf,var}-dir settings are optional"
-      (is (= "/etc/puppetlabs/puppet" (:master-conf-dir (subject))))
-      (is (= "/opt/puppetlabs/server/data/puppetserver" (:master-var-dir (subject)))))
-    (testing "(SERVER-647) master-{code,run,log}-dir settings are optional"
-      (is (= "/etc/puppetlabs/code" (:master-code-dir (subject))))
-      (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir (subject))))
-      (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir (subject)))))))
+(deftest cli-run!-error-handling-test
+  (testing "when command is not found as a resource"
+    (logutils/with-test-logging
+      (is (nil? (jruby-core/cli-run! min-config "DNE" [])))
+      (is (logged? #"DNE could not be found" :error)))))
 
 (deftest ^:integration cli-run!-test
   (testing "jruby cli command output"
@@ -114,7 +111,8 @@
         (is (= 0 exit-code))
         (is (re-find #"VERSION: \d+\.\d+\.\d+" out))))
     (testing "non existing subcommand returns nil"
-      (is (nil? (jruby-core/cli-run! min-config "doesnotexist" []))))))
+      (logutils/with-test-logging
+        (is (nil? (jruby-core/cli-run! min-config "doesnotexist" [])))))))
 
 (deftest ^:integration cli-ruby!-test
   (testing "jruby cli command output"
@@ -146,14 +144,14 @@
     (testing "facter jar loaded from last position"
       (let [temp-jar (create-temp-facter-jar)]
         (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
-                                             (fs-parent-as-string temp-jar)])
+                                                          (fs-parent-as-string temp-jar)])
         (is (true? (jar-in-class-loader-file-list? temp-jar)))))
     (testing "only first jar loaded when two present"
       (let [first-jar (create-temp-facter-jar)
             last-jar (create-temp-facter-jar)]
         (jruby-core/add-facter-jar-to-system-classloader [(fs-parent-as-string first-jar)
-                                             (temp-dir-as-string)
-                                             (fs-parent-as-string last-jar)])
+                                                          (temp-dir-as-string)
+                                                          (fs-parent-as-string last-jar)])
         (is (true? (jar-in-class-loader-file-list? first-jar))
           "first jar in the list was unexpectedly not found")
         (is (nil? (jar-in-class-loader-file-list? last-jar))
@@ -161,6 +159,6 @@
     (testing "class loader files unchanged when no jar found"
       (let [class-loader-files-before-load (class-loader-files)
             _ (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
-                                                   (temp-dir-as-string)])
+                                                                (temp-dir-as-string)])
             class-loader-files-after-load (class-loader-files)]
         (is (= class-loader-files-before-load class-loader-files-after-load))))))

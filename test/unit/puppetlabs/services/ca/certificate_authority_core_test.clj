@@ -385,6 +385,9 @@
                          :body (body-stream "{\"desired_state\":\"signed\"}")}
                 response (test-app request)]
             (is (= 404 (:status response)))
+            (is (= "text/plain; charset=UTF-8"
+                  (get-in response [:headers "Content-Type"]))
+              "Unexpected content type for response")
             (is (= "Invalid certificate subject." (:body response)))))
 
         (testing "Additional error handling on PUT requests"
@@ -397,9 +400,11 @@
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
-
                 (is (= 409 (:status response))
                     (ks/pprint-to-string response))
+                (is (= "text/plain; charset=UTF-8"
+                      (get-in response [:headers "Content-Type"]))
+                  "Unexpected content type for response")
                 (is (= (:body response)
                        "Cannot revoke certificate for host test-agent without a signed certificate")
                     (ks/pprint-to-string response))))
@@ -410,6 +415,9 @@
                              :body           (body-stream "{\"desired_state\":\"signed\"}")}
                     response (test-app request)]
                 (is (= 409 (:status response)))
+                (is (= "text/plain; charset=UTF-8"
+                      (get-in response [:headers "Content-Type"]))
+                  "Unexpected content type for response")
                 (is (= (:body response)
                        "Cannot sign certificate for host localhost without a certificate request"))))
 
@@ -455,6 +463,21 @@
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 
+  (testing "a signing request w/ a 'application/json' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri "/v1/certificate_status/test-agent"
+                       :request-method :put
+                       :headers {"content-type"
+                                 "application/json; charset=UTF-8"}
+                       :body (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
   (testing "a signing request w/ a 'text/pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (build-ring-handler settings "42.42.42")
@@ -469,6 +492,20 @@
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 
+  (testing "a signing request w/ a 'text/pson' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                      {:uri "/v1/certificate_status/test-agent"
+                       :request-method :put
+                       :headers {"content-type" "text/pson; charset=UTF-8"}
+                       :body (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
   (testing "a signing request w/ a 'pson' content-type succeeds"
     (let [settings         (testutils/ca-sandbox! cadir)
           test-app         (-> (build-ring-handler settings "42.42.42")
@@ -480,6 +517,20 @@
                        :request-method :put
                        :headers        {"content-type" "pson"}
                        :body           (body-stream "{\"desired_state\":\"signed\"}")})]
+        (is (true? (fs/exists? signed-cert-path)))
+        (is (= 204 (:status response))))))
+
+  (testing "a signing request w/ a 'pson' content-type and charset succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                     (wrap-with-ssl-client-cert))
+          signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+      (is (false? (fs/exists? signed-cert-path)))
+      (let [response (test-app
+                       {:uri "/v1/certificate_status/test-agent"
+                        :request-method :put
+                        :headers {"content-type" "pson; charset=UTF-8"}
+                        :body (body-stream "{\"desired_state\":\"signed\"}")})]
         (is (true? (fs/exists? signed-cert-path)))
         (is (= 204 (:status response))))))
 
@@ -510,6 +561,9 @@
               response (test-app request)]
           (is (= 409 (:status response))
               (ks/pprint-to-string response))
+          (is (= "text/plain; charset=UTF-8"
+                (get-in response [:headers "Content-Type"]))
+            "Unexpected content type for response")
           (is (= (:body response)
                  (str "CSR 'hostwithaltnames' contains subject alternative names "
                       "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
@@ -523,6 +577,9 @@
               response (test-app request)]
           (is (= 409 (:status response))
               (ks/pprint-to-string response))
+          (is (= "text/plain; charset=UTF-8"
+                (get-in response [:headers "Content-Type"]))
+            "Unexpected content type for response")
           (is (= (:body response)
                  "Found extensions that are not permitted: 1.9.9.9.9.9.9")))))))
 
