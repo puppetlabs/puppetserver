@@ -12,8 +12,9 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
-    ;[liberator.dev :as liberator-dev]
+            ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
+            [ring.util.request :as request]
             [ring.util.response :as rr]
             [compojure.route :as route]))
 
@@ -91,7 +92,7 @@
 
 (defn content-type-valid?
   [context]
-  (let [content-type (get-in context [:request :headers "content-type"])]
+  (let [content-type (request/content-type (:request context))]
     (or
       (nil? content-type)
       (media-types content-type))))
@@ -112,6 +113,22 @@
         (representation/as-response context-with-media-type)
         (assoc :status 200)
         (representation/ring-response))))
+
+(defn as-plain-text-response
+  "Create a ring response based on the response info in the supplied context
+   and a specific message.  The message is assumed to be plain text and so is
+   marked with a 'text/plain; charset=UTF-8' Content-Type header.  This is
+   needed for cases where liberator would not mark the Content-Type in the
+   response as 'text/plain' on its own, which could otherwise result in the
+   underlying webserver dumbly constructing the Content-Type as
+   ';charset=UTF-8'.  A Content-Type with a charset and no MIME value would be
+   problematic for some clients to interpret."
+  [context message]
+  (-> message
+    (representation/as-response context)
+    (assoc :status (:status context))
+    (assoc-in [:headers "Content-Type"] "text/plain; charset=UTF-8")
+    (representation/ring-response)))
 
 (defresource certificate-status
   [subject settings]
@@ -159,9 +176,12 @@
 
   :handle-conflict
   (fn [context]
-    (::conflict context))
+    (as-plain-text-response context (::conflict context)))
 
-  :handle-exception liberator-utils/exception-handler
+
+  :handle-exception
+  (fn [context]
+    (as-plain-text-response context (liberator-utils/exception-handler context)))
 
   :handle-not-implemented
   (fn [context]
@@ -174,10 +194,8 @@
       ; which makes the most sense in general - see
       ; https://github.com/clojure-liberator/liberator/pull/120
       ; ... but in our case, a 404 definitely makes more sense.
-      (-> "Invalid certificate subject."
-          (representation/as-response context)
-          (assoc :status 404)
-          (representation/ring-response))))
+      (-> (assoc context :status 404)
+        (as-plain-text-response "Invalid certificate subject."))))
 
   :handle-ok
   (fn [context]
@@ -230,7 +248,9 @@
 
   :available-media-types media-types
 
-  :handle-exception liberator-utils/exception-handler
+  :handle-exception
+  (fn [context]
+    (as-plain-text-response context (liberator-utils/exception-handler context)))
 
   :handle-ok
   (fn [context]
