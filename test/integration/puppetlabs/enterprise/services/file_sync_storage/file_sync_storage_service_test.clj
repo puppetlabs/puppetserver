@@ -15,7 +15,7 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(deftest push-disabled-test
+(deftest ^:integration push-disabled-test
   (testing "The JGit servlet should not accept pushes"
     (let [repo-id "push-disabled-test"
           config (helpers/storage-service-config-with-repos
@@ -33,7 +33,7 @@
                   #"authentication not supported"
                   (helpers/push-test-commit! clone-dir)))))))))
 
-(deftest file-sync-storage-service-simple-workflow-test
+(deftest ^:integration file-sync-storage-service-simple-workflow-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
         repo-id "file-sync-storage-service-simple-workflow"]
@@ -57,7 +57,7 @@
                    (slurp (str client-second-repo-dir "/" repo-test-file)))
                 "Unexpected file text found in second repository clone")))))))
 
-(deftest ssl-configuration-test
+(deftest ^:integration ssl-configuration-test
   (testing "file sync storage service cannot perform git operations over
             plaintext when the server is configured using SSL"
     (let [repo-name "ssl-configuration-test"
@@ -82,7 +82,7 @@
                           "/v1"
                           common/latest-commits-sub-path))
 
-(deftest latest-commits-test
+(deftest ^:integration latest-commits-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
         repo1-id "latest-commits-test-1"
@@ -138,7 +138,7 @@
                       "/v1"
                       common/publish-content-sub-path))
 
-(deftest latest-commits-with-submodules-test
+(deftest ^:integration latest-commits-with-submodules-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
         repo-id "latest-commits-submodules-test"
@@ -197,7 +197,7 @@
              {:body    (json/encode body)
               :headers {"Content-Type" "application/json"}}))
 
-(deftest publish-content-endpoint-success-test
+(deftest ^:integration publish-content-endpoint-success-test
   (testing "publish content endpoint makes correct commit"
     (let [repo "test-commit"
           repo2 "test-commit-2"
@@ -277,7 +277,7 @@
                 (is (= (:name author) (.getName (.getAuthorIdent commit))))
                 (is (= (:email author) (.getEmailAddress (.getAuthorIdent commit))))))))))))
 
-(deftest publish-content-endpoint-error-test
+(deftest ^:integration publish-content-endpoint-error-test
   (testing "publish content endpoint returns well-formed errors"
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
@@ -310,7 +310,7 @@
           (is (= "content-type-error" (get-in (json/parse-string body) ["error" "type"]))
               (str "Unexpected response body: " body)))))))
 
-(deftest publish-content-endpoint-response-test
+(deftest ^:integration publish-content-endpoint-response-test
   (testing "publish content endpoint returns correct response"
     (let [failed-repo "publish-failed"
           success-repo "publish-success"
@@ -348,7 +348,7 @@
                                 (get-in data [failed-repo "error" "type"]))
                     (str "Could not find correct body for " failed-repo " in " body))))))))))
 
-(deftest publish-endpoint-response-with-submodules-test
+(deftest ^:integration publish-endpoint-response-with-submodules-test
   (let [failed-parent "parent-failed"
         successful-parent "parent-success"
         submodule-1 "submodule-1"
@@ -484,7 +484,7 @@
             (testing "returns nothing for submodules"
               (is (= ["error"] (keys (parsed-body failed-parent))))))))))))
 
-(deftest submodules-test
+(deftest ^:integration submodules-test
   (testing "storage service works with submodules"
     (let [repo "parent-repo"
           submodules-working-dir (helpers/temp-dir-as-string)
