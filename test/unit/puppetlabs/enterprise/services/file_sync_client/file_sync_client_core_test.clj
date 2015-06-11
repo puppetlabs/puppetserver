@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :refer :all]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as storage-core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
@@ -49,7 +50,7 @@
         server-repo-url (str helpers/server-repo-url "/" repo-name)
         client-repo-path (temp-file-name repo-name)
         root-data-dir (helpers/temp-dir-as-string)
-        storage-data-dir (helpers/storage-data-dir root-data-dir)
+        storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         config (helpers/storage-service-config-with-repos
                  root-data-dir
                  {(keyword repo-name) {:working-dir repo-name}}
@@ -144,8 +145,8 @@
 
 (deftest process-repos-for-updates-test
   (let [root-data-dir (helpers/temp-dir-as-string)
-        storage-data-dir (helpers/storage-data-dir root-data-dir)
-        client-data-dir (helpers/client-data-dir root-data-dir)
+        storage-data-dir (storage-core/path-to-data-dir root-data-dir)
+        client-data-dir (path-to-data-dir root-data-dir)
         server-repo "process-repos-test"
         error-repo  "process-repos-error"
         nonexistent-repo "process-repos-test-nonexistent"

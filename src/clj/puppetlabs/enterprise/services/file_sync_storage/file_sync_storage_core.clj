@@ -140,6 +140,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
+(defn path-to-data-dir
+  [data-dir]
+  (str data-dir "/storage"))
+
 (defn initialize-data-dir!
   "Initialize the data directory under which all git repositories will be hosted."
   [data-dir]

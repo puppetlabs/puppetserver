@@ -12,7 +12,7 @@
 
   (init [this context]
     (let [config (get-in-config [:file-sync-storage])
-          data-dir (str (get-in-config [:file-sync-common :data-dir]) "/storage")
+          data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))
           server-url (get-in-config [:file-sync-common :server-url])
           api-path-prefix (get-route this :api)
           repo-path-prefix (get-route this :repo-servlet)

@@ -230,11 +230,3 @@
        (tk-app/get-service app)
        (tk-services/service-context)
        :agent))
-
-(defn storage-data-dir
-  [data-dir]
-  (str data-dir "/storage"))
-
-(defn client-data-dir
-  [data-dir]
-  (str data-dir "/client"))

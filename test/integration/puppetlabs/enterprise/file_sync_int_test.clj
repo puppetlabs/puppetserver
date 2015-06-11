@@ -7,6 +7,8 @@
              :as file-sync-client-core]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
              :as file-sync-client-service]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
+             :as file-sync-storage-core]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
             [puppetlabs.enterprise.services.scheduler.scheduler-service
@@ -47,8 +49,8 @@
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
           root-data-dir (helpers/temp-dir-as-string)
-          storage-data-dir (helpers/storage-data-dir root-data-dir)
-          client-data-dir (helpers/client-data-dir root-data-dir)
+          storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
+          client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
           client-repo-dir (fs/file client-data-dir (str repo ".git"))]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -86,7 +88,7 @@
   (testing "file sync client recovers after storage service becomes temporarily inaccessible"
     (let [repo "network-partition-test"
           root-data-dir (helpers/temp-dir-as-string)
-          storage-data-dir (helpers/storage-data-dir root-data-dir)
+          storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
@@ -97,7 +99,7 @@
                             {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                             false)))]
       (try
-        (let [client-data-dir (helpers/client-data-dir root-data-dir)
+        (let [client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
               client-repo-dir (fs/file client-data-dir (str repo ".git"))
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
@@ -193,8 +195,8 @@
   (let [repo1 "repo1"
         repo2 "repo2"
         root-data-dir (helpers/temp-dir-as-string)
-        storage-data-dir (helpers/storage-data-dir root-data-dir)
-        client-data-dir (helpers/client-data-dir root-data-dir)
+        storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
+        client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
         client-dir-repo-1 (fs/file client-data-dir (str repo1 ".git"))
         client-dir-repo-2 (fs/file client-data-dir (str repo2 ".git"))]
     ;; This is used to silence the error logged when the server-side repo is
@@ -293,8 +295,8 @@
   (testing "callback functions can be registered with the client service"
     (let [repo "repo"
           root-data-dir (helpers/temp-dir-as-string)
-          storage-data-dir (helpers/storage-data-dir root-data-dir)
-          client-data-dir (helpers/client-data-dir root-data-dir)
+          storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
+          client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
           client-repo-dir (str client-data-dir "/" repo ".git")]
       (with-test-logging
         (bootstrap/with-app-with-config

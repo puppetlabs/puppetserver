@@ -82,7 +82,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
 
-(defn construct-data-dir
+(defn path-to-data-dir
   [data-dir]
   (str data-dir "/client"))
 

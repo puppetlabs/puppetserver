@@ -21,7 +21,7 @@
     (let [client-config (get-in-config [:file-sync-client])
           common-config (get-in-config [:file-sync-common])
           server-url (:server-url common-config)
-          data-dir (core/construct-data-dir (:data-dir common-config))
+          data-dir (core/path-to-data-dir (:data-dir common-config))
           poll-interval (* (:poll-interval client-config) 1000)
           ssl-context (ssl/generate-ssl-context client-config)
           sync-agent (core/create-agent request-shutdown)]
@@ -49,7 +49,7 @@
       (core/register-callback! context repo-id callback-fn)))
 
   (sync-working-dir! [this repo-id working-dir]
-    (core/sync-working-dir! (core/construct-data-dir (get-in-config [:file-sync-common :data-dir]))
+    (core/sync-working-dir! (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))
                             (get-in (tks/service-context this) [:config :repos])
                             repo-id
                             working-dir))

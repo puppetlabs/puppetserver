@@ -12,6 +12,7 @@
              :as scheduler-service]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [me.raynes.fs :as fs])
   (:import (javax.net.ssl SSLException)))
@@ -65,7 +66,7 @@
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         root-data-dir (helpers/temp-dir-as-string)
-        client-repo-dir (str (helpers/client-data-dir root-data-dir)
+        client-repo-dir (str (core/path-to-data-dir root-data-dir)
                              "/"
                              repo
                              ".git")

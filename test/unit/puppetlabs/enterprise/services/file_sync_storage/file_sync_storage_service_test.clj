@@ -35,7 +35,7 @@
 
 (deftest file-sync-storage-service-simple-workflow-test
   (let [root-data-dir (helpers/temp-dir-as-string)
-        data-dir (helpers/storage-data-dir root-data-dir)
+        data-dir (core/path-to-data-dir root-data-dir)
         repo-id "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
@@ -84,7 +84,7 @@
 
 (deftest latest-commits-test
   (let [root-data-dir (helpers/temp-dir-as-string)
-        data-dir (helpers/storage-data-dir root-data-dir)
+        data-dir (core/path-to-data-dir root-data-dir)
         repo1-id "latest-commits-test-1"
         repo2-id "latest-commits-test-2"
         repo3-id "latest-commits-test-3"]
@@ -140,7 +140,7 @@
 
 (deftest latest-commits-with-submodules-test
   (let [root-data-dir (helpers/temp-dir-as-string)
-        data-dir (helpers/storage-data-dir root-data-dir)
+        data-dir (core/path-to-data-dir root-data-dir)
         repo-id "latest-commits-submodules-test"
         git-dir (fs/file data-dir (str repo-id ".git"))
         working-dir (helpers/temp-dir-as-string)
@@ -204,7 +204,7 @@
           working-dir (helpers/temp-dir-as-string)
           working-dir-2 (helpers/temp-dir-as-string)
           root-data-dir (helpers/temp-dir-as-string)
-          data-dir (helpers/storage-data-dir root-data-dir)
+          data-dir (core/path-to-data-dir root-data-dir)
           server-repo (fs/file data-dir (str repo ".git"))]
 
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
@@ -317,7 +317,7 @@
           working-dir-failed (helpers/temp-dir-as-string)
           working-dir-success (helpers/temp-dir-as-string)
           root-data-dir (helpers/temp-dir-as-string)
-          data-dir (helpers/storage-data-dir root-data-dir)]
+          data-dir (core/path-to-data-dir root-data-dir)]
       (helpers/with-bootstrapped-file-sync-storage-service-for-http
         app
         (helpers/storage-service-config-with-repos
@@ -357,7 +357,7 @@
         working-dir-failed (helpers/temp-dir-as-string)
         working-dir-success (helpers/temp-dir-as-string)
         root-data-dir (helpers/temp-dir-as-string)
-        data-dir (helpers/storage-data-dir root-data-dir)
+        data-dir (core/path-to-data-dir root-data-dir)
         git-dir-success (fs/file data-dir (str successful-parent ".git"))
         git-dir-failed (fs/file data-dir (str failed-parent ".git"))
         submodules-dir-name-1 "submodules1"
@@ -493,7 +493,7 @@
           submodule-1 "existing-submodule"
           submodule-2 "nonexistent-submodule"
           root-data-dir (helpers/temp-dir-as-string)
-          data-dir (helpers/storage-data-dir root-data-dir)
+          data-dir (core/path-to-data-dir root-data-dir)
           git-dir (fs/file data-dir (str repo ".git"))]
 
       ;; Set up working directory for submodule-1, the "existing-submodule"
