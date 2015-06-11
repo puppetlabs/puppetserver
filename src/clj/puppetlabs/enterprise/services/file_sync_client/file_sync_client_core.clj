@@ -42,6 +42,12 @@
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
 
+(def CoreConfig
+  "Schema defining the configuration passed to the sync agent"
+  {:client-config Config
+   :server-url schema/Str
+   :data-dir schema/Str})
+
 (def SyncError
   {:type                        (schema/eq ::error)
    :message                     String
@@ -231,31 +237,34 @@
 (schema/defn ^:always-validate sync-on-agent :- AgentState
   "Runs the sync process on the agent."
   [agent-state
-   {:keys [server-repo-path server-api-path repos]} :- Config
-   {:keys [server-url]} :- common/FileSyncCommonConfig
+   config :- CoreConfig
    http-client
-   callbacks
-   data-dir]
-  (log/debug "File sync process running on repos " repos)
-  (try+
-    (let [latest-commits (get-latest-commits-from-server http-client
-                                                         (str server-url server-api-path))
-          repo-states (process-repos-for-updates repos
-                                                 (str server-url server-repo-path)
-                                                 latest-commits
-                                                 callbacks
-                                                 data-dir)
-          full-success? (every? #(not= (:status %) :failed)
-                                (vals repo-states))]
-      {:status (if full-success? :successful :partial-success)
-       :repos repo-states})
-    (catch sync-error? error
-      (let [message (str "File sync failure: " (:message error))]
-        (if-let [cause (:cause error)]
-          (log/error cause message)
-          (log/error message)))
-      {:status :failed
-       :error  error})))
+   callbacks]
+  (let [repos (get-in config [:client-config :repos])]
+    (log/debug "File sync process running on repos " repos)
+    (try+
+      (let [server-repo-path (get-in config [:client-config :server-repo-path])
+            server-api-path (get-in config [:client-config :server-api-path])
+            server-url (:server-url config)
+            data-dir (:data-dir config)
+            latest-commits (get-latest-commits-from-server http-client
+                                                           (str server-url server-api-path))
+            repo-states (process-repos-for-updates repos
+                                                   (str server-url server-repo-path)
+                                                   latest-commits
+                                                   callbacks
+                                                   data-dir)
+            full-success? (every? #(not= (:status %) :failed)
+                                  (vals repo-states))]
+        {:status (if full-success? :successful :partial-success)
+         :repos  repo-states})
+      (catch sync-error? error
+        (let [message (str "File sync failure: " (:message error))]
+          (if-let [cause (:cause error)]
+            (log/error cause message)
+            (log/error message)))
+        {:status :failed
+         :error  error}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -306,16 +315,14 @@
   sync process to schedule the next iteration."
   [sync-agent :- Agent
    schedule-fn :- IFn
-   config :- Config
-   common-config :- common/FileSyncCommonConfig
+   config :- CoreConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callbacks
-   data-dir]
+   callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc ::schedule-next-run? true)))
-        send-to-agent #(send-off sync-agent periodic-sync config common-config
-                                 http-client callbacks data-dir)]
+        send-to-agent #(send-off sync-agent periodic-sync config
+                                 http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]

@@ -231,10 +231,10 @@
        (tk-services/service-context)
        :agent))
 
-(defn effective-storage-data-dir
+(defn storage-data-dir
   [data-dir]
   (str data-dir "/storage"))
 
-(defn effective-client-data-dir
+(defn client-data-dir
   [data-dir]
   (str data-dir "/client"))

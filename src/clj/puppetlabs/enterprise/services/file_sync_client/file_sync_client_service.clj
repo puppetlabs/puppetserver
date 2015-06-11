@@ -18,22 +18,26 @@
 
   (start [this context]
     (log/info "Starting file sync client service")
-    (let [config (get-in-config [:file-sync-client])
+    (let [client-config (get-in-config [:file-sync-client])
           common-config (get-in-config [:file-sync-common])
+          server-url (:server-url common-config)
           data-dir (core/construct-data-dir (:data-dir common-config))
-          poll-interval (* (:poll-interval config) 1000)
-          ssl-context (ssl/generate-ssl-context config)
+          poll-interval (* (:poll-interval client-config) 1000)
+          ssl-context (ssl/generate-ssl-context client-config)
           sync-agent (core/create-agent request-shutdown)]
       (core/configure-jgit-client-ssl! ssl-context)
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callbacks   (deref (:callbacks context))]
+            callbacks   (deref (:callbacks context))
+            config {:client-config client-config
+                    :server-url server-url
+                    :data-dir data-dir}]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config common-config http-client callbacks data-dir)
+          sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
-                       :config config
+                       :config client-config
                        :common-config common-config
                        :started? true))))
 

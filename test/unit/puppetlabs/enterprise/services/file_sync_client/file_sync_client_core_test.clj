@@ -49,7 +49,7 @@
         server-repo-url (str helpers/server-repo-url "/" repo-name)
         client-repo-path (temp-file-name repo-name)
         root-data-dir (helpers/temp-dir-as-string)
-        storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
+        storage-data-dir (helpers/storage-data-dir root-data-dir)
         config (helpers/storage-service-config-with-repos
                  root-data-dir
                  {(keyword repo-name) {:working-dir repo-name}}
@@ -144,8 +144,8 @@
 
 (deftest process-repos-for-updates-test
   (let [root-data-dir (helpers/temp-dir-as-string)
-        storage-data-dir (helpers/effective-storage-data-dir root-data-dir)
-        client-data-dir (helpers/effective-client-data-dir root-data-dir)
+        storage-data-dir (helpers/storage-data-dir root-data-dir)
+        client-data-dir (helpers/client-data-dir root-data-dir)
         server-repo "process-repos-test"
         error-repo  "process-repos-error"
         nonexistent-repo "process-repos-test-nonexistent"

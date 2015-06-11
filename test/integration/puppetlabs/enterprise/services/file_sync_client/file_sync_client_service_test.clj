@@ -65,7 +65,7 @@
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         root-data-dir (helpers/temp-dir-as-string)
-        client-repo-dir (str (helpers/effective-client-data-dir root-data-dir)
+        client-repo-dir (str (helpers/client-data-dir root-data-dir)
                              "/"
                              repo
                              ".git")
