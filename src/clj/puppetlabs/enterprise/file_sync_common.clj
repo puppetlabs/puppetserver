@@ -20,8 +20,13 @@
 
   The keys should have the following values:
 
+    * :data-dir - The data directory under which all of the bare repositories
+                  being managed (both on the client and server side) should
+                  reside.
+
     * :server-url - Base URL of the repository server."
-  {:server-url schema/Str})
+  {:data-dir schema/Str
+   :server-url schema/Str})
 
 (def LatestCommit
   "Schema defining the result of computing the latest commit for a repo"

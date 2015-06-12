@@ -61,13 +61,9 @@
 
   The keys should have the following values:
 
-    * :data-dir - The data directory on the Git server under which all of the
-                  repositories it is managing should reside.
-
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:data-dir StringOrFile
-   :repos    GitRepos})
+  {:repos    GitRepos})
 
 (def PublishRequestBase
   {(schema/optional-key :message) schema/Str
@@ -143,6 +139,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
+
+(defn path-to-data-dir
+  [data-dir]
+  (str data-dir "/storage"))
 
 (defn initialize-data-dir!
   "Initialize the data directory under which all git repositories will be hosted."
@@ -437,15 +437,15 @@
     * If working-dir does not exist, it will be created.
     * If there is not an existing Git repo under data-dir,
       'git init' will be used to create one."
-  [config :- FileSyncServiceRawConfig]
-  (let [data-dir (:data-dir config)]
-    (log/infof "Initializing file sync server data dir: %s" data-dir)
-    (initialize-data-dir! (fs/file data-dir))
-    (doseq [[repo-id repo-info] (:repos config)]
-      (let [working-dir (:working-dir repo-info)
-            git-dir (fs/file data-dir (str (name repo-id) ".git"))]
-        ; Create the working dir, if it does not already exist.
-        (when-not (fs/exists? working-dir)
-          (ks/mkdirs! working-dir))
-        (log/infof "Initializing Git repository at %s" git-dir )
-        (initialize-bare-repo! git-dir)))))
+  [config :- FileSyncServiceRawConfig
+   data-dir :- schema/Str]
+  (log/infof "Initializing file sync server data dir: %s" data-dir)
+  (initialize-data-dir! (fs/file data-dir))
+  (doseq [[repo-id repo-info] (:repos config)]
+    (let [working-dir (:working-dir repo-info)
+          git-dir (fs/file data-dir (str (name repo-id) ".git"))]
+      ; Create the working dir, if it does not already exist.
+      (when-not (fs/exists? working-dir)
+        (ks/mkdirs! working-dir))
+      (log/infof "Initializing Git repository at %s" git-dir)
+      (initialize-bare-repo! git-dir))))

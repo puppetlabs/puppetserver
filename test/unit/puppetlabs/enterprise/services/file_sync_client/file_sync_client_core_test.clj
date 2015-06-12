@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :refer :all]
+            [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as storage-core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
@@ -48,9 +49,10 @@
   (let [repo-name "apply-updates-test"
         server-repo-url (str helpers/server-repo-url "/" repo-name)
         client-repo-path (temp-file-name repo-name)
-        data-dir (helpers/temp-dir-as-string)
+        root-data-dir (helpers/temp-dir-as-string)
+        storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         config (helpers/storage-service-config-with-repos
-                 data-dir
+                 root-data-dir
                  {(keyword repo-name) {:working-dir repo-name}}
                  false)]
     (testing "Throws appropriate error when non-empty directory exists but has no git repo"
@@ -78,7 +80,7 @@
       app config
       (let [test-clone-dir (fs/file (helpers/temp-dir-as-string))
             test-clone-repo (.getRepository (helpers/clone-from-data-dir
-                                              data-dir repo-name test-clone-dir))]
+                                              storage-data-dir repo-name test-clone-dir))]
         (testing "Validate initial repo update"
           (fs/delete-dir client-repo-path)
           (let [initial-commit (jgit-utils/head-rev-id test-clone-repo)
@@ -131,22 +133,26 @@
             (is (= :synced (:status status)))))))))
 
 (defn process-repos
-  [repos client ssl? callbacks]
+  [repos client ssl? callbacks data-dir]
   (process-repos-for-updates
     repos
     (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
     (get-latest-commits-from-server
       client
       (str (helpers/base-url ssl?) helpers/default-api-path-prefix "/v1"))
-    callbacks))
+    callbacks
+    data-dir))
 
 (deftest process-repos-for-updates-test
-  (let [server-base-path (helpers/temp-dir-as-string)
-        client-target-repo-on-server (helpers/temp-dir-as-string)
-        client-target-repo-nonexistent (helpers/temp-dir-as-string)
-        client-target-repo-error (helpers/temp-dir-as-string)
+  (let [root-data-dir (helpers/temp-dir-as-string)
+        storage-data-dir (storage-core/path-to-data-dir root-data-dir)
+        client-data-dir (path-to-data-dir root-data-dir)
         server-repo "process-repos-test"
         error-repo  "process-repos-error"
+        nonexistent-repo "process-repos-test-nonexistent"
+        client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
+        client-target-repo-nonexistent (str client-data-dir "/" nonexistent-repo ".git")
+        client-target-repo-error (str client-data-dir "/" error-repo ".git")
         client (sync/create-client {})
         server-repo-atom (atom {})
         nonexistent-repo-atom (atom false)
@@ -161,22 +167,21 @@
     (helpers/with-bootstrapped-file-sync-storage-service-for-http
       app
       (helpers/storage-service-config-with-repos
-        server-base-path
+        root-data-dir
         {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)}
          (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}}
         false)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
-      (fs/delete-dir (fs/file server-base-path (str error-repo ".git")))
+      (fs/delete-dir (fs/file storage-data-dir (str error-repo ".git")))
 
       (with-test-logging
-        (let [state (process-repos {(keyword server-repo)           client-target-repo-on-server
-                                    (keyword error-repo)            client-target-repo-error
-                                    :process-repos-test-nonexistent client-target-repo-nonexistent}
+        (let [state (process-repos [server-repo error-repo nonexistent-repo]
                                    client false
                                    {(keyword server-repo) server-repo-callback
-                                    :nonexistent-repo     nonexistent-repo-callback})]
+                                    :nonexistent-repo     nonexistent-repo-callback}
+                                   client-data-dir)]
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get state server-repo) {:status        :synced
                                             :latest-commit nil}))
@@ -241,10 +246,12 @@
           (register-callback! {} :test 123)))))
 
 (deftest sync-working-dir-test
-  (let [git-dir (helpers/temp-dir-as-string)
+  (let [client-data-dir (helpers/temp-dir-as-string)
+        repo "test-repo"
+        git-dir (str client-data-dir "/" repo ".git")
         working-dir (helpers/temp-dir-as-string)
         local-repo-dir (helpers/temp-dir-as-string)
-        repo-config {:test-repo git-dir}]
+        repo-config [repo]]
     (with-test-logging
       (helpers/init-bare-repo! (fs/file git-dir))
       (let [local-temp-file (str local-repo-dir "/temp-test")
@@ -272,7 +279,7 @@
 
         (testing (str "sync-working-dir! successfully instantiates the contents of "
                       "a bare repo into a working directory")
-          (sync-working-dir! repo-config :test-repo working-dir)
+          (sync-working-dir! client-data-dir repo-config repo working-dir)
           (is (logged? #"Syncing working directory at.*for repo.*"))
           (is (fs/exists? working-temp-file))
           (is (fs/exists? working-temp-file-2))
@@ -293,7 +300,7 @@
             (is (not (fs/exists? local-temp-file-2))))
 
           (testing "contents of working-dir should be overridden when synced"
-            (sync-working-dir! repo-config :test-repo working-dir)
+            (sync-working-dir! client-data-dir repo-config repo working-dir)
             (is (fs/exists? working-temp-file))
             (is (not (fs/exists? working-temp-file-2)))
             (is (= temp-file-1-content (slurp working-temp-file)))))
@@ -301,7 +308,7 @@
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired repo doesn't exist")
           (is (thrown? IllegalArgumentException
-                       (sync-working-dir! repo-config :fake working-dir))))
+                       (sync-working-dir! client-data-dir repo-config "fake" working-dir))))
 
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired working dir doesn't exist")
@@ -310,4 +317,4 @@
             (is (thrown-with-msg?
                   IllegalStateException
                   #"Directory test.*must exist on disk to be synced as a working directory"
-                  (sync-working-dir! repo-config :test-repo fake-dir)))))))))
+                  (sync-working-dir! client-data-dir repo-config repo fake-dir)))))))))

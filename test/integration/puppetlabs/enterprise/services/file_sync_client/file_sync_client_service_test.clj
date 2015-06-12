@@ -12,6 +12,7 @@
              :as scheduler-service]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [me.raynes.fs :as fs])
   (:import (javax.net.ssl SSLException)))
@@ -19,7 +20,7 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
-  (helpers/client-service-config-with-repos {:fake "fake"} true))
+  (helpers/client-service-config-with-repos (helpers/temp-dir-as-string) ["fake"] true))
 
 (defn ring-handler
   [_]
@@ -64,7 +65,11 @@
 
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
-        client-repo-dir (str (helpers/temp-dir-as-string) "/" repo)
+        root-data-dir (helpers/temp-dir-as-string)
+        client-repo-dir (str (core/path-to-data-dir root-data-dir)
+                             "/"
+                             repo
+                             ".git")
         client-working-dir (fs/file (helpers/temp-dir-as-string))
         local-repo-dir (helpers/temp-dir-as-string)
         local-repo (helpers/init-repo! (fs/file local-repo-dir))]
@@ -80,7 +85,8 @@
         [file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
         (helpers/client-service-config-with-repos
-          {(keyword repo) (str client-repo-dir)}
+          root-data-dir
+          [repo]
           false)
 
         (let [client-service (tk-app/get-service app :FileSyncClientService)]
@@ -94,7 +100,7 @@
           (testing (str "client working dir is properly synced when "
                         "service function is called")
             (client-protocol/sync-working-dir! client-service
-                                               (keyword repo)
+                                               repo
                                                (str client-working-dir))
             (is (= (fs/list-dir client-working-dir)
                    (filter #(not= ".git" %)
@@ -106,7 +112,7 @@
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
                          (register-callback! :foo (fn [& _] nil))))
-          config (helpers/client-service-config-with-repos {} false)
+          config (helpers/client-service-config-with-repos (helpers/temp-dir-as-string) [] false)
           client-app (tk/build-app
                        [file-sync-client-service/file-sync-client-service
                         scheduler-service/scheduler-service

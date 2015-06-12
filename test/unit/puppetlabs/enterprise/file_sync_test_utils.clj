@@ -84,9 +84,9 @@
   ([data-dir repos]
    (file-sync-storage-config data-dir repos false))
   ([data-dir repos ssl?]
-   {:file-sync-common {:server-url (base-url ssl?)}
-    :file-sync-storage {:data-dir data-dir
-                        :repos    repos}}))
+   {:file-sync-common {:server-url (base-url ssl?)
+                       :data-dir data-dir}
+    :file-sync-storage {:repos    repos}}))
 
 (defn storage-service-config-with-repos
   [data-dir repos ssl?]
@@ -95,9 +95,10 @@
     (merge webserver-plaintext-config (file-sync-storage-config data-dir repos))))
 
 (defn client-service-config-with-repos
-  [repos ssl?]
+  [data-dir repos ssl?]
   (let [ssl-opts (if ssl? ssl-options {})]
-    {:file-sync-common {:server-url (base-url ssl?)}
+    {:file-sync-common {:server-url (base-url ssl?)
+                        :data-dir data-dir}
      :file-sync-client (merge ssl-opts
                          {:poll-interval    1
                           :server-api-path  (str default-api-path-prefix "/v1")
