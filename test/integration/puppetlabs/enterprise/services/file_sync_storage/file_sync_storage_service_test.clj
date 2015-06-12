@@ -18,11 +18,10 @@
 (deftest ^:integration push-disabled-test
   (testing "The JGit servlet should not accept pushes"
     (let [repo-id "push-disabled-test"
-          config (helpers/storage-service-config-with-repos
+          config (helpers/storage-service-config
                    (helpers/temp-dir-as-string)
-                   {(keyword repo-id) {:working-dir repo-id}}
-                   false)]
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+                   {(keyword repo-id) {:working-dir repo-id}})]
+      (helpers/with-bootstrapped-storage-service
         app config
         (let [clone-dir (helpers/temp-dir-as-string)
               server-repo-url (str (helpers/repo-base-url) "/" repo-id)]
@@ -39,12 +38,11 @@
         repo-id "file-sync-storage-service-simple-workflow"]
     (testing "bootstrap the file sync storage service and validate that a simple
             clone/push/clone to the server works over http"
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      (helpers/with-bootstrapped-storage-service
         app
-        (helpers/storage-service-config-with-repos
+        (helpers/storage-service-config
           root-data-dir
-          {(keyword repo-id) {:working-dir repo-id}}
-          false)
+          {(keyword repo-id) {:working-dir repo-id}})
         (let [server-repo-url (str
                                 (helpers/repo-base-url)
                                 "/"
@@ -61,7 +59,7 @@
   (testing "file sync storage service cannot perform git operations over
             plaintext when the server is configured using SSL"
     (let [repo-name "ssl-configuration-test"
-          config (helpers/storage-service-config-with-repos
+          config (helpers/storage-service-config
                    (helpers/temp-dir-as-string)
                    {(keyword repo-name) {:working-dir repo-name}}
                    true)] ; 'true' results in config with Jetty listening on over HTTPS only
@@ -69,7 +67,7 @@
       (helpers/configure-JGit-SSL! false)
       ;; Starting the storage service with SSL in the config should
       ;; reconfigure JGit's global state to allow access over SSL.
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      (helpers/with-bootstrapped-storage-service
         app config
         (is (thrown? TransportException
                      (jgit-utils/clone
@@ -88,14 +86,13 @@
         repo1-id "latest-commits-test-1"
         repo2-id "latest-commits-test-2"
         repo3-id "latest-commits-test-3"]
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    (helpers/with-bootstrapped-storage-service
       app
-      (helpers/storage-service-config-with-repos
+      (helpers/storage-service-config
         root-data-dir
         {(keyword repo1-id) {:working-dir repo1-id}
          (keyword repo2-id) {:working-dir repo2-id}
-         (keyword repo3-id) {:working-dir repo3-id}}
-        false)
+         (keyword repo3-id) {:working-dir repo3-id}})
 
       (let [client-orig-repo-dir-1 (helpers/clone-and-push-test-commit! repo1-id data-dir)
             client-orig-repo-dir-2 (helpers/clone-and-push-test-commit! repo2-id data-dir)]
@@ -147,14 +144,13 @@
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
         submodule-id "submodule"]
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    (helpers/with-bootstrapped-storage-service
       app
-      (helpers/storage-service-config-with-repos
+      (helpers/storage-service-config
         root-data-dir
         {(keyword repo-id) {:working-dir working-dir
                             :submodules-dir submodules-dir
-                            :submodules-working-dir submodules-working-dir}}
-        false)
+                            :submodules-working-dir submodules-working-dir}})
 
       ; Initialize the submodule
       (ks/mkdirs! (fs/file submodules-working-dir submodule-id))
@@ -207,13 +203,12 @@
           data-dir (core/path-to-data-dir root-data-dir)
           server-repo (fs/file data-dir (str repo ".git"))]
 
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      (helpers/with-bootstrapped-storage-service
         app
-        (helpers/storage-service-config-with-repos
+        (helpers/storage-service-config
           root-data-dir
           {(keyword repo) {:working-dir working-dir}
-           (keyword repo2) {:working-dir working-dir-2}}
-          false)
+           (keyword repo2) {:working-dir working-dir-2}})
         (testing "with no body supplied"
           (let [response (http-client/post publish-url)
                 body (slurp (:body response))
@@ -279,12 +274,11 @@
 
 (deftest ^:integration publish-content-endpoint-error-test
   (testing "publish content endpoint returns well-formed errors"
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    (helpers/with-bootstrapped-storage-service
       app
-      (helpers/storage-service-config-with-repos
+      (helpers/storage-service-config
         (helpers/temp-dir-as-string)
-        {:repo-name {:working-dir (helpers/temp-dir-as-string)}}
-        false)
+        {:repo-name {:working-dir (helpers/temp-dir-as-string)}})
 
       (testing "when request body does not match schema"
         (let [response (make-publish-request {:author "bad"})
@@ -318,13 +312,12 @@
           working-dir-success (helpers/temp-dir-as-string)
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)]
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      (helpers/with-bootstrapped-storage-service
         app
-        (helpers/storage-service-config-with-repos
+        (helpers/storage-service-config
           root-data-dir
           {(keyword failed-repo) {:working-dir working-dir-failed}
-           (keyword success-repo) {:working-dir working-dir-success}}
-          false)
+           (keyword success-repo) {:working-dir working-dir-success}})
 
         ; Delete the failed repo entirely - this'll cause the publish to fail
         (fs/delete-dir (fs/file data-dir (str failed-repo ".git")))
@@ -375,17 +368,16 @@
   (ks/mkdirs! (fs/file submodules-working-dir-2 submodule-3))
   (helpers/write-test-file! (fs/file submodules-working-dir-2 submodule-3 "test.txt"))
 
-  (helpers/with-bootstrapped-file-sync-storage-service-for-http
+  (helpers/with-bootstrapped-storage-service
     app
-    (helpers/storage-service-config-with-repos
+    (helpers/storage-service-config
       root-data-dir
       {(keyword successful-parent) {:working-dir working-dir-success
                                     :submodules-dir submodules-dir-name-1
                                     :submodules-working-dir submodules-working-dir-1}
        (keyword failed-parent) {:working-dir working-dir-failed
                                 :submodules-dir submodules-dir-name-2
-                                :submodules-working-dir submodules-working-dir-2}}
-    false)
+                                :submodules-working-dir submodules-working-dir-2}})
 
     (testing "successful publish returns SHAs for parent repos and submodules"
       (let [response (http-client/post publish-url)
@@ -503,14 +495,13 @@
       (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
 
-      (helpers/with-bootstrapped-file-sync-storage-service-for-http
+      (helpers/with-bootstrapped-storage-service
         app
-        (helpers/storage-service-config-with-repos
+        (helpers/storage-service-config
           root-data-dir
           {(keyword repo) {:working-dir working-dir
                            :submodules-dir submodules-dir-name
-                           :submodules-working-dir submodules-working-dir}}
-          false)
+                           :submodules-working-dir submodules-working-dir}})
 
        (testing "parent repo initialized correctly but does not initialize any submodules"
          (is (fs/exists? (fs/file data-dir (str repo ".git"))))

@@ -51,10 +51,9 @@
         client-repo-path (temp-file-name repo-name)
         root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
-        config (helpers/storage-service-config-with-repos
+        config (helpers/storage-service-config
                  root-data-dir
-                 {(keyword repo-name) {:working-dir repo-name}}
-                 false)]
+                 {(keyword repo-name) {:working-dir repo-name}})]
     (testing "Throws appropriate error when non-empty directory exists but has no git repo"
       (fs/mkdir client-repo-path)
       (fs/touch (fs/file client-repo-path "foo"))
@@ -76,7 +75,7 @@
                              (apply-updates-to-repo repo-name server-repo-url
                                                     "" client-repo-path))))
 
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    (helpers/with-bootstrapped-storage-service
       app config
       (let [test-clone-dir (fs/file (helpers/temp-dir-as-string))
             test-clone-repo (.getRepository (helpers/clone-from-data-dir
@@ -164,13 +163,12 @@
                                                 repo-state)))
         nonexistent-repo-callback (fn [_ _]
                                     (reset! nonexistent-repo-atom true))]
-    (helpers/with-bootstrapped-file-sync-storage-service-for-http
+    (helpers/with-bootstrapped-storage-service
       app
-      (helpers/storage-service-config-with-repos
+      (helpers/storage-service-config
         root-data-dir
         {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)}
-         (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}}
-        false)
+         (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}})
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
