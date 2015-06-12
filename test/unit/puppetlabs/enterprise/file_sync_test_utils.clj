@@ -80,30 +80,26 @@
                         {:api          default-api-path-prefix
                          :repo-servlet default-repo-path-prefix}}})
 
-(defn file-sync-storage-config
+(defn storage-service-config
   ([data-dir repos]
-   (file-sync-storage-config data-dir repos false))
+   (storage-service-config data-dir repos false))
+  ([data-dir repos ssl?]
+   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+     :file-sync-common {:server-url (base-url ssl?)
+                        :data-dir data-dir}
+     :file-sync-storage {:repos repos})))
+
+(defn client-service-config
+  ([data-dir repos]
+    (client-service-config data-dir repos false))
   ([data-dir repos ssl?]
    {:file-sync-common {:server-url (base-url ssl?)
                        :data-dir data-dir}
-    :file-sync-storage {:repos    repos}}))
-
-(defn storage-service-config-with-repos
-  [data-dir repos ssl?]
-  (if ssl?
-    (merge webserver-ssl-config (file-sync-storage-config data-dir repos true))
-    (merge webserver-plaintext-config (file-sync-storage-config data-dir repos))))
-
-(defn client-service-config-with-repos
-  [data-dir repos ssl?]
-  (let [ssl-opts (if ssl? ssl-options {})]
-    {:file-sync-common {:server-url (base-url ssl?)
-                        :data-dir data-dir}
-     :file-sync-client (merge ssl-opts
-                         {:poll-interval    1
-                          :server-api-path  (str default-api-path-prefix "/v1")
-                          :server-repo-path default-repo-path-prefix
-                          :repos            repos})}))
+    :file-sync-client (assoc (if ssl? ssl-options {})
+                        :poll-interval 1
+                        :server-api-path (str default-api-path-prefix "/v1")
+                        :server-repo-path default-repo-path-prefix
+                        :repos repos)}))
 
 (defn temp-dir-as-string
   []
@@ -119,7 +115,7 @@
   [file]
   (spit file file-text))
 
-(defmacro with-bootstrapped-file-sync-storage-service-for-http
+(defmacro with-bootstrapped-storage-service
   [app config & body]
   `(bootstrap/with-app-with-config
      ~app
@@ -129,7 +125,7 @@
      (do
        ~@body)))
 
-(defmacro with-bootstrapped-file-sync-client-and-webserver
+(defmacro with-bootstrapped-client-service-and-webserver
   [app webserver-config ring-handler client-config & body]
   `(bootstrap/with-app-with-config
      webserver-app#

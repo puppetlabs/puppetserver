@@ -20,7 +20,7 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
-  (helpers/client-service-config-with-repos (helpers/temp-dir-as-string) ["fake"] true))
+  (helpers/client-service-config (helpers/temp-dir-as-string) ["fake"] true))
 
 (defn ring-handler
   [_]
@@ -31,7 +31,7 @@
 (deftest ^:integration polling-client-ssl-test
   (testing "polling client will use SSL when configured"
     (logging/with-test-logging
-      (helpers/with-bootstrapped-file-sync-client-and-webserver
+      (helpers/with-bootstrapped-client-service-and-webserver
         app
         helpers/webserver-ssl-config
         ring-handler
@@ -43,7 +43,7 @@
 (deftest ^:integration polling-client-no-ssl-test
   (testing "polling client fails to use SSL when not configured"
     (logging/with-test-logging
-      (helpers/with-bootstrapped-file-sync-client-and-webserver
+      (helpers/with-bootstrapped-client-service-and-webserver
         app
         helpers/webserver-ssl-config
         ring-handler
@@ -57,7 +57,7 @@
   (testing "SSL configuration fails when not all options are provided"
     (logging/with-test-logging
       (is (thrown? IllegalArgumentException
-                   (helpers/with-bootstrapped-file-sync-client-and-webserver
+                   (helpers/with-bootstrapped-client-service-and-webserver
                      app
                      helpers/webserver-ssl-config
                      ring-handler
@@ -84,7 +84,7 @@
         app
         [file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
-        (helpers/client-service-config-with-repos
+        (helpers/client-service-config
           root-data-dir
           [repo]
           false)
@@ -112,7 +112,7 @@
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
                          (register-callback! :foo (fn [& _] nil))))
-          config (helpers/client-service-config-with-repos (helpers/temp-dir-as-string) [] false)
+          config (helpers/client-service-config (helpers/temp-dir-as-string) [] false)
           client-app (tk/build-app
                        [file-sync-client-service/file-sync-client-service
                         scheduler-service/scheduler-service

@@ -60,11 +60,11 @@
            webrouting-service/webrouting-service
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service]
-          (merge (helpers/storage-service-config-with-repos
+          (merge (helpers/storage-service-config
                    root-data-dir
                    {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
                    true)
-                 (helpers/client-service-config-with-repos
+                 (helpers/client-service-config
                    root-data-dir
                    [repo]
                    true))
@@ -94,10 +94,9 @@
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
                            webrouting-service/webrouting-service]
-                          (helpers/storage-service-config-with-repos
+                          (helpers/storage-service-config
                             root-data-dir
-                            {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
-                            false)))]
+                            {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}})))]
       (try
         (let [client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
               client-repo-dir (fs/file client-data-dir (str repo ".git"))
@@ -116,7 +115,7 @@
             app
             [file-sync-client-service/file-sync-client-service
              scheduler-service/scheduler-service]
-            (helpers/client-service-config-with-repos
+            (helpers/client-service-config
               root-data-dir
               [repo]
               false)
@@ -210,12 +209,11 @@
          webrouting-service/webrouting-service
          file-sync-client-service/file-sync-client-service
          scheduler-service/scheduler-service]
-        (merge (helpers/storage-service-config-with-repos
+        (merge (helpers/storage-service-config
                  root-data-dir
                  {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
-                  (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}}
-                 false)
-               (helpers/client-service-config-with-repos
+                  (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}})
+               (helpers/client-service-config
                  root-data-dir
                  [repo1 repo2]
                  false))
@@ -307,11 +305,10 @@
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service
            callback-service]
-          (merge (helpers/storage-service-config-with-repos
+          (merge (helpers/storage-service-config
                    root-data-dir
-                   {(keyword repo) {:working-dir repo}}
-                   false)
-                 (helpers/client-service-config-with-repos
+                   {(keyword repo) {:working-dir repo}})
+                 (helpers/client-service-config
                    root-data-dir
                    [repo]
                    false))
