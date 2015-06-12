@@ -14,7 +14,7 @@
 
   (init [this context]
     (log/info "Initializing file sync client service")
-    (assoc context :callbacks (atom {})))
+    (assoc context :callback-repos (atom {}) :repo-callbacks (atom {})))
 
   (start [this context]
     (log/info "Starting file sync client service")
@@ -29,24 +29,25 @@
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callbacks   (deref (:callbacks context))
+            callback-repos   (deref (:callback-repos context))
+            repo-callbacks (deref (:repo-callbacks context))
             config {:client-config client-config
                     :server-url server-url
                     :data-dir data-dir}]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client callbacks)
+          sync-agent schedule-fn config http-client callback-repos repo-callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
                        :config client-config
                        :common-config common-config
                        :started? true))))
 
-  (register-callback! [this repo-id callback-fn]
+  (register-callback! [this repo-ids callback-fn]
     (let [context (tks/service-context this)]
       (when (:started? context)
         (throw (IllegalStateException.
                  "Callbacks must be registered before the File Sync Client is started")))
-      (core/register-callback! context repo-id callback-fn)))
+      (core/register-callback! context repo-ids callback-fn)))
 
   (sync-working-dir! [this repo-id working-dir]
     (core/sync-working-dir! (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))

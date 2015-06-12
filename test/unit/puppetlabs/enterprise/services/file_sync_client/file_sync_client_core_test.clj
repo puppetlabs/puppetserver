@@ -232,20 +232,15 @@
                     "url")))))))))
 
 (defn process-repos
-  [repos callbacks data-dir]
-  (let [latest-commits-url (str (helpers/base-url)
-                             helpers/default-api-path-prefix
-                             "/v1"
-                             common/latest-commits-sub-path)
-        body (-> latest-commits-url
-                 (http-client/post {:as :text})
-                 get-body-from-latest-commits-payload)]
-    (process-repos-for-updates
-      repos
-      (str (helpers/base-url) helpers/default-repo-path-prefix)
-      body
-      callbacks
-      data-dir)))
+  [repos client ssl? data-dir]
+  (process-repos-for-updates
+    repos
+    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
+    (get-latest-commits-from-server
+      client
+      (str (helpers/base-url ssl?) helpers/default-api-path-prefix "/v1")
+      {:status :created})
+    data-dir))
 
 (deftest process-repos-for-updates-test
   (let [root-data-dir (helpers/temp-dir-as-string)
@@ -257,21 +252,10 @@
         client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
         client-target-repo-nonexistent (str client-data-dir "/" nonexistent-repo ".git")
         client-target-repo-error (str client-data-dir "/" error-repo ".git")
-        server-repo-atom (atom {})
-        nonexistent-repo-atom (atom false)
-        server-repo-callback (fn [repo-id repo-state]
-                               (swap! server-repo-atom
-                                 #(assoc
-                                   %
-                                   :repo-id
-                                   repo-id
-                                   :repo-state
-                                   repo-state)))
-        nonexistent-repo-callback (fn [_ _]
-                                    (reset! nonexistent-repo-atom true))
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
-        submodule "submodule"]
+        submodule "submodule"
+        client (sync/create-client {})]
     (helpers/with-bootstrapped-storage-service
       app
       (helpers/storage-service-config
@@ -289,9 +273,8 @@
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
-                                   {(keyword server-repo) server-repo-callback
-                                    :nonexistent-repo     nonexistent-repo-callback}
-                                   client-data-dir)]
+                                   client false client-data-dir)]
+
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get-in state [server-repo :status]) :synced))
             (is (not (nil? (get-in state [server-repo :latest-commit]))))
@@ -321,16 +304,7 @@
         (testing "Error logged when repo cannot be synced"
           (is (logged?
                 #"^Error syncing repo.*"
-                :error)))
-
-        (testing "Repo callback called when match on server"
-          (let [status @server-repo-atom]
-            (is (= (keyword server-repo) (:repo-id status)))
-            (is (= :synced (get-in status [:repo-state :status])))
-            (is (not= nil (get-in status [:repo-state :latest-commit])))))
-
-        (testing "Repo callback not called when no match on server"
-          (is (= false @nonexistent-repo-atom)))))))
+                :error)))))))
 
 (deftest ssl-configuration-test
   (testing "JGit's ConnectionFactory hands-out instances of our own
@@ -360,7 +334,7 @@
   (testing "register-callback! throws an error if callback is not a function"
     (is (thrown?
           IllegalArgumentException
-          (register-callback! {} :test 123)))))
+          (register-callback! {} #{:test} 123)))))
 
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
@@ -434,3 +408,71 @@
                   IllegalStateException
                   #"Directory test.*must exist on disk to be synced as a working directory"
                   (sync-working-dir! client-data-dir repo-config repo fake-dir)))))))))
+
+(deftest process-callbacks-test
+  (let [atom-start-value {:count 0}
+        callback-result-unified (atom atom-start-value)
+        callback-result-repo-1 (atom atom-start-value)
+        callback-result-repo-2 (atom atom-start-value)
+        generate-callback-fn (fn [atom]
+                               (fn [repos-status]
+                                 (swap! atom #(assoc % :status repos-status
+                                                       :count (+ 1 (:count (deref atom)))))))
+        repo1 "repo1"
+        repo2 "repo2"
+        repo-1-callback (generate-callback-fn callback-result-repo-1)
+        repo-2-callback (generate-callback-fn callback-result-repo-2)
+        unified-callback (generate-callback-fn callback-result-unified)
+        callback-repos {repo-1-callback #{repo1}
+                        repo-2-callback #{repo2}
+                        unified-callback #{repo1 repo2}}
+        repo-callbacks {repo1 #{repo-1-callback unified-callback}
+                        repo2 #{repo-2-callback unified-callback}}
+        call-callback (partial process-callbacks callback-repos repo-callbacks)
+        status {repo1 {:status :synced
+                       :latest-commit nil}
+                repo2 {:status :synced
+                       :latest-commit nil}}]
+    (testing "relevant callbacks called when all registered repos are synced"
+      (call-callback status)
+      (testing "callback for first repo is called once"
+        (let [callback-result (deref callback-result-repo-1)]
+          (is (= (select-keys status [repo1]) (:status callback-result)))
+          (is (= 1 (:count callback-result)))))
+      (testing "callback for second repo is called once"
+        (let [callback-result (deref callback-result-repo-2)]
+          (is (= (select-keys status [repo2]) (:status callback-result)))
+          (is (= 1 (:count callback-result)))))
+      (testing "unified callback is called once"
+        (let [callback-result (deref callback-result-unified)]
+          (is (= status (:status callback-result)))
+          (is (= 1 (:count callback-result))))))
+
+    (testing "callback called when only one registered repo is synced"
+      (reset! callback-result-unified atom-start-value)
+      (reset! callback-result-repo-1 atom-start-value)
+      (reset! callback-result-repo-2 atom-start-value)
+      (let [repos-status (assoc-in status ["repo1" :status] :unchanged)]
+        (call-callback repos-status)
+        (testing "callback for first repo is not called"
+          (is (= {:count 0} (deref callback-result-repo-1))))
+        (testing "callback for second repo is called once"
+          (let [callback-result (deref callback-result-repo-2)]
+            (is (= (select-keys repos-status [repo2]) (:status callback-result)))
+            (is (= 1 (:count callback-result)))))
+        (testing "callback for unified repo is called once with correct status"
+          (let [callback-result (deref callback-result-unified)]
+            (is (= repos-status (:status callback-result)))
+            (is (= 1 (:count callback-result)))))))
+
+    (testing "no callbacks called when registered repos are not synced"
+      (reset! callback-result-unified atom-start-value)
+      (reset! callback-result-repo-1 atom-start-value)
+      (reset! callback-result-repo-2 atom-start-value)
+      (let [unchanged-status {:status :unchanged
+                              :latest-commit nil}
+            repos-status (assoc status "repo1" unchanged-status "repo2" unchanged-status)]
+        (call-callback repos-status)
+        (is (= atom-start-value (deref callback-result-repo-1)))
+        (is (= atom-start-value (deref callback-result-repo-2)))
+        (is (= atom-start-value (deref callback-result-unified)))))))
