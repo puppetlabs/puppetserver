@@ -1,6 +1,5 @@
 (ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport HttpTransport)
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory))
   (:require [clojure.test :refer :all]
@@ -33,8 +32,9 @@
 
 (def server-repo-url (str server-base-url default-repo-path-prefix))
 
-(def author (PersonIdent.
-              "lein tester" "lein.tester@bogus.com"))
+(def test-identity
+  {:name "Tester Testypants"
+   :email "tester@bogus.com"})
 
 (defn base-url
   [ssl?]
@@ -159,7 +159,7 @@
   ([repo-path file-name]
    (write-test-file! (str repo-path "/" file-name))
    (let [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
-     (jgit-utils/add-and-commit repo "update via test" author)
+     (jgit-utils/add-and-commit repo "update via test" test-identity)
      (jgit-utils/push repo))))
 
 (defn clone-and-push-test-commit!

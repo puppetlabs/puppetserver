@@ -52,6 +52,17 @@
              schema/Any schema/Any}
    schema/Any schema/Any})
 
+(def Identity
+  "Schema for an author/committer."
+  {:name String
+   :email String})
+
+(def CommitInfo
+  "Schema defining the necessary metadata for making a commit."
+  {:identity Identity
+   :message schema/Str})
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions
 

@@ -27,7 +27,11 @@
       ([url connection-proxy]
         (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
-(defn add-and-commit
+(schema/defn identity->person-ident :- PersonIdent
+  [{:keys [name email]} :- common/Identity]
+  (PersonIdent. name email))
+
+(schema/defn add-and-commit :- RevCommit
   "Perform a git-add and git-commit of all files in the repo working tree. All
   files, whether previously indexed or not, will be considered for the commit.
   The supplied message and author will be attached to the commit.  If the commit
@@ -45,21 +49,21 @@
 
   * WrongRepositoryStateException
     - when repository is not in the right state for committing"
-  [git message author]
-  {:pre [(instance? Git git)
-         (string? message)
-         (instance? PersonIdent author)]
-   :post [(instance? RevCommit %)]}
+  [git :- Git
+   message :- String
+   identity :- common/Identity]
   (-> git
       (.add)
       (.addFilepattern ".")
       (.call))
-  (-> git
-      (.commit)
-      (.setMessage message)
-      (.setAll true)
-      (.setAuthor author)
-      (.call)))
+  (let [person-ident (identity->person-ident identity)]
+    (-> git
+        (.commit)
+        (.setMessage message)
+        (.setAll true)
+        (.setAuthor person-ident)
+        (.setCommitter person-ident)
+        (.call))))
 
 (defn clone
   "Perform a git-clone of the content at the specified 'server-repo-url' string

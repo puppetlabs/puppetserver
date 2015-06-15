@@ -5,8 +5,7 @@
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils])
-  (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)))
+  (:import (org.eclipse.jgit.api Git)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -31,7 +30,7 @@
         (spit (fs/file working-dir "test-file") "howdy")
         (let [repo (jgit-utils/get-repository git-dir working-dir)]
           (is (jgit-utils/add-and-commit
-                (Git/wrap repo) "test commit" (PersonIdent. "me" "me@you.com")))
+                (Git/wrap repo) "test commit" helpers/test-identity))
           (is (jgit-utils/head-rev-id repo)))))))
 
 (defn commit!
@@ -40,7 +39,7 @@
     (jgit-utils/add-and-commit
       (Git/wrap repo)
       "test commit"
-      (PersonIdent. "test" "test@test.com"))))
+      helpers/test-identity)))
 
 (deftest reinitialize-repos-test
   (let [data-dir          (fs/temp-dir "data")

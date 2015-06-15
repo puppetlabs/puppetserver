@@ -1,7 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.api.errors GitAPIException JGitInternalException))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
@@ -132,11 +131,6 @@
   SHA or an error map."
   {schema/Keyword PublishRepoResult})
 
-(def CommitInfo
-  "Schema defining the necessary metadata for making a commit."
-  {:author PersonIdent
-   :message schema/Str})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -197,13 +191,12 @@
     (into {}
       (map* latest-commit sub-paths))))
 
-(defn commit-author
-  "Create PersonIdent instance using provided name and email, or
-  defaults if not provided."
+(schema/defn commit-author :- common/Identity
+  "Returns an Identity given the author information from a publish request,
+  using defaults for name and e-mail address if not specified."
   [author]
-  (let [name (:name author default-commit-author-name)
-        email (:email author default-commit-author-email)]
-   (PersonIdent. name email)))
+  {:name (:name author default-commit-author-name)
+   :email (:email author default-commit-author-email)})
 
 (defn failed-to-publish
   [path error]
@@ -230,7 +223,8 @@
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s" submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
+    (jgit-utils/add-and-commit
+      submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a submodule add on the parent repo and return the SHA from the cloned
   ;; submodule within the repo
@@ -254,7 +248,8 @@
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
+    (jgit-utils/add-and-commit
+      submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a pull for the submodule within the parent repo to update it, and
   ;; the return the SHA for the new HEAD of the submodule.
@@ -334,7 +329,7 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
-   commit-info :- CommitInfo
+   commit-info :- common/CommitInfo
    submodule-id :- (schema/maybe schema/Str)]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
     (do
@@ -349,7 +344,8 @@
           (log/infof "Committing repo %s" working-dir)
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (jgit-utils/add-and-commit git (:message commit-info) (:author commit-info))
+                commit (jgit-utils/add-and-commit
+                         git (:message commit-info) (:identity commit-info))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
@@ -379,7 +375,7 @@
                   (select-keys repos [repo-id])
                   repos)
           submodule-id (:submodule-id body)
-          commit-info {:author (commit-author (:author body))
+          commit-info {:identity (commit-author (:author body))
                        :message (:message body default-commit-message)}
           new-commits (publish-repos repos data-dir server-repo-url commit-info submodule-id)]
       (zipmap (keys repos) new-commits))))
