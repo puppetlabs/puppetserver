@@ -3,12 +3,14 @@
   (:require
     [clojure.tools.logging :as log]
     [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
+    [puppetlabs.enterprise.file-sync-common :as common]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
     [compojure.core :as compojure]))
 
 (defservice file-sync-storage-service
-            [[:ConfigService get-in-config]
-             [:WebroutingService add-servlet-handler add-ring-handler get-route]]
+  [[:ConfigService get-in-config]
+   [:WebroutingService add-servlet-handler add-ring-handler get-route]
+   [:StatusService register-status]]
 
   (init [this context]
     (let [config (get-in-config [:file-sync-storage])
@@ -23,26 +25,25 @@
           ; -- everything exported -- until a need to do
           ; something different for security arises.
           export-all "1"]
-
       (core/initialize-repos! config data-dir)
-
       (log/info
-         "File sync storage service mounting repositories at" repo-path-prefix)
-
+        "File sync storage service mounting repositories at" repo-path-prefix)
       (add-servlet-handler
         this
         (GitServlet.)
         {:servlet-init-params {"base-path" data-dir "export-all" export-all}
-         :route-id            :repo-servlet})
-
+         :route-id :repo-servlet})
       (let [repos (:repos config)
             handler (core/build-handler data-dir repos server-repo-url)]
-
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
-
         (add-ring-handler
           this
           (compojure/context api-path-prefix [] handler)
-          {:route-id :api})))
-
+          {:route-id :api}))
+      ; Register status function with the TK Status Service
+      (register-status
+        "file-sync-storage-service"
+        common/artifact-version
+        1
+        #(core/status % (:repos config) data-dir)))
     context))

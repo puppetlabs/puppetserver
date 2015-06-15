@@ -11,7 +11,9 @@
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [cheshire.core :as json]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -543,3 +545,97 @@
            (is (fs/exists? (fs/file working-dir submodules-dir-name submodule-1 "update.txt")))
            (is (= (slurp (fs/file submodules-working-dir submodule-1 "update.txt"))
                  (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))))))
+
+(defn fetch-status
+  []
+  (http-client/get
+    (str helpers/server-base-url
+      "/status/v1/services/file-sync-storage-service")
+    {:as :text}))
+
+(deftest ^:integration status-endpoint-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        config (helpers/storage-service-config
+                 data-dir
+                 {:my-repo {:working-dir working-dir}})]
+    (helpers/with-bootstrapped-storage-service
+      app config
+      ; First, create and some test content
+      (spit (fs/file working-dir "test-file-1") "test file content 1")
+      (spit (fs/file working-dir "test-file-2") "test file content 2")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                   json/generate-string)
+            commit-id (-> (http-client/post
+                            (str helpers/server-base-url "/file-sync/v1/publish")
+                            {:as :text
+                             :headers {"content-type" "application/json"}
+                             :body publish-request-body})
+                        :body
+                        (json/parse-string true)
+                        :my-repo
+                        :commit)
+            response (fetch-status)]
+        (testing "A request against the Storage Service's status endpoint"
+          (is (= 200 (:status response)))
+          (let [body (json/parse-string (:body response))]
+            (testing "Basic response data"
+              (is (= "file-sync-storage-service" (body "service_name")))
+              (is (= "true" (body "is_running"))))
+            (let [status (get-in body ["status" "repos" "my-repo"])
+                  latest-commit-status (get status "latest-commit")]
+              (testing "Latest commit ID"
+                (is (= commit-id (get latest-commit-status "commit"))))
+              (testing "Commit date/time"
+                (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+                  ; JGit tracks commit time at the seconds level of resolution,
+                  ; (appears to just truncate milliseconds, never rounding up)
+                  ; and therefore always has 0 milliseconds in the DateTime
+                  ; object here.  So give it some wiggle room.
+                  ;(is (time/after? commit-time test-start-time))
+                  (is (time/after? commit-time (-> test-start-time
+                                                   (time/minus (time/seconds 1)))))
+                  (is (time/before? commit-time (time/now)))))
+              (testing "The commit author"
+                (is (= {"name" "Testy"
+                        "email" "test@foo.com"}
+                      (get latest-commit-status "author"))))
+              (testing "The commit message"
+                (is (= "my msg" (get latest-commit-status "message"))))
+              (testing "Status of the working directory"
+                (is (= (get status "working-dir")
+                       {"clean" true
+                        "missing" []
+                        "modified" []
+                        "untracked" []}))))))
+
+        ; Now, we're going to muck up a bunch of stuff in the working directory
+        ; in order to get an interesting response back.
+
+        ; Modify an existing file.
+        (spit (fs/file working-dir "test-file-1") "different file content")
+        ; Delete an existing file
+        (fs/delete (fs/file working-dir "test-file-2"))
+        ; Create a new file.
+        (spit (fs/file working-dir "new-test-file") "i like cheese")
+
+        ; Also, hit /latest-commits so we can get status data about that too.
+        (let [response (http-client/get
+                         (str helpers/server-base-url "/file-sync/v1/latest-commits")
+                         {:as :text})]
+          (is (= 200 (:status response))))
+
+        ; Get the status again
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))
+              status (get-in body ["status" "repos" "my-repo"])]
+          (testing "The response from the /status endpoint"
+            (testing "Status of the working directory"
+              (is (= (get status "working-dir")
+                     {"clean" false
+                      "missing" ["test-file-2"]
+                      "modified" ["test-file-1"]
+                      "untracked" ["new-test-file"]})))))))))

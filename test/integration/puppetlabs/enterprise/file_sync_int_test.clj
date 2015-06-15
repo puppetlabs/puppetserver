@@ -21,6 +21,7 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs])
   (:import (java.net ConnectException)))
@@ -59,6 +60,7 @@
            file-sync-storage-service/file-sync-storage-service
            webrouting-service/webrouting-service
            file-sync-client-service/file-sync-client-service
+           status-service/status-service
            scheduler-service/scheduler-service]
           (merge (helpers/storage-service-config
                    root-data-dir
@@ -93,6 +95,7 @@
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
                            file-sync-storage-service/file-sync-storage-service
+                           status-service/status-service
                            webrouting-service/webrouting-service]
                           (helpers/storage-service-config
                             root-data-dir
@@ -208,6 +211,7 @@
          file-sync-storage-service/file-sync-storage-service
          webrouting-service/webrouting-service
          file-sync-client-service/file-sync-client-service
+         status-service/status-service
          scheduler-service/scheduler-service]
         (merge (helpers/storage-service-config
                  root-data-dir
@@ -304,6 +308,7 @@
            webrouting-service/webrouting-service
            file-sync-client-service/file-sync-client-service
            scheduler-service/scheduler-service
+           status-service/status-service
            callback-service]
           (merge (helpers/storage-service-config
                    root-data-dir

@@ -1,9 +1,13 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.api.errors GitAPIException JGitInternalException))
+           (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
+           (clojure.lang Keyword)
+           (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -13,7 +17,8 @@
             [compojure.core :as compojure]
             [ring.middleware.json :as ring-json]
             [me.raynes.fs :as fs]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Defaults
@@ -62,7 +67,7 @@
 
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:repos    GitRepos})
+  {:repos GitRepos})
 
 (def PublishRequestBase
   {(schema/optional-key :message) schema/Str
@@ -157,7 +162,26 @@
       (setBare true)
       (call)))
 
-(schema/defn latest-commit-on-master :- (schema/maybe common/LatestCommit)
+(defn jgit-time->human-readable
+  "Given a commit time from JGit, format it into a human-readable date/time string."
+  [commit-time]
+  (time-format/unparse
+    (time-format/formatters :rfc822)
+    (time/plus
+      (time/epoch)
+      (time/seconds commit-time))))
+
+(schema/defn commit->status-info
+  "Given a RevCommit, extracts and returns information about it which is
+   relevant for the /status endpoint."
+  [commit :- RevCommit]
+  {:commit (jgit-utils/commit-id commit)
+   :date (jgit-time->human-readable (.getCommitTime commit))
+   :message (.getFullMessage commit)
+   :author {:name (.getName (.getAuthorIdent commit))
+            :email (.getEmailAddress (.getAuthorIdent commit))}})
+
+(schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommit)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
@@ -167,8 +191,8 @@
       (let [latest-commit (-> ref
                               (.getObjectId)
                               (jgit-utils/commit-id))
-            submodules-status (jgit-utils/get-submodules-latest-commits git-dir
-                                                                working-dir)
+            submodules-status (jgit-utils/get-submodules-latest-commits
+                                git-dir working-dir)
             base-data {:commit latest-commit}]
         (if (empty? submodules-status)
           base-data
@@ -184,7 +208,7 @@
                         (let [repo-path (fs/file
                                           data-dir
                                           (str (name sub-path) ".git"))
-                              rev (latest-commit-on-master
+                              rev (latest-commit-id-on-master
                                     repo-path
                                     (get-in repos [sub-path :working-dir]))]
                           [sub-path rev]))]
@@ -371,17 +395,36 @@
              :message (str "Request body did not match schema: "
                            checked-body)})
     (let [repo-id (keyword (:repo-id body))
-          repos (if repo-id
-                  (select-keys repos [repo-id])
-                  repos)
+          repos-to-publish (if repo-id
+                             (select-keys repos [repo-id])
+                             repos)
           submodule-id (:submodule-id body)
           commit-info {:identity (commit-author (:author body))
                        :message (:message body default-commit-message)}
-          new-commits (publish-repos repos data-dir server-repo-url commit-info submodule-id)]
-      (zipmap (keys repos) new-commits))))
+          new-commits (publish-repos
+                        repos-to-publish
+                        data-dir
+                        server-repo-url
+                        commit-info
+                        submodule-id)]
+      (zipmap (keys repos-to-publish) new-commits))))
+
+(defn repos-status
+  [repos data-dir]
+  (into {}
+    (for [[repo-id {:keys [working-dir]}] repos]
+      (let [repo (jgit-utils/get-repository
+                   (fs/file data-dir (str (name repo-id) ".git"))
+                   working-dir)
+            repo-status (jgit-utils/status repo)]
+        {repo-id {:latest-commit (commit->status-info (jgit-utils/latest-commit repo))
+                  :working-dir {:clean (.isClean repo-status)
+                                :modified (.getModified repo-status)
+                                :missing (.getMissing repo-status)
+                                :untracked (.getUntracked repo-status)}}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Compojure app
+;;; Ring handler
 (defn build-routes
   "Builds the compojure routes from the given configuration values."
   [data-dir repos server-repo-url]
@@ -407,7 +450,9 @@
                                 :message "Could not parse body as JSON."}}}))
             {:status 400
              :body {:error {:type :content-type-error
-                            :message "Content type must be JSON."}}})))
+                            :message (format
+                                       "Content type must be JSON, '%s' is invalid"
+                                       content-type)}}})))
       (compojure/ANY common/latest-commits-sub-path []
         {:status 200
          :body (compute-latest-commits data-dir repos)}))))
@@ -445,3 +490,10 @@
         (ks/mkdirs! working-dir))
       (log/infof "Initializing Git repository at %s" git-dir)
       (initialize-bare-repo! git-dir))))
+
+(schema/defn ^:always-validate status :- status/StatusCallbackResponse
+  [level :- Keyword   ; TODO honor level
+   repos :- GitRepos
+   data-dir :- StringOrFile]
+  {:is-running :true
+   :status {:repos (repos-status repos data-dir)}})

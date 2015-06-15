@@ -1,5 +1,5 @@
 (ns puppetlabs.enterprise.jgit-utils
-  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType PullResult)
+  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType PullResult Status)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository Ref)
            (org.eclipse.jgit.merge MergeStrategy)
@@ -185,6 +185,16 @@
        (.setRemote remote)
        (.call))))
 
+(schema/defn latest-commit :- RevCommit
+  "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .log
+      (.setMaxCount 1)
+      .call
+      first))
+
 (defn commit-id
   "Given an instance of `AnyObjectId` or its subclasses
   (for example, a `RevCommit`) return the SHA-1 ID for that commit."
@@ -269,3 +279,12 @@
                              .submoduleStatus
                              .call)]
     (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
+
+(schema/defn status :- Status
+  "Like 'git status'"
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .status
+      .call))
+
