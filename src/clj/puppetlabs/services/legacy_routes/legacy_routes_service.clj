@@ -16,34 +16,39 @@
    [:PuppetServerConfigService get-config]]
   (init
     [this context]
-    (let [path (get-route this)
+    (let [ca-service (tk-services/get-service this :CaService)
+          path (get-route this)
           config (get-config)
           puppet-version (get-in config [:puppet-server :puppet-version])
-          ca-settings (ca/config->ca-settings (get-config))
-          ca-mount (get-route (tk-services/get-service this :CaService))
           master-ns (keyword (tk-services/service-symbol
                                (tk-services/get-service this :MasterService)))
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
-          master-mount (master-core/get-master-mount
-                         master-ns
-                         master-route-config)
-          master-handler (-> (master-core/root-routes handle-request)
-                             (#(comidi/context path %))
-                             comidi/routes->handler
-                             (master-core/wrap-middleware puppet-version))
-          ca-handler (-> (ca-core/web-routes ca-settings)
-                         (#(comidi/context path %))
-                         comidi/routes->handler
-                         (ca-core/wrap-middleware puppet-version))
+          master-handler-info {:mount (master-core/get-master-mount
+                                        master-ns
+                                        master-route-config)
+                               :handler (-> (master-core/root-routes
+                                              handle-request)
+                                            (#(comidi/context path %))
+                                            comidi/routes->handler
+                                            (master-core/wrap-middleware
+                                              puppet-version))
+                               :api-version master-core/puppet-API-versions}
+          real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
+                              "puppetlabs.services.ca.certificate-authority-service")
+          ca-handler-info (when
+                            real-ca-service?
+                            {:mount (get-route ca-service)
+                             :handler (-> (ca-core/web-routes
+                                            (ca/config->ca-settings (get-config)))
+                                          (#(comidi/context path %))
+                                          comidi/routes->handler
+                                          (ca-core/wrap-middleware puppet-version))
+                             :api-version master-core/puppet-ca-API-versions})
           ring-handler (legacy-routes-core/build-ring-handler
-                         master-handler
-                         master-mount
-                         master-core/puppet-API-versions
-                         ca-handler
-                         ca-mount
-                         master-core/puppet-ca-API-versions)]
+                         master-handler-info
+                         ca-handler-info)]
       (add-ring-handler this ring-handler))
     context)
   (start
