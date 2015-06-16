@@ -14,6 +14,16 @@
 (def accept-header [:headers "accept"])
 (def content-type-request-header [:headers "content-type"])
 
+(def master-info
+  {:mount master-mount
+   :handler identity
+   :api-version master-api-version})
+
+(def ca-info
+  {:mount ca-mount
+   :handler identity
+   :api-version ca-api-version})
+
 (def accept-header-common-examples
   {"raw" "binary"
    "foo" "foo"
@@ -52,8 +62,7 @@
   "Build a ring app with handler as the handler and the identity function as
   the ca-handler"
   [handler]
-  (build-ring-handler
-    handler master-mount master-api-version identity ca-mount ca-api-version))
+  (build-ring-handler (assoc master-info :handler handler) ca-info))
 
 (defn munged-request
   "Return the request that would be sent to the master-handler after processing
@@ -65,9 +74,7 @@
     (:request @mem)))
 
 (deftest test-legacy-routes
-  (let [app     (build-ring-handler
-                  identity master-mount master-api-version
-                  identity ca-mount ca-api-version)
+  (let [app     (build-ring-handler master-info ca-info)
         request (fn r ([path] (r :get path))
                       ([method path]
                        (app (mock/request method path))))
@@ -143,7 +150,10 @@
               :let [mockreq (mock/request method path)
                     request (assoc-in mockreq accept-header example)
                     subject (get-in (munged-request request) accept-header)]]
-        (is (= expected subject))))))
+        (is (= expected subject)
+            (str "Request to " path " failed for method " method
+                 " expecting header 'accepts: " expected "' got 'accepts: "
+                 subject "'"))))))
 
 (deftest test-v3-file-bucket-file-put
   (testing (str "file_bucket_file put requests have application/octet-stream")

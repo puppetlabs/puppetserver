@@ -5,7 +5,19 @@
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
             [compojure.route :as route]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [schema.core :as schema])
+  (:import (clojure.lang IFn)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def LegacyHandlerInfo
+  "A map of the three pieces of data needed to implement a legacy re-routing
+  ring handler."
+  {:mount schema/Str
+   :handler IFn
+   :api-version schema/Str})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; v3 => v4 header translation support functions
@@ -79,9 +91,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Handler wrapper
 
-(defn request-compatibility-wrapper
+(schema/defn ^:always-validate
+  request-compatibility-wrapper :- IFn
   "Given a Puppet 3.x request, convert it to a Puppet 4.x request."
-  [handler mount-point api-version request]
+  [{:keys [handler mount api-version]} :- LegacyHandlerInfo
+   request]
   (let [{{environment :environment} :params
          uri :uri
          query-string :query-string} request
@@ -90,8 +104,8 @@
           (-> request
               (map-accept-header)
               (assoc :path-info (str "/" api-version path-info)
-                     :context mount-point
-                     :uri (str mount-point "/" api-version path-info)
+                     :context mount
+                     :uri (str mount "/" api-version path-info)
                      :query-string (if environment
                                      (add-query-param query-string
                                        "environment" environment)
@@ -110,7 +124,7 @@
       (request-handler request))))
 
 (defn legacy-master-routes
-  [master-request-handler ca-request-handler]
+  [master-request-handler]
   (comidi/routes
     (comidi/GET ["/node/" [#".*" :rest]] request
       (master-request-handler request))
@@ -142,40 +156,40 @@
     (comidi/GET ["/resource_types/" [#".*" :rest]] request
       (master-request-handler request))
     (comidi/GET ["/status/" [#".*" :rest]] request
-      (master-request-handler request))
+      (master-request-handler request))))
 
-    ;; legacy CA routes
-    (comidi/ANY ["/certificate_status/" [#".*" :rest]] request
-      (ca-request-handler request))
-    (comidi/ANY ["/certificate_statuses/" [#".*" :rest]] request
-      (ca-request-handler request))
-    (comidi/GET ["/certificate/" [#".*" :rest]] request
-      (ca-request-handler request))
-    (comidi/GET ["/certificate_revocation_list/" [#".*" :rest]] request
-      (ca-request-handler request))
-    (comidi/GET ["/certificate_request/" [#".*" :rest]] request
-      (ca-request-handler request))
-    (comidi/PUT ["/certificate_request/" [#".*" :rest]] request
-      (ca-request-handler request))))
-
-(defn legacy-routes
-  "Creates all of the comidi routes for the master."
-  [master-request-handler ca-request-handler]
+(defn legacy-ca-routes
+  [ca-request-handler]
   (comidi/routes
-    (comidi/context "/v2.0"
-      (v2_0-routes master-request-handler))
-    (comidi/context ["/" :environment]
-      (legacy-master-routes master-request-handler ca-request-handler))))
+    (comidi/ANY ["/certificate_status/" [#".*" :rest]] request
+                (ca-request-handler request))
+    (comidi/ANY ["/certificate_statuses/" [#".*" :rest]] request
+                (ca-request-handler request))
+    (comidi/GET ["/certificate/" [#".*" :rest]] request
+                (ca-request-handler request))
+    (comidi/GET ["/certificate_revocation_list/" [#".*" :rest]] request
+                (ca-request-handler request))
+    (comidi/GET ["/certificate_request/" [#".*" :rest]] request
+                (ca-request-handler request))
+    (comidi/PUT ["/certificate_request/" [#".*" :rest]] request
+                (ca-request-handler request))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn build-ring-handler
-  [master-handler master-mount master-api-version
-   ca-handler ca-mount ca-api-version]
-  (comidi/routes->handler
-    (legacy-routes
-      #(request-compatibility-wrapper
-        master-handler master-mount master-api-version %)
-      #(request-compatibility-wrapper
-        ca-handler ca-mount ca-api-version %))))
+(schema/defn ^:always-validate
+  build-ring-handler :- IFn
+  [master-handler-info :- LegacyHandlerInfo
+   ca-handler-info :- (schema/maybe LegacyHandlerInfo)]
+  (let [master-handler #(request-compatibility-wrapper master-handler-info %)
+        master-routes (legacy-master-routes master-handler)
+        ca-routes (when ca-handler-info
+                    (legacy-ca-routes
+                      #(request-compatibility-wrapper ca-handler-info %)))
+        root-routes (vec (filter (complement nil?)
+                      [master-routes ca-routes]))]
+    (comidi/routes->handler
+      (comidi/routes
+        (comidi/context "/v2.0"
+          (v2_0-routes master-handler))
+        [["/" :environment] root-routes]))))
