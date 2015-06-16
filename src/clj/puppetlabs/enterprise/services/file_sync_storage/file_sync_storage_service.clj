@@ -34,7 +34,7 @@
         {:servlet-init-params {"base-path" data-dir "export-all" export-all}
          :route-id :repo-servlet})
       (let [repos (:repos config)
-            handler (core/build-handler data-dir repos server-repo-url)]
+            handler (core/ring-handler data-dir repos server-repo-url)]
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
         (add-ring-handler
           this

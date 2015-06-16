@@ -425,8 +425,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler
-(defn build-routes
-  "Builds the compojure routes from the given configuration values."
+
+(defn base-ring-handler
+  "Returns a Ring handler for the File Sync Storage Service's API using the
+   given configuration values."
   [data-dir repos server-repo-url]
   (compojure/routes
     (compojure/context "/v1" []
@@ -457,19 +459,21 @@
         {:status 200
          :body (compute-latest-commits data-dir repos)}))))
 
-(defn build-handler
-  "Builds a ring handler from the given configuration values."
-  [data-dir sub-paths server-repo-url]
-  (-> (build-routes data-dir sub-paths server-repo-url)
-      ringutils/wrap-request-logging
-      ringutils/wrap-user-data-errors
-      ringutils/wrap-schema-errors
-      ringutils/wrap-errors
-      ring-json/wrap-json-response
-      ringutils/wrap-response-logging))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(defn ring-handler
+  "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
+   necessary middleware for error handling, logging, etc."
+  [data-dir sub-paths server-repo-url]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url)
+    ringutils/wrap-request-logging
+    ringutils/wrap-user-data-errors
+    ringutils/wrap-schema-errors
+    ringutils/wrap-errors
+    ring-json/wrap-json-response
+    ringutils/wrap-response-logging))
 
 (schema/defn ^:always-validate initialize-repos!
   "Initialize the repositories managed by this service.  For each repository ...
