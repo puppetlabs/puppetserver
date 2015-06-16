@@ -371,10 +371,12 @@
         (str "Directory " working-dir " must exist on disk to be synced "
              "as a working directory"))))
   (if (some #(= repo-id %) repos)
-    (let [git-dir (str data-dir "/" repo-id ".git")]
+    (let [git-dir (str data-dir "/" repo-id ".git")
+          repo (jgit-utils/get-repository git-dir working-dir)]
       (log/info (str "Syncing working directory at " working-dir
                      " for repository " repo-id))
-      (jgit-utils/hard-reset (jgit-utils/get-repository git-dir working-dir)))
+      (jgit-utils/hard-reset repo)
+      (jgit-utils/submodule-update git-dir working-dir))
     (throw
       (IllegalArgumentException.
         (str "No repository exists with id " repo-id)))))

@@ -11,7 +11,8 @@
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [me.raynes.fs :as fs]))
 
 (schema/defn ^:always-validate create-connection :- HttpClientConnection
   [ssl-ctxt :- common/SSLContextOrNil
@@ -284,6 +285,41 @@
   [git-dir working-dir]
   (let [submodule-status (submodules-status (get-repository git-dir working-dir))]
     (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
+
+(defn fetch-submodules!
+  "Given a path to a Git repository and a working tree, perform a
+  fetch for all submodules registered for that repo. This is required
+  because JGit does not fetch submodules when doing an update."
+  [git-dir working-dir]
+  (let [submodules (keys (get-submodules-latest-commits git-dir working-dir))]
+    (doseq [submodule submodules]
+      (when-let [repo (get-repository-from-working-tree (fs/file working-dir submodule))]
+        (fetch repo)))))
+
+(schema/defn ^:always-validate submodule-update
+  "Perform a git submodule init, and then a subsequent git submodule update
+  to update all submodules. Returns a collection of strings representing updated
+  submodule paths or may throw one of hte following exceptions from the
+  org.eclipse.jgit.api.errors namespace:
+
+  * ConcurrentRefUpdateException
+  * CheckoutConflictException
+  * InvalidMergeHeadsException
+  * InvalidConfigurationException
+  * NoHeadException
+  * NoMessageException
+  * RefNotFoundException
+  * WrongRepositoryStateException
+  * GitAPIException"
+  [git-dir working-dir]
+  (let [git (Git. (get-repository git-dir working-dir))]
+    (-> git
+        (.submoduleInit)
+        (.call))
+    (fetch-submodules! git-dir working-dir)
+    (-> git
+        (.submoduleUpdate)
+        (.call))))
 
 (schema/defn status :- Status
   "Like 'git status'"

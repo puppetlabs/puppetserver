@@ -6,10 +6,13 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
              :as file-sync-client-service]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
              :as scheduler-service]
+            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
@@ -106,6 +109,95 @@
                    (filter #(not= ".git" %)
                            (fs/list-dir local-repo-dir))))
             (is (not (nil? (fs/list-dir client-working-dir))))))))))
+
+(deftest ^:integration working-dir-sync-with-submodules-test
+  (testing "sync-working-dir works with submodules"
+    (let [repo "parent-repo"
+          submodules-working-dir (helpers/temp-dir-as-string)
+          submodules-dir-name "submodules"
+          submodule "submodule"
+          test-file "test.txt"
+          root-data-dir (helpers/temp-dir-as-string)
+          git-dir (fs/file root-data-dir "storage" (str repo ".git"))
+          client-working-dir (helpers/temp-dir-as-string)
+          publish-url (str helpers/server-base-url
+                           helpers/default-api-path-prefix
+                           "/v1"
+                           common/publish-content-sub-path)]
+
+      (helpers/with-bootstrapped-storage-service
+        storage-app
+        (helpers/storage-service-config
+          root-data-dir
+          {(keyword repo) {:working-dir (helpers/temp-dir-as-string)
+                           :submodules-dir submodules-dir-name
+                           :submodules-working-dir submodules-working-dir}})
+
+        ;; Set up the submodule and ensure it's added to the remote repository
+        (ks/mkdirs! (fs/file submodules-working-dir submodule))
+        (helpers/write-test-file! (fs/file submodules-working-dir submodule test-file))
+        (http-client/post publish-url)
+        (bootstrap/with-app-with-config
+          app
+          [file-sync-client-service/file-sync-client-service
+           scheduler-service/scheduler-service]
+          (helpers/client-service-config
+            root-data-dir
+            [repo]
+            false)
+          (let [client-service (tk-app/get-service app :FileSyncClientService)
+                sync-agent (helpers/get-sync-agent app)]
+            (fs/mkdir client-working-dir)
+
+            (testing "client working dir should be empty"
+              (is (nil? (fs/list-dir client-working-dir))))
+
+            ;; Sync the repo so we can sync the working dir
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+
+            (testing "new submodules are properly initialized and updated"
+              (client-protocol/sync-working-dir! client-service
+                                                 repo
+                                                 (str client-working-dir))
+              (is (fs/exists? (fs/file client-working-dir submodules-dir-name
+                                       submodule)))
+              (is (fs/exists? (fs/file client-working-dir submodules-dir-name
+                                       submodule test-file)))
+              (let [submodules-status (jgit-utils/get-submodules-latest-commits
+                                        git-dir
+                                        (fs/file submodules-working-dir submodule))
+                    latest-commit (get submodules-status (str submodules-dir-name "/" submodule))]
+                (is (= latest-commit
+                       (jgit-utils/head-rev-id-from-working-tree (fs/file client-working-dir
+                                                                          submodules-dir-name
+                                                                          submodule))))))
+
+            ;; Make an additional commit to ensure that previously updated submodules
+            ;; are synced
+            (fs/delete (fs/file submodules-working-dir submodule test-file))
+            (http-client/post publish-url)
+
+            ;; Sync the repo so we can get the latest changes
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+
+            (testing "existing submodules are properly updated"
+              (client-protocol/sync-working-dir! client-service
+                                                 repo
+                                                 (str client-working-dir))
+              (is (fs/exists? (fs/file client-working-dir submodules-dir-name
+                                       submodule)))
+              (is (not (fs/exists? (fs/file client-working-dir submodules-dir-name
+                                            submodule test-file))))
+              (let [submodules-status (jgit-utils/get-submodules-latest-commits
+                                        git-dir
+                                        (fs/file submodules-working-dir submodule))
+                    latest-commit (get submodules-status (str submodules-dir-name "/" submodule))]
+                (is (= latest-commit
+                       (jgit-utils/head-rev-id-from-working-tree (fs/file client-working-dir
+                                                                          submodules-dir-name
+                                                                          submodule))))))))))))
 
 (deftest register-callback-test
   (testing "Callbacks must be registered before the File Sync Client is started"
