@@ -70,13 +70,13 @@
                                   :email schema/Str}})
 (def PublishRequest
   (schema/maybe
-    (merge PublishRequestBase
-           {(schema/optional-key :repo-id) schema/Str})))
+    (assoc PublishRequestBase
+      (schema/optional-key :repo-id) schema/Str)))
 
 (def PublishRequestWithSubmodule
-  (merge PublishRequestBase
-         {:repo-id                       schema/Str
-          :submodule-id                  schema/Str}))
+  (assoc PublishRequestBase
+    :repo-id schema/Str
+    :submodule-id schema/Str))
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
