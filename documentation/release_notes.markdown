@@ -8,23 +8,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 Released June 18, 2015
 
-This is a security and bug fix release of Puppet Server 1.1 series.  No new
-features have been added since 1.1.0 in accordance with [Semantic
-Version](http://semver.org) guidelines.  All users are recommended to upgrade.
+This is a security and bug fix release in the Puppet Server 1.1 series; no new
+features have been added since 1.1.0. We recommend that all users upgrade.
 
-### Bug fixes
+### Bug Fixes
 
-#### Upgrade JRuby from 1.7.20 to 1.7.20.1 to resolve CVE-2015-4020
+#### Upgrade JRuby From 1.7.20 to 1.7.20.1 to Resolve CVE-2015-4020
 
-Bump JRuby dependency to version 1.7.20.1 to resolve
-[CVE-2015-1855](https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-1855)
-where JRuby has updated Rubygems to version 2.4.8. Rubygems 2.4.8 addresses
-CVE-2015-1855 to resolve some problems with wildcard matching of hostnames. See
-ruby-lang.org’s description for more info.
+The Rubygems client had security problems with wildcard matching of hostnames (CVE-2015-4020), which were fixed in Rubygems 2.4.8. To get this fix, we bumped our JRuby dependency to version 1.7.20.1. See ruby-lang.org’s description of CVE-2015-4020 or CVE-2015-3900 for more info.
 
  * [SERVER-761](https://tickets.puppetlabs.com/browse/SERVER-761)
 
-#### Consolidate environment handling behavior
+#### Consolidate Environment Handling Behavior
 
 Consolidate JRuby environment handling, which was previously inconsistent across
 the use cases of `puppetserver gem`, `puppetserver irb`, `puppetserver ruby` and
@@ -32,17 +27,16 @@ the puppetserver service.
 
  * [SERVER-297](https://tickets.puppetlabs.com/browse/SERVER-297)
 
-#### Return good Content-Type for CA errors
+#### Return Good Content-Type for CA Errors
 
-Two bugs in the way the CA service responds which caused issues for services
-consuming the CA API have been fixed.
+We fixed two bugs in the CA service's responses, which caused issues for services consuming the CA API.
 
  * [SERVER-723](https://tickets.puppetlabs.com/browse/SERVER-723) Fix
    Content-Type header in CA responses
  * [SERVER-646](https://tickets.puppetlabs.com/browse/SERVER-646) Allow
    charset for certificate_status content-type (b17a242)
 
-### Miscellaneous improvements
+### Miscellaneous Improvements
 
 Minor changes to documentation following the 1.1.0 release, primarily the
 re-introduction of the /status endpoint documentation.
@@ -65,7 +59,7 @@ We added a setting that can be used by the master to limit how many HTTP request
 
 Added support to the `environment-cache` API for flushing an environment by name, as opposed to only having the ability to flush all environments.
 
-* [SERVER-324](https://tickets.puppetlabs.com/browse/SERVER-324) 
+* [SERVER-324](https://tickets.puppetlabs.com/browse/SERVER-324)
 
 ### Bug fixes
 
@@ -115,7 +109,7 @@ We've exposed two new HTTP client timeout settings: `idle-timeout-milliseconds` 
 
 * [SERVER-449](https://tickets.puppetlabs.com/browse/SERVER-449) - Expose http-client timeouts from Puppet Server http_connect_timeout and http_read_timeout.
 
-#### Enabled HTTP traffic logs 
+#### Enabled HTTP traffic logs
 
 This version of Puppet Server has a special-purpose logfile to capture only the HTTP traffic. This should work out of the box, but you can [configure the location and the format](./configuration.markdown#http-traffic) of the logfile.
 
@@ -169,7 +163,7 @@ The default maximum number of JRuby instances has been capped at 4. This is a sa
 
 ## Puppet Server 1.0.3 -- 1.0.7
 
-Puppet Server versions 1.0.3 -- 1.0.7 were never released. 
+Puppet Server versions 1.0.3 -- 1.0.7 were never released.
 
 However, Puppet Enterprise 3.7.2 included a version of Puppet Server that was labeled as version 1.0.6. The only change from Puppet Server 1.0.2 was that the fix for [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262) was reverted in [SERVER-522](https://tickets.puppetlabs.com/browse/SERVER-522). This change is also included in the release of Puppet Server 1.0.8.
 
@@ -187,13 +181,13 @@ Puppet Server now treats filebucket files as binary data. This prevents possible
 
 #### `puppetserver gem env` command now works
 
-This release fixes functionality of the `puppetserver gem env` command. Previously, this command was throwing an error because the entire system environment was being cleared. 
+This release fixes functionality of the `puppetserver gem env` command. Previously, this command was throwing an error because the entire system environment was being cleared.
 
 * [SERVER-262](https://tickets.puppetlabs.com/browse/SERVER-262): `puppetserver gem env` does not work, useful for troubleshooting
 
-#### Startup time extended for systemd 
+#### Startup time extended for systemd
 
-In 1.0.0, we extended the allowed startup time from 60 to 120 seconds, but we missed the systemd configuration. Now both the init script and systemd configs have the same timeout. 
+In 1.0.0, we extended the allowed startup time from 60 to 120 seconds, but we missed the systemd configuration. Now both the init script and systemd configs have the same timeout.
 
 * [SERVER-166](https://tickets.puppetlabs.com/browse/SERVER-166): Set START_TIMEOUT to 120 seconds for sysv init scripts and systemd.
 
@@ -201,7 +195,7 @@ In 1.0.0, we extended the allowed startup time from 60 to 120 seconds, but we mi
 
 Puppet Server now picks up changes to logging levels at runtime, rather than requiring a system restart to detect Logback changes.
 
-* [SERVER-275](https://tickets.puppetlabs.com/browse/SERVER-275): Fixed an issue where logback levels weren't changed unless you restarted Puppet Server. 
+* [SERVER-275](https://tickets.puppetlabs.com/browse/SERVER-275): Fixed an issue where logback levels weren't changed unless you restarted Puppet Server.
 
 ## Puppet Server 1.0.1 (Skipped)
 
