@@ -8,6 +8,49 @@ canonical: "/puppetserver/latest/release_notes.html"
 [pup4install]: /puppet/latest/reference/install_linux.html
 [semver]: http://semver.org/
 
+
+
+## Puppet Server 2.1.1
+
+Released June 17, 2015
+
+This is a security and bug fix release in the Puppet Server 2.1 series; no new features have been added since 2.1.0. We recommend that all users upgrade.
+
+### Bug fixes
+
+#### Support for Loading Facter 3.0+ / Puppet Agent 1.2.0+ With Multiple JRubyPuppet Instances.
+
+Puppet Server uses Facter for a few things. Facter used to be pure Ruby code, but as of puppet-agent 1.2.0 (which includes Facter 3.0.0), it's a native shared library.
+
+Puppet Server 2.1.0 had a problem with loading that shared library if the `jruby-puppet.max-active-instances` setting in `puppetserver.conf` was set higher than 1 (which it almost always is). This bug is now fixed.
+
+* [SERVER-718](https://tickets.puppetlabs.com/browse/SERVER-718)
+
+#### Upgrade JRuby from 1.7.20 to 1.7.20.1 to Resolve CVE-2015-4020
+
+The Rubygems client had security problems with wildcard matching of hostnames (CVE-2015-4020), which were fixed in Rubygems 2.4.8. To get this fix, we bumped our JRuby dependency to version 1.7.20.1. See ruby-lang.org’s description of CVE-2015-4020 or CVE-2015-3900 for more info.
+
+* [SERVER-761](https://tickets.puppetlabs.com/browse/SERVER-761)
+
+#### Legacy Routes Service and CA Disabled Service Can Now Be Used Together
+
+In version 2.1.0, Puppet Server would fail to start if both the "certificate-authority-disabled-service" (for running a non-CA server) and the "legacy-routes-service" (for handling requests from Puppet 3.x nodes) were enabled. This is now fixed.
+
+* [SERVER-759](https://tickets.puppetlabs.com/browse/SERVER-759)
+
+#### Consolidate Environment Handling Behavior
+
+Consolidate JRuby environment handling, which was previously inconsistent across the use cases of  `puppetserver gem`, `puppetserver irb`, `puppetserver ruby` and the puppetserver service.
+
+* [SERVER-297](https://tickets.puppetlabs.com/browse/SERVER-297)
+
+#### Return Good Content-Type for CA errors
+
+We fixed two bugs in the CA service's responses, which caused issues for services consuming the CA API.
+
+* [SERVER-723 - Fix Content-Type header in CA responses](https://tickets.puppetlabs.com/browse/SERVER-723)
+* [SERVER-646 - Allow charset for certificate_status content-type](https://tickets.puppetlabs.com/browse/SERVER-646)
+
 ## Puppet Server 2.1
 
 Release June 2, 2015.
