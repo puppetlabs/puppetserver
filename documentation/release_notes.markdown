@@ -16,7 +16,7 @@ Released June 17, 2015
 
 This is a security and bug fix release in the Puppet Server 2.1 series; no new features have been added since 2.1.0. We recommend that all users upgrade.
 
-### Bug fixes
+### Bug Fixes
 
 #### Support for Loading Facter 3.0+ / Puppet Agent 1.2.0+ With Multiple JRubyPuppet Instances.
 
@@ -25,6 +25,16 @@ Puppet Server uses Facter for a few things. Facter used to be pure Ruby code, bu
 Puppet Server 2.1.0 had a problem with loading that shared library if the `jruby-puppet.max-active-instances` setting in `puppetserver.conf` was set higher than 1 (which it almost always is). This bug is now fixed.
 
 * [SERVER-718](https://tickets.puppetlabs.com/browse/SERVER-718)
+
+#### Fix Defaults for puppetserver.conf Directory Settings
+
+The `jruby-puppet` section of puppetserver.conf has five directory settings (`master-conf-dir`, etc.) for setting the [configuration directory][], [code directory][], [cache directory][], run directory, and log directory. When these settings were absent, Puppet Server wasn't properly enforcing the proper default values and could sometimes use the wrong directories, to varying effects.
+
+This is now fixed, and Puppet Server will use the appropriate default directories if the settings are absent. Note that if you are changing these directories (and most users shouldn't!), you'll need to change them in both puppetserver.conf and puppet.conf to ensure that commands like `puppet cert` and `puppet module` are using the same directories as Puppet Server.
+
+(The problem was that Puppet Server was falling back to the values of Puppet's `confdir`, `codedir`, `vardir`, `rundir`, and `logdir` settings. If puppet.conf was also missing those settings, Puppet Server would end up using the "user" confdir/codedir/etc. instead of the "system" ones, which was bad.)
+
+* [SERVER-692](https://tickets.puppetlabs.com/browse/SERVER-692)
 
 #### Upgrade JRuby from 1.7.20 to 1.7.20.1 to Resolve CVE-2015-4020
 
