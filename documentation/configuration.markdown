@@ -85,11 +85,11 @@ This file contains the settings for Puppet Server itself.
       reaches this limit, it gets flushed from memory and replaced with a fresh
       one. Defaults to 0, which disables automatic JRuby flushing.
 
-      This can be useful for working around buggy module code that would
-      otherwise cause memory leaks, but it causes a slight performance penalty
-      whenever a new JRuby has to reload all of the Puppet Ruby code.  If memory
-      leaks from module code are not an issue in your deployment, the default
-      value will give the best performance.
+        This can be useful for working around buggy module code that would
+        otherwise cause memory leaks, but it causes a slight performance penalty
+        whenever a new JRuby has to reload all of the Puppet Ruby code.  If memory
+        leaks from module code are not an issue in your deployment, the default
+        value will give the best performance.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
       an instance from the JRuby pool in milliseconds. Defaults to 1200000.
 * The `profiler` settings configure profiling:
