@@ -61,6 +61,10 @@ We fixed two bugs in the CA service's responses, which caused issues for service
 * [SERVER-723 - Fix Content-Type header in CA responses](https://tickets.puppetlabs.com/browse/SERVER-723)
 * [SERVER-646 - Allow charset for certificate_status content-type](https://tickets.puppetlabs.com/browse/SERVER-646)
 
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=fixVersion%20%3D%20%22SERVER%202.1.1%22%20AND%20project%20%3D%20SERVER)
+
 ## Puppet Server 2.1
 
 Release June 2, 2015.
@@ -142,6 +146,9 @@ These auth.conf changes follow the same changes required for any users upgrading
 * [SERVER-683](http://tickets.puppetlabs.com/browse/SERVER-683) - Changed the logic in the `legacy-routes-service` to get the route of the master-service via the service protocol name rather than by a hard-coded service name. This allows for the `legacy-routes-service` to pull the route from whatever service implementing the MasterService protocol happens to be in the service stack, i.e., master-service for open source Puppet or pe-master-service for PE.
 * [SERVER-684](http://tickets.puppetlabs.com/browse/SERVER-684) - Append `source_permissions=use` to 3.x file_metadata requests.
 
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=fixVersion%20%3D%20%22SERVER%202.1.0%22%20AND%20project%20%3D%20SERVER)
 
 ## Puppet Server 2.0
 
