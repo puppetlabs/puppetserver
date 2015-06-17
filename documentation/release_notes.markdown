@@ -7,7 +7,9 @@ canonical: "/puppetserver/latest/release_notes.html"
 [layout]: https://github.com/puppetlabs/puppet-specifications/blob/2818c90163837ae6a45eb070cf9f6edfb39a1e3f/file_paths.md
 [pup4install]: /puppet/latest/reference/install_linux.html
 [semver]: http://semver.org/
-
+[configuration directory]: /puppet/latest/reference/dirs_confdir.html
+[code directory]: /puppet/latest/reference/dirs_codedir.html
+[cache directory]: /puppet/latest/reference/dirs_vardir.html
 
 
 ## Puppet Server 2.1.1
