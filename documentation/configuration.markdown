@@ -53,23 +53,29 @@ By default, Puppet Server is configured to use the correct Puppet Master and CA 
 
 ### `puppetserver.conf`
 
+[configuration directory]: /puppet/latest/reference/dirs_confdir.html
+[code directory]: /puppet/latest/reference/dirs_codedir.html
+[cache directory]: /puppet/latest/reference/dirs_vardir.html
+
 This file contains the settings for Puppet Server itself.
+
+> **Note:** Most users should never set the `master-conf-dir`, `master-code-dir`, or `master-var-dir` settings to a non-default value. If you do, you must also change the equivalent Puppet settings (`confdir`, `codedir`, or `vardir`) to ensure that commands like `puppet cert` and `puppet module` will use the same directories as Puppet Server. Note also that a non-default `confdir` or `vardir` must be specified on the command line when running commands, since those two settings must be set before Puppet tries to find its config file.
 
 * The `jruby-puppet` settings configure the interpreter:
     * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
     * `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
       uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
-    * `master-conf-dir`: Optionally, set the path to the Puppet configuration
-      directory. If not specified, uses the Puppet default `/etc/puppetlabs/puppet`.
-    * `master-code-dir`: Optionally, set the path to the Puppet code directory.
-      If not specified, uses the Puppet default `/etc/puppetlabs/code`.
-    * `master-var-dir`: Optionally, set the path to the Puppet variable
-      directory. If not specified, uses the Puppet default
+    * `master-conf-dir`: Optionally, set the path to the Puppet
+      [configuration directory][]. If not specified, the default is `/etc/puppetlabs/puppet`.
+    * `master-code-dir`: Optionally, set the path to the Puppet [code directory][].
+      If not specified, the default is `/etc/puppetlabs/code`.
+    * `master-var-dir`: Optionally, set the path to the Puppet [cache directory][].
+      If not specified, the default is
       `/opt/puppetlabs/server/data/puppetserver`.
-    * `master-run-dir`: Optionally, set the path to the Puppet run directory.
-      If not specified, uses the Puppet default `/var/run/puppetlabs/puppetserver`.
-    * `master-log-dir`: Optionally, set the path to the Puppet log directory.
+    * `master-run-dir`: Optionally, set the path to the run directory, where the service's PID file is stored.
+      If not specified, the default is `/var/run/puppetlabs/puppetserver`.
+    * `master-log-dir`: Optionally, set the path to the log directory.
       If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
     * `max-active-instances`: Optionally, set the maximum number of JRuby
       instances to allow. Defaults to 'num-cpus - 1', with a minimum default
