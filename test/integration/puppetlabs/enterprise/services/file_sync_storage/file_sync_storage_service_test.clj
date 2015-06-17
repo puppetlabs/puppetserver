@@ -547,11 +547,22 @@
                  (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))))))
 
 (defn fetch-status
-  []
-  (http-client/get
-    (str helpers/server-base-url
-      "/status/v1/services/file-sync-storage-service")
-    {:as :text}))
+  ([]
+   (fetch-status nil))
+  ([level]
+   (http-client/get
+     (str helpers/server-base-url
+       (if level
+         (str "/status/v1/services/file-sync-storage-service?level=" (name level))
+         "/status/v1/services/file-sync-storage-service"))
+     {:as :text})))
+
+(defn response->status
+  [response]
+  (-> response
+    :body
+    json/parse-string
+    (get "status")))
 
 (defn do-publish
   ([]
@@ -578,12 +589,12 @@
       (let [publish-request-body (-> {:message "my msg"
                                       :author {:name "Testy"
                                                :email "test@foo.com"}}
-                                   json/generate-string)
+                                     json/generate-string)
             commit-id (-> (do-publish publish-request-body)
-                        :body
-                        (json/parse-string true)
-                        :my-repo
-                        :commit)
+                          :body
+                          (json/parse-string true)
+                          :my-repo
+                          :commit)
             response (fetch-status)]
         (testing "A request against the Storage Service's status endpoint"
           (is (= 200 (:status response)))
@@ -608,7 +619,7 @@
               (testing "The commit author"
                 (is (= {"name" "Testy"
                         "email" "test@foo.com"}
-                      (get latest-commit-status "author"))))
+                       (get latest-commit-status "author"))))
               (testing "The commit message"
                 (is (= "my msg" (get latest-commit-status "message"))))
               (testing "Status of the working directory"
@@ -616,35 +627,52 @@
                        {"clean" true
                         "missing" []
                         "modified" []
-                        "untracked" []}))))))
+                        "untracked" []})))))))
 
-        ; Now, we're going to muck up a bunch of stuff in the working directory
-        ; in order to get an interesting response back.
+      ; Now, we're going to muck up a bunch of stuff in the working directory
+      ; in order to get an interesting response back.
 
-        ; Modify an existing file.
-        (spit (fs/file working-dir "test-file-1") "different file content")
-        ; Delete an existing file
-        (fs/delete (fs/file working-dir "test-file-2"))
-        ; Create a new file.
-        (spit (fs/file working-dir "new-test-file") "i like cheese")
+      ; Modify an existing file.
+      (spit (fs/file working-dir "test-file-1") "different file content")
+      ; Delete an existing file
+      (fs/delete (fs/file working-dir "test-file-2"))
+      ; Create a new file.
+      (spit (fs/file working-dir "new-test-file") "i like cheese")
 
-        ; Also, hit /latest-commits so we can get status data about that too.
-        (let [response (http-client/get
-                         (str helpers/server-base-url "/file-sync/v1/latest-commits")
-                         {:as :text})]
-          (is (= 200 (:status response))))
+      ; Also, hit /latest-commits so we can get status data about that too.
+      (let [response (http-client/get
+                       (str helpers/server-base-url "/file-sync/v1/latest-commits")
+                       {:as :text})]
+        (is (= 200 (:status response))))
 
-        ; Get the status again
-        (let [response (fetch-status)
-              body (json/parse-string (:body response))
-              status (get-in body ["status" "repos" "my-repo"])]
-          (testing "The response from the /status endpoint"
-            (testing "Status of the working directory"
-              (is (= (get status "working-dir")
-                     {"clean" false
-                      "missing" ["test-file-2"]
-                      "modified" ["test-file-1"]
-                      "untracked" ["new-test-file"]})))))))))
+      ; Get the status again
+      (let [response (fetch-status)
+            body (json/parse-string (:body response))
+            status (get-in body ["status" "repos" "my-repo"])]
+        (testing "The response from the /status endpoint"
+          (testing "Status of the working directory"
+            (is (= (get status "working-dir")
+                   {"clean" false
+                    "missing" ["test-file-2"]
+                    "modified" ["test-file-1"]
+                    "untracked" ["new-test-file"]})))))
+
+      (testing "Status level is honored"
+        (testing "level=critical doesn't return anything execpt the basics"
+          (let [response (fetch-status :critical)]
+            (is (= 200 (:status response)))
+            (testing "No additional status data beyond is_running is returned"
+              (is (= nil (response->status response))))))
+
+        ; Don't need to test level=info - that's the default (what's used above).
+        ; There's currently no debug-only status information.
+        (testing "level=debug is same as level=info")
+        (let [debug-response (fetch-status :debug)
+              info-response (fetch-status :info)]
+          (is (= 200 (:status debug-response)))
+          (is (= 200 (:status info-response)))
+          (is (= (response->status debug-response)
+                 (response->status info-response))))))))
 
 (deftest ^:integration submodules-status-endpoint-test
   (let [data-dir (helpers/temp-dir-as-string)

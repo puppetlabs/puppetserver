@@ -507,8 +507,9 @@
       (initialize-bare-repo! git-dir))))
 
 (schema/defn ^:always-validate status :- status/StatusCallbackResponse
-  [level :- Keyword   ; TODO honor level
+  [level :- Keyword
    repos :- GitRepos
    data-dir :- StringOrFile]
   {:is-running :true
-   :status {:repos (repos-status repos data-dir)}})
+   :status (when (not= level :critical)
+             {:repos (repos-status repos data-dir)})})
