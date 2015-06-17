@@ -553,6 +553,16 @@
       "/status/v1/services/file-sync-storage-service")
     {:as :text}))
 
+(defn do-publish
+  ([]
+   (do-publish nil))
+  ([body]
+   (http-client/post
+     (str helpers/server-base-url "/file-sync/v1/publish")
+     {:as :text
+      :headers {"content-type" "application/json"}
+      :body body})))
+
 (deftest ^:integration status-endpoint-test
   (let [test-start-time (time/now)
         data-dir (helpers/temp-dir-as-string)
@@ -569,11 +579,7 @@
                                       :author {:name "Testy"
                                                :email "test@foo.com"}}
                                    json/generate-string)
-            commit-id (-> (http-client/post
-                            (str helpers/server-base-url "/file-sync/v1/publish")
-                            {:as :text
-                             :headers {"content-type" "application/json"}
-                             :body publish-request-body})
+            commit-id (-> (do-publish publish-request-body)
                         :body
                         (json/parse-string true)
                         :my-repo
@@ -639,3 +645,39 @@
                       "missing" ["test-file-2"]
                       "modified" ["test-file-1"]
                       "untracked" ["new-test-file"]})))))))))
+
+(deftest ^:integration submodules-status-endpoint-test
+  (let [data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules-dir"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "my-submodule"
+        submodule-path (str submodules-dir "/" submodule-name)
+        config (helpers/storage-service-config
+                 data-dir
+                 {:my-repo {:working-dir working-dir
+                            :submodules-dir submodules-dir
+                            :submodules-working-dir submodules-working-dir}})]
+    (helpers/with-bootstrapped-storage-service
+      app config
+      ; Create a submodule
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      ; Write a file into the submodule
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules are SO cool")
+      (let [submodule-commit-id (-> (do-publish)
+                                    :body
+                                    json/parse-string
+                                    (get-in [(name :my-repo)
+                                             "submodules"
+                                             submodule-path]))
+            response (fetch-status)
+            body (json/parse-string (:body response))]
+        (is (= 200 (:status response)))
+        (testing "The response should contain information about submodules status"
+          (is (= (get-in body ["status" "repos" (name :my-repo) "submodules"])
+                 {submodule-path {"head-id" submodule-commit-id
+                                  "path" submodule-path
+                                  "status" "INITIALIZED"}})))))))
+

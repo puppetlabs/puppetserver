@@ -409,8 +409,9 @@
                         submodule-id)]
       (zipmap (keys repos-to-publish) new-commits))))
 
-(defn repos-status
-  [repos data-dir]
+(schema/defn repos-status
+  [repos :- GitRepos
+   data-dir]
   (into {}
     (for [[repo-id {:keys [working-dir]}] repos]
       (let [repo (jgit-utils/get-repository
@@ -421,7 +422,17 @@
                   :working-dir {:clean (.isClean repo-status)
                                 :modified (.getModified repo-status)
                                 :missing (.getMissing repo-status)
-                                :untracked (.getUntracked repo-status)}}}))))
+                                :untracked (.getUntracked repo-status)}
+                  :submodules (->> repo
+                                jgit-utils/submodules-status
+                                (ks/mapvals
+                                  (fn [ss]
+                                    {:path (.getPath ss)
+                                     :status (.toString (.getType  ss))
+                                     :head-id (jgit-utils/commit-id (.getHeadId ss))
+                                     ; There is also SubmoduleStatus.getIndexId
+                                     ; Maybe that's like 'git describe'?
+                                     })))}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler

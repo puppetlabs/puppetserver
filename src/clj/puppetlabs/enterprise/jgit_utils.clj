@@ -288,3 +288,10 @@
       .status
       .call))
 
+(schema/defn submodules-status
+  "Like 'git submodule status'."
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .submoduleStatus
+      .call))
