@@ -66,7 +66,8 @@
     ;; commits have been made against the server-side repo, as the
     ;; server's bare repo will still be cloned on the client-side.
     {:status (schema/enum :synced :unchanged)
-     :latest-commit (schema/maybe schema/Str)}))
+     :latest-commit (schema/maybe schema/Str)
+     (schema/optional-key :submodules) {schema/Str (schema/recursive #'SingleRepoState)}}))
 
 (def RepoStates
   "A schema which describes a map containing valid states for
@@ -206,6 +207,25 @@
                             target-dir)
                  :cause   e})))))
 
+(defn extract-submodule-name
+  [submodule]
+  (re-find #"[^\/]+$" submodule))
+
+(defn process-submodules-for-updates
+  "Process a repo's submodules for any possible updates which may need to be
+  applied."
+  [server-repo-url submodules submodule-root]
+  (into
+    {}
+    (for [[submodule commit] submodules]
+      (let [submodule-name (extract-submodule-name submodule)
+            target-dir (fs/file submodule-root (str submodule-name ".git"))
+            server-repo-url (str server-repo-url "/" submodule-name)]
+        {submodule (apply-updates-to-repo submodule-name
+                                          server-repo-url
+                                          commit
+                                          target-dir)}))))
+
 (defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
   'server-repo-url' is the base URL at which the repository is hosted on the
@@ -213,13 +233,22 @@
   which the client repository is intended to reside.  'latest-commit-id' is
   the commit id of the latest commit in the server repo. Returns status information
   about the sync process for the repo."
-  [server-repo-url name target-dir latest-commit-id callback-fn]
-  (let [server-repo-url (str server-repo-url "/" name)
+  [server-repo-url name target-dir submodule-root latest-commit callback-fn]
+  (let [latest-commit-id (:commit latest-commit)
+        submodules (:submodules latest-commit)
+        server-repo-url (str server-repo-url "/" name)
         target-dir (fs/file target-dir)
-        status (apply-updates-to-repo name
-                                      server-repo-url
-                                      latest-commit-id
-                                      target-dir)]
+        parent-status (apply-updates-to-repo name
+                                             server-repo-url
+                                             latest-commit-id
+                                             target-dir)
+        submodules-status (when submodules
+                            (process-submodules-for-updates server-repo-url
+                                                            submodules
+                                                            submodule-root))
+        status (if submodules-status
+                 (assoc parent-status :submodules submodules-status)
+                 parent-status)]
     (when (and callback-fn (= :synced (:status status)))
       (log/debug "Invoking callback function on repo " name)
       (callback-fn (keyword name) status))
@@ -236,13 +265,15 @@
   (into {}
         (for [name repos]
           (let [repo-name (keyword name)
-                target-dir (str data-dir "/" name ".git")]
+                target-dir (str data-dir "/" name ".git")
+                submodule-root (str data-dir "/" name)]
             (if (contains? latest-commits repo-name)
               (let [latest-commit (latest-commits repo-name)]
                 (try+
                   {name (process-repo-for-updates repo-base-url
                                                   name
                                                   target-dir
+                                                  submodule-root
                                                   latest-commit
                                                   (get callbacks repo-name))}
                   (catch sync-error? e
