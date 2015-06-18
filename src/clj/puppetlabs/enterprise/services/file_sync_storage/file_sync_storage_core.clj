@@ -162,11 +162,22 @@
       (setBare true)
       (call)))
 
+(defn format-date-time
+  "Given a DateTime object, return a human-readable, formatted string."
+  [date-time]
+  (time-format/unparse
+    (time-format/formatters :rfc822)
+    date-time))
+
+(defn timestamp
+  "Returns a nicely-formatted string of the current date/time."
+  []
+  (format-date-time (time/now)))
+
 (defn jgit-time->human-readable
   "Given a commit time from JGit, format it into a human-readable date/time string."
   [commit-time]
-  (time-format/unparse
-    (time-format/formatters :rfc822)
+  (format-date-time
     (time/plus
       (time/epoch)
       (time/seconds commit-time))))
@@ -512,4 +523,5 @@
    data-dir :- StringOrFile]
   {:is-running :true
    :status (when (not= level :critical)
-             {:repos (repos-status repos data-dir)})})
+             {:timestamp (timestamp)
+              :repos (repos-status repos data-dir)})})

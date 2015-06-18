@@ -574,6 +574,10 @@
       :headers {"content-type" "application/json"}
       :body body})))
 
+(defn parse-timestamp
+  [timestamp]
+  (time-format/parse (time-format/formatters :rfc822) timestamp))
+
 (deftest ^:integration status-endpoint-test
   (let [test-start-time (time/now)
         data-dir (helpers/temp-dir-as-string)
@@ -602,6 +606,11 @@
             (testing "Basic response data"
               (is (= "file-sync-storage-service" (body "service_name")))
               (is (= "true" (body "is_running"))))
+            (testing "The response should contain a timestamp"
+              (is (= (time/within?
+                       (time/minus (time/now) (time/millis 100))
+                       (time/now)
+                       (parse-timestamp (get-in body ["status" "timestamp"]))))))
             (let [status (get-in body ["status" "repos" "my-repo"])
                   latest-commit-status (get status "latest-commit")]
               (testing "Latest commit ID"
