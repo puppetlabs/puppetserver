@@ -214,40 +214,53 @@
 (defn process-submodules-for-updates
   "Process a repo's submodules for any possible updates which may need to be
   applied."
-  [server-repo-url submodules submodule-root]
+  [server-repo-url submodules-commit-info submodule-root parent-repo]
   (into
     {}
-    (for [[submodule commit] submodules]
+    (for [[submodule commit] submodules-commit-info]
       (let [submodule-name (extract-submodule-name submodule)
             target-dir (fs/file submodule-root (str submodule-name ".git"))
-            server-repo-url (str server-repo-url "/" submodule-name)]
-        {submodule (apply-updates-to-repo submodule-name
-                                          server-repo-url
-                                          commit
-                                          target-dir)}))))
+            server-repo-url (str server-repo-url "/" submodule-name)
+            clone? (not (non-empty-dir? target-dir))
+            status {submodule (apply-updates-to-repo submodule-name
+                                                     server-repo-url
+                                                     commit
+                                                     target-dir)}]
+        (when clone?
+          (jgit-utils/change-submodule-url! parent-repo submodule (str target-dir)))
+        status))))
+
+(defn process-submodules-for-repo
+  [server-repo-url submodules-commit-info submodule-root parent-target parent-status]
+  (let [parent-repo (jgit-utils/get-repository-from-git-dir parent-target)
+        submodules-status (process-submodules-for-updates server-repo-url
+                                                          submodules-commit-info
+                                                          submodule-root
+                                                          parent-repo)]
+    (assoc parent-status :submodules submodules-status)))
 
 (defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
   'server-repo-url' is the base URL at which the repository is hosted on the
   server.  'name' is the name of the repository.  'target-dir' is the location in
-  which the client repository is intended to reside.  'latest-commit-id' is
+  which the client repository is intended to reside.  'latest-commits-info' is
   the commit id of the latest commit in the server repo. Returns status information
   about the sync process for the repo."
-  [server-repo-url name target-dir submodule-root latest-commit callback-fn]
-  (let [latest-commit-id (:commit latest-commit)
-        submodules (:submodules latest-commit)
+  [server-repo-url name target-dir submodule-root latest-commits-info callback-fn]
+  (let [latest-commit-id (:commit latest-commits-info)
+        submodules-commit-info (:submodules latest-commits-info)
         server-repo-url (str server-repo-url "/" name)
         target-dir (fs/file target-dir)
         parent-status (apply-updates-to-repo name
                                              server-repo-url
                                              latest-commit-id
                                              target-dir)
-        submodules-status (when submodules
-                            (process-submodules-for-updates server-repo-url
-                                                            submodules
-                                                            submodule-root))
-        status (if submodules-status
-                 (assoc parent-status :submodules submodules-status)
+        status (if submodules-commit-info
+                 (process-submodules-for-repo server-repo-url
+                                              submodules-commit-info
+                                              submodule-root
+                                              target-dir
+                                              parent-status)
                  parent-status)]
     (when (and callback-fn (= :synced (:status status)))
       (log/debug "Invoking callback function on repo " name)
@@ -407,7 +420,7 @@
       (log/info (str "Syncing working directory at " working-dir
                      " for repository " repo-id))
       (jgit-utils/hard-reset repo)
-      (jgit-utils/submodule-update git-dir working-dir))
+      (jgit-utils/submodule-update repo))
     (throw
       (IllegalArgumentException.
         (str "No repository exists with id " repo-id)))))

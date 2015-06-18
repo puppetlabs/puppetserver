@@ -147,7 +147,6 @@
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         client-data-dir (path-to-data-dir root-data-dir)
         server-repo "process-repos-test"
-        client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
         submodules-root (str client-data-dir "/" server-repo)
         client (sync/create-client {})
         submodules-working-dir (helpers/temp-dir-as-string)
@@ -155,11 +154,12 @@
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
         submodule-1-dir (fs/file storage-data-dir
-                                 (str server-repo ".git")
+                                 (str server-repo)
                                  (str submodule-1 ".git"))
         submodule-2-dir (fs/file storage-data-dir
-                                 (str server-repo ".git")
-                                 (str submodule-2 ".git"))]
+                                 (str server-repo)
+                                 (str submodule-2 ".git"))
+        dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
     (helpers/with-bootstrapped-storage-service
       app
       (helpers/storage-service-config
@@ -168,40 +168,64 @@
                                 :submodules-dir submodules-dir
                                 :submodules-working-dir submodules-working-dir}})
 
-      ;; Create the submodules and add commits
+      ;; Create the submodules and add commits into them
       (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
       (ks/mkdirs! (fs/file submodules-working-dir submodule-2))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-2 "test.txt"))
       (http-client/post publish-url)
 
-      (with-test-logging
-        (testing "submodules are successfully synced"
-          (let [latest-commits (get-latest-commits-from-server client
-                                                               (str (helpers/base-url false)
-                                                                    helpers/default-api-path-prefix
-                                                                    "/v1")
-                                                               {:status :created})
-                latest-commit (get latest-commits (keyword server-repo))
-                submodules-status (process-submodules-for-updates
-                                    (str (helpers/base-url false)
-                                         helpers/default-repo-path-prefix
-                                         "/"
-                                         server-repo)
-                                    (:submodules latest-commit)
-                                    submodules-root)
-                submodule-1-status (get submodules-status
-                                        (str submodules-dir "/" submodule-1))
-                submodule-2-status (get submodules-status
-                                        (str submodules-dir "/" submodule-2))]
+      (testing "submodules are successfully synced"
+        (let [latest-commits (get-latest-commits-from-server client
+                               (str (helpers/base-url false)
+                                 helpers/default-api-path-prefix
+                                 "/v1")
+                               {:status :created})
+              latest-commit (get latest-commits (keyword server-repo))
+              submodules-status (process-submodules-for-updates
+                                  (str (helpers/base-url false)
+                                    helpers/default-repo-path-prefix
+                                    "/"
+                                    server-repo)
+                                  (:submodules latest-commit)
+                                  submodules-root
+                                  dummy-repo)
+              submodule-1-status (get submodules-status
+                                   (str submodules-dir "/" submodule-1))
+              submodule-2-status (get submodules-status
+                                   (str submodules-dir "/" submodule-2))]
+          
+          (testing "submodule-1 was successfuly synced with the storage service"
             (is (fs/exists? (fs/file submodules-root (str submodule-1 ".git"))))
             (is (= :synced (:status submodule-1-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
-                   (:commit submodule-1-status)))
+                  (:latest-commit submodule-1-status))))
+
+          (testing "submodule-2 was successfully synced with the storage service"
             (is (fs/exists? (fs/file submodules-root (str submodule-2 ".git"))))
             (is (= :synced (:status submodule-2-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
-                   (:commit submodule-2-status)))))))))
+                  (:latest-commit submodule-2-status))))))
+
+      (testing "Repo config updated with correct submodule URLs"
+        (let [submodule-client-root (fs/file client-data-dir
+                                      server-repo)
+              submodule-1-client-dir (str submodule-client-root "/"
+                                       submodule-1 ".git")
+              submodule-2-client-dir (str submodule-client-root "/"
+                                       submodule-2 ".git")]
+          (testing "Submodule-1's URL set to locally synced bare repo"
+            (is (= submodule-1-client-dir
+                  (.getString (.getConfig dummy-repo)
+                    "submodule"
+                    (str submodules-dir "/" submodule-1)
+                    "url"))))
+          (testing "Submodule-2's URL set to locally synced bare repo"
+            (is (= submodule-2-client-dir
+                  (.getString (.getConfig dummy-repo)
+                    "submodule"
+                    (str submodules-dir "/" submodule-2)
+                    "url")))))))))
 
 (defn process-repos
   [repos callbacks data-dir]
@@ -265,6 +289,7 @@
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get-in state [server-repo :status]) :synced))
             (is (not (nil? (get-in state [server-repo :latest-commit]))))
+            (is (not (nil? (get-in state [server-repo :submodules]))))
             (is (not (nil? (get-in state [server-repo :submodules
                                           (str submodules-dir "/" submodule)
                                           :latest-commit]))))
