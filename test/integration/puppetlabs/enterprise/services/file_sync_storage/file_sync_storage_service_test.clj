@@ -578,6 +578,13 @@
   [timestamp]
   (time-format/parse (time-format/formatters :rfc822) timestamp))
 
+(defn timestamp-within-100-ms?
+  [timestamp]
+  (time/within?
+    (time/minus (time/now) (time/millis 100))
+    (time/now)
+    (parse-timestamp timestamp)))
+
 (deftest ^:integration status-endpoint-test
   (let [test-start-time (time/now)
         data-dir (helpers/temp-dir-as-string)
@@ -604,15 +611,12 @@
           (is (= 200 (:status response)))
           (let [body (json/parse-string (:body response))]
             (testing "Basic response data"
-              (is (= "file-sync-storage-service" (body "service_name")))
-              (is (= "true" (body "is_running"))))
+              (is (= "file-sync-storage-service" (get body "service_name")))
+              (is (= "true" (get body "is_running"))))
             (testing "The response should contain a timestamp"
-              (is (= (time/within?
-                       (time/minus (time/now) (time/millis 100))
-                       (time/now)
-                       (parse-timestamp (get-in body ["status" "timestamp"]))))))
-            (let [status (get-in body ["status" "repos" "my-repo"])
-                  latest-commit-status (get status "latest-commit")]
+              (is (= (timestamp-within-100-ms? (get-in body ["status" "timestamp"])))))
+            (let [repo-status (get-in body ["status" "repos" "my-repo"])
+                  latest-commit-status (get repo-status "latest-commit")]
               (testing "Latest commit ID"
                 (is (= commit-id (get latest-commit-status "commit"))))
               (testing "Commit date/time"
@@ -632,11 +636,22 @@
               (testing "The commit message"
                 (is (= "my msg" (get latest-commit-status "message"))))
               (testing "Status of the working directory"
-                (is (= (get status "working-dir")
+                (is (= (get repo-status "working-dir")
                        {"clean" true
                         "missing" []
                         "modified" []
-                        "untracked" []})))))))
+                        "untracked" []}))))
+            (testing "The response should contain info about the latest publish"
+              (let [latest-publish-status (get-in body ["status" "latest-publish"])]
+                (testing "Client IP address"
+                  (is (= (get latest-publish-status "client-ip-address")
+                         "127.0.0.1")))
+                (testing "Timestamp"
+                  (is (= (timestamp-within-100-ms?
+                           (get latest-publish-status "timestamp")))))
+                (testing "Information about repos"
+                  (is (= {"my-repo" {"commit" commit-id}}
+                         (get latest-publish-status "repos")))))))))
 
       ; Now, we're going to muck up a bunch of stuff in the working directory
       ; in order to get an interesting response back.

@@ -34,16 +34,17 @@
         {:servlet-init-params {"base-path" data-dir "export-all" export-all}
          :route-id :repo-servlet})
       (let [repos (:repos config)
-            handler (core/ring-handler data-dir repos server-repo-url)]
+            !latest-publish (atom nil)
+            handler (core/ring-handler data-dir repos server-repo-url !latest-publish)]
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
         (add-ring-handler
           this
           (compojure/context api-path-prefix [] handler)
-          {:route-id :api}))
-      ; Register status function with the TK Status Service
-      (register-status
-        "file-sync-storage-service"
-        common/artifact-version
-        1
-        #(core/status % (:repos config) data-dir)))
+          {:route-id :api})
+        ; Register status function with the TK Status Service
+        (register-status
+          "file-sync-storage-service"
+          common/artifact-version
+          1
+          #(core/status % (:repos config) data-dir !latest-publish))))
     context))

@@ -2,7 +2,7 @@
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
            (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
-           (clojure.lang Keyword)
+           (clojure.lang Keyword Atom)
            (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
@@ -445,16 +445,24 @@
                                      ; Maybe that's like 'git describe'?
                                      })))}}))))
 
+(defn capture-publish-info!
+  [!latest-publish request result]
+  (reset! !latest-publish
+    {:client-ip-address (:remote-addr request)
+     :timestamp (timestamp)
+     :repos result}))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler
 
 (defn base-ring-handler
   "Returns a Ring handler for the File Sync Storage Service's API using the
    given configuration values."
-  [data-dir repos server-repo-url]
+  [data-dir repos server-repo-url !latest-publish]
   (compojure/routes
     (compojure/context "/v1" []
-      (compojure/POST common/publish-content-sub-path {body :body headers :headers}
+      (compojure/POST common/publish-content-sub-path {:keys [body headers] :as request}
         ;; The body can either be empty - in which a
         ;; "Content-Type" header should not be required - or
         ;; it can be JSON. If it is empty, JSON parsing will
@@ -465,9 +473,12 @@
           (if (or (nil? content-type)
                 (re-matches #"application/json.*" content-type))
             (try
-              (let [json-body (json/parse-string (slurp body) true)]
+              (let [json-body (json/parse-string (slurp body) true)
+                    result (publish-content
+                             repos json-body data-dir server-repo-url)]
+                (capture-publish-info! !latest-publish request result)
                 {:status 200
-                 :body (publish-content repos json-body data-dir server-repo-url)})
+                 :body result})
               (catch com.fasterxml.jackson.core.JsonParseException e
                 {:status 400
                  :body {:error {:type :json-parse-error
@@ -488,8 +499,8 @@
 (defn ring-handler
   "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
    necessary middleware for error handling, logging, etc."
-  [data-dir sub-paths server-repo-url]
-  (-> (base-ring-handler data-dir sub-paths server-repo-url)
+  [data-dir sub-paths server-repo-url !latest-publish]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url !latest-publish)
     ringutils/wrap-request-logging
     ringutils/wrap-user-data-errors
     ringutils/wrap-schema-errors
@@ -520,8 +531,10 @@
 (schema/defn ^:always-validate status :- status/StatusCallbackResponse
   [level :- Keyword
    repos :- GitRepos
-   data-dir :- StringOrFile]
+   data-dir :- StringOrFile
+   !latest-publish :- Atom]
   {:is-running :true
    :status (when (not= level :critical)
              {:timestamp (timestamp)
-              :repos (repos-status repos data-dir)})})
+              :repos (repos-status repos data-dir)
+              :latest-publish @!latest-publish})})
