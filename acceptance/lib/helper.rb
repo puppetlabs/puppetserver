@@ -25,11 +25,11 @@ module PuppetServerExtensions
                          nil, "Puppet Version", "PUPPET_VERSION", nil) ||
                          get_puppet_version
 
-    # SERVER-339, SERVER-386 - puppet-agent version corresponds to packaged
-    # development version located at http://builds.puppetlabs.lan/puppet-agent/
+    # puppet-agent version corresponds to packaged development version located at:
+    # http://builds.puppetlabs.lan/puppet-agent/
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "1.1.0")
+                         "PUPPET_BUILD_VERSION", "42427827d2d923e040f0a6083fccdd2bda876858")
 
     @config = {
       :base_dir => base_dir,
