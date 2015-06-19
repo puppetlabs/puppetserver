@@ -594,7 +594,7 @@
                  {:my-repo {:working-dir working-dir}})]
     (helpers/with-bootstrapped-storage-service
       app config
-      ; First, create and some test content
+      ; First, create and publish some test content
       (spit (fs/file working-dir "test-file-1") "test file content 1")
       (spit (fs/file working-dir "test-file-2") "test file content 2")
       (let [publish-request-body (-> {:message "my msg"
@@ -682,7 +682,7 @@
                     "untracked" ["new-test-file"]})))))
 
       (testing "Status level is honored"
-        (testing "level=critical doesn't return anything execpt the basics"
+        (testing "level=critical doesn't return anything except the basics"
           (let [response (fetch-status :critical)]
             (is (= 200 (:status response)))
             (testing "No additional status data beyond is_running is returned"
