@@ -8,7 +8,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
              :as file-sync-client-service]
-            [puppetlabs.enterprise.services.scheduler.scheduler-service
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
              :as scheduler-service]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]

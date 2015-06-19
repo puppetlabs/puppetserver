@@ -11,7 +11,7 @@
              :as file-sync-storage-core]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
-            [puppetlabs.enterprise.services.scheduler.scheduler-service
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
              :as scheduler-service]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.core :as tk]
