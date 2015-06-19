@@ -230,33 +230,38 @@
                    (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))
 
           (testing (str "client-side repo recovers after server-side"
-                        "repo becomes corrupt")
+                        " repo becomes corrupt")
             (let [corrupt-repo-path (helpers/temp-dir-as-string)
                   original-repo-path (str storage-data-dir "/" repo1 ".git")]
               (helpers/push-test-commit! local-dir-repo-1)
               (helpers/push-test-commit! local-dir-repo-2)
+
               ;; "Corrupt" the server-side repo by moving it
-              ;; to a different location
+              ;; to a different location.
+              ;; Note that there is a possibility that between pushing the new
+              ;; commits and renaming this directory, a sync could have
+              ;; happened. This should not affect the outcome of this test.
               (fs/rename original-repo-path corrupt-repo-path)
               (testing (str "corruption of one repo does not affect "
-                            "syncing of other repos")
-                (let [p (promise)]
-                  (helpers/add-watch-and-deliver-new-state sync-agent p)
-                  (deref p)
-                  (testing "all repos but the corrupted one are synced"
+                            " syncing of other repos")
+                (let [new-state (helpers/wait-for-new-state sync-agent)]
+                  (is (= :partial-success (:status new-state)))
+                  (testing "corrupted repo sync state is failed"
                     ;; This should be nil, as the directory that is
                     ;; supposed to contain repo1 no longer exists
                     (is (nil? (get-latest-commits-for-repo repo1)))
-                    ;; The moved server-side repo should have newer
-                    ;; commits than the client directory
-                    ;; as it was moved before syncing happened
-                    (is (not= (jgit-utils/head-rev-id-from-git-dir
-                                corrupt-repo-path)
-                              (jgit-utils/head-rev-id-from-git-dir
-                                client-dir-repo-1)))
-                    (is (= (get-latest-commits-for-repo repo2)
-                           (jgit-utils/head-rev-id-from-git-dir
-                             client-dir-repo-2)))))
+                    (is (= :failed (get-in new-state [:repos repo1 :status]))))
+
+                  (testing "non-corrupted repo sync state is not failed"
+                    ;; Depending on whether there was a sync between pushing
+                    ;; to repo2 and when we add the watch, repo2 could have a
+                    ;; status of "synced" or a status of "unchanged"
+                    (is (contains? #{:synced :unchanged}
+                          (get-in new-state [:repos repo2 :status])))
+                    (is (= (get-in new-state [:repos repo2 :latest-commit])
+                          (get-latest-commits-for-repo repo2)
+                          (jgit-utils/head-rev-id-from-git-dir
+                            client-dir-repo-2)))))
                 ;; "Restore" the server-side repo by moving it back to
                 ;; its original location
                 (fs/rename corrupt-repo-path original-repo-path)
