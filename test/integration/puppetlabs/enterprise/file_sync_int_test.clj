@@ -290,21 +290,23 @@
   CallbackService
   [[:FileSyncClientService register-callback!]]
   (init [this context]
-    (let [repo-atom (atom {})]
-      (register-callback! #{"repo" "error-repo"}
+    (let [atom-1 (atom nil)
+          atom-2 (atom nil)]
+      (register-callback! #{"repo" "repo2"}
                           (fn [repo-status]
-                           (swap! repo-atom
-                                  #(assoc % :repo-status repo-status))))
-      (assoc context :atom repo-atom))))
+                            (reset! atom-1
+                                   (keys repo-status))))
+      (register-callback! #{"repo"}
+                          (fn [repo-status]
+                            (reset! atom-2
+                                   (keys repo-status))))
+      (assoc context :atom-1 atom-1 :atom-2 atom-2))))
 
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
     (let [repo "repo"
-          error-repo "error-repo"
-          root-data-dir (helpers/temp-dir-as-string)
-          storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
-          client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
-          client-repo-dir (str client-data-dir "/" repo ".git")]
+          repo-2 "repo2"
+          root-data-dir (helpers/temp-dir-as-string)]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -317,61 +319,23 @@
            callback-service]
           (merge (helpers/storage-service-config
                    root-data-dir
-                   {(keyword repo)       {:working-dir repo}
-                    (keyword error-repo) {:working-dir (helpers/temp-dir-as-string)}}
+                   {(keyword repo) {:working-dir repo}
+                    (keyword repo-2) {:working-dir (helpers/temp-dir-as-string)}}
                    false)
                  (helpers/client-service-config
                    root-data-dir
-                   [repo error-repo]
+                   [repo repo-2]
                    false))
-          (let [local-repo-dir (helpers/clone-and-push-test-commit! repo storage-data-dir)
-                local-repo-dir-2 (helpers/clone-and-push-test-commit! error-repo storage-data-dir)
-                sync-agent (helpers/get-sync-agent app)
-                svc (tk-app/get-service app :CallbackService)
-                repo-atom (:atom (tk-services/service-context svc))]
 
-            ;; This test does not test that the callback function is called when
-            ;; a clone is performed, as that is handled in the process-repos-for-updates-test
-            ;; in the file-sync-client-core-test namespace.
+          (let [sync-agent (helpers/get-sync-agent app)
+                svc (tk-app/get-service app :CallbackService)
+                atom-1 (:atom-1 (tk-services/service-context svc))
+                atom-2 (:atom-2 (tk-services/service-context svc))]
+
             (testing "file sync client service is running"
               (let [new-state (helpers/wait-for-new-state sync-agent)]
-                (is (= :successful (:status new-state))))
-              (is (= (get-latest-commits-for-repo repo)
-                     (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
+                (is (= :successful (:status new-state)))))
 
-            (testing "registered callback is not called when no fetch or clone is performed"
-              (let [p (promise)]
-                (reset! repo-atom {})
-                (helpers/add-watch-and-deliver-new-state sync-agent p)
-                (let [new-state (deref p)]
-                  (is (= :successful (:status new-state))))
-                (is (= {} @repo-atom))))
-
-            (testing "registered callback is called when a fetch is performed"
-              (helpers/push-test-commit! local-repo-dir)
-              (reset! repo-atom {})
-              (let [p (promise)]
-                (helpers/add-watch-and-deliver-new-state sync-agent p)
-                (let [new-state (deref p)
-                      repo-state @repo-atom]
-                  (is (= :successful (:status new-state)))
-                  (is (= :unchanged (get-in repo-state [:repo-status error-repo :status])))
-                  (is (= :synced (get-in repo-state [:repo-status repo :status])))
-                  (is (= (get-latest-commits-for-repo repo)
-                         (get-in repo-state [:repo-status repo :latest-commit]))))))
-
-            (testing (str "registered callback is called when one of the repos errored but "
-                          "others were synced")
-              (helpers/push-test-commit! local-repo-dir)
-              (helpers/push-test-commit! local-repo-dir-2)
-              (fs/delete-dir (fs/file storage-data-dir (str error-repo ".git")))
-              (reset! repo-atom {})
-              (let [p (promise)]
-                (helpers/add-watch-and-deliver-new-state sync-agent p)
-                (let [new-state (deref p)
-                      repo-state @repo-atom]
-                  (is (= :partial-success (:status new-state)))
-                  (is (= :failed (get-in repo-state [:repo-status error-repo :status])))
-                  (is (= :synced (get-in repo-state [:repo-status repo :status])))
-                  (is (= (get-latest-commits-for-repo repo)
-                         (get-in repo-state [:repo-status repo :latest-commit]))))))))))))
+            (testing "callbacks were successfuly registered"
+              (is (= [repo repo-2] (deref atom-1)))
+              (is (= [repo] (deref atom-2))))))))))
