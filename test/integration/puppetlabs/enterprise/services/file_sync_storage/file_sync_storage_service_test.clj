@@ -576,14 +576,7 @@
 
 (defn parse-timestamp
   [timestamp]
-  (time-format/parse (time-format/formatters :rfc822) timestamp))
-
-(defn timestamp-within-100-ms?
-  [timestamp]
-  (time/within?
-    (time/minus (time/now) (time/millis 100))
-    (time/now)
-    (parse-timestamp timestamp)))
+  (time-format/parse core/datetime-formatter timestamp))
 
 (deftest ^:integration status-endpoint-test
   (let [test-start-time (time/now)
@@ -614,7 +607,10 @@
               (is (= "file-sync-storage-service" (get body "service_name")))
               (is (= "true" (get body "is_running"))))
             (testing "The response should contain a timestamp"
-              (is (= (timestamp-within-100-ms? (get-in body ["status" "timestamp"])))))
+              (is (time/within?
+                    test-start-time
+                    (time/now)
+                    (parse-timestamp (get-in body ["status" "timestamp"])))))
             (let [repo-status (get-in body ["status" "repos" "my-repo"])
                   latest-commit-status (get repo-status "latest-commit")]
               (testing "Latest commit ID"
@@ -647,8 +643,10 @@
                   (is (= (get latest-publish-status "client-ip-address")
                          "127.0.0.1")))
                 (testing "Timestamp"
-                  (is (= (timestamp-within-100-ms?
-                           (get latest-publish-status "timestamp")))))
+                  (is (time/within?
+                        test-start-time
+                        (time/now)
+                        (parse-timestamp (get latest-publish-status "timestamp")))))
                 (testing "Information about repos"
                   (is (= {"my-repo" {"commit" commit-id}}
                          (get latest-publish-status "repos")))))))))
@@ -695,8 +693,10 @@
               info-response (fetch-status :info)]
           (is (= 200 (:status debug-response)))
           (is (= 200 (:status info-response)))
-          (is (= (response->status debug-response)
-                 (response->status info-response))))))))
+          (is (= (get (response->status debug-response) "repos")
+                 (get (response->status info-response) "repos")))
+          (is (= (get (response->status debug-response) "latest-publish")
+                 (get (response->status info-response) "latest-publish"))))))))
 
 (deftest ^:integration submodules-status-endpoint-test
   (let [data-dir (helpers/temp-dir-as-string)
