@@ -11,7 +11,7 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :as file-sync-client-service]
-            [puppetlabs.enterprise.services.scheduler.scheduler-service :as scheduler-service]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.trapperkeeper.app :as tk-app]

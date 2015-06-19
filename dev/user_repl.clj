@@ -3,7 +3,7 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :refer [file-sync-storage-service]]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :refer [file-sync-client-service]]
-            [puppetlabs.enterprise.services.scheduler.scheduler-service :refer [scheduler-service]]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.config :as tkc]

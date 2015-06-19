@@ -18,6 +18,7 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/http-client "0.4.4" :exclusions [commons-io]]
                  [puppetlabs/ssl-utils "0.8.0"]
+                 [puppetlabs/trapperkeeper-scheduler "0.0.1"]
                  [prismatic/schema "0.4.0"]
                  [compojure "1.1.8"]
                  [overtone/at-at "1.2.0"]
