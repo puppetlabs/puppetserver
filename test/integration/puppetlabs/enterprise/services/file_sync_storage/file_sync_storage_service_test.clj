@@ -694,15 +694,15 @@
 
         ; Don't need to test level=info - that's the default (what's used above).
         ; There's currently no debug-only status information.
-        (testing "level=debug is same as level=info")
-        (let [debug-response (fetch-status :debug)
-              info-response (fetch-status :info)]
-          (is (= 200 (:status debug-response)))
-          (is (= 200 (:status info-response)))
-          (is (= (get (response->status debug-response) "repos")
-                 (get (response->status info-response) "repos")))
-          (is (= (get (response->status debug-response) "latest-publish")
-                 (get (response->status info-response) "latest-publish"))))))))
+        (testing "level=debug is same as level=info"
+          (let [debug-response (fetch-status :debug)
+                info-response (fetch-status :info)]
+            (is (= 200 (:status debug-response)))
+            (is (= 200 (:status info-response)))
+            (is (= (get (response->status debug-response) "repos")
+                  (get (response->status info-response) "repos")))
+            (is (= (get (response->status debug-response) "latest-publish")
+                  (get (response->status info-response) "latest-publish")))))))))
 
 (deftest ^:integration submodules-status-endpoint-test
   (let [data-dir (helpers/temp-dir-as-string)
