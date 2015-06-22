@@ -535,9 +535,9 @@
   [level :- Keyword
    repos :- GitRepos
    data-dir :- StringOrFile
-   !latest-publish :- Atom]
+   latest-publish]
   {:is-running :true
    :status (when (not= level :critical)
              {:timestamp (timestamp)
               :repos (repos-status repos data-dir)
-              :latest-publish @!latest-publish})})
+              :latest-publish latest-publish})})

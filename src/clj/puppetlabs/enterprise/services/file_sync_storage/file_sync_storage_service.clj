@@ -46,5 +46,5 @@
           "file-sync-storage-service"
           common/artifact-version
           1
-          #(core/status % (:repos config) data-dir !latest-publish))))
+          #(core/status % (:repos config) data-dir @!latest-publish))))
     context))
