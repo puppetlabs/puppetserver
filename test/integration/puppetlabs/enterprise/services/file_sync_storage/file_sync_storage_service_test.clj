@@ -640,6 +640,12 @@
             (testing "The response should contain info about the latest publish"
               (let [latest-publish-status (get-in body ["status" "latest-publish"])]
                 (testing "Client IP address"
+                  ; If this test runs on a machine in which 'localhost' resolves
+                  ; to a different IP address, this assertion will fail.
+                  ; If that ever actually happens, this should be changed
+                  ; to simply test for a valid IP address.
+                  ; For now, this test offers a little more assurance that
+                  ; the IP address returned is the correct IP address.
                   (is (= (get latest-publish-status "client-ip-address")
                          "127.0.0.1")))
                 (testing "Timestamp"
