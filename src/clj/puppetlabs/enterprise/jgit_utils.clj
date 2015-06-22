@@ -270,14 +270,19 @@
   (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (head-rev-id as-repo)))
 
+(schema/defn submodules-status
+  "Like 'git submodule status'."
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .submoduleStatus
+      .call))
+
 (defn get-submodules-latest-commits
   "Given a path to a Git repository and a working tree, returns the
   latest commit for all submodules in that repo"
   [git-dir working-dir]
-  (let [submodule-status (-> (get-repository git-dir working-dir)
-                             Git/wrap
-                             .submoduleStatus
-                             .call)]
+  (let [submodule-status (submodules-status (get-repository git-dir working-dir))]
     (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
 
 (schema/defn status :- Status
@@ -286,12 +291,4 @@
   (-> repo
       Git/wrap
       .status
-      .call))
-
-(schema/defn submodules-status
-  "Like 'git submodule status'."
-  [repo :- Repository]
-  (-> repo
-      Git/wrap
-      .submoduleStatus
       .call))
