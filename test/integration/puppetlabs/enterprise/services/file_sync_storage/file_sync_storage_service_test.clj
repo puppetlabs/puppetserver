@@ -11,7 +11,9 @@
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
             [cheshire.core :as json]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -543,3 +545,197 @@
            (is (fs/exists? (fs/file working-dir submodules-dir-name submodule-1 "update.txt")))
            (is (= (slurp (fs/file submodules-working-dir submodule-1 "update.txt"))
                  (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))))))
+
+(defn fetch-status
+  ([]
+   (fetch-status nil))
+  ([level]
+   (http-client/get
+     (str helpers/server-base-url
+       (if level
+         (str "/status/v1/services/file-sync-storage-service?level=" (name level))
+         "/status/v1/services/file-sync-storage-service"))
+     {:as :text})))
+
+(defn response->status
+  [response]
+  (-> response
+    :body
+    json/parse-string
+    (get "status")))
+
+(defn do-publish
+  ([]
+   (do-publish nil))
+  ([body]
+   (http-client/post
+     (str helpers/server-base-url "/file-sync/v1/publish")
+     {:as :text
+      :headers {"content-type" "application/json"}
+      :body body})))
+
+(defn parse-timestamp
+  [timestamp]
+  (time-format/parse core/datetime-formatter timestamp))
+
+(deftest ^:integration status-endpoint-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        config (helpers/storage-service-config
+                 data-dir
+                 {:my-repo {:working-dir working-dir}})]
+    (helpers/with-bootstrapped-storage-service
+      app config
+      ; First, create and publish some test content
+      (spit (fs/file working-dir "test-file-1") "test file content 1")
+      (spit (fs/file working-dir "test-file-2") "test file content 2")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                     json/generate-string)
+            commit-id (-> (do-publish publish-request-body)
+                          :body
+                          (json/parse-string true)
+                          :my-repo
+                          :commit)
+            response (fetch-status)]
+        (testing "A request against the Storage Service's status endpoint"
+          (is (= 200 (:status response)))
+          (let [body (json/parse-string (:body response))]
+            (testing "Basic response data"
+              (is (= "file-sync-storage-service" (get body "service_name")))
+              (is (= "true" (get body "is_running"))))
+            (testing "The response should contain a timestamp"
+              (is (time/within?
+                    test-start-time
+                    (time/now)
+                    (parse-timestamp (get-in body ["status" "timestamp"])))))
+            (let [repo-status (get-in body ["status" "repos" "my-repo"])
+                  latest-commit-status (get repo-status "latest-commit")]
+              (testing "Latest commit ID"
+                (is (= commit-id (get latest-commit-status "commit"))))
+              (testing "Commit date/time"
+                (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+                  ; JGit tracks commit time at the seconds level of resolution,
+                  ; (appears to just truncate milliseconds, never rounding up)
+                  ; and therefore always has 0 milliseconds in the DateTime
+                  ; object here.  So give it some wiggle room.
+                  ;(is (time/after? commit-time test-start-time))
+                  (is (time/after? commit-time (-> test-start-time
+                                                   (time/minus (time/seconds 1)))))
+                  (is (time/before? commit-time (time/now)))))
+              (testing "The commit author"
+                (is (= {"name" "Testy"
+                        "email" "test@foo.com"}
+                       (get latest-commit-status "author"))))
+              (testing "The commit message"
+                (is (= "my msg" (get latest-commit-status "message"))))
+              (testing "Status of the working directory"
+                (is (= (get repo-status "working-dir")
+                       {"clean" true
+                        "missing" []
+                        "modified" []
+                        "untracked" []}))))
+            (testing "The response should contain info about the latest publish"
+              (let [latest-publish-status (get-in body ["status" "latest-publish"])]
+                (testing "Client IP address"
+                  ; If this test runs on a machine in which 'localhost' resolves
+                  ; to a different IP address, this assertion will fail.
+                  ; If that ever actually happens, this should be changed
+                  ; to simply test for a valid IP address.
+                  ; For now, this test offers a little more assurance that
+                  ; the IP address returned is the correct IP address.
+                  (is (= (get latest-publish-status "client-ip-address")
+                         "127.0.0.1")))
+                (testing "Timestamp"
+                  (is (time/within?
+                        test-start-time
+                        (time/now)
+                        (parse-timestamp (get latest-publish-status "timestamp")))))
+                (testing "Information about repos"
+                  (is (= {"my-repo" {"commit" commit-id}}
+                         (get latest-publish-status "repos")))))))))
+
+      ; Now, we're going to muck up a bunch of stuff in the working directory
+      ; in order to get an interesting response back.
+
+      ; Modify an existing file.
+      (spit (fs/file working-dir "test-file-1") "different file content")
+      ; Delete an existing file
+      (fs/delete (fs/file working-dir "test-file-2"))
+      ; Create a new file.
+      (spit (fs/file working-dir "new-test-file") "i like cheese")
+
+      ; Also, hit /latest-commits so we can get status data about that too.
+      (let [response (http-client/get
+                       (str helpers/server-base-url "/file-sync/v1/latest-commits")
+                       {:as :text})]
+        (is (= 200 (:status response))))
+
+      ; Get the status again
+      (let [response (fetch-status)
+            body (json/parse-string (:body response))
+            status (get-in body ["status" "repos" "my-repo"])]
+        (testing "The response from the /status endpoint"
+          (testing "Status of the working directory"
+            (is (= (get status "working-dir")
+                   {"clean" false
+                    "missing" ["test-file-2"]
+                    "modified" ["test-file-1"]
+                    "untracked" ["new-test-file"]})))))
+
+      (testing "Status level is honored"
+        (testing "level=critical doesn't return anything except the basics"
+          (let [response (fetch-status :critical)]
+            (is (= 200 (:status response)))
+            (testing "No additional status data beyond is_running is returned"
+              (is (= nil (response->status response))))))
+
+        ; Don't need to test level=info - that's the default (what's used above).
+        ; There's currently no debug-only status information.
+        (testing "level=debug is same as level=info"
+          (let [debug-response (fetch-status :debug)
+                info-response (fetch-status :info)]
+            (is (= 200 (:status debug-response)))
+            (is (= 200 (:status info-response)))
+            (is (= (get (response->status debug-response) "repos")
+                  (get (response->status info-response) "repos")))
+            (is (= (get (response->status debug-response) "latest-publish")
+                  (get (response->status info-response) "latest-publish")))))))))
+
+(deftest ^:integration submodules-status-endpoint-test
+  (let [data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules-dir"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "my-submodule"
+        submodule-path (str submodules-dir "/" submodule-name)
+        config (helpers/storage-service-config
+                 data-dir
+                 {:my-repo {:working-dir working-dir
+                            :submodules-dir submodules-dir
+                            :submodules-working-dir submodules-working-dir}})]
+    (helpers/with-bootstrapped-storage-service
+      app config
+      ; Create a submodule
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      ; Write a file into the submodule
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules are SO cool")
+      (let [submodule-commit-id (-> (do-publish)
+                                    :body
+                                    json/parse-string
+                                    (get-in [(name :my-repo)
+                                             "submodules"
+                                             submodule-path]))
+            response (fetch-status)
+            body (json/parse-string (:body response))]
+        (is (= 200 (:status response)))
+        (testing "The response should contain information about submodules status"
+          (is (= (get-in body ["status" "repos" (name :my-repo) "submodules"])
+                 {submodule-path {"head-id" submodule-commit-id
+                                  "path" submodule-path
+                                  "status" "INITIALIZED"}})))))))
+

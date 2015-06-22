@@ -1,6 +1,5 @@
 (ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
-           (org.eclipse.jgit.lib PersonIdent)
            (org.eclipse.jgit.transport HttpTransport)
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory))
   (:require [clojure.test :refer :all]
@@ -12,6 +11,7 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :as file-sync-client-service]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
+            [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -33,8 +33,12 @@
 
 (def server-repo-url (str server-base-url default-repo-path-prefix))
 
-(def author (PersonIdent.
-              "lein tester" "lein.tester@bogus.com"))
+(def test-commit-message
+  "update via test")
+
+(def test-identity
+  {:name "Tester Testypants"
+   :email "tester@bogus.com"})
 
 (defn base-url
   [ssl?]
@@ -67,18 +71,20 @@
                              (JDKHttpConnectionFactory.))]
     (HttpTransport/setConnectionFactory connection-factory)))
 
+(def webserver-base-config
+  {:web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
+                        {:api default-api-path-prefix
+                         :repo-servlet default-repo-path-prefix}
+                        :puppetlabs.trapperkeeper.services.status.status-service/status-service "/status"}})
+
 (def webserver-plaintext-config
-  {:webserver {:port http-port}
-   :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
-                         {:api          default-api-path-prefix
-                          :repo-servlet default-repo-path-prefix}}})
+  (assoc webserver-base-config
+    :webserver {:port http-port}))
 
 (def webserver-ssl-config
-  {:webserver          (merge {:ssl-port https-port
-                               :ssl-host "0.0.0.0"} ssl-options)
-   :web-router-service {:puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service/file-sync-storage-service
-                        {:api          default-api-path-prefix
-                         :repo-servlet default-repo-path-prefix}}})
+  (assoc webserver-base-config
+    :webserver (merge {:ssl-port https-port
+                       :ssl-host "0.0.0.0"} ssl-options)))
 
 (defn storage-service-config
   ([data-dir repos]
@@ -119,8 +125,10 @@
   [app config & body]
   `(bootstrap/with-app-with-config
      ~app
-     [webrouting-service/webrouting-service file-sync-storage-service/file-sync-storage-service
-      jetty9-service/jetty9-service]
+     [webrouting-service/webrouting-service
+      file-sync-storage-service/file-sync-storage-service
+      jetty9-service/jetty9-service
+      status-service/status-service]
      ~config
      (do
        ~@body)))
@@ -159,7 +167,7 @@
   ([repo-path file-name]
    (write-test-file! (str repo-path "/" file-name))
    (let [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
-     (jgit-utils/add-and-commit repo "update via test" author)
+     (jgit-utils/add-and-commit repo test-commit-message test-identity)
      (jgit-utils/push repo))))
 
 (defn clone-and-push-test-commit!

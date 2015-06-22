@@ -1,5 +1,5 @@
 (ns puppetlabs.enterprise.jgit-utils
-  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType PullResult)
+  (:import (org.eclipse.jgit.api Git ResetCommand$ResetType PullResult Status)
            (org.eclipse.jgit.lib PersonIdent RepositoryBuilder AnyObjectId
                                  Repository Ref)
            (org.eclipse.jgit.merge MergeStrategy)
@@ -27,7 +27,11 @@
       ([url connection-proxy]
         (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
-(defn add-and-commit
+(schema/defn identity->person-ident :- PersonIdent
+  [{:keys [name email]} :- common/Identity]
+  (PersonIdent. name email))
+
+(schema/defn add-and-commit :- RevCommit
   "Perform a git-add and git-commit of all files in the repo working tree. All
   files, whether previously indexed or not, will be considered for the commit.
   The supplied message and author will be attached to the commit.  If the commit
@@ -45,21 +49,21 @@
 
   * WrongRepositoryStateException
     - when repository is not in the right state for committing"
-  [git message author]
-  {:pre [(instance? Git git)
-         (string? message)
-         (instance? PersonIdent author)]
-   :post [(instance? RevCommit %)]}
+  [git :- Git
+   message :- String
+   identity :- common/Identity]
   (-> git
       (.add)
       (.addFilepattern ".")
       (.call))
-  (-> git
-      (.commit)
-      (.setMessage message)
-      (.setAll true)
-      (.setAuthor author)
-      (.call)))
+  (let [person-ident (identity->person-ident identity)]
+    (-> git
+        (.commit)
+        (.setMessage message)
+        (.setAll true)
+        (.setAuthor person-ident)
+        (.setCommitter person-ident)
+        (.call))))
 
 (defn clone
   "Perform a git-clone of the content at the specified 'server-repo-url' string
@@ -181,6 +185,16 @@
        (.setRemote remote)
        (.call))))
 
+(schema/defn latest-commit :- RevCommit
+  "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .log
+      (.setMaxCount 1)
+      .call
+      first))
+
 (defn commit-id
   "Given an instance of `AnyObjectId` or its subclasses
   (for example, a `RevCommit`) return the SHA-1 ID for that commit."
@@ -256,12 +270,25 @@
   (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (head-rev-id as-repo)))
 
+(schema/defn submodules-status
+  "Like 'git submodule status'."
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .submoduleStatus
+      .call))
+
 (defn get-submodules-latest-commits
   "Given a path to a Git repository and a working tree, returns the
   latest commit for all submodules in that repo"
   [git-dir working-dir]
-  (let [submodule-status (-> (get-repository git-dir working-dir)
-                             Git/wrap
-                             .submoduleStatus
-                             .call)]
+  (let [submodule-status (submodules-status (get-repository git-dir working-dir))]
     (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
+
+(schema/defn status :- Status
+  "Like 'git status'"
+  [repo :- Repository]
+  (-> repo
+      Git/wrap
+      .status
+      .call))

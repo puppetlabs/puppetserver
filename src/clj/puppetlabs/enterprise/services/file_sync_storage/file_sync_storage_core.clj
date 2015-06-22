@@ -1,10 +1,13 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
   (:import (java.io File)
            (org.eclipse.jgit.api Git InitCommand)
-           (org.eclipse.jgit.lib PersonIdent)
-           (org.eclipse.jgit.api.errors GitAPIException JGitInternalException))
+           (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
+           (clojure.lang Keyword Atom)
+           (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -14,7 +17,8 @@
             [compojure.core :as compojure]
             [ring.middleware.json :as ring-json]
             [me.raynes.fs :as fs]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Defaults
@@ -63,7 +67,7 @@
 
     * :repos     - A sequence with metadata about each of the individual
                    Git repositories that the server manages."
-  {:repos    GitRepos})
+  {:repos GitRepos})
 
 (def PublishRequestBase
   {(schema/optional-key :message) schema/Str
@@ -71,13 +75,13 @@
                                   :email schema/Str}})
 (def PublishRequest
   (schema/maybe
-    (merge PublishRequestBase
-           {(schema/optional-key :repo-id) schema/Str})))
+    (assoc PublishRequestBase
+      (schema/optional-key :repo-id) schema/Str)))
 
 (def PublishRequestWithSubmodule
-  (merge PublishRequestBase
-         {:repo-id                       schema/Str
-          :submodule-id                  schema/Str}))
+  (assoc PublishRequestBase
+    :repo-id schema/Str
+    :submodule-id schema/Str))
 
 (def PublishRequestBody
   "Schema defining the body of a request to the publish content endpoint.
@@ -132,11 +136,6 @@
   SHA or an error map."
   {schema/Keyword PublishRepoResult})
 
-(def CommitInfo
-  "Schema defining the necessary metadata for making a commit."
-  {:author PersonIdent
-   :message schema/Str})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -163,7 +162,40 @@
       (setBare true)
       (call)))
 
-(schema/defn latest-commit-on-master :- (schema/maybe common/LatestCommit)
+(def datetime-formatter
+  "The date/time formatter used to produce timestamps using clj-time.
+   This matches the format used by PuppetDB."
+  (time-format/formatters :date-time))
+
+(defn format-date-time
+  "Given a DateTime object, return a human-readable, formatted string."
+  [date-time]
+  (time-format/unparse datetime-formatter date-time))
+
+(defn timestamp
+  "Returns a nicely-formatted string of the current date/time."
+  []
+  (format-date-time (time/now)))
+
+(defn jgit-time->human-readable
+  "Given a commit time from JGit, format it into a human-readable date/time string."
+  [commit-time]
+  (format-date-time
+    (time/plus
+      (time/epoch)
+      (time/seconds commit-time))))
+
+(schema/defn commit->status-info
+  "Given a RevCommit, extracts and returns information about it which is
+   relevant for the /status endpoint."
+  [commit :- RevCommit]
+  {:commit (jgit-utils/commit-id commit)
+   :date (jgit-time->human-readable (.getCommitTime commit))
+   :message (.getFullMessage commit)
+   :author {:name (.getName (.getAuthorIdent commit))
+            :email (.getEmailAddress (.getAuthorIdent commit))}})
+
+(schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommit)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
@@ -173,8 +205,8 @@
       (let [latest-commit (-> ref
                               (.getObjectId)
                               (jgit-utils/commit-id))
-            submodules-status (jgit-utils/get-submodules-latest-commits git-dir
-                                                                working-dir)
+            submodules-status (jgit-utils/get-submodules-latest-commits
+                                git-dir working-dir)
             base-data {:commit latest-commit}]
         (if (empty? submodules-status)
           base-data
@@ -190,20 +222,19 @@
                         (let [repo-path (fs/file
                                           data-dir
                                           (str (name sub-path) ".git"))
-                              rev (latest-commit-on-master
+                              rev (latest-commit-id-on-master
                                     repo-path
                                     (get-in repos [sub-path :working-dir]))]
                           [sub-path rev]))]
     (into {}
       (map* latest-commit sub-paths))))
 
-(defn commit-author
-  "Create PersonIdent instance using provided name and email, or
-  defaults if not provided."
+(schema/defn commit-author :- common/Identity
+  "Returns an Identity given the author information from a publish request,
+  using defaults for name and e-mail address if not specified."
   [author]
-  (let [name (:name author default-commit-author-name)
-        email (:email author default-commit-author-email)]
-   (PersonIdent. name email)))
+  {:name (:name author default-commit-author-name)
+   :email (:email author default-commit-author-email)})
 
 (defn failed-to-publish
   [path error]
@@ -230,7 +261,8 @@
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s" submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
+    (jgit-utils/add-and-commit
+      submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a submodule add on the parent repo and return the SHA from the cloned
   ;; submodule within the repo
@@ -254,7 +286,8 @@
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit submodule-git (:message commit-info) (:author commit-info)))
+    (jgit-utils/add-and-commit
+      submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a pull for the submodule within the parent repo to update it, and
   ;; the return the SHA for the new HEAD of the submodule.
@@ -334,7 +367,7 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
-   commit-info :- CommitInfo
+   commit-info :- common/CommitInfo
    submodule-id :- (schema/maybe schema/Str)]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
     (do
@@ -349,7 +382,8 @@
           (log/infof "Committing repo %s" working-dir)
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (jgit-utils/add-and-commit git (:message commit-info) (:author commit-info))
+                commit (jgit-utils/add-and-commit
+                         git (:message commit-info) (:identity commit-info))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
@@ -375,23 +409,63 @@
              :message (str "Request body did not match schema: "
                            checked-body)})
     (let [repo-id (keyword (:repo-id body))
-          repos (if repo-id
-                  (select-keys repos [repo-id])
-                  repos)
+          repos-to-publish (if repo-id
+                             (select-keys repos [repo-id])
+                             repos)
           submodule-id (:submodule-id body)
-          commit-info {:author (commit-author (:author body))
+          commit-info {:identity (commit-author (:author body))
                        :message (:message body default-commit-message)}
-          new-commits (publish-repos repos data-dir server-repo-url commit-info submodule-id)]
-      (zipmap (keys repos) new-commits))))
+          new-commits (publish-repos
+                        repos-to-publish
+                        data-dir
+                        server-repo-url
+                        commit-info
+                        submodule-id)]
+      (zipmap (keys repos-to-publish) new-commits))))
+
+(schema/defn repos-status
+  [repos :- GitRepos
+   data-dir]
+  (into {}
+    (for [[repo-id {:keys [working-dir]}] repos]
+      (let [repo (jgit-utils/get-repository
+                   (fs/file data-dir (str (name repo-id) ".git"))
+                   working-dir)
+            repo-status (jgit-utils/status repo)]
+        {repo-id {:latest-commit (commit->status-info (jgit-utils/latest-commit repo))
+                  :working-dir {:clean (.isClean repo-status)
+                                :modified (.getModified repo-status)
+                                :missing (.getMissing repo-status)
+                                :untracked (.getUntracked repo-status)}
+                  :submodules (->> repo
+                                jgit-utils/submodules-status
+                                (ks/mapvals
+                                  (fn [ss]
+                                    {:path (.getPath ss)
+                                     :status (.toString (.getType  ss))
+                                     :head-id (jgit-utils/commit-id (.getHeadId ss))
+                                     ; There is also SubmoduleStatus.getIndexId
+                                     ; Maybe that's like 'git describe'?
+                                     })))}}))))
+
+(defn capture-publish-info!
+  [!latest-publish request result]
+  (reset! !latest-publish
+    {:client-ip-address (:remote-addr request)
+     :timestamp (timestamp)
+     :repos result}))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Compojure app
-(defn build-routes
-  "Builds the compojure routes from the given configuration values."
-  [data-dir repos server-repo-url]
+;;; Ring handler
+
+(defn base-ring-handler
+  "Returns a Ring handler for the File Sync Storage Service's API using the
+   given configuration values."
+  [data-dir repos server-repo-url !latest-publish]
   (compojure/routes
     (compojure/context "/v1" []
-      (compojure/POST common/publish-content-sub-path {body :body headers :headers}
+      (compojure/POST common/publish-content-sub-path {:keys [body headers] :as request}
         ;; The body can either be empty - in which a
         ;; "Content-Type" header should not be required - or
         ;; it can be JSON. If it is empty, JSON parsing will
@@ -402,33 +476,40 @@
           (if (or (nil? content-type)
                 (re-matches #"application/json.*" content-type))
             (try
-              (let [json-body (json/parse-string (slurp body) true)]
+              (let [json-body (json/parse-string (slurp body) true)
+                    result (publish-content
+                             repos json-body data-dir server-repo-url)]
+                (capture-publish-info! !latest-publish request result)
                 {:status 200
-                 :body (publish-content repos json-body data-dir server-repo-url)})
+                 :body result})
               (catch com.fasterxml.jackson.core.JsonParseException e
                 {:status 400
                  :body {:error {:type :json-parse-error
                                 :message "Could not parse body as JSON."}}}))
             {:status 400
              :body {:error {:type :content-type-error
-                            :message "Content type must be JSON."}}})))
+                            :message (format
+                                       "Content type must be JSON, '%s' is invalid"
+                                       content-type)}}})))
       (compojure/ANY common/latest-commits-sub-path []
         {:status 200
          :body (compute-latest-commits data-dir repos)}))))
 
-(defn build-handler
-  "Builds a ring handler from the given configuration values."
-  [data-dir sub-paths server-repo-url]
-  (-> (build-routes data-dir sub-paths server-repo-url)
-      ringutils/wrap-request-logging
-      ringutils/wrap-user-data-errors
-      ringutils/wrap-schema-errors
-      ringutils/wrap-errors
-      ring-json/wrap-json-response
-      ringutils/wrap-response-logging))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(defn ring-handler
+  "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
+   necessary middleware for error handling, logging, etc."
+  [data-dir sub-paths server-repo-url !latest-publish]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url !latest-publish)
+    ringutils/wrap-request-logging
+    ringutils/wrap-user-data-errors
+    ringutils/wrap-schema-errors
+    ringutils/wrap-errors
+    ring-json/wrap-json-response
+    ringutils/wrap-response-logging))
 
 (schema/defn ^:always-validate initialize-repos!
   "Initialize the repositories managed by this service.  For each repository ...
@@ -449,3 +530,14 @@
         (ks/mkdirs! working-dir))
       (log/infof "Initializing Git repository at %s" git-dir)
       (initialize-bare-repo! git-dir))))
+
+(schema/defn ^:always-validate status :- status/StatusCallbackResponse
+  [level :- Keyword
+   repos :- GitRepos
+   data-dir :- StringOrFile
+   latest-publish]
+  {:is-running :true
+   :status (when (not= level :critical)
+             {:timestamp (timestamp)
+              :repos (repos-status repos data-dir)
+              :latest-publish latest-publish})})

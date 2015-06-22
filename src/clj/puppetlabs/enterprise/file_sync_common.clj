@@ -2,13 +2,21 @@
   (:import (javax.net.ssl SSLContext))
   (:require [cheshire.core :as json]
             [schema.core :as schema]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
 
 (def latest-commits-sub-path "/latest-commits")
 (def publish-content-sub-path "/publish")
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def artifact-version (status/get-artifact-version "puppetlabs" "pe-file-sync"))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -51,6 +59,17 @@
              (schema/pred #(.startsWith % "application/json"))
              schema/Any schema/Any}
    schema/Any schema/Any})
+
+(def Identity
+  "Schema for an author/committer."
+  {:name String
+   :email String})
+
+(def CommitInfo
+  "Schema defining the necessary metadata for making a commit."
+  {:identity Identity
+   :message schema/Str})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Functions
