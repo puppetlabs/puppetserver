@@ -38,28 +38,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
-(deftest ^:integration admin-api-access-control-test
-  (testing "access denied when cert not on whitelist"
-    (bootstrap/with-puppetserver-running app
-      {:puppet-admin {:client-whitelist ["notlocalhost"]}}
-      (doseq [endpoint endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
-                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                           ssl-request-options)]
-            (is (= 401 (:status response))
-                (ks/pprint-to-string response)))))))
-
-  (testing "server tolerates client specifying an 'Accept: */*' header"
-    (bootstrap/with-puppetserver-running app
-      {:puppet-admin {:client-whitelist ["localhost"]}}
-      (doseq [endpoint endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
-                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                           (assoc ssl-request-options :headers {"Accept" "*/*"}))]
-            (is (= 204 (:status response))
-                (ks/pprint-to-string response))))))))
+; REMOVED for SERVER-768
 
 ;; See 'environment-flush-integration-test'
 ;; for additional test coverage on the /environment-cache endpoint

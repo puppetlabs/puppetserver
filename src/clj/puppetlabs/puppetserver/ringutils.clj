@@ -5,8 +5,11 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.trapperkeeper.authorization.file.config :as config]
+            [puppetlabs.trapperkeeper.authorization.rules :as rules]
             [ring.util.response :as ring]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [me.raynes.fs :as fs]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -22,6 +25,27 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
+
+; First try to load rules from /etc/puppetlabs/puppetserver/rules.conf
+; if it doesn't exist, load from code.
+
+(def rules-path "/etc/puppetlabs/puppetserver/rules.conf")
+
+(def authz-default-rules
+  "The default set of Rules from code."
+  (-> rules/empty-rules
+      (rules/add-rule (rules/new-path-rule "/puppet-admin-api/"))
+      (rules/add-rule (rules/new-path-rule "/certificate_status/"))
+      (rules/add-rule (rules/new-path-rule "/certificate_statuses/"))))
+
+(defn authz-rules
+  "Load a authz rules from rules-path if it exists, otherwise load hard-coded
+  defaults from code.  This is a function to allow modification of the rules
+  file at runtime."
+  []
+  (if (fs/exists? rules-path)
+    (config/config-file->rules rules-path)
+    authz-default-rules))
 
 (defn get-cert-subject
   "Pull the common name of the subject off the certificate."
@@ -85,6 +109,28 @@
         false))
     true))
 
+(schema/defn ^:always-validate request->name :- (schema/maybe schema/Str)
+  "Return the name of the client by parsing the subject of the client cert from
+  the request.  Return nil if the client cert is absent or cannot be parsed."
+  [request :- RingRequest]
+  (let [{:keys [ssl-client-cert]} request]
+    (if ssl-client-cert (get-cert-subject ssl-client-cert))))
+
+(schema/defn ^:always-validate authorized? :- schema/Bool
+  "(SERVER-768) replacement for client-allowed-access?"
+  [rules :- rules/Rules
+   request :- RingRequest]
+  (if-let [name (request->name request)]
+    (let [request-for-tk-authz-schema (merge {:remote-addr ""} request)
+          {:keys [authorized message]} (rules/allowed? rules request-for-tk-authz-schema name)]
+      (log/debugf "Authorized: %s for client %s message: %s request: %s"
+                  authorized name message request-for-tk-authz-schema)
+      authorized)
+    (do
+      (log/debugf "Authorized: false, no ssl-client-cert for request %s"
+                  request)
+      false)))
+
 (schema/defn ^:always-validate
   wrap-with-cert-whitelist-check :- IFn
   "A ring middleware that checks to make sure the client cert is in the whitelist
@@ -95,6 +141,18 @@
     (if (client-allowed-access? settings req)
       (handler req)
       {:status 401 :body "Unauthorized"})))
+
+(schema/defn ^:always-validate wrap-with-authz-rules-check :- IFn
+  "A ring middleware that checks to make sure the client is authorized to
+  make the request using trapperkeeper-authorization Rules."
+  ([handler :- IFn]
+    (wrap-with-authz-rules-check handler authz-rules))
+  ([handler :- IFn rules-fn :- IFn]
+    (fn [req]
+      (let [rules (rules-fn)]
+        (if (authorized? rules req)                         ; TODO: grab the message describing why for the response body
+          (handler req)
+          {:status 403 :body "Forbidden (determined by rules.conf)"})))))
 
 (defn wrap-exception-handling
   "Wraps a ring handler with try/catch that will catch all Exceptions, log them,

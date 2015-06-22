@@ -11,7 +11,8 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [ring.mock.request :as mock]
             [schema.test :as schema-test]
-            [puppetlabs.comidi :as comidi]))
+            [puppetlabs.comidi :as comidi]
+            [puppetlabs.trapperkeeper.authorization.rules :as rules]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -35,11 +36,35 @@
 (def localhost-cert
   (utils/pem->cert (test-pem-file "localhost-cert.pem")))
 
+(defn authz-rules-deny
+  "Authorization function configured to denies localhost access for testing"
+  []
+  (-> rules/empty-rules
+      (rules/add-rule
+        (-> (rules/new-regex-rule "^/v[0-9]+/certificate_status/")
+            (rules/deny "localhost")))
+      (rules/add-rule
+        (-> (rules/new-regex-rule "^/v[0-9]+/certificate_statuses/")
+            (rules/deny "localhost")))))
+
+(defn authz-rules
+  "Authorization function configured to allow localhost access for testing"
+  []
+  (-> rules/empty-rules
+      (rules/add-rule
+        (-> (rules/new-regex-rule "^/v[0-9]+/certificate_status/")
+            (rules/allow "localhost")))
+      (rules/add-rule
+        (-> (rules/new-regex-rule "^/v[0-9]+/certificate_statuses/")
+            (rules/allow "localhost")))))
+
 (defn build-ring-handler
-  [settings puppet-version]
-  (-> (web-routes settings)
-      (comidi/routes->handler)
-      (wrap-middleware puppet-version)))
+  ([settings puppet-version]
+   (build-ring-handler settings puppet-version authz-rules))
+  ([settings puppet-version rules-fn]
+   (-> (web-routes settings rules-fn)
+       (comidi/routes->handler)
+       (wrap-middleware puppet-version))))
 
 (defn wrap-with-ssl-client-cert
   "Wrap a compojure app so all requests will include the
@@ -616,7 +641,7 @@
     (let [settings (assoc (testutils/ca-settings cadir)
                      :access-control {:certificate-status
                                       {:client-whitelist []}})
-          test-app (build-ring-handler settings "1.2.3.4")]
+          test-app (build-ring-handler settings "1.2.3.4" authz-rules-deny)]
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint
           (let [response (test-app
@@ -649,28 +674,6 @@
                         {:uri             "/v1/certificate_statuses/all"
                          :request-method  :get
                          :ssl-client-cert localhost-cert})]
-          (is (= 200 (:status response)))
-          (is (= #{test-agent-status revoked-agent-status localhost-status}
-                 (set (json/parse-string (:body response) true))))))))
-
-  (testing "access control can be disabled"
-    (let [settings (assoc (testutils/ca-settings cadir)
-                     :access-control {:certificate-status
-                                      {:authorization-required false
-                                       :client-whitelist []}})
-          test-app (build-ring-handler settings "1.2.3.4")]
-
-      (testing "certificate_status"
-        (let [response (test-app
-                        {:uri            "/v1/certificate_status/test-agent"
-                         :request-method :get})]
-          (is (= 200 (:status response)))
-          (is (= test-agent-status (json/parse-string (:body response) true)))))
-
-      (testing "certificate_statuses"
-        (let [response (test-app
-                        {:uri            "/v1/certificate_statuses/all"
-                         :request-method :get})]
           (is (= 200 (:status response)))
           (is (= #{test-agent-status revoked-agent-status localhost-status}
                  (set (json/parse-string (:body response) true)))))))))

@@ -49,16 +49,5 @@
               (is (= "Internal Server Error: java.lang.Exception: barf"
                      (:body response)))
               (is (re-matches #"text/plain; charset=.*"
-                              (get-in response [:headers "content-type"]))))))
-        (testing "the CA API - in particular, one of the endpoints implemented via liberator"
-          ;; Yes, this is weird - see comment above.
-          (with-redefs [ca/get-certificate-status throw-npe]
-            (let [response (http-client/get
-                             "https://localhost:8140/puppet-ca/v1/certificate_status/localhost"
-                             bootstrap/request-options)]
-              (is (= 500 (:status response)))
-              (is (= "Internal Server Error: java.lang.NullPointerException"
-                     (:body response)))
-              (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))))))
 
