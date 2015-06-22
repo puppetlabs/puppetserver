@@ -8,7 +8,9 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
-            [schema.test :as schema-test])
+            [schema.test :as schema-test]
+            [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.enterprise.file-sync-common :as common])
   (:import (org.eclipse.jgit.transport HttpTransport)
            (java.net URL)
            (com.puppetlabs.enterprise HttpClientConnection)))
@@ -132,15 +134,20 @@
             (is (= :synced (:status status)))))))))
 
 (defn process-repos
-  [repos client ssl? callbacks data-dir]
-  (process-repos-for-updates
-    repos
-    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-    (get-latest-commits-from-server
-      client
-      (str (helpers/base-url ssl?) helpers/default-api-path-prefix "/v1"))
-    callbacks
-    data-dir))
+  [repos callbacks data-dir]
+  (let [latest-commits-url (str (helpers/base-url)
+                             helpers/default-api-path-prefix
+                             "/v1"
+                             common/latest-commits-sub-path)
+        body (-> latest-commits-url
+                 (http-client/post {:as :text})
+                 get-body-from-latest-commits-payload)]
+    (process-repos-for-updates
+      repos
+      (str (helpers/base-url) helpers/default-repo-path-prefix)
+      body
+      callbacks
+      data-dir)))
 
 (deftest process-repos-for-updates-test
   (let [root-data-dir (helpers/temp-dir-as-string)
@@ -152,7 +159,6 @@
         client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
         client-target-repo-nonexistent (str client-data-dir "/" nonexistent-repo ".git")
         client-target-repo-error (str client-data-dir "/" error-repo ".git")
-        client (sync/create-client {})
         server-repo-atom (atom {})
         nonexistent-repo-atom (atom false)
         server-repo-callback (fn [repo-id repo-state]
@@ -176,7 +182,6 @@
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
-                                   client false
                                    {(keyword server-repo) server-repo-callback
                                     :nonexistent-repo     nonexistent-repo-callback}
                                    client-data-dir)]

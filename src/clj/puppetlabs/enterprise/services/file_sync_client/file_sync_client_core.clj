@@ -4,6 +4,8 @@
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+ throw+]]
+            [cheshire.core :as json]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
@@ -73,11 +75,19 @@
 
 (def AgentState
   "A schema which describes a valid state of the agent."
-  (schema/if #(= (:status %) :failed)
+  (schema/conditional
+    #(= (:status %) :failed)
     {:status (schema/eq :failed)
-     :error  SyncError}
-    {:status (schema/enum :successful :created :partial-success)
-     :repos  RepoStates}))
+     :error SyncError
+     (schema/optional-key :schedule-next-run?) Boolean}
+
+    #(= (:status %) :created)
+    {:status (schema/eq :created)}
+
+    :else
+    {:status (schema/enum :successful :partial-success)
+     :repos RepoStates
+     (schema/optional-key :schedule-next-run?) Boolean}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -99,6 +109,16 @@
              :message (str "Response for latest commits unexpected, detail: " failure)}))
   (common/parse-latest-commits-response response))
 
+(schema/defn agent-state->latest-commits-payload
+  "Given an instance of AgentState, return the information that should be
+   POST'ed to /latest-commits."
+  [{:keys [repos]} :- AgentState]
+  (when repos
+    {:repos (ks/mapvals
+              ; Exceptions aren't serializable as JSON.
+              #(ks/dissoc-in % [:cause :cause])
+              repos)}))
+
 (schema/defn ^:always-validate get-latest-commits-from-server
   :- common/LatestCommitsPayload
   "Request information about the latest commits available from the server.
@@ -106,13 +126,16 @@
   `server-api-url` argument.  Returns the payload from the response.
   Throws an 'SyncError' if an error occurs."
   [client :- (schema/protocol http-client/HTTPClient)
-   server-api-url :- schema/Str]
-  (let [latest-commits-url (str
-                             server-api-url
-                             common/latest-commits-sub-path)]
+   server-api-url :- schema/Str
+   agent-state :- AgentState]
+  (let [latest-commits-url (str server-api-url common/latest-commits-sub-path)]
     (try
-      (get-body-from-latest-commits-payload
-        (http-client/get client latest-commits-url {:as :text}))
+      (let [body (agent-state->latest-commits-payload agent-state)
+            response (http-client/post
+                       client latest-commits-url
+                       {:as :text :body (when body
+                                          (json/generate-string body))})]
+        (get-body-from-latest-commits-payload response))
       (catch IOException e
         (throw+ {:type ::error
                  :message (str "Unable to get latest-commits from server ("
@@ -247,8 +270,10 @@
             server-api-path (get-in config [:client-config :server-api-path])
             server-url (:server-url config)
             data-dir (:data-dir config)
-            latest-commits (get-latest-commits-from-server http-client
-                                                           (str server-url server-api-path))
+            latest-commits (get-latest-commits-from-server
+                             http-client
+                             (str server-url server-api-path)
+                             agent-state)
             repo-states (process-repos-for-updates repos
                                                    (str server-url server-repo-path)
                                                    latest-commits
@@ -320,13 +345,13 @@
    callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
-                            (assoc ::schedule-next-run? true)))
+                            (assoc :schedule-next-run? true)))
         send-to-agent #(send-off sync-agent periodic-sync config
                                  http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]
-                 (when (::schedule-next-run? new-state)
+                 (when (:schedule-next-run? new-state)
                    (log/debug "Scheduling the next iteration of the sync process.")
                    (schedule-fn send-to-agent))))
     ; The watch is in place, now send the initial action.

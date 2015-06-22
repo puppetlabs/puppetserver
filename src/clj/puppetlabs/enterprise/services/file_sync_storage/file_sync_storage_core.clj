@@ -449,12 +449,18 @@
                                      })))}}))))
 
 (defn capture-publish-info!
-  [!latest-publish request result]
-  (reset! !latest-publish
-    {:client-ip-address (:remote-addr request)
-     :timestamp (timestamp)
-     :repos result}))
+  [!request-tracker request result]
+  (swap! !request-tracker assoc
+    :latest-publish {:client-ip-address (:remote-addr request)
+                     :timestamp (timestamp)
+                     :repos result}))
 
+(defn capture-client-info!
+  [!request-tracker request client-repos-info]
+  (let [ip-address (:remote-addr request)]
+    (swap! !request-tracker assoc-in
+      [:clients ip-address] (assoc client-repos-info
+                              :last-check-in-time (timestamp)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler
@@ -462,7 +468,7 @@
 (defn base-ring-handler
   "Returns a Ring handler for the File Sync Storage Service's API using the
    given configuration values."
-  [data-dir repos server-repo-url !latest-publish]
+  [data-dir repos server-repo-url !request-tracker]
   (compojure/routes
     (compojure/context "/v1" []
       (compojure/POST common/publish-content-sub-path {:keys [body headers] :as request}
@@ -479,7 +485,7 @@
               (let [json-body (json/parse-string (slurp body) true)
                     result (publish-content
                              repos json-body data-dir server-repo-url)]
-                (capture-publish-info! !latest-publish request result)
+                (capture-publish-info! !request-tracker request result)
                 {:status 200
                  :body result})
               (catch com.fasterxml.jackson.core.JsonParseException e
@@ -491,7 +497,9 @@
                             :message (format
                                        "Content type must be JSON, '%s' is invalid"
                                        content-type)}}})))
-      (compojure/ANY common/latest-commits-sub-path []
+      (compojure/POST common/latest-commits-sub-path {:keys [body] :as request}
+        (let [json-body (json/parse-string (slurp body) true)]
+          (capture-client-info! !request-tracker request json-body))
         {:status 200
          :body (compute-latest-commits data-dir repos)}))))
 
@@ -502,8 +510,8 @@
 (defn ring-handler
   "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
    necessary middleware for error handling, logging, etc."
-  [data-dir sub-paths server-repo-url !latest-publish]
-  (-> (base-ring-handler data-dir sub-paths server-repo-url !latest-publish)
+  [data-dir sub-paths server-repo-url !request-tracker]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url !request-tracker)
     ringutils/wrap-request-logging
     ringutils/wrap-user-data-errors
     ringutils/wrap-schema-errors
@@ -535,9 +543,9 @@
   [level :- Keyword
    repos :- GitRepos
    data-dir :- StringOrFile
-   latest-publish]
+   request-data]
   {:is-running :true
    :status (when (not= level :critical)
-             {:timestamp (timestamp)
-              :repos (repos-status repos data-dir)
-              :latest-publish latest-publish})})
+             (assoc request-data
+               :timestamp (timestamp)
+               :repos (repos-status repos data-dir)))})

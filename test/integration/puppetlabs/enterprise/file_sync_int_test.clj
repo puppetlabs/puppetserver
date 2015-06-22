@@ -35,7 +35,7 @@
 
 (defn latest-commits-response
   []
-  (http-client/get latest-commits-url {:as :text}))
+  (http-client/post latest-commits-url {:as :text}))
 
 (defn get-latest-commits
   []
