@@ -295,9 +295,9 @@
 (defn fetch-submodules!
   "Given a path to a Git repository and a working tree, perform a
   fetch for all submodules registered for that repo. This is required
-  due to a bug in JGit wherein it won't perform a fetch on any
-  submodules before attempting to checkout the relevant commit for the
-  submodule."
+  due to JGit Bug 470318 (https://bugs.eclipse.org/bugs/show_bug.cgi?id=470318),
+  wherein JGit won't perform a fetch on any submodules before attempting to
+  checkout the relevant commit for the submodule."
   [repo]
   (let [submodules (get-submodules repo)
         work-tree (.getWorkTree repo)]
