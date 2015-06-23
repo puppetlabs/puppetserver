@@ -153,12 +153,14 @@
         submodules-dir "submodules"
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
-        submodule-1-dir (fs/file storage-data-dir
-                                 (str server-repo)
-                                 (str submodule-1 ".git"))
-        submodule-2-dir (fs/file storage-data-dir
-                                 (str server-repo)
-                                 (str submodule-2 ".git"))
+        submodule-1-dir (fs/file
+                          storage-data-dir
+                          (str server-repo)
+                          (str submodule-1 ".git"))
+        submodule-2-dir (fs/file
+                          storage-data-dir
+                          (str server-repo)
+                          (str submodule-2 ".git"))
         dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
     (helpers/with-bootstrapped-storage-service
       app
@@ -216,13 +218,15 @@
                                        submodule-2 ".git")]
           (testing "Submodule-1's URL set to locally synced bare repo"
             (is (= submodule-1-client-dir
-                  (.getString (.getConfig dummy-repo)
+                  (.getString
+                    (.getConfig dummy-repo)
                     "submodule"
                     (str submodules-dir "/" submodule-1)
                     "url"))))
           (testing "Submodule-2's URL set to locally synced bare repo"
             (is (= submodule-2-client-dir
-                  (.getString (.getConfig dummy-repo)
+                  (.getString
+                    (.getConfig dummy-repo)
                     "submodule"
                     (str submodules-dir "/" submodule-2)
                     "url")))))))))
@@ -257,10 +261,12 @@
         nonexistent-repo-atom (atom false)
         server-repo-callback (fn [repo-id repo-state]
                                (swap! server-repo-atom
-                                      #(assoc % :repo-id
-                                                repo-id
-                                                :repo-state
-                                                repo-state)))
+                                 #(assoc
+                                   %
+                                   :repo-id
+                                   repo-id
+                                   :repo-state
+                                   repo-state)))
         nonexistent-repo-callback (fn [_ _]
                                     (reset! nonexistent-repo-atom true))
         submodules-working-dir (helpers/temp-dir-as-string)

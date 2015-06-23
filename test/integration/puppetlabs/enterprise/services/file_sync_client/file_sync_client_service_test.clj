@@ -171,31 +171,39 @@
                   repo-config (.getConfig parent-repo)
                   submodule-client-dir (str (fs/file client-data-dir repo (str submodule ".git")))]
               (is (= submodule-client-dir
-                     (.getString repo-config
-                                 "submodule"
-                                 (str submodules-dir-name "/" submodule)
-                                 "url")))))
+                    (.getString
+                      repo-config
+                      "submodule"
+                      (str submodules-dir-name "/" submodule)
+                      "url")))))
 
           ;; Turn off the storage service to ensure submodules are being
           ;; fetched from their local client-side copies
           (tk-app/stop storage-app)
 
           (testing "new submodules are properly initialized and updated from local copies"
-            (client-protocol/sync-working-dir! client-service
-                                               repo
-                                               (str client-working-dir))
-            (is (fs/exists? (fs/file client-working-dir submodules-dir-name
-                                     submodule)))
-            (is (fs/exists? (fs/file client-working-dir submodules-dir-name
-                                     submodule test-file)))
+            (client-protocol/sync-working-dir!
+              client-service
+              repo
+              (str client-working-dir))
+            (is (fs/exists? (fs/file
+                              client-working-dir
+                              submodules-dir-name
+                              submodule)))
+            (is (fs/exists? (fs/file
+                              client-working-dir
+                              submodules-dir-name
+                              submodule
+                              test-file)))
             (let [submodules-status (jgit-utils/get-submodules-latest-commits
                                       git-dir
                                       (fs/file submodules-working-dir submodule))
                   latest-commit (get submodules-status (str submodules-dir-name "/" submodule))]
               (is (= latest-commit
-                     (jgit-utils/head-rev-id-from-working-tree (fs/file client-working-dir
-                                                                        submodules-dir-name
-                                                                        submodule))))))
+                     (jgit-utils/head-rev-id-from-working-tree (fs/file
+                                                                 client-working-dir
+                                                                 submodules-dir-name
+                                                                 submodule))))))
 
           (tk-app/start storage-app)
 
@@ -213,21 +221,27 @@
           (tk-app/stop storage-app)
 
           (testing "existing submodules are properly updated"
-            (client-protocol/sync-working-dir! client-service
-                                               repo
-                                               (str client-working-dir))
-            (is (fs/exists? (fs/file client-working-dir submodules-dir-name
-                                     submodule)))
-            (is (not (fs/exists? (fs/file client-working-dir submodules-dir-name
-                                          submodule test-file))))
+            (client-protocol/sync-working-dir!
+              client-service
+              repo
+              (str client-working-dir))
+            (is (fs/exists? (fs/file
+                              client-working-dir
+                              submodules-dir-name
+                              submodule)))
+            (is (not (fs/exists? (fs/file
+                                   client-working-dir
+                                   submodules-dir-name
+                                   submodule test-file))))
             (let [submodules-status (jgit-utils/get-submodules-latest-commits
                                       git-dir
                                       (fs/file submodules-working-dir submodule))
                   latest-commit (get submodules-status (str submodules-dir-name "/" submodule))]
               (is (= latest-commit
-                     (jgit-utils/head-rev-id-from-working-tree (fs/file client-working-dir
-                                                                        submodules-dir-name
-                                                                        submodule)))))))))))
+                     (jgit-utils/head-rev-id-from-working-tree (fs/file
+                                                                 client-working-dir
+                                                                 submodules-dir-name
+                                                                 submodule)))))))))))
 
 (deftest register-callback-test
   (testing "Callbacks must be registered before the File Sync Client is started"
