@@ -119,9 +119,10 @@ public class NoGitlinksWorkingTreeIterator extends WorkingTreeIterator {
             if (attributes.isSymbolicLink())
                 mode = FileMode.SYMLINK;
             else if (attributes.isDirectory()) {
-                if (new File(f, Constants.DOT_GIT).exists())
-                    mode = FileMode.GITLINK;
-                else
+// This is intentionally commented out so that we never create gitlinks.
+//                if (new File(f, Constants.DOT_GIT).exists())
+//                    mode = FileMode.GITLINK;
+//                else
                     mode = FileMode.TREE;
             } else if (attributes.isExecutable())
                 mode = FileMode.EXECUTABLE_FILE;
