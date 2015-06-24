@@ -59,7 +59,7 @@ By default, Puppet Server is configured to use the correct Puppet Master and CA 
 
 This file contains the settings for Puppet Server itself.
 
-> **Note:** Most users should never set the `master-conf-dir`, `master-code-dir`, or `master-var-dir` settings to a non-default value. If you do, you must also change the equivalent Puppet settings (`confdir`, `codedir`, or `vardir`) to ensure that commands like `puppet cert` and `puppet module` will use the same directories as Puppet Server. Note also that a non-default `confdir` or `vardir` must be specified on the command line when running commands, since those two settings must be set before Puppet tries to find its config file.
+> **Note:** Most users should never set the `master-conf-dir` or `master-code-dir` settings to a non-default value. If you do, you must also change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module` will use the same directories as Puppet Server. Note also that a non-default `confdir` must be specified on the command line when running commands, since that setting must be set before Puppet tries to find its config file.
 
 * The `jruby-puppet` settings configure the interpreter:
     * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
