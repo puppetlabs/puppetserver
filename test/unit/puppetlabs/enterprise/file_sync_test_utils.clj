@@ -41,10 +41,12 @@
    :email "tester@bogus.com"})
 
 (defn base-url
-  [ssl?]
-  (if ssl?
-    server-base-url-ssl
-    server-base-url))
+  ([]
+   (base-url false))
+  ([ssl?]
+   (if ssl?
+     server-base-url-ssl
+     server-base-url)))
 
 (defn repo-base-url
   ([] (repo-base-url default-repo-path-prefix false))
@@ -107,6 +109,20 @@
                         :server-repo-path default-repo-path-prefix
                         :repos repos)}))
 
+(defn file-sync-config
+  ([data-dir repos]
+    (file-sync-config data-dir repos false))
+  ([data-dir repos ssl?]
+   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+     :file-sync-storage {:repos repos}
+     :file-sync-common {:server-url (base-url ssl?)
+                        :data-dir data-dir}
+     :file-sync-client (assoc (if ssl? ssl-options {})
+                         :poll-interval 1
+                         :server-api-path (str default-api-path-prefix "/v1")
+                         :server-repo-path default-repo-path-prefix
+                         :repos (map name (keys repos))))))
+
 (defn temp-dir-as-string
   []
   (.getPath (ks/temp-dir)))
@@ -121,14 +137,24 @@
   [file]
   (spit file file-text))
 
+(def storage-service-and-deps
+  [webrouting-service/webrouting-service
+   file-sync-storage-service/file-sync-storage-service
+   jetty9-service/jetty9-service
+   status-service/status-service])
+
+(def client-service-and-deps
+  [file-sync-client-service/file-sync-client-service
+   scheduler-service/scheduler-service])
+
+(def file-sync-services-and-deps
+  (concat storage-service-and-deps client-service-and-deps))
+
 (defmacro with-bootstrapped-storage-service
   [app config & body]
   `(bootstrap/with-app-with-config
      ~app
-     [webrouting-service/webrouting-service
-      file-sync-storage-service/file-sync-storage-service
-      jetty9-service/jetty9-service
-      status-service/status-service]
+     storage-service-and-deps
      ~config
      (do
        ~@body)))
@@ -146,8 +172,7 @@
          "/"))
      (bootstrap/with-app-with-config
        client-app#
-       [file-sync-client-service/file-sync-client-service
-        scheduler-service/scheduler-service]
+       client-service-and-deps
        ~client-config
        (let [~app client-app#]
          (do

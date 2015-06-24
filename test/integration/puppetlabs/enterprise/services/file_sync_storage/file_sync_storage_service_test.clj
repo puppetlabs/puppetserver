@@ -7,6 +7,7 @@
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
@@ -100,7 +101,7 @@
             client-orig-repo-dir-2 (helpers/clone-and-push-test-commit! repo2-id data-dir)]
 
         (testing "Validate /latest-commits endpoint"
-          (let [response (http-client/get latest-commits-url {:as :text})
+          (let [response (http-client/post latest-commits-url {:as :text})
                 content-type (get-in response [:headers "content-type"])]
 
             (testing "the endpoint returns JSON"
@@ -160,7 +161,7 @@
 
       (testing (str "Submodules will not appear in latest-commits response "
                     "until they are published")
-        (let [response (http-client/get latest-commits-url {:as :text})
+        (let [response (http-client/post latest-commits-url {:as :text})
               body (common/parse-latest-commits-response response)]
           (is (contains? body (keyword repo-id)))
           (is (= (get-in body [(keyword repo-id) :commit])
@@ -171,7 +172,7 @@
         ; Publish the submodule
         (http-client/post publish-url)
 
-        (let [response (http-client/get latest-commits-url {:as :text})
+        (let [response (http-client/post latest-commits-url {:as :text})
               body (common/parse-latest-commits-response response)
               submodule-commits (get-in body [(keyword repo-id) :submodules])]
           (is (= (get-in body [(keyword repo-id) :commit])
@@ -582,11 +583,14 @@
   (let [test-start-time (time/now)
         data-dir (helpers/temp-dir-as-string)
         working-dir (helpers/temp-dir-as-string)
-        config (helpers/storage-service-config
+        config (helpers/file-sync-config
                  data-dir
                  {:my-repo {:working-dir working-dir}})]
-    (helpers/with-bootstrapped-storage-service
-      app config
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      config
+
       ; First, create and publish some test content
       (spit (fs/file working-dir "test-file-1") "test file content 1")
       (spit (fs/file working-dir "test-file-2") "test file content 2")
@@ -598,12 +602,21 @@
                           :body
                           (json/parse-string true)
                           :my-repo
-                          :commit)
-            response (fetch-status)]
+                          :commit)]
+        ; Block here until the sync process has run twice, which will cause
+        ; two /latest-commits requests to be made to the server.
+        ; The first request will not include a POST body, since the
+        ; client has not yet cloned the repo from the server.
+        ; The second request will, finally, POST the repo information back
+        ; to the server, and at that point it will be availabe in the /status
+        ; response and the test can continue.
+        (dotimes [_ 2]
+          (helpers/wait-for-new-state (helpers/get-sync-agent app)))
         (testing "A request against the Storage Service's status endpoint"
-          (is (= 200 (:status response)))
-          (let [body (json/parse-string (:body response))]
+          (let [response (fetch-status)
+                body (json/parse-string (:body response))]
             (testing "Basic response data"
+              (is (= 200 (:status response)))
               (is (= "file-sync-storage-service" (get body "service_name")))
               (is (= "true" (get body "is_running"))))
             (testing "The response should contain a timestamp"
@@ -637,6 +650,19 @@
                         "missing" []
                         "modified" []
                         "untracked" []}))))
+            (testing "The response should contain information about the clients"
+              (let [clients (get-in body ["status" "clients"])]
+                (is (= 1 (count clients)))
+                (let [client-status (second (first clients))]
+                  (testing "Repo information"
+                    (is (= (get client-status "repos")
+                          {"my-repo" {"latest-commit" commit-id
+                                      "status" "synced"}})))
+                  (testing "Last check-in timestamp"
+                    (is (time/within?
+                          test-start-time
+                          (time/now)
+                          (parse-timestamp (get client-status "last-check-in-time"))))))))
             (testing "The response should contain info about the latest publish"
               (let [latest-publish-status (get-in body ["status" "latest-publish"])]
                 (testing "Client IP address"
@@ -666,12 +692,6 @@
       (fs/delete (fs/file working-dir "test-file-2"))
       ; Create a new file.
       (spit (fs/file working-dir "new-test-file") "i like cheese")
-
-      ; Also, hit /latest-commits so we can get status data about that too.
-      (let [response (http-client/get
-                       (str helpers/server-base-url "/file-sync/v1/latest-commits")
-                       {:as :text})]
-        (is (= 200 (:status response))))
 
       ; Get the status again
       (let [response (fetch-status)
