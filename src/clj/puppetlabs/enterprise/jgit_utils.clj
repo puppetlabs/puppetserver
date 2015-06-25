@@ -11,7 +11,8 @@
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [me.raynes.fs :as fs]))
 
 (schema/defn ^:always-validate create-connection :- HttpClientConnection
   [ssl-ctxt :- common/SSLContextOrNil
@@ -284,6 +285,64 @@
   [git-dir working-dir]
   (let [submodule-status (submodules-status (get-repository git-dir working-dir))]
     (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
+
+(defn get-submodules
+  "Given a path to a Git repository and a working tree, returns the
+  list of all submodules in that repo"
+  [repo]
+  (keys (submodules-status repo)))
+
+(defn fetch-submodules!
+  "Given a path to a Git repository and a working tree, perform a
+  fetch for all submodules registered for that repo. This is required
+  due to JGit Bug 470318 (https://bugs.eclipse.org/bugs/show_bug.cgi?id=470318),
+  wherein JGit won't perform a fetch on any submodules before attempting to
+  checkout the relevant commit for the submodule."
+  [repo]
+  (let [submodules (get-submodules repo)
+        work-tree (.getWorkTree repo)]
+    (doseq [submodule submodules]
+      (when-let [submodule-repo (get-repository-from-working-tree
+                                  (fs/file work-tree submodule))]
+        (fetch submodule-repo)))))
+
+(defn change-submodule-url!
+  "Given a repository, a submodule name, and a file path to a repository,
+  changes the url for the given submodule in the given repository to the
+  file path provided. This is used to ensure that, when syncing a
+  client's repository into a working directory, the repo's submodules
+  are cloned and fetched from the locally synced bare repositories for
+  those submodules rather than from the original bare repositories for
+  those submodules exposed by the storage service."
+  [repo submodule-name remote]
+  (let [parent-config (.getConfig repo)]
+    (.setString parent-config "submodule" submodule-name "url" remote)
+    (.save parent-config)))
+
+(schema/defn ^:always-validate submodule-update
+  "Perform a git submodule init, and then a subsequent git submodule update
+  to update all submodules. Returns a collection of strings representing updated
+  submodule paths or may throw one of the following exceptions from the
+  org.eclipse.jgit.api.errors namespace:
+
+  * ConcurrentRefUpdateException
+  * CheckoutConflictException
+  * InvalidMergeHeadsException
+  * InvalidConfigurationException
+  * NoHeadException
+  * NoMessageException
+  * RefNotFoundException
+  * WrongRepositoryStateException
+  * GitAPIException"
+  [repo :- Repository]
+  (let [git (Git. repo)]
+    (-> git
+        (.submoduleInit)
+        (.call))
+    (fetch-submodules! repo)
+    (-> git
+        (.submoduleUpdate)
+        (.call))))
 
 (schema/defn status :- Status
   "Like 'git status'"

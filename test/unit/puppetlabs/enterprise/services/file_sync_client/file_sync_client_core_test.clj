@@ -1,5 +1,8 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core-test
   (:require [clojure.test :refer :all]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :refer :all]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as storage-core]
@@ -133,6 +136,101 @@
                          client-repo-path)]
             (is (= :synced (:status status)))))))))
 
+(def publish-url
+  (str helpers/server-base-url
+       helpers/default-api-path-prefix
+       "/v1"
+       common/publish-content-sub-path))
+
+(deftest process-submodules-for-updates-test
+  (let [root-data-dir (helpers/temp-dir-as-string)
+        storage-data-dir (storage-core/path-to-data-dir root-data-dir)
+        client-data-dir (path-to-data-dir root-data-dir)
+        server-repo "process-repos-test"
+        submodules-root (str client-data-dir "/" server-repo)
+        client (sync/create-client {})
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodule-1 "submodule-1"
+        submodule-2 "submodule-2"
+        submodule-1-dir (fs/file
+                          storage-data-dir
+                          (str server-repo)
+                          (str submodule-1 ".git"))
+        submodule-2-dir (fs/file
+                          storage-data-dir
+                          (str server-repo)
+                          (str submodule-2 ".git"))
+        dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
+    (helpers/with-bootstrapped-storage-service
+      app
+      (helpers/storage-service-config
+        root-data-dir
+        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)
+                                :submodules-dir submodules-dir
+                                :submodules-working-dir submodules-working-dir}})
+
+      ;; Create the submodules and add commits into them
+      (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
+      (ks/mkdirs! (fs/file submodules-working-dir submodule-2))
+      (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
+      (helpers/write-test-file! (fs/file submodules-working-dir submodule-2 "test.txt"))
+      (http-client/post publish-url)
+
+      (testing "submodules are successfully synced"
+        (let [latest-commits (get-latest-commits-from-server client
+                               (str (helpers/base-url false)
+                                 helpers/default-api-path-prefix
+                                 "/v1")
+                               {:status :created})
+              latest-commit (get latest-commits (keyword server-repo))
+              submodules-status (process-submodules-for-updates
+                                  (str (helpers/base-url false)
+                                    helpers/default-repo-path-prefix
+                                    "/"
+                                    server-repo)
+                                  (:submodules latest-commit)
+                                  submodules-root
+                                  dummy-repo)
+              submodule-1-status (get submodules-status
+                                   (str submodules-dir "/" submodule-1))
+              submodule-2-status (get submodules-status
+                                   (str submodules-dir "/" submodule-2))]
+          
+          (testing "submodule-1 was successfuly synced with the storage service"
+            (is (fs/exists? (fs/file submodules-root (str submodule-1 ".git"))))
+            (is (= :synced (:status submodule-1-status)))
+            (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
+                  (:latest-commit submodule-1-status))))
+
+          (testing "submodule-2 was successfully synced with the storage service"
+            (is (fs/exists? (fs/file submodules-root (str submodule-2 ".git"))))
+            (is (= :synced (:status submodule-2-status)))
+            (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
+                  (:latest-commit submodule-2-status))))))
+
+      (testing "Repo config updated with correct submodule URLs"
+        (let [submodule-client-root (fs/file client-data-dir
+                                      server-repo)
+              submodule-1-client-dir (str submodule-client-root "/"
+                                       submodule-1 ".git")
+              submodule-2-client-dir (str submodule-client-root "/"
+                                       submodule-2 ".git")]
+          (testing "Submodule-1's URL set to locally synced bare repo"
+            (is (= submodule-1-client-dir
+                  (.getString
+                    (.getConfig dummy-repo)
+                    "submodule"
+                    (str submodules-dir "/" submodule-1)
+                    "url"))))
+          (testing "Submodule-2's URL set to locally synced bare repo"
+            (is (= submodule-2-client-dir
+                  (.getString
+                    (.getConfig dummy-repo)
+                    "submodule"
+                    (str submodules-dir "/" submodule-2)
+                    "url")))))))))
+
 (defn process-repos
   [repos callbacks data-dir]
   (let [latest-commits-url (str (helpers/base-url)
@@ -163,18 +261,27 @@
         nonexistent-repo-atom (atom false)
         server-repo-callback (fn [repo-id repo-state]
                                (swap! server-repo-atom
-                                      #(assoc % :repo-id
-                                                repo-id
-                                                :repo-state
-                                                repo-state)))
+                                 #(assoc
+                                   %
+                                   :repo-id
+                                   repo-id
+                                   :repo-state
+                                   repo-state)))
         nonexistent-repo-callback (fn [_ _]
-                                    (reset! nonexistent-repo-atom true))]
+                                    (reset! nonexistent-repo-atom true))
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodule "submodule"]
     (helpers/with-bootstrapped-storage-service
       app
       (helpers/storage-service-config
         root-data-dir
-        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)}
+        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)
+                                :submodules-dir submodules-dir
+                                :submodules-working-dir submodules-working-dir}
          (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}})
+      (ks/mkdirs! (fs/file submodules-working-dir submodule))
+      (http-client/post publish-url)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
@@ -186,8 +293,12 @@
                                     :nonexistent-repo     nonexistent-repo-callback}
                                    client-data-dir)]
           (testing "process-repos-for-updates returns correct state info"
-            (is (= (get state server-repo) {:status        :synced
-                                            :latest-commit nil}))
+            (is (= (get-in state [server-repo :status]) :synced))
+            (is (not (nil? (get-in state [server-repo :latest-commit]))))
+            (is (not (nil? (get-in state [server-repo :submodules]))))
+            (is (not (nil? (get-in state [server-repo :submodules
+                                          (str submodules-dir "/" submodule)
+                                          :latest-commit]))))
             (is (= :failed (get-in state [error-repo :status])))
             (is (= :puppetlabs.enterprise.services.file-sync-client.file-sync-client-core/error
                    (get-in state [error-repo :cause :type])))
@@ -195,6 +306,9 @@
 
         (testing "Client directory created when match on server"
           (is (fs/exists? client-target-repo-on-server)))
+
+        (testing "Client submodule directories created when match on server"
+          (is (fs/exists? (fs/file client-data-dir server-repo (str submodule ".git")))))
 
         (testing "Client directory not created when no match on server"
           (is (not (fs/exists? client-target-repo-nonexistent))
@@ -213,7 +327,7 @@
           (let [status @server-repo-atom]
             (is (= (keyword server-repo) (:repo-id status)))
             (is (= :synced (get-in status [:repo-state :status])))
-            (is (= nil (get-in status [:repo-state :latest-commit])))))
+            (is (not= nil (get-in status [:repo-state :latest-commit])))))
 
         (testing "Repo callback not called when no match on server"
           (is (= false @nonexistent-repo-atom)))))))
