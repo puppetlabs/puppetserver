@@ -216,13 +216,12 @@ Puppet Server does not currently consider this setting for any code running on t
 
 Currently, the [`jruby-puppet` section of your `puppetserver.conf` file](configuration.markdown#puppetserver.conf) contains five settings
 (`master-conf-dir`, `master-code-dir`, `master-var-dir`, `master-run-dir`, and `master-log-dir`) that allow you to override settings set in
-your `puppet.conf` file. On installation, these five settings will be set to the default value that would normally be read by your
-`puppet.conf` file.
+your `puppet.conf` file. On installation, these five settings will be set to the proper default values.
 
 While you are free to change these settings at will, please note that any changes made to the `master-conf-dir` and `master-code-dir` settings
-absolutely MUST be made to the corresponding Puppet settings (`confdir` and `codedir`) as well to ensure that Puppet Server and the puppet
-cli tools (such as `puppet cert` and `puppet module`) use the same directories as Puppet Server. The `master-conf-dir` and `master-code-dir`
-settings apply to Puppet Server only, and will be ignored by the ruby code that runs when the puppet CLI tools are run.
+absolutely MUST be made to the corresponding Puppet settings (`confdir` and `codedir`) as well to ensure that Puppet Server and the Puppet
+cli tools (such as `puppet cert` and `puppet module`) use the same directories. The `master-conf-dir` and `master-code-dir`
+settings apply to Puppet Server only, and will be ignored by the ruby code that runs when the Puppet CLI tools are run.
 
 For example, say you have the `codedir` setting left unset in your `puppet.conf` file, and you change the `master-code-dir` setting to
 `/etc/my-puppet-code-dir`. In this case, Puppet Server will read code from `/etc/my-puppet-code-dir`, but the `puppet module` tool will
@@ -234,5 +233,5 @@ Puppet settings, please note that this applies to these settings as well.
 Also, please note that these configuration differences also apply to the interpolation of the `confdir`, `codedir`, `vardir`, `rundir`, and `logdir`
 settings in your `puppet.conf` file. So, take the above example, wherein you set `master-code-dir` to `/etc/my-puppet-code-dir`. Since the
 `basemodulepath` setting is by default `$codedir/modules:/opt/puppetlabs/puppet/modules`, then Puppet Server would use
-`/etc/my-puppet-code-dir:/opt/puppetlabs/puppet/modules` for the value of the `basemodulepath` setting, whereas the `puppet module` tool would use
-`/etc/puppetlabs/code:/opt/puppetlabs/puppet/modules` for the value of the `basemodulepath` setting.
+`/etc/my-puppet-code-dir/modules:/opt/puppetlabs/puppet/modules` for the value of the `basemodulepath` setting, whereas the `puppet module` tool would use
+`/etc/puppetlabs/code/modules:/opt/puppetlabs/puppet/modules` for the value of the `basemodulepath` setting.
