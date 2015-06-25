@@ -61,6 +61,10 @@ If you are a developer who wants to play with our code, these documents should p
 * [Debugging](./documentation/dev_debugging.markdown)
 * [Puppet Server Subcommands](./documentation/subcommands.markdown)
 
+## Branching Strategy
+
+The Branching Strategy for Puppet Server is documented on the wiki [here](https://github.com/puppetlabs/puppet-server/wiki/Branching-Strategy).
+
 ## Issue Tracker
 
 Feature requests?  Found a bug?  Want to see what issues are currently in flight?  Please visit our [Jira project](https://tickets.puppetlabs.com/browse/SERVER).
