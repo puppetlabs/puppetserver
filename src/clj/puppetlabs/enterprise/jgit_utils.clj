@@ -32,6 +32,35 @@
   [{:keys [name email]} :- common/Identity]
   (PersonIdent. name email))
 
+(schema/defn commit :- RevCommit
+  "Perform a git-commit using the supplied message and author. Only files
+  previously staged will be committed. If the commit is successful, a
+  RevCommit is returned. If the commit failed, one of the following Exceptions
+  from the org.eclipse.api.errors namespace may be thrown:
+
+  * NoHeadException
+    - when called on a git repo without a HEAD reference
+
+  * UnmergedPathsException
+    - when the current index contained unmerged paths (conflicts)
+
+  * ConcurrentRefUpdateException
+    - when HEAD or branch ref is updated concurrently be someone else
+
+  * WrongRepositoryStateException
+    - when repository is not in the right state for committing"
+  [git :- Git
+   message :- String
+   identity :- common/Identity]
+  (let [person-ident (identity->person-ident identity)]
+    (-> git
+      (.commit)
+      (.setAll false) ; this is the default, but make it explicit
+      (.setMessage message)
+      (.setAuthor person-ident)
+      (.setCommitter person-ident)
+      (.call))))
+
 (schema/defn add-and-commit :- RevCommit
   "Perform a git-add and git-commit of all files in the repo working tree. All
   files, whether previously indexed or not, will be considered for the commit.

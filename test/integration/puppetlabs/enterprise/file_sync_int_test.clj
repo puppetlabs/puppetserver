@@ -11,9 +11,11 @@
              :as file-sync-storage-core]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
+            [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
              :as scheduler-service]
             [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
@@ -386,3 +388,108 @@
               (is (nil? (deref atom-1)))
               (is (nil? (deref atom-2)))
               (is (= 0 (:count (deref atom-3)))))))))))
+
+(deftest ^:integration nested-git-directory-test
+  (testing "file sync works with nested .git directories"
+    (let [repo-name "parent-repo"
+          working-dir (helpers/temp-dir-as-string)
+          submodules-working-dir (helpers/temp-dir-as-string)
+          submodules-dir-name "environments"
+          submodule "production"
+          nested-dir "module-a"
+          nested-submodule-dir "module-b"
+          test-file-name "test.txt"
+          root-data-dir (helpers/temp-dir-as-string)
+          publish-url (str helpers/server-base-url
+                        helpers/default-api-path-prefix
+                        "/v1"
+                        common/publish-content-sub-path)]
+      (with-test-logging
+        (bootstrap/with-app-with-config
+          app
+          [jetty-service/jetty9-service
+           file-sync-storage-service/file-sync-storage-service
+           file-sync-client-service/file-sync-client-service
+           webrouting-service/webrouting-service
+           scheduler-service/scheduler-service
+           status-service/status-service]
+          (helpers/file-sync-config root-data-dir
+            {(keyword repo-name) {:working-dir working-dir
+                                  :submodules-working-dir submodules-working-dir
+                                  :submodules-dir submodules-dir-name}})
+
+          ; add test file to parent repo
+          (helpers/write-test-file! (fs/file working-dir test-file-name))
+
+          ; create directory for the submodule and add test file
+          (ks/mkdirs! (fs/file submodules-working-dir submodule))
+          (helpers/write-test-file! (fs/file submodules-working-dir submodule test-file-name))
+
+          ; first publish, to get parent repo's and submodule repo's initial
+          ; states onto the storage service, so that we have a diff to test
+          (let [response (http-client/post publish-url)]
+            (is (= 200 (:status response))))
+
+          ; create a directory with a nested .git directory in the parent repo
+          (let [nested-dir-path (fs/file working-dir nested-dir)
+                nested-git (helpers/init-repo! nested-dir-path)]
+            (ks/mkdirs! nested-dir-path)
+            (helpers/write-test-file! (fs/file nested-dir-path test-file-name))
+            (jgit-utils/add-and-commit nested-git
+              "Commit nested git repo" {:name "foo" :email "foo@foo.com"}))
+
+          ; delete file from submodule
+          (fs/delete (fs/file submodules-working-dir submodule test-file-name))
+
+          ; create a directory with a nested .git directory in the submodule
+          (let [nested-submodule-path (fs/file submodules-working-dir submodule nested-submodule-dir)
+                nested-submodule-git (helpers/init-repo! nested-submodule-path)]
+            (ks/mkdirs! nested-submodule-path)
+            (helpers/write-test-file! (fs/file nested-submodule-path test-file-name))
+            (jgit-utils/add-and-commit nested-submodule-git
+              "Commit submodule nested git repo" {:name "foo" :email "foo@foo.com"}))
+
+          (let [response (http-client/post publish-url)]
+            (is (= 200 (:status response))))
+
+          (testing "storage service stores nested git directories correctly"
+            (testing "submodule has correct diff"
+              (let [repo (jgit-utils/get-repository-from-git-dir
+                           (fs/file root-data-dir "storage" repo-name (str submodule ".git")))
+                    diffs (helpers/get-latest-commit-diff repo)]
+
+                (is (= #{(format "DiffEntry[ADD %s/%s]" nested-submodule-dir test-file-name)
+                         (format "DiffEntry[DELETE %s]" test-file-name)}
+                      (set (map #(.toString %) diffs))))))
+
+            (testing "parent repo has correct diff"
+              (let [repo (jgit-utils/get-repository-from-git-dir
+                           (fs/file root-data-dir "storage" (str repo-name ".git")))
+                    diffs (helpers/get-latest-commit-diff repo)]
+
+                (is (= {(format "DiffEntry[MODIFY %s/%s]" submodules-dir-name submodule) "160000"
+                        (format "DiffEntry[ADD %s/%s]" nested-dir test-file-name) "100644"}
+                      (into {} (map (fn [x] {(.toString x) (.toString (.getNewMode x))}) diffs)))))))
+
+          (testing "client service syncs correctly"
+            (let [client-service (tk-app/get-service app :FileSyncClientService)
+                  sync-agent (helpers/get-sync-agent app)
+                  client-working-dir (helpers/temp-dir-as-string) ]
+
+              (testing "client working dir starts out empty"
+                (is (nil? (fs/list-dir client-working-dir))))
+
+              (testing "client service syncs to working dir when sync function is called"
+                (helpers/wait-for-new-state sync-agent)
+
+                (client-protocol/sync-working-dir!
+                  client-service
+                  repo-name
+                  (str client-working-dir))
+
+                (is (not (fs/exists?
+                           (fs/file client-working-dir submodules-dir-name submodule test-file-name))))
+                (is (= "here is some text" (slurp (fs/file client-working-dir test-file-name))))
+                (is (= "here is some text" (slurp (fs/file client-working-dir nested-dir test-file-name))))
+                (is (= "here is some text" (slurp (fs/file client-working-dir submodules-dir-name submodule
+                                                    nested-submodule-dir test-file-name))))))))))))
