@@ -2,7 +2,7 @@
 
 (defprotocol FileSyncClientService
 
-  (register-callback! [this repo-id callback-fn]
+  (register-callback! [this repo-ids callback-fn]
     "Registers a callback function for a repo with the given repo-id, which
     will be called when the client's clone of that repo is updated")
 

@@ -423,12 +423,9 @@
         repo-1-callback (generate-callback-fn callback-result-repo-1)
         repo-2-callback (generate-callback-fn callback-result-repo-2)
         unified-callback (generate-callback-fn callback-result-unified)
-        callback-repos {repo-1-callback #{repo1}
-                        repo-2-callback #{repo2}
-                        unified-callback #{repo1 repo2}}
-        repo-callbacks {repo1 #{repo-1-callback unified-callback}
+        callbacks {repo1 #{repo-1-callback unified-callback}
                         repo2 #{repo-2-callback unified-callback}}
-        call-callback (partial process-callbacks callback-repos repo-callbacks)
+        call-callback (partial process-callbacks callbacks)
         status {repo1 {:status :synced
                        :latest-commit nil}
                 repo2 {:status :synced

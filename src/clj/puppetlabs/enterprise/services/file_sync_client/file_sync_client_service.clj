@@ -14,7 +14,7 @@
 
   (init [this context]
     (log/info "Initializing file sync client service")
-    (assoc context :callback-repos (atom {}) :repo-callbacks (atom {})))
+    (assoc context :callbacks (atom {})))
 
   (start [this context]
     (log/info "Starting file sync client service")
@@ -29,13 +29,12 @@
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callback-repos   (deref (:callback-repos context))
-            repo-callbacks (deref (:repo-callbacks context))
+            callbacks (deref (:callbacks context))
             config {:client-config client-config
                     :server-url server-url
                     :data-dir data-dir}]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client callback-repos repo-callbacks)
+          sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
                        :config client-config

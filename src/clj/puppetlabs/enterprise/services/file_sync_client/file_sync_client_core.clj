@@ -91,12 +91,7 @@
      :repos RepoStates
      (schema/optional-key :schedule-next-run?) Boolean}))
 
-(def CallbackRepos
-  "A schema which describes the storage of callbacks with their associated
-  repos"
-  {IFn #{schema/Str}})
-
-(def RepoCallbacks
+(def Callbacks
   "A schema which describes the storage of repo ids with their associated
   callbacks"
   {schema/Str #{IFn}})
@@ -313,16 +308,18 @@
 (schema/defn process-callbacks
   "Using the states of the repos managed by the client, call the registered
   callback function if necessary"
-  [callback-repos :- CallbackRepos
-   repo-callbacks :- RepoCallbacks
+  [callbacks :- Callbacks
    repos-status :- RepoStates]
    (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))]
-     (when (not-every? #(not (contains? repo-callbacks %)) successful-repos)
+     (when (not-every? #(not (contains? callbacks %)) successful-repos)
        (let [necessary-callbacks (reduce set/union
                                          (for [repo successful-repos]
-                                           (get repo-callbacks repo)))]
+                                           (get callbacks repo)))]
+         (+ 5 5)
          (doseq [callback necessary-callbacks]
-           (let [repos (get callback-repos callback)
+           (let [repos (set (filter
+                              #(contains? (get callbacks %) callback)
+                              (keys callbacks)))
                  statuses (select-keys repos-status repos)]
              (log/debugf "Invoking callback function on repos %s"
                          repos)
@@ -332,12 +329,11 @@
   [repos :- ReposConfig
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
-   callback-repos :- CallbackRepos
-   repo-callbacks :- RepoCallbacks
+   callbacks :- Callbacks
    data-dir]
   (let [repos-status (process-repos-for-updates repos repo-base-url latest-commits data-dir)]
-    (when-not (empty? callback-repos)
-      (process-callbacks callback-repos repo-callbacks repos-status))
+    (when-not (empty? callbacks)
+      (process-callbacks callbacks repos-status))
     repos-status))
 
 ; This function is marked 'always-validate' to ensure that the agent is always
@@ -347,8 +343,7 @@
   [agent-state
    config :- CoreConfig
    http-client
-   callback-repos :- CallbackRepos
-   repo-callbacks :- RepoCallbacks]
+   callbacks :- Callbacks]
   (let [repos (get-in config [:client-config :repos])]
     (log/debug "File sync process running on repos " repos)
     (try+
@@ -364,8 +359,7 @@
                           repos
                           (str server-url server-repo-path)
                           latest-commits
-                          callback-repos
-                          repo-callbacks
+                          callbacks
                           data-dir)
             full-success? (every? #(not= (:status %) :failed)
                                   (vals repo-states))]
@@ -390,13 +384,12 @@
     (throw
       (IllegalArgumentException.
         "Error: callback must be a function")))
-  (swap! (:callback-repos context) assoc callback-fn repo-ids)
-  (let [callbacks (deref (:repo-callbacks context))
-        repo-callbacks (into {} (for [repo repo-ids]
+  (let [callbacks (deref (:callbacks context))
+        new-callbacks (into {} (for [repo repo-ids]
                                   (if (contains? callbacks repo)
                                     {repo (conj (get callbacks repo) callback-fn)}
                                     {repo #{callback-fn}})))]
-    (reset! (:repo-callbacks context) (merge callbacks repo-callbacks))))
+    (reset! (:callbacks context) (merge callbacks new-callbacks))))
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
   "Ensures that the JGit client is configured for SSL, if necessary.  The JGit
@@ -436,13 +429,12 @@
    schedule-fn :- IFn
    config :- CoreConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callback-repos :- CallbackRepos
-   repo-callbacks :- RepoCallbacks]
+   callbacks :- Callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc :schedule-next-run? true)))
         send-to-agent #(send-off sync-agent periodic-sync config
-                                 http-client callback-repos repo-callbacks)]
+                                 http-client callbacks)]
     (add-watch sync-agent
                ::schedule-watch
                (fn [key* ref* old-state new-state]
