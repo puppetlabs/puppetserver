@@ -9,7 +9,8 @@
             [puppetlabs.trapperkeeper.authorization.rules :as rules]
             [ring.util.response :as ring]
             [schema.core :as schema]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [cheshire.core :as json]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -116,20 +117,42 @@
   (let [{:keys [ssl-client-cert]} request]
     (if ssl-client-cert (get-cert-subject ssl-client-cert))))
 
+(defn request->log-data
+  "Return a map suitable for logging given a Ring request map"
+  [request]
+  (let [interesting-keys [:request-method :uri :remote-addr :query-string]
+        cn (if-let [name (request->name request)] name "UNKNOWN")]
+    (merge (select-keys request interesting-keys) {:client-cert-cn cn})))
+
+(schema/defn ^:always-validate authz-request-data-str :- schema/Str
+  "Format a ring request suitable for use in log messages."
+  [authorization-result :- rules/AuthorizationResult
+   request :- RingRequest]
+  (let [small-request (request->log-data request)
+        authz-data (merge authorization-result small-request)]
+    (json/generate-string authz-data)))
+
 (schema/defn ^:always-validate authorized? :- schema/Bool
-  "(SERVER-768) replacement for client-allowed-access?"
+  "Given an AuthorizationResult, return true if authorized or false if not."
+  [authorization-result :- rules/AuthorizationResult]
+  (if (:authorized authorization-result) true false))
+
+(schema/defn ^:always-validate authorize-request :- rules/AuthorizationResult
+  "Check if a request is authorized with debug logging."
   [rules :- rules/Rules
    request :- RingRequest]
   (if-let [name (request->name request)]
-    (let [request-for-tk-authz-schema (merge {:remote-addr ""} request)
-          {:keys [authorized message]} (rules/allowed? rules request-for-tk-authz-schema name)]
-      (log/debugf "Authorized: %s for client %s message: %s request: %s"
-                  authorized name message request-for-tk-authz-schema)
-      authorized)
-    (do
-      (log/debugf "Authorized: false, no ssl-client-cert for request %s"
-                  request)
-      false)))
+    (let [authorization-result (rules/allowed? rules request name)
+          allowed (:authorized authorization-result)
+          log-data (authz-request-data-str authorization-result request)
+          access-str (if allowed "Granted" "Denied")]
+      (log/debugf "AUTHZ: Access %s JSON=%s" access-str log-data)
+      authorization-result)
+    (do                                                     ; FIXME Do we really need this "then" branch?
+      (log/debugf "AUTHZ: Access Denied (No ssl-client-cert present) JSON=%s"
+                  (authz-request-data-str {} request))
+      ; This seems terrible, look into if tk-authorization has a way to generate an AuthorizationResult
+      {:authorized false, :message "No ssl-client cert present"})))
 
 (schema/defn ^:always-validate
   wrap-with-cert-whitelist-check :- IFn
@@ -149,10 +172,12 @@
     (wrap-with-authz-rules-check handler authz-rules))
   ([handler :- IFn rules-fn :- IFn]
     (fn [req]
-      (let [rules (rules-fn)]
-        (if (authorized? rules req)                         ; TODO: grab the message describing why for the response body
+      (let [rules (rules-fn)
+            authorization-result (authorize-request rules req)
+            {:keys [message]} authorization-result]
+        (if (authorized? authorization-result)
           (handler req)
-          {:status 403 :body "Forbidden (determined by rules.conf)"})))))
+          {:status 403 :body message})))))
 
 (defn wrap-exception-handling
   "Wraps a ring handler with try/catch that will catch all Exceptions, log them,

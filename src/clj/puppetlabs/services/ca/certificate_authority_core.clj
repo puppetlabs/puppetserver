@@ -137,8 +137,9 @@
 
   :allowed? (fn [context]
               (ringutils/authorized?
-                (rules-fn)
-                (:request context)))
+                (ringutils/authorize-request
+                  (rules-fn)
+                  (:request context))))
 
   :available-media-types media-types
 
@@ -244,8 +245,9 @@
 
   :allowed? (fn [context]
               (ringutils/authorized?
-                (rules-fn)
-                (:request context)))
+                (ringutils/authorize-request
+                  (rules-fn)
+                  (:request context))))
 
   :available-media-types media-types
 
