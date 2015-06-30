@@ -343,7 +343,7 @@
               (let [new-state (helpers/wait-for-new-state sync-agent)]
                 (is (= :successful (:status new-state)))))
 
-            (testing "callbacks were successfuly registered"
+            (testing "callbacks called when all registered repos are synced"
               (is (= [repo repo-2] (deref atom-1)))
               (is (= [repo] (deref atom-2))))
 

@@ -310,18 +310,18 @@
   callback function if necessary"
   [callbacks :- Callbacks
    repos-status :- RepoStates]
-   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))]
-     (let [necessary-callbacks (reduce set/union
-                                 (for [repo successful-repos]
-                                   (get callbacks repo)))]
-       (doseq [callback necessary-callbacks]
-         (let [repos (set (filter
-                            #(contains? (get callbacks %) callback)
-                            (keys callbacks)))
-               statuses (select-keys repos-status repos)]
-           (log/debugf "Invoking callback function on repos %s"
-             repos)
-           (callback statuses))))))
+   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))
+         necessary-callbacks (reduce set/union
+                               (for [repo successful-repos]
+                                 (get callbacks repo)))]
+     (doseq [callback necessary-callbacks]
+       (let [repos (set (filter
+                          #(contains? (get callbacks %) callback)
+                          (keys callbacks)))
+             statuses (select-keys repos-status repos)]
+         (log/debugf "Invoking callback function on repos %s"
+           repos)
+         (callback statuses)))))
 
 (schema/defn process-repos-for-updates :- RepoStates
   [repos :- ReposConfig
