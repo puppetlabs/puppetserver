@@ -274,7 +274,7 @@
                  parent-status)]
     status))
 
-(schema/defn process-repos-for-updates :- RepoStates
+(schema/defn process-repos-for-updates* :- RepoStates
   "Process the repositories for any updates which may be available on the server."
   [repos :- ReposConfig
    repo-base-url :- String
@@ -305,35 +305,33 @@
                 "File sync did not find matching server repo for client repo: %s"
                 name))))))
 
-(schema/defn process-callbacks
+(schema/defn process-callbacks!
   "Using the states of the repos managed by the client, call the registered
   callback function if necessary"
   [callbacks :- Callbacks
    repos-status :- RepoStates]
    (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))]
-     (when (not-every? #(not (contains? callbacks %)) successful-repos)
-       (let [necessary-callbacks (reduce set/union
-                                         (for [repo successful-repos]
-                                           (get callbacks repo)))]
-         (+ 5 5)
-         (doseq [callback necessary-callbacks]
-           (let [repos (set (filter
-                              #(contains? (get callbacks %) callback)
-                              (keys callbacks)))
-                 statuses (select-keys repos-status repos)]
-             (log/debugf "Invoking callback function on repos %s"
-                         repos)
-             (callback statuses)))))))
+     (let [necessary-callbacks (reduce set/union
+                                 (for [repo successful-repos]
+                                   (get callbacks repo)))]
+       (doseq [callback necessary-callbacks]
+         (let [repos (set (filter
+                            #(contains? (get callbacks %) callback)
+                            (keys callbacks)))
+               statuses (select-keys repos-status repos)]
+           (log/debugf "Invoking callback function on repos %s"
+             repos)
+           (callback statuses))))))
 
-(schema/defn process-client-repos :- RepoStates
+(schema/defn process-repos-for-updates :- RepoStates
   [repos :- ReposConfig
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
    callbacks :- Callbacks
    data-dir]
-  (let [repos-status (process-repos-for-updates repos repo-base-url latest-commits data-dir)]
+  (let [repos-status (process-repos-for-updates* repos repo-base-url latest-commits data-dir)]
     (when-not (empty? callbacks)
-      (process-callbacks callbacks repos-status))
+      (process-callbacks! callbacks repos-status))
     repos-status))
 
 ; This function is marked 'always-validate' to ensure that the agent is always
@@ -355,7 +353,7 @@
                              http-client
                              (str server-url server-api-path)
                              agent-state)
-            repo-states (process-client-repos
+            repo-states (process-repos-for-updates
                           repos
                           (str server-url server-repo-path)
                           latest-commits
@@ -389,7 +387,7 @@
                                   (if (contains? callbacks repo)
                                     {repo (conj (get callbacks repo) callback-fn)}
                                     {repo #{callback-fn}})))]
-    (reset! (:callbacks context) (merge callbacks new-callbacks))))
+    (swap! (:callbacks context) merge new-callbacks)))
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
   "Ensures that the JGit client is configured for SSL, if necessary.  The JGit

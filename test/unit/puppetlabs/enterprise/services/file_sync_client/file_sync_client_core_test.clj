@@ -232,17 +232,21 @@
                     "url")))))))))
 
 (defn process-repos
-  [repos client ssl? data-dir]
-  (process-repos-for-updates
-    repos
-    (str (helpers/base-url ssl?) helpers/default-repo-path-prefix)
-    (get-latest-commits-from-server
-      client
-      (str (helpers/base-url ssl?) helpers/default-api-path-prefix "/v1")
-      {:status :created})
-    data-dir))
+  [repos data-dir]
+  (let [latest-commits-url (str (helpers/base-url)
+                             helpers/default-api-path-prefix
+                             "/v1"
+                             common/latest-commits-sub-path)
+        body (-> latest-commits-url
+               (http-client/post {:as :text})
+               get-body-from-latest-commits-payload)]
+    (process-repos-for-updates*
+      repos
+      (str (helpers/base-url) helpers/default-repo-path-prefix)
+      body
+      data-dir)))
 
-(deftest process-repos-for-updates-test
+(deftest process-repos-for-updates*-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         client-data-dir (path-to-data-dir root-data-dir)
@@ -254,8 +258,7 @@
         client-target-repo-error (str client-data-dir "/" error-repo ".git")
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
-        submodule "submodule"
-        client (sync/create-client {})]
+        submodule "submodule"]
     (helpers/with-bootstrapped-storage-service
       app
       (helpers/storage-service-config
@@ -273,7 +276,7 @@
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
-                                   client false client-data-dir)]
+                                   client-data-dir)]
 
           (testing "process-repos-for-updates returns correct state info"
             (is (= (get-in state [server-repo :status]) :synced))
@@ -424,8 +427,8 @@
         repo-2-callback (generate-callback-fn callback-result-repo-2)
         unified-callback (generate-callback-fn callback-result-unified)
         callbacks {repo1 #{repo-1-callback unified-callback}
-                        repo2 #{repo-2-callback unified-callback}}
-        call-callback (partial process-callbacks callbacks)
+                   repo2 #{repo-2-callback unified-callback}}
+        call-callback (partial process-callbacks! callbacks)
         status {repo1 {:status :synced
                        :latest-commit nil}
                 repo2 {:status :synced

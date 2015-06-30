@@ -291,7 +291,11 @@
   [[:FileSyncClientService register-callback!]]
   (init [this context]
     (let [atom-1 (atom nil)
-          atom-2 (atom nil)]
+          atom-2 (atom nil)
+          atom-3 (atom {:count 0})
+          reused-fn (fn [repo-status]
+                      (swap! atom-3
+                        assoc :status repo-status :count (+ 1 (:count (deref atom-3)))))]
       (register-callback! #{"repo" "repo2"}
                           (fn [repo-status]
                             (reset! atom-1
@@ -300,7 +304,9 @@
                           (fn [repo-status]
                             (reset! atom-2
                                    (keys repo-status))))
-      (assoc context :atom-1 atom-1 :atom-2 atom-2))))
+      (register-callback! #{"repo"} reused-fn)
+      (register-callback! #{"repo2"} reused-fn)
+      (assoc context :atom-1 atom-1 :atom-2 atom-2 :atom-3 atom-3))))
 
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
@@ -338,4 +344,13 @@
 
             (testing "callbacks were successfuly registered"
               (is (= [repo repo-2] (deref atom-1)))
-              (is (= [repo] (deref atom-2))))))))))
+              (is (= [repo] (deref atom-2))))
+
+            (testing "single callback can be registered multiple times"
+              (let [callback-atom (:atom-3 (tk-services/service-context svc))
+                    result (deref callback-atom)
+                    repo-status (get-in result [:status repo])
+                    repo2-status (get-in result [:status repo-2])]
+                (is (= :synced (:status repo-status)))
+                (is (= :synced (:status repo2-status)))
+                (is (= 1 (:count result)))))))))))
