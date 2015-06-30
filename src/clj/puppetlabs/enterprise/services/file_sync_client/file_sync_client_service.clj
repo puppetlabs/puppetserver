@@ -18,7 +18,8 @@
 
   (start [this context]
     (log/info "Starting file sync client service")
-    (let [client-config (get-in-config [:file-sync-client])
+    (let [client-config (update-in
+                          (get-in-config [:file-sync-client]) [:repos] #(map keyword %))
           common-config (get-in-config [:file-sync-common])
           server-url (:server-url common-config)
           data-dir (core/path-to-data-dir (:data-dir common-config))

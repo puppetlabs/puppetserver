@@ -108,7 +108,7 @@
           (testing (str "client working dir is properly synced when "
                         "service function is called")
             (client-protocol/sync-working-dir! client-service
-                                               repo
+                                               (keyword repo)
                                                (str client-working-dir))
             (is (= (fs/list-dir client-working-dir)
                    (filter #(not= ".git" %)
@@ -184,7 +184,7 @@
           (testing "new submodules are properly initialized and updated from local copies"
             (client-protocol/sync-working-dir!
               client-service
-              repo
+              (keyword repo)
               (str client-working-dir))
             (is (fs/exists? (fs/file
                               client-working-dir
@@ -223,7 +223,7 @@
           (testing "existing submodules are properly updated"
             (client-protocol/sync-working-dir!
               client-service
-              repo
+              (keyword repo)
               (str client-working-dir))
             (is (fs/exists? (fs/file
                               client-working-dir

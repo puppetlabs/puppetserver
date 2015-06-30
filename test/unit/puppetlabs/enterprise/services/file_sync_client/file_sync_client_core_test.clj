@@ -196,7 +196,7 @@
                                    (str submodules-dir "/" submodule-1))
               submodule-2-status (get submodules-status
                                    (str submodules-dir "/" submodule-2))]
-          
+
           (testing "submodule-1 was successfuly synced with the storage service"
             (is (fs/exists? (fs/file submodules-root (str submodule-1 ".git"))))
             (is (= :synced (:status submodule-1-status)))
@@ -250,12 +250,12 @@
   (let [root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         client-data-dir (path-to-data-dir root-data-dir)
-        server-repo "process-repos-test"
-        error-repo  "process-repos-error"
-        nonexistent-repo "process-repos-test-nonexistent"
-        client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
-        client-target-repo-nonexistent (str client-data-dir "/" nonexistent-repo ".git")
-        client-target-repo-error (str client-data-dir "/" error-repo ".git")
+        server-repo :process-repos-test
+        error-repo  :process-repos-error
+        nonexistent-repo :process-repos-test-nonexistent
+        client-target-repo-on-server (str client-data-dir "/" (name server-repo) ".git")
+        client-target-repo-nonexistent (str client-data-dir "/" (name nonexistent-repo) ".git")
+        client-target-repo-error (str client-data-dir "/" (name error-repo) ".git")
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
         submodule "submodule"]
@@ -263,23 +263,23 @@
       app
       (helpers/storage-service-config
         root-data-dir
-        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)
-                                :submodules-dir submodules-dir
-                                :submodules-working-dir submodules-working-dir}
-         (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}})
+        {server-repo {:working-dir (helpers/temp-dir-as-string)
+                      :submodules-dir submodules-dir
+                      :submodules-working-dir submodules-working-dir}
+         error-repo {:working-dir (helpers/temp-dir-as-string)}})
       (ks/mkdirs! (fs/file submodules-working-dir submodule))
       (http-client/post publish-url)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
-      (fs/delete-dir (fs/file storage-data-dir (str error-repo ".git")))
+      (fs/delete-dir (fs/file storage-data-dir (str (name error-repo) ".git")))
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
                                    client-data-dir)]
 
           (testing "process-repos-for-updates returns correct state info"
-            (is (= (get-in state [server-repo :status]) :synced))
+            (is (= :synced (get-in state [server-repo :status])))
             (is (not (nil? (get-in state [server-repo :latest-commit]))))
             (is (not (nil? (get-in state [server-repo :submodules]))))
             (is (not (nil? (get-in state [server-repo :submodules
@@ -294,7 +294,7 @@
           (is (fs/exists? client-target-repo-on-server)))
 
         (testing "Client submodule directories created when match on server"
-          (is (fs/exists? (fs/file client-data-dir server-repo (str submodule ".git")))))
+          (is (fs/exists? (fs/file client-data-dir (name server-repo) (str submodule ".git")))))
 
         (testing "Client directory not created when no match on server"
           (is (not (fs/exists? client-target-repo-nonexistent))
@@ -335,8 +335,8 @@
 
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
-        repo "test-repo"
-        git-dir (str client-data-dir "/" repo ".git")
+        repo :test-repo
+        git-dir (str client-data-dir "/" (name repo) ".git")
         working-dir (helpers/temp-dir-as-string)
         local-repo-dir (helpers/temp-dir-as-string)
         repo-config [repo]]
@@ -395,7 +395,7 @@
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired repo doesn't exist")
           (is (thrown? IllegalArgumentException
-                       (sync-working-dir! client-data-dir repo-config "fake" working-dir))))
+                       (sync-working-dir! client-data-dir repo-config :fake working-dir))))
 
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired working dir doesn't exist")
@@ -415,8 +415,8 @@
                                (fn [repos-status]
                                  (swap! atom #(assoc % :status repos-status
                                                        :count (+ 1 (:count (deref atom)))))))
-        repo1 "repo1"
-        repo2 "repo2"
+        repo1 :repo1
+        repo2 :repo2
         repo-1-callback (generate-callback-fn callback-result-repo-1)
         repo-2-callback (generate-callback-fn callback-result-repo-2)
         unified-callback (generate-callback-fn callback-result-unified)
@@ -446,7 +446,7 @@
       (reset! callback-result-unified atom-start-value)
       (reset! callback-result-repo-1 atom-start-value)
       (reset! callback-result-repo-2 atom-start-value)
-      (let [repos-status (assoc-in status ["repo1" :status] :unchanged)]
+      (let [repos-status (assoc-in status [repo1 :status] :unchanged)]
         (call-callback repos-status)
         (testing "callback for first repo is not called"
           (is (= {:count 0} (deref callback-result-repo-1))))
@@ -465,7 +465,7 @@
       (reset! callback-result-repo-2 atom-start-value)
       (let [unchanged-status {:status :unchanged
                               :latest-commit nil}
-            repos-status (assoc status "repo1" unchanged-status "repo2" unchanged-status)]
+            repos-status (assoc status repo1 unchanged-status repo2 unchanged-status)]
         (call-callback repos-status)
         (is (= atom-start-value (deref callback-result-repo-1)))
         (is (= atom-start-value (deref callback-result-repo-2)))

@@ -65,14 +65,10 @@
            file-sync-client-service/file-sync-client-service
            status-service/status-service
            scheduler-service/scheduler-service]
-          (merge (helpers/storage-service-config
-                   root-data-dir
-                   {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
-                   true)
-                 (helpers/client-service-config
-                   root-data-dir
-                   [repo]
-                   true))
+          (helpers/file-sync-config
+            root-data-dir
+            {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}}
+            true)
 
           (let [local-repo-dir (helpers/clone-and-push-test-commit! repo storage-data-dir)
                 sync-agent (helpers/get-sync-agent app)]
@@ -123,7 +119,7 @@
              scheduler-service/scheduler-service]
             (helpers/client-service-config
               root-data-dir
-              [repo]
+              [(keyword repo)]
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]
@@ -197,13 +193,13 @@
         (finally (tk-app/stop storage-app))))))
 
 (deftest ^:integration server-side-corruption-test
-  (let [repo1 "repo1"
-        repo2 "repo2"
+  (let [repo1 :repo1
+        repo2 :repo2
         root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
         client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
-        client-dir-repo-1 (fs/file client-data-dir (str repo1 ".git"))
-        client-dir-repo-2 (fs/file client-data-dir (str repo2 ".git"))]
+        client-dir-repo-1 (fs/file client-data-dir (str (name repo1) ".git"))
+        client-dir-repo-2 (fs/file client-data-dir (str (name repo2) ".git"))]
     ;; This is used to silence the error logged when the server-side repo is
     ;; corrupted, but unfortunately, it doesn't seem to actually allow that
     ;; message to be matched
@@ -216,16 +212,13 @@
          file-sync-client-service/file-sync-client-service
          status-service/status-service
          scheduler-service/scheduler-service]
-        (merge (helpers/storage-service-config
-                 root-data-dir
-                 {(keyword repo1) {:working-dir (helpers/temp-dir-as-string)}
-                  (keyword repo2) {:working-dir (helpers/temp-dir-as-string)}})
-               (helpers/client-service-config
-                 root-data-dir
-                 [repo1 repo2]
-                 false))
-        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! repo1 storage-data-dir)
-              local-dir-repo-2 (helpers/clone-and-push-test-commit! repo2 storage-data-dir)
+        (helpers/file-sync-config
+          root-data-dir
+          {repo1 {:working-dir (helpers/temp-dir-as-string)}
+           repo2 {:working-dir (helpers/temp-dir-as-string)}}
+          false)
+        (let [local-dir-repo-1 (helpers/clone-and-push-test-commit! (name repo1) storage-data-dir)
+              local-dir-repo-2 (helpers/clone-and-push-test-commit! (name repo2) storage-data-dir)
               sync-agent (helpers/get-sync-agent app)]
 
           (testing "file sync client service is running"
@@ -239,7 +232,7 @@
           (testing (str "client-side repo recovers after server-side"
                         " repo becomes corrupt")
             (let [corrupt-repo-path (helpers/temp-dir-as-string)
-                  original-repo-path (str storage-data-dir "/" repo1 ".git")]
+                  original-repo-path (str storage-data-dir "/" (name repo1) ".git")]
               (helpers/push-test-commit! local-dir-repo-1)
               (helpers/push-test-commit! local-dir-repo-2)
 
@@ -299,22 +292,22 @@
           reused-fn (fn [repo-status]
                       (swap! atom-3
                         assoc :status repo-status :count (+ 1 (:count (deref atom-3)))))]
-      (register-callback! #{"repo" "repo2"}
+      (register-callback! #{:repo :repo2}
                           (fn [repo-status]
                             (reset! atom-1
                                    (keys repo-status))))
-      (register-callback! #{"repo"}
+      (register-callback! #{:repo}
                           (fn [repo-status]
                             (reset! atom-2
                                    (keys repo-status))))
-      (register-callback! #{"repo"} reused-fn)
-      (register-callback! #{"repo2"} reused-fn)
+      (register-callback! #{:repo} reused-fn)
+      (register-callback! #{:repo2} reused-fn)
       (assoc context :atom-1 atom-1 :atom-2 atom-2 :atom-3 atom-3))))
 
 (deftest ^:integration callback-registration-test
   (testing "callback functions can be registered with the client service"
-    (let [repo "repo"
-          repo-2 "repo2"
+    (let [repo :repo
+          repo-2 :repo2
           root-data-dir (helpers/temp-dir-as-string)]
       (with-test-logging
         (bootstrap/with-app-with-config
@@ -326,15 +319,11 @@
            scheduler-service/scheduler-service
            status-service/status-service
            callback-service]
-          (merge (helpers/storage-service-config
-                   root-data-dir
-                   {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}
-                    (keyword repo-2) {:working-dir (helpers/temp-dir-as-string)}}
-                   false)
-                 (helpers/client-service-config
-                   root-data-dir
-                   [repo repo-2]
-                   false))
+          (helpers/file-sync-config
+            root-data-dir
+            {repo {:working-dir (helpers/temp-dir-as-string)}
+             repo-2 {:working-dir (helpers/temp-dir-as-string)}}
+            false)
 
           (let [sync-agent (helpers/get-sync-agent app)
                 svc (tk-app/get-service app :CallbackService)
@@ -363,7 +352,7 @@
             (reset! atom-1 nil)
             (reset! atom-2 nil)
             (reset! atom-3 {:count 0})
-            (helpers/clone-and-push-test-commit! repo (str root-data-dir "/storage"))
+            (helpers/clone-and-push-test-commit! (name repo) (str root-data-dir "/storage"))
             (let [new-state (helpers/wait-for-new-state sync-agent)]
               (is (= :successful (:status new-state))))
 
@@ -414,7 +403,8 @@
            webrouting-service/webrouting-service
            scheduler-service/scheduler-service
            status-service/status-service]
-          (helpers/file-sync-config root-data-dir
+          (helpers/file-sync-config
+            root-data-dir
             {(keyword repo-name) {:working-dir working-dir
                                   :submodules-working-dir submodules-working-dir
                                   :submodules-dir submodules-dir-name}})
@@ -505,7 +495,7 @@
 
                 (client-protocol/sync-working-dir!
                   client-service
-                  repo-name
+                  (keyword repo-name)
                   (str client-working-dir))
 
                 (is (not (fs/exists?  (fs/file client-working-dir submodules-dir-name
