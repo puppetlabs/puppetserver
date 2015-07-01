@@ -1,6 +1,7 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-core
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [slingshot.slingshot :refer [try+ throw+]]
@@ -11,12 +12,16 @@
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
-           (clojure.lang IFn Agent)
+           (clojure.lang IFn Agent Atom)
            (java.io IOException)
            (org.eclipse.jgit.api.errors GitAPIException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
+
+(def ClientContext
+  "A schema describing the service context for the File Sync Client service"
+  {:callbacks Atom})
 
 (def ReposConfig
   "A schema describing the configuration data for the repositories managed by
@@ -89,6 +94,11 @@
     {:status (schema/enum :successful :partial-success)
      :repos RepoStates
      (schema/optional-key :schedule-next-run?) Boolean}))
+
+(def Callbacks
+  "A schema which describes the storage of repo ids with their associated
+  callbacks"
+  {schema/Str #{IFn}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -248,7 +258,7 @@
   which the client repository is intended to reside.  'latest-commits-info' is
   the commit id of the latest commit in the server repo. Returns status information
   about the sync process for the repo."
-  [server-repo-url name target-dir submodule-root latest-commits-info callback-fn]
+  [server-repo-url name target-dir submodule-root latest-commits-info]
   (let [latest-commit-id (:commit latest-commits-info)
         submodules-commit-info (:submodules latest-commits-info)
         server-repo-url (str server-repo-url "/" name)
@@ -266,17 +276,13 @@
                    target-dir
                    parent-status)
                  parent-status)]
-    (when (and callback-fn (= :synced (:status status)))
-      (log/debug "Invoking callback function on repo " name)
-      (callback-fn (keyword name) status))
     status))
 
-(schema/defn process-repos-for-updates :- RepoStates
+(schema/defn process-repos-for-updates* :- RepoStates
   "Process the repositories for any updates which may be available on the server."
   [repos :- ReposConfig
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
-   callbacks
    data-dir]
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
@@ -292,8 +298,7 @@
                           name
                           target-dir
                           submodule-root
-                          latest-commit
-                          (get callbacks repo-name))}
+                          latest-commit)}
                   (catch sync-error? e
                     (log/errorf
                       (str "Error syncing repo: " (:message e))
@@ -304,6 +309,35 @@
                 "File sync did not find matching server repo for client repo: %s"
                 name))))))
 
+(schema/defn process-callbacks!
+  "Using the states of the repos managed by the client, call the registered
+  callback function if necessary"
+  [callbacks :- Callbacks
+   repos-status :- RepoStates]
+   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))
+         necessary-callbacks (reduce set/union
+                               (for [repo successful-repos]
+                                 (get callbacks repo)))]
+     (doseq [callback necessary-callbacks]
+       (let [repos (set (filter
+                          #(contains? (get callbacks %) callback)
+                          (keys callbacks)))
+             statuses (select-keys repos-status repos)]
+         (log/debugf "Invoking callback function on repos %s"
+           repos)
+         (callback statuses)))))
+
+(schema/defn process-repos-for-updates :- RepoStates
+  [repos :- ReposConfig
+   repo-base-url :- String
+   latest-commits :- common/LatestCommitsPayload
+   callbacks :- Callbacks
+   data-dir]
+  (let [repos-status (process-repos-for-updates* repos repo-base-url latest-commits data-dir)]
+    (when-not (empty? callbacks)
+      (process-callbacks! callbacks repos-status))
+    repos-status))
+
 ; This function is marked 'always-validate' to ensure that the agent is always
 ; left in a valid state.
 (schema/defn ^:always-validate sync-on-agent :- AgentState
@@ -311,7 +345,7 @@
   [agent-state
    config :- CoreConfig
    http-client
-   callbacks]
+   callbacks :- Callbacks]
   (let [repos (get-in config [:client-config :repos])]
     (log/debug "File sync process running on repos " repos)
     (try+
@@ -344,15 +378,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn register-callback!
+(schema/defn ^:always-validate register-callback!
   "Given the client service's context, registers a callback function.
    Throws an exception if the callback is not a function."
-  [context repo-id callback-fn]
-  (when-not (instance? IFn callback-fn)
-    (throw
-      (IllegalArgumentException.
-        "Error: callback must be a function")))
-  (swap! (:callbacks context) assoc repo-id callback-fn))
+  [context :- ClientContext
+   repo-ids :- #{schema/Str}
+   callback-fn :- IFn]
+  (let [callbacks (deref (:callbacks context))
+        new-callbacks (into {} (for [repo repo-ids]
+                                  (if (contains? callbacks repo)
+                                    {repo (conj (get callbacks repo) callback-fn)}
+                                    {repo #{callback-fn}})))]
+    (swap! (:callbacks context) merge new-callbacks)))
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
   "Ensures that the JGit client is configured for SSL, if necessary.  The JGit
@@ -392,7 +429,7 @@
    schedule-fn :- IFn
    config :- CoreConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callbacks]
+   callbacks :- Callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                             (assoc :schedule-next-run? true)))

@@ -29,7 +29,7 @@
 
       (let [schedule-fn (partial after poll-interval)
             http-client (core/create-http-client ssl-context)
-            callbacks   (deref (:callbacks context))
+            callbacks (deref (:callbacks context))
             config {:client-config client-config
                     :server-url server-url
                     :data-dir data-dir}]
@@ -41,12 +41,12 @@
                        :common-config common-config
                        :started? true))))
 
-  (register-callback! [this repo-id callback-fn]
+  (register-callback! [this repo-ids callback-fn]
     (let [context (tks/service-context this)]
       (when (:started? context)
         (throw (IllegalStateException.
                  "Callbacks must be registered before the File Sync Client is started")))
-      (core/register-callback! context repo-id callback-fn)))
+      (core/register-callback! context repo-ids callback-fn)))
 
   (sync-working-dir! [this repo-id working-dir]
     (core/sync-working-dir! (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))

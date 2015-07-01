@@ -247,7 +247,7 @@
   (testing "Callbacks must be registered before the File Sync Client is started"
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
-                         (register-callback! :foo (fn [& _] nil))))
+                         (register-callback! #{"foo"} (fn [& _] nil))))
           config (helpers/client-service-config (helpers/temp-dir-as-string) [] false)
           client-app (tk/build-app
                        [file-sync-client-service/file-sync-client-service
