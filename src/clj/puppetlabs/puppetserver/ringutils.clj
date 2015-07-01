@@ -45,8 +45,12 @@
   file at runtime."
   []
   (if (fs/exists? rules-path)
-    (config/config-file->rules rules-path)
-    authz-default-rules))
+    (do
+      (log/debugf "AUTHZ: Loading rules from %s" rules-path)
+      (config/config-file->rules rules-path))
+    (do
+      (log/debugf "AUTHZ: Loading rules from compiled-in defaults")
+      authz-default-rules)))
 
 (defn get-cert-subject
   "Pull the common name of the subject off the certificate."
