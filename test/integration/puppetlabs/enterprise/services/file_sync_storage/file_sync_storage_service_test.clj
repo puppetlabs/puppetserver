@@ -618,7 +618,7 @@
             (testing "Basic response data"
               (is (= 200 (:status response)))
               (is (= "file-sync-storage-service" (get body "service_name")))
-              (is (= "true" (get body "is_running"))))
+              (is (= "running" (get body "state"))))
             (testing "The response should contain a timestamp"
               (is (time/within?
                     test-start-time
@@ -709,7 +709,7 @@
         (testing "level=critical doesn't return anything except the basics"
           (let [response (fetch-status :critical)]
             (is (= 200 (:status response)))
-            (testing "No additional status data beyond is_running is returned"
+            (testing "No additional status data beyond state is returned"
               (is (= nil (response->status response))))))
 
         ; Don't need to test level=info - that's the default (what's used above).
