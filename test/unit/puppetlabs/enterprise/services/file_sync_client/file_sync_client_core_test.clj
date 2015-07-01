@@ -333,12 +333,6 @@
         (is shutdown-requested?)
         (is @shutdown-atom)))))
 
-(deftest register-callback-test
-  (testing "register-callback! throws an error if callback is not a function"
-    (is (thrown?
-          IllegalArgumentException
-          (register-callback! {} #{:test} 123)))))
-
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
         repo "test-repo"

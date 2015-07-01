@@ -335,9 +335,10 @@
 
           (let [sync-agent (helpers/get-sync-agent app)
                 svc (tk-app/get-service app :CallbackService)
-                atom-1 (:atom-1 (tk-services/service-context svc))
-                atom-2 (:atom-2 (tk-services/service-context svc))
-                atom-3 (:atom-3 (tk-services/service-context svc))]
+                context (tk-services/service-context svc)
+                atom-1 (:atom-1 context)
+                atom-2 (:atom-2 context)
+                atom-3 (:atom-3 context)]
 
             (testing "file sync client service is running"
               (let [new-state (helpers/wait-for-new-state sync-agent)]

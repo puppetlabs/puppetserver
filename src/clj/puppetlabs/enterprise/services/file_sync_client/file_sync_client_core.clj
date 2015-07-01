@@ -12,12 +12,16 @@
             [puppetlabs.http.client.sync :as sync]
             [puppetlabs.http.client.common :as http-client])
   (:import (org.eclipse.jgit.transport HttpTransport)
-           (clojure.lang IFn Agent)
+           (clojure.lang IFn Agent Atom)
            (java.io IOException)
            (org.eclipse.jgit.api.errors GitAPIException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
+
+(def ClientContext
+  "A schema describing the service context for the File Sync Client service"
+  {:callbacks Atom})
 
 (def ReposConfig
   "A schema describing the configuration data for the repositories managed by
@@ -374,14 +378,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn register-callback!
+(schema/defn ^:always-validate register-callback!
   "Given the client service's context, registers a callback function.
    Throws an exception if the callback is not a function."
-  [context repo-ids callback-fn]
-  (when-not (instance? IFn callback-fn)
-    (throw
-      (IllegalArgumentException.
-        "Error: callback must be a function")))
+  [context :- ClientContext
+   repo-ids :- #{schema/Str}
+   callback-fn :- IFn]
   (let [callbacks (deref (:callbacks context))
         new-callbacks (into {} (for [repo repo-ids]
                                   (if (contains? callbacks repo)
