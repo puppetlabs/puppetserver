@@ -1,7 +1,8 @@
 (ns puppetlabs.enterprise.file-sync-test-utils
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.transport HttpTransport)
-           (org.eclipse.jgit.transport.http JDKHttpConnectionFactory))
+           (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
+           (org.eclipse.jgit.treewalk CanonicalTreeParser))
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
@@ -231,6 +232,18 @@
                    .getConfig)]
     (.setString config "remote" name "url" url)
     (.save config)))
+
+(defn get-latest-commit-diff
+  [repo]
+  (let [reader* (.newObjectReader repo)]
+    (-> repo
+      Git.
+      .diff
+      (.setNewTree (doto (CanonicalTreeParser.)
+                     (.reset reader* (.resolve repo "HEAD^{tree}"))))
+      (.setOldTree (doto (CanonicalTreeParser.)
+                     (.reset reader* (.resolve repo "HEAD~1^{tree}"))))
+      .call)))
 
 (defn add-watch-and-deliver-new-state
   "Given a agent/atom/ref/var and a promise, add a watch to ref* and deliver the

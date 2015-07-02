@@ -3,6 +3,7 @@
            (org.eclipse.jgit.api Git InitCommand)
            (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
            (clojure.lang Keyword Atom)
+           (com.puppetlabs.enterprise NoGitlinksWorkingTreeIterator)
            (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
@@ -236,6 +237,67 @@
   {:name (:name author default-commit-author-name)
    :email (:email author default-commit-author-email)})
 
+(defn add-all-and-rm-missing
+  "Add all additions and modifications to the index, including those in
+  subdirectories with nested .git directories. Then remove from the index
+  anything removed from the working tree, including files removed from
+  subdirectories with nested .git directories, but not from anything in any
+  submodules in the submodules-dir."
+  ([git]
+   (add-all-and-rm-missing git nil))
+  ([git submodules-dir]
+  ;; Add everything that has been modified or added to the git index
+  (-> git
+    .add
+    (.addFilepattern ".")
+    (.setWorkingTreeIterator
+      (NoGitlinksWorkingTreeIterator. (.getRepository git)))
+    .call)
+   ;; Get all the things in the index with a status 'missing' (i.e. missing in
+   ;; the working tree, present in the git index), using the
+   ;; NoGitlinksWorkingTreeIterator (thus anything removed from a directory
+   ;; with a nested .git directory will show up as 'missing').
+   (let [status (-> git
+                  .status
+                  (.setWorkingTreeIt
+                    (NoGitlinksWorkingTreeIterator. (.getRepository git)))
+                  .call)
+         missing (.getMissing status)
+         ;; Filter out from the 'missing' list anything in the submodules-dir,
+         ;; since this will all show up as 'missing' since it is a gitlink.
+         ;; If submodules-dir is nil, then this will remove nothing (since
+         ;; no paths should start with "/"; they are all relative).
+         removed (remove
+                   #(re-matches (re-pattern (str submodules-dir "/.*")) %)
+                   missing)]
+    ;; Remove everything that should be removed from the git index.
+    (when-not (empty? removed)
+      (let [rm-command (.rm git)]
+        (reduce #(.addFilepattern %1 %2) rm-command removed)
+        (.call rm-command))))))
+
+(defn add-all-with-submodules
+  "Add/remove everything from the parent repo, without gitlinks, then add all
+  the submodules as gitlinks."
+  [git submodules-dir]
+  ;; Add/remove everything as appropriate from the parent repo using the
+  ;; NoGitlinksWorkingTreeIterator.
+  (add-all-and-rm-missing git submodules-dir)
+  ;; Remove anything that has been cached so far that is in the
+  ;; submodules-dir, since previously we were using the
+  ;; 'NoGitlinksWorkingTreeIterator', which does not work with submodules.
+  (when submodules-dir
+    (-> git
+      .reset
+      (.addPath submodules-dir)
+      .call)
+    ;; Add the submodules-dir to the index, with the default
+    ;; 'FileTreeIterator' (which will use gitlinks).
+    (-> git
+      .add
+      (.addFilepattern submodules-dir)
+      .call)))
+
 (defn failed-to-publish
   [path error]
   (log/error error (str "Failed to publish " path))
@@ -261,7 +323,8 @@
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s" submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit
+    (add-all-and-rm-missing submodule-git)
+    (jgit-utils/commit
       submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a submodule add on the parent repo and return the SHA from the cloned
@@ -286,7 +349,8 @@
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (jgit-utils/add-and-commit
+    (add-all-and-rm-missing submodule-git)
+    (jgit-utils/commit
       submodule-git (:message commit-info) (:identity commit-info)))
 
   ;; do a pull for the submodule within the parent repo to update it, and
@@ -382,8 +446,8 @@
           (log/infof "Committing repo %s" working-dir)
           (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (jgit-utils/add-and-commit
-                         git (:message commit-info) (:identity commit-info))
+                commit (do (add-all-with-submodules git submodules-dir)
+                         (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
