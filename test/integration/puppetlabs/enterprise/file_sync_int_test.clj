@@ -26,7 +26,8 @@
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs])
-  (:import (java.net ConnectException)))
+  (:import (java.net ConnectException)
+           (org.eclipse.jgit.diff DiffEntry$ChangeType)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -419,11 +420,12 @@
                                   :submodules-dir submodules-dir-name}})
 
           ; add test file to parent repo
-          (helpers/write-test-file! (fs/file working-dir test-file-name))
+          (spit (fs/file working-dir test-file-name) "test file in the parent repo")
 
           ; create directory for the submodule and add test file
           (ks/mkdirs! (fs/file submodules-working-dir submodule))
-          (helpers/write-test-file! (fs/file submodules-working-dir submodule test-file-name))
+          (spit (fs/file submodules-working-dir submodule test-file-name)
+            "test file in the submodule")
 
           ; first publish, to get parent repo's and submodule repo's initial
           ; states onto the storage service, so that we have a diff to test
@@ -434,7 +436,8 @@
           (let [nested-dir-path (fs/file working-dir nested-dir)
                 nested-git (helpers/init-repo! nested-dir-path)]
             (ks/mkdirs! nested-dir-path)
-            (helpers/write-test-file! (fs/file nested-dir-path test-file-name))
+            (spit (fs/file nested-dir-path test-file-name)
+              "test file in the nested directory in the parent repo")
             (jgit-utils/add-and-commit nested-git
               "Commit nested git repo" {:name "foo" :email "foo@foo.com"}))
 
@@ -445,7 +448,8 @@
           (let [nested-submodule-path (fs/file submodules-working-dir submodule nested-submodule-dir)
                 nested-submodule-git (helpers/init-repo! nested-submodule-path)]
             (ks/mkdirs! nested-submodule-path)
-            (helpers/write-test-file! (fs/file nested-submodule-path test-file-name))
+            (spit (fs/file nested-submodule-path test-file-name)
+              "test file in the nested directory in the submodule")
             (jgit-utils/add-and-commit nested-submodule-git
               "Commit submodule nested git repo" {:name "foo" :email "foo@foo.com"}))
 
@@ -458,18 +462,35 @@
                            (fs/file root-data-dir "storage" repo-name (str submodule ".git")))
                     diffs (helpers/get-latest-commit-diff repo)]
 
-                (is (= #{(format "DiffEntry[ADD %s/%s]" nested-submodule-dir test-file-name)
-                         (format "DiffEntry[DELETE %s]" test-file-name)}
-                      (set (map #(.toString %) diffs))))))
+                (is (= #{{:old-path "/dev/null"
+                           :new-path (format "%s/%s" nested-submodule-dir test-file-name)
+                           :change-type (DiffEntry$ChangeType/ADD)}
+                         {:old-path test-file-name
+                          :new-path "/dev/null"
+                          :change-type (DiffEntry$ChangeType/DELETE)}}
+                      (set (map (fn [x] {:old-path (.getOldPath x)
+                                         :new-path (.getNewPath x)
+                                         :change-type (.getChangeType x)})
+                             diffs))))))
 
             (testing "parent repo has correct diff"
               (let [repo (jgit-utils/get-repository-from-git-dir
                            (fs/file root-data-dir "storage" (str repo-name ".git")))
                     diffs (helpers/get-latest-commit-diff repo)]
 
-                (is (= {(format "DiffEntry[MODIFY %s/%s]" submodules-dir-name submodule) "160000"
-                        (format "DiffEntry[ADD %s/%s]" nested-dir test-file-name) "100644"}
-                      (into {} (map (fn [x] {(.toString x) (.toString (.getNewMode x))}) diffs)))))))
+                (is (= #{{:old-path (format "%s/%s" submodules-dir-name submodule)
+                          :new-path (format "%s/%s" submodules-dir-name submodule)
+                          :new-mode "160000"
+                          :change-type (DiffEntry$ChangeType/MODIFY)}
+                         {:old-path "/dev/null"
+                          :new-path (format "%s/%s" nested-dir test-file-name)
+                          :new-mode "100644"
+                          :change-type (DiffEntry$ChangeType/ADD)}}
+                      (set (map (fn [x] {:old-path (.getOldPath x)
+                                         :new-path (.getNewPath x)
+                                         :change-type (.getChangeType x)
+                                         :new-mode (.toString (.getNewMode x))})
+                             diffs)))))))
 
           (testing "client service syncs correctly"
             (let [client-service (tk-app/get-service app :FileSyncClientService)
@@ -487,9 +508,12 @@
                   repo-name
                   (str client-working-dir))
 
-                (is (not (fs/exists?
-                           (fs/file client-working-dir submodules-dir-name submodule test-file-name))))
-                (is (= "here is some text" (slurp (fs/file client-working-dir test-file-name))))
-                (is (= "here is some text" (slurp (fs/file client-working-dir nested-dir test-file-name))))
-                (is (= "here is some text" (slurp (fs/file client-working-dir submodules-dir-name submodule
-                                                    nested-submodule-dir test-file-name))))))))))))
+                (is (not (fs/exists?  (fs/file client-working-dir submodules-dir-name
+                                        submodule test-file-name))))
+                (is (= "test file in the parent repo"
+                      (slurp (fs/file client-working-dir test-file-name))))
+                (is (= "test file in the nested directory in the parent repo"
+                      (slurp (fs/file client-working-dir nested-dir test-file-name))))
+                (is (= "test file in the nested directory in the submodule"
+                      (slurp (fs/file client-working-dir submodules-dir-name submodule
+                               nested-submodule-dir test-file-name))))))))))))

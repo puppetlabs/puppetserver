@@ -237,15 +237,22 @@
   {:name (:name author default-commit-author-name)
    :email (:email author default-commit-author-email)})
 
-(defn add-and-rm-all
+(defn add-all-and-rm-missing
   "Add all additions and modifications to the index, including those in
   subdirectories with nested .git directories. Then remove from the index
   anything removed from the working tree, including files removed from
   subdirectories with nested .git directories, but not from anything in any
   submodules in the submodules-dir."
   ([git]
-   (add-and-rm-all git nil))
+   (add-all-and-rm-missing git nil))
   ([git submodules-dir]
+  ;; Add everything that has been modified or added to the git index
+  (-> git
+    .add
+    (.addFilepattern ".")
+    (.setWorkingTreeIterator
+      (NoGitlinksWorkingTreeIterator. (.getRepository git)))
+    .call)
    ;; Get all the things in the index with a status 'missing' (i.e. missing in
    ;; the working tree, present in the git index), using the
    ;; NoGitlinksWorkingTreeIterator (thus anything removed from a directory
@@ -263,13 +270,6 @@
          removed (remove
                    #(re-matches (re-pattern (str submodules-dir "/.*")) %)
                    missing)]
-  ;; Add everything that has been modified or added to the git index
-  (-> git
-      .add
-      (.addFilepattern ".")
-      (.setWorkingTreeIterator
-        (NoGitlinksWorkingTreeIterator. (.getRepository git)))
-      .call)
     ;; Remove everything that should be removed from the git index.
     (when-not (empty? removed)
       (let [rm-command (.rm git)]
@@ -282,7 +282,7 @@
   [git submodules-dir]
   ;; Add/remove everything as appropriate from the parent repo using the
   ;; NoGitlinksWorkingTreeIterator.
-  (add-and-rm-all git submodules-dir)
+  (add-all-and-rm-missing git submodules-dir)
   ;; Remove anything that has been cached so far that is in the
   ;; submodules-dir, since previously we were using the
   ;; 'NoGitlinksWorkingTreeIterator', which does not work with submodules.
@@ -323,7 +323,7 @@
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s" submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (add-and-rm-all submodule-git)
+    (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
       submodule-git (:message commit-info) (:identity commit-info)))
 
@@ -349,7 +349,7 @@
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
-    (add-and-rm-all submodule-git)
+    (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
       submodule-git (:message commit-info) (:identity commit-info)))
 
