@@ -586,143 +586,144 @@
         config (helpers/file-sync-config
                  data-dir
                  {:my-repo {:working-dir working-dir}})]
-    (bootstrap/with-app-with-config
-      app
-      helpers/file-sync-services-and-deps
-      config
+    (with-test-logging
+      (bootstrap/with-app-with-config
+        app
+        helpers/file-sync-services-and-deps
+        config
 
-      ; First, create and publish some test content
-      (spit (fs/file working-dir "test-file-1") "test file content 1")
-      (spit (fs/file working-dir "test-file-2") "test file content 2")
-      (let [publish-request-body (-> {:message "my msg"
-                                      :author {:name "Testy"
-                                               :email "test@foo.com"}}
-                                     json/generate-string)
-            commit-id (-> (do-publish publish-request-body)
-                          :body
-                          (json/parse-string true)
-                          :my-repo
-                          :commit)]
-        ; Block here until the sync process has run twice, which will cause
-        ; two /latest-commits requests to be made to the server.
-        ; The first request will not include a POST body, since the
-        ; client has not yet cloned the repo from the server.
-        ; The second request will, finally, POST the repo information back
-        ; to the server, and at that point it will be availabe in the /status
-        ; response and the test can continue.
-        (dotimes [_ 2]
-          (helpers/wait-for-new-state (helpers/get-sync-agent app)))
-        (testing "A request against the Storage Service's status endpoint"
-          (let [response (fetch-status)
-                body (json/parse-string (:body response))]
-            (testing "Basic response data"
-              (is (= 200 (:status response)))
-              (is (= "file-sync-storage-service" (get body "service_name")))
-              (is (= "running" (get body "state"))))
-            (testing "The response should contain a timestamp"
-              (is (time/within?
-                    test-start-time
-                    (time/now)
-                    (parse-timestamp (get-in body ["status" "timestamp"])))))
-            (let [repo-status (get-in body ["status" "repos" "my-repo"])
-                  latest-commit-status (get repo-status "latest-commit")]
-              (testing "Latest commit ID"
-                (is (= commit-id (get latest-commit-status "commit"))))
-              (testing "Commit date/time"
-                (let [commit-time (time-format/parse (get latest-commit-status "date"))]
-                  ; JGit tracks commit time at the seconds level of resolution,
-                  ; (appears to just truncate milliseconds, never rounding up)
-                  ; and therefore always has 0 milliseconds in the DateTime
-                  ; object here.  So give it some wiggle room.
-                  ;(is (time/after? commit-time test-start-time))
-                  (is (time/after? commit-time (-> test-start-time
-                                                   (time/minus (time/seconds 1)))))
-                  (is (time/before? commit-time (time/now)))))
-              (testing "The commit author"
-                (is (= {"name" "Testy"
-                        "email" "test@foo.com"}
-                       (get latest-commit-status "author"))))
-              (testing "The commit message"
-                (is (= "my msg" (get latest-commit-status "message"))))
-              (testing "Status of the working directory"
-                (is (= (get repo-status "working-dir")
-                       {"clean" true
-                        "missing" []
-                        "modified" []
-                        "untracked" []}))))
-            (testing "The response should contain information about the clients"
-              (let [clients (get-in body ["status" "clients"])]
-                (is (= 1 (count clients)))
-                (let [client-status (second (first clients))]
-                  (testing "Repo information"
-                    (is (= (get client-status "repos")
-                          {"my-repo" {"latest-commit" commit-id
-                                      "status" "synced"}})))
-                  (testing "Last check-in timestamp"
+        ; First, create and publish some test content
+        (spit (fs/file working-dir "test-file-1") "test file content 1")
+        (spit (fs/file working-dir "test-file-2") "test file content 2")
+        (let [publish-request-body (-> {:message "my msg"
+                                        :author {:name "Testy"
+                                                 :email "test@foo.com"}}
+                                       json/generate-string)
+              commit-id (-> (do-publish publish-request-body)
+                            :body
+                            (json/parse-string true)
+                            :my-repo
+                            :commit)]
+          ; Block here until the sync process has run twice, which will cause
+          ; two /latest-commits requests to be made to the server.
+          ; The first request will not include a POST body, since the
+          ; client has not yet cloned the repo from the server.
+          ; The second request will, finally, POST the repo information back
+          ; to the server, and at that point it will be availabe in the /status
+          ; response and the test can continue.
+          (dotimes [_ 2]
+            (helpers/wait-for-new-state (helpers/get-sync-agent app)))
+          (testing "A request against the Storage Service's status endpoint"
+            (let [response (fetch-status)
+                  body (json/parse-string (:body response))]
+              (testing "Basic response data"
+                (is (= 200 (:status response)))
+                (is (= "file-sync-storage-service" (get body "service_name")))
+                (is (= "running" (get body "state"))))
+              (testing "The response should contain a timestamp"
+                (is (time/within?
+                      test-start-time
+                      (time/now)
+                      (parse-timestamp (get-in body ["status" "timestamp"])))))
+              (let [repo-status (get-in body ["status" "repos" "my-repo"])
+                    latest-commit-status (get repo-status "latest-commit")]
+                (testing "Latest commit ID"
+                  (is (= commit-id (get latest-commit-status "commit"))))
+                (testing "Commit date/time"
+                  (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+                    ; JGit tracks commit time at the seconds level of resolution,
+                    ; (appears to just truncate milliseconds, never rounding up)
+                    ; and therefore always has 0 milliseconds in the DateTime
+                    ; object here.  So give it some wiggle room.
+                    ;(is (time/after? commit-time test-start-time))
+                    (is (time/after? commit-time (-> test-start-time
+                                                     (time/minus (time/seconds 1)))))
+                    (is (time/before? commit-time (time/now)))))
+                (testing "The commit author"
+                  (is (= {"name" "Testy"
+                          "email" "test@foo.com"}
+                         (get latest-commit-status "author"))))
+                (testing "The commit message"
+                  (is (= "my msg" (get latest-commit-status "message"))))
+                (testing "Status of the working directory"
+                  (is (= (get repo-status "working-dir")
+                         {"clean" true
+                          "missing" []
+                          "modified" []
+                          "untracked" []}))))
+              (testing "The response should contain information about the clients"
+                (let [clients (get-in body ["status" "clients"])]
+                  (is (= 1 (count clients)))
+                  (let [client-status (second (first clients))]
+                    (testing "Repo information"
+                      (is (= (get client-status "repos")
+                            {"my-repo" {"latest-commit" commit-id
+                                        "status" "synced"}})))
+                    (testing "Last check-in timestamp"
+                      (is (time/within?
+                            test-start-time
+                            (time/now)
+                            (parse-timestamp (get client-status "last-check-in-time"))))))))
+              (testing "The response should contain info about the latest publish"
+                (let [latest-publish-status (get-in body ["status" "latest-publish"])]
+                  (testing "Client IP address"
+                    ; If this test runs on a machine in which 'localhost' resolves
+                    ; to a different IP address, this assertion will fail.
+                    ; If that ever actually happens, this should be changed
+                    ; to simply test for a valid IP address.
+                    ; For now, this test offers a little more assurance that
+                    ; the IP address returned is the correct IP address.
+                    (is (= (get latest-publish-status "client-ip-address")
+                           "127.0.0.1")))
+                  (testing "Timestamp"
                     (is (time/within?
                           test-start-time
                           (time/now)
-                          (parse-timestamp (get client-status "last-check-in-time"))))))))
-            (testing "The response should contain info about the latest publish"
-              (let [latest-publish-status (get-in body ["status" "latest-publish"])]
-                (testing "Client IP address"
-                  ; If this test runs on a machine in which 'localhost' resolves
-                  ; to a different IP address, this assertion will fail.
-                  ; If that ever actually happens, this should be changed
-                  ; to simply test for a valid IP address.
-                  ; For now, this test offers a little more assurance that
-                  ; the IP address returned is the correct IP address.
-                  (is (= (get latest-publish-status "client-ip-address")
-                         "127.0.0.1")))
-                (testing "Timestamp"
-                  (is (time/within?
-                        test-start-time
-                        (time/now)
-                        (parse-timestamp (get latest-publish-status "timestamp")))))
-                (testing "Information about repos"
-                  (is (= {"my-repo" {"commit" commit-id}}
-                         (get latest-publish-status "repos")))))))))
+                          (parse-timestamp (get latest-publish-status "timestamp")))))
+                  (testing "Information about repos"
+                    (is (= {"my-repo" {"commit" commit-id}}
+                           (get latest-publish-status "repos")))))))))
 
-      ; Now, we're going to muck up a bunch of stuff in the working directory
-      ; in order to get an interesting response back.
+        ; Now, we're going to muck up a bunch of stuff in the working directory
+        ; in order to get an interesting response back.
 
-      ; Modify an existing file.
-      (spit (fs/file working-dir "test-file-1") "different file content")
-      ; Delete an existing file
-      (fs/delete (fs/file working-dir "test-file-2"))
-      ; Create a new file.
-      (spit (fs/file working-dir "new-test-file") "i like cheese")
+        ; Modify an existing file.
+        (spit (fs/file working-dir "test-file-1") "different file content")
+        ; Delete an existing file
+        (fs/delete (fs/file working-dir "test-file-2"))
+        ; Create a new file.
+        (spit (fs/file working-dir "new-test-file") "i like cheese")
 
-      ; Get the status again
-      (let [response (fetch-status)
-            body (json/parse-string (:body response))
-            status (get-in body ["status" "repos" "my-repo"])]
-        (testing "The response from the /status endpoint"
-          (testing "Status of the working directory"
-            (is (= (get status "working-dir")
-                   {"clean" false
-                    "missing" ["test-file-2"]
-                    "modified" ["test-file-1"]
-                    "untracked" ["new-test-file"]})))))
+        ; Get the status again
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))
+              status (get-in body ["status" "repos" "my-repo"])]
+          (testing "The response from the /status endpoint"
+            (testing "Status of the working directory"
+              (is (= (get status "working-dir")
+                     {"clean" false
+                      "missing" ["test-file-2"]
+                      "modified" ["test-file-1"]
+                      "untracked" ["new-test-file"]})))))
 
-      (testing "Status level is honored"
-        (testing "level=critical doesn't return anything except the basics"
-          (let [response (fetch-status :critical)]
-            (is (= 200 (:status response)))
-            (testing "No additional status data beyond state is returned"
-              (is (= nil (response->status response))))))
+        (testing "Status level is honored"
+          (testing "level=critical doesn't return anything except the basics"
+            (let [response (fetch-status :critical)]
+              (is (= 200 (:status response)))
+              (testing "No additional status data beyond state is returned"
+                (is (= nil (response->status response))))))
 
-        ; Don't need to test level=info - that's the default (what's used above).
-        ; There's currently no debug-only status information.
-        (testing "level=debug is same as level=info"
-          (let [debug-response (fetch-status :debug)
-                info-response (fetch-status :info)]
-            (is (= 200 (:status debug-response)))
-            (is (= 200 (:status info-response)))
-            (is (= (get (response->status debug-response) "repos")
-                  (get (response->status info-response) "repos")))
-            (is (= (get (response->status debug-response) "latest-publish")
-                  (get (response->status info-response) "latest-publish")))))))))
+          ; Don't need to test level=info - that's the default (what's used above).
+          ; There's currently no debug-only status information.
+          (testing "level=debug is same as level=info"
+            (let [debug-response (fetch-status :debug)
+                  info-response (fetch-status :info)]
+              (is (= 200 (:status debug-response)))
+              (is (= 200 (:status info-response)))
+              (is (= (get (response->status debug-response) "repos")
+                    (get (response->status info-response) "repos")))
+              (is (= (get (response->status debug-response) "latest-publish")
+                    (get (response->status info-response) "latest-publish"))))))))))
 
 (deftest ^:integration submodules-status-endpoint-test
   (let [data-dir (helpers/temp-dir-as-string)
