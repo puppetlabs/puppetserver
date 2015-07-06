@@ -6,8 +6,10 @@
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
            (org.eclipse.jgit.transport.http HttpConnectionFactory)
+           (org.eclipse.jgit.util FS)
            (java.io File)
-           (com.puppetlabs.enterprise HttpClientConnection))
+           (com.puppetlabs.enterprise HttpClientConnection)
+           (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
@@ -61,6 +63,14 @@
       (.setCommitter person-ident)
       (.call))))
 
+(defn add!
+  "Perform a git add with the given file pattern"
+  [git file-pattern]
+  (-> git
+    (.add)
+    (.addFilepattern file-pattern)
+    (.call)))
+
 (schema/defn add-and-commit :- RevCommit
   "Perform a git-add and git-commit of all files in the repo working tree. All
   files, whether previously indexed or not, will be considered for the commit.
@@ -82,10 +92,7 @@
   [git :- Git
    message :- String
    identity :- common/Identity]
-  (-> git
-      (.add)
-      (.addFilepattern ".")
-      (.call))
+  (add! git ".")
   (let [person-ident (identity->person-ident identity)]
     (-> git
         (.commit)
@@ -334,6 +341,38 @@
       (when-let [submodule-repo (get-repository-from-working-tree
                                   (fs/file work-tree submodule))]
         (fetch submodule-repo)))))
+
+(defn submodules-config
+  "Given a Git repository, return its .gitmodules file as a
+  FileBasedConfig."
+  [repo]
+  (let [submodules-file (fs/file (.getWorkTree repo) ".gitmodules")]
+    (FileBasedConfig. submodules-file FS/DETECTED)))
+
+(defn remove-submodule-configuration!
+  "Given a repository and a submodule name, remove that submodule from
+  the repository's configuration."
+  [repo submodule-name]
+  (let [parent-config (.getConfig repo)
+        gitmodules (submodules-config repo)]
+    (.load gitmodules)
+    (.unsetSection gitmodules "submodule" submodule-name)
+    (.save gitmodules)
+    (.unsetSection parent-config "submodule" submodule-name)
+    (.save parent-config)))
+
+(defn remove-submodule!
+  "Given a repository and a submodule name, remove that submodule from
+  the repository"
+  [repo submodule-name]
+  (remove-submodule-configuration! repo submodule-name)
+  (let [git (Git. repo)]
+    (-> git
+      .rm
+      (.setCached true)
+      (.addFilepattern submodule-name)
+      .call))
+  (fs/delete-dir (fs/file (.getWorkTree repo) submodule-name)))
 
 (defn change-submodule-url!
   "Given a repository, a submodule name, and a file path to a repository,

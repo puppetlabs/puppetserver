@@ -7,6 +7,7 @@
            (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -421,6 +422,23 @@
         (catch GitAPIException e
           (failed-to-publish submodule-within-parent e))))))
 
+(defn remove-submodules
+  "Given a repository and the list of submodules in the submodules-working-dir,
+   remove any submodules that no longer exist in the submodules-working-dir
+   from the repository"
+  [repo submodules submodules-dir commit-info]
+  (let [submodules-in-repo (set (jgit-utils/get-submodules repo))
+        submodules (set (map #(str submodules-dir "/" %) submodules))
+        deleted-submodules (set/difference submodules-in-repo submodules)]
+    (doseq [submodule deleted-submodules]
+      (jgit-utils/remove-submodule! repo submodule))
+    (when-not (empty? deleted-submodules)
+      (let [commit-message (str "Delete submodules: "
+                             (apply str (interpose ", " deleted-submodules)))
+            git (Git. repo)]
+        (jgit-utils/add! git ".gitmodules")
+        (jgit-utils/commit git commit-message (:identity commit-info))))))
+
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit author,
   perform an add and commit for each working directory.  Returns the newest
@@ -439,18 +457,21 @@
             submodules (if submodule-id
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
-            submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
+            git-dir (common/bare-repo data-dir repo-id)
+            git-repo (jgit-utils/get-repository git-dir working-dir)]
         (try
-          (log/infof "Committing repo %s" working-dir)
-          (let [git-dir (common/bare-repo data-dir repo-id)
-                git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (do (add-all-with-submodules git submodules-dir)
-                         (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
-                parent-status {:commit (jgit-utils/commit-id commit)}]
-            (if-not (empty? submodules-status)
-              (assoc parent-status :submodules
-                (zipmap (map #(submodule-path submodules-dir %) submodules) submodules-status))
-              parent-status))
+          (log/infof "Removing deleted submodules for repo %s" working-dir)
+          (remove-submodules git-repo all-submodules submodules-dir commit-info)
+          (let [submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
+            (log/infof "Committing repo %s" working-dir)
+            (let [git (Git/wrap git-repo)
+                  commit (do (add-all-with-submodules git submodules-dir)
+                             (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
+                  parent-status {:commit (jgit-utils/commit-id commit)}]
+              (if-not (empty? submodules-status)
+                (assoc parent-status :submodules
+                  (zipmap (map #(submodule-path submodules-dir %) submodules) submodules-status))
+                parent-status)))
           (catch JGitInternalException e
             (failed-to-publish working-dir e))
           (catch GitAPIException e

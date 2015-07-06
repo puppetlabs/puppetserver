@@ -545,7 +545,19 @@
                  (get-in (json/parse-string body) [repo "submodules"])))
            (is (fs/exists? (fs/file working-dir submodules-dir-name submodule-1 "update.txt")))
            (is (= (slurp (fs/file submodules-working-dir submodule-1 "update.txt"))
-                 (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))))))
+                 (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))
+
+
+        (testing "removing a submodule and triggering a publish"
+          (fs/delete-dir (fs/file submodules-working-dir submodule-2))
+          (let [response (http-client/post publish-url)
+                body (slurp (:body response))]
+            (is (= 200 (:status response)))
+            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
+                  (get-in (json/parse-string body) [repo "submodules"])))
+            (is (= 1 (count (get-in (json/parse-string body) [repo "submodules"]))))
+            (is (= [(str submodules-dir-name "/" submodule-1)]
+                  (jgit-utils/get-submodules (jgit-utils/get-repository git-dir working-dir))))))))))
 
 (defn fetch-status
   ([]
