@@ -608,7 +608,7 @@
    repos :- GitRepos
    data-dir :- StringOrFile
    request-data]
-  {:is-running :true
+  {:state :running
    :status (when (not= level :critical)
              (assoc request-data
                :timestamp (timestamp)
