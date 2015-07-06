@@ -557,7 +557,30 @@
                   (get-in (json/parse-string body) [repo "submodules"])))
             (is (= 1 (count (get-in (json/parse-string body) [repo "submodules"]))))
             (is (= [(str submodules-dir-name "/" submodule-1)]
-                  (jgit-utils/get-submodules (jgit-utils/get-repository git-dir working-dir))))))))))
+                  (jgit-utils/get-submodules (jgit-utils/get-repository git-dir working-dir))))
+
+            (testing "bare repo for submodule is deleted by default"
+              (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))
+              (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))))))
+
+      (testing "can preserve submodule bare repos on deletion"
+        (helpers/with-bootstrapped-storage-service
+          app
+          (assoc-in
+            (helpers/storage-service-config
+              root-data-dir
+              {(keyword repo) {:working-dir working-dir
+                               :submodules-dir submodules-dir-name
+                               :submodules-working-dir submodules-working-dir}})
+            [:file-sync-storage :preserve-submodule-repos] true)
+
+          (fs/delete-dir (fs/file submodules-working-dir submodule-1))
+          (let [response (http-client/post publish-url)
+                body (slurp (:body response))]
+            (is (= 200 (:status response)))
+            (is (= 0 (count (get-in (json/parse-string body) [repo "submodules"]))))
+            (is (= 0 (count (jgit-utils/get-submodules (jgit-utils/get-repository git-dir working-dir)))))
+            (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))))))))
 
 (defn fetch-status
   ([]

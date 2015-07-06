@@ -68,8 +68,13 @@
   The keys should have the following values:
 
     * :repos     - A sequence with metadata about each of the individual
-                   Git repositories that the server manages."
-  {:repos GitRepos})
+                   Git repositories that the server manages.
+    * :preserve-submodule-repos - A boolean indicating whether or not the bare
+                                  repos for submodules should be preserved
+                                  on-disk when that submodule is deleted from
+                                  the relevant repo. Defaults to false."
+  {:repos GitRepos
+   (schema/optional-key :preserve-submodule-repos) schema/Bool})
 
 (def PublishRequestBase
   {(schema/optional-key :message) schema/Str
@@ -426,12 +431,15 @@
   "Given a repository and the list of submodules in the submodules-working-dir,
    remove any submodules that no longer exist in the submodules-working-dir
    from the repository"
-  [repo submodules submodules-dir commit-info]
+  [repo submodules submodules-dir commit-info submodules-repo-dir preserve-submodules]
   (let [submodules-in-repo (set (jgit-utils/get-submodules repo))
         submodules (set (map #(str submodules-dir "/" %) submodules))
         deleted-submodules (set/difference submodules-in-repo submodules)]
     (doseq [submodule deleted-submodules]
-      (jgit-utils/remove-submodule! repo submodule))
+      (jgit-utils/remove-submodule! repo submodule)
+      (when-not preserve-submodules
+        (fs/delete-dir (fs/file submodules-repo-dir
+                         (str (jgit-utils/extract-submodule-name submodule) ".git")))))
     (when-not (empty? deleted-submodules)
       (let [commit-message (str "Delete submodules: "
                              (apply str (interpose ", " deleted-submodules)))
@@ -447,6 +455,7 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
+   preserve-submodules :- schema/Bool
    commit-info :- common/CommitInfo
    submodule-id :- (schema/maybe schema/Str)]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
@@ -458,10 +467,11 @@
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
             git-dir (common/bare-repo data-dir repo-id)
-            git-repo (jgit-utils/get-repository git-dir working-dir)]
+            git-repo (jgit-utils/get-repository git-dir working-dir)
+            submodules-repo-dir (fs/file data-dir (name repo-id))]
         (try
           (log/infof "Removing deleted submodules for repo %s" working-dir)
-          (remove-submodules git-repo all-submodules submodules-dir commit-info)
+          (remove-submodules git-repo all-submodules submodules-dir commit-info submodules-repo-dir preserve-submodules)
           (let [submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
             (log/infof "Committing repo %s" working-dir)
             (let [git (Git/wrap git-repo)
@@ -486,7 +496,8 @@
   [repos :- GitRepos
    body
    data-dir
-   server-repo-url]
+   server-repo-url
+   preserve-submodules]
   (if-let [checked-body (schema/check PublishRequestBody body)]
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
@@ -502,6 +513,7 @@
                         repos-to-publish
                         data-dir
                         server-repo-url
+                        preserve-submodules
                         commit-info
                         submodule-id)]
       (zipmap (keys repos-to-publish) new-commits))))
@@ -551,7 +563,7 @@
 (defn base-ring-handler
   "Returns a Ring handler for the File Sync Storage Service's API using the
    given configuration values."
-  [data-dir repos server-repo-url !request-tracker]
+  [data-dir repos server-repo-url preserve-submodules !request-tracker]
   (compojure/routes
     (compojure/context "/v1" []
       (compojure/POST common/publish-content-sub-path {:keys [body headers] :as request}
@@ -567,7 +579,7 @@
             (try
               (let [json-body (json/parse-string (slurp body) true)
                     result (publish-content
-                             repos json-body data-dir server-repo-url)]
+                             repos json-body data-dir server-repo-url preserve-submodules)]
                 (capture-publish-info! !request-tracker request result)
                 {:status 200
                  :body result})
@@ -593,8 +605,8 @@
 (defn ring-handler
   "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
    necessary middleware for error handling, logging, etc."
-  [data-dir sub-paths server-repo-url !request-tracker]
-  (-> (base-ring-handler data-dir sub-paths server-repo-url !request-tracker)
+  [data-dir sub-paths server-repo-url preserve-submodules !request-tracker]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url preserve-submodules !request-tracker)
     ringutils/wrap-request-logging
     ringutils/wrap-user-data-errors
     ringutils/wrap-schema-errors

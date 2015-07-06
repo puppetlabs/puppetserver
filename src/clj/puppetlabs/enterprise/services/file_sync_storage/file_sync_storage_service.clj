@@ -35,7 +35,8 @@
          :route-id :repo-servlet})
       (let [repos (:repos config)
             !request-tracker (atom nil)
-            handler (core/ring-handler data-dir repos server-repo-url !request-tracker)]
+            preserve-submodules (or (:preserve-submodule-repos config) false)
+            handler (core/ring-handler data-dir repos server-repo-url preserve-submodules !request-tracker)]
         (log/info "Registering file sync storage HTTP API at" api-path-prefix)
         (add-ring-handler
           this

@@ -419,3 +419,7 @@
       Git/wrap
       .status
       .call))
+
+(defn extract-submodule-name
+  [submodule]
+  (re-find #"[^\/]+$" submodule))
