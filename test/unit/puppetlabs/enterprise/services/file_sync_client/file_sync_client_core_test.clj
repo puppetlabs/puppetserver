@@ -153,14 +153,8 @@
         submodules-dir "submodules"
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
-        submodule-1-dir (fs/file
-                          storage-data-dir
-                          (str server-repo)
-                          (str submodule-1 ".git"))
-        submodule-2-dir (fs/file
-                          storage-data-dir
-                          (str server-repo)
-                          (str submodule-2 ".git"))
+        submodule-1-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-1)
+        submodule-2-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-2)
         dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
     (helpers/with-bootstrapped-storage-service
       app
@@ -196,35 +190,33 @@
                                    (str submodules-dir "/" submodule-1))
               submodule-2-status (get submodules-status
                                    (str submodules-dir "/" submodule-2))]
-          
+
           (testing "submodule-1 was successfuly synced with the storage service"
-            (is (fs/exists? (fs/file submodules-root (str submodule-1 ".git"))))
+            (is (fs/exists? (common/bare-repo submodules-root submodule-1)))
             (is (= :synced (:status submodule-1-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
                   (:latest-commit submodule-1-status))))
 
           (testing "submodule-2 was successfully synced with the storage service"
-            (is (fs/exists? (fs/file submodules-root (str submodule-2 ".git"))))
+            (is (fs/exists? (common/bare-repo submodules-root submodule-2)))
             (is (= :synced (:status submodule-2-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
                   (:latest-commit submodule-2-status))))))
 
       (testing "Repo config updated with correct submodule URLs"
-        (let [submodule-client-root (fs/file client-data-dir
-                                      server-repo)
-              submodule-1-client-dir (str submodule-client-root "/"
-                                       submodule-1 ".git")
-              submodule-2-client-dir (str submodule-client-root "/"
-                                       submodule-2 ".git")]
+        (let [ submodule-1-client-dir (common/submodule-bare-repo client-data-dir
+                                        server-repo submodule-1)
+              submodule-2-client-dir (common/submodule-bare-repo client-data-dir
+                                       server-repo submodule-2)]
           (testing "Submodule-1's URL set to locally synced bare repo"
-            (is (= submodule-1-client-dir
+            (is (= (str submodule-1-client-dir)
                   (.getString
                     (.getConfig dummy-repo)
                     "submodule"
                     (str submodules-dir "/" submodule-1)
                     "url"))))
           (testing "Submodule-2's URL set to locally synced bare repo"
-            (is (= submodule-2-client-dir
+            (is (= (str submodule-2-client-dir)
                   (.getString
                     (.getConfig dummy-repo)
                     "submodule"
@@ -250,12 +242,12 @@
   (let [root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         client-data-dir (path-to-data-dir root-data-dir)
-        server-repo "process-repos-test"
-        error-repo  "process-repos-error"
-        nonexistent-repo "process-repos-test-nonexistent"
-        client-target-repo-on-server (str client-data-dir "/" server-repo ".git")
-        client-target-repo-nonexistent (str client-data-dir "/" nonexistent-repo ".git")
-        client-target-repo-error (str client-data-dir "/" error-repo ".git")
+        server-repo :process-repos-test
+        error-repo  :process-repos-error
+        nonexistent-repo :process-repos-test-nonexistent
+        client-target-repo-on-server (common/bare-repo client-data-dir server-repo)
+        client-target-repo-nonexistent (common/bare-repo client-data-dir nonexistent-repo)
+        client-target-repo-error (common/bare-repo client-data-dir error-repo)
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
         submodule "submodule"]
@@ -263,23 +255,23 @@
       app
       (helpers/storage-service-config
         root-data-dir
-        {(keyword server-repo) {:working-dir (helpers/temp-dir-as-string)
-                                :submodules-dir submodules-dir
-                                :submodules-working-dir submodules-working-dir}
-         (keyword error-repo)  {:working-dir (helpers/temp-dir-as-string)}})
+        {server-repo {:working-dir (helpers/temp-dir-as-string)
+                      :submodules-dir submodules-dir
+                      :submodules-working-dir submodules-working-dir}
+         error-repo {:working-dir (helpers/temp-dir-as-string)}})
       (ks/mkdirs! (fs/file submodules-working-dir submodule))
       (http-client/post publish-url)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
-      (fs/delete-dir (fs/file storage-data-dir (str error-repo ".git")))
+      (fs/delete-dir (common/bare-repo storage-data-dir error-repo))
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
                                    client-data-dir)]
 
           (testing "process-repos-for-updates returns correct state info"
-            (is (= (get-in state [server-repo :status]) :synced))
+            (is (= :synced (get-in state [server-repo :status])))
             (is (not (nil? (get-in state [server-repo :latest-commit]))))
             (is (not (nil? (get-in state [server-repo :submodules]))))
             (is (not (nil? (get-in state [server-repo :submodules
@@ -294,7 +286,7 @@
           (is (fs/exists? client-target-repo-on-server)))
 
         (testing "Client submodule directories created when match on server"
-          (is (fs/exists? (fs/file client-data-dir server-repo (str submodule ".git")))))
+          (is (fs/exists? (common/submodule-bare-repo client-data-dir server-repo submodule))))
 
         (testing "Client directory not created when no match on server"
           (is (not (fs/exists? client-target-repo-nonexistent))
@@ -335,13 +327,13 @@
 
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
-        repo "test-repo"
-        git-dir (str client-data-dir "/" repo ".git")
+        repo :test-repo
+        git-dir (common/bare-repo client-data-dir repo)
         working-dir (helpers/temp-dir-as-string)
         local-repo-dir (helpers/temp-dir-as-string)
         repo-config [repo]]
     (with-test-logging
-      (helpers/init-bare-repo! (fs/file git-dir))
+      (helpers/init-bare-repo! git-dir)
       (let [local-temp-file (str local-repo-dir "/temp-test")
             working-temp-file (str working-dir "/temp-test")
             local-temp-file-2 (str local-repo-dir "/temp-test-2")
@@ -355,7 +347,7 @@
         (fs/touch local-temp-file-2)
         (spit local-temp-file-2 temp-file-2-content)
         (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-identity)
-        (jgit-utils/push local-repo git-dir)
+        (jgit-utils/push local-repo (str git-dir))
 
         (testing "working dir should not have test file"
           (is (fs/exists? local-temp-file))
@@ -380,7 +372,7 @@
           (fs/delete local-temp-file-2)
           (jgit-utils/add-and-commit
             local-repo "a second test commit" helpers/test-identity)
-          (jgit-utils/push local-repo git-dir)
+          (jgit-utils/push local-repo (str git-dir))
 
           (testing "working dir should still contain the deleted test file"
             (is (fs/exists? working-temp-file-2))
@@ -395,7 +387,7 @@
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired repo doesn't exist")
           (is (thrown? IllegalArgumentException
-                       (sync-working-dir! client-data-dir repo-config "fake" working-dir))))
+                       (sync-working-dir! client-data-dir repo-config :fake working-dir))))
 
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired working dir doesn't exist")
@@ -415,8 +407,8 @@
                                (fn [repos-status]
                                  (swap! atom #(assoc % :status repos-status
                                                        :count (+ 1 (:count (deref atom)))))))
-        repo1 "repo1"
-        repo2 "repo2"
+        repo1 :repo1
+        repo2 :repo2
         repo-1-callback (generate-callback-fn callback-result-repo-1)
         repo-2-callback (generate-callback-fn callback-result-repo-2)
         unified-callback (generate-callback-fn callback-result-unified)
@@ -446,7 +438,7 @@
       (reset! callback-result-unified atom-start-value)
       (reset! callback-result-repo-1 atom-start-value)
       (reset! callback-result-repo-2 atom-start-value)
-      (let [repos-status (assoc-in status ["repo1" :status] :unchanged)]
+      (let [repos-status (assoc-in status [repo1 :status] :unchanged)]
         (call-callback repos-status)
         (testing "callback for first repo is not called"
           (is (= {:count 0} (deref callback-result-repo-1))))
@@ -465,7 +457,7 @@
       (reset! callback-result-repo-2 atom-start-value)
       (let [unchanged-status {:status :unchanged
                               :latest-commit nil}
-            repos-status (assoc status "repo1" unchanged-status "repo2" unchanged-status)]
+            repos-status (assoc status repo1 unchanged-status repo2 unchanged-status)]
         (call-callback repos-status)
         (is (= atom-start-value (deref callback-result-repo-1)))
         (is (= atom-start-value (deref callback-result-repo-2)))

@@ -26,7 +26,7 @@
 (def ReposConfig
   "A schema describing the configuration data for the repositories managed by
   this service. This is just a list of repository names."
-  [schema/Str])
+  [schema/Keyword])
 
 (def Config
   "Schema defining the full content of the file sync client service
@@ -77,7 +77,7 @@
 (def RepoStates
   "A schema which describes a map containing valid states for
   numerous repos after a sync"
-  {schema/Str SingleRepoState})
+  {schema/Keyword SingleRepoState})
 
 (def AgentState
   "A schema which describes a valid state of the agent."
@@ -98,7 +98,7 @@
 (def Callbacks
   "A schema which describes the storage of repo ids with their associated
   callbacks"
-  {schema/Str #{IFn}})
+  {schema/Keyword #{IFn}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Private
@@ -229,7 +229,7 @@
     {}
     (for [[submodule commit] submodules-commit-info]
       (let [submodule-name (extract-submodule-name submodule)
-            target-dir (fs/file submodule-root (str submodule-name ".git"))
+            target-dir (common/bare-repo submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))
             status {submodule (apply-updates-to-repo
@@ -258,13 +258,13 @@
   which the client repository is intended to reside.  'latest-commits-info' is
   the commit id of the latest commit in the server repo. Returns status information
   about the sync process for the repo."
-  [server-repo-url name target-dir submodule-root latest-commits-info]
+  [server-repo-url repo-name target-dir submodule-root latest-commits-info]
   (let [latest-commit-id (:commit latest-commits-info)
         submodules-commit-info (:submodules latest-commits-info)
-        server-repo-url (str server-repo-url "/" name)
+        server-repo-url (str server-repo-url "/" (name repo-name))
         target-dir (fs/file target-dir)
         parent-status (apply-updates-to-repo
-                        name
+                        repo-name
                         server-repo-url
                         latest-commit-id
                         target-dir)
@@ -286,35 +286,35 @@
    data-dir]
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
-        (for [name repos]
-          (let [repo-name (keyword name)
-                target-dir (str data-dir "/" name ".git")
-                submodule-root (str data-dir "/" name)]
+        (for [repo-name repos]
+          (let [target-dir (common/bare-repo data-dir repo-name)
+                submodule-root (str data-dir "/" (name repo-name))]
             (if (contains? latest-commits repo-name)
               (let [latest-commit (latest-commits repo-name)]
                 (try+
-                  {name (process-repo-for-updates
-                          repo-base-url
-                          name
-                          target-dir
-                          submodule-root
-                          latest-commit)}
+                  {repo-name (process-repo-for-updates
+                               repo-base-url
+                               repo-name
+                               target-dir
+                               submodule-root
+                               latest-commit)}
                   (catch sync-error? e
                     (log/errorf
                       (str "Error syncing repo: " (:message e))
-                      name)
-                    {name {:status :failed
-                           :cause  e}})))
+                      repo-name)
+                    {repo-name {:status :failed
+                                :cause  e}})))
               (log/errorf
                 "File sync did not find matching server repo for client repo: %s"
-                name))))))
+                repo-name))))))
 
 (schema/defn process-callbacks!
   "Using the states of the repos managed by the client, call the registered
   callback function if necessary"
   [callbacks :- Callbacks
    repos-status :- RepoStates]
-   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status])) (keys repos-status))
+   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status]))
+                            (keys repos-status))
          necessary-callbacks (reduce set/union
                                (for [repo successful-repos]
                                  (get callbacks repo)))]
@@ -382,7 +382,7 @@
   "Given the client service's context, registers a callback function.
    Throws an exception if the callback is not a function."
   [context :- ClientContext
-   repo-ids :- #{schema/Str}
+   repo-ids :- #{schema/Keyword}
    callback-fn :- IFn]
   (let [callbacks (deref (:callbacks context))
         new-callbacks (into {} (for [repo repo-ids]
@@ -450,7 +450,7 @@
   repo-id"
   [data-dir :- schema/Str
    repos :- ReposConfig
-   repo-id :- schema/Str
+   repo-id :- schema/Keyword
    working-dir :- schema/Str]
   (when-not (fs/exists? working-dir)
     (throw
@@ -458,7 +458,7 @@
         (str "Directory " working-dir " must exist on disk to be synced "
              "as a working directory"))))
   (if (some #(= repo-id %) repos)
-    (let [git-dir (str data-dir "/" repo-id ".git")
+    (let [git-dir (common/bare-repo data-dir repo-id)
           repo (jgit-utils/get-repository git-dir working-dir)]
       (log/info (str "Syncing working directory at " working-dir
                      " for repository " repo-id))

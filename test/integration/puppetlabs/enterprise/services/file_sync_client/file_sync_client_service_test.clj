@@ -74,20 +74,17 @@
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         root-data-dir (helpers/temp-dir-as-string)
-        client-repo-dir (str (core/path-to-data-dir root-data-dir)
-                             "/"
-                             repo
-                             ".git")
+        client-repo-dir (common/bare-repo (core/path-to-data-dir root-data-dir) repo)
         client-working-dir (fs/file (helpers/temp-dir-as-string))
         local-repo-dir (helpers/temp-dir-as-string)
         local-repo (helpers/init-repo! (fs/file local-repo-dir))]
     (logging/with-test-logging
-      (helpers/init-bare-repo! (fs/file client-repo-dir))
+      (helpers/init-bare-repo! client-repo-dir)
 
       ;; Commit a test file so the repo has contents to sync
       (fs/touch (fs/file local-repo-dir "test"))
       (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-identity)
-      (jgit-utils/push local-repo client-repo-dir)
+      (jgit-utils/push local-repo (str client-repo-dir))
       (bootstrap/with-app-with-config
         app
         [file-sync-client-service/file-sync-client-service
@@ -108,7 +105,7 @@
           (testing (str "client working dir is properly synced when "
                         "service function is called")
             (client-protocol/sync-working-dir! client-service
-                                               repo
+                                               (keyword repo)
                                                (str client-working-dir))
             (is (= (fs/list-dir client-working-dir)
                    (filter #(not= ".git" %)
@@ -124,8 +121,8 @@
           test-file "test.txt"
           root-data-dir (helpers/temp-dir-as-string)
           client-data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (fs/file root-data-dir "storage" (str repo ".git"))
-          client-git-dir (fs/file client-data-dir (str repo ".git"))
+          git-dir (common/bare-repo (str root-data-dir "/storage") repo)
+          client-git-dir (common/bare-repo client-data-dir repo)
           client-working-dir (helpers/temp-dir-as-string)
           publish-url (str helpers/server-base-url
                            helpers/default-api-path-prefix
@@ -169,7 +166,7 @@
           (testing "Repo config has proper submodule URLs"
             (let [parent-repo (jgit-utils/get-repository-from-git-dir client-git-dir)
                   repo-config (.getConfig parent-repo)
-                  submodule-client-dir (str (fs/file client-data-dir repo (str submodule ".git")))]
+                  submodule-client-dir (str (common/submodule-bare-repo client-data-dir repo submodule))]
               (is (= submodule-client-dir
                     (.getString
                       repo-config
@@ -184,7 +181,7 @@
           (testing "new submodules are properly initialized and updated from local copies"
             (client-protocol/sync-working-dir!
               client-service
-              repo
+              (keyword repo)
               (str client-working-dir))
             (is (fs/exists? (fs/file
                               client-working-dir
@@ -223,7 +220,7 @@
           (testing "existing submodules are properly updated"
             (client-protocol/sync-working-dir!
               client-service
-              repo
+              (keyword repo)
               (str client-working-dir))
             (is (fs/exists? (fs/file
                               client-working-dir

@@ -1,6 +1,7 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext))
   (:require [cheshire.core :as json]
+            [me.raynes.fs :as fs]
             [schema.core :as schema]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.services.status.status-core :as status]))
@@ -83,3 +84,11 @@
       (ks/mapvals (fn [v]
                     (when v
                       (ks/mapkeys keyword v))))))
+
+(defn bare-repo
+  [data-dir repo-name]
+  (fs/file data-dir (str (name repo-name) ".git")))
+
+(defn submodule-bare-repo
+  [data-dir parent-repo submodule]
+  (fs/file data-dir (name parent-repo) (str submodule ".git")))
