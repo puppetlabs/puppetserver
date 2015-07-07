@@ -4,6 +4,7 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :refer [file-sync-storage-service]]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :refer [file-sync-client-service]]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
+            [puppetlabs.trapperkeeper.services.status.status-service :refer [status-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [puppetlabs.trapperkeeper.config :as tkc]
@@ -62,7 +63,8 @@
                   (fn [_] (tk/build-app
                             [jetty9-service
                              webrouting-service
-                             file-sync-storage-service]
+                             file-sync-storage-service
+                             status-service]
                             (file-sync-storage-conf))))
   (alter-var-root #'system-storage tka/init)
   (tka/check-for-errors! system-storage))
