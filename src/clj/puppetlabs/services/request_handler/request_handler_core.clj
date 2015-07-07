@@ -279,7 +279,11 @@
   it available in the request as `:jruby-instance`"
   [f jruby-service]
   (fn [request]
-    (jruby/with-jruby-puppet jruby-instance jruby-service
+    (jruby/with-jruby-puppet
+      jruby-instance
+      jruby-service
+      {:request (dissoc request :ssl-client-cert)}
+      
       (f (assoc request :jruby-instance jruby-instance)))))
 
 (defn jruby-request-handler
