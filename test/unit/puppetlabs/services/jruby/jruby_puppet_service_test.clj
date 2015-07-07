@@ -66,7 +66,7 @@
         (jruby-service-test-config pool-size)
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
-              (mapv (fn [_] (jruby-protocol/borrow-instance service))
+              (mapv (fn [_] (jruby-protocol/borrow-instance service :test-pool-size))
                     (range pool-size))]
           (is (= 0 (jruby-protocol/free-instance-count service)))
           (is (= pool-size (count all-the-instances)))
@@ -81,7 +81,7 @@
     (let [test-service (tk/service
                          [[:JRubyPuppetService borrow-instance return-instance]]
                          (init [this context]
-                               (return-instance (borrow-instance))
+                               (return-instance (borrow-instance :test-pool-population))
                                context))]
 
       ; Bootstrap TK, causing the 'init' function above to be executed.
@@ -102,6 +102,7 @@
         (with-jruby-puppet
           jruby-puppet
           service
+          :test-with-jruby-puppet
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
         (is (= 1 (jruby-protocol/free-instance-count service)))
@@ -110,8 +111,9 @@
         ;; test is intended to cover.
         (with-jruby-puppet
           jruby-puppet
-          service)
-        (let [jruby (jruby-protocol/borrow-instance service)]
+          service
+          :test-with-jruby-puppet)
+        (let [jruby (jruby-protocol/borrow-instance service :test-with-jruby-puppet)]
           ;; the counter gets incremented when the instance is returned to the
           ;; pool, so right now it should be at 2 since we've called
           ;; `with-jruby-puppet` twice.
@@ -136,7 +138,7 @@
             (is (= 1 (count jrubies)))
             (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
           (let [test-start-in-millis (System/currentTimeMillis)]
-            (is (nil? (jruby-protocol/borrow-instance service)))
+            (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
             (is (= (:borrow-timeout context) timeout)))))))
 

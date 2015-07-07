@@ -278,7 +278,10 @@
 (defn handle-request
   [request jruby-service config]
   (sling/try+
-    (jruby/with-jruby-puppet jruby-instance jruby-service
+    (jruby/with-jruby-puppet
+      jruby-instance
+      jruby-service
+      {:request request}
       (handle-request-via-jruby jruby-instance request config))
     (catch bad-request? e
       (output-error request e 400))

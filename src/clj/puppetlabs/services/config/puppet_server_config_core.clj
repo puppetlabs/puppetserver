@@ -100,7 +100,7 @@
   [jruby-service]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet
-    jruby-puppet jruby-service
+    jruby-puppet jruby-service :get-puppet-config
     (let [config (get-puppet-config* jruby-puppet)]
       (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
 
