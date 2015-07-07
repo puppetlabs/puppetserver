@@ -449,7 +449,7 @@
           (testing "storage service stores nested git directories correctly"
             (testing "submodule has correct diff"
               (let [repo (jgit-utils/get-repository-from-git-dir
-                           (fs/file root-data-dir "storage" repo-name (str submodule ".git")))
+                           (common/submodule-bare-repo (str root-data-dir "/storage") repo-name submodule))
                     diffs (helpers/get-latest-commit-diff repo)]
 
                 (is (= #{{:old-path "/dev/null"

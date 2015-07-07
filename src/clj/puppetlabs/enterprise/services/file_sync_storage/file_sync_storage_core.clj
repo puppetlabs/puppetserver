@@ -384,7 +384,7 @@
    commit-info]
   (for [submodule submodules]
     (let [repo-name (name repo)
-          submodule-git-dir (fs/file data-dir repo-name (str submodule ".git"))
+          submodule-git-dir (common/submodule-bare-repo data-dir repo-name submodule)
           submodule-working-dir (fs/file submodules-working-dir submodule)
           submodule-path (submodule-path submodules-dir submodule)
           submodule-within-parent (fs/file working-dir submodule-path)

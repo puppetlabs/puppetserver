@@ -153,14 +153,8 @@
         submodules-dir "submodules"
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
-        submodule-1-dir (fs/file
-                          storage-data-dir
-                          (str server-repo)
-                          (str submodule-1 ".git"))
-        submodule-2-dir (fs/file
-                          storage-data-dir
-                          (str server-repo)
-                          (str submodule-2 ".git"))
+        submodule-1-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-1)
+        submodule-2-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-2)
         dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
     (helpers/with-bootstrapped-storage-service
       app
@@ -198,33 +192,31 @@
                                    (str submodules-dir "/" submodule-2))]
 
           (testing "submodule-1 was successfuly synced with the storage service"
-            (is (fs/exists? (fs/file submodules-root (str submodule-1 ".git"))))
+            (is (fs/exists? (common/bare-repo submodules-root submodule-1)))
             (is (= :synced (:status submodule-1-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
                   (:latest-commit submodule-1-status))))
 
           (testing "submodule-2 was successfully synced with the storage service"
-            (is (fs/exists? (fs/file submodules-root (str submodule-2 ".git"))))
+            (is (fs/exists? (common/bare-repo submodules-root submodule-2)))
             (is (= :synced (:status submodule-2-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
                   (:latest-commit submodule-2-status))))))
 
       (testing "Repo config updated with correct submodule URLs"
-        (let [submodule-client-root (fs/file client-data-dir
-                                      server-repo)
-              submodule-1-client-dir (str submodule-client-root "/"
-                                       submodule-1 ".git")
-              submodule-2-client-dir (str submodule-client-root "/"
-                                       submodule-2 ".git")]
+        (let [ submodule-1-client-dir (common/submodule-bare-repo client-data-dir
+                                        server-repo submodule-1)
+              submodule-2-client-dir (common/submodule-bare-repo client-data-dir
+                                       server-repo submodule-2)]
           (testing "Submodule-1's URL set to locally synced bare repo"
-            (is (= submodule-1-client-dir
+            (is (= (str submodule-1-client-dir)
                   (.getString
                     (.getConfig dummy-repo)
                     "submodule"
                     (str submodules-dir "/" submodule-1)
                     "url"))))
           (testing "Submodule-2's URL set to locally synced bare repo"
-            (is (= submodule-2-client-dir
+            (is (= (str submodule-2-client-dir)
                   (.getString
                     (.getConfig dummy-repo)
                     "submodule"
@@ -294,7 +286,7 @@
           (is (fs/exists? client-target-repo-on-server)))
 
         (testing "Client submodule directories created when match on server"
-          (is (fs/exists? (fs/file client-data-dir (name server-repo) (str submodule ".git")))))
+          (is (fs/exists? (common/submodule-bare-repo client-data-dir server-repo submodule))))
 
         (testing "Client directory not created when no match on server"
           (is (not (fs/exists? client-target-repo-nonexistent))

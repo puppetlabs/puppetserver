@@ -88,3 +88,7 @@
 (defn bare-repo
   [data-dir repo-name]
   (fs/file data-dir (str (name repo-name) ".git")))
+
+(defn submodule-bare-repo
+  [data-dir parent-repo submodule]
+  (fs/file data-dir (name parent-repo) (str submodule ".git")))

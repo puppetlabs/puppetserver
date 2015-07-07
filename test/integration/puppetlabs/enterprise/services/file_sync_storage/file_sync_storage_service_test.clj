@@ -437,7 +437,7 @@
     (testing "publish endpoint returns correct errors"
       (with-test-logging
         ; Delete a submodule repo entirely - this'll cause the publish to fail
-        (fs/delete-dir (fs/file data-dir successful-parent (str submodule-1 ".git")))
+        (fs/delete-dir (common/submodule-bare-repo data-dir successful-parent submodule-1))
         ; Delete a parent repo entirely - this'll cause the publish to fail
         (fs/delete-dir git-dir-failed)
 
@@ -508,8 +508,8 @@
 
        (testing "parent repo initialized correctly but does not initialize any submodules"
          (is (fs/exists? git-dir))
-         (is (not (fs/exists? (fs/file data-dir repo (str submodule-1 ".git")))))
-         (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))
+         (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1))))
+         (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2))))
          (let [submodules (jgit-utils/get-submodules-latest-commits git-dir working-dir)]
            (is (empty? submodules))))
 
@@ -520,8 +520,8 @@
          (let [response (http-client/post publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
-           (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))
-           (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))
+           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
+           (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2))))
            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 
@@ -531,8 +531,8 @@
          (let [response (http-client/post publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
-           (is (fs/exists? (fs/file data-dir repo (str submodule-1 ".git"))))
-           (is (fs/exists? (fs/file data-dir repo (str submodule-2 ".git"))))
+           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
+           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2)))
            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 

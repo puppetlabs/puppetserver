@@ -166,7 +166,7 @@
           (testing "Repo config has proper submodule URLs"
             (let [parent-repo (jgit-utils/get-repository-from-git-dir client-git-dir)
                   repo-config (.getConfig parent-repo)
-                  submodule-client-dir (str (fs/file client-data-dir repo (str submodule ".git")))]
+                  submodule-client-dir (str (common/submodule-bare-repo client-data-dir repo submodule))]
               (is (= submodule-client-dir
                     (.getString
                       repo-config
