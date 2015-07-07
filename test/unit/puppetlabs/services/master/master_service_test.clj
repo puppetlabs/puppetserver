@@ -4,6 +4,7 @@
     [puppetlabs.services.master.master-service :refer :all]
     [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+    [puppetlabs.services.jruby.jruby-event-logger-service :as jruby-event-logger]
     [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
@@ -29,6 +30,7 @@
             [master-service
              puppet-server-config-service
              jruby/jruby-puppet-pooled-service
+             jruby-event-logger/jruby-event-logger-service
              jetty9-service
              webrouting-service
              request-handler-service
@@ -49,6 +51,7 @@
               (jruby/with-jruby-puppet
                 jruby-puppet
                 jruby-service
+                :ca-files-test
 
                 (letfn [(test-path!
                           [setting expected-path]

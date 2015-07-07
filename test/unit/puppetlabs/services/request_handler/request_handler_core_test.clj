@@ -236,7 +236,7 @@
 (deftest handle-request-test
   (def dummy-service
     (reify jruby/JRubyPuppetService
-      (borrow_instance [_] {})
+      (borrow_instance [_ _] {})
       (return_instance [_ _])
       (free_instance_count [_])
       (mark_all_environments_expired_BANG_ [_])
@@ -244,7 +244,7 @@
 
   (def dummy-service-with-timeout
     (reify jruby/JRubyPuppetService
-      (borrow_instance [_] nil)
+      (borrow_instance [_ _] nil)
       (return_instance [_ _])
       (free_instance_count [_])
       (mark_all_environments_expired_BANG_ [_])
