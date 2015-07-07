@@ -142,7 +142,7 @@
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
         repo-id "latest-commits-submodules-test"
-        git-dir (fs/file data-dir (str repo-id ".git"))
+        git-dir (common/bare-repo data-dir repo-id)
         working-dir (helpers/temp-dir-as-string)
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
@@ -204,7 +204,7 @@
           working-dir-2 (helpers/temp-dir-as-string)
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)
-          server-repo (fs/file data-dir (str repo ".git"))]
+          server-repo (common/bare-repo data-dir repo)]
 
       (helpers/with-bootstrapped-storage-service
         app
@@ -323,7 +323,7 @@
            (keyword success-repo) {:working-dir working-dir-success}})
 
         ; Delete the failed repo entirely - this'll cause the publish to fail
-        (fs/delete-dir (fs/file data-dir (str failed-repo ".git")))
+        (fs/delete-dir (common/bare-repo data-dir failed-repo))
 
         (with-test-logging
           (let [response (http-client/post publish-url)
@@ -334,7 +334,7 @@
             (let [data (json/parse-string body)]
               (testing "for repo that was successfully published"
                 (is (not= nil (get data success-repo)))
-                (is (= (-> (fs/file data-dir (str success-repo ".git"))
+                (is (= (-> (common/bare-repo data-dir success-repo)
                            (jgit-utils/get-repository-from-git-dir)
                            (jgit-utils/head-rev-id))
                        (get-in data [success-repo "commit"]))
@@ -354,8 +354,8 @@
         working-dir-success (helpers/temp-dir-as-string)
         root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
-        git-dir-success (fs/file data-dir (str successful-parent ".git"))
-        git-dir-failed (fs/file data-dir (str failed-parent ".git"))
+        git-dir-success (common/bare-repo data-dir successful-parent)
+        git-dir-failed (common/bare-repo data-dir failed-parent)
         submodules-dir-name-1 "submodules1"
         submodules-dir-name-2 "submodules2"
         submodules-working-dir-1 (helpers/temp-dir-as-string)
@@ -489,7 +489,7 @@
           submodule-2 "nonexistent-submodule"
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (fs/file data-dir (str repo ".git"))]
+          git-dir (common/bare-repo data-dir repo)]
 
       ;; Set up working directory for submodule-1, the "existing-submodule"
       ;; (that is, the submodule that exists before the storage service is
@@ -507,7 +507,7 @@
                            :submodules-working-dir submodules-working-dir}})
 
        (testing "parent repo initialized correctly but does not initialize any submodules"
-         (is (fs/exists? (fs/file data-dir (str repo ".git"))))
+         (is (fs/exists? git-dir))
          (is (not (fs/exists? (fs/file data-dir repo (str submodule-1 ".git")))))
          (is (not (fs/exists? (fs/file data-dir repo (str submodule-2 ".git")))))
          (let [submodules (jgit-utils/get-submodules-latest-commits git-dir working-dir)]

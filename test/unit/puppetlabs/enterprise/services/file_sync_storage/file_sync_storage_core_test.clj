@@ -3,6 +3,7 @@
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils])
   (:import (org.eclipse.jgit.api Git)))
@@ -14,7 +15,7 @@
     (let [data-dir (helpers/temp-file-name "data")
           repo-id "single-repo"
           working-dir (helpers/temp-file-name repo-id)
-          git-dir (fs/file data-dir (str repo-id ".git"))]
+          git-dir (common/bare-repo data-dir repo-id)]
       (initialize-repos! {:repos    {:single-repo {:working-dir working-dir}}}
                          (str data-dir))
       (testing "The data dir is created"
@@ -52,8 +53,8 @@
     (testing "Multiple repos can be initialized"
       (initialize-repos! config (str data-dir)))
     (testing "Content in repos not wiped out during reinitialization"
-      (let [repo1-git-dir (fs/file data-dir (str repo1-id ".git"))
-            repo2-git-dir (fs/file data-dir (str repo2-id ".git"))
+      (let [repo1-git-dir (common/bare-repo data-dir repo1-id)
+            repo2-git-dir (common/bare-repo data-dir repo2-id)
             repo1 (jgit-utils/get-repository repo1-git-dir repo1-working-dir)
             repo2 (jgit-utils/get-repository repo2-git-dir repo2-working-dir)]
         (spit (fs/file repo1-working-dir "test-file1") "foo")

@@ -229,7 +229,7 @@
     {}
     (for [[submodule commit] submodules-commit-info]
       (let [submodule-name (extract-submodule-name submodule)
-            target-dir (fs/file submodule-root (str submodule-name ".git"))
+            target-dir (common/bare-repo submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))
             status {submodule (apply-updates-to-repo
@@ -287,7 +287,7 @@
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
         (for [repo-name repos]
-          (let [target-dir (str data-dir "/" (name repo-name) ".git")
+          (let [target-dir (common/bare-repo data-dir repo-name)
                 submodule-root (str data-dir "/" (name repo-name))]
             (if (contains? latest-commits repo-name)
               (let [latest-commit (latest-commits repo-name)]
@@ -458,7 +458,7 @@
         (str "Directory " working-dir " must exist on disk to be synced "
              "as a working directory"))))
   (if (some #(= repo-id %) repos)
-    (let [git-dir (str data-dir "/" (name repo-id) ".git")
+    (let [git-dir (common/bare-repo data-dir repo-id)
           repo (jgit-utils/get-repository git-dir working-dir)]
       (log/info (str "Syncing working directory at " working-dir
                      " for repository " repo-id))

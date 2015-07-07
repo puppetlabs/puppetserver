@@ -220,9 +220,7 @@
   (let [sub-paths (keys repos)
         map* (if (> (count sub-paths) 1) pmap map)
         latest-commit (fn [sub-path]
-                        (let [repo-path (fs/file
-                                          data-dir
-                                          (str (name sub-path) ".git"))
+                        (let [repo-path (common/bare-repo data-dir sub-path)
                               rev (latest-commit-id-on-master
                                     repo-path
                                     (get-in repos [sub-path :working-dir]))]
@@ -390,8 +388,8 @@
           submodule-working-dir (fs/file submodules-working-dir submodule)
           submodule-path (submodule-path submodules-dir submodule)
           submodule-within-parent (fs/file working-dir submodule-path)
-          submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule ".git")
-          parent-git (-> (fs/file data-dir (str repo-name ".git"))
+          submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)
+          parent-git (-> (common/bare-repo data-dir repo-name)
                        (jgit-utils/get-repository working-dir)
                        Git/wrap)]
 
@@ -444,7 +442,7 @@
             submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
         (try
           (log/infof "Committing repo %s" working-dir)
-          (let [git-dir (fs/file data-dir (str (name repo-id) ".git"))
+          (let [git-dir (common/bare-repo data-dir repo-id)
                 git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
                 commit (do (add-all-with-submodules git submodules-dir)
                          (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
@@ -493,7 +491,7 @@
   (into {}
     (for [[repo-id {:keys [working-dir]}] repos]
       (let [repo (jgit-utils/get-repository
-                   (fs/file data-dir (str (name repo-id) ".git"))
+                   (common/bare-repo data-dir repo-id)
                    working-dir)
             repo-status (jgit-utils/status repo)]
         {repo-id {:latest-commit (commit->status-info (jgit-utils/latest-commit repo))
@@ -596,7 +594,7 @@
   (initialize-data-dir! (fs/file data-dir))
   (doseq [[repo-id repo-info] (:repos config)]
     (let [working-dir (:working-dir repo-info)
-          git-dir (fs/file data-dir (str (name repo-id) ".git"))]
+          git-dir (common/bare-repo data-dir repo-id)]
       ; Create the working dir, if it does not already exist.
       (when-not (fs/exists? working-dir)
         (ks/mkdirs! working-dir))

@@ -253,9 +253,9 @@
         server-repo :process-repos-test
         error-repo  :process-repos-error
         nonexistent-repo :process-repos-test-nonexistent
-        client-target-repo-on-server (str client-data-dir "/" (name server-repo) ".git")
-        client-target-repo-nonexistent (str client-data-dir "/" (name nonexistent-repo) ".git")
-        client-target-repo-error (str client-data-dir "/" (name error-repo) ".git")
+        client-target-repo-on-server (common/bare-repo client-data-dir server-repo)
+        client-target-repo-nonexistent (common/bare-repo client-data-dir nonexistent-repo)
+        client-target-repo-error (common/bare-repo client-data-dir error-repo)
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
         submodule "submodule"]
@@ -272,7 +272,7 @@
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
-      (fs/delete-dir (fs/file storage-data-dir (str (name error-repo) ".git")))
+      (fs/delete-dir (common/bare-repo storage-data-dir error-repo))
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
@@ -336,12 +336,12 @@
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
         repo :test-repo
-        git-dir (str client-data-dir "/" (name repo) ".git")
+        git-dir (common/bare-repo client-data-dir repo)
         working-dir (helpers/temp-dir-as-string)
         local-repo-dir (helpers/temp-dir-as-string)
         repo-config [repo]]
     (with-test-logging
-      (helpers/init-bare-repo! (fs/file git-dir))
+      (helpers/init-bare-repo! git-dir)
       (let [local-temp-file (str local-repo-dir "/temp-test")
             working-temp-file (str working-dir "/temp-test")
             local-temp-file-2 (str local-repo-dir "/temp-test-2")
@@ -355,7 +355,7 @@
         (fs/touch local-temp-file-2)
         (spit local-temp-file-2 temp-file-2-content)
         (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-identity)
-        (jgit-utils/push local-repo git-dir)
+        (jgit-utils/push local-repo (str git-dir))
 
         (testing "working dir should not have test file"
           (is (fs/exists? local-temp-file))
@@ -380,7 +380,7 @@
           (fs/delete local-temp-file-2)
           (jgit-utils/add-and-commit
             local-repo "a second test commit" helpers/test-identity)
-          (jgit-utils/push local-repo git-dir)
+          (jgit-utils/push local-repo (str git-dir))
 
           (testing "working dir should still contain the deleted test file"
             (is (fs/exists? working-temp-file-2))
