@@ -155,8 +155,12 @@
     (bootstrap/with-puppetserver-running app {:jruby-puppet
                                               {:max-active-instances num-jrubies}}
       (let [jruby-service   (tk-app/get-service app :JRubyPuppetService)
-            borrow-jruby-fn (partial jruby-protocol/borrow-instance jruby-service)
-            return-jruby-fn (partial jruby-protocol/return-instance jruby-service)]
+            borrow-jruby-fn (partial jruby-protocol/borrow-instance jruby-service
+                              :environment-flush-integration-test)
+            return-jruby-fn (fn [instance] (jruby-protocol/return-instance
+                                             jruby-service
+                                             instance
+                                             :environment-flush-integration-test))]
         ;; wait for all of the jrubies to be ready so that we can
         ;; validate cache state differences between them.
         (wait-for-jrubies app)

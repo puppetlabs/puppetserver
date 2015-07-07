@@ -66,14 +66,14 @@
         (jruby-service-test-config pool-size)
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
-              (mapv (fn [_] (jruby-protocol/borrow-instance service))
+              (mapv (fn [_] (jruby-protocol/borrow-instance service :test-pool-size))
                     (range pool-size))]
           (is (= 0 (jruby-protocol/free-instance-count service)))
           (is (= pool-size (count all-the-instances)))
           (doseq [instance all-the-instances]
             (is (not (nil? instance))
                 "One of the JRubyPuppet instances retrieved from the pool is nil")
-            (jruby-protocol/return-instance service instance))
+            (jruby-protocol/return-instance service instance :test-pool-size))
           (is (= pool-size (jruby-protocol/free-instance-count service))))))))
 
 (deftest test-pool-population-during-init
@@ -81,7 +81,9 @@
     (let [test-service (tk/service
                          [[:JRubyPuppetService borrow-instance return-instance]]
                          (init [this context]
-                               (return-instance (borrow-instance))
+                               (return-instance
+                                 (borrow-instance :test-pool-population)
+                                 :test-pool-population)
                                context))]
 
       ; Bootstrap TK, causing the 'init' function above to be executed.
@@ -102,6 +104,7 @@
         (with-jruby-puppet
           jruby-puppet
           service
+          :test-with-jruby-puppet
           (is (instance? JRubyPuppet jruby-puppet))
           (is (= 0 (jruby-protocol/free-instance-count service))))
         (is (= 1 (jruby-protocol/free-instance-count service)))
@@ -110,13 +113,14 @@
         ;; test is intended to cover.
         (with-jruby-puppet
           jruby-puppet
-          service)
-        (let [jruby (jruby-protocol/borrow-instance service)]
+          service
+          :test-with-jruby-puppet)
+        (let [jruby (jruby-protocol/borrow-instance service :test-with-jruby-puppet)]
           ;; the counter gets incremented when the instance is returned to the
           ;; pool, so right now it should be at 2 since we've called
           ;; `with-jruby-puppet` twice.
           (is (= 2 (:borrow-count (jruby-core/instance-state jruby))))
-          (jruby-protocol/return-instance service jruby))))))
+          (jruby-protocol/return-instance service jruby :test-with-jruby-puppet))))))
 
 (deftest test-borrow-timeout-configuration
   (testing "configured :borrow-timeout is honored by the borrow-instance service function"
@@ -136,7 +140,7 @@
             (is (= 1 (count jrubies)))
             (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
           (let [test-start-in-millis (System/currentTimeMillis)]
-            (is (nil? (jruby-protocol/borrow-instance service)))
+            (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
             (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
             (is (= (:borrow-timeout context) timeout)))))))
 

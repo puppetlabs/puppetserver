@@ -35,13 +35,13 @@
             (assoc :borrow-timeout (:borrow-timeout config))))))
 
   (borrow-instance
-    [this]
+    [this action]
     (let [pool-context (:pool-context (tk-services/service-context this))
           borrow-timeout (:borrow-timeout (tk-services/service-context this))]
       (core/borrow-from-pool-with-timeout pool-context borrow-timeout)))
 
   (return-instance
-    [this jruby-instance]
+    [this jruby-instance action]
     (core/return-to-pool jruby-instance))
 
   (free-instance-count
@@ -78,8 +78,8 @@
 
   Will throw an IllegalStateException if borrowing an instance of
   JRubyPuppet times out."
-  [jruby-puppet jruby-service & body]
-  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
+  [jruby-puppet jruby-service action & body]
+  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service ~action)]
      (if (nil? pool-instance#)
        (sling/throw+
          {:type    ::jruby-timeout
@@ -91,10 +91,10 @@
                         "jruby-puppet.max-active-instances.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
-         (jruby-core/return-to-pool pool-instance#)
-         (recur (jruby/borrow-instance ~jruby-service)))
+         (jruby/return-instance ~jruby-service pool-instance# ~action)
+         (recur (jruby/borrow-instance ~jruby-service ~action)))
        (let [~jruby-puppet (:jruby-puppet pool-instance#)]
          (try
            ~@body
            (finally
-             (jruby/return-instance ~jruby-service pool-instance#)))))))
+             (jruby/return-instance ~jruby-service pool-instance# ~action)))))))
