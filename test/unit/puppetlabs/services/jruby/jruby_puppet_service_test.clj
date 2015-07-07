@@ -12,10 +12,12 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.jruby.jruby-event-logger-service :as jruby-event-logger]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.services.protocols.jruby-event-handler :as jruby-event-protocol]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 (use-fixtures :once schema-test/validate-schemas)
@@ -31,6 +33,11 @@
          {:http-client {:connect-timeout-milliseconds connect-timeout
                         :idle-timeout-milliseconds    idle-timeout}}))
 
+(def default-services
+  [jruby-puppet-pooled-service
+   profiler/puppet-profiler-service
+   jruby-event-logger/jruby-event-logger-service])
+
 (deftest test-error-during-init
   (testing
       (str "If there as an exception while putting a JRubyPuppet instance in "
@@ -42,8 +49,7 @@
                      (try
                        (bootstrap/with-app-with-config
                          app
-                         [jruby-puppet-pooled-service
-                          profiler/puppet-profiler-service]
+                         default-services
                          (jruby-service-test-config 1)
                          (tk/run-app app))
                        (catch Exception e
@@ -61,8 +67,7 @@
     (let [pool-size 2]
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service
-         profiler/puppet-profiler-service]
+        default-services
         (jruby-service-test-config pool-size)
         (let [service (app/get-service app :JRubyPuppetService)
               all-the-instances
@@ -86,7 +91,7 @@
 
       ; Bootstrap TK, causing the 'init' function above to be executed.
       (tk/boot-services-with-config
-        [test-service jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        (conj default-services test-service)
         (jruby-service-test-config 1))
 
       ; If execution gets here, the test passed.
@@ -96,7 +101,7 @@
   (testing "the `with-jruby-puppet macro`"
     (bootstrap/with-app-with-config
       app
-      [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+      default-services
       (jruby-service-test-config 1)
       (let [service (app/get-service app :JRubyPuppetService)]
         (with-jruby-puppet
@@ -120,6 +125,50 @@
           (is (= 2 (:borrow-count (jruby-core/instance-state jruby))))
           (jruby-protocol/return-instance service jruby))))))
 
+(deftest test-jruby-events
+  (testing "jruby service sends event notifications"
+    (let [counter (atom 0)
+          requested (atom {})
+          borrowed (atom {})
+          returned (atom {})
+          event-service (tk/service
+                          jruby-event-protocol/JRubyEventHandlerService
+                          []
+                          (instance-requested [this action]
+                            (reset! requested {:sequence (swap! counter inc)
+                                               :action action}))
+                          (instance-borrowed [this action instance]
+                            (reset! borrowed {:sequence (swap! counter inc)
+                                              :action action
+                                              :instance instance}))
+                          (instance-returned [this instance]
+                            (reset! returned {:sequence (swap! counter inc)
+                                              :instance instance})))]
+      (bootstrap/with-app-with-config
+        app
+        [jruby-puppet-pooled-service
+         profiler/puppet-profiler-service
+         event-service]
+        (jruby-service-test-config 1)
+        (let [service (app/get-service app :JRubyPuppetService)]
+          (with-jruby-puppet
+            jruby-puppet
+            service
+            :test-jruby-events)
+          (is (= {:sequence 1 :action :test-jruby-events} @requested))
+          (is (= {:sequence 2 :action :test-jruby-events}
+                (select-keys @borrowed [:sequence :action])))
+          (is (jruby-schemas/jruby-puppet-instance? (:instance @borrowed)))
+          (is (= 3 (:sequence @returned)))
+          (is (= (:instance @borrowed) (:instance @returned)))
+          (with-jruby-puppet
+            jruby-puppet
+            service
+            :test-jruby-events)
+          (is (= 4 (:sequence @requested)))
+          (is (= 5 (:sequence @borrowed)))
+          (is (= 6 (:sequence @returned))))))))
+
 (deftest test-borrow-timeout-configuration
   (testing "configured :borrow-timeout is honored by the borrow-instance service function"
     (let [timeout   250
@@ -129,7 +178,7 @@
                                                           :borrow-timeout timeout}))]
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        default-services
         config
         (let [service (app/get-service app :JRubyPuppetService)
               context (services/service-context service)
@@ -145,7 +194,7 @@
   (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
       app
-      [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+      default-services
       (jruby-service-test-config 1)
       (let [service (app/get-service app :JRubyPuppetService)
             context (services/service-context service)]
@@ -157,7 +206,7 @@
           socket-timeout  55]
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        default-services
         (jruby-service-test-config-with-timeouts connect-timeout socket-timeout)
         (let [service          (app/get-service app :JRubyPuppetService)
               context          (services/service-context service)
@@ -168,7 +217,7 @@
   (testing "default values are set"
     (bootstrap/with-app-with-config
       app
-      [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+      default-services
       (jruby-service-test-config 1)
       (let [service          (app/get-service app :JRubyPuppetService)
             context          (services/service-context service)

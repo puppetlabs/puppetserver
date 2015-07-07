@@ -19,7 +19,9 @@
                           jruby/JRubyPuppetService
                           [[:ConfigService get-config]
                            [:ShutdownService shutdown-on-error]
-                           [:PuppetProfilerService get-profiler]]
+                           [:PuppetProfilerService get-profiler]
+                           [:JRubyEventHandlerService instance-requested
+                            instance-borrowed instance-returned]]
   (init
     [this context]
     (let [config            (core/initialize-config (get-config))
@@ -38,10 +40,14 @@
     [this action]
     (let [pool-context (:pool-context (tk-services/service-context this))
           borrow-timeout (:borrow-timeout (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context borrow-timeout)))
+      (instance-requested action)
+      (let [instance (core/borrow-from-pool-with-timeout pool-context borrow-timeout)]
+        (instance-borrowed action instance)
+        instance)))
 
   (return-instance
     [this jruby-instance]
+    (instance-returned jruby-instance)
     (core/return-to-pool jruby-instance))
 
   (free-instance-count

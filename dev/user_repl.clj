@@ -4,6 +4,7 @@
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
+            [puppetlabs.services.jruby.jruby-event-logger-service :refer [jruby-event-logger-service]]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
@@ -53,6 +54,7 @@
                webrouting-service
                master-service
                jruby-puppet-pooled-service
+               jruby-event-logger-service
                puppet-profiler-service
                request-handler-service
                puppet-server-config-service

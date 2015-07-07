@@ -281,7 +281,7 @@
     (jruby/with-jruby-puppet
       jruby-instance
       jruby-service
-      {:request request}
+      {:request (dissoc request :ssl-client-cert)}
       (handle-request-via-jruby jruby-instance request config))
     (catch bad-request? e
       (output-error request e 400))

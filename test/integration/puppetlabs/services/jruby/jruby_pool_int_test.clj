@@ -8,6 +8,7 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [puppetlabs.services.jruby.jruby-event-logger-service :as jruby-event-logger-service]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
@@ -247,6 +248,7 @@
           app
           [profiler/puppet-profiler-service
            jruby/jruby-puppet-pooled-service
+           jruby-event-logger-service/jruby-event-logger-service
            jetty9/jetty9-service
            webrouting/webrouting-service
            puppet-admin/puppet-admin-service]
