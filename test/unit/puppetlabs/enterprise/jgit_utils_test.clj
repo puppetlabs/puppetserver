@@ -68,13 +68,14 @@
       (jgit-utils/submodule-add!
         (Git. repo)
         submodule-dir submodule-dir)
-      
       (let [git-config (.getConfig repo)
             gitmodules (jgit-utils/submodules-config repo)]
         (.load gitmodules)
         (testing "git config and .gitmodules contain submodule"
-          (is (not (empty? (.getSubsections git-config "submodule"))))
-          (is (not (empty? (.getSubsections gitmodules "submodule")))))
+          (is (= 1 (count (.getSubsections git-config "submodule"))))
+          (is (= 1 (count (.getSubsections gitmodules "submodule"))))
+          (is (= submodule-dir (.getString git-config "submodule" submodule-dir "url")))
+          (is (= submodule-dir (.getString gitmodules "submodule" submodule-dir "url"))))
 
         (testing (str "remove-submodule-configuration! successfully removes "
                       "submodule configuration")
@@ -84,3 +85,22 @@
 
           (is (empty? (.getSubsections git-config "submodule")))
           (is (empty? (.getSubsections gitmodules "submodule"))))))))
+
+(deftest test-remove-submodule
+  (let [repo-dir (helpers/temp-dir-as-string)
+        local-repo-dir (helpers/temp-dir-as-string)
+        submodule-dir (helpers/temp-dir-as-string)
+        submodule-path "test-submodule"]
+
+    (helpers/init-bare-repo! (fs/file repo-dir))
+    (helpers/init-bare-repo! (fs/file submodule-dir))
+    (let [repo (jgit-utils/get-repository repo-dir local-repo-dir)
+          git (Git. repo)]
+      (jgit-utils/submodule-add! git submodule-path submodule-dir)
+      (jgit-utils/add! git ".")
+      (jgit-utils/commit git "test commit" {:name "test" :email "test"})
+      (testing "submodule successfully added to repo"
+        (is (= [submodule-path] (jgit-utils/get-submodules repo))))
+      (jgit-utils/remove-submodule! repo submodule-path)
+      (testing "submodule successfully removed from repo"
+        (is (= 0 (count (jgit-utils/get-submodules repo))))))))

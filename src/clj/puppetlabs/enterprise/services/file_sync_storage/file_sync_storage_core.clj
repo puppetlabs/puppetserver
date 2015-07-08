@@ -471,12 +471,12 @@
           (remove-submodules!
             git-repo all-submodules submodules-dir (:identity commit-info)
             data-dir repo-id preserve-submodules?)
-          (log/infof "Committing repo %s" working-dir)
           (let [submodules-status (publish-submodules
                                     submodules repo data-dir
                                     server-repo-url commit-info)
                 git (Git/wrap git-repo)
-                commit (do (add-all-with-submodules git submodules-dir)
+                commit (do (log/infof "Committing repo %s" working-dir)
+                           (add-all-with-submodules git submodules-dir)
                            (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)

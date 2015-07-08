@@ -545,8 +545,41 @@
                  (get-in (json/parse-string body) [repo "submodules"])))
            (is (fs/exists? (fs/file working-dir submodules-dir-name submodule-1 "update.txt")))
            (is (= (slurp (fs/file submodules-working-dir submodule-1 "update.txt"))
-                 (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))
+                 (slurp (fs/file working-dir submodules-dir-name submodule-1 "update.txt"))))))))))
 
+(deftest ^:integration submodule-deletion-test
+  (testing "storage service works with submodules"
+    (let [repo "parent-repo"
+          submodules-working-dir (helpers/temp-dir-as-string)
+          working-dir (helpers/temp-dir-as-string)
+          submodules-dir-name "submodules"
+          submodule-1 "existing-submodule"
+          submodule-2 "nonexistent-submodule"
+          root-data-dir (helpers/temp-dir-as-string)
+          data-dir (core/path-to-data-dir root-data-dir)
+          git-dir (common/bare-repo data-dir repo)]
+
+
+      (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
+      (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
+      (ks/mkdirs! (fs/file submodules-working-dir submodule-2))
+      (helpers/write-test-file! (fs/file submodules-working-dir submodule-2 "test.txt"))
+
+      (helpers/with-bootstrapped-storage-service
+        app
+        (helpers/storage-service-config
+          root-data-dir
+          {(keyword repo) {:working-dir working-dir
+                           :submodules-dir submodules-dir-name
+                           :submodules-working-dir submodules-working-dir}})
+        (let [response (http-client/post publish-url)
+              body (slurp (:body response))]
+          (testing "submodules successfully published"
+            (is (= 200 (:status response)))
+            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
+            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2)))
+            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
+                  (get-in (json/parse-string body) [repo "submodules"])))))
 
         (testing "removing a submodule and triggering a publish"
           (fs/delete-dir (fs/file submodules-working-dir submodule-2))
