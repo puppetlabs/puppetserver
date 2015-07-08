@@ -13,10 +13,6 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
-            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
-             :as file-sync-client-service]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
-             :as scheduler-service]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
@@ -41,7 +37,7 @@
     (logging/with-test-logging
       (helpers/with-bootstrapped-client-service-and-webserver
         app
-        helpers/webserver-ssl-config
+        (helpers/webserver-ssl-config)
         ring-handler
         file-sync-client-ssl-config
         (let [sync-agent (helpers/get-sync-agent app)]
@@ -53,7 +49,7 @@
     (logging/with-test-logging
       (helpers/with-bootstrapped-client-service-and-webserver
         app
-        helpers/webserver-ssl-config
+        (helpers/webserver-ssl-config)
         ring-handler
         (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert :ssl-cert :ssl-key)
         (let [sync-agent (helpers/get-sync-agent app)
@@ -64,12 +60,13 @@
 (deftest ^:integration ssl-config-test
   (testing "SSL configuration fails when not all options are provided"
     (logging/with-test-logging
-      (is (thrown? IllegalArgumentException
-                   (helpers/with-bootstrapped-client-service-and-webserver
-                     app
-                     helpers/webserver-ssl-config
-                     ring-handler
-                     (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert)))))))
+      (let [client-app (tk/build-app
+                         helpers/client-service-and-deps
+                         (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert))]
+        (is (thrown? IllegalArgumentException
+              (tk-app/init client-app)
+              (tk-app/start client-app)))
+        (tk-app/stop client-app)))))
 
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
@@ -87,8 +84,7 @@
       (jgit-utils/push local-repo (str client-repo-dir))
       (bootstrap/with-app-with-config
         app
-        [file-sync-client-service/file-sync-client-service
-         scheduler-service/scheduler-service]
+        helpers/client-service-and-deps
         (helpers/client-service-config
           root-data-dir
           false)
@@ -145,8 +141,7 @@
       (http-client/post publish-url)
       (bootstrap/with-app-with-config
         app
-        [file-sync-client-service/file-sync-client-service
-         scheduler-service/scheduler-service]
+        helpers/client-service-and-deps
         (helpers/client-service-config
           root-data-dir
           false)
@@ -245,9 +240,7 @@
                          (register-callback! #{"foo"} (fn [& _] nil))))
           config (helpers/client-service-config (helpers/temp-dir-as-string) false)
           client-app (tk/build-app
-                       [file-sync-client-service/file-sync-client-service
-                        scheduler-service/scheduler-service
-                        my-service]
+                       (conj helpers/client-service-and-deps my-service)
                        config)]
       (logging/with-test-logging ; necessary because Trapperkeeper logs the error
         (tk-app/init client-app)

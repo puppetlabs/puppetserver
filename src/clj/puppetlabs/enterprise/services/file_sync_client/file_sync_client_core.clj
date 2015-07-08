@@ -10,7 +10,8 @@
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.http.client.sync :as sync]
-            [puppetlabs.http.client.common :as http-client])
+            [puppetlabs.http.client.common :as http-client]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status])
   (:import (org.eclipse.jgit.transport HttpTransport)
            (clojure.lang IFn Agent Atom)
            (java.io IOException)
@@ -453,3 +454,8 @@
                     " for repository " repo-id))
         (jgit-utils/hard-reset repo)
         (jgit-utils/submodule-update repo)))))
+
+(schema/defn ^:always-validate status :- status/StatusCallbackResponse
+  [level :- schema/Keyword]
+  {:state :running
+   :status {}})

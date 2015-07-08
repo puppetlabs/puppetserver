@@ -4,16 +4,23 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tks]
             [puppetlabs.ssl-utils.core :as ssl]
-            [puppetlabs.enterprise.services.protocols.file-sync-client :refer :all]))
+            [puppetlabs.enterprise.services.protocols.file-sync-client :refer :all]
+            [puppetlabs.enterprise.file-sync-common :as common]))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
   [[:ConfigService get-in-config]
    [:ShutdownService request-shutdown]
-   [:SchedulerService after stop-job]]
+   [:SchedulerService after stop-job]
+   [:StatusService register-status]]
 
   (init [this context]
     (log/info "Initializing file sync client service")
+    (register-status
+      "file-sync-client-service"
+      common/artifact-version
+      1
+      #(core/status %))
     (assoc context :callbacks (atom {})))
 
   (start [this context]
@@ -57,6 +64,10 @@
     (log/info "Stopping file sync client service")
 
     (log/trace "closing HTTP client")
-    (.close (:http-client context))
+
+    ;; This is needed, as if the app fails during startup, the
+    ;; http-client will be nil
+    (when-let [client (:http-client context)]
+      (.close client))
 
     context))

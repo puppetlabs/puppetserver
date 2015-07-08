@@ -115,8 +115,7 @@
 
           (bootstrap/with-app-with-config
             app
-            [file-sync-client-service/file-sync-client-service
-             scheduler-service/scheduler-service]
+            helpers/client-service-and-deps
             (helpers/client-service-config
               root-data-dir
               false)

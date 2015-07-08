@@ -81,20 +81,27 @@
                          :repo-servlet default-repo-path-prefix}
                         :puppetlabs.trapperkeeper.services.status.status-service/status-service "/status"}})
 
-(def webserver-plaintext-config
-  (assoc webserver-base-config
-    :webserver {:port http-port}))
+(defn webserver-plaintext-config
+  ([]
+    (webserver-plaintext-config http-port))
+  ([port]
+   (assoc webserver-base-config
+     :webserver {:port port})))
 
-(def webserver-ssl-config
-  (assoc webserver-base-config
-    :webserver (merge {:ssl-port https-port
-                       :ssl-host "0.0.0.0"} ssl-options)))
+(defn webserver-ssl-config
+  ([]
+    (webserver-ssl-config https-port))
+  ([port]
+   (assoc webserver-base-config
+     :webserver (merge {:ssl-port port
+                        :ssl-host "0.0.0.0"} ssl-options))))
 
 (defn storage-service-config
   ([data-dir repos]
    (storage-service-config data-dir repos false))
   ([data-dir repos ssl?]
-   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+   (assoc (if ssl? (webserver-ssl-config)
+                   (webserver-plaintext-config))
      :file-sync-common {:server-url (base-url ssl?)
                         :data-dir data-dir}
      :file-sync-storage {:repos repos})))
@@ -103,18 +110,20 @@
   ([data-dir]
     (client-service-config data-dir false))
   ([data-dir ssl?]
-   {:file-sync-common {:server-url (base-url ssl?)
-                       :data-dir data-dir}
-    :file-sync-client (assoc (if ssl? ssl-options {})
-                        :poll-interval 1
-                        :server-api-path (str default-api-path-prefix "/v1")
-                        :server-repo-path default-repo-path-prefix)}))
+   (assoc (if ssl? (webserver-ssl-config 9000)
+                   (webserver-plaintext-config 8000 ))
+     :file-sync-common {:server-url (base-url ssl?)
+                        :data-dir data-dir}
+     :file-sync-client (assoc (if ssl? ssl-options {})
+                         :poll-interval 1
+                         :server-api-path (str default-api-path-prefix "/v1")
+                         :server-repo-path default-repo-path-prefix))))
 
 (defn file-sync-config
   ([data-dir repos]
     (file-sync-config data-dir repos false))
   ([data-dir repos ssl?]
-   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+   (assoc (if ssl? (webserver-ssl-config) (webserver-plaintext-config))
      :file-sync-storage {:repos repos}
      :file-sync-common {:server-url (base-url ssl?)
                         :data-dir data-dir}
@@ -138,7 +147,10 @@
    status-service/status-service])
 
 (def client-service-and-deps
-  [file-sync-client-service/file-sync-client-service
+  [jetty9-service/jetty9-service
+   webrouting-service/webrouting-service
+   status-service/status-service
+   file-sync-client-service/file-sync-client-service
    scheduler-service/scheduler-service])
 
 (def file-sync-services-and-deps
