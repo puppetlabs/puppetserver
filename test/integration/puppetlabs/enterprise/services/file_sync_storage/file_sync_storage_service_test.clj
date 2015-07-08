@@ -633,20 +633,6 @@
     json/parse-string
     (get "status")))
 
-(defn do-publish
-  ([]
-   (do-publish nil))
-  ([body]
-   (http-client/post
-     (str helpers/server-base-url "/file-sync/v1/publish")
-     {:as :text
-      :headers {"content-type" "application/json"}
-      :body body})))
-
-(defn parse-timestamp
-  [timestamp]
-  (time-format/parse core/datetime-formatter timestamp))
-
 (deftest ^:integration status-endpoint-test
   (let [test-start-time (time/now)
         data-dir (helpers/temp-dir-as-string)
@@ -667,7 +653,7 @@
                                         :author {:name "Testy"
                                                  :email "test@foo.com"}}
                                        json/generate-string)
-              commit-id (-> (do-publish publish-request-body)
+              commit-id (-> (helpers/do-publish publish-request-body)
                             :body
                             (json/parse-string true)
                             :my-repo
@@ -692,7 +678,7 @@
                 (is (time/within?
                       test-start-time
                       (time/now)
-                      (parse-timestamp (get-in body ["status" "timestamp"])))))
+                      (helpers/parse-timestamp (get-in body ["status" "timestamp"])))))
               (let [repo-status (get-in body ["status" "repos" "my-repo"])
                     latest-commit-status (get repo-status "latest-commit")]
                 (testing "Latest commit ID"
@@ -731,7 +717,7 @@
                       (is (time/within?
                             test-start-time
                             (time/now)
-                            (parse-timestamp (get client-status "last-check-in-time"))))))))
+                            (helpers/parse-timestamp (get client-status "last-check-in-time"))))))))
               (testing "The response should contain info about the latest publish"
                 (let [latest-publish-status (get-in body ["status" "latest-publish"])]
                   (testing "Client IP address"
@@ -747,7 +733,7 @@
                     (is (time/within?
                           test-start-time
                           (time/now)
-                          (parse-timestamp (get latest-publish-status "timestamp")))))
+                          (helpers/parse-timestamp (get latest-publish-status "timestamp")))))
                   (testing "Information about repos"
                     (is (= {"my-repo" {"commit" commit-id}}
                            (get latest-publish-status "repos")))))))))
@@ -813,7 +799,7 @@
       (spit
         (fs/file submodules-working-dir submodule-name "test-file")
         "submodules are SO cool")
-      (let [submodule-commit-id (-> (do-publish)
+      (let [submodule-commit-id (-> (helpers/do-publish)
                                     :body
                                     json/parse-string
                                     (get-in [(name :my-repo)

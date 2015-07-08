@@ -5,7 +5,8 @@
             [puppetlabs.trapperkeeper.services :as tks]
             [puppetlabs.ssl-utils.core :as ssl]
             [puppetlabs.enterprise.services.protocols.file-sync-client :refer :all]
-            [puppetlabs.enterprise.file-sync-common :as common]))
+            [puppetlabs.enterprise.file-sync-common :as common])
+  (:import (java.net InetAddress)))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
@@ -16,12 +17,16 @@
 
   (init [this context]
     (log/info "Initializing file sync client service")
-    (register-status
-      "file-sync-client-service"
-      common/artifact-version
-      1
-      #(core/status %))
-    (assoc context :callbacks (atom {})))
+    (let [status-data! (atom {:last-check-in nil
+                              :last-successful-sync-time nil})
+          repos (get-in-config [:file-sync-client :repos])
+          data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))]
+      (register-status
+        "file-sync-client-service"
+        common/artifact-version
+        1
+        #(core/status % data-dir @status-data!))
+      (assoc context :callbacks (atom {}) :status-data status-data!)))
 
   (start [this context]
     (log/info "Starting file sync client service")
@@ -41,7 +46,7 @@
                     :server-url server-url
                     :data-dir data-dir}]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client callbacks)
+          sync-agent schedule-fn config http-client callbacks (:status-data context))
         (assoc context :agent sync-agent
                        :http-client http-client
                        :config client-config

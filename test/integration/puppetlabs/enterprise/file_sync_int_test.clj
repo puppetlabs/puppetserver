@@ -31,24 +31,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(def latest-commits-url (str helpers/server-base-url
-                             helpers/default-api-path-prefix
-                             "/v1"
-                             common/latest-commits-sub-path))
-
-(defn latest-commits-response
-  []
-  (http-client/post latest-commits-url {:as :text}))
-
-(defn get-latest-commits
-  []
-  (file-sync-client-core/get-body-from-latest-commits-payload
-    (latest-commits-response)))
-
-(defn get-latest-commits-for-repo
-  [repo]
-  (get-in (get-latest-commits) [(keyword repo) :commit]))
-
 (deftest ^:integration ssl-integration-test
   (testing "everything works properly when using ssl"
     (let [repo "ssl-integration-test"
@@ -110,7 +92,7 @@
           (testing "file sync storage service is running"
             ;; Ensure that a commit pushed to the server is reflected by the
             ;; latest-commits endpoint
-            (is (= (get-latest-commits-for-repo repo)
+            (is (= (helpers/get-latest-commits-for-repo repo)
                    (jgit-utils/head-rev-id-from-working-tree local-repo-dir))))
 
           (bootstrap/with-app-with-config
@@ -132,7 +114,7 @@
                 ;; has completed.
                 (let [new-state (helpers/wait-for-new-state sync-agent)]
                   (is (= :successful (:status new-state))))
-                (is (= (get-latest-commits-for-repo repo)
+                (is (= (helpers/get-latest-commits-for-repo repo)
                        (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "kill storage service and verify client has errors"
@@ -162,7 +144,7 @@
 
               (testing "start storage service again"
                 (tk-app/start storage-app)
-                (is (= 200 (:status (latest-commits-response))))
+                (is (= 200 (:status (helpers/latest-commits-response))))
 
                 ;; push a new commit up to the storage service
                 (helpers/push-test-commit! local-repo-dir)
@@ -171,7 +153,7 @@
                 ;; the client, since the client has not yet had time to sync with it,
                 ;; so the SHA returned from latest-commits and the revision ID for the
                 ;; client should not be the same
-                (is (not= (get-latest-commits-for-repo repo)
+                (is (not= (helpers/get-latest-commits-for-repo repo)
                           (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))
 
               (testing "verify client recovers"
@@ -186,7 +168,7 @@
                   ;; has completed.
                   (let [new-state (deref p)]
                     (is (= :successful (:status new-state))))
-                  (is (= (get-latest-commits-for-repo repo)
+                  (is (= (helpers/get-latest-commits-for-repo repo)
                          (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))))))
         (finally (tk-app/stop storage-app))))))
 
@@ -222,9 +204,9 @@
           (testing "file sync client service is running"
             (let [new-state (helpers/wait-for-new-state sync-agent)]
               (is (= :successful (:status new-state))))
-            (is (= (get-latest-commits-for-repo repo1)
+            (is (= (helpers/get-latest-commits-for-repo repo1)
                    (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-            (is (= (get-latest-commits-for-repo repo2)
+            (is (= (helpers/get-latest-commits-for-repo repo2)
                    (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2))))
 
           (testing (str "client-side repo recovers after server-side"
@@ -247,7 +229,7 @@
                   (testing "corrupted repo sync state is failed"
                     ;; This should be nil, as the directory that is
                     ;; supposed to contain repo1 no longer exists
-                    (is (nil? (get-latest-commits-for-repo repo1)))
+                    (is (nil? (helpers/get-latest-commits-for-repo repo1)))
                     (is (= :failed (get-in new-state [:repos repo1 :status]))))
 
                   (testing "non-corrupted repo sync state is not failed"
@@ -257,7 +239,7 @@
                     (is (contains? #{:synced :unchanged}
                           (get-in new-state [:repos repo2 :status])))
                     (is (= (get-in new-state [:repos repo2 :latest-commit])
-                          (get-latest-commits-for-repo repo2)
+                          (helpers/get-latest-commits-for-repo repo2)
                           (jgit-utils/head-rev-id-from-git-dir
                             client-dir-repo-2)))))
                 ;; "Restore" the server-side repo by moving it back to
@@ -271,9 +253,9 @@
                     (is (= :successful (:status new-state))))
                   (testing (str "all repos including the previously "
                                 "corrupted ones are synced")
-                    (is (= (get-latest-commits-for-repo repo1)
+                    (is (= (helpers/get-latest-commits-for-repo repo1)
                            (jgit-utils/head-rev-id-from-git-dir client-dir-repo-1)))
-                    (is (= (get-latest-commits-for-repo repo2)
+                    (is (= (helpers/get-latest-commits-for-repo repo2)
                            (jgit-utils/head-rev-id-from-git-dir client-dir-repo-2)))))))))))))
 
 (defprotocol CallbackService)

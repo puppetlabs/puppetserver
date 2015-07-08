@@ -18,7 +18,9 @@
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format])
   (:import (javax.net.ssl SSLException)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -31,6 +33,17 @@
   {:status  200
    :body    (json/encode {})
    :headers {"content-type" "application/json"}})
+
+(defn fetch-status
+  ([]
+   (fetch-status nil))
+  ([level]
+   (http-client/get
+     (str helpers/server-base-url
+       (if level
+         (str "/status/v1/services/file-sync-client-service?level=" (name level))
+         "/status/v1/services/file-sync-client-service"))
+     {:as :text})))
 
 (deftest ^:integration polling-client-ssl-test
   (testing "polling client will use SSL when configured"
@@ -107,6 +120,12 @@
                            (fs/list-dir local-repo-dir))))
             (is (not (nil? (fs/list-dir client-working-dir))))))))))
 
+(def publish-url
+  (str helpers/server-base-url
+    helpers/default-api-path-prefix
+    "/v1"
+    common/publish-content-sub-path))
+
 (deftest ^:integration working-dir-sync-with-submodules-test
   (testing "sync-working-dir works with submodules"
     (let [repo "parent-repo"
@@ -119,10 +138,6 @@
           git-dir (common/bare-repo (str root-data-dir "/storage") repo)
           client-git-dir (common/bare-repo client-data-dir repo)
           client-working-dir (helpers/temp-dir-as-string)
-          publish-url (str helpers/server-base-url
-                           helpers/default-api-path-prefix
-                           "/v1"
-                           common/publish-content-sub-path)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
@@ -233,7 +248,7 @@
                                                                  submodules-dir-name
                                                                  submodule)))))))))))
 
-(deftest register-callback-test
+(deftest ^:integration register-callback-test
   (testing "Callbacks must be registered before the File Sync Client is started"
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
@@ -249,3 +264,86 @@
               #"Callbacks must be registered before the File Sync Client is started"
               (tk-app/start client-app)))
         (tk-app/stop client-app)))))
+
+(deftest ^:integration status-endpoint-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        repo "repo"
+        working-dir (helpers/temp-dir-as-string)]
+    (logging/with-test-logging)
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {(keyword repo) {:working-dir working-dir}})
+
+      (let [sync-agent (helpers/get-sync-agent app)]
+        (testing "basic status info"
+          (let [response (fetch-status)
+                body (json/parse-string (:body response))
+                status (get body "status")]
+            (is (= "running" (get body "state")))
+            (is (time/before? (helpers/parse-timestamp (get status "timestamp"))
+                  (time/now)))
+
+            ;; The values are not checked, as they may or may not be nil
+            ;; depending on whether or not a sync has been performed
+            (is (contains? status "last-successful-sync-time"))
+            (is (contains? status "last-check-in"))))
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))]
+          (is (= "running" (get body "state")))
+          (testing "status info contains info on recent check-ins"
+            (let [check-in-time (helpers/parse-timestamp (get-in body
+                                                           ["status"
+                                                            "last-check-in"
+                                                            "timestamp"]))
+                  sync-time (helpers/parse-timestamp (get-in body
+                                                       ["status"
+                                                        "last-successful-sync-time"]))]
+              (is (time/before? sync-time (time/now)))
+              (is (time/before? check-in-time (time/now)))
+              (is (time/before? check-in-time sync-time)))
+
+            (testing "status contains info on response from latest check-in"
+              (let [latest-commits (helpers/get-latest-commits)
+                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last-check-in" "response"]))]
+                (is (= latest-commits latest-response))))
+
+            (testing "contains nil latest commit if no commits are present"
+              (let [latest-commit (get-in body ["status" "repos" repo "latest-commit"])]
+                (is (nil? latest-commit))))))
+
+        (testing "Getting the status when commits are present in the repo"
+          (spit (fs/file working-dir "test-file") "test file content")
+          (let [publish-request-body (-> {:message "my msg"
+                                          :author {:name "Testy"
+                                                   :email "test@foo.com"}}
+                                       json/generate-string)
+                commit-id (-> (helpers/do-publish publish-request-body)
+                            :body
+                            (json/parse-string true)
+                            :repo
+                            :commit)]
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+
+            (let [response (fetch-status)
+                  body (json/parse-string (:body response))
+                  latest-commit-status (get-in body ["status" "repos" repo "latest-commit"])]
+              (testing "Latest commit ID"
+                (is (= commit-id (get latest-commit-status "commit"))))
+              (testing "Commit date/time"
+                (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+                  (is (time/after? commit-time (-> test-start-time
+                                                 (time/minus (time/seconds 1)))))
+                  (is (time/before? commit-time (time/now)))))
+              (testing "The commit author"
+                (is (= {"name" "Testy"
+                        "email" "test@foo.com"}
+                      (get latest-commit-status "author"))))
+              (testing "The commit message"
+                (is (= "my msg" (get latest-commit-status "message")))))))))))

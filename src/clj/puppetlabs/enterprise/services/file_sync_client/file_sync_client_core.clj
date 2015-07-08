@@ -22,7 +22,8 @@
 
 (def ClientContext
   "A schema describing the service context for the File Sync Client service"
-  {:callbacks Atom})
+  {:callbacks Atom
+   :status-data Atom})
 
 (def Config
   "Schema defining the full content of the file sync client service
@@ -141,7 +142,7 @@
       (catch IOException e
         (throw+ {:type ::error
                  :message (str "Unable to get latest-commits from server ("
-                               latest-commits-url ").")
+                            latest-commits-url ").")
                  :cause e})))))
 
 (defn message-with-repo-info
@@ -163,7 +164,7 @@
     (throw (IllegalStateException.
              (message-with-repo-info
                (str "File sync found a non-empty directory which does "
-                    "not have a repository in it")
+                 "not have a repository in it")
                name
                target-dir)))))
 
@@ -202,8 +203,8 @@
         (throw+ {:type    ::error
                  :message (message-with-repo-info
                             (str "File sync was unable to "
-                                 (if fetch? "fetch" "clone")
-                                 " from server repo")
+                              (if fetch? "fetch" "clone")
+                              " from server repo")
                             name
                             target-dir)
                  :cause   e})))))
@@ -273,46 +274,46 @@
    data-dir]
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
-        (for [repo-name repos]
-          (let [target-dir (common/bare-repo data-dir repo-name)
-                submodule-root (str data-dir "/" (name repo-name))]
-            (if (contains? latest-commits repo-name)
-              (let [latest-commit (latest-commits repo-name)]
-                (try+
-                  {repo-name (process-repo-for-updates
-                               repo-base-url
-                               repo-name
-                               target-dir
-                               submodule-root
-                               latest-commit)}
-                  (catch sync-error? e
-                    (log/errorf
-                      (str "Error syncing repo: " (:message e))
-                      repo-name)
-                    {repo-name {:status :failed
-                                :cause  e}})))
-              (log/errorf
-                "File sync did not find matching server repo for client repo: %s"
-                repo-name))))))
+    (for [repo-name repos]
+      (let [target-dir (common/bare-repo data-dir repo-name)
+            submodule-root (str data-dir "/" (name repo-name))]
+        (if (contains? latest-commits repo-name)
+          (let [latest-commit (latest-commits repo-name)]
+            (try+
+              {repo-name (process-repo-for-updates
+                           repo-base-url
+                           repo-name
+                           target-dir
+                           submodule-root
+                           latest-commit)}
+              (catch sync-error? e
+                (log/errorf
+                  (str "Error syncing repo: " (:message e))
+                  repo-name)
+                {repo-name {:status :failed
+                            :cause  e}})))
+          (log/errorf
+            "File sync did not find matching server repo for client repo: %s"
+            repo-name))))))
 
 (schema/defn process-callbacks!
   "Using the states of the repos managed by the client, call the registered
   callback function if necessary"
   [callbacks :- Callbacks
    repos-status :- RepoStates]
-   (let [successful-repos (filter #(= :synced (get-in repos-status [% :status]))
-                            (keys repos-status))
-         necessary-callbacks (reduce set/union
-                               (for [repo successful-repos]
-                                 (get callbacks repo)))]
-     (doseq [callback necessary-callbacks]
-       (let [repos (set (filter
-                          #(contains? (get callbacks %) callback)
-                          (keys callbacks)))
-             statuses (select-keys repos-status repos)]
-         (log/debugf "Invoking callback function on repos %s"
-           repos)
-         (callback statuses)))))
+  (let [successful-repos (filter #(= :synced (get-in repos-status [% :status]))
+                           (keys repos-status))
+        necessary-callbacks (reduce set/union
+                              (for [repo successful-repos]
+                                (get callbacks repo)))]
+    (doseq [callback necessary-callbacks]
+      (let [repos (set (filter
+                         #(contains? (get callbacks %) callback)
+                         (keys callbacks)))
+            statuses (select-keys repos-status repos)]
+        (log/debugf "Invoking callback function on repos %s"
+          repos)
+        (callback statuses)))))
 
 (schema/defn process-repos-for-updates :- RepoStates
   [repos :- [schema/Keyword]
@@ -332,7 +333,8 @@
   [agent-state
    config :- CoreConfig
    http-client
-   callbacks :- Callbacks]
+   callbacks :- Callbacks
+   status-data! :- Atom]
   (try+
     (let [server-repo-path (get-in config [:client-config :server-repo-path])
           server-api-path (get-in config [:client-config :server-api-path])
@@ -342,6 +344,9 @@
                            http-client
                            (str server-url server-api-path)
                            agent-state)
+          check-in-time (common/timestamp)
+          _ (swap! status-data! assoc :last-check-in {:timestamp check-in-time
+                                                      :response latest-commits})
           repos (keys latest-commits)
           _ (log/debug "File sync process running on repos " repos)
           repo-states (process-repos-for-updates
@@ -351,7 +356,10 @@
                         callbacks
                         data-dir)
           full-success? (every? #(not= (:status %) :failed)
-                          (vals repo-states))]
+                          (vals repo-states))
+          sync-time (common/timestamp)]
+      (when full-success?
+        (swap! status-data! assoc :last-successful-sync-time sync-time))
       {:status (if full-success? :successful :partial-success)
        :repos repo-states})
     (catch sync-error? error
@@ -361,6 +369,23 @@
           (log/error message)))
       {:status :failed
        :error error})))
+
+(defn get-commit-status
+  [repo]
+  ;; Return nil for the commit status if the repo has never been
+  ;; synced or the repo does not yet have any commits
+  (if-not (nil? repo)
+    (when-let [commit-info (jgit-utils/latest-commit repo)]
+      (jgit-utils/commit->status-info commit-info))))
+
+(defn repos-status
+  [repos data-dir]
+  (into {}
+    (for [repo-id repos]
+      (let [repo (jgit-utils/get-repository-from-git-dir
+                   (common/bare-repo data-dir repo-id))
+            commit-info (get-commit-status repo)]
+        {repo-id {:latest-commit commit-info}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -373,9 +398,9 @@
    callback-fn :- IFn]
   (let [callbacks (deref (:callbacks context))
         new-callbacks (into {} (for [repo repo-ids]
-                                  (if (contains? callbacks repo)
-                                    {repo (conj (get callbacks repo) callback-fn)}
-                                    {repo #{callback-fn}})))]
+                                 (if (contains? callbacks repo)
+                                   {repo (conj (get callbacks repo) callback-fn)}
+                                   {repo #{callback-fn}})))]
     (swap! (:callbacks context) merge new-callbacks)))
 
 (schema/defn ^:always-validate configure-jgit-client-ssl!
@@ -388,8 +413,8 @@
   currently allow this - see https://bugs.eclipse.org/bugs/show_bug.cgi?id=460483"
   [ssl-context :- common/SSLContextOrNil]
   (-> ssl-context
-      (jgit-utils/create-connection-factory)
-      (HttpTransport/setConnectionFactory)))
+    (jgit-utils/create-connection-factory)
+    (HttpTransport/setConnectionFactory)))
 
 (defn create-agent
   "Creates and returns the agent used by the file sync client service.
@@ -416,18 +441,19 @@
    schedule-fn :- IFn
    config :- CoreConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callbacks :- Callbacks]
+   callbacks :- Callbacks
+   status-data! :- Atom]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
-                            (assoc :schedule-next-run? true)))
+                          (assoc :schedule-next-run? true)))
         send-to-agent #(send-off sync-agent periodic-sync config
-                                 http-client callbacks)]
+                        http-client callbacks status-data!)]
     (add-watch sync-agent
-               ::schedule-watch
-               (fn [key* ref* old-state new-state]
-                 (when (:schedule-next-run? new-state)
-                   (log/debug "Scheduling the next iteration of the sync process.")
-                   (schedule-fn send-to-agent))))
+      ::schedule-watch
+      (fn [key* ref* old-state new-state]
+        (when (:schedule-next-run? new-state)
+          (log/debug "Scheduling the next iteration of the sync process.")
+          (schedule-fn send-to-agent))))
     ; The watch is in place, now send the initial action.
     (send-to-agent)))
 
@@ -456,6 +482,14 @@
         (jgit-utils/submodule-update repo)))))
 
 (schema/defn ^:always-validate status :- status/StatusCallbackResponse
-  [level :- schema/Keyword]
-  {:state :running
-   :status {}})
+  [level :- schema/Keyword
+   data-dir :- schema/Str
+   status-data]
+  (let [repos (keys (get-in status-data [:last-check-in :response]))
+        status-data (if repos
+                      (assoc status-data :repos (repos-status repos data-dir))
+                      status-data)]
+    {:state :running
+     :status (when (not= level :critical)
+               (assoc status-data
+                 :timestamp (common/timestamp)))}))

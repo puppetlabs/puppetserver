@@ -2,13 +2,10 @@
   (:import (org.eclipse.jgit.api Git InitCommand)
            (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
            (clojure.lang Keyword)
-           (com.puppetlabs.enterprise NoGitlinksWorkingTreeIterator)
-           (org.eclipse.jgit.revwalk RevCommit))
+           (com.puppetlabs.enterprise NoGitlinksWorkingTreeIterator))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [clojure.set :as set]
-            [clj-time.core :as time]
-            [clj-time.format :as time-format]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -163,39 +160,6 @@
       (setDirectory (io/as-file path))
       (setBare true)
       (call)))
-
-(def datetime-formatter
-  "The date/time formatter used to produce timestamps using clj-time.
-   This matches the format used by PuppetDB."
-  (time-format/formatters :date-time))
-
-(defn format-date-time
-  "Given a DateTime object, return a human-readable, formatted string."
-  [date-time]
-  (time-format/unparse datetime-formatter date-time))
-
-(defn timestamp
-  "Returns a nicely-formatted string of the current date/time."
-  []
-  (format-date-time (time/now)))
-
-(defn jgit-time->human-readable
-  "Given a commit time from JGit, format it into a human-readable date/time string."
-  [commit-time]
-  (format-date-time
-    (time/plus
-      (time/epoch)
-      (time/seconds commit-time))))
-
-(schema/defn commit->status-info
-  "Given a RevCommit, extracts and returns information about it which is
-   relevant for the /status endpoint."
-  [commit :- RevCommit]
-  {:commit (jgit-utils/commit-id commit)
-   :date (jgit-time->human-readable (.getCommitTime commit))
-   :message (.getFullMessage commit)
-   :author {:name (.getName (.getAuthorIdent commit))
-            :email (.getEmailAddress (.getAuthorIdent commit))}})
 
 (schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommit)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
@@ -523,7 +487,7 @@
                    (common/bare-repo data-dir repo-id)
                    working-dir)
             repo-status (jgit-utils/status repo)]
-        {repo-id {:latest-commit (commit->status-info (jgit-utils/latest-commit repo))
+        {repo-id {:latest-commit (jgit-utils/commit->status-info (jgit-utils/latest-commit repo))
                   :working-dir {:clean (.isClean repo-status)
                                 :modified (.getModified repo-status)
                                 :missing (.getMissing repo-status)
@@ -543,7 +507,7 @@
   [!request-tracker request result]
   (swap! !request-tracker assoc
     :latest-publish {:client-ip-address (:remote-addr request)
-                     :timestamp (timestamp)
+                     :timestamp (common/timestamp)
                      :repos result}))
 
 (defn capture-client-info!
@@ -551,7 +515,7 @@
   (let [ip-address (:remote-addr request)]
     (swap! !request-tracker assoc-in
       [:clients ip-address] (assoc client-repos-info
-                              :last-check-in-time (timestamp)))))
+                              :last-check-in-time (common/timestamp)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler
@@ -638,5 +602,5 @@
   {:state :running
    :status (when (not= level :critical)
              (assoc request-data
-               :timestamp (timestamp)
+               :timestamp (common/timestamp)
                :repos (repos-status repos data-dir)))})

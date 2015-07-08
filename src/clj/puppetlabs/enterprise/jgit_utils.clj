@@ -9,7 +9,8 @@
            (org.eclipse.jgit.util FS)
            (java.io File)
            (com.puppetlabs.enterprise HttpClientConnection)
-           (org.eclipse.jgit.storage.file FileBasedConfig))
+           (org.eclipse.jgit.storage.file FileBasedConfig)
+           (org.eclipse.jgit.api.errors NoHeadException))
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
@@ -238,15 +239,18 @@
        (.setRemote remote)
        (.call))))
 
-(schema/defn latest-commit :- RevCommit
+(schema/defn latest-commit :- (schema/maybe RevCommit)
   "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
   [repo :- Repository]
-  (-> repo
+  (try
+    (-> repo
       Git/wrap
       .log
       (.setMaxCount 1)
       .call
-      first))
+      first)
+    (catch NoHeadException e
+      nil)))
 
 (defn commit-id
   "Given an instance of `AnyObjectId` or its subclasses
@@ -458,6 +462,17 @@
       .status
       .call))
 
+
 (defn extract-submodule-name
   [submodule]
   (re-find #"[^\/]+$" submodule))
+
+(schema/defn commit->status-info
+  "Given a RevCommit, extracts and returns information about it which is
+   relevant for the /status endpoint."
+  [commit :- RevCommit]
+  {:commit (commit-id commit)
+   :date (common/jgit-time->human-readable (.getCommitTime commit))
+   :message (.getFullMessage commit)
+   :author {:name (.getName (.getAuthorIdent commit))
+            :email (.getEmailAddress (.getAuthorIdent commit))}})
