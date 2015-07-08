@@ -45,15 +45,10 @@
                              {:status  200
                               :headers {"content-type" "application/json"}})))))
 
-(defn temp-file-name
-  "Returns a unique name to a temporary file, but does not actually create the file."
-  [file-name-prefix]
-  (fs/file (fs/tmpdir) (fs/temp-name file-name-prefix)))
-
 (deftest apply-updates-to-repo-test
   (let [repo-name "apply-updates-test"
         server-repo-url (str helpers/server-repo-url "/" repo-name)
-        client-repo-path (temp-file-name repo-name)
+        client-repo-path (helpers/temp-file-name repo-name)
         root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         config (helpers/storage-service-config
@@ -389,14 +384,12 @@
           (is (thrown? IllegalArgumentException
                        (sync-working-dir! client-data-dir repo-config :fake working-dir))))
 
-        (testing (str "sync-working-dir! should throw an exception if the "
-                      "desired working dir doesn't exist")
-          (let [fake-dir (fs/temp-name "test")]
-            (is (not (fs/exists? fake-dir)))
-            (is (thrown-with-msg?
-                  IllegalStateException
-                  #"Directory test.*must exist on disk to be synced as a working directory"
-                  (sync-working-dir! client-data-dir repo-config repo fake-dir)))))))))
+        (testing (str "sync-working-dir! should create the desired working dir "
+                      "if it doesn't exist")
+          (let [test-dir (helpers/temp-file-name "test")]
+            (is (not (fs/exists? test-dir)))
+            (sync-working-dir! client-data-dir repo-config repo test-dir)
+            (is (fs/exists? test-dir))))))))
 
 (deftest process-callbacks-test
   (let [atom-start-value {:count 0}

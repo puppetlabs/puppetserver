@@ -1,5 +1,6 @@
 (ns puppetlabs.enterprise.file-sync-common
-  (:import (javax.net.ssl SSLContext))
+  (:import (javax.net.ssl SSLContext)
+           (java.io File))
   (:require [cheshire.core :as json]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -22,6 +23,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
+(def StringOrFile (schema/pred
+                    (fn [x] (or (instance? String x) (instance? File x)))
+                    "String or File"))
 
 (def FileSyncCommonConfig
   "Schema defining the content of the configuration common to the File Sync

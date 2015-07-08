@@ -451,12 +451,13 @@
   [data-dir :- schema/Str
    repos :- ReposConfig
    repo-id :- schema/Keyword
-   working-dir :- schema/Str]
+   working-dir :- common/StringOrFile]
   (when-not (fs/exists? working-dir)
-    (throw
-      (IllegalStateException.
-        (str "Directory " working-dir " must exist on disk to be synced "
-             "as a working directory"))))
+    (when-not (fs/mkdirs working-dir)
+      (throw
+        (IllegalStateException.
+          (str "Directory " working-dir " does not exist and could not be created."
+            "It must exist on disk to be sync'ed as a working directory.")))))
   (if (some #(= repo-id %) repos)
     (let [git-dir (common/bare-repo data-dir repo-id)
           repo (jgit-utils/get-repository git-dir working-dir)]
