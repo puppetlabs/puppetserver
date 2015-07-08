@@ -3,7 +3,10 @@
             [puppetlabs.enterprise.jgit-utils :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.kitchensink.core :as ks]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
+            [me.raynes.fs :as fs])
+  (:import (org.eclipse.jgit.api Git)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -53,3 +56,31 @@
           (push local-repo (str repo-dir))
 
           (is (= (head-rev-id-from-git-dir repo-dir) commit-id)))))))
+
+(deftest test-remove-submodules-configuration
+  (let [repo-dir (helpers/temp-dir-as-string)
+        local-repo-dir (helpers/temp-dir-as-string)
+        submodule-dir (helpers/temp-dir-as-string)]
+
+    (helpers/init-bare-repo! (fs/file repo-dir))
+    (helpers/init-bare-repo! (fs/file submodule-dir))
+    (let [repo (jgit-utils/get-repository repo-dir local-repo-dir)]
+      (jgit-utils/submodule-add!
+        (Git. repo)
+        submodule-dir submodule-dir)
+      
+      (let [git-config (.getConfig repo)
+            gitmodules (jgit-utils/submodules-config repo)]
+        (.load gitmodules)
+        (testing "git config and .gitmodules contain submodule"
+          (is (not (empty? (.getSubsections git-config "submodule"))))
+          (is (not (empty? (.getSubsections gitmodules "submodule")))))
+
+        (testing (str "remove-submodule-configuration! successfully removes "
+                      "submodule configuration")
+          (jgit-utils/remove-submodule-configuration! repo submodule-dir)
+          (.load gitmodules)
+          (.load git-config)
+
+          (is (empty? (.getSubsections git-config "submodule")))
+          (is (empty? (.getSubsections gitmodules "submodule"))))))))

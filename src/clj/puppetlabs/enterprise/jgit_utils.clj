@@ -374,6 +374,16 @@
       .call))
   (fs/delete-dir (fs/file (.getWorkTree repo) submodule-name)))
 
+(defn submodule-add!
+  "Given a git-wrapped repository, a path, and a URL, add the submodule
+   at the given path to the provided repo"
+  [git submodule-path submodule-url]
+  (.. git
+    submoduleAdd
+    (setPath submodule-path)
+    (setURI submodule-url)
+    call))
+
 (defn change-submodule-url!
   "Given a repository, a submodule name, and a file path to a repository,
   changes the url for the given submodule in the given repository to the
