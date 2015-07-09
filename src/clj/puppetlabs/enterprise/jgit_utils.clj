@@ -11,6 +11,7 @@
            (com.puppetlabs.enterprise HttpClientConnection)
            (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
+            [clojure.core.match :refer [match]]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
             [schema.core :as schema]
@@ -102,6 +103,11 @@
         (.setCommitter person-ident)
         (.call))))
 
+(defn delete-all-files-in-dir
+  [dir]
+  (doseq [f (fs/list-dir dir)]
+    (fs/delete-dir (fs/file dir f))))
+
 (defn clone
   "Perform a git-clone of the content at the specified 'server-repo-url' string
   into a local directory.  The 'local-repo-dir' parameter should be a value
@@ -129,13 +135,23 @@
   ([server-repo-url local-repo-dir bare?]
    {:pre [(string? server-repo-url)]
     :post [(instance? Git %)]}
-   (-> (Git/cloneRepository)
-       (.setURI server-repo-url)
-       (.setDirectory (io/as-file local-repo-dir))
-       (.setBare bare?)
-       (.setRemote "origin")
-       (.setBranch "master")
-       (.call))))
+   (let [pre-existing-bare-repo-dir? (and bare? (fs/exists? local-repo-dir))
+         clone-command (.. (Git/cloneRepository)
+                           (setURI server-repo-url)
+                           (setDirectory (io/as-file local-repo-dir))
+                           (setBare bare?)
+                           (setRemote "origin")
+                           (setBranch "master"))]
+     (try
+       (.call clone-command)
+       (catch Throwable t
+         ; Don't leave a bogus git repository behind, this can prevent future
+         ; attempts to clone into this directory from succeeding.
+         (match [bare? pre-existing-bare-repo-dir?]
+           [true true] (delete-all-files-in-dir local-repo-dir)
+           [true false] (fs/delete-dir local-repo-dir)
+           [false _] (fs/delete-dir (fs/file local-repo-dir ".git")))
+         (throw t))))))
 
 (defn fetch
   "Perform a git-fetch of remote commits into the supplied repository.

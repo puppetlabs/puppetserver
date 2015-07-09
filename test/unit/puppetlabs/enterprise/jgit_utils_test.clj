@@ -104,3 +104,31 @@
       (jgit-utils/remove-submodule! repo submodule-path)
       (testing "submodule successfully removed from repo"
         (is (= 0 (count (jgit-utils/get-submodules repo))))))))
+
+(deftest test-clone
+  (testing "When clone fails, it does not leave a git bogus repository behind"
+    (testing "Normal clone (not bare)"
+      (let [repo-dir (fs/temp-dir "test-clone")]
+        (is (thrown?
+              Exception
+              (clone "http://invalid" repo-dir)))
+        (is (not (fs/exists? (fs/file repo-dir ".git"))))))
+    (testing "Bare repo"
+      (testing "Existing repo dir"
+        (let [repo-dir (fs/temp-dir "test-clone.git")]
+          (is (fs/exists? repo-dir))
+          (is (thrown?
+                Exception
+                (clone "http://invalid" repo-dir true)))
+          (testing "Exsting directory should not be deleted"
+            (is (fs/exists? repo-dir)))
+          (testing "But it should be empty"
+            (is (empty? (fs/list-dir repo-dir))))))
+      (testing "Repo dir doesn't yet exist"
+        (let [repo-dir (helpers/temp-file-name "test-clone.git")]
+          (is (not (fs/exists? repo-dir)))
+          (is (thrown?
+                Exception
+                (clone "http://invalid" repo-dir true)))
+          (testing "Directory which did not exist should not be created"
+            (is (not (fs/exists? repo-dir)))))))))

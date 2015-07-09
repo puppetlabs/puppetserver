@@ -23,6 +23,7 @@
                  [prismatic/schema "0.4.0"]
                  [compojure "1.3.3"]
                  [overtone/at-at "1.2.0"]
+                 [org.clojure/core.match "0.2.2"]
                  [ring/ring-json "0.3.1" :exclusions [ring/ring-core]]
                  [org.eclipse.jgit/org.eclipse.jgit.http.server ~jgit-version
                   :exclusions [org.apache.httpcomponents/httpclient]]
