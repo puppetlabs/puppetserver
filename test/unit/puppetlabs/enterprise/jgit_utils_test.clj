@@ -132,3 +132,13 @@
                 (clone "http://invalid" repo-dir true)))
           (testing "Directory which did not exist should not be created"
             (is (not (fs/exists? repo-dir)))))))))
+
+(deftest test-submodule-add
+  (testing "When submodule-add! fails, it does not leave a git bogus repository behind"
+    (let [repo-dir (fs/temp-dir "test-submodule-add")
+          submodule-name "my-submodule"]
+      (helpers/init-repo! repo-dir)
+      (is (thrown?
+            Exception
+            (submodule-add! (Git/open repo-dir) submodule-name "http://invalid")))
+      (is (not (fs/exists? (fs/file repo-dir submodule-name)))))))
