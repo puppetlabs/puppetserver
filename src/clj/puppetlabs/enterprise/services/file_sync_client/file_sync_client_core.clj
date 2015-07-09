@@ -217,10 +217,6 @@
                             target-dir)
                  :cause   e})))))
 
-(defn extract-submodule-name
-  [submodule]
-  (re-find #"[^\/]+$" submodule))
-
 (defn process-submodules-for-updates
   "Process a repo's submodules for any possible updates which may need to be
   applied."
@@ -228,7 +224,7 @@
   (into
     {}
     (for [[submodule commit] submodules-commit-info]
-      (let [submodule-name (extract-submodule-name submodule)
+      (let [submodule-name (jgit-utils/extract-submodule-name submodule)
             target-dir (common/bare-repo submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))

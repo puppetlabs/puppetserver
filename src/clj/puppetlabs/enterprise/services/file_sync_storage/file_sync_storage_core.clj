@@ -7,6 +7,7 @@
            (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
             [clojure.java.io :as io]
+            [clojure.set :as set]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -67,8 +68,13 @@
   The keys should have the following values:
 
     * :repos     - A sequence with metadata about each of the individual
-                   Git repositories that the server manages."
-  {:repos GitRepos})
+                   Git repositories that the server manages.
+    * :preserve-submodule-repos - A boolean indicating whether or not the bare
+                                  repos for submodules should be preserved
+                                  on-disk when that submodule is deleted from
+                                  the relevant repo. Defaults to false."
+  {:repos GitRepos
+   (schema/optional-key :preserve-submodule-repos) schema/Bool})
 
 (def PublishRequestBase
   {(schema/optional-key :message) schema/Str
@@ -328,11 +334,7 @@
   ;; do a submodule add on the parent repo and return the SHA from the cloned
   ;; submodule within the repo
   (log/debugf "Adding submodule to parent repo at %s" submodule-path)
-  (let [repo  (.. parent-git
-                submoduleAdd
-                (setPath submodule-path)
-                (setURI submodule-url)
-                call)]
+  (let [repo  (jgit-utils/submodule-add! parent-git submodule-path submodule-url)]
     (jgit-utils/head-rev-id repo)))
 
 (defn publish-existing-submodule
@@ -382,44 +384,66 @@
    data-dir
    server-repo-url
    commit-info]
-  (for [submodule submodules]
-    (let [repo-name (name repo)
-          submodule-git-dir (common/submodule-bare-repo data-dir repo-name submodule)
-          submodule-working-dir (fs/file submodules-working-dir submodule)
-          submodule-path (submodule-path submodules-dir submodule)
-          submodule-within-parent (fs/file working-dir submodule-path)
-          submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)
-          parent-git (-> (common/bare-repo data-dir repo-name)
-                       (jgit-utils/get-repository working-dir)
-                       Git/wrap)]
+  (doall
+    (for [submodule submodules]
+      (let [repo-name (name repo)
+            submodule-git-dir (common/submodule-bare-repo data-dir repo-name submodule)
+            submodule-working-dir (fs/file submodules-working-dir submodule)
+            submodule-path (submodule-path submodules-dir submodule)
+            submodule-within-parent (fs/file working-dir submodule-path)
+            submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)
+            parent-git (-> (common/bare-repo data-dir repo-name)
+                         (jgit-utils/get-repository working-dir)
+                         Git/wrap)]
 
-      (log/infof "Publishing submodule %s for repo %s" submodule-path repo-name)
-      ;; Check whether the submodule exists on the parent repo. If it does
-      ;; then we add and commit the submodule in its repo, then do a pull
-      ;; within the parent repo to update it there. If it does not exist, then
-      ;; we need to initialize a new bare repo for the submodule and do a
-      ;; "submodule add".
-      (try
-        (if (empty? (.. parent-git
-                      submoduleStatus
-                      (addPath submodule-path)
-                      call))
-          (init-new-submodule
-            submodule-git-dir
-            submodule-working-dir
-            submodule-path
-            parent-git
-            submodule-url
-            commit-info)
-          (publish-existing-submodule
-            submodule-git-dir
-            submodule-working-dir
-            submodule-within-parent
-            commit-info))
-        (catch JGitInternalException e
-          (failed-to-publish submodule-within-parent e))
-        (catch GitAPIException e
-          (failed-to-publish submodule-within-parent e))))))
+        (log/infof "Publishing submodule %s for repo %s" submodule-path repo-name)
+        ;; Check whether the submodule exists on the parent repo. If it does
+        ;; then we add and commit the submodule in its repo, then do a pull
+        ;; within the parent repo to update it there. If it does not exist, then
+        ;; we need to initialize a new bare repo for the submodule and do a
+        ;; "submodule add".
+        (try
+          (if (empty? (.. parent-git
+                        submoduleStatus
+                        (addPath submodule-path)
+                        call))
+            (init-new-submodule
+              submodule-git-dir
+              submodule-working-dir
+              submodule-path
+              parent-git
+              submodule-url
+              commit-info)
+            (publish-existing-submodule
+              submodule-git-dir
+              submodule-working-dir
+              submodule-within-parent
+              commit-info))
+          (catch JGitInternalException e
+            (failed-to-publish submodule-within-parent e))
+          (catch GitAPIException e
+            (failed-to-publish submodule-within-parent e)))))))
+
+(defn remove-submodules!
+  "Given a repository and the list of submodules in the submodules-working-dir,
+   remove any submodules that no longer exist in the submodules-working-dir
+   from the repository"
+  [repo submodules submodules-dir commit-identity data-dir repo-id preserve-submodules?]
+  (let [submodules-in-repo (set (jgit-utils/get-submodules repo))
+        submodules (set (map #(str submodules-dir "/" %) submodules))
+        deleted-submodules (set/difference submodules-in-repo submodules)]
+    (doseq [submodule deleted-submodules]
+      (jgit-utils/remove-submodule! repo submodule)
+      (when-not preserve-submodules?
+        (let [submodules-repo-dir (fs/file data-dir (name repo-id))]
+          (fs/delete-dir (fs/file submodules-repo-dir
+                           (str (jgit-utils/extract-submodule-name submodule) ".git"))))))
+    (when-not (empty? deleted-submodules)
+      (let [commit-message (str "Delete submodules: "
+                             (apply str (interpose ", " deleted-submodules)))
+            git (Git. repo)]
+        (jgit-utils/add! git ".gitmodules")
+        (jgit-utils/commit git commit-message commit-identity)))))
 
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit author,
@@ -429,6 +453,7 @@
   [repos :- GitRepos
    data-dir :- schema/Str
    server-repo-url :- schema/Str
+   preserve-submodules? :- schema/Bool
    commit-info :- common/CommitInfo
    submodule-id :- (schema/maybe schema/Str)]
   (for [[repo-id {:keys [working-dir submodules-dir submodules-working-dir]} :as repo] repos]
@@ -439,13 +464,20 @@
             submodules (if submodule-id
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
-            submodules-status (doall (publish-submodules submodules repo data-dir server-repo-url commit-info))]
+            git-dir (common/bare-repo data-dir repo-id)
+            git-repo (jgit-utils/get-repository git-dir working-dir)]
         (try
-          (log/infof "Committing repo %s" working-dir)
-          (let [git-dir (common/bare-repo data-dir repo-id)
-                git (Git/wrap (jgit-utils/get-repository git-dir working-dir))
-                commit (do (add-all-with-submodules git submodules-dir)
-                         (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
+          (log/infof "Removing deleted submodules for repo %s" working-dir)
+          (remove-submodules!
+            git-repo all-submodules submodules-dir (:identity commit-info)
+            data-dir repo-id preserve-submodules?)
+          (let [submodules-status (publish-submodules
+                                    submodules repo data-dir
+                                    server-repo-url commit-info)
+                git (Git/wrap git-repo)
+                commit (do (log/infof "Committing repo %s" working-dir)
+                           (add-all-with-submodules git submodules-dir)
+                           (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules
@@ -465,7 +497,8 @@
   [repos :- GitRepos
    body
    data-dir
-   server-repo-url]
+   server-repo-url
+   preserve-submodules?]
   (if-let [checked-body (schema/check PublishRequestBody body)]
     (throw+ {:type    :user-data-invalid
              :message (str "Request body did not match schema: "
@@ -481,6 +514,7 @@
                         repos-to-publish
                         data-dir
                         server-repo-url
+                        preserve-submodules?
                         commit-info
                         submodule-id)]
       (zipmap (keys repos-to-publish) new-commits))))
@@ -530,7 +564,7 @@
 (defn base-ring-handler
   "Returns a Ring handler for the File Sync Storage Service's API using the
    given configuration values."
-  [data-dir repos server-repo-url !request-tracker]
+  [data-dir repos server-repo-url preserve-submodules? !request-tracker]
   (compojure/routes
     (compojure/context "/v1" []
       (compojure/POST common/publish-content-sub-path {:keys [body headers] :as request}
@@ -546,7 +580,7 @@
             (try
               (let [json-body (json/parse-string (slurp body) true)
                     result (publish-content
-                             repos json-body data-dir server-repo-url)]
+                             repos json-body data-dir server-repo-url preserve-submodules?)]
                 (capture-publish-info! !request-tracker request result)
                 {:status 200
                  :body result})
@@ -572,8 +606,8 @@
 (defn ring-handler
   "Returns a Ring handler (created via base-ring-handler) and wraps it in all of
    necessary middleware for error handling, logging, etc."
-  [data-dir sub-paths server-repo-url !request-tracker]
-  (-> (base-ring-handler data-dir sub-paths server-repo-url !request-tracker)
+  [data-dir sub-paths server-repo-url preserve-submodules? !request-tracker]
+  (-> (base-ring-handler data-dir sub-paths server-repo-url preserve-submodules? !request-tracker)
     ringutils/wrap-request-logging
     ringutils/wrap-user-data-errors
     ringutils/wrap-schema-errors
