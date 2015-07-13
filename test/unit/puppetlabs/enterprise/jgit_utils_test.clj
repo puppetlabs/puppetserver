@@ -106,46 +106,72 @@
         (is (= 0 (count (jgit-utils/get-submodules repo))))))))
 
 (deftest test-clone
-  (testing "When clone fails, it does not leave a git bogus repository behind"
-    (testing "Normal clone (not bare)"
-      (let [repo-dir (fs/temp-dir "test-clone")]
-        (is (thrown?
-              Exception
-              (clone "http://invalid" repo-dir)))
-        (is (not (fs/exists? (fs/file repo-dir ".git"))))
-        (is (fs/exists? repo-dir))))
-    (testing "Bare repo"
-      (testing "Existing repo dir"
-        (let [repo-dir (fs/temp-dir "test-clone.git")]
-          (is (fs/exists? repo-dir))
+  (testing "When clone fails, it does not leave a bogus git repository behind"
+    (let [repo-path (str (fs/temp-dir "repo") ".git")
+          repo-url (str "file://" repo-path)]
+      (helpers/init-bare-repo! repo-path)
+      (testing "Normal clone (not bare)"
+        (let [clone-path (fs/temp-dir "test-clone")]
           (is (thrown?
                 Exception
-                (clone "http://invalid" repo-dir true)))
-          (testing "Exsting directory should not be deleted"
-            (is (fs/exists? repo-dir)))
-          (testing "But it should be empty"
-            (is (empty? (fs/list-dir repo-dir))))))
-      (testing "Repo dir doesn't yet exist"
-        (let [repo-dir (helpers/temp-file-name "test-clone.git")]
-          (is (not (fs/exists? repo-dir)))
-          (is (thrown?
-                Exception
-                (clone "http://invalid" repo-dir true)))
-          (testing "Directory which did not exist should not be created"
-            (is (not (fs/exists? repo-dir)))))))))
+                (clone "file:///invalid" clone-path)))
+          (is (not (fs/exists? (fs/file clone-path ".git"))))
+          (is (fs/exists? clone-path))
+          (testing "Fixing the URL and re-attempting the clone works"
+            (clone repo-url clone-path)
+            ; If 'clone' does not throw an Exception, it was successful.
+            (is true))))
+      (testing "Bare repo"
+        (testing "Existing repo dir"
+          (let [clone-path (fs/temp-dir "test-clone.git")]
+            (is (fs/exists? clone-path))
+            (is (thrown?
+                  Exception
+                  (clone "file:///invalid" clone-path true)))
+            (testing "Exsting directory should not be deleted"
+              (is (fs/exists? clone-path)))
+            (testing "But it should be empty"
+              (is (empty? (fs/list-dir clone-path))))
+            (testing "Fixing the URL and re-attempting the clone works"
+              (clone repo-url clone-path)
+              ; If 'clone' does not throw an Exception, it was successful.
+              (is true))))
+        (testing "Repo dir doesn't yet exist"
+          (let [clone-path (helpers/temp-file-name "test-clone.git")]
+            (is (not (fs/exists? clone-path)))
+            (is (thrown?
+                  Exception
+                  (clone "file:///invalid" clone-path true)))
+            (testing "Directory which did not exist should not be created"
+              (is (not (fs/exists? clone-path))))
+            (testing "Fixing the URL and re-attempting the clone works"
+              (clone repo-url clone-path)
+              ; If 'clone' does not throw an Exception, it was successful.
+              (is true))))))))
 
 (deftest test-submodule-add
-  (let [repo-dir (fs/temp-dir "test-submodule-add")
-        submodule-name "my-submodule"]
-    (helpers/init-repo! repo-dir)
-    (testing "When submodule-add! fails, it does not leave a git bogus repository behind"
-      (is (thrown?
-            Exception
-            (submodule-add! (Git/open repo-dir) submodule-name "http://invalid")))
-      (is (not (fs/exists? (fs/file repo-dir submodule-name)))))
+  (let [submodule-name "my-submodule"
+        submodule-source-repo-path (str (fs/temp-dir "submodule-source") ".git")
+        submodule-url (str "file://" submodule-source-repo-path)]
+    (helpers/init-bare-repo! submodule-source-repo-path)
+    (testing "When submodule-add! fails, it does not leave a bogus git repository behind"
+      (let [repo-dir (fs/temp-dir "test-submodule-add")
+            _ (helpers/init-repo! repo-dir)
+            git (Git/open repo-dir)]
+        (is (thrown?
+              Exception
+              (submodule-add! git submodule-name "file:///invalid")))
+        (is (not (fs/exists? (fs/file repo-dir submodule-name))))
+        (testing "Fixing the URL and re-attempting the submodule-add works"
+          (submodule-add! git submodule-name submodule-url)
+          ; If 'submodule-add!' does not throw an Exception, it was successful.
+          (is true))))
     (testing "submodule-add! does not delete pre-existing files on failure"
-      (spit (fs/file repo-dir submodule-name) "foo")
-      (is (thrown?
-            Exception
-            (submodule-add! (Git/open repo-dir) submodule-name "http://invalid")))
-      (is (= "foo" (slurp (fs/file repo-dir submodule-name)))))))
+      (let [repo-dir (fs/temp-dir "test-submodule-add")
+            _ (helpers/init-repo! repo-dir)
+            git (Git/open repo-dir)]
+        (spit (fs/file repo-dir submodule-name) "foo")
+        (is (thrown?
+              Exception
+              (submodule-add! git submodule-name "file:///invalid")))
+        (is (= "foo" (slurp (fs/file repo-dir submodule-name))))))))

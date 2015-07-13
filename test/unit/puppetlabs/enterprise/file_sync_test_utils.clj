@@ -4,6 +4,7 @@
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
            (org.eclipse.jgit.treewalk CanonicalTreeParser))
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as io]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -220,7 +221,7 @@
   "Creates a new Git repository at the given path.  Like `git init`."
   [path]
   (-> (Git/init)
-      (.setDirectory path)
+      (.setDirectory (io/as-file path))
       (.setBare true)
       (.call)))
 
