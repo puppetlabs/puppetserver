@@ -119,8 +119,8 @@
           (is (fs/exists? clone-path))
           (testing "Fixing the URL and re-attempting the clone works"
             (clone repo-url clone-path)
-            ; If 'clone' does not throw an Exception, it was successful.
-            (is true))))
+            (is (fs/exists? (fs/file clone-path ".git")))
+            (is (not (empty? (fs/list-dir clone-path)))))))
       (testing "Bare repo"
         (testing "Existing repo dir"
           (let [clone-path (fs/temp-dir "test-clone.git")]
@@ -133,9 +133,9 @@
             (testing "But it should be empty"
               (is (empty? (fs/list-dir clone-path))))
             (testing "Fixing the URL and re-attempting the clone works"
-              (clone repo-url clone-path)
-              ; If 'clone' does not throw an Exception, it was successful.
-              (is true))))
+              (clone repo-url clone-path true)
+              (is (fs/exists? clone-path))
+              (is (not (empty? (fs/list-dir clone-path)))))))
         (testing "Repo dir doesn't yet exist"
           (let [clone-path (helpers/temp-file-name "test-clone.git")]
             (is (not (fs/exists? clone-path)))
@@ -145,9 +145,9 @@
             (testing "Directory which did not exist should not be created"
               (is (not (fs/exists? clone-path))))
             (testing "Fixing the URL and re-attempting the clone works"
-              (clone repo-url clone-path)
-              ; If 'clone' does not throw an Exception, it was successful.
-              (is true))))))))
+              (clone repo-url clone-path true)
+              (is (fs/exists? clone-path))
+              (is (not (empty? (fs/list-dir clone-path)))))))))))
 
 (deftest test-submodule-add
   (let [submodule-name "my-submodule"
@@ -164,8 +164,8 @@
         (is (not (fs/exists? (fs/file repo-dir submodule-name))))
         (testing "Fixing the URL and re-attempting the submodule-add works"
           (submodule-add! git submodule-name submodule-url)
-          ; If 'submodule-add!' does not throw an Exception, it was successful.
-          (is true))))
+          (is (fs/exists? (fs/file repo-dir submodule-name)))
+          (is (not (empty? (fs/list-dir (fs/file repo-dir submodule-name))))))))
     (testing "submodule-add! does not delete pre-existing files on failure"
       (let [repo-dir (fs/temp-dir "test-submodule-add")
             _ (helpers/init-repo! repo-dir)
