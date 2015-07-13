@@ -1,8 +1,7 @@
 (ns puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core
-  (:import (java.io File)
-           (org.eclipse.jgit.api Git InitCommand)
+  (:import (org.eclipse.jgit.api Git InitCommand)
            (org.eclipse.jgit.api.errors GitAPIException JGitInternalException)
-           (clojure.lang Keyword Atom)
+           (clojure.lang Keyword)
            (com.puppetlabs.enterprise NoGitlinksWorkingTreeIterator)
            (org.eclipse.jgit.revwalk RevCommit))
   (:require [clojure.tools.logging :as log]
@@ -34,10 +33,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
-(def StringOrFile (schema/pred
-                    (fn [x] (or (instance? String x) (instance? File x)))
-                    "String or File"))
-
 (def GitRepo
   "Schema defining a Git repository.
 
@@ -54,10 +49,10 @@
   `submodules-dir` and `submodules-working-dir` are optional, but if one is
   present the other must be too."
   (schema/if :submodules-dir
-    {:working-dir StringOrFile
-     :submodules-dir StringOrFile
-     :submodules-working-dir StringOrFile}
-    {:working-dir StringOrFile}))
+    {:working-dir common/StringOrFile
+     :submodules-dir common/StringOrFile
+     :submodules-working-dir common/StringOrFile}
+    {:working-dir common/StringOrFile}))
 
 (def GitRepos
   {schema/Keyword GitRepo})
@@ -638,7 +633,7 @@
 (schema/defn ^:always-validate status :- status/StatusCallbackResponse
   [level :- Keyword
    repos :- GitRepos
-   data-dir :- StringOrFile
+   data-dir :- common/StringOrFile
    request-data]
   {:state :running
    :status (when (not= level :critical)
