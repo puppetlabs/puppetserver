@@ -141,38 +141,6 @@
         ;; now the pool is flushed, so the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
-(deftest ^:integration admin-api-multiple-flush-jruby-pool-test
-  (testing "Flushing the jruby pool multiple times results in all new JRuby instances"
-    (bootstrap/with-puppetserver-running
-      app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
-      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-            context (tk-services/service-context jruby-service)
-            pool-context (:pool-context context)
-            times-to-flush 3]
-        ;; set a ruby constant in each instance so that we can recognize them
-        (is (true? (set-constants-and-verify pool-context 4)))
-        (let [times-flushed (atom 0)
-              _ (add-watch (:pool-agent pool-context)
-                           :flush-callback
-                           (fn [k _ _ _]
-                             (when (= k :flush-callback)
-                               (swap! times-flushed inc))))
-              wait-until (+ (System/currentTimeMillis) 300000)]
-          (dotimes [_ times-to-flush]
-            (is (true? (trigger-flush ssl-request-options))))
-          (while (and (< (System/currentTimeMillis) wait-until)
-                      (< @times-flushed times-to-flush))
-            (Thread/sleep 100))
-          (is (< (System/currentTimeMillis) wait-until)
-              (str "Pool not flushed expected number of times before timeout"))
-          (is (= @times-flushed times-to-flush)
-              "Pool flushed an unexpected number of times")
-          (remove-watch (:pool-agent pool-context) :flush-callback))
-        ;; now the pool is flushed, so the constants should be cleared
-        (is (true? (verify-no-constants pool-context 4)))))))
-
 (deftest ^:integration hold-instance-while-pool-flush-in-progress-test
   (testing "instance borrowed from old pool before pool flush begins and returned *after* new pool is available"
     (bootstrap/with-puppetserver-running
@@ -203,12 +171,12 @@
     (bootstrap/with-puppetserver-running
       app
       {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
+       :jruby-puppet {:max-active-instances 2}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
         ;; set a ruby constant in each instance so that we can recognize them
-        (is (true? (set-constants-and-verify pool-context 4)))
+        (is (true? (set-constants-and-verify pool-context 2)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)
               ;; borrow an instance and hold the reference to it.
               instance (jruby-protocol/borrow-instance jruby-service)
@@ -232,7 +200,7 @@
           ;; wait until the flush is complete
           @flush-complete)
         ;; now the pool is flushed, and the constants should be cleared
-        (is (true? (verify-no-constants pool-context 4)))))))
+        (is (true? (verify-no-constants pool-context 2)))))))
 
 (deftest ^:integration max-requests-flush-while-pool-flush-in-progress-test
   (testing "instance from new pool hits max-requests while flush in progress"
