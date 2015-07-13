@@ -11,7 +11,6 @@
            (com.puppetlabs.enterprise HttpClientConnection)
            (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
-            [clojure.core.match :refer [match]]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
             [schema.core :as schema]
@@ -147,10 +146,11 @@
        (catch Throwable t
          ; Don't leave a bogus git repository behind, this can prevent future
          ; attempts to clone into this directory from succeeding.
-         (match [bare? pre-existing-bare-repo-dir?]
-           [true true] (delete-all-files-in-dir local-repo-dir)
-           [true false] (fs/delete-dir local-repo-dir)
-           [false _] (fs/delete-dir (fs/file local-repo-dir ".git")))
+         (if bare?
+           (if pre-existing-bare-repo-dir?
+             (delete-all-files-in-dir local-repo-dir)
+             (fs/delete-dir local-repo-dir))
+           (fs/delete-dir (fs/file local-repo-dir ".git")))
          (throw t))))))
 
 (defn fetch
