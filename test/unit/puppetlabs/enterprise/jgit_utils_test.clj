@@ -112,7 +112,8 @@
         (is (thrown?
               Exception
               (clone "http://invalid" repo-dir)))
-        (is (not (fs/exists? (fs/file repo-dir ".git"))))))
+        (is (not (fs/exists? (fs/file repo-dir ".git"))))
+        (is (fs/exists? repo-dir))))
     (testing "Bare repo"
       (testing "Existing repo dir"
         (let [repo-dir (fs/temp-dir "test-clone.git")]
