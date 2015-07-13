@@ -394,7 +394,12 @@
   "Given a git-wrapped repository, a path, and a URL, add the submodule
    at the given path to the provided repo"
   [git submodule-path submodule-url]
-  (let [submodule-add-command (.. git
+  (let [work-tree (.getWorkTree (.getRepository git))
+        submodule-absolute-path (if (fs/absolute? submodule-path)
+                                  submodule-path
+                                  (fs/file work-tree submodule-path))
+        pre-existing-submodule-path? (fs/exists? submodule-absolute-path)
+        submodule-add-command (.. git
                                   submoduleAdd
                                   (setPath submodule-path)
                                   (setURI submodule-url))]
@@ -403,8 +408,8 @@
       (catch Throwable t
         ; Don't leave a bogus submodule behind, this can
         ; prevent future attempts to add this submodule from succeeding.
-        (let [working-dir (.getWorkTree (.getRepository git))]
-          (fs/delete-dir (fs/file working-dir submodule-path)))
+        (when-not pre-existing-submodule-path?
+          (fs/delete-dir submodule-absolute-path))
         (throw t)))))
 
 (defn change-submodule-url!

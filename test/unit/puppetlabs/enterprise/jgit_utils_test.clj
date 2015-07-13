@@ -135,11 +135,17 @@
             (is (not (fs/exists? repo-dir)))))))))
 
 (deftest test-submodule-add
-  (testing "When submodule-add! fails, it does not leave a git bogus repository behind"
-    (let [repo-dir (fs/temp-dir "test-submodule-add")
-          submodule-name "my-submodule"]
-      (helpers/init-repo! repo-dir)
+  (let [repo-dir (fs/temp-dir "test-submodule-add")
+        submodule-name "my-submodule"]
+    (helpers/init-repo! repo-dir)
+    (testing "When submodule-add! fails, it does not leave a git bogus repository behind"
       (is (thrown?
             Exception
             (submodule-add! (Git/open repo-dir) submodule-name "http://invalid")))
-      (is (not (fs/exists? (fs/file repo-dir submodule-name)))))))
+      (is (not (fs/exists? (fs/file repo-dir submodule-name)))))
+    (testing "submodule-add! does not delete pre-existing files on failure"
+      (spit (fs/file repo-dir submodule-name) "foo")
+      (is (thrown?
+            Exception
+            (submodule-add! (Git/open repo-dir) submodule-name "http://invalid")))
+      (is (= "foo" (slurp (fs/file repo-dir submodule-name)))))))
