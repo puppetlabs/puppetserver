@@ -44,7 +44,7 @@
    :keylength             512
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
-   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib"]})
+   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

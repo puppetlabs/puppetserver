@@ -13,7 +13,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 
-(def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
+(def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
 
 (def conf-dir "./target/master-conf")
 (def var-dir "./target/master-var")
