@@ -4,6 +4,7 @@
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
            (org.eclipse.jgit.treewalk CanonicalTreeParser))
   (:require [clojure.test :refer :all]
+            [clojure.java.io :as io]
             [me.raynes.fs :as fs]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -220,18 +221,9 @@
   "Creates a new Git repository at the given path.  Like `git init`."
   [path]
   (-> (Git/init)
-      (.setDirectory path)
+      (.setDirectory (io/as-file path))
       (.setBare true)
       (.call)))
-
-(defn add-remote!
-  "Adds a remote named `name` with url `url` to a git instance."
-  [git name url]
-  (let [config (-> git
-                   .getRepository
-                   .getConfig)]
-    (.setString config "remote" name "url" url)
-    (.save config)))
 
 (defn get-latest-commit-diff
   [repo]
