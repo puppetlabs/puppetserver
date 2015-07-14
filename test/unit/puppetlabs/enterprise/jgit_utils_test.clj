@@ -137,7 +137,7 @@
               (is (fs/exists? clone-path))
               (is (not (empty? (fs/list-dir clone-path)))))))
         (testing "Repo dir doesn't yet exist"
-          (let [clone-path (helpers/temp-file-name "test-clone.git")]
+          (let [clone-path (ks/temp-file-name "test-clone.git")]
             (is (not (fs/exists? clone-path)))
             (is (thrown?
                   Exception

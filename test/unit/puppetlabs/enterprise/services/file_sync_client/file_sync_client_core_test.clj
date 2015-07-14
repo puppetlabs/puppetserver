@@ -48,7 +48,7 @@
 (deftest apply-updates-to-repo-test
   (let [repo-name "apply-updates-test"
         server-repo-url (str helpers/server-repo-url "/" repo-name)
-        client-repo-path (helpers/temp-file-name repo-name)
+        client-repo-path (ks/temp-file-name repo-name)
         root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         config (helpers/storage-service-config
@@ -386,7 +386,7 @@
 
         (testing (str "sync-working-dir! should create the desired working dir "
                       "if it doesn't exist")
-          (let [test-dir (helpers/temp-file-name "test")]
+          (let [test-dir (ks/temp-file-name "test")]
             (is (not (fs/exists? test-dir)))
             (sync-working-dir! client-data-dir repo-config repo test-dir)
             (is (fs/exists? test-dir))))))))
