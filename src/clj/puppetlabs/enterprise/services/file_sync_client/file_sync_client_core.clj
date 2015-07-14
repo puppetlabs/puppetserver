@@ -379,13 +379,21 @@
       (jgit-utils/commit->status-info commit-info))))
 
 (defn repos-status
-  [repos data-dir]
+  [repos data-dir latest-commits]
   (into {}
     (for [repo-id repos]
       (let [repo (jgit-utils/get-repository-from-git-dir
                    (common/bare-repo data-dir repo-id))
-            commit-info (get-commit-status repo)]
-        {repo-id {:latest-commit commit-info}}))))
+            commit-info (get-commit-status repo)
+            submodules (get-in latest-commits [repo-id :submodules])
+            submodules-status (into {}
+                                (for [[submodule _] submodules]
+                                  {submodule (get-commit-status
+                                               (jgit-utils/get-repository-from-git-dir
+                                                 (common/submodule-bare-repo
+                                                   data-dir repo-id (jgit-utils/extract-submodule-name submodule))))}))]
+        {repo-id {:latest-commit commit-info
+                  :submodules submodules-status}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -485,9 +493,10 @@
   [level :- schema/Keyword
    data-dir :- schema/Str
    status-data]
-  (let [repos (keys (get-in status-data [:last-check-in :response]))
+  (let [latest-commits (get-in status-data [:last-check-in :response])
+        repos (keys latest-commits)
         status-data (if repos
-                      (assoc status-data :repos (repos-status repos data-dir))
+                      (assoc status-data :repos (repos-status repos data-dir latest-commits))
                       status-data)]
     {:state :running
      :status (when (not= level :critical)

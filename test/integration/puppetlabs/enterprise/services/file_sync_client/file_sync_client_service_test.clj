@@ -270,7 +270,6 @@
         data-dir (helpers/temp-dir-as-string)
         repo "repo"
         working-dir (helpers/temp-dir-as-string)]
-    (logging/with-test-logging)
     (bootstrap/with-app-with-config
       app
       helpers/file-sync-services-and-deps
@@ -346,4 +345,64 @@
                         "email" "test@foo.com"}
                       (get latest-commit-status "author"))))
               (testing "The commit message"
-                (is (= "my msg" (get latest-commit-status "message")))))))))))
+                (is (= "my msg" (get latest-commit-status "message")))))))
+
+        (testing "status level is honored"
+          (let [response (fetch-status :critical)
+                body (json/parse-string (:body response))]
+            (is (= "running" (get body "state")))
+            (is (nil? (get body "status")))
+            (is (contains? body "status"))))))))
+
+(deftest ^:integration status-endpoint-submodules-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "submodule"
+        submodule-path (str submodules-dir "/" submodule-name)]
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {:repo {:working-dir working-dir
+                                                 :submodules-dir submodules-dir
+                                                 :submodules-working-dir submodules-working-dir}})
+
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules content")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                   json/generate-string)
+            submodule-commit-id (-> (helpers/do-publish publish-request-body)
+                                  :body
+                                  json/parse-string
+                                  (get-in ["repo"
+                                           "submodules"
+                                           submodule-path]))
+            sync-agent (helpers/get-sync-agent app)]
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+        (helpers/wait-for-new-state sync-agent)
+
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))
+              latest-commit-status (get-in body ["status" "repos" "repo" "submodules" submodule-path])]
+          (is (= 200 (:status response)))
+          (testing "Latest commit ID"
+            (is (= submodule-commit-id (get latest-commit-status "commit"))))
+          (testing "Commit date/time"
+            (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+              (is (time/after? commit-time (-> test-start-time
+                                             (time/minus (time/seconds 1)))))
+              (is (time/before? commit-time (time/now)))))
+          (testing "The commit author"
+            (is (= {"name" "Testy"
+                    "email" "test@foo.com"}
+                  (get latest-commit-status "author"))))
+          (testing "The commit message"
+            (is (= "my msg" (get latest-commit-status "message")))))))))
