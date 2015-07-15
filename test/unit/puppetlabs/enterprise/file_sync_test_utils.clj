@@ -129,12 +129,6 @@
   []
   (.getPath (ks/temp-dir)))
 
-; TODO use this function from kitchensink once it's available in a release
-(defn temp-file-name
-  "Returns a unique name to a temporary file, but does not actually create the file."
-  [file-name-prefix]
-  (fs/file (fs/tmpdir) (fs/temp-name file-name-prefix)))
-
 (defn write-test-file!
   [file]
   (spit file file-text))

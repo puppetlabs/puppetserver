@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :refer :all]
@@ -12,9 +13,9 @@
 
 (deftest initialize-repos-test
   (testing "A single repo"
-    (let [data-dir (helpers/temp-file-name "data")
+    (let [data-dir (ks/temp-file-name "data")
           repo-id "single-repo"
-          working-dir (helpers/temp-file-name repo-id)
+          working-dir (ks/temp-file-name repo-id)
           git-dir (common/bare-repo data-dir repo-id)]
       (initialize-repos! {:repos    {:single-repo {:working-dir working-dir}}}
                          (str data-dir))

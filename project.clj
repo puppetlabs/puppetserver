@@ -1,6 +1,6 @@
 (def tk-version "1.1.1")
 (def tk-jetty-version "1.3.1")
-(def ks-version "1.1.0")
+(def ks-version "1.2.0")
 (def jgit-version "3.7.0.201502260915-r")
 
 (defn deploy-info
