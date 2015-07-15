@@ -476,3 +476,24 @@
    :message (.getFullMessage commit)
    :author {:name (.getName (.getAuthorIdent commit))
             :email (.getEmailAddress (.getAuthorIdent commit))}})
+
+(defn repo-status-info
+  [repo]
+  (let [repo-status (status repo)]
+    {:clean (.isClean repo-status)
+     :modified (.getModified repo-status)
+     :missing (.getMissing repo-status)
+     :untracked (.getUntracked repo-status)}))
+
+(defn submodules-status-info
+  [repo]
+  (->> repo
+    submodules-status
+    (ks/mapvals
+      (fn [ss]
+        {:path (.getPath ss)
+         :status (.toString (.getType  ss))
+         :head-id (commit-id (.getHeadId ss))
+         ; There is also SubmoduleStatus.getIndexId
+         ; Maybe that's like 'git describe'?
+         }))))

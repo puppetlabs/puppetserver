@@ -502,3 +502,19 @@
      :status (when (not= level :critical)
                (assoc status-data
                  :timestamp (common/timestamp)))}))
+
+(schema/defn ^:always-validate get-working-dir-status
+  "Returns the status of the working dir for a specified repo, along with
+  the status of all submodules"
+  [data-dir :- schema/Str
+   repo-id :- schema/Keyword
+   working-dir :- common/StringOrFile]
+  (when (fs/exists? working-dir)
+    (let [git-dir (common/bare-repo data-dir repo-id)]
+      (if-not (fs/exists? git-dir)
+        (throw
+          (IllegalArgumentException.
+            (str "No repository exists with id " repo-id)))
+        (let [repo (jgit-utils/get-repository git-dir working-dir)]
+          {:status (jgit-utils/repo-status-info repo)
+           :submodules (jgit-utils/submodules-status-info repo)})))))

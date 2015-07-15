@@ -485,23 +485,10 @@
     (for [[repo-id {:keys [working-dir]}] repos]
       (let [repo (jgit-utils/get-repository
                    (common/bare-repo data-dir repo-id)
-                   working-dir)
-            repo-status (jgit-utils/status repo)]
+                   working-dir)]
         {repo-id {:latest-commit (jgit-utils/commit->status-info (jgit-utils/latest-commit repo))
-                  :working-dir {:clean (.isClean repo-status)
-                                :modified (.getModified repo-status)
-                                :missing (.getMissing repo-status)
-                                :untracked (.getUntracked repo-status)}
-                  :submodules (->> repo
-                                jgit-utils/submodules-status
-                                (ks/mapvals
-                                  (fn [ss]
-                                    {:path (.getPath ss)
-                                     :status (.toString (.getType  ss))
-                                     :head-id (jgit-utils/commit-id (.getHeadId ss))
-                                     ; There is also SubmoduleStatus.getIndexId
-                                     ; Maybe that's like 'git describe'?
-                                     })))}}))))
+                  :working-dir (jgit-utils/repo-status-info repo)
+                  :submodules (jgit-utils/submodules-status-info repo)}}))))
 
 (defn capture-publish-info!
   [!request-tracker request result]

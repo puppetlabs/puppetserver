@@ -19,7 +19,6 @@
     (log/info "Initializing file sync client service")
     (let [status-data! (atom {:last-check-in nil
                               :last-successful-sync-time nil})
-          repos (get-in-config [:file-sync-client :repos])
           data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))]
       (register-status
         "file-sync-client-service"
@@ -52,6 +51,12 @@
                        :config client-config
                        :common-config common-config
                        :started? true))))
+
+  (get-working-dir-status [this repo-id working-dir]
+    (core/get-working-dir-status
+      (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))
+      repo-id
+      working-dir))
 
   (register-callback! [this repo-ids callback-fn]
     (let [context (tks/service-context this)]

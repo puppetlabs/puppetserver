@@ -387,7 +387,6 @@
 
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
-        (helpers/wait-for-new-state sync-agent)
 
         (let [response (fetch-status)
               body (json/parse-string (:body response))
@@ -406,3 +405,88 @@
                   (get latest-commit-status "author"))))
           (testing "The commit message"
             (is (= "my msg" (get latest-commit-status "message")))))))))
+
+(deftest ^:integration get-working-dir-status-test
+  (let [data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "submodule"
+        submodule-path (str submodules-dir "/" submodule-name)
+        client-working-dir (helpers/temp-dir-as-string)]
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {:repo {:working-dir working-dir
+                                                 :submodules-dir submodules-dir
+                                                 :submodules-working-dir submodules-working-dir}})
+
+      ; First, create and publish some test content
+      (spit (fs/file working-dir "test-file-1") "test file content 1")
+      (spit (fs/file working-dir "test-file-2") "test file content 2")
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules content")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                   json/generate-string)
+            submodule-commit-id (-> (helpers/do-publish publish-request-body)
+                                  :body
+                                  json/parse-string
+                                  (get-in ["repo"
+                                           "submodules"
+                                           submodule-path]))
+            sync-agent (helpers/get-sync-agent app)]
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+
+        (let [client-service (tk-app/get-service app :FileSyncClientService)]
+          (testing "error thrown when desired repo does not exist"
+            (is (thrown? IllegalArgumentException
+                  (client-protocol/get-working-dir-status
+                    client-service :fake client-working-dir))))
+
+          (testing "returns nil if desired working dir does not exist"
+            (fs/delete-dir client-working-dir)
+            (is (nil? (client-protocol/get-working-dir-status
+                        client-service :repo client-working-dir))))
+
+          (testing "get-working-dir-status returns correct status info"
+            (fs/mkdir client-working-dir)
+            (client-protocol/sync-working-dir!
+              client-service :repo client-working-dir)
+            (testing "when the working-dir is clean"
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :status)
+                      {:clean true
+                       :missing #{}
+                       :modified #{}
+                       :untracked #{}}))))
+
+            (testing "when the working-dir is dirty"
+              ; Modify an existing file.
+              (spit (fs/file client-working-dir "test-file-1") "cats")
+              ; Delete an existing file
+              (fs/delete (fs/file client-working-dir "test-file-2"))
+              ; Create a new file.
+              (spit (fs/file client-working-dir "new-test-file") "cats are the best")
+
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :status)
+                       {:clean false
+                        :missing #{"test-file-2"}
+                        :modified #{"test-file-1"}
+                        :untracked #{"new-test-file"}}))))
+
+            (testing "returns correct submodule status info"
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :submodules)
+                       {submodule-path {:head-id submodule-commit-id
+                                        :path submodule-path
+                                        :status "INITIALIZED"}}))))))))))
