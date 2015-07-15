@@ -13,7 +13,7 @@ product: {
 }
 
 os-settings: {
-    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib]
+    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib, ./ruby/hiera/lib]
 }
 
 webserver: {

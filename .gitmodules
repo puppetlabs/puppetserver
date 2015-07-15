@@ -4,3 +4,6 @@
 [submodule "ruby/facter"]
 	path = ruby/facter
 	url = https://github.com/puppetlabs/facter.git
+[submodule "ruby/hiera"]
+	path = ruby/hiera
+	url = https://github.com/puppetlabs/hiera.git

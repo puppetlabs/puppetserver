@@ -12,7 +12,7 @@
    {:name "puppet-server", :update-server-url "http://localhost:11111"},
    ; os-settings has merged into jruby-puppet as of puppetserver 2.0
    :os-settings
-   {:ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"]},
+   {:ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]},
    :jruby-puppet
    {:gem-home "./target/jruby-gem-home"},
    :certificate-authority {:certificate-status {:client-whitelist []}}})
