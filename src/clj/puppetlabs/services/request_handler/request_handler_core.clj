@@ -265,18 +265,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+(defn handle-request*
+  [request jruby-instance config]
+  (->> request
+    wrap-params-for-jruby
+    (as-jruby-request config)
+    clojure.walk/stringify-keys
+    make-request-mutable
+    (.handleRequest jruby-instance)
+    response->map))
+
+(defmacro with-error-handling
+  [request & body]
+  `(sling/try+
+     ~@body
+     (catch bad-request? e#
+       (output-error ~request e# 400))
+     (catch jruby-timeout? e#
+       (output-error ~request e# 503))))
+
+; NB - this function is basically copied into the PE version of puppet server.
+; If you change this function, you should probably change the corresponding
+; function in puppetlabs.enterprise.services.request-handler.request-handler-service
+
 (defn handle-request
   [request jruby-service config]
-  (sling/try+
+  (with-error-handling request
     (jruby/with-jruby-puppet jruby-instance jruby-service
-      (->> request
-           wrap-params-for-jruby
-           (as-jruby-request config)
-           clojure.walk/stringify-keys
-           make-request-mutable
-           (.handleRequest jruby-instance)
-           response->map))
-    (catch bad-request? e
-      (output-error request e 400))
-    (catch jruby-timeout? e
-      (output-error request e 503))))
+      (handle-request* request jruby-instance config))))
