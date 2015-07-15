@@ -12,11 +12,12 @@
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
-            ;[liberator.dev :as liberator-dev]
+    ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
             [ring.util.response :as rr]
-            [compojure.route :as route]))
+            [compojure.route :as route]
+            [puppetlabs.trapperkeeper.authorization.rules :as rules]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
@@ -131,13 +132,14 @@
     (representation/ring-response)))
 
 (defresource certificate-status
-  [subject settings]
+  [subject settings rules-fn]
   :allowed-methods [:get :put :delete]
 
   :allowed? (fn [context]
-              (ringutils/client-allowed-access?
-                (get-in settings [:access-control :certificate-status])
-                (:request context)))
+              (ringutils/authorized?
+                (ringutils/authorize-request
+                  (rules-fn)
+                  (:request context))))
 
   :available-media-types media-types
 
@@ -238,13 +240,14 @@
       (ca/set-certificate-status! settings subject desired-state))))
 
 (defresource certificate-statuses
-  [settings]
+  [settings rules-fn]
   :allowed-methods [:get]
 
   :allowed? (fn [context]
-              (ringutils/client-allowed-access?
-                (get-in settings [:access-control :certificate-status])
-                (:request context)))
+              (ringutils/authorized?
+                (ringutils/authorize-request
+                  (rules-fn)
+                  (:request context))))
 
   :available-media-types media-types
 
@@ -259,23 +262,26 @@
       (as-json-or-pson context))))
 
 (schema/defn ^:always-validate web-routes :- comidi/BidiRoute
-  [ca-settings :- ca/CaSettings]
-  (comidi/routes
-    (comidi/context ["/v1"]
-      (ANY ["/certificate_status/" :subject] [subject]
-        (certificate-status subject ca-settings))
-      (ANY ["/certificate_statuses/" :ignored-but-required] []
-        (certificate-statuses ca-settings))
-      (GET ["/certificate/" :subject] [subject]
-        (handle-get-certificate subject ca-settings))
-      (comidi/context ["/certificate_request/" :subject]
-        (GET [""] [subject]
-          (handle-get-certificate-request subject ca-settings))
-        (PUT [""] [subject :as {body :body}]
-          (handle-put-certificate-request! subject body ca-settings)))
-      (GET ["/certificate_revocation_list/" :ignored-node-name] []
-        (handle-get-certificate-revocation-list ca-settings)))
-    (comidi/not-found "Not Found")))
+  ([ca-settings :- ca/CaSettings] (web-routes ca-settings ringutils/authz-rules))
+  ([ca-settings :- ca/CaSettings rules-fn :- IFn]
+    (comidi/routes
+      (comidi/context
+        ["/v1"]
+        (ANY ["/certificate_status/" :subject] [subject]
+             (certificate-status subject ca-settings rules-fn))
+        (ANY ["/certificate_statuses/" :ignored-but-required] []
+             (certificate-statuses ca-settings rules-fn))
+        (GET ["/certificate/" :subject] [subject]
+             (handle-get-certificate subject ca-settings))
+        (comidi/context
+          ["/certificate_request/" :subject]
+          (GET [""] [subject]
+               (handle-get-certificate-request subject ca-settings))
+          (PUT [""] [subject :as {body :body}]
+               (handle-put-certificate-request! subject body ca-settings)))
+        (GET ["/certificate_revocation_list/" :ignored-node-name] []
+             (handle-get-certificate-revocation-list ca-settings)))
+      (comidi/not-found "Not Found"))))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn

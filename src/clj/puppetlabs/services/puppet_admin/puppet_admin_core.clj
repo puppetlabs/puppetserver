@@ -7,7 +7,6 @@
             [liberator.core :refer [defresource]]
     ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
-            [clojure.tools.logging :as log]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]))
 
 
@@ -120,5 +119,5 @@
       (#(comidi/context path %))
       (comidi/routes->handler)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-      (ringutils/wrap-with-cert-whitelist-check settings)
+      (ringutils/wrap-with-authz-rules-check)
       pl-ring-params/wrap-params))

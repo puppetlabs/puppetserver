@@ -1,6 +1,7 @@
 (ns puppetlabs.services.puppet-admin.puppet-admin-service
   (:require [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.trapperkeeper.services :as services]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.services.puppet-admin.puppet-admin-core :as core]
             [clojure.tools.logging :as log]))
 
