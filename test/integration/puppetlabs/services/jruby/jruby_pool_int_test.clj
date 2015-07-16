@@ -166,6 +166,42 @@
         ;; now the pool is flushed, and the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
+(deftest ^:integration hold-file-handle-on-instance-while-pool-flush-in-progress-test
+  (testing "file handle opened from old pool instance is held open across pool flush"
+    (bootstrap/with-puppetserver-running
+      app
+      {:puppet-admin {:client-whitelist ["localhost"]}
+       :jruby-puppet {:max-active-instances 2}}
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            context (tk-services/service-context jruby-service)
+            pool-context (:pool-context context)]
+        ;; set a ruby constant in each instance so that we can recognize them
+        (is (true? (set-constants-and-verify pool-context 2)))
+        (let [flush-complete (add-watch-for-flush-complete pool-context)
+              ;; borrow an instance and hold the reference to it.
+              instance (jruby-protocol/borrow-instance jruby-service)
+              sc (:scripting-container instance)]
+          (.runScriptlet sc
+                         (str "$unique_file = "
+                              "Puppet::FileSystem::Uniquefile.new"
+                              "('hold-instance-test-', './target')"))
+          (try
+            ;; trigger a flush
+            (is (true? (trigger-flush ssl-request-options)))
+            ;; wait for the new pool to become available
+            (wait-for-new-pool jruby-service)
+
+            (is (nil? (.runScriptlet sc "$unique_file.close"))
+                "Unexpected response on attempt to close unique file")
+            (finally
+              (.runScriptlet sc "$unique_file.unlink")))
+          ;; return the instance
+          (jruby-protocol/return-instance jruby-service instance)
+          ;; wait until the flush is complete
+          @flush-complete)
+        ;; now the pool is flushed, and the constants should be cleared
+        (is (true? (verify-no-constants pool-context 2)))))))
+
 (deftest ^:integration max-requests-flush-while-pool-flush-in-progress-test
   (testing "instance from new pool hits max-requests while flush in progress"
     (let [test-pem #(str "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test/" %)

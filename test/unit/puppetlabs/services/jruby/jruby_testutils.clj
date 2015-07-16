@@ -14,7 +14,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 
-(def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
+(def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
 (def gem-home "./target/jruby-gem-home")
 
 (def conf-dir "./target/master-conf")
@@ -67,7 +67,7 @@
   on disk.)"
   ([]
     (jruby-core/initialize-config
-      {:jruby-puppet 
+      {:jruby-puppet
        {:ruby-load-path  ruby-load-path
         :gem-home        gem-home
         :master-conf-dir conf-dir
