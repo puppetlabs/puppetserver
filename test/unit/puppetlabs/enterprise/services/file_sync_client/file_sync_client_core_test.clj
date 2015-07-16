@@ -325,8 +325,7 @@
         repo :test-repo
         git-dir (common/bare-repo client-data-dir repo)
         working-dir (helpers/temp-dir-as-string)
-        local-repo-dir (helpers/temp-dir-as-string)
-        repo-config [repo]]
+        local-repo-dir (helpers/temp-dir-as-string)]
     (with-test-logging
       (helpers/init-bare-repo! git-dir)
       (let [local-temp-file (str local-repo-dir "/temp-test")
@@ -354,7 +353,7 @@
 
         (testing (str "sync-working-dir! successfully instantiates the contents of "
                       "a bare repo into a working directory")
-          (sync-working-dir! client-data-dir repo-config repo working-dir)
+          (sync-working-dir! client-data-dir repo working-dir)
           (is (logged? #"Syncing working directory at.*for repo.*"))
           (is (fs/exists? working-temp-file))
           (is (fs/exists? working-temp-file-2))
@@ -374,7 +373,7 @@
             (is (not (fs/exists? local-temp-file-2))))
 
           (testing "contents of working-dir should be overridden when synced"
-            (sync-working-dir! client-data-dir repo-config repo working-dir)
+            (sync-working-dir! client-data-dir repo working-dir)
             (is (fs/exists? working-temp-file))
             (is (not (fs/exists? working-temp-file-2)))
             (is (= temp-file-1-content (slurp working-temp-file)))))
@@ -382,13 +381,13 @@
         (testing (str "sync-working-dir! should throw an exception if the "
                       "desired repo doesn't exist")
           (is (thrown? IllegalArgumentException
-                       (sync-working-dir! client-data-dir repo-config :fake working-dir))))
+                       (sync-working-dir! client-data-dir :fake working-dir))))
 
         (testing (str "sync-working-dir! should create the desired working dir "
                       "if it doesn't exist")
           (let [test-dir (ks/temp-file-name "test")]
             (is (not (fs/exists? test-dir)))
-            (sync-working-dir! client-data-dir repo-config repo test-dir)
+            (sync-working-dir! client-data-dir repo test-dir)
             (is (fs/exists? test-dir))))))))
 
 (deftest process-callbacks-test

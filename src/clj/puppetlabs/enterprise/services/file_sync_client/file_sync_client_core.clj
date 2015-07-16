@@ -23,11 +23,6 @@
   "A schema describing the service context for the File Sync Client service"
   {:callbacks Atom})
 
-(def ReposConfig
-  "A schema describing the configuration data for the repositories managed by
-  this service. This is just a list of repository names."
-  [schema/Keyword])
-
 (def Config
   "Schema defining the full content of the file sync client service
   configuration.
@@ -36,15 +31,10 @@
 
     * :poll-interval - Number of seconds which the file sync client service
                        should wait between attempts to poll the server for
-                       latest available content.
-
-    * :repos         - A vector containing the ids of all repositories managed
-                       by the client service, each of which should correspond to
-                       the id of a repo in the storage service."
+                       latest available content."
   {:poll-interval                     schema/Int
    :server-repo-path                  schema/Str
    :server-api-path                   schema/Str
-   :repos                             ReposConfig
    (schema/optional-key :ssl-cert)    schema/Str
    (schema/optional-key :ssl-key)     schema/Str
    (schema/optional-key :ssl-ca-cert) schema/Str})
@@ -276,7 +266,7 @@
 
 (schema/defn process-repos-for-updates* :- RepoStates
   "Process the repositories for any updates which may be available on the server."
-  [repos :- ReposConfig
+  [repos :- [schema/Keyword]
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
    data-dir]
@@ -324,7 +314,7 @@
          (callback statuses)))))
 
 (schema/defn process-repos-for-updates :- RepoStates
-  [repos :- ReposConfig
+  [repos :- [schema/Keyword]
    repo-base-url :- String
    latest-commits :- common/LatestCommitsPayload
    callbacks :- Callbacks
@@ -342,34 +332,34 @@
    config :- CoreConfig
    http-client
    callbacks :- Callbacks]
-  (let [repos (get-in config [:client-config :repos])]
-    (log/debug "File sync process running on repos " repos)
-    (try+
-      (let [server-repo-path (get-in config [:client-config :server-repo-path])
-            server-api-path (get-in config [:client-config :server-api-path])
-            server-url (:server-url config)
-            data-dir (:data-dir config)
-            latest-commits (get-latest-commits-from-server
-                             http-client
-                             (str server-url server-api-path)
-                             agent-state)
-            repo-states (process-repos-for-updates
-                          repos
-                          (str server-url server-repo-path)
-                          latest-commits
-                          callbacks
-                          data-dir)
-            full-success? (every? #(not= (:status %) :failed)
-                                  (vals repo-states))]
-        {:status (if full-success? :successful :partial-success)
-         :repos  repo-states})
-      (catch sync-error? error
-        (let [message (str "File sync failure: " (:message error))]
-          (if-let [cause (:cause error)]
-            (log/error cause message)
-            (log/error message)))
-        {:status :failed
-         :error  error}))))
+  (try+
+    (let [server-repo-path (get-in config [:client-config :server-repo-path])
+          server-api-path (get-in config [:client-config :server-api-path])
+          server-url (:server-url config)
+          data-dir (:data-dir config)
+          latest-commits (get-latest-commits-from-server
+                           http-client
+                           (str server-url server-api-path)
+                           agent-state)
+          repos (keys latest-commits)
+          _ (log/debug "File sync process running on repos " repos)
+          repo-states (process-repos-for-updates
+                        repos
+                        (str server-url server-repo-path)
+                        latest-commits
+                        callbacks
+                        data-dir)
+          full-success? (every? #(not= (:status %) :failed)
+                          (vals repo-states))]
+      {:status (if full-success? :successful :partial-success)
+       :repos repo-states})
+    (catch sync-error? error
+      (let [message (str "File sync failure: " (:message error))]
+        (if-let [cause (:cause error)]
+          (log/error cause message)
+          (log/error message)))
+      {:status :failed
+       :error error})))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -445,7 +435,6 @@
   working-dir with the most recent contents of the bare repo specified by
   repo-id"
   [data-dir :- schema/Str
-   repos :- ReposConfig
    repo-id :- schema/Keyword
    working-dir :- common/StringOrFile]
   (when-not (fs/exists? working-dir)
@@ -454,13 +443,13 @@
         (IllegalStateException.
           (str "Directory " working-dir " does not exist and could not be created."
             "It must exist on disk to be sync'ed as a working directory.")))))
-  (if (some #(= repo-id %) repos)
-    (let [git-dir (common/bare-repo data-dir repo-id)
-          repo (jgit-utils/get-repository git-dir working-dir)]
-      (log/info (str "Syncing working directory at " working-dir
-                     " for repository " repo-id))
-      (jgit-utils/hard-reset repo)
-      (jgit-utils/submodule-update repo))
-    (throw
-      (IllegalArgumentException.
-        (str "No repository exists with id " repo-id)))))
+  (let [git-dir (common/bare-repo data-dir repo-id)]
+    (if-not (fs/exists? git-dir)
+      (throw
+        (IllegalArgumentException.
+          (str "No repository exists with id " repo-id)))
+      (let [repo (jgit-utils/get-repository git-dir working-dir)]
+        (log/info (str "Syncing working directory at " working-dir
+                    " for repository " repo-id))
+        (jgit-utils/hard-reset repo)
+        (jgit-utils/submodule-update repo)))))
