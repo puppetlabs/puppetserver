@@ -67,7 +67,7 @@
   on disk.)"
   ([]
     (jruby-core/initialize-config
-      {:jruby-puppet 
+      {:jruby-puppet
        {:ruby-load-path  ruby-load-path
         :gem-home        gem-home
         :master-conf-dir conf-dir
