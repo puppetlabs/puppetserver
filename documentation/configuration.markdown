@@ -167,6 +167,14 @@ In a default installation, this file doesn't exist. You'll need to create it if 
     This setting is used to enable [external SSL termination.](./external_ssl_termination.markdown) If enabled, Puppet Server will ignore any actual certificate presented to the Jetty webserver, and will rely completely on header data to authorize requests. This is very dangerous unless you've secured your network to prevent any untrusted access to Puppet Server.
 
     You can change Puppet's `ssl_client_verify_header` setting to use another header name instead of `X-Client-Verify`; the `ssl_client_header` setting can rename `X-Client-CN`. The `X-Client-Cert` header can't be renamed.
+    
+    Note that this setting only applies to HTTP endpoints served by the "master"
+    service.  The applicable endpoints include those listed in the 
+    "Configuration Management Services", "Informational Services", and
+    "V2 HTTP API" sections of the [Puppet HTTP API](https://github.com/puppetlabs/puppet/blob/3.8.1/api/docs/http_api_index.md)
+    page.  Note that this setting does not apply to the endpoints listed under
+    the "SSL Certificate Related Services" section of the "Puppet HTTP API" page
+    or to any of the [Puppet Admin API](#puppetserverconf) endpoints. 
 
 ~~~
 master: {
