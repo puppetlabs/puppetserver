@@ -24,6 +24,7 @@
     (doseq [[method paths]
             {:get ["catalog"
                    "node"
+                   "environment"
                    "facts"
                    "file_content"
                    "file_metadatas"
