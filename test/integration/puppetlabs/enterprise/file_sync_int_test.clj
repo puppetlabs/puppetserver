@@ -119,7 +119,6 @@
              scheduler-service/scheduler-service]
             (helpers/client-service-config
               root-data-dir
-              [(keyword repo)]
               false)
 
             (let [sync-agent (helpers/get-sync-agent app)]

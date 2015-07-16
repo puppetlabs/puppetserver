@@ -28,12 +28,12 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (def file-sync-client-ssl-config
-  (helpers/client-service-config (helpers/temp-dir-as-string) ["fake"] true))
+  (helpers/client-service-config (helpers/temp-dir-as-string) true))
 
 (defn ring-handler
   [_]
   {:status  200
-   :body    (json/encode {:result {:commit "Successful connection over SSL"}})
+   :body    (json/encode {})
    :headers {"content-type" "application/json"}})
 
 (deftest ^:integration polling-client-ssl-test
@@ -91,7 +91,6 @@
          scheduler-service/scheduler-service]
         (helpers/client-service-config
           root-data-dir
-          [repo]
           false)
 
         (let [client-service (tk-app/get-service app :FileSyncClientService)]
@@ -150,7 +149,6 @@
          scheduler-service/scheduler-service]
         (helpers/client-service-config
           root-data-dir
-          [repo]
           false)
         (let [client-service (tk-app/get-service app :FileSyncClientService)
               sync-agent (helpers/get-sync-agent app)]
@@ -245,7 +243,7 @@
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
                          (register-callback! #{"foo"} (fn [& _] nil))))
-          config (helpers/client-service-config (helpers/temp-dir-as-string) [] false)
+          config (helpers/client-service-config (helpers/temp-dir-as-string) false)
           client-app (tk/build-app
                        [file-sync-client-service/file-sync-client-service
                         scheduler-service/scheduler-service

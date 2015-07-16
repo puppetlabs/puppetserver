@@ -100,16 +100,15 @@
      :file-sync-storage {:repos repos})))
 
 (defn client-service-config
-  ([data-dir repos]
-    (client-service-config data-dir repos false))
-  ([data-dir repos ssl?]
+  ([data-dir]
+    (client-service-config data-dir false))
+  ([data-dir ssl?]
    {:file-sync-common {:server-url (base-url ssl?)
                        :data-dir data-dir}
     :file-sync-client (assoc (if ssl? ssl-options {})
                         :poll-interval 1
                         :server-api-path (str default-api-path-prefix "/v1")
-                        :server-repo-path default-repo-path-prefix
-                        :repos repos)}))
+                        :server-repo-path default-repo-path-prefix)}))
 
 (defn file-sync-config
   ([data-dir repos]
@@ -122,8 +121,7 @@
      :file-sync-client (assoc (if ssl? ssl-options {})
                          :poll-interval 1
                          :server-api-path (str default-api-path-prefix "/v1")
-                         :server-repo-path default-repo-path-prefix
-                         :repos (map name (keys repos))))))
+                         :server-repo-path default-repo-path-prefix))))
 
 (defn temp-dir-as-string
   []

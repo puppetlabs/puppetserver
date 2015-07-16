@@ -18,8 +18,7 @@
 
   (start [this context]
     (log/info "Starting file sync client service")
-    (let [client-config (update-in
-                          (get-in-config [:file-sync-client]) [:repos] #(map keyword %))
+    (let [client-config (get-in-config [:file-sync-client])
           common-config (get-in-config [:file-sync-common])
           server-url (:server-url common-config)
           data-dir (core/path-to-data-dir (:data-dir common-config))
@@ -51,7 +50,6 @@
 
   (sync-working-dir! [this repo-id working-dir]
     (core/sync-working-dir! (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))
-                            (get-in (tks/service-context this) [:config :repos])
                             repo-id
                             working-dir))
 
