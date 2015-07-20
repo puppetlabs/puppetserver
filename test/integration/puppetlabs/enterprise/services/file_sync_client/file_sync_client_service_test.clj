@@ -13,16 +13,14 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service
              :as file-sync-storage-service]
-            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service
-             :as file-sync-client-service]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
-             :as scheduler-service]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
             [puppetlabs.enterprise.services.protocols.file-sync-client :as client-protocol]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
-            [me.raynes.fs :as fs])
+            [me.raynes.fs :as fs]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format])
   (:import (javax.net.ssl SSLException)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -36,12 +34,23 @@
    :body    (json/encode {})
    :headers {"content-type" "application/json"}})
 
+(defn fetch-status
+  ([]
+   (fetch-status nil))
+  ([level]
+   (http-client/get
+     (str helpers/server-base-url
+       (if level
+         (str "/status/v1/services/file-sync-client-service?level=" (name level))
+         "/status/v1/services/file-sync-client-service"))
+     {:as :text})))
+
 (deftest ^:integration polling-client-ssl-test
   (testing "polling client will use SSL when configured"
     (logging/with-test-logging
       (helpers/with-bootstrapped-client-service-and-webserver
         app
-        helpers/webserver-ssl-config
+        (helpers/webserver-ssl-config)
         ring-handler
         file-sync-client-ssl-config
         (let [sync-agent (helpers/get-sync-agent app)]
@@ -53,7 +62,7 @@
     (logging/with-test-logging
       (helpers/with-bootstrapped-client-service-and-webserver
         app
-        helpers/webserver-ssl-config
+        (helpers/webserver-ssl-config)
         ring-handler
         (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert :ssl-cert :ssl-key)
         (let [sync-agent (helpers/get-sync-agent app)
@@ -64,12 +73,13 @@
 (deftest ^:integration ssl-config-test
   (testing "SSL configuration fails when not all options are provided"
     (logging/with-test-logging
-      (is (thrown? IllegalArgumentException
-                   (helpers/with-bootstrapped-client-service-and-webserver
-                     app
-                     helpers/webserver-ssl-config
-                     ring-handler
-                     (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert)))))))
+      (let [client-app (tk/build-app
+                         helpers/client-service-and-deps
+                         (update-in file-sync-client-ssl-config [:file-sync-client] dissoc :ssl-ca-cert))]
+        (is (thrown? IllegalArgumentException
+              (tk-app/init client-app)
+              (tk-app/start client-app)))
+        (tk-app/stop client-app)))))
 
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
@@ -87,8 +97,7 @@
       (jgit-utils/push local-repo (str client-repo-dir))
       (bootstrap/with-app-with-config
         app
-        [file-sync-client-service/file-sync-client-service
-         scheduler-service/scheduler-service]
+        helpers/client-service-and-deps
         (helpers/client-service-config
           root-data-dir
           false)
@@ -123,10 +132,6 @@
           git-dir (common/bare-repo (str root-data-dir "/storage") repo)
           client-git-dir (common/bare-repo client-data-dir repo)
           client-working-dir (helpers/temp-dir-as-string)
-          publish-url (str helpers/server-base-url
-                           helpers/default-api-path-prefix
-                           "/v1"
-                           common/publish-content-sub-path)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
                           [jetty-service/jetty9-service
@@ -142,11 +147,10 @@
       ;; Set up the submodule and ensure it's added to the remote repository
       (ks/mkdirs! (fs/file submodules-working-dir submodule))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule test-file))
-      (http-client/post publish-url)
+      (http-client/post helpers/publish-url)
       (bootstrap/with-app-with-config
         app
-        [file-sync-client-service/file-sync-client-service
-         scheduler-service/scheduler-service]
+        helpers/client-service-and-deps
         (helpers/client-service-config
           root-data-dir
           false)
@@ -205,7 +209,7 @@
           ;; Make an additional commit to ensure that previously updated submodules
           ;; are synced
           (fs/delete (fs/file submodules-working-dir submodule test-file))
-          (http-client/post publish-url)
+          (http-client/post helpers/publish-url)
 
           ;; Sync the repo so we can get the latest changes
           (let [new-state (helpers/wait-for-new-state sync-agent)]
@@ -238,16 +242,14 @@
                                                                  submodules-dir-name
                                                                  submodule)))))))))))
 
-(deftest register-callback-test
+(deftest ^:integration register-callback-test
   (testing "Callbacks must be registered before the File Sync Client is started"
     (let [my-service (service [[:FileSyncClientService register-callback!]]
                        (start [this context]
                          (register-callback! #{"foo"} (fn [& _] nil))))
           config (helpers/client-service-config (helpers/temp-dir-as-string) false)
           client-app (tk/build-app
-                       [file-sync-client-service/file-sync-client-service
-                        scheduler-service/scheduler-service
-                        my-service]
+                       (conj helpers/client-service-and-deps my-service)
                        config)]
       (logging/with-test-logging ; necessary because Trapperkeeper logs the error
         (tk-app/init client-app)
@@ -256,3 +258,229 @@
               #"Callbacks must be registered before the File Sync Client is started"
               (tk-app/start client-app)))
         (tk-app/stop client-app)))))
+
+(deftest ^:integration status-endpoint-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        repo "repo"
+        working-dir (helpers/temp-dir-as-string)]
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {(keyword repo) {:working-dir working-dir}})
+
+      (let [sync-agent (helpers/get-sync-agent app)]
+        (testing "basic status info"
+          (let [response (fetch-status)
+                body (json/parse-string (:body response))
+                status (get body "status")]
+            (is (= "running" (get body "state")))
+            (is (time/before? (helpers/parse-timestamp (get status "timestamp"))
+                  (time/now)))
+
+            ;; The values are not checked, as they may or may not be nil
+            ;; depending on whether or not a sync has been performed
+            (is (contains? status "last_successful_sync_time"))
+            (is (contains? status "last_check_in"))))
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))]
+          (is (= "running" (get body "state")))
+          (testing "status info contains info on recent check-ins"
+            (let [check-in-time (helpers/parse-timestamp (get-in body
+                                                           ["status"
+                                                            "last_check_in"
+                                                            "timestamp"]))
+                  sync-time (helpers/parse-timestamp (get-in body
+                                                       ["status"
+                                                        "last_successful_sync_time"]))]
+              (is (time/before? sync-time (time/now)))
+              (is (time/before? check-in-time (time/now)))
+              (is (time/before? check-in-time sync-time)))
+
+            (testing "status contains info on response from latest check-in"
+              (let [latest-commits (helpers/get-latest-commits)
+                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last_check_in" "response"]))]
+                (is (= latest-commits latest-response))))
+
+            (testing "contains nil latest commit if no commits are present"
+              (let [latest-commit (get-in body ["status" "repos" repo "latest_commit"])]
+                (is (nil? latest-commit))))))
+
+        (testing "Getting the status when commits are present in the repo"
+          (spit (fs/file working-dir "test-file") "test file content")
+          (let [publish-request-body (-> {:message "my msg"
+                                          :author {:name "Testy"
+                                                   :email "test@foo.com"}}
+                                       json/generate-string)
+                commit-id (-> (helpers/do-publish publish-request-body)
+                            :body
+                            (json/parse-string true)
+                            :repo
+                            :commit)]
+            (let [new-state (helpers/wait-for-new-state sync-agent)]
+              (is (= :successful (:status new-state))))
+
+            (let [response (fetch-status)
+                  body (json/parse-string (:body response))
+                  latest-commit-status (get-in body ["status" "repos" repo "latest_commit"])]
+              (testing "Latest commit ID"
+                (is (= commit-id (get latest-commit-status "commit"))))
+              (testing "Commit date/time"
+                (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+                  (is (time/after? commit-time (-> test-start-time
+                                                 (time/minus (time/seconds 1)))))
+                  (is (time/before? commit-time (time/now)))))
+              (testing "The commit author"
+                (is (= {"name" "Testy"
+                        "email" "test@foo.com"}
+                      (get latest-commit-status "author"))))
+              (testing "The commit message"
+                (is (= "my msg" (get latest-commit-status "message")))))))
+
+        (testing "status level is honored"
+          (let [response (fetch-status :critical)
+                body (json/parse-string (:body response))]
+            (is (= "running" (get body "state")))
+            (is (nil? (get body "status")))
+            (is (contains? body "status"))))))))
+
+(deftest ^:integration status-endpoint-submodules-test
+  (let [test-start-time (time/now)
+        data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "submodule"
+        submodule-path (str submodules-dir "/" submodule-name)]
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {:repo {:working-dir working-dir
+                                                 :submodules-dir submodules-dir
+                                                 :submodules-working-dir submodules-working-dir}})
+
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules content")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                   json/generate-string)
+            submodule-commit-id (-> (helpers/do-publish publish-request-body)
+                                  :body
+                                  json/parse-string
+                                  (get-in ["repo"
+                                           "submodules"
+                                           submodule-path]))
+            sync-agent (helpers/get-sync-agent app)]
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+
+        (let [response (fetch-status)
+              body (json/parse-string (:body response))
+              latest-commit-status (get-in body ["status" "repos" "repo" "submodules" submodule-path])]
+          (is (= 200 (:status response)))
+          (testing "Latest commit ID"
+            (is (= submodule-commit-id (get latest-commit-status "commit"))))
+          (testing "Commit date/time"
+            (let [commit-time (time-format/parse (get latest-commit-status "date"))]
+              (is (time/after? commit-time (-> test-start-time
+                                             (time/minus (time/seconds 1)))))
+              (is (time/before? commit-time (time/now)))))
+          (testing "The commit author"
+            (is (= {"name" "Testy"
+                    "email" "test@foo.com"}
+                  (get latest-commit-status "author"))))
+          (testing "The commit message"
+            (is (= "my msg" (get latest-commit-status "message")))))))))
+
+(deftest ^:integration get-working-dir-status-test
+  (let [data-dir (helpers/temp-dir-as-string)
+        working-dir (helpers/temp-dir-as-string)
+        submodules-dir "submodules"
+        submodules-working-dir (helpers/temp-dir-as-string)
+        submodule-name "submodule"
+        submodule-path (str submodules-dir "/" submodule-name)
+        client-working-dir (helpers/temp-dir-as-string)]
+    (bootstrap/with-app-with-config
+      app
+      helpers/file-sync-services-and-deps
+      (helpers/file-sync-config data-dir {:repo {:working-dir working-dir
+                                                 :submodules-dir submodules-dir
+                                                 :submodules-working-dir submodules-working-dir}})
+
+      ; First, create and publish some test content
+      (spit (fs/file working-dir "test-file-1") "test file content 1")
+      (spit (fs/file working-dir "test-file-2") "test file content 2")
+      (fs/mkdirs (fs/file submodules-working-dir submodule-name))
+      (spit
+        (fs/file submodules-working-dir submodule-name "test-file")
+        "submodules content")
+      (let [publish-request-body (-> {:message "my msg"
+                                      :author {:name "Testy"
+                                               :email "test@foo.com"}}
+                                   json/generate-string)
+            submodule-commit-id (-> (helpers/do-publish publish-request-body)
+                                  :body
+                                  json/parse-string
+                                  (get-in ["repo"
+                                           "submodules"
+                                           submodule-path]))
+            sync-agent (helpers/get-sync-agent app)]
+
+        (let [new-state (helpers/wait-for-new-state sync-agent)]
+          (is (= :successful (:status new-state))))
+
+        (let [client-service (tk-app/get-service app :FileSyncClientService)]
+          (testing "error thrown when desired repo does not exist"
+            (is (thrown? IllegalArgumentException
+                  (client-protocol/get-working-dir-status
+                    client-service :fake client-working-dir))))
+
+          (testing "returns nil if desired working dir does not exist"
+            (fs/delete-dir client-working-dir)
+            (is (nil? (client-protocol/get-working-dir-status
+                        client-service :repo client-working-dir))))
+
+          (testing "get-working-dir-status returns correct status info"
+            (fs/mkdir client-working-dir)
+            (client-protocol/sync-working-dir!
+              client-service :repo client-working-dir)
+            (testing "when the working-dir is clean"
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :status)
+                      {:clean true
+                       :missing #{}
+                       :modified #{}
+                       :untracked #{}}))))
+
+            (testing "when the working-dir is dirty"
+              ; Modify an existing file.
+              (spit (fs/file client-working-dir "test-file-1") "cats")
+              ; Delete an existing file
+              (fs/delete (fs/file client-working-dir "test-file-2"))
+              ; Create a new file.
+              (spit (fs/file client-working-dir "new-test-file") "cats are the best")
+
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :status)
+                       {:clean false
+                        :missing #{"test-file-2"}
+                        :modified #{"test-file-1"}
+                        :untracked #{"new-test-file"}}))))
+
+            (testing "returns correct submodule status info"
+              (let [status (client-protocol/get-working-dir-status
+                             client-service :repo client-working-dir)]
+                (is (= (get status :submodules)
+                       {submodule-path {:head-id submodule-commit-id
+                                        :path submodule-path
+                                        :status "INITIALIZED"}}))))))))))

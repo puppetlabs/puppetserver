@@ -2,6 +2,10 @@
 
 (defprotocol FileSyncClientService
 
+  (get-working-dir-status [this repo-id working-dir]
+    "Given a repo-id and a working-directory, returns the status of the
+    working directory and the repo's submodules.")
+
   (register-callback! [this repo-ids callback-fn]
     "Registers a callback function for the repos with the provided set of
     repo-ids, which will be called when the client's clones of one or more

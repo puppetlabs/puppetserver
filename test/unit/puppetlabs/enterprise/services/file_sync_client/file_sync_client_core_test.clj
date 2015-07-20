@@ -131,12 +131,6 @@
                          client-repo-path)]
             (is (= :synced (:status status)))))))))
 
-(def publish-url
-  (str helpers/server-base-url
-       helpers/default-api-path-prefix
-       "/v1"
-       common/publish-content-sub-path))
-
 (deftest process-submodules-for-updates-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
@@ -164,14 +158,16 @@
       (ks/mkdirs! (fs/file submodules-working-dir submodule-2))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "test.txt"))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule-2 "test.txt"))
-      (http-client/post publish-url)
+      (http-client/post helpers/publish-url)
 
       (testing "submodules are successfully synced"
         (let [latest-commits (get-latest-commits-from-server client
                                (str (helpers/base-url false)
                                  helpers/default-api-path-prefix
                                  "/v1")
-                               {:status :created})
+                               {:status :created
+                                :status-data {:last_check_in nil
+                                              :last_successful_sync_time nil}})
               latest-commit (get latest-commits (keyword server-repo))
               submodules-status (process-submodules-for-updates
                                   (str (helpers/base-url false)
@@ -255,7 +251,7 @@
                       :submodules-working-dir submodules-working-dir}
          error-repo {:working-dir (helpers/temp-dir-as-string)}})
       (ks/mkdirs! (fs/file submodules-working-dir submodule))
-      (http-client/post publish-url)
+      (http-client/post helpers/publish-url)
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)

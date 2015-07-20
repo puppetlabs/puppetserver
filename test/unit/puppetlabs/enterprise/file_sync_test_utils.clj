@@ -12,12 +12,16 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-service :as file-sync-storage-service]
             [puppetlabs.enterprise.services.file-sync-client.file-sync-client-service :as file-sync-client-service]
+            [puppetlabs.enterprise.services.file-sync-client.file-sync-client-core :as file-sync-client-core]
+            [puppetlabs.enterprise.file-sync-common :as common]
+            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.ssl-utils.core :as ssl]))
+            [puppetlabs.ssl-utils.core :as ssl]
+            [clj-time.format :as time-format]))
 
 (def default-api-path-prefix "/file-sync")
 
@@ -81,20 +85,27 @@
                          :repo-servlet default-repo-path-prefix}
                         :puppetlabs.trapperkeeper.services.status.status-service/status-service "/status"}})
 
-(def webserver-plaintext-config
-  (assoc webserver-base-config
-    :webserver {:port http-port}))
+(defn webserver-plaintext-config
+  ([]
+    (webserver-plaintext-config http-port))
+  ([port]
+   (assoc webserver-base-config
+     :webserver {:port port})))
 
-(def webserver-ssl-config
-  (assoc webserver-base-config
-    :webserver (merge {:ssl-port https-port
-                       :ssl-host "0.0.0.0"} ssl-options)))
+(defn webserver-ssl-config
+  ([]
+    (webserver-ssl-config https-port))
+  ([port]
+   (assoc webserver-base-config
+     :webserver (merge {:ssl-port port
+                        :ssl-host "0.0.0.0"} ssl-options))))
 
 (defn storage-service-config
   ([data-dir repos]
    (storage-service-config data-dir repos false))
   ([data-dir repos ssl?]
-   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+   (assoc (if ssl? (webserver-ssl-config)
+                   (webserver-plaintext-config))
      :file-sync-common {:server-url (base-url ssl?)
                         :data-dir data-dir}
      :file-sync-storage {:repos repos})))
@@ -103,18 +114,20 @@
   ([data-dir]
     (client-service-config data-dir false))
   ([data-dir ssl?]
-   {:file-sync-common {:server-url (base-url ssl?)
-                       :data-dir data-dir}
-    :file-sync-client (assoc (if ssl? ssl-options {})
-                        :poll-interval 1
-                        :server-api-path (str default-api-path-prefix "/v1")
-                        :server-repo-path default-repo-path-prefix)}))
+   (assoc (if ssl? (webserver-ssl-config 9000)
+                   (webserver-plaintext-config 8000 ))
+     :file-sync-common {:server-url (base-url ssl?)
+                        :data-dir data-dir}
+     :file-sync-client (assoc (if ssl? ssl-options {})
+                         :poll-interval 1
+                         :server-api-path (str default-api-path-prefix "/v1")
+                         :server-repo-path default-repo-path-prefix))))
 
 (defn file-sync-config
   ([data-dir repos]
     (file-sync-config data-dir repos false))
   ([data-dir repos ssl?]
-   (assoc (if ssl? webserver-ssl-config webserver-plaintext-config)
+   (assoc (if ssl? (webserver-ssl-config) (webserver-plaintext-config))
      :file-sync-storage {:repos repos}
      :file-sync-common {:server-url (base-url ssl?)
                         :data-dir data-dir}
@@ -138,7 +151,10 @@
    status-service/status-service])
 
 (def client-service-and-deps
-  [file-sync-client-service/file-sync-client-service
+  [jetty9-service/jetty9-service
+   webrouting-service/webrouting-service
+   status-service/status-service
+   file-sync-client-service/file-sync-client-service
    scheduler-service/scheduler-service])
 
 (def file-sync-services-and-deps
@@ -256,3 +272,41 @@
        (tk-app/get-service app)
        (tk-services/service-context)
        :agent))
+
+(defn parse-timestamp
+  [timestamp]
+  (time-format/parse common/datetime-formatter timestamp))
+
+(def latest-commits-url (str server-base-url
+                          default-api-path-prefix
+                          "/v1"
+                          common/latest-commits-sub-path))
+
+(defn latest-commits-response
+  []
+  (http-client/post latest-commits-url {:as :text}))
+
+(defn get-latest-commits
+  []
+  (file-sync-client-core/get-body-from-latest-commits-payload
+    (latest-commits-response)))
+
+(defn get-latest-commits-for-repo
+  [repo]
+  (get-in (get-latest-commits) [(keyword repo) :commit]))
+
+(def publish-url
+  (str server-base-url
+    default-api-path-prefix
+    "/v1"
+    common/publish-content-sub-path))
+
+(defn do-publish
+  ([]
+   (do-publish nil))
+  ([body]
+   (http-client/post
+     publish-url
+     {:as :text
+      :headers {"content-type" "application/json"}
+      :body body})))
