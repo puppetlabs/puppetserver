@@ -23,8 +23,7 @@
 (def ClientContext
   "A schema describing the service context for the File Sync Client service"
   {:callbacks Atom
-   :status-data Atom
-   :sync-agent Agent})
+   :agent Agent})
 
 (def Config
   "Schema defining the full content of the file sync client service
