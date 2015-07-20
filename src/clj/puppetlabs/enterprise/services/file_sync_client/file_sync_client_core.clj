@@ -23,7 +23,8 @@
 (def ClientContext
   "A schema describing the service context for the File Sync Client service"
   {:callbacks Atom
-   :status-data Atom})
+   :status-data Atom
+   :sync-agent Agent})
 
 (def Config
   "Schema defining the full content of the file sync client service
@@ -71,20 +72,31 @@
   numerous repos after a sync"
   {schema/Keyword SingleRepoState})
 
+(def StatusData
+  "A schema which describes a map containing status data for the client
+  status endpoint"
+  {:last_check_in (schema/maybe
+                    {:timestamp schema/Str
+                     :response common/LatestCommitsPayload})
+   :last_successful_sync_time (schema/maybe schema/Str)})
+
 (def AgentState
   "A schema which describes a valid state of the agent."
   (schema/conditional
     #(= (:status %) :failed)
     {:status (schema/eq :failed)
      :error SyncError
+     :status-data StatusData
      (schema/optional-key :schedule-next-run?) Boolean}
 
     #(= (:status %) :created)
-    {:status (schema/eq :created)}
+    {:status (schema/eq :created)
+     :status-data StatusData}
 
     :else
     {:status (schema/enum :successful :partial-success)
      :repos RepoStates
+     :status-data StatusData
      (schema/optional-key :schedule-next-run?) Boolean}))
 
 (def Callbacks
@@ -333,8 +345,7 @@
   [agent-state
    config :- CoreConfig
    http-client
-   callbacks :- Callbacks
-   status-data! :- Atom]
+   callbacks :- Callbacks]
   (try+
     (let [server-repo-path (get-in config [:client-config :server-repo-path])
           server-api-path (get-in config [:client-config :server-api-path])
@@ -345,8 +356,6 @@
                            (str server-url server-api-path)
                            agent-state)
           check-in-time (common/timestamp)
-          _ (swap! status-data! assoc :last_check_in {:timestamp check-in-time
-                                                      :response latest-commits})
           repos (keys latest-commits)
           _ (log/debug "File sync process running on repos " repos)
           repo-states (process-repos-for-updates
@@ -357,18 +366,22 @@
                         data-dir)
           full-success? (every? #(not= (:status %) :failed)
                           (vals repo-states))
-          sync-time (common/timestamp)]
-      (when full-success?
-        (swap! status-data! assoc :last_successful_sync_time sync-time))
+          sync-time (common/timestamp)
+          status-data (assoc (:status-data agent-state) :last_check_in {:timestamp check-in-time
+                                                                        :response latest-commits})]
       {:status (if full-success? :successful :partial-success)
-       :repos repo-states})
+       :repos repo-states
+       :status-data (if full-success?
+                      (assoc status-data :last_successful_sync_time sync-time)
+                      status-data)})
     (catch sync-error? error
       (let [message (str "File sync failure: " (:message error))]
         (if-let [cause (:cause error)]
           (log/error cause message)
           (log/error message)))
       {:status :failed
-       :error error})))
+       :error error
+       :status-data (:status-data agent-state)})))
 
 (defn get-commit-status
   [repo]
@@ -433,7 +446,9 @@
   error during the sync process when the entire applications needs to be shut down."
   [request-shutdown]
   (agent
-    {:status :created}
+    {:status :created
+     :status-data {:last_check_in nil
+                   :last_successful_sync_time nil}}
     :error-mode :fail
     :error-handler (fn [_ error]
                      ; disaster!  shut down the entire application.
@@ -452,13 +467,12 @@
    schedule-fn :- IFn
    config :- CoreConfig
    http-client :- (schema/protocol http-client/HTTPClient)
-   callbacks :- Callbacks
-   status-data! :- Atom]
+   callbacks :- Callbacks]
   (let [periodic-sync (fn [& args]
                         (-> (apply sync-on-agent args)
                           (assoc :schedule-next-run? true)))
         send-to-agent #(send-off sync-agent periodic-sync config
-                        http-client callbacks status-data!)]
+                        http-client callbacks)]
     (add-watch sync-agent
       ::schedule-watch
       (fn [key* ref* old-state new-state]
@@ -519,5 +533,5 @@
           (IllegalArgumentException.
             (str "No repository exists with id " repo-id)))
         (let [repo (jgit-utils/get-repository git-dir working-dir)]
-          {:status (jgit-utils/repo-status-info repo)
+          {:status (jgit-utils/working-dir-status-info repo)
            :submodules (jgit-utils/submodules-status-info repo)})))))

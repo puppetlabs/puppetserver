@@ -16,15 +16,16 @@
 
   (init [this context]
     (log/info "Initializing file sync client service")
-    (let [status-data! (atom {:last_check_in nil
+    (let [sync-agent (core/create-agent request-shutdown)
+          !status-data (atom {:last_check_in nil
                               :last_successful_sync_time nil})
           data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))]
       (register-status
         "file-sync-client-service"
         common/artifact-version
         1
-        #(core/status % data-dir @status-data!))
-      (assoc context :callbacks (atom {}) :status-data status-data!)))
+        #(core/status % data-dir (:status-data @sync-agent)))
+      (assoc context :callbacks (atom {}) :status-data !status-data :sync-agent sync-agent)))
 
   (start [this context]
     (log/info "Starting file sync client service")
@@ -34,7 +35,7 @@
           data-dir (core/path-to-data-dir (:data-dir common-config))
           poll-interval (* (:poll-interval client-config) 1000)
           ssl-context (ssl/generate-ssl-context client-config)
-          sync-agent (core/create-agent request-shutdown)]
+          sync-agent (:sync-agent context)]
       (core/configure-jgit-client-ssl! ssl-context)
 
       (let [schedule-fn (partial after poll-interval)
@@ -44,7 +45,7 @@
                     :server-url server-url
                     :data-dir data-dir}]
         (core/start-periodic-sync-process!
-          sync-agent schedule-fn config http-client callbacks (:status-data context))
+          sync-agent schedule-fn config http-client callbacks)
         (assoc context :agent sync-agent
                        :http-client http-client
                        :config client-config

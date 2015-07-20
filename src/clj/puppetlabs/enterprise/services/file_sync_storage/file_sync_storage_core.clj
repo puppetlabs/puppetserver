@@ -487,7 +487,7 @@
                    (common/bare-repo data-dir repo-id)
                    working-dir)]
         {repo-id {:latest-commit (jgit-utils/commit->status-info (jgit-utils/latest-commit repo))
-                  :working-dir (jgit-utils/repo-status-info repo)
+                  :working-dir (jgit-utils/working-dir-status-info repo)
                   :submodules (jgit-utils/submodules-status-info repo)}}))))
 
 (defn capture-publish-info!

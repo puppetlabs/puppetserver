@@ -165,7 +165,9 @@
                                (str (helpers/base-url false)
                                  helpers/default-api-path-prefix
                                  "/v1")
-                               {:status :created})
+                               {:status :created
+                                :status-data {:last_check_in nil
+                                              :last_successful_sync_time nil}})
               latest-commit (get latest-commits (keyword server-repo))
               submodules-status (process-submodules-for-updates
                                   (str (helpers/base-url false)

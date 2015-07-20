@@ -9,8 +9,7 @@
            (org.eclipse.jgit.util FS)
            (java.io File)
            (com.puppetlabs.enterprise HttpClientConnection)
-           (org.eclipse.jgit.storage.file FileBasedConfig)
-           (org.eclipse.jgit.api.errors NoHeadException))
+           (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
@@ -315,7 +314,8 @@
     (head-rev-id as-repo)))
 
 (schema/defn latest-commit :- (schema/maybe RevCommit)
-  "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
+  "Returns the latest commit of repo on its current branch, or nil if the
+  repo contains no commits. Like 'git log -n 1'."
   [repo :- Repository]
   (when (head-rev-id repo)
     (-> repo
@@ -474,7 +474,7 @@
    :author {:name (.getName (.getAuthorIdent commit))
             :email (.getEmailAddress (.getAuthorIdent commit))}})
 
-(defn repo-status-info
+(defn working-dir-status-info
   [repo]
   (let [repo-status (status repo)]
     {:clean (.isClean repo-status)
