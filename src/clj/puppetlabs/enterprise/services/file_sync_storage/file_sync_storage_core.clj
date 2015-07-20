@@ -486,7 +486,7 @@
       (let [repo (jgit-utils/get-repository
                    (common/bare-repo data-dir repo-id)
                    working-dir)]
-        {repo-id {:latest-commit (jgit-utils/commit->status-info (jgit-utils/latest-commit repo))
+        {repo-id {:latest-commit (jgit-utils/repo->latest-commit-status-info repo)
                   :working-dir (jgit-utils/working-dir-status-info repo)
                   :submodules (jgit-utils/submodules-status-info repo)}}))))
 

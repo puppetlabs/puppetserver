@@ -238,12 +238,10 @@
        (.setRemote remote)
        (.call))))
 
-(defn commit-id
+(schema/defn commit-id :- String
   "Given an instance of `AnyObjectId` or its subclasses
   (for example, a `RevCommit`) return the SHA-1 ID for that commit."
-  [commit]
-  {:pre [(instance? AnyObjectId commit)]
-   :post [(string? %)]}
+  [commit :- AnyObjectId]
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
@@ -464,15 +462,18 @@
   [submodule]
   (re-find #"[^\/]+$" submodule))
 
-(schema/defn commit->status-info
-  "Given a RevCommit, extracts and returns information about it which is
-   relevant for the /status endpoint."
-  [commit :- RevCommit]
-  {:commit (commit-id commit)
-   :date (common/jgit-time->human-readable (.getCommitTime commit))
-   :message (.getFullMessage commit)
-   :author {:name (.getName (.getAuthorIdent commit))
-            :email (.getEmailAddress (.getAuthorIdent commit))}})
+(schema/defn repo->latest-commit-status-info
+  "Given a Repository, extracts and returns information about its latest commit
+  which is relevant for the /status endpoint.  Returns nil if the repository
+  has no commits."
+  [repo :- Repository]
+  (let [commit (latest-commit repo)]
+    (when commit
+      {:commit (commit-id commit)
+       :date (common/jgit-time->human-readable (.getCommitTime commit))
+       :message (.getFullMessage commit)
+       :author {:name (.getName (.getAuthorIdent commit))
+                :email (.getEmailAddress (.getAuthorIdent commit))}})))
 
 (defn working-dir-status-info
   [repo]

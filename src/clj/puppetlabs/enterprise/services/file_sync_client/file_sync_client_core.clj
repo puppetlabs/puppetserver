@@ -386,9 +386,8 @@
   [repo]
   ;; Return nil for the commit status if the repo has never been
   ;; synced or the repo does not yet have any commits
-  (if-not (nil? repo)
-    (when-let [commit-info (jgit-utils/latest-commit repo)]
-      (jgit-utils/commit->status-info commit-info))))
+  (when repo
+    (jgit-utils/repo->latest-commit-status-info repo)))
 
 (defn repos-status
   [repos data-dir latest-commits]
