@@ -295,12 +295,18 @@
   [repo]
   (get-in (get-latest-commits) [(keyword repo) :commit]))
 
+(def publish-url
+  (str server-base-url
+    default-api-path-prefix
+    "/v1"
+    common/publish-content-sub-path))
+
 (defn do-publish
   ([]
    (do-publish nil))
   ([body]
    (http-client/post
-     (str server-base-url "/file-sync/v1/publish")
+     publish-url
      {:as :text
       :headers {"content-type" "application/json"}
       :body body})))

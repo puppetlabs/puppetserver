@@ -369,11 +369,7 @@
           nested-dir "module-a"
           nested-submodule-dir "module-b"
           test-file-name "test.txt"
-          root-data-dir (helpers/temp-dir-as-string)
-          publish-url (str helpers/server-base-url
-                        helpers/default-api-path-prefix
-                        "/v1"
-                        common/publish-content-sub-path)]
+          root-data-dir (helpers/temp-dir-as-string)]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -399,7 +395,7 @@
 
           ; first publish, to get parent repo's and submodule repo's initial
           ; states onto the storage service, so that we have a diff to test
-          (let [response (http-client/post publish-url)]
+          (let [response (http-client/post helpers/publish-url)]
             (is (= 200 (:status response))))
 
           ; create a directory with a nested .git directory in the parent repo
@@ -423,7 +419,7 @@
             (jgit-utils/add-and-commit nested-submodule-git
               "Commit submodule nested git repo" {:name "foo" :email "foo@foo.com"}))
 
-          (let [response (http-client/post publish-url)]
+          (let [response (http-client/post helpers/publish-url)]
             (is (= 200 (:status response))))
 
           (testing "storage service stores nested git directories correctly"

@@ -133,11 +133,6 @@
                     (is (= actual-rev expected-rev))
                     (is (nil? (get-in body [(keyword repo2-id) :submodules])))))))))))))
 
-(def publish-url (str helpers/server-base-url
-                      helpers/default-api-path-prefix
-                      "/v1"
-                      common/publish-content-sub-path))
-
 (deftest ^:integration latest-commits-with-submodules-test
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
@@ -170,7 +165,7 @@
 
       (testing "latest-commits returns the latest commits for published submodules"
         ; Publish the submodule
-        (http-client/post publish-url)
+        (http-client/post helpers/publish-url)
 
         (let [response (http-client/post latest-commits-url {:as :text})
               body (common/parse-latest-commits-response response)
@@ -192,7 +187,7 @@
 
 (defn make-publish-request
   [body]
-  (http-client/post publish-url
+  (http-client/post helpers/publish-url
              {:body    (json/encode body)
               :headers {"Content-Type" "application/json"}}))
 
@@ -213,7 +208,7 @@
           {(keyword repo) {:working-dir working-dir}
            (keyword repo2) {:working-dir working-dir-2}})
         (testing "with no body supplied"
-          (let [response (http-client/post publish-url)
+          (let [response (http-client/post helpers/publish-url)
                 body (slurp (:body response))
                 parsed-body (json/parse-string body)]
             (testing "get expected response"
@@ -291,7 +286,7 @@
               (str "Unexpected response body: " body))))
 
       (testing "when request body is malformed json"
-        (let [response (http-client/post publish-url
+        (let [response (http-client/post helpers/publish-url
                                   {:body "malformed"
                                    :headers {"Content-Type" "application/json"}})
               body (slurp (:body response))]
@@ -300,7 +295,7 @@
               (str "Unexpected response body: " body))))
 
       (testing "when request body is not json"
-        (let [response (http-client/post publish-url {:body "not json"
+        (let [response (http-client/post helpers/publish-url {:body "not json"
                                                       :headers {"Content-Type" "text/plain"}})
               body (slurp (:body response))]
           (is (= (:status response) 400))
@@ -326,7 +321,7 @@
         (fs/delete-dir (common/bare-repo data-dir failed-repo))
 
         (with-test-logging
-          (let [response (http-client/post publish-url)
+          (let [response (http-client/post helpers/publish-url)
                 body (slurp (:body response))]
             (testing "get a 200 response"
               (is (= 200 (:status response))))
@@ -383,7 +378,7 @@
                                 :submodules-working-dir submodules-working-dir-2}})
 
     (testing "successful publish returns SHAs for parent repos and submodules"
-      (let [response (http-client/post publish-url)
+      (let [response (http-client/post helpers/publish-url)
             body (slurp (:body response))
             parsed-body (json/parse-string body)]
         (is (= 200 (:status response)))
@@ -441,7 +436,7 @@
         ; Delete a parent repo entirely - this'll cause the publish to fail
         (fs/delete-dir git-dir-failed)
 
-        (let [response (http-client/post publish-url)
+        (let [response (http-client/post helpers/publish-url)
               body (slurp (:body response))
               parsed-body (json/parse-string body)]
           (is (= 200 (:status response)))
@@ -517,7 +512,7 @@
          ;; submodule-1 gets initialized because it already has a directory
          ;; within the `submodules-working-dir`, created during the setup step
          ;; before the storage service is started.
-         (let [response (http-client/post publish-url)
+         (let [response (http-client/post helpers/publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
@@ -528,7 +523,7 @@
        (testing "adding a new submodule and triggering another publish"
          (ks/mkdirs! (fs/file submodules-working-dir submodule-2))
          (helpers/write-test-file! (fs/file submodules-working-dir submodule-2 "test.txt"))
-         (let [response (http-client/post publish-url)
+         (let [response (http-client/post helpers/publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
@@ -538,7 +533,7 @@
 
        (testing "updating a submodule and triggering a publish"
          (helpers/write-test-file! (fs/file submodules-working-dir submodule-1 "update.txt"))
-         (let [response (http-client/post publish-url)
+         (let [response (http-client/post helpers/publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
@@ -572,7 +567,7 @@
           {(keyword repo) {:working-dir working-dir
                            :submodules-dir submodules-dir-name
                            :submodules-working-dir submodules-working-dir}})
-        (let [response (http-client/post publish-url)
+        (let [response (http-client/post helpers/publish-url)
               body (slurp (:body response))]
           (testing "submodules successfully published"
             (is (= 200 (:status response)))
@@ -583,7 +578,7 @@
 
         (testing "removing a submodule and triggering a publish"
           (fs/delete-dir (fs/file submodules-working-dir submodule-2))
-          (let [response (http-client/post publish-url)
+          (let [response (http-client/post helpers/publish-url)
                 body (slurp (:body response))]
             (is (= 200 (:status response)))
             (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
@@ -608,7 +603,7 @@
             [:file-sync-storage :preserve-submodule-repos] true)
 
           (fs/delete-dir (fs/file submodules-working-dir submodule-1))
-          (let [response (http-client/post publish-url)
+          (let [response (http-client/post helpers/publish-url)
                 body (slurp (:body response))]
             (is (= 200 (:status response)))
             (is (= 0 (count (get-in (json/parse-string body) [repo "submodules"]))))

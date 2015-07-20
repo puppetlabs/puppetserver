@@ -239,19 +239,6 @@
        (.setRemote remote)
        (.call))))
 
-(schema/defn latest-commit :- (schema/maybe RevCommit)
-  "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
-  [repo :- Repository]
-  (try
-    (-> repo
-      Git/wrap
-      .log
-      (.setMaxCount 1)
-      .call
-      first)
-    (catch NoHeadException e
-      nil)))
-
 (defn commit-id
   "Given an instance of `AnyObjectId` or its subclasses
   (for example, a `RevCommit`) return the SHA-1 ID for that commit."
@@ -326,6 +313,17 @@
    :post [(or (nil? %) (string? %))]}
   (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (head-rev-id as-repo)))
+
+(schema/defn latest-commit :- (schema/maybe RevCommit)
+  "Returns the latest commit of repo on its current branch.  Like 'git log -n 1'."
+  [repo :- Repository]
+  (when (head-rev-id repo)
+    (-> repo
+      Git/wrap
+      .log
+      (.setMaxCount 1)
+      .call
+      first)))
 
 (schema/defn submodules-status
   "Like 'git submodule status'."
@@ -462,7 +460,6 @@
       .status
       .call))
 
-
 (defn extract-submodule-name
   [submodule]
   (re-find #"[^\/]+$" submodule))
@@ -493,7 +490,4 @@
       (fn [ss]
         {:path (.getPath ss)
          :status (.toString (.getType  ss))
-         :head-id (commit-id (.getHeadId ss))
-         ; There is also SubmoduleStatus.getIndexId
-         ; Maybe that's like 'git describe'?
-         }))))
+         :head-id (commit-id (.getHeadId ss))}))))

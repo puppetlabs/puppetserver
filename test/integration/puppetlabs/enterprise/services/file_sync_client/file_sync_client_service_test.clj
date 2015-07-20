@@ -120,12 +120,6 @@
                            (fs/list-dir local-repo-dir))))
             (is (not (nil? (fs/list-dir client-working-dir))))))))))
 
-(def publish-url
-  (str helpers/server-base-url
-    helpers/default-api-path-prefix
-    "/v1"
-    common/publish-content-sub-path))
-
 (deftest ^:integration working-dir-sync-with-submodules-test
   (testing "sync-working-dir works with submodules"
     (let [repo "parent-repo"
@@ -153,7 +147,7 @@
       ;; Set up the submodule and ensure it's added to the remote repository
       (ks/mkdirs! (fs/file submodules-working-dir submodule))
       (helpers/write-test-file! (fs/file submodules-working-dir submodule test-file))
-      (http-client/post publish-url)
+      (http-client/post helpers/publish-url)
       (bootstrap/with-app-with-config
         app
         helpers/client-service-and-deps
@@ -215,7 +209,7 @@
           ;; Make an additional commit to ensure that previously updated submodules
           ;; are synced
           (fs/delete (fs/file submodules-working-dir submodule test-file))
-          (http-client/post publish-url)
+          (http-client/post helpers/publish-url)
 
           ;; Sync the repo so we can get the latest changes
           (let [new-state (helpers/wait-for-new-state sync-agent)]
@@ -286,8 +280,8 @@
 
             ;; The values are not checked, as they may or may not be nil
             ;; depending on whether or not a sync has been performed
-            (is (contains? status "last-successful-sync-time"))
-            (is (contains? status "last-check-in"))))
+            (is (contains? status "last_successful_sync_time"))
+            (is (contains? status "last_check_in"))))
 
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
@@ -298,22 +292,22 @@
           (testing "status info contains info on recent check-ins"
             (let [check-in-time (helpers/parse-timestamp (get-in body
                                                            ["status"
-                                                            "last-check-in"
+                                                            "last_check_in"
                                                             "timestamp"]))
                   sync-time (helpers/parse-timestamp (get-in body
                                                        ["status"
-                                                        "last-successful-sync-time"]))]
+                                                        "last_successful_sync_time"]))]
               (is (time/before? sync-time (time/now)))
               (is (time/before? check-in-time (time/now)))
               (is (time/before? check-in-time sync-time)))
 
             (testing "status contains info on response from latest check-in"
               (let [latest-commits (helpers/get-latest-commits)
-                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last-check-in" "response"]))]
+                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last_check_in" "response"]))]
                 (is (= latest-commits latest-response))))
 
             (testing "contains nil latest commit if no commits are present"
-              (let [latest-commit (get-in body ["status" "repos" repo "latest-commit"])]
+              (let [latest-commit (get-in body ["status" "repos" repo "latest_commit"])]
                 (is (nil? latest-commit))))))
 
         (testing "Getting the status when commits are present in the repo"
@@ -332,7 +326,7 @@
 
             (let [response (fetch-status)
                   body (json/parse-string (:body response))
-                  latest-commit-status (get-in body ["status" "repos" repo "latest-commit"])]
+                  latest-commit-status (get-in body ["status" "repos" repo "latest_commit"])]
               (testing "Latest commit ID"
                 (is (= commit-id (get latest-commit-status "commit"))))
               (testing "Commit date/time"

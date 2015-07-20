@@ -345,7 +345,7 @@
                            (str server-url server-api-path)
                            agent-state)
           check-in-time (common/timestamp)
-          _ (swap! status-data! assoc :last-check-in {:timestamp check-in-time
+          _ (swap! status-data! assoc :last_check_in {:timestamp check-in-time
                                                       :response latest-commits})
           repos (keys latest-commits)
           _ (log/debug "File sync process running on repos " repos)
@@ -359,7 +359,7 @@
                           (vals repo-states))
           sync-time (common/timestamp)]
       (when full-success?
-        (swap! status-data! assoc :last-successful-sync-time sync-time))
+        (swap! status-data! assoc :last_successful_sync_time sync-time))
       {:status (if full-success? :successful :partial-success)
        :repos repo-states})
     (catch sync-error? error
@@ -391,8 +391,11 @@
                                   {submodule (get-commit-status
                                                (jgit-utils/get-repository-from-git-dir
                                                  (common/submodule-bare-repo
-                                                   data-dir repo-id (jgit-utils/extract-submodule-name submodule))))}))]
-        {repo-id {:latest-commit commit-info
+                                                   data-dir
+                                                   repo-id
+                                                   (jgit-utils/extract-submodule-name
+                                                     submodule))))}))]
+        {repo-id {:latest_commit commit-info
                   :submodules submodules-status}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -493,7 +496,7 @@
   [level :- schema/Keyword
    data-dir :- schema/Str
    status-data]
-  (let [latest-commits (get-in status-data [:last-check-in :response])
+  (let [latest-commits (get-in status-data [:last_check_in :response])
         repos (keys latest-commits)
         status-data (if repos
                       (assoc status-data :repos (repos-status repos data-dir latest-commits))
