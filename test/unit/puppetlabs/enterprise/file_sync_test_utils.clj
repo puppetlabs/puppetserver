@@ -2,7 +2,8 @@
   (:import (org.eclipse.jgit.api Git)
            (org.eclipse.jgit.transport HttpTransport)
            (org.eclipse.jgit.transport.http JDKHttpConnectionFactory)
-           (org.eclipse.jgit.treewalk CanonicalTreeParser))
+           (org.eclipse.jgit.treewalk CanonicalTreeParser)
+           (org.eclipse.jgit.lib PersonIdent))
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
             [me.raynes.fs :as fs]
@@ -42,9 +43,8 @@
 (def test-commit-message
   "update via test")
 
-(def test-identity
-  {:name "Tester Testypants"
-   :email "tester@bogus.com"})
+(def test-person-ident
+  (PersonIdent. "Tester Testypants" "tester@bogus.com"))
 
 (defn base-url
   ([]
@@ -75,7 +75,7 @@
 (defn configure-JGit-SSL!
   [ssl?]
   (let [connection-factory (if ssl?
-                             (jgit-utils/create-connection-factory ssl-context)
+                             (file-sync-client-core/create-connection-factory ssl-context)
                              (JDKHttpConnectionFactory.))]
     (HttpTransport/setConnectionFactory connection-factory)))
 
@@ -202,7 +202,7 @@
   ([repo-path file-name]
    (write-test-file! (str repo-path "/" file-name))
    (let [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
-     (jgit-utils/add-and-commit repo test-commit-message test-identity)
+     (jgit-utils/add-and-commit repo test-commit-message test-person-ident)
      (jgit-utils/push repo))))
 
 (defn clone-and-push-test-commit!

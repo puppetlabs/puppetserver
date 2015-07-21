@@ -5,10 +5,8 @@
            (org.eclipse.jgit.merge MergeStrategy)
            (org.eclipse.jgit.revwalk RevCommit)
            (org.eclipse.jgit.transport PushResult FetchResult)
-           (org.eclipse.jgit.transport.http HttpConnectionFactory)
            (org.eclipse.jgit.util FS)
            (java.io File)
-           (com.puppetlabs.enterprise HttpClientConnection)
            (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
             [puppetlabs.enterprise.file-sync-common :as common]
@@ -16,26 +14,8 @@
             [schema.core :as schema]
             [me.raynes.fs :as fs]))
 
-(schema/defn ^:always-validate create-connection :- HttpClientConnection
-  [ssl-ctxt :- common/SSLContextOrNil
-   url connection-proxy]
-  (HttpClientConnection. ssl-ctxt url connection-proxy))
-
-(schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
-  [ssl-ctxt :- common/SSLContextOrNil]
-  (proxy [HttpConnectionFactory] []
-    (create
-      ([url]
-        (create-connection ssl-ctxt (.toString url) nil))
-      ([url connection-proxy]
-        (create-connection ssl-ctxt (.toString url) connection-proxy)))))
-
-(schema/defn identity->person-ident :- PersonIdent
-  [{:keys [name email]} :- common/Identity]
-  (PersonIdent. name email))
-
 (schema/defn commit :- RevCommit
-  "Perform a git-commit using the supplied message and author. Only files
+  "Perform a git-commit using the supplied message and author/committer. Only files
   previously staged will be committed. If the commit is successful, a
   RevCommit is returned. If the commit failed, one of the following Exceptions
   from the org.eclipse.api.errors namespace may be thrown:
@@ -53,15 +33,14 @@
     - when repository is not in the right state for committing"
   [git :- Git
    message :- String
-   identity :- common/Identity]
-  (let [person-ident (identity->person-ident identity)]
-    (-> git
-      (.commit)
-      (.setAll false) ; this is the default, but make it explicit
-      (.setMessage message)
-      (.setAuthor person-ident)
-      (.setCommitter person-ident)
-      (.call))))
+   person-ident :- PersonIdent]
+  (-> git
+    (.commit)
+    (.setAll false) ; this is the default, but make it explicit
+    (.setMessage message)
+    (.setAuthor person-ident)
+    (.setCommitter person-ident)
+    (.call)))
 
 (defn add!
   "Perform a git add with the given file pattern"
@@ -91,16 +70,15 @@
     - when repository is not in the right state for committing"
   [git :- Git
    message :- String
-   identity :- common/Identity]
+   person-ident :- PersonIdent]
   (add! git ".")
-  (let [person-ident (identity->person-ident identity)]
-    (-> git
-        (.commit)
-        (.setMessage message)
-        (.setAll true)
-        (.setAuthor person-ident)
-        (.setCommitter person-ident)
-        (.call))))
+  (-> git
+    (.commit)
+    (.setMessage message)
+    (.setAll true)
+    (.setAuthor person-ident)
+    (.setCommitter person-ident)
+    (.call)))
 
 (defn delete-all-files-in-dir
   [dir]

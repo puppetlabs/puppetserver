@@ -336,7 +336,7 @@
         (spit local-temp-file temp-file-1-content)
         (fs/touch local-temp-file-2)
         (spit local-temp-file-2 temp-file-2-content)
-        (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-identity)
+        (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-person-ident)
         (jgit-utils/push local-repo (str git-dir))
 
         (testing "working dir should not have test file"
@@ -361,7 +361,7 @@
 
           (fs/delete local-temp-file-2)
           (jgit-utils/add-and-commit
-            local-repo "a second test commit" helpers/test-identity)
+            local-repo "a second test commit" helpers/test-person-ident)
           (jgit-utils/push local-repo (str git-dir))
 
           (testing "working dir should still contain the deleted test file"

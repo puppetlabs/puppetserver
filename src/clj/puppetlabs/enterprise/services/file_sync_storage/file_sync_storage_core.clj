@@ -288,7 +288,9 @@
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
     (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
-      submodule-git (:message commit-info) (:identity commit-info)))
+      submodule-git
+      (:message commit-info)
+      (common/identity->person-ident (:identity commit-info))))
 
   ;; do a submodule add on the parent repo and return the SHA from the cloned
   ;; submodule within the repo
@@ -310,7 +312,9 @@
   (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
     (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
-      submodule-git (:message commit-info) (:identity commit-info)))
+      submodule-git
+      (:message commit-info)
+      (common/identity->person-ident (:identity commit-info))))
 
   ;; do a pull for the submodule within the parent repo to update it, and
   ;; the return the SHA for the new HEAD of the submodule.
@@ -402,7 +406,10 @@
                              (apply str (interpose ", " deleted-submodules)))
             git (Git. repo)]
         (jgit-utils/add! git ".gitmodules")
-        (jgit-utils/commit git commit-message commit-identity)))))
+        (jgit-utils/commit
+          git
+          commit-message
+          (common/identity->person-ident commit-identity))))))
 
 (schema/defn publish-repos :- [PublishRepoResult]
   "Given a list of working directories, a commit message, and a commit author,
@@ -436,7 +443,10 @@
                 git (Git/wrap git-repo)
                 commit (do (log/infof "Committing repo %s" working-dir)
                            (add-all-with-submodules git submodules-dir)
-                           (jgit-utils/commit git (:message commit-info) (:identity commit-info)))
+                           (jgit-utils/commit
+                             git
+                             (:message commit-info)
+                             (common/identity->person-ident (:identity commit-info))))
                 parent-status {:commit (jgit-utils/commit-id commit)}]
             (if-not (empty? submodules-status)
               (assoc parent-status :submodules

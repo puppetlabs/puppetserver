@@ -1,6 +1,7 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext)
-           (java.io File))
+           (java.io File)
+           (org.eclipse.jgit.lib PersonIdent))
   (:require [cheshire.core :as json]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -122,3 +123,7 @@
 (defn submodule-bare-repo
   [data-dir parent-repo submodule]
   (fs/file data-dir (name parent-repo) (str submodule ".git")))
+
+(schema/defn identity->person-ident :- PersonIdent
+  [{:keys [name email]} :- Identity]
+  (PersonIdent. name email))

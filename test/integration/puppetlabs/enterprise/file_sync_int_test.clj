@@ -405,7 +405,7 @@
             (spit (fs/file nested-dir-path test-file-name)
               "test file in the nested directory in the parent repo")
             (jgit-utils/add-and-commit nested-git
-              "Commit nested git repo" {:name "foo" :email "foo@foo.com"}))
+              "Commit nested git repo" helpers/test-person-ident))
 
           ; delete file from submodule
           (fs/delete (fs/file submodules-working-dir submodule test-file-name))
@@ -417,7 +417,7 @@
             (spit (fs/file nested-submodule-path test-file-name)
               "test file in the nested directory in the submodule")
             (jgit-utils/add-and-commit nested-submodule-git
-              "Commit submodule nested git repo" {:name "foo" :email "foo@foo.com"}))
+              "Commit submodule nested git repo" helpers/test-person-ident))
 
           (let [response (http-client/post helpers/publish-url)]
             (is (= 200 (:status response))))

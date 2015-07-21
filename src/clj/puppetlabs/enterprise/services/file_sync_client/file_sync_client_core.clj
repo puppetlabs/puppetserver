@@ -15,7 +15,9 @@
   (:import (org.eclipse.jgit.transport HttpTransport)
            (clojure.lang IFn Agent Atom)
            (java.io IOException)
-           (org.eclipse.jgit.api.errors GitAPIException)))
+           (org.eclipse.jgit.api.errors GitAPIException)
+           (org.eclipse.jgit.transport.http HttpConnectionFactory)
+           (com.puppetlabs.enterprise HttpClientConnection)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
@@ -109,6 +111,20 @@
 (defn path-to-data-dir
   [data-dir]
   (str data-dir "/client"))
+
+(schema/defn ^:always-validate create-connection :- HttpClientConnection
+  [ssl-ctxt :- common/SSLContextOrNil
+   url connection-proxy]
+  (HttpClientConnection. ssl-ctxt url connection-proxy))
+
+(schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
+  [ssl-ctxt :- common/SSLContextOrNil]
+  (proxy [HttpConnectionFactory] []
+    (create
+      ([url]
+       (create-connection ssl-ctxt (.toString url) nil))
+      ([url connection-proxy]
+       (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
 (defn create-http-client
   [ssl-context]
@@ -435,7 +451,7 @@
   currently allow this - see https://bugs.eclipse.org/bugs/show_bug.cgi?id=460483"
   [ssl-context :- common/SSLContextOrNil]
   (-> ssl-context
-    (jgit-utils/create-connection-factory)
+    (create-connection-factory)
     (HttpTransport/setConnectionFactory)))
 
 (defn create-agent

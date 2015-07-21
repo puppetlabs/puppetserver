@@ -32,7 +32,7 @@
         (spit (fs/file working-dir "test-file") "howdy")
         (let [repo (jgit-utils/get-repository git-dir working-dir)]
           (is (jgit-utils/add-and-commit
-                (Git/wrap repo) "test commit" helpers/test-identity))
+                (Git/wrap repo) "test commit" helpers/test-person-ident))
           (is (jgit-utils/head-rev-id repo)))))))
 
 (defn commit!
@@ -41,7 +41,7 @@
     (jgit-utils/add-and-commit
       (Git/wrap repo)
       "test commit"
-      helpers/test-identity)))
+      helpers/test-person-ident)))
 
 (deftest reinitialize-repos-test
   (let [data-dir          (fs/temp-dir "data")
