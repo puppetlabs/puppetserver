@@ -19,12 +19,15 @@
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
+(def default-services
+  [jruby/jruby-puppet-pooled-service
+   profiler/puppet-profiler-service])
+
 (deftest basic-flush-test
   (testing "Flushing the pool results in all new JRuby instances"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 4})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -48,8 +51,7 @@
   (testing "Flush puts a retry poison pill into the old pool"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -78,8 +80,7 @@
   (testing "with-jruby-puppet retries if it encounters a RetryPoisonPill"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
