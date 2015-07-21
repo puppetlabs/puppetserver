@@ -238,7 +238,7 @@
                     ;; status of "synced" or a status of "unchanged"
                     (is (contains? #{:synced :unchanged}
                           (get-in new-state [:repos repo2 :status])))
-                    (is (= (get-in new-state [:repos repo2 :latest-commit])
+                    (is (= (get-in new-state [:repos repo2 :latest_commit])
                           (helpers/get-latest-commits-for-repo repo2)
                           (jgit-utils/head-rev-id-from-git-dir
                             client-dir-repo-2)))))
@@ -405,7 +405,7 @@
             (spit (fs/file nested-dir-path test-file-name)
               "test file in the nested directory in the parent repo")
             (jgit-utils/add-and-commit nested-git
-              "Commit nested git repo" {:name "foo" :email "foo@foo.com"}))
+              "Commit nested git repo" helpers/test-person-ident))
 
           ; delete file from submodule
           (fs/delete (fs/file submodules-working-dir submodule test-file-name))
@@ -417,7 +417,7 @@
             (spit (fs/file nested-submodule-path test-file-name)
               "test file in the nested directory in the submodule")
             (jgit-utils/add-and-commit nested-submodule-git
-              "Commit submodule nested git repo" {:name "foo" :email "foo@foo.com"}))
+              "Commit submodule nested git repo" helpers/test-person-ident))
 
           (let [response (http-client/post helpers/publish-url)]
             (is (= 200 (:status response))))

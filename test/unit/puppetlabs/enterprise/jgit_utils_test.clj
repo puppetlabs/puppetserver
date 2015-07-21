@@ -2,9 +2,9 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.enterprise.jgit-utils :refer :all]
             [puppetlabs.enterprise.file-sync-test-utils :as helpers]
+            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
             [schema.test :as schema-test]
-            [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [me.raynes.fs :as fs])
   (:import (org.eclipse.jgit.api Git)))
 
@@ -21,7 +21,7 @@
 
       (testing "It should return the correct commit id for a repo with commits"
         (helpers/write-test-file! (str repo-dir "/test.txt"))
-        (let [commit (add-and-commit git "a test commit" helpers/test-identity)
+        (let [commit (add-and-commit git "a test commit" helpers/test-person-ident)
               id (commit-id commit)]
           (is (= (head-rev-id repo) id)))))))
 
@@ -35,7 +35,7 @@
 
       (testing "It should return the correct commit id for a repo with commits"
         (helpers/write-test-file! (str repo-dir "/test.txt"))
-        (let [commit (add-and-commit git "a test commit" helpers/test-identity)
+        (let [commit (add-and-commit git "a test commit" helpers/test-person-ident)
               id (commit-id commit)]
           (is (= (head-rev-id-from-working-tree repo-dir) id)))))))
 
@@ -51,7 +51,7 @@
       (testing "It should return the correct commit id for a repo with commits"
         (helpers/write-test-file! (str local-repo-dir "/test.txt"))
         (let [local-repo (helpers/init-repo! local-repo-dir)
-              commit (add-and-commit local-repo "a test commit" helpers/test-identity)
+              commit (add-and-commit local-repo "a test commit" helpers/test-person-ident)
               commit-id (commit-id commit)]
           (push local-repo (str repo-dir))
 
@@ -64,12 +64,12 @@
 
     (helpers/init-bare-repo! (fs/file repo-dir))
     (helpers/init-bare-repo! (fs/file submodule-dir))
-    (let [repo (jgit-utils/get-repository repo-dir local-repo-dir)]
-      (jgit-utils/submodule-add!
+    (let [repo (get-repository repo-dir local-repo-dir)]
+      (submodule-add!
         (Git. repo)
         submodule-dir submodule-dir)
       (let [git-config (.getConfig repo)
-            gitmodules (jgit-utils/submodules-config repo)]
+            gitmodules (submodules-config repo)]
         (.load gitmodules)
         (testing "git config and .gitmodules contain submodule"
           (is (= 1 (count (.getSubsections git-config "submodule"))))
@@ -79,7 +79,7 @@
 
         (testing (str "remove-submodule-configuration! successfully removes "
                       "submodule configuration")
-          (jgit-utils/remove-submodule-configuration! repo submodule-dir)
+          (remove-submodule-configuration! repo submodule-dir)
           (.load gitmodules)
           (.load git-config)
 
@@ -94,16 +94,19 @@
 
     (helpers/init-bare-repo! (fs/file repo-dir))
     (helpers/init-bare-repo! (fs/file submodule-dir))
-    (let [repo (jgit-utils/get-repository repo-dir local-repo-dir)
+    (let [repo (get-repository repo-dir local-repo-dir)
           git (Git. repo)]
-      (jgit-utils/submodule-add! git submodule-path submodule-dir)
-      (jgit-utils/add! git ".")
-      (jgit-utils/commit git "test commit" {:name "test" :email "test"})
+      (submodule-add! git submodule-path submodule-dir)
+      (add! git ".")
+      (commit
+        git
+        "test commit"
+        (common/identity->person-ident {:name "test" :email "test"}))
       (testing "submodule successfully added to repo"
-        (is (= [submodule-path] (jgit-utils/get-submodules repo))))
-      (jgit-utils/remove-submodule! repo submodule-path)
+        (is (= [submodule-path] (get-submodules repo))))
+      (remove-submodule! repo submodule-path)
       (testing "submodule successfully removed from repo"
-        (is (= 0 (count (jgit-utils/get-submodules repo))))))))
+        (is (= 0 (count (get-submodules repo))))))))
 
 (deftest test-clone
   (testing "When clone fails, it does not leave a bogus git repository behind"

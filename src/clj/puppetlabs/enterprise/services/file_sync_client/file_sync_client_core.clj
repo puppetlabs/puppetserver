@@ -15,7 +15,9 @@
   (:import (org.eclipse.jgit.transport HttpTransport)
            (clojure.lang IFn Agent Atom)
            (java.io IOException)
-           (org.eclipse.jgit.api.errors GitAPIException)))
+           (org.eclipse.jgit.api.errors GitAPIException)
+           (org.eclipse.jgit.transport.http HttpConnectionFactory)
+           (com.puppetlabs.enterprise HttpClientConnection)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; Schemas
@@ -63,7 +65,7 @@
     ;; commits have been made against the server-side repo, as the
     ;; server's bare repo will still be cloned on the client-side.
     {:status (schema/enum :synced :unchanged)
-     :latest-commit (schema/maybe schema/Str)
+     :latest_commit (schema/maybe schema/Str)
      (schema/optional-key :submodules) {schema/Str (schema/recursive #'SingleRepoState)}}))
 
 (def RepoStates
@@ -109,6 +111,20 @@
 (defn path-to-data-dir
   [data-dir]
   (str data-dir "/client"))
+
+(schema/defn ^:always-validate create-connection :- HttpClientConnection
+  [ssl-ctxt :- common/SSLContextOrNil
+   url connection-proxy]
+  (HttpClientConnection. ssl-ctxt url connection-proxy))
+
+(schema/defn ^:always-validate create-connection-factory :- HttpConnectionFactory
+  [ssl-ctxt :- common/SSLContextOrNil]
+  (proxy [HttpConnectionFactory] []
+    (create
+      ([url]
+       (create-connection ssl-ctxt (.toString url) nil))
+      ([url connection-proxy]
+       (create-connection ssl-ctxt (.toString url) connection-proxy)))))
 
 (defn create-http-client
   [ssl-context]
@@ -209,7 +225,7 @@
           (log/info (str (if fetch? "fetch" "clone") " of '" name
                       "' successful.  New latest commit: " current-commit-id)))
         {:status (if synced? :synced :unchanged)
-         :latest-commit current-commit-id})
+         :latest_commit current-commit-id})
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
@@ -227,7 +243,7 @@
   (into
     {}
     (for [[submodule commit] submodules-commit-info]
-      (let [submodule-name (jgit-utils/extract-submodule-name submodule)
+      (let [submodule-name (common/extract-submodule-name submodule)
             target-dir (common/bare-repo submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))
@@ -386,9 +402,8 @@
   [repo]
   ;; Return nil for the commit status if the repo has never been
   ;; synced or the repo does not yet have any commits
-  (if-not (nil? repo)
-    (when-let [commit-info (jgit-utils/latest-commit repo)]
-      (jgit-utils/commit->status-info commit-info))))
+  (when repo
+    (common/repo->latest-commit-status-info repo)))
 
 (defn repos-status
   [repos data-dir latest-commits]
@@ -405,7 +420,7 @@
                                                  (common/submodule-bare-repo
                                                    data-dir
                                                    repo-id
-                                                   (jgit-utils/extract-submodule-name
+                                                   (common/extract-submodule-name
                                                      submodule))))}))]
         {repo-id {:latest_commit commit-info
                   :submodules submodules-status}}))))
@@ -436,7 +451,7 @@
   currently allow this - see https://bugs.eclipse.org/bugs/show_bug.cgi?id=460483"
   [ssl-context :- common/SSLContextOrNil]
   (-> ssl-context
-    (jgit-utils/create-connection-factory)
+    (create-connection-factory)
     (HttpTransport/setConnectionFactory)))
 
 (defn create-agent
@@ -532,5 +547,5 @@
           (IllegalArgumentException.
             (str "No repository exists with id " repo-id)))
         (let [repo (jgit-utils/get-repository git-dir working-dir)]
-          {:status (jgit-utils/working-dir-status-info repo)
-           :submodules (jgit-utils/submodules-status-info repo)})))))
+          {:status (common/working-dir-status-info repo)
+           :submodules (common/submodules-status-info repo)})))))

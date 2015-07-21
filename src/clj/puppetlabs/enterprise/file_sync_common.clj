@@ -1,13 +1,15 @@
 (ns puppetlabs.enterprise.file-sync-common
   (:import (javax.net.ssl SSLContext)
-           (java.io File))
+           (java.io File)
+           (org.eclipse.jgit.lib PersonIdent Repository))
   (:require [cheshire.core :as json]
             [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.trapperkeeper.services.status.status-core :as status]))
+            [puppetlabs.trapperkeeper.services.status.status-core :as status]
+            [puppetlabs.enterprise.jgit-utils :as jgit-utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Url paths
@@ -34,6 +36,7 @@
                     (fn [x] (or (instance? String x) (instance? File x)))
                     "String or File"))
 
+; TODO - this is unused - see PE-10688
 (def FileSyncCommonConfig
   "Schema defining the content of the configuration common to the File Sync
   client and storage services.
@@ -121,3 +124,41 @@
 (defn submodule-bare-repo
   [data-dir parent-repo submodule]
   (fs/file data-dir (name parent-repo) (str submodule ".git")))
+
+(schema/defn identity->person-ident :- PersonIdent
+  [{:keys [name email]} :- Identity]
+  (PersonIdent. name email))
+
+(defn extract-submodule-name
+  [submodule]
+  (re-find #"[^\/]+$" submodule))
+
+(schema/defn repo->latest-commit-status-info
+  "Given a Repository, extracts and returns information about its latest commit
+  which is relevant for the /status endpoint.  Returns nil if the repository
+  has no commits."
+  [repo :- Repository]
+  (when-let [commit (jgit-utils/latest-commit repo)]
+    {:commit (jgit-utils/commit-id commit)
+     :date (jgit-time->human-readable (.getCommitTime commit))
+     :message (.getFullMessage commit)
+     :author {:name (.getName (.getAuthorIdent commit))
+              :email (.getEmailAddress (.getAuthorIdent commit))}}))
+
+(defn working-dir-status-info
+  [repo]
+  (let [repo-status (jgit-utils/status repo)]
+    {:clean (.isClean repo-status)
+     :modified (.getModified repo-status)
+     :missing (.getMissing repo-status)
+     :untracked (.getUntracked repo-status)}))
+
+(defn submodules-status-info
+  [repo]
+  (->> repo
+    jgit-utils/submodules-status
+    (ks/mapvals
+      (fn [ss]
+        {:path (.getPath ss)
+         :status (.toString (.getType ss))
+         :head_id (jgit-utils/commit-id (.getHeadId ss))}))))

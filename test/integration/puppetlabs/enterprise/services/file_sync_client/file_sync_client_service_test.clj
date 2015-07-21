@@ -93,7 +93,7 @@
 
       ;; Commit a test file so the repo has contents to sync
       (fs/touch (fs/file local-repo-dir "test"))
-      (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-identity)
+      (jgit-utils/add-and-commit local-repo "a test commit" helpers/test-person-ident)
       (jgit-utils/push local-repo (str client-repo-dir))
       (bootstrap/with-app-with-config
         app
@@ -481,6 +481,6 @@
               (let [status (client-protocol/get-working-dir-status
                              client-service :repo client-working-dir)]
                 (is (= (get status :submodules)
-                       {submodule-path {:head-id submodule-commit-id
+                       {submodule-path {:head_id submodule-commit-id
                                         :path submodule-path
                                         :status "INITIALIZED"}}))))))))))
