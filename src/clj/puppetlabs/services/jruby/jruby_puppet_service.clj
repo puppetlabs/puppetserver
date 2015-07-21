@@ -5,7 +5,6 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [slingshot.slingshot :as sling]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
@@ -32,16 +31,21 @@
         (jruby-agents/send-prime-pool! pool-context)
         (-> context
             (assoc :pool-context pool-context)
-            (assoc :borrow-timeout (:borrow-timeout config))))))
+            (assoc :borrow-timeout (:borrow-timeout config))
+            (assoc :event-callbacks (atom []))))))
 
   (borrow-instance
     [this action]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          borrow-timeout (:borrow-timeout (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context borrow-timeout)))
+    (let [{:keys [pool-context borrow-timeout event-callbacks]} (tk-services/service-context this)
+          requested-event (core/instance-requested @event-callbacks action)]
+      (let [instance (core/borrow-from-pool-with-timeout pool-context borrow-timeout)]
+        (core/instance-borrowed @event-callbacks requested-event instance)
+        instance)))
 
   (return-instance
     [this jruby-instance action]
+    (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
+      (core/instance-returned @event-callbacks jruby-instance action))
     (core/return-to-pool jruby-instance))
 
   (free-instance-count
@@ -64,7 +68,12 @@
     [this]
     (let [service-context (tk-services/service-context this)
           {:keys [pool-context]} service-context]
-      (jruby-agents/send-flush-pool! pool-context))))
+      (jruby-agents/send-flush-pool! pool-context)))
+
+  (register-jruby-event-callback
+    [this callback-fn]
+    (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
+      (swap! event-callbacks conj callback-fn))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
