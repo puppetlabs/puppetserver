@@ -481,6 +481,6 @@
               (let [status (client-protocol/get-working-dir-status
                              client-service :repo client-working-dir)]
                 (is (= (get status :submodules)
-                       {submodule-path {:head-id submodule-commit-id
+                       {submodule-path {:head_id submodule-commit-id
                                         :path submodule-path
                                         :status "INITIALIZED"}}))))))))))

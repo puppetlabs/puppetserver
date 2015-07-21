@@ -238,7 +238,7 @@
                     ;; status of "synced" or a status of "unchanged"
                     (is (contains? #{:synced :unchanged}
                           (get-in new-state [:repos repo2 :status])))
-                    (is (= (get-in new-state [:repos repo2 :latest-commit])
+                    (is (= (get-in new-state [:repos repo2 :latest_commit])
                           (helpers/get-latest-commits-for-repo repo2)
                           (jgit-utils/head-rev-id-from-git-dir
                             client-dir-repo-2)))))

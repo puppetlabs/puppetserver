@@ -161,4 +161,4 @@
       (fn [ss]
         {:path (.getPath ss)
          :status (.toString (.getType ss))
-         :head-id (jgit-utils/commit-id (.getHeadId ss))}))))
+         :head_id (jgit-utils/commit-id (.getHeadId ss))}))))

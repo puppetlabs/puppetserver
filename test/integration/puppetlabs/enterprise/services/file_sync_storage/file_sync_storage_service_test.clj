@@ -675,7 +675,7 @@
                       (time/now)
                       (helpers/parse-timestamp (get-in body ["status" "timestamp"])))))
               (let [repo-status (get-in body ["status" "repos" "my-repo"])
-                    latest-commit-status (get repo-status "latest-commit")]
+                    latest-commit-status (get repo-status "latest_commit")]
                 (testing "Latest commit ID"
                   (is (= commit-id (get latest-commit-status "commit"))))
                 (testing "Commit date/time"
@@ -695,7 +695,7 @@
                 (testing "The commit message"
                   (is (= "my msg" (get latest-commit-status "message"))))
                 (testing "Status of the working directory"
-                  (is (= (get repo-status "working-dir")
+                  (is (= (get repo-status "working_dir")
                          {"clean" true
                           "missing" []
                           "modified" []
@@ -706,15 +706,15 @@
                   (let [client-status (second (first clients))]
                     (testing "Repo information"
                       (is (= (get client-status "repos")
-                            {"my-repo" {"latest-commit" commit-id
+                            {"my-repo" {"latest_commit" commit-id
                                         "status" "synced"}})))
                     (testing "Last check-in timestamp"
                       (is (time/within?
                             test-start-time
                             (time/now)
-                            (helpers/parse-timestamp (get client-status "last-check-in-time"))))))))
+                            (helpers/parse-timestamp (get client-status "last_check_in_time"))))))))
               (testing "The response should contain info about the latest publish"
-                (let [latest-publish-status (get-in body ["status" "latest-publish"])]
+                (let [latest-publish-status (get-in body ["status" "latest_publish"])]
                   (testing "Client IP address"
                     ; If this test runs on a machine in which 'localhost' resolves
                     ; to a different IP address, this assertion will fail.
@@ -722,7 +722,7 @@
                     ; to simply test for a valid IP address.
                     ; For now, this test offers a little more assurance that
                     ; the IP address returned is the correct IP address.
-                    (is (= (get latest-publish-status "client-ip-address")
+                    (is (= (get latest-publish-status "client_ip_address")
                            "127.0.0.1")))
                   (testing "Timestamp"
                     (is (time/within?
@@ -749,7 +749,7 @@
               status (get-in body ["status" "repos" "my-repo"])]
           (testing "The response from the /status endpoint"
             (testing "Status of the working directory"
-              (is (= (get status "working-dir")
+              (is (= (get status "working_dir")
                      {"clean" false
                       "missing" ["test-file-2"]
                       "modified" ["test-file-1"]
@@ -770,9 +770,9 @@
               (is (= 200 (:status debug-response)))
               (is (= 200 (:status info-response)))
               (is (= (get (response->status debug-response) "repos")
-                    (get (response->status info-response) "repos")))
-              (is (= (get (response->status debug-response) "latest-publish")
-                    (get (response->status info-response) "latest-publish"))))))))))
+                     (get (response->status info-response) "repos")))
+              (is (= (get (response->status debug-response) "latest_publish")
+                     (get (response->status info-response) "latest_publish"))))))))))
 
 (deftest ^:integration submodules-status-endpoint-test
   (let [data-dir (helpers/temp-dir-as-string)
@@ -805,7 +805,7 @@
         (is (= 200 (:status response)))
         (testing "The response should contain information about submodules status"
           (is (= (get-in body ["status" "repos" (name :my-repo) "submodules"])
-                 {submodule-path {"head-id" submodule-commit-id
+                 {submodule-path {"head_id" submodule-commit-id
                                   "path" submodule-path
                                   "status" "INITIALIZED"}})))))))
 

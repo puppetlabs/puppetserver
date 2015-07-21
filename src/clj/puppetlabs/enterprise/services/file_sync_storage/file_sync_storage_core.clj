@@ -496,14 +496,14 @@
       (let [repo (jgit-utils/get-repository
                    (common/bare-repo data-dir repo-id)
                    working-dir)]
-        {repo-id {:latest-commit (common/repo->latest-commit-status-info repo)
-                  :working-dir (common/working-dir-status-info repo)
+        {repo-id {:latest_commit (common/repo->latest-commit-status-info repo)
+                  :working_dir (common/working-dir-status-info repo)
                   :submodules (common/submodules-status-info repo)}}))))
 
 (defn capture-publish-info!
   [!request-tracker request result]
   (swap! !request-tracker assoc
-    :latest-publish {:client-ip-address (:remote-addr request)
+    :latest_publish {:client_ip_address (:remote-addr request)
                      :timestamp (common/timestamp)
                      :repos result}))
 
@@ -512,7 +512,7 @@
   (let [ip-address (:remote-addr request)]
     (swap! !request-tracker assoc-in
       [:clients ip-address] (assoc client-repos-info
-                              :last-check-in-time (common/timestamp)))))
+                              :last_check_in_time (common/timestamp)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Ring handler

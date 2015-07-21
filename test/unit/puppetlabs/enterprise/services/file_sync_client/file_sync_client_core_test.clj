@@ -91,7 +91,7 @@
               (is (.isBare repo))
               (is (= initial-commit (jgit-utils/head-rev-id repo))))
             (is (= :synced (:status status)))
-            (is (= initial-commit (:latest-commit status)))))
+            (is (= initial-commit (:latest_commit status)))))
         (testing "Files fetched for update"
           (helpers/push-test-commit! test-clone-dir)
           (let [new-commit (jgit-utils/head-rev-id test-clone-repo)
@@ -101,7 +101,7 @@
                                               client-repo-path)]
             (is (= new-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))
             (is (= :synced (:status status)))
-            (is (= new-commit (:latest-commit status)))))
+            (is (= new-commit (:latest_commit status)))))
         (testing "No change when nothing pushed"
           (let [current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)
                 status (apply-updates-to-repo repo-name
@@ -110,7 +110,7 @@
                                               client-repo-path)]
             (is (= current-commit (jgit-utils/head-rev-id-from-git-dir client-repo-path)))
             (is (= :unchanged (:status status)))
-            (is (= current-commit (:latest-commit status)))))
+            (is (= current-commit (:latest_commit status)))))
         (testing "Files restored after repo directory deleted"
           (let [commit-id (jgit-utils/head-rev-id-from-git-dir client-repo-path)]
             (fs/delete-dir client-repo-path)
@@ -120,7 +120,7 @@
                                                 client-repo-path)]
               (is (= (jgit-utils/head-rev-id-from-git-dir client-repo-path) commit-id))
               (is (= :synced (:status status)))
-              (is (= commit-id (:latest-commit status))))))
+              (is (= commit-id (:latest_commit status))))))
         (testing "Can clone into existing empty directory"
           (fs/delete-dir client-repo-path)
           (is (not (fs/exists? client-repo-path)))
@@ -186,13 +186,13 @@
             (is (fs/exists? (common/bare-repo submodules-root submodule-1)))
             (is (= :synced (:status submodule-1-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
-                  (:latest-commit submodule-1-status))))
+                  (:latest_commit submodule-1-status))))
 
           (testing "submodule-2 was successfully synced with the storage service"
             (is (fs/exists? (common/bare-repo submodules-root submodule-2)))
             (is (= :synced (:status submodule-2-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
-                  (:latest-commit submodule-2-status))))))
+                  (:latest_commit submodule-2-status))))))
 
       (testing "Repo config updated with correct submodule URLs"
         (let [ submodule-1-client-dir (common/submodule-bare-repo client-data-dir
@@ -263,11 +263,11 @@
 
           (testing "process-repos-for-updates returns correct state info"
             (is (= :synced (get-in state [server-repo :status])))
-            (is (not (nil? (get-in state [server-repo :latest-commit]))))
+            (is (not (nil? (get-in state [server-repo :latest_commit]))))
             (is (not (nil? (get-in state [server-repo :submodules]))))
             (is (not (nil? (get-in state [server-repo :submodules
                                           (str submodules-dir "/" submodule)
-                                          :latest-commit]))))
+                                          :latest_commit]))))
             (is (= :failed (get-in state [error-repo :status])))
             (is (= :puppetlabs.enterprise.services.file-sync-client.file-sync-client-core/error
                    (get-in state [error-repo :cause :type])))
@@ -404,9 +404,9 @@
                    repo2 #{repo-2-callback unified-callback}}
         call-callback (partial process-callbacks! callbacks)
         status {repo1 {:status :synced
-                       :latest-commit nil}
+                       :latest_commit nil}
                 repo2 {:status :synced
-                       :latest-commit nil}}]
+                       :latest_commit nil}}]
     (testing "relevant callbacks called when all registered repos are synced"
       (call-callback status)
       (testing "callback for first repo is called once"
@@ -444,7 +444,7 @@
       (reset! callback-result-repo-1 atom-start-value)
       (reset! callback-result-repo-2 atom-start-value)
       (let [unchanged-status {:status :unchanged
-                              :latest-commit nil}
+                              :latest_commit nil}
             repos-status (assoc status repo1 unchanged-status repo2 unchanged-status)]
         (call-callback repos-status)
         (is (= atom-start-value (deref callback-result-repo-1)))

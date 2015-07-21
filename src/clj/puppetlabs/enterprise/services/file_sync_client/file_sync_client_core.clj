@@ -65,7 +65,7 @@
     ;; commits have been made against the server-side repo, as the
     ;; server's bare repo will still be cloned on the client-side.
     {:status (schema/enum :synced :unchanged)
-     :latest-commit (schema/maybe schema/Str)
+     :latest_commit (schema/maybe schema/Str)
      (schema/optional-key :submodules) {schema/Str (schema/recursive #'SingleRepoState)}}))
 
 (def RepoStates
@@ -225,7 +225,7 @@
           (log/info (str (if fetch? "fetch" "clone") " of '" name
                       "' successful.  New latest commit: " current-commit-id)))
         {:status (if synced? :synced :unchanged)
-         :latest-commit current-commit-id})
+         :latest_commit current-commit-id})
       (catch GitAPIException e
         (throw+ {:type    ::error
                  :message (message-with-repo-info
