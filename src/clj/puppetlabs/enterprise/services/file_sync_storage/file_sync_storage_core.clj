@@ -400,7 +400,7 @@
       (when-not preserve-submodules?
         (let [submodules-repo-dir (fs/file data-dir (name repo-id))]
           (fs/delete-dir (fs/file submodules-repo-dir
-                           (str (jgit-utils/extract-submodule-name submodule) ".git"))))))
+                           (str (common/extract-submodule-name submodule) ".git"))))))
     (when-not (empty? deleted-submodules)
       (let [commit-message (str "Delete submodules: "
                              (apply str (interpose ", " deleted-submodules)))
@@ -496,9 +496,9 @@
       (let [repo (jgit-utils/get-repository
                    (common/bare-repo data-dir repo-id)
                    working-dir)]
-        {repo-id {:latest-commit (jgit-utils/repo->latest-commit-status-info repo)
-                  :working-dir (jgit-utils/working-dir-status-info repo)
-                  :submodules (jgit-utils/submodules-status-info repo)}}))))
+        {repo-id {:latest-commit (common/repo->latest-commit-status-info repo)
+                  :working-dir (common/working-dir-status-info repo)
+                  :submodules (common/submodules-status-info repo)}}))))
 
 (defn capture-publish-info!
   [!request-tracker request result]

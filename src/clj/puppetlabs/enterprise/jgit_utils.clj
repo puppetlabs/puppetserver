@@ -9,7 +9,6 @@
            (java.io File)
            (org.eclipse.jgit.storage.file FileBasedConfig))
   (:require [clojure.java.io :as io]
-            [puppetlabs.enterprise.file-sync-common :as common]
             [puppetlabs.kitchensink.core :as ks]
             [schema.core :as schema]
             [me.raynes.fs :as fs]))
@@ -435,38 +434,3 @@
       Git/wrap
       .status
       .call))
-
-(defn extract-submodule-name
-  [submodule]
-  (re-find #"[^\/]+$" submodule))
-
-(schema/defn repo->latest-commit-status-info
-  "Given a Repository, extracts and returns information about its latest commit
-  which is relevant for the /status endpoint.  Returns nil if the repository
-  has no commits."
-  [repo :- Repository]
-  (let [commit (latest-commit repo)]
-    (when commit
-      {:commit (commit-id commit)
-       :date (common/jgit-time->human-readable (.getCommitTime commit))
-       :message (.getFullMessage commit)
-       :author {:name (.getName (.getAuthorIdent commit))
-                :email (.getEmailAddress (.getAuthorIdent commit))}})))
-
-(defn working-dir-status-info
-  [repo]
-  (let [repo-status (status repo)]
-    {:clean (.isClean repo-status)
-     :modified (.getModified repo-status)
-     :missing (.getMissing repo-status)
-     :untracked (.getUntracked repo-status)}))
-
-(defn submodules-status-info
-  [repo]
-  (->> repo
-    submodules-status
-    (ks/mapvals
-      (fn [ss]
-        {:path (.getPath ss)
-         :status (.toString (.getType  ss))
-         :head-id (commit-id (.getHeadId ss))}))))

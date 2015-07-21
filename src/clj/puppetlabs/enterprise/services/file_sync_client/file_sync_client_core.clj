@@ -243,7 +243,7 @@
   (into
     {}
     (for [[submodule commit] submodules-commit-info]
-      (let [submodule-name (jgit-utils/extract-submodule-name submodule)
+      (let [submodule-name (common/extract-submodule-name submodule)
             target-dir (common/bare-repo submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))
@@ -403,7 +403,7 @@
   ;; Return nil for the commit status if the repo has never been
   ;; synced or the repo does not yet have any commits
   (when repo
-    (jgit-utils/repo->latest-commit-status-info repo)))
+    (common/repo->latest-commit-status-info repo)))
 
 (defn repos-status
   [repos data-dir latest-commits]
@@ -420,7 +420,7 @@
                                                  (common/submodule-bare-repo
                                                    data-dir
                                                    repo-id
-                                                   (jgit-utils/extract-submodule-name
+                                                   (common/extract-submodule-name
                                                      submodule))))}))]
         {repo-id {:latest_commit commit-info
                   :submodules submodules-status}}))))
@@ -547,5 +547,5 @@
           (IllegalArgumentException.
             (str "No repository exists with id " repo-id)))
         (let [repo (jgit-utils/get-repository git-dir working-dir)]
-          {:status (jgit-utils/working-dir-status-info repo)
-           :submodules (jgit-utils/submodules-status-info repo)})))))
+          {:status (common/working-dir-status-info repo)
+           :submodules (common/submodules-status-info repo)})))))
