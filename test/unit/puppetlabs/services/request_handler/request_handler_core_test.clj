@@ -233,7 +233,7 @@
                         slurp
                         ring-codec/url-encode))))))
 
-(deftest handle-request-test
+(deftest request-handler-test
   (let [dummy-service (reify jruby/JRubyPuppetService
                         (borrow-instance [_] {})
                         (return-instance [_ _])
@@ -248,19 +248,17 @@
                                      (flush-jruby-pool! [_]))]
     (logutils/with-test-logging
       (testing "slingshot bad requests translated to ring response"
-        (let [bad-message "it's real bad"]
+        (let [bad-message "it's real bad"
+              request-handler (core/build-request-handler dummy-service {})]
           (with-redefs [core/as-jruby-request (fn [_ _]
                                                 (core/throw-bad-request!
                                                   bad-message))]
-            (let [response (core/handle-request {:body (StringReader. "blah")}
-                             dummy-service
-                             {})]
+            (let [response (request-handler {:body (StringReader. "blah")})]
               (is (= 400 (:status response)) "Unexpected response status")
-              (is (= bad-message (:body response)) "Unexpected response body"))
-            (let [response (core/handle-request {:body (StringReader. "")}
-                             dummy-service-with-timeout
-                             {})]
-              (is (= 503 (:status response)) "Unexpected response status")
-              (is (.startsWith
-                    (:body response)
-                    "Attempt to borrow a JRuby instance from the pool")))))))))
+              (is (= bad-message (:body response)) "Unexpected response body")))
+          (let [request-handler (core/build-request-handler dummy-service-with-timeout {})
+                response (request-handler {:body (StringReader. "")})]
+            (is (= 503 (:status response)) "Unexpected response status")
+            (is (.startsWith
+                  (:body response)
+                  "Attempt to borrow a JRuby instance from the pool"))))))))
