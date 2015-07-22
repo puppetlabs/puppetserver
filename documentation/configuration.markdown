@@ -169,12 +169,11 @@ In a default installation, this file doesn't exist. You'll need to create it if 
     You can change Puppet's `ssl_client_verify_header` setting to use another header name instead of `X-Client-Verify`; the `ssl_client_header` setting can rename `X-Client-CN`. The `X-Client-Cert` header can't be renamed.
     
     Note that this setting only applies to HTTP endpoints served by the "master"
-    service.  The applicable endpoints include those listed in the 
-    "Configuration Management Services", "Informational Services", and
-    "V2 HTTP API" sections of the [Puppet HTTP API](https://github.com/puppetlabs/puppet/blob/3.8.1/api/docs/http_api_index.md)
-    page.  Note that this setting does not apply to the endpoints listed under
-    the "SSL Certificate Related Services" section of the "Puppet HTTP API" page
-    or to any of the [Puppet Admin API](#puppetserverconf) endpoints. 
+    service.  The applicable endpoints include those listed in the
+    [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
+    Note that this setting does not apply to the endpoints listed in the
+    [CA V1 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#ca-v1-http-api)
+    or to any of the [Puppet Admin API](#puppetserverconf) endpoints.
 
 ~~~
 master: {
