@@ -23,7 +23,7 @@
     (let [repo-id "push-disabled-test"
           config (helpers/storage-service-config
                    (helpers/temp-dir-as-string)
-                   {(keyword repo-id) {:working-dir repo-id}})]
+                   {(keyword repo-id) {:working-dir (helpers/temp-dir-as-string)}})]
       (helpers/with-bootstrapped-storage-service
         app config
         (let [clone-dir (helpers/temp-dir-as-string)
@@ -45,7 +45,7 @@
         app
         (helpers/storage-service-config
           root-data-dir
-          {(keyword repo-id) {:working-dir repo-id}})
+          {(keyword repo-id) {:working-dir (helpers/temp-dir-as-string)}})
         (let [server-repo-url (str
                                 (helpers/repo-base-url)
                                 "/"
@@ -64,7 +64,7 @@
     (let [repo-name "ssl-configuration-test"
           config (helpers/storage-service-config
                    (helpers/temp-dir-as-string)
-                   {(keyword repo-name) {:working-dir repo-name}}
+                   {(keyword repo-name) {:working-dir (helpers/temp-dir-as-string)}}
                    true)] ; 'true' results in config with Jetty listening on over HTTPS only
       ;; Ensure that JGit's global config is initially using plaintext.
       (helpers/configure-JGit-SSL! false)
@@ -93,9 +93,9 @@
       app
       (helpers/storage-service-config
         root-data-dir
-        {(keyword repo1-id) {:working-dir repo1-id}
-         (keyword repo2-id) {:working-dir repo2-id}
-         (keyword repo3-id) {:working-dir repo3-id}})
+        {(keyword repo1-id) {:working-dir (helpers/temp-dir-as-string)}
+         (keyword repo2-id) {:working-dir (helpers/temp-dir-as-string)}
+         (keyword repo3-id) {:working-dir (helpers/temp-dir-as-string)}})
 
       (let [client-orig-repo-dir-1 (helpers/clone-and-push-test-commit! repo1-id data-dir)
             client-orig-repo-dir-2 (helpers/clone-and-push-test-commit! repo2-id data-dir)]

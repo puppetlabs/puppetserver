@@ -53,7 +53,7 @@
         storage-data-dir (storage-core/path-to-data-dir root-data-dir)
         config (helpers/storage-service-config
                  root-data-dir
-                 {(keyword repo-name) {:working-dir repo-name}})]
+                 {(keyword repo-name) {:working-dir (helpers/temp-dir-as-string)}})]
     (testing "Throws appropriate error when non-empty directory exists but has no git repo"
       (fs/mkdir client-repo-path)
       (fs/touch (fs/file client-repo-path "foo"))
