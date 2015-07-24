@@ -233,37 +233,31 @@
                         slurp
                         ring-codec/url-encode))))))
 
-(deftest handle-request-test
-  (def dummy-service
-    (reify jruby/JRubyPuppetService
-      (borrow_instance [_] {})
-      (return_instance [_ _])
-      (free_instance_count [_])
-      (mark_all_environments_expired_BANG_ [_])
-      (flush_jruby_pool_BANG_ [_])))
-
-  (def dummy-service-with-timeout
-    (reify jruby/JRubyPuppetService
-      (borrow_instance [_] nil)
-      (return_instance [_ _])
-      (free_instance_count [_])
-      (mark_all_environments_expired_BANG_ [_])
-      (flush_jruby_pool_BANG_ [_])))
-
-  (logutils/with-test-logging
-    (testing "slingshot bad requests translated to ring response"
-      (let [bad-message "it's real bad"]
-        (with-redefs [core/as-jruby-request (fn [_ _]
-                                              (core/throw-bad-request!
-                                               bad-message))]
-          (let [response (core/handle-request {:body (StringReader. "blah")}
-                                              dummy-service
-                                              {})]
-            (is (= 400 (:status response)) "Unexpected response status")
-            (is (= bad-message (:body response)) "Unexpected response body"))
-          (let [response (core/handle-request {:body (StringReader. "")}
-                                              dummy-service-with-timeout
-                                              {})]
+(deftest request-handler-test
+  (let [dummy-service (reify jruby/JRubyPuppetService
+                        (borrow-instance [_] {})
+                        (return-instance [_ _])
+                        (free-instance-count [_])
+                        (mark-all-environments-expired! [_])
+                        (flush-jruby-pool! [_]))
+        dummy-service-with-timeout (reify jruby/JRubyPuppetService
+                                     (borrow-instance [_] nil)
+                                     (return-instance [_ _])
+                                     (free-instance-count [_])
+                                     (mark-all-environments-expired! [_])
+                                     (flush-jruby-pool! [_]))]
+    (logutils/with-test-logging
+      (testing "slingshot bad requests translated to ring response"
+        (let [bad-message "it's real bad"
+              request-handler (core/build-request-handler dummy-service {})]
+          (with-redefs [core/as-jruby-request (fn [_ _]
+                                                (core/throw-bad-request!
+                                                  bad-message))]
+            (let [response (request-handler {:body (StringReader. "blah")})]
+              (is (= 400 (:status response)) "Unexpected response status")
+              (is (= bad-message (:body response)) "Unexpected response body")))
+          (let [request-handler (core/build-request-handler dummy-service-with-timeout {})
+                response (request-handler {:body (StringReader. "")})]
             (is (= 503 (:status response)) "Unexpected response status")
             (is (.startsWith
                   (:body response)

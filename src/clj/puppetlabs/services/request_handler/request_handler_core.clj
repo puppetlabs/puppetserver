@@ -262,34 +262,44 @@
       (ring-response/status http-status)
       (ring-response/content-type "text/plain")))
 
+(defn wrap-with-error-handling
+  "Middleware that wraps a JRuby request with some error handling to return
+  the appropriate http status codes, etc."
+  [f]
+  (fn [request]
+    (sling/try+
+      (f request)
+      (catch bad-request? e
+        (output-error request e 400))
+      (catch jruby-timeout? e
+        (output-error request e 503)))))
+
+(defn wrap-with-jruby-instance
+  "Middleware fn that borrows a jruby instance from the `jruby-service` and makes
+  it available in the request as `:jruby-instance`"
+  [f jruby-service]
+  (fn [request]
+    (jruby/with-jruby-puppet jruby-instance jruby-service
+      (f (assoc request :jruby-instance jruby-instance)))))
+
+(defn jruby-request-handler
+  "Build a request handler fn that processes a request using a JRubyPuppet instance"
+  [config]
+  (fn [request]
+    (->> request
+      wrap-params-for-jruby
+      (as-jruby-request config)
+      clojure.walk/stringify-keys
+      make-request-mutable
+      (.handleRequest (:jruby-instance request))
+      response->map)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn handle-request*
-  [request jruby-instance config]
-  (->> request
-    wrap-params-for-jruby
-    (as-jruby-request config)
-    clojure.walk/stringify-keys
-    make-request-mutable
-    (.handleRequest jruby-instance)
-    response->map))
-
-(defmacro with-error-handling
-  [request & body]
-  `(sling/try+
-     ~@body
-     (catch bad-request? e#
-       (output-error ~request e# 400))
-     (catch jruby-timeout? e#
-       (output-error ~request e# 503))))
-
-; NB - this function is basically copied into the PE version of puppet server.
-; If you change this function, you should probably change the corresponding
-; function in puppetlabs.enterprise.services.request-handler.request-handler-service
-
-(defn handle-request
-  [request jruby-service config]
-  (with-error-handling request
-    (jruby/with-jruby-puppet jruby-instance jruby-service
-      (handle-request* request jruby-instance config))))
+(defn build-request-handler
+  "Build the main request handler fn for JRuby requests."
+  [jruby-service config]
+  (-> (jruby-request-handler config)
+    (wrap-with-jruby-instance jruby-service)
+    wrap-with-error-handling))
