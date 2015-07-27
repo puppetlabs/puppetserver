@@ -6,6 +6,7 @@
   "service-prefix" => 'service ',
   "service-num-retries" => 1500,
   "puppetservice" => 'puppetserver',
+  "puppetserver-package" => 'puppetserver',
   "use-service" => true,
   "master-start-curl-retries" => 60,
   "puppetserver-confdir" => '/etc/puppetlabs/puppetserver/conf.d'

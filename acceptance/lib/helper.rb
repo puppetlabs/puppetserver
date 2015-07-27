@@ -167,12 +167,7 @@ module PuppetServerExtensions
   end
 
   def get_defaults_var(host, varname)
-    if master.is_pe?
-      package_name = "pe-puppetserver"
-    else
-      package_name = "puppetserver"
-    end
-
+    package_name = options['puppetserver-package']
     variant, version, _, _ = master['platform'].to_array
 
     case variant
