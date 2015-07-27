@@ -5,7 +5,8 @@
             [puppetlabs.trapperkeeper.services :as tks]
             [puppetlabs.ssl-utils.core :as ssl]
             [puppetlabs.enterprise.services.protocols.file-sync-client :refer :all]
-            [puppetlabs.enterprise.file-sync-common :as common]))
+            [puppetlabs.enterprise.file-sync-common :as common]
+            [schema.core :as schema]))
 
 (tk/defservice file-sync-client-service
   FileSyncClientService
@@ -17,7 +18,9 @@
   (init [this context]
     (log/info "Initializing file sync client service")
     (let [sync-agent (core/create-agent request-shutdown)
-          data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))]
+          common-config (get-in-config [:file-sync-common])
+          _ (schema/validate common/FileSyncCommonConfig common-config)
+          data-dir (core/path-to-data-dir (get common-config :data-dir))]
       (register-status
         "file-sync-client-service"
         common/artifact-version
@@ -29,6 +32,7 @@
     (log/info "Starting file sync client service")
     (let [client-config (get-in-config [:file-sync-client])
           common-config (get-in-config [:file-sync-common])
+          _ (schema/validate core/Config client-config)
           server-url (:server-url common-config)
           data-dir (core/path-to-data-dir (:data-dir common-config))
           poll-interval (* (:poll-interval client-config) 1000)

@@ -5,7 +5,8 @@
     [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
     [puppetlabs.enterprise.file-sync-common :as common]
     [puppetlabs.trapperkeeper.core :refer [defservice]]
-    [compojure.core :as compojure]))
+    [compojure.core :as compojure]
+    [schema.core :as schema]))
 
 (defservice file-sync-storage-service
   [[:ConfigService get-in-config]
@@ -14,8 +15,11 @@
 
   (init [this context]
     (let [config (get-in-config [:file-sync-storage])
-          data-dir (core/path-to-data-dir (get-in-config [:file-sync-common :data-dir]))
-          server-url (get-in-config [:file-sync-common :server-url])
+          common-config (get-in-config [:file-sync-common])
+          _ (schema/validate core/FileSyncServiceRawConfig config)
+          _ (schema/validate common/FileSyncCommonConfig common-config)
+          data-dir (core/path-to-data-dir (get common-config :data-dir))
+          server-url (get common-config :server-url)
           api-path-prefix (get-route this :api)
           repo-path-prefix (get-route this :repo-servlet)
           server-repo-url (str server-url repo-path-prefix)

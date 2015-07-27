@@ -484,3 +484,24 @@
                        {submodule-path {:head_id submodule-commit-id
                                         :path submodule-path
                                         :status "INITIALIZED"}}))))))))))
+
+(deftest ^:integration config-validation-test
+  (let [config (helpers/client-service-config (helpers/temp-dir-as-string))]
+    (logging/with-test-logging
+      (testing "the client service correctly validates its configuration"
+        (let [app (tk/build-app
+                    helpers/client-service-and-deps
+                    (dissoc config :file-sync-client))]
+          ;; Will throw a clojure.lang.ExceptionInfo object if the schema
+          ;; is validated, rather than a NullPointerException
+          (is (thrown? clojure.lang.ExceptionInfo
+                (tk-app/init app)
+                (tk-app/start app)))
+          (tk-app/stop app)))
+
+      (testing "the client service correctly validates the common configuration"
+        (let [app (tk/build-app
+                    helpers/client-service-and-deps
+                    (dissoc config :file-sync-common))]
+          (is (thrown? clojure.lang.ExceptionInfo
+                (tk-app/init app))))))))
