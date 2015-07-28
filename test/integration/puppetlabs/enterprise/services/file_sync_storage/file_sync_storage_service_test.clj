@@ -818,15 +818,15 @@
         (let [app (tk/build-app
                     helpers/storage-service-and-deps
                     (dissoc config :file-sync-storage))]
-          ;; Will throw a clojure.lang.ExceptionInfo object if the schema
-          ;; is validated, rather than a NullPointerException
-          (is (thrown? clojure.lang.ExceptionInfo
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
                 (tk-app/init app)))))
 
       (testing "the client service correctly validates the common configuration"
         (let [app (tk/build-app
                     helpers/storage-service-and-deps
                     (dissoc config :file-sync-common))]
-          (is (thrown? clojure.lang.ExceptionInfo
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
                 (tk-app/init app))))))))
 

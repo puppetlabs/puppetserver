@@ -492,9 +492,8 @@
         (let [app (tk/build-app
                     helpers/client-service-and-deps
                     (dissoc config :file-sync-client))]
-          ;; Will throw a clojure.lang.ExceptionInfo object if the schema
-          ;; is validated, rather than a NullPointerException
-          (is (thrown? clojure.lang.ExceptionInfo
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
                 (tk-app/init app)
                 (tk-app/start app)))
           (tk-app/stop app)))
@@ -503,5 +502,6 @@
         (let [app (tk/build-app
                     helpers/client-service-and-deps
                     (dissoc config :file-sync-common))]
-          (is (thrown? clojure.lang.ExceptionInfo
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
                 (tk-app/init app))))))))
