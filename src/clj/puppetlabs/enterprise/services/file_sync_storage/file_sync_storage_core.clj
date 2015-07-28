@@ -396,6 +396,7 @@
         submodules (set (map #(str submodules-dir "/" %) submodules))
         deleted-submodules (set/difference submodules-in-repo submodules)]
     (doseq [submodule deleted-submodules]
+      (log/infof "Removing deleted submodule %s for repo %s" submodule repo-id)
       (jgit-utils/remove-submodule! repo submodule)
       (when-not preserve-submodules?
         (let [submodules-repo-dir (fs/file data-dir (name repo-id))]
@@ -433,7 +434,6 @@
             git-dir (common/bare-repo data-dir repo-id)
             git-repo (jgit-utils/get-repository git-dir working-dir)]
         (try
-          (log/infof "Removing deleted submodules for repo %s" working-dir)
           (remove-submodules!
             git-repo all-submodules submodules-dir (:identity commit-info)
             data-dir repo-id preserve-submodules?)
