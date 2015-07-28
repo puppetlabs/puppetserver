@@ -6,6 +6,8 @@
             [puppetlabs.enterprise.services.file-sync-storage.file-sync-storage-core :as core]
             [puppetlabs.enterprise.jgit-utils :as jgit-utils]
             [puppetlabs.enterprise.file-sync-common :as common]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
@@ -808,4 +810,23 @@
                  {submodule-path {"head_id" submodule-commit-id
                                   "path" submodule-path
                                   "status" "INITIALIZED"}})))))))
+
+(deftest ^:integration config-validation-test
+  (let [config (helpers/client-service-config (helpers/temp-dir-as-string))]
+    (with-test-logging
+      (testing "the client service correctly validates its configuration"
+        (let [app (tk/build-app
+                    helpers/storage-service-and-deps
+                    (dissoc config :file-sync-storage))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
+                (tk-app/init app)))))
+
+      (testing "the client service correctly validates the common configuration"
+        (let [app (tk/build-app
+                    helpers/storage-service-and-deps
+                    (dissoc config :file-sync-common))]
+          (is (thrown-with-msg? clojure.lang.ExceptionInfo
+                #"Value does not match schema"
+                (tk-app/init app))))))))
 
