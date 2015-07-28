@@ -279,7 +279,9 @@
   it available in the request as `:jruby-instance`"
   [f jruby-service]
   (fn [request]
+    (log/debug "Borrowing a JRuby instance ...")
     (jruby/with-jruby-puppet jruby-instance jruby-service
+      (log/debug "JRuby instance borrowed")
       (f (assoc request :jruby-instance jruby-instance)))))
 
 (defn jruby-request-handler
