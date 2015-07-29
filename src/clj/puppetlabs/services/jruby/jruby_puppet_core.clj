@@ -8,7 +8,8 @@
             [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
-           (com.puppetlabs.puppetserver PuppetProfiler)))
+           (com.puppetlabs.puppetserver PuppetProfiler)
+           (clojure.lang IFn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -64,6 +65,54 @@
           (empty? config))
     (throw (IllegalArgumentException. (str "No configuration data found.  Perhaps "
                                            "you did not specify the --config option?")))))
+
+(schema/defn create-requested-event :- jruby-schemas/JRubyRequestedEvent
+  [action :- jruby-schemas/JRubyEventAction]
+  {:type :instance-requested
+   :action action})
+
+(schema/defn create-borrowed-event :- jruby-schemas/JRubyBorrowedEvent
+  [requested-event :- jruby-schemas/JRubyRequestedEvent
+   instance :- jruby-schemas/JRubyPuppetBorrowResult]
+  {:type :instance-borrowed
+   :action (:action requested-event)
+   :requested-event requested-event
+   :instance instance})
+
+(schema/defn create-returned-event :- jruby-schemas/JRubyReturnedEvent
+  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+   action :- jruby-schemas/JRubyEventAction]
+  {:type :instance-returned
+   :action action
+   :instance instance})
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Event Handlers
+
+(schema/defn notify-event-listeners :- jruby-schemas/JRubyEvent
+  [event-callbacks :- [IFn]
+   event :- jruby-schemas/JRubyEvent]
+  (doseq [f event-callbacks]
+    (f event))
+  event)
+
+(schema/defn instance-requested :- jruby-schemas/JRubyRequestedEvent
+  [event-callbacks :- [IFn]
+   action :- jruby-schemas/JRubyEventAction]
+  (notify-event-listeners event-callbacks (create-requested-event action)))
+
+(schema/defn instance-borrowed :- jruby-schemas/JRubyBorrowedEvent
+  [event-callbacks :- [IFn]
+   requested-event :- jruby-schemas/JRubyRequestedEvent
+   instance :- jruby-schemas/JRubyPuppetBorrowResult]
+  (notify-event-listeners event-callbacks (create-borrowed-event requested-event instance)))
+
+(schema/defn instance-returned :- jruby-schemas/JRubyReturnedEvent
+  [event-callbacks :- [IFn]
+   instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+   action :- jruby-schemas/JRubyEventAction]
+  (notify-event-listeners event-callbacks (create-returned-event instance action)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -141,7 +190,7 @@
     pool-context))
 
 (schema/defn ^:always-validate
-  borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
+  borrow-from-pool-with-timeout :- jruby-schemas/JRubyPuppetBorrowResult
   "Borrows a JRubyPuppet interpreter from the pool, like borrow-from-pool but a
   blocking timeout is provided. If an instance is available then it will be
   immediately returned to the caller, if not then this function will block
