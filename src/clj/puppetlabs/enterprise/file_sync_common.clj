@@ -117,11 +117,13 @@
                     (when v
                       (ks/mapkeys keyword v))))))
 
-(defn bare-repo
+(defn bare-repo-path
+  "Given a path to a data-dir (either client or storage service) and a repo-name,
+  returns the path on disk to the bare Git repository with the given name."
   [data-dir repo-name]
   (fs/file data-dir (str (name repo-name) ".git")))
 
-(defn submodule-bare-repo
+(defn submodule-bare-repo-path
   [data-dir parent-repo submodule]
   (fs/file data-dir (name parent-repo) (str submodule ".git")))
 

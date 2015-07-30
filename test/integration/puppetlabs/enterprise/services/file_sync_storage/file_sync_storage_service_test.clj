@@ -139,7 +139,7 @@
   (let [root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
         repo-id "latest-commits-submodules-test"
-        git-dir (common/bare-repo data-dir repo-id)
+        git-dir (common/bare-repo-path data-dir repo-id)
         working-dir (helpers/temp-dir-as-string)
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
@@ -201,7 +201,7 @@
           working-dir-2 (helpers/temp-dir-as-string)
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)
-          server-repo (common/bare-repo data-dir repo)]
+          server-repo (common/bare-repo-path data-dir repo)]
 
       (helpers/with-bootstrapped-storage-service
         app
@@ -320,7 +320,7 @@
            (keyword success-repo) {:working-dir working-dir-success}})
 
         ; Delete the failed repo entirely - this'll cause the publish to fail
-        (fs/delete-dir (common/bare-repo data-dir failed-repo))
+        (fs/delete-dir (common/bare-repo-path data-dir failed-repo))
 
         (with-test-logging
           (let [response (http-client/post helpers/publish-url)
@@ -331,7 +331,7 @@
             (let [data (json/parse-string body)]
               (testing "for repo that was successfully published"
                 (is (not= nil (get data success-repo)))
-                (is (= (-> (common/bare-repo data-dir success-repo)
+                (is (= (-> (common/bare-repo-path data-dir success-repo)
                            (jgit-utils/get-repository-from-git-dir)
                            (jgit-utils/head-rev-id))
                        (get-in data [success-repo "commit"]))
@@ -351,8 +351,8 @@
         working-dir-success (helpers/temp-dir-as-string)
         root-data-dir (helpers/temp-dir-as-string)
         data-dir (core/path-to-data-dir root-data-dir)
-        git-dir-success (common/bare-repo data-dir successful-parent)
-        git-dir-failed (common/bare-repo data-dir failed-parent)
+        git-dir-success (common/bare-repo-path data-dir successful-parent)
+        git-dir-failed (common/bare-repo-path data-dir failed-parent)
         submodules-dir-name-1 "submodules1"
         submodules-dir-name-2 "submodules2"
         submodules-working-dir-1 (helpers/temp-dir-as-string)
@@ -434,7 +434,7 @@
     (testing "publish endpoint returns correct errors"
       (with-test-logging
         ; Delete a submodule repo entirely - this'll cause the publish to fail
-        (fs/delete-dir (common/submodule-bare-repo data-dir successful-parent submodule-1))
+        (fs/delete-dir (common/submodule-bare-repo-path data-dir successful-parent submodule-1))
         ; Delete a parent repo entirely - this'll cause the publish to fail
         (fs/delete-dir git-dir-failed)
 
@@ -486,7 +486,7 @@
           submodule-2 "nonexistent-submodule"
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (common/bare-repo data-dir repo)]
+          git-dir (common/bare-repo-path data-dir repo)]
 
       ;; Set up working directory for submodule-1, the "existing-submodule"
       ;; (that is, the submodule that exists before the storage service is
@@ -505,8 +505,8 @@
 
        (testing "parent repo initialized correctly but does not initialize any submodules"
          (is (fs/exists? git-dir))
-         (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1))))
-         (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2))))
+         (is (not (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-1))))
+         (is (not (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-2))))
          (let [submodules (jgit-utils/get-submodules-latest-commits git-dir working-dir)]
            (is (empty? submodules))))
 
@@ -517,8 +517,8 @@
          (let [response (http-client/post helpers/publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
-           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
-           (is (not (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2))))
+           (is (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-1)))
+           (is (not (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-2))))
            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 
@@ -528,8 +528,8 @@
          (let [response (http-client/post helpers/publish-url)
                body (slurp (:body response))]
            (is (= 200 (:status response)))
-           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
-           (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2)))
+           (is (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-1)))
+           (is (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-2)))
            (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                  (get-in (json/parse-string body) [repo "submodules"])))))
 
@@ -554,7 +554,7 @@
           submodule-2 "nonexistent-submodule"
           root-data-dir (helpers/temp-dir-as-string)
           data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (common/bare-repo data-dir repo)]
+          git-dir (common/bare-repo-path data-dir repo)]
 
 
       (ks/mkdirs! (fs/file submodules-working-dir submodule-1))
@@ -573,8 +573,8 @@
               body (slurp (:body response))]
           (testing "submodules successfully published"
             (is (= 200 (:status response)))
-            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-1)))
-            (is (fs/exists? (common/submodule-bare-repo data-dir repo submodule-2)))
+            (is (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-1)))
+            (is (fs/exists? (common/submodule-bare-repo-path data-dir repo submodule-2)))
             (is (= (jgit-utils/get-submodules-latest-commits git-dir working-dir)
                   (get-in (json/parse-string body) [repo "submodules"])))))
 

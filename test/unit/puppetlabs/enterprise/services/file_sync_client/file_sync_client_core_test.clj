@@ -142,8 +142,8 @@
         submodules-dir "submodules"
         submodule-1 "submodule-1"
         submodule-2 "submodule-2"
-        submodule-1-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-1)
-        submodule-2-dir (common/submodule-bare-repo storage-data-dir server-repo submodule-2)
+        submodule-1-dir (common/submodule-bare-repo-path storage-data-dir server-repo submodule-1)
+        submodule-2-dir (common/submodule-bare-repo-path storage-data-dir server-repo submodule-2)
         dummy-repo (.getRepository (helpers/init-bare-repo! (ks/temp-dir)))]
     (helpers/with-bootstrapped-storage-service
       app
@@ -183,21 +183,21 @@
                                    (str submodules-dir "/" submodule-2))]
 
           (testing "submodule-1 was successfuly synced with the storage service"
-            (is (fs/exists? (common/bare-repo submodules-root submodule-1)))
+            (is (fs/exists? (common/bare-repo-path submodules-root submodule-1)))
             (is (= :synced (:status submodule-1-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-1-dir)
                   (:latest_commit submodule-1-status))))
 
           (testing "submodule-2 was successfully synced with the storage service"
-            (is (fs/exists? (common/bare-repo submodules-root submodule-2)))
+            (is (fs/exists? (common/bare-repo-path submodules-root submodule-2)))
             (is (= :synced (:status submodule-2-status)))
             (is (= (jgit-utils/head-rev-id-from-git-dir submodule-2-dir)
                   (:latest_commit submodule-2-status))))))
 
       (testing "Repo config updated with correct submodule URLs"
-        (let [ submodule-1-client-dir (common/submodule-bare-repo client-data-dir
+        (let [ submodule-1-client-dir (common/submodule-bare-repo-path client-data-dir
                                         server-repo submodule-1)
-              submodule-2-client-dir (common/submodule-bare-repo client-data-dir
+              submodule-2-client-dir (common/submodule-bare-repo-path client-data-dir
                                        server-repo submodule-2)]
           (testing "Submodule-1's URL set to locally synced bare repo"
             (is (= (str submodule-1-client-dir)
@@ -236,9 +236,9 @@
         server-repo :process-repos-test
         error-repo  :process-repos-error
         nonexistent-repo :process-repos-test-nonexistent
-        client-target-repo-on-server (common/bare-repo client-data-dir server-repo)
-        client-target-repo-nonexistent (common/bare-repo client-data-dir nonexistent-repo)
-        client-target-repo-error (common/bare-repo client-data-dir error-repo)
+        client-target-repo-on-server (common/bare-repo-path client-data-dir server-repo)
+        client-target-repo-nonexistent (common/bare-repo-path client-data-dir nonexistent-repo)
+        client-target-repo-error (common/bare-repo-path client-data-dir error-repo)
         submodules-working-dir (helpers/temp-dir-as-string)
         submodules-dir "submodules"
         submodule "submodule"]
@@ -255,7 +255,7 @@
       (fs/delete-dir client-target-repo-on-server)
       (fs/delete-dir client-target-repo-nonexistent)
       (fs/delete-dir client-target-repo-error)
-      (fs/delete-dir (common/bare-repo storage-data-dir error-repo))
+      (fs/delete-dir (common/bare-repo-path storage-data-dir error-repo))
 
       (with-test-logging
         (let [state (process-repos [server-repo error-repo nonexistent-repo]
@@ -277,7 +277,7 @@
           (is (fs/exists? client-target-repo-on-server)))
 
         (testing "Client submodule directories created when match on server"
-          (is (fs/exists? (common/submodule-bare-repo client-data-dir server-repo submodule))))
+          (is (fs/exists? (common/submodule-bare-repo-path client-data-dir server-repo submodule))))
 
         (testing "Client directory not created when no match on server"
           (is (not (fs/exists? client-target-repo-nonexistent))
@@ -319,7 +319,7 @@
 (deftest sync-working-dir-test
   (let [client-data-dir (helpers/temp-dir-as-string)
         repo :test-repo
-        git-dir (common/bare-repo client-data-dir repo)
+        git-dir (common/bare-repo-path client-data-dir repo)
         working-dir (helpers/temp-dir-as-string)
         local-repo-dir (helpers/temp-dir-as-string)]
     (with-test-logging

@@ -32,7 +32,7 @@
           root-data-dir (helpers/temp-dir-as-string)
           storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
           client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
-          client-repo-dir (common/bare-repo client-data-dir repo)]
+          client-repo-dir (common/bare-repo-path client-data-dir repo)]
       (with-test-logging
         (bootstrap/with-app-with-config
           app
@@ -78,7 +78,7 @@
                             {(keyword repo) {:working-dir (helpers/temp-dir-as-string)}})))]
       (try
         (let [client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
-              client-repo-dir (common/bare-repo client-data-dir repo)
+              client-repo-dir (common/bare-repo-path client-data-dir repo)
               ;; clone the repo from the storage service, create and commit a new
               ;; file, and push it back up to the server. Returns the path to the
               ;; locally cloned repo so that we can push additional files to it later.
@@ -171,8 +171,8 @@
   (let [root-data-dir (helpers/temp-dir-as-string)
         storage-data-dir (file-sync-storage-core/path-to-data-dir root-data-dir)
         client-data-dir (file-sync-client-core/path-to-data-dir root-data-dir)
-        client-dir-repo-1 (common/bare-repo client-data-dir :repo1)
-        client-dir-repo-2 (common/bare-repo client-data-dir :repo2)]
+        client-dir-repo-1 (common/bare-repo-path client-data-dir :repo1)
+        client-dir-repo-2 (common/bare-repo-path client-data-dir :repo2)]
     ;; This is used to silence the error logged when the server-side repo is
     ;; corrupted, but unfortunately, it doesn't seem to actually allow that
     ;; message to be matched in a (is (thrown? ...) kind of assertion.
@@ -201,7 +201,7 @@
           (testing (str "Client-side repo recovers after server-side"
                         " repo becomes corrupt")
             (let [corrupt-repo-path (helpers/temp-dir-as-string)
-                  original-repo-path (common/bare-repo storage-data-dir :repo1)]
+                  original-repo-path (common/bare-repo-path storage-data-dir :repo1)]
               (helpers/push-test-commit! local-dir-repo-1)
               (helpers/push-test-commit! local-dir-repo-2)
 
@@ -413,7 +413,7 @@
           (testing "storage service stores nested git directories correctly"
             (testing "submodule has correct diff"
               (let [repo (jgit-utils/get-repository-from-git-dir
-                           (common/submodule-bare-repo (str root-data-dir "/storage") repo-name submodule))
+                           (common/submodule-bare-repo-path (str root-data-dir "/storage") repo-name submodule))
                     diffs (helpers/get-latest-commit-diff repo)]
 
                 (is (= #{{:old-path "/dev/null"
@@ -429,7 +429,7 @@
 
             (testing "parent repo has correct diff"
               (let [repo (jgit-utils/get-repository-from-git-dir
-                           (common/bare-repo (str root-data-dir "/storage") repo-name))
+                           (common/bare-repo-path (str root-data-dir "/storage") repo-name))
                     diffs (helpers/get-latest-commit-diff repo)]
 
                 (is (= #{{:old-path (format "%s/%s" submodules-dir-name submodule)

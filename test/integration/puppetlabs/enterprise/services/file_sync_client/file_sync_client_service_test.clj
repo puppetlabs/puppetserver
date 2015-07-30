@@ -73,7 +73,7 @@
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         root-data-dir (helpers/temp-dir-as-string)
-        client-repo-dir (common/bare-repo (core/path-to-data-dir root-data-dir) repo)
+        client-repo-dir (common/bare-repo-path (core/path-to-data-dir root-data-dir) repo)
         client-working-dir (fs/file (helpers/temp-dir-as-string))
         local-repo-dir (helpers/temp-dir-as-string)
         local-repo (helpers/init-repo! (fs/file local-repo-dir))]
@@ -118,8 +118,8 @@
           test-file "test.txt"
           root-data-dir (helpers/temp-dir-as-string)
           client-data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (common/bare-repo (str root-data-dir "/storage") repo)
-          client-git-dir (common/bare-repo client-data-dir repo)
+          git-dir (common/bare-repo-path (str root-data-dir "/storage") repo)
+          client-git-dir (common/bare-repo-path client-data-dir repo)
           client-working-dir (helpers/temp-dir-as-string)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
@@ -157,7 +157,7 @@
           (testing "Repo config has proper submodule URLs"
             (let [parent-repo (jgit-utils/get-repository-from-git-dir client-git-dir)
                   repo-config (.getConfig parent-repo)
-                  submodule-client-dir (str (common/submodule-bare-repo client-data-dir repo submodule))]
+                  submodule-client-dir (str (common/submodule-bare-repo-path client-data-dir repo submodule))]
               (is (= submodule-client-dir
                     (.getString
                       repo-config

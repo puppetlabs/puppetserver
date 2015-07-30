@@ -185,7 +185,7 @@
   (let [sub-paths (keys repos)
         map* (if (> (count sub-paths) 1) pmap map)
         latest-commit (fn [sub-path]
-                        (let [repo-path (common/bare-repo data-dir sub-path)
+                        (let [repo-path (common/bare-repo-path data-dir sub-path)
                               rev (latest-commit-id-on-master
                                     repo-path
                                     (get-in repos [sub-path :working-dir]))]
@@ -350,12 +350,12 @@
   (doall
     (for [submodule submodules]
       (let [repo-name (name repo)
-            submodule-git-dir (common/submodule-bare-repo data-dir repo-name submodule)
+            submodule-git-dir (common/submodule-bare-repo-path data-dir repo-name submodule)
             submodule-working-dir (fs/file submodules-working-dir submodule)
             submodule-path (submodule-path submodules-dir submodule)
             submodule-within-parent (fs/file working-dir submodule-path)
             submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)]
-        (with-open [parent-git (-> (common/bare-repo data-dir repo-name)
+        (with-open [parent-git (-> (common/bare-repo-path data-dir repo-name)
                                  (jgit-utils/get-repository working-dir)
                                  Git/wrap)]
 
@@ -431,7 +431,7 @@
             submodules (if submodule-id
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
-            git-dir (common/bare-repo data-dir repo-id)]
+            git-dir (common/bare-repo-path data-dir repo-id)]
         (with-open [git-repo (jgit-utils/get-repository git-dir working-dir)]
           (try
             (remove-submodules!
@@ -494,7 +494,7 @@
   (into {}
     (for [[repo-id {:keys [working-dir]}] repos]
       (with-open [repo (jgit-utils/get-repository
-                         (common/bare-repo data-dir repo-id)
+                         (common/bare-repo-path data-dir repo-id)
                          working-dir)]
         {repo-id {:latest_commit (common/repo->latest-commit-status-info repo)
                   :working_dir (common/working-dir-status-info repo)
@@ -584,7 +584,7 @@
   (initialize-data-dir! (fs/file data-dir))
   (doseq [[repo-id repo-info] (:repos config)]
     (let [working-dir (:working-dir repo-info)
-          git-dir (common/bare-repo data-dir repo-id)]
+          git-dir (common/bare-repo-path data-dir repo-id)]
       ; Create the working dir, if it does not already exist.
       (when-not (fs/exists? working-dir)
         (ks/mkdirs! working-dir))
