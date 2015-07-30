@@ -34,17 +34,6 @@
    :body    (json/encode {})
    :headers {"content-type" "application/json"}})
 
-(defn fetch-status
-  ([]
-   (fetch-status nil))
-  ([level]
-   (http-client/get
-     (str helpers/server-base-url
-       (if level
-         (str "/status/v1/services/file-sync-client-service?level=" (name level))
-         "/status/v1/services/file-sync-client-service"))
-     {:as :text})))
-
 (deftest ^:integration polling-client-ssl-test
   (testing "polling client will use SSL when configured"
     (logging/with-test-logging
@@ -271,7 +260,7 @@
 
       (let [sync-agent (helpers/get-sync-agent app)]
         (testing "basic status info"
-          (let [response (fetch-status)
+          (let [response (helpers/get-client-status)
                 body (json/parse-string (:body response))
                 status (get body "status")]
             (is (= "running" (get body "state")))
@@ -286,7 +275,7 @@
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
 
-        (let [response (fetch-status)
+        (let [response (helpers/get-client-status)
               body (json/parse-string (:body response))]
           (is (= "running" (get body "state")))
           (testing "status info contains info on recent check-ins"
@@ -324,7 +313,7 @@
             (let [new-state (helpers/wait-for-new-state sync-agent)]
               (is (= :successful (:status new-state))))
 
-            (let [response (fetch-status)
+            (let [response (helpers/get-client-status)
                   body (json/parse-string (:body response))
                   latest-commit-status (get-in body ["status" "repos" repo "latest_commit"])]
               (testing "Latest commit ID"
@@ -342,7 +331,7 @@
                 (is (= "my msg" (get latest-commit-status "message")))))))
 
         (testing "status level is honored"
-          (let [response (fetch-status :critical)
+          (let [response (helpers/get-client-status :critical)
                 body (json/parse-string (:body response))]
             (is (= "running" (get body "state")))
             (is (nil? (get body "status")))
@@ -382,7 +371,7 @@
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
 
-        (let [response (fetch-status)
+        (let [response (helpers/get-client-status)
               body (json/parse-string (:body response))
               latest-commit-status (get-in body ["status" "repos" "repo" "submodules" submodule-path])]
           (is (= 200 (:status response)))
