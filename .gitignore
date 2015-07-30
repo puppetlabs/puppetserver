@@ -29,3 +29,4 @@ Gemfile.local
 # Local test runs drop files into junit and tmp
 /junit/
 /tmp/
+acceptance/scripts/hosts.cfg

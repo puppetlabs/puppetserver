@@ -5,7 +5,7 @@ if (master['platform'] =~ /el-5/)
 end
 
 cli = "puppetserver"
-service = "puppetserver"
+service = options['puppetservice']
 
 # puppetserver seems to take about 45s to start up
 timout_length = "60s"
