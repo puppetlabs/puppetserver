@@ -1,3 +1,6 @@
+require 'test/unit/assertions'
+require 'puppetserver/acceptance/gem_utils'
+
 test_name "Puppetserver 'gem' subcommand tests."
 
 cli = "puppetserver"
