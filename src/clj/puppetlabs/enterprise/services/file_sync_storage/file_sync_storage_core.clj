@@ -161,22 +161,24 @@
       (setBare true)
       (call)))
 
-(schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommit)
+(schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommitOrError)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
   [git-dir working-dir]
   (with-open [repo (jgit-utils/get-repository-from-git-dir git-dir)]
-    (when-let [ref (.getRef repo "refs/heads/master")]
-      (let [latest-commit (-> ref
+    (if (jgit-utils/repo-exists? repo)
+      (when-let [ref (.getRef repo "refs/heads/master")]
+        (let [latest-commit (-> ref
                               (.getObjectId)
                               (jgit-utils/commit-id))
-            submodules-status (jgit-utils/get-submodules-latest-commits
-                                git-dir working-dir)
-            base-data {:commit latest-commit}]
-        (if (empty? submodules-status)
-          base-data
-          (assoc base-data :submodules submodules-status))))))
+              submodules-status (jgit-utils/get-submodules-latest-commits
+                                  git-dir working-dir)
+              base-data {:commit latest-commit}]
+          (if (empty? submodules-status)
+            base-data
+            (assoc base-data :submodules submodules-status))))
+      {:error (str "Repository not found at " git-dir)})))
 
 (defn compute-latest-commits
   "Computes the latest commit for each repository in sub-paths.  Returns a map

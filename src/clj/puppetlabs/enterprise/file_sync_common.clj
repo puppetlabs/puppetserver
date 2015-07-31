@@ -51,10 +51,12 @@
   {:data-dir schema/Str
    :server-url schema/Str})
 
-(def LatestCommit
+(def LatestCommitOrError
   "Schema defining the result of computing the latest commit for a repo"
-  {:commit schema/Str
-   (schema/optional-key :submodules) {schema/Str schema/Str}})
+  (schema/if #(:error %)
+    {:error schema/Str}
+    {:commit schema/Str
+     (schema/optional-key :submodules) {schema/Str schema/Str}}))
 
 (def LatestCommitsPayload
   "Schema defining the return payload of the server's 'latest-commits'
@@ -62,7 +64,7 @@
 
   The first Str in each pair represents a repository name.  The corresponding
   Str in the pair represents the id of the latest commit in the repository."
-  {schema/Keyword (schema/maybe LatestCommit)})
+  {schema/Keyword (schema/maybe LatestCommitOrError)})
 
 (def SSLContextOrNil
   (schema/maybe SSLContext))

@@ -133,7 +133,15 @@
                         expected-rev (jgit-utils/head-rev-id-from-working-tree
                                        client-orig-repo-dir-2)]
                     (is (= actual-rev expected-rev))
-                    (is (nil? (get-in body [(keyword repo2-id) :submodules])))))))))))))
+                    (is (nil? (get-in body [(keyword repo2-id) :submodules])))))))))
+
+        (testing "A disappearing repo results in an error"
+          (fs/delete-dir (common/bare-repo-path data-dir repo1-id))
+          (let [response (helpers/latest-commits-response)]
+            (is (= 200 (:status response)))
+            (is (re-matches
+                  #"Repository not found at .*"
+                  (get-in (json/parse-string (:body response)) [repo1-id "error"])))))))))
 
 (deftest ^:integration latest-commits-with-submodules-test
   (let [root-data-dir (helpers/temp-dir-as-string)
