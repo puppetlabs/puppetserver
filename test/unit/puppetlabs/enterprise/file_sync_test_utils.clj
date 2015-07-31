@@ -201,7 +201,7 @@
    (push-test-commit! repo-path (str "test-file" (ks/uuid))))
   ([repo-path file-name]
    (write-test-file! (str repo-path "/" file-name))
-   (let [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
+   (with-open [repo (Git. (jgit-utils/get-repository-from-working-tree (fs/file repo-path)))]
      (jgit-utils/add-and-commit repo test-commit-message test-person-ident)
      (jgit-utils/push repo))))
 

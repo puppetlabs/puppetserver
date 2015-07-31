@@ -279,7 +279,7 @@
                    string?)
            repo)]
    :post [(or (nil? %) (string? %))]}
-  (let [as-repo (get-repository-from-working-tree (io/as-file repo))]
+  (with-open [as-repo (get-repository-from-working-tree (io/as-file repo))]
     (when (repo-exists? as-repo)
       (head-rev-id as-repo))))
 
@@ -292,7 +292,7 @@
                    string?)
            repo)]
    :post [(or (nil? %) (string? %))]}
-  (let [as-repo (get-repository-from-git-dir (io/as-file repo))]
+  (with-open [as-repo (get-repository-from-git-dir (io/as-file repo))]
     (when (repo-exists? as-repo)
       (head-rev-id as-repo))))
 
@@ -320,8 +320,9 @@
   "Given a path to a Git repository and a working tree, returns the
   latest commit for all submodules in that repo"
   [git-dir working-dir]
-  (let [submodule-status (submodules-status (get-repository git-dir working-dir))]
-    (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status)))
+  (with-open [repo (get-repository git-dir working-dir)]
+    (let [submodule-status (submodules-status repo)]
+      (ks/mapvals (fn [v] (.getName (.getIndexId v))) submodule-status))))
 
 (defn get-submodules
   "Given a path to a Git repository and a working tree, returns the
@@ -339,8 +340,8 @@
   (let [submodules (get-submodules repo)
         work-tree (.getWorkTree repo)]
     (doseq [submodule submodules]
-      (let [submodule-repo (get-repository-from-working-tree
-                             (fs/file work-tree submodule))]
+      (with-open [submodule-repo (get-repository-from-working-tree
+                                   (fs/file work-tree submodule))]
         (when (repo-exists? submodule-repo)
           (fetch submodule-repo))))))
 
