@@ -222,6 +222,20 @@
   ; This just exists because the JGit API is stupid.
   (.name commit))
 
+(defn repo-exists?
+  [repo]
+  (.. repo
+      (getObjectDatabase)
+      (exists)))
+
+(defn validate-repo-exists!
+  [repo]
+  (when-not (repo-exists? repo)
+    (throw (IllegalStateException.
+             (format
+               "Repository at path %s does not exist."
+               (.getDirectory repo))))))
+
 (schema/defn get-repository :- Repository
   "Given a path to a Git repository and a working tree, return a Repository instance."
   [repo working-tree]
@@ -230,29 +244,21 @@
       (setWorkTree (io/as-file working-tree))
       (build)))
 
-(schema/defn get-repository-from-working-tree :- (schema/maybe Repository)
+(schema/defn get-repository-from-working-tree :- Repository
   "Given a path to a working tree, return a Repository instance,
    or nil if no repository exists in $path/.git."
   [path]
-  (if-let [repo (.. (RepositoryBuilder.)
-                    (setWorkTree (io/as-file path))
-                    (build))]
-    (when (.. repo
-              (getObjectDatabase)
-              (exists))
-      repo)))
+  (.. (RepositoryBuilder.)
+      (setWorkTree (io/as-file path))
+      (build)))
 
-(schema/defn get-repository-from-git-dir :- (schema/maybe Repository)
+(schema/defn get-repository-from-git-dir :- Repository
   "Given a path to a Git repository (i.e., a .git directory) return a
    Repository instance, or nil if no repository exists at path."
   [path]
-  (if-let [repo (.. (RepositoryBuilder.)
-                    (setGitDir (io/as-file path))
-                    (build))]
-    (when (.. repo
-              (getObjectDatabase)
-              (exists))
-      repo)))
+  (.. (RepositoryBuilder.)
+      (setGitDir (io/as-file path))
+      (build)))
 
 (defn head-rev-id
   "Returns the SHA-1 revision ID of a repository on disk.  Like
@@ -273,8 +279,9 @@
                    string?)
            repo)]
    :post [(or (nil? %) (string? %))]}
-  (if-let [as-repo (get-repository-from-working-tree (io/as-file repo))]
-    (head-rev-id as-repo)))
+  (let [as-repo (get-repository-from-working-tree (io/as-file repo))]
+    (when (repo-exists? as-repo)
+      (head-rev-id as-repo))))
 
 (defn head-rev-id-from-git-dir
   "Given a file or a string path to a file, returns the SHA-1 revision
@@ -285,8 +292,9 @@
                    string?)
            repo)]
    :post [(or (nil? %) (string? %))]}
-  (if-let [as-repo (get-repository-from-git-dir (io/as-file repo))]
-    (head-rev-id as-repo)))
+  (let [as-repo (get-repository-from-git-dir (io/as-file repo))]
+    (when (repo-exists? as-repo)
+      (head-rev-id as-repo))))
 
 (schema/defn latest-commit :- (schema/maybe RevCommit)
   "Returns the latest commit of repo on its current branch, or nil if the
@@ -331,9 +339,10 @@
   (let [submodules (get-submodules repo)
         work-tree (.getWorkTree repo)]
     (doseq [submodule submodules]
-      (when-let [submodule-repo (get-repository-from-working-tree
-                                  (fs/file work-tree submodule))]
-        (fetch submodule-repo)))))
+      (let [submodule-repo (get-repository-from-working-tree
+                             (fs/file work-tree submodule))]
+        (when (repo-exists? submodule-repo)
+          (fetch submodule-repo))))))
 
 (defn submodules-config
   "Given a Git repository, return its .gitmodules file as a

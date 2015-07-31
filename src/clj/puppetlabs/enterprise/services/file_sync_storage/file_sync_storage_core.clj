@@ -166,7 +166,7 @@
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
   [git-dir working-dir]
-  (when-let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
+  (let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
     (when-let [ref (.getRef repo "refs/heads/master")]
       (let [latest-commit (-> ref
                               (.getObjectId)

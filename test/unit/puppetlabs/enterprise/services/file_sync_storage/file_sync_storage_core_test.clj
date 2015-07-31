@@ -25,7 +25,7 @@
         (is (fs/exists? working-dir))
         (is (fs/exists? git-dir)))
       (testing "The git dir is initialized correctly"
-        (is (not (nil? (jgit-utils/get-repository-from-git-dir git-dir))))
+        (is (jgit-utils/repo-exists? (jgit-utils/get-repository-from-git-dir git-dir)))
         (is (.isBare (jgit-utils/get-repository-from-git-dir git-dir)))
         (is (nil? (jgit-utils/head-rev-id-from-git-dir git-dir))))
       (testing "The working dir can be used as a git working tree"

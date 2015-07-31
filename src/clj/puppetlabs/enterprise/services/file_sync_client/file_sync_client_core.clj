@@ -184,16 +184,11 @@
    latest commit ID in that repo, run 'git fetch'.  name is only used for
    logging and error messages."
   [name target-dir latest-commit-id]
-  (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+  (let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+    (jgit-utils/validate-repo-exists! repo)
     (when-not (= latest-commit-id (jgit-utils/head-rev-id repo))
       (log/infof "Fetching '%s' to %s" name latest-commit-id)
-      (jgit-utils/fetch repo))
-    (throw (IllegalStateException.
-             (message-with-repo-info
-               (str "File sync found a non-empty directory which does "
-                 "not have a repository in it")
-               name
-               target-dir)))))
+      (jgit-utils/fetch repo))))
 
 (defn non-empty-dir?
   "Returns true if path exists, is a directory, and contains at least 1 file."
@@ -402,7 +397,7 @@
   [repo]
   ;; Return nil for the commit status if the repo has never been
   ;; synced or the repo does not yet have any commits
-  (when repo
+  (when (jgit-utils/repo-exists? repo)
     (common/repo->latest-commit-status-info repo)))
 
 (defn repos-status
