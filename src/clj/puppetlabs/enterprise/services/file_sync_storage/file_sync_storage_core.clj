@@ -166,7 +166,7 @@
    the repository specified by the given `git-dir`.  Returns `nil` if no commits
    have been made on the repository."
   [git-dir working-dir]
-  (when-let [repo (jgit-utils/get-repository-from-git-dir git-dir)]
+  (with-open [repo (jgit-utils/get-repository-from-git-dir git-dir)]
     (when-let [ref (.getRef repo "refs/heads/master")]
       (let [latest-commit (-> ref
                               (.getObjectId)
@@ -285,7 +285,7 @@
 
   ;; add and commit the new submodule
   (log/debugf "Committing submodule %s" submodule-working-dir)
-  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
+  (with-open [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
     (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
       submodule-git
@@ -309,7 +309,7 @@
 
   ;; add and commit the repo for the submodule
   (log/debugf "Committing submodule %s " submodule-working-dir)
-  (let [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
+  (with-open [submodule-git (Git/wrap (jgit-utils/get-repository submodule-git-dir submodule-working-dir))]
     (add-all-and-rm-missing submodule-git)
     (jgit-utils/commit
       submodule-git
@@ -319,12 +319,12 @@
   ;; do a pull for the submodule within the parent repo to update it, and
   ;; the return the SHA for the new HEAD of the submodule.
   (log/debugf "Updating submodule %s within parent repo" submodule-within-parent)
-  (-> submodule-within-parent
-    jgit-utils/get-repository-from-working-tree
-    jgit-utils/pull
-    .getMergeResult
-    .getNewHead
-    jgit-utils/commit-id))
+  (with-open [repo (jgit-utils/get-repository-from-working-tree submodule-within-parent)]
+    (-> repo
+        jgit-utils/pull
+        .getMergeResult
+        .getNewHead
+        jgit-utils/commit-id)))
 
 (defn submodule-path
   "Return the path to the submodule within the parent repo. If
@@ -354,38 +354,38 @@
             submodule-working-dir (fs/file submodules-working-dir submodule)
             submodule-path (submodule-path submodules-dir submodule)
             submodule-within-parent (fs/file working-dir submodule-path)
-            submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)
-            parent-git (-> (common/bare-repo data-dir repo-name)
-                         (jgit-utils/get-repository working-dir)
-                         Git/wrap)]
+            submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)]
+        (with-open [parent-git (-> (common/bare-repo data-dir repo-name)
+                                 (jgit-utils/get-repository working-dir)
+                                 Git/wrap)]
 
-        (log/infof "Publishing submodule %s for repo %s" submodule-path repo-name)
-        ;; Check whether the submodule exists on the parent repo. If it does
-        ;; then we add and commit the submodule in its repo, then do a pull
-        ;; within the parent repo to update it there. If it does not exist, then
-        ;; we need to initialize a new bare repo for the submodule and do a
-        ;; "submodule add".
-        (try
-          (if (empty? (.. parent-git
-                        submoduleStatus
-                        (addPath submodule-path)
-                        call))
-            (init-new-submodule
-              submodule-git-dir
-              submodule-working-dir
-              submodule-path
-              parent-git
-              submodule-url
-              commit-info)
-            (publish-existing-submodule
-              submodule-git-dir
-              submodule-working-dir
-              submodule-within-parent
-              commit-info))
-          (catch JGitInternalException e
-            (failed-to-publish submodule-within-parent e))
-          (catch GitAPIException e
-            (failed-to-publish submodule-within-parent e)))))))
+          (log/infof "Publishing submodule %s for repo %s" submodule-path repo-name)
+          ;; Check whether the submodule exists on the parent repo. If it does
+          ;; then we add and commit the submodule in its repo, then do a pull
+          ;; within the parent repo to update it there. If it does not exist, then
+          ;; we need to initialize a new bare repo for the submodule and do a
+          ;; "submodule add".
+          (try
+            (if (empty? (.. parent-git
+                          submoduleStatus
+                          (addPath submodule-path)
+                          call))
+              (init-new-submodule
+                submodule-git-dir
+                submodule-working-dir
+                submodule-path
+                parent-git
+                submodule-url
+                commit-info)
+              (publish-existing-submodule
+                submodule-git-dir
+                submodule-working-dir
+                submodule-within-parent
+                commit-info))
+            (catch JGitInternalException e
+              (failed-to-publish submodule-within-parent e))
+            (catch GitAPIException e
+              (failed-to-publish submodule-within-parent e))))))))
 
 (defn remove-submodules!
   "Given a repository and the list of submodules in the submodules-working-dir,
@@ -431,31 +431,31 @@
             submodules (if submodule-id
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
-            git-dir (common/bare-repo data-dir repo-id)
-            git-repo (jgit-utils/get-repository git-dir working-dir)]
-        (try
-          (remove-submodules!
-            git-repo all-submodules submodules-dir (:identity commit-info)
-            data-dir repo-id preserve-submodules?)
-          (let [submodules-status (publish-submodules
-                                    submodules repo data-dir
-                                    server-repo-url commit-info)
-                git (Git/wrap git-repo)
-                commit (do (log/infof "Committing repo %s" working-dir)
-                           (add-all-with-submodules git submodules-dir)
-                           (jgit-utils/commit
-                             git
-                             (:message commit-info)
-                             (common/identity->person-ident (:identity commit-info))))
-                parent-status {:commit (jgit-utils/commit-id commit)}]
-            (if-not (empty? submodules-status)
-              (assoc parent-status :submodules
-                (zipmap (map #(submodule-path submodules-dir %) submodules) submodules-status))
-              parent-status))
-          (catch JGitInternalException e
-            (failed-to-publish working-dir e))
-          (catch GitAPIException e
-            (failed-to-publish working-dir e)))))))
+            git-dir (common/bare-repo data-dir repo-id)]
+        (with-open [git-repo (jgit-utils/get-repository git-dir working-dir)]
+          (try
+            (remove-submodules!
+              git-repo all-submodules submodules-dir (:identity commit-info)
+              data-dir repo-id preserve-submodules?)
+            (let [submodules-status (publish-submodules
+                                      submodules repo data-dir
+                                      server-repo-url commit-info)
+                  git (Git/wrap git-repo)
+                  commit (do (log/infof "Committing repo %s" working-dir)
+                             (add-all-with-submodules git submodules-dir)
+                             (jgit-utils/commit
+                               git
+                               (:message commit-info)
+                               (common/identity->person-ident (:identity commit-info))))
+                  parent-status {:commit (jgit-utils/commit-id commit)}]
+              (if-not (empty? submodules-status)
+                (assoc parent-status :submodules
+                  (zipmap (map #(submodule-path submodules-dir %) submodules) submodules-status))
+                parent-status))
+            (catch JGitInternalException e
+              (failed-to-publish working-dir e))
+            (catch GitAPIException e
+              (failed-to-publish working-dir e))))))))
 
 (schema/defn ^:always-validate publish-content :- PublishResponseBody
   "Given a map of repositories and the JSON body of the request, publish
@@ -493,9 +493,9 @@
    data-dir]
   (into {}
     (for [[repo-id {:keys [working-dir]}] repos]
-      (let [repo (jgit-utils/get-repository
-                   (common/bare-repo data-dir repo-id)
-                   working-dir)]
+      (with-open [repo (jgit-utils/get-repository
+                         (common/bare-repo data-dir repo-id)
+                         working-dir)]
         {repo-id {:latest_commit (common/repo->latest-commit-status-info repo)
                   :working_dir (common/working-dir-status-info repo)
                   :submodules (common/submodules-status-info repo)}}))))

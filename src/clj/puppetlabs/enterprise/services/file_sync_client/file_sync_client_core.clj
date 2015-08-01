@@ -184,16 +184,11 @@
    latest commit ID in that repo, run 'git fetch'.  name is only used for
    logging and error messages."
   [name target-dir latest-commit-id]
-  (if-let [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+  (with-open [repo (jgit-utils/get-repository-from-git-dir target-dir)]
+    (jgit-utils/validate-repo-exists! repo)
     (when-not (= latest-commit-id (jgit-utils/head-rev-id repo))
       (log/infof "Fetching '%s' to %s" name latest-commit-id)
-      (jgit-utils/fetch repo))
-    (throw (IllegalStateException.
-             (message-with-repo-info
-               (str "File sync found a non-empty directory which does "
-                 "not have a repository in it")
-               name
-               target-dir)))))
+      (jgit-utils/fetch repo))))
 
 (defn non-empty-dir?
   "Returns true if path exists, is a directory, and contains at least 1 file."
@@ -258,13 +253,13 @@
 
 (defn process-submodules-for-repo
   [server-repo-url submodules-commit-info submodule-root parent-target parent-status]
-  (let [parent-repo (jgit-utils/get-repository-from-git-dir parent-target)
-        submodules-status (process-submodules-for-updates
-                            server-repo-url
-                            submodules-commit-info
-                            submodule-root
-                            parent-repo)]
-    (assoc parent-status :submodules submodules-status)))
+  (with-open [parent-repo (jgit-utils/get-repository-from-git-dir parent-target)]
+    (let [submodules-status (process-submodules-for-updates
+                              server-repo-url
+                              submodules-commit-info
+                              submodule-root
+                              parent-repo)]
+      (assoc parent-status :submodules submodules-status))))
 
 (defn process-repo-for-updates
   "Process a repository for any possible updates which may need to be applied.
@@ -399,31 +394,26 @@
        :status-data (:status-data agent-state)})))
 
 (defn get-commit-status
-  [repo]
-  ;; Return nil for the commit status if the repo has never been
-  ;; synced or the repo does not yet have any commits
-  (when repo
-    (common/repo->latest-commit-status-info repo)))
+  [path]
+  (with-open [repo (jgit-utils/get-repository-from-git-dir path)]
+    ;; Return nil for the commit status if the repo has never been
+    ;; synced or the repo does not yet have any commits
+    (when (jgit-utils/repo-exists? repo)
+      (common/repo->latest-commit-status-info repo))))
 
 (defn repos-status
   [repos data-dir latest-commits]
   (into {}
     (for [repo-id repos]
-      (let [repo (jgit-utils/get-repository-from-git-dir
-                   (common/bare-repo data-dir repo-id))
-            commit-info (get-commit-status repo)
-            submodules (get-in latest-commits [repo-id :submodules])
-            submodules-status (into {}
+      (let [submodules (get-in latest-commits [repo-id :submodules])]
+        {repo-id {:latest_commit (get-commit-status (common/bare-repo data-dir repo-id))
+                  :submodules (into {}
                                 (for [[submodule _] submodules]
-                                  {submodule (get-commit-status
-                                               (jgit-utils/get-repository-from-git-dir
-                                                 (common/submodule-bare-repo
-                                                   data-dir
-                                                   repo-id
-                                                   (common/extract-submodule-name
-                                                     submodule))))}))]
-        {repo-id {:latest_commit commit-info
-                  :submodules submodules-status}}))))
+                                  (let [path (common/submodule-bare-repo
+                                               data-dir
+                                               repo-id
+                                               (common/extract-submodule-name submodule))]
+                                    {submodule (get-commit-status path)})))}}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -514,7 +504,7 @@
       (throw
         (IllegalArgumentException.
           (str "No repository exists with id " repo-id)))
-      (let [repo (jgit-utils/get-repository git-dir working-dir)]
+      (with-open [repo (jgit-utils/get-repository git-dir working-dir)]
         (log/info (str "Syncing working directory at " working-dir
                     " for repository " repo-id))
         (jgit-utils/hard-reset repo)
@@ -546,6 +536,6 @@
         (throw
           (IllegalArgumentException.
             (str "No repository exists with id " repo-id)))
-        (let [repo (jgit-utils/get-repository git-dir working-dir)]
+        (with-open [repo (jgit-utils/get-repository git-dir working-dir)]
           {:status (common/working-dir-status-info repo)
            :submodules (common/submodules-status-info repo)})))))
