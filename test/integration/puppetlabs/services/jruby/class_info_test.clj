@@ -7,6 +7,67 @@
             [cheshire.core :as cheshire])
   (:import (java.util.concurrent LinkedBlockingDeque)))
 
+(defn create-file
+  [file content]
+  (ks/mkdirs! (fs/parent file))
+  (spit file content))
+
+(defn gen-classes
+  [[mod-dir manifests]]
+  (let [manifest-dir (fs/file mod-dir "manifests")]
+    (ks/mkdirs! manifest-dir)
+    (doseq [manifest manifests]
+      (spit (fs/file manifest-dir (str manifest ".pp"))
+            (str
+              "class " manifest "($" manifest "_a, Integer $"
+              manifest "_b, String $" manifest
+              "_c = 'c default value') { }\n"
+              "class " manifest "2($" manifest "2_a, Integer $"
+              manifest "2_b, String $" manifest
+              "2_c = 'c default value') { }\n")))))
+
+(defn create-env-conf
+  [env-dir content]
+  (create-file (fs/file env-dir "environment.conf")
+               (str "environment_timeout = unlimited\n"
+                    content)))
+
+(defn create-env
+  [[env-dir manifests]]
+  (create-env-conf env-dir "")
+  (gen-classes [env-dir manifests]))
+
+(defn roundtrip-via-json
+  [obj]
+  (-> obj
+      (cheshire/generate-string)
+      (cheshire/parse-string)))
+
+(defn expected-class-info
+  [class]
+    {"name" class
+     "params" [{"name" (str class "_a")}
+               {"name" (str class "_b"),
+                "type" "Integer"}
+               {"name" (str class "_c"),
+                "type" "String",
+                "default_literal" "c default value"}]})
+
+(defn expected-manifests-info
+  [manifests]
+  (into {}
+        (apply concat
+               (for [[dir names] manifests]
+                 (do
+                   (for [name names]
+                     [(.getAbsolutePath
+                        (fs/file dir
+                                 "manifests"
+                                 (str name ".pp")))
+                      [(expected-class-info name)
+                       (expected-class-info
+                         (str name "2"))]]))))))
+
 (deftest ^:integration class-info-test
   (testing "class info properly enumerated for"
     (let [pool (LinkedBlockingDeque. 1)
@@ -20,34 +81,11 @@
           jruby-puppet (:jruby-puppet instance)
           container (:scripting-container instance)
 
-          env-dir (fn [env-name]
-                    (fs/file code-dir "environments" env-name))
-          create-file (fn [file content]
-                        (ks/mkdirs! (fs/parent file))
-                        (spit file content))
-          gen-classes (fn [[mod-dir manifests]]
-                        (let [manifest-dir (fs/file mod-dir "manifests")]
-                          (ks/mkdirs! manifest-dir)
-                          (doseq [manifest manifests]
-                            (spit (fs/file manifest-dir (str manifest ".pp"))
-                                  (str
-                                    "class " manifest "($" manifest "_a, Integer $"
-                                    manifest "_b, String $" manifest
-                                    "_c = 'c default value') { }\n"
-                                    "class " manifest "2($" manifest "2_a, Integer $"
-                                    manifest "2_b, String $" manifest
-                                    "2_c = 'c default value') { }\n")))))
-          create-env-conf (fn [env-dir content]
-                            (create-file (fs/file env-dir "environment.conf")
-                                         (str "environment_timeout = unlimited\n"
-                                              content)))
-          create-env (fn [[env-dir manifests]]
-                       (create-env-conf env-dir "")
-                       (gen-classes [env-dir manifests]))
-
           _ (create-file (fs/file conf-dir "puppet.conf")
                          "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
 
+          env-dir (fn [env-name]
+                    (fs/file code-dir "environments" env-name))
           env-1-dir (env-dir "env1")
           env-1-dir-and-manifests [env-1-dir ["foo" "bar"]]
           _ (create-env env-1-dir-and-manifests)
@@ -78,36 +116,9 @@
           _ (gen-classes [bogus-env-dir ["envbogus"]])
           _ (gen-classes [(fs/file base-mod-dir "base-bogus") ["base-bogus1"]])
 
-          roundtrip-via-json (fn [obj]
-                               (-> obj
-                                   (cheshire/generate-string)
-                                   (cheshire/parse-string)))
-          expected-class-info (fn [class]
-                                    {"name" class
-                                     "params" [{"name" (str class "_a")}
-                                               {"name" (str class "_b"),
-                                                "type" "Integer"}
-                                               {"name" (str class "_c"),
-                                                "type" "String",
-                                                "default_literal" "c default value"}]})
-
-          expected-manifests-info (fn [manifests]
-                                        (into {}
-                                              (apply concat
-                                                     (for [[dir names] manifests]
-                                                       (do
-                                                         (for [name names]
-                                                           [(.getAbsolutePath
-                                                              (fs/file dir
-                                                                       "manifests"
-                                                                       (str name ".pp")))
-                                                            [(expected-class-info name)
-                                                             (expected-class-info
-                                                               (str name "2"))]]))))))
           get-class-info (fn []
-                           (-> (.getClassInfoForAllEnvironments
-                                jruby-puppet)
-                              (roundtrip-via-json)))
+            (-> (.getClassInfoForAllEnvironments jruby-puppet)
+                (roundtrip-via-json)))
           get-class-info-for-env (fn [env]
                                    (-> (.getClassInfoForEnvironment jruby-puppet
                                                                     env)
@@ -198,6 +209,8 @@
               (testing "all environments"
                 (is (= expected-envs-info (get-class-info))))
               (testing "one environment by name"
+                (is (nil? (get-class-info-for-env "env1"))
+                    "Unexpected info retrieved for 'env1'")
                 (is (= (expected-envs-info "env2")
                        (get-class-info-for-env "env2"))
                     "Unexpected info retrieved for 'env2'")
