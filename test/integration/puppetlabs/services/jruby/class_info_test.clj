@@ -117,8 +117,8 @@
           _ (gen-classes [(fs/file base-mod-dir "base-bogus") ["base-bogus1"]])
 
           get-class-info (fn []
-            (-> (.getClassInfoForAllEnvironments jruby-puppet)
-                (roundtrip-via-json)))
+                           (-> (.getClassInfoForAllEnvironments jruby-puppet)
+                               (roundtrip-via-json)))
           get-class-info-for-env (fn [env]
                                    (-> (.getClassInfoForEnvironment jruby-puppet
                                                                     env)
