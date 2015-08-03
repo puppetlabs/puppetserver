@@ -169,7 +169,8 @@
         (finally (tk-app/stop storage-app))))))
 
 (deftest ^:integration server-side-corruption-test
-  (let [data-dir (helpers/temp-dir-as-string)
+  (let [num-retries 100000
+        data-dir (helpers/temp-dir-as-string)
         working-dir-1 (helpers/temp-dir-as-string)
         working-dir-2 (helpers/temp-dir-as-string)]
     ;; This is used to silence the error logged when the server-side repo is
@@ -205,7 +206,7 @@
             ;; everything should be copacetic eventually.  But, once
             ;; a commit ID (not nil) is returned for repo2, we should be
             ;; ready to go.
-            (loop [n 10000]
+            (loop [n num-retries]
               (let [status-response (helpers/get-client-status)
                     repo-states (get-in (json/parse-string (:body status-response) true)
                                   [:status :repos])
@@ -235,7 +236,7 @@
                          " syncing of other repos")
                 ;; Poll against the Client's /status endpoint until we see
                 ;; the error we expect.
-                (loop [n 10000]
+                (loop [n num-retries]
                   (let [status-response (helpers/get-client-status)
                         status (:status (json/parse-string (:body status-response) true))
                         done? (zero? n)]
@@ -271,7 +272,7 @@
 
             (testing "Client recovers when the server-side repo is fixed"
               ;; This should look familar by now.
-              (loop [n 10000]
+              (loop [n num-retries]
                 (let [status-response (helpers/get-client-status)
                       repo-states (get-in (json/parse-string (:body status-response) true)
                                     [:status :repos])
