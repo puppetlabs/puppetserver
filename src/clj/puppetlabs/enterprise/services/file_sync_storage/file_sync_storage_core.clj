@@ -163,8 +163,9 @@
 
 (schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommitOrError)
   "Returns the SHA-1 revision ID of the latest commit on the master branch of
-   the repository specified by the given `git-dir`.  Returns `nil` if no commits
-   have been made on the repository."
+   the repository specified by git-dir and working-dir.  If a repository does
+   not exist at the specified paths, an error is returned.  Returns nil if no
+   commits have been made on the repository."
   [git-dir working-dir]
   (with-open [repo (jgit-utils/get-repository-from-git-dir git-dir)]
     (if (jgit-utils/repo-exists? repo)
