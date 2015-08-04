@@ -241,7 +241,7 @@
                         status (:status (json/parse-string (:body status-response) true))
                         done? (zero? n)]
                     (if (or done?
-                            ;; This indicates that the sync ran and got the
+                            ;; This indicates that the sync ran and the
                             ;; server reported that the repo is missing.
                             (get-in status [:last_check_in :response :repo1 :error]))
                       (do

@@ -36,7 +36,6 @@
                     (fn [x] (or (instance? String x) (instance? File x)))
                     "String or File"))
 
-; TODO - this is unused - see PE-10688
 (def FileSyncCommonConfig
   "Schema defining the content of the configuration common to the File Sync
   client and storage services.
