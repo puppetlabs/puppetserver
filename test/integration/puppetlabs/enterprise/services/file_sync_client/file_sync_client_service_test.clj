@@ -1,5 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-service-test
   (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [schema.test :as schema-test]
             [cheshire.core :as json]
             [puppetlabs.trapperkeeper.core :refer [service] :as tk]
@@ -292,7 +293,7 @@
 
             (testing "status contains info on response from latest check-in"
               (let [latest-commits (helpers/get-latest-commits)
-                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last_check_in" "response"]))]
+                    latest-response (walk/keywordize-keys (get-in body ["status" "last_check_in" "response"]))]
                 (is (= latest-commits latest-response))))
 
             (testing "contains nil latest commit if no commits are present"

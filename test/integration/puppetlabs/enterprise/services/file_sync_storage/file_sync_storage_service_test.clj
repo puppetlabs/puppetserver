@@ -119,7 +119,7 @@
                 (testing "A repository with no commits in it returns a nil ID"
                   (is (contains? body (keyword repo3-id)))
                   (let [commit-data (get body (keyword repo3-id))]
-                    (is (= commit-data nil))))
+                    (is (= commit-data {:commit nil}))))
 
                 (testing "the first repo"
                   (let [actual-rev (get-in body [(keyword repo1-id) :commit])

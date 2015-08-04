@@ -54,7 +54,7 @@
   "Schema defining the result of computing the latest commit for a repo"
   (schema/if #(:error %)
     {:error schema/Str}
-    {:commit schema/Str
+    {:commit (schema/maybe schema/Str)
      (schema/optional-key :submodules) {schema/Str schema/Str}}))
 
 (def LatestCommitsPayload
