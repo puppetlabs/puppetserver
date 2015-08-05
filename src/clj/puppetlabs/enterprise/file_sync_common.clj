@@ -36,7 +36,6 @@
                     (fn [x] (or (instance? String x) (instance? File x)))
                     "String or File"))
 
-; TODO - this is unused - see PE-10688
 (def FileSyncCommonConfig
   "Schema defining the content of the configuration common to the File Sync
   client and storage services.
@@ -51,10 +50,12 @@
   {:data-dir schema/Str
    :server-url schema/Str})
 
-(def LatestCommit
+(def LatestCommitOrError
   "Schema defining the result of computing the latest commit for a repo"
-  {:commit schema/Str
-   (schema/optional-key :submodules) {schema/Str schema/Str}})
+  (schema/if #(:error %)
+    {:error schema/Str}
+    {:commit (schema/maybe schema/Str)
+     (schema/optional-key :submodules) {schema/Str schema/Str}}))
 
 (def LatestCommitsPayload
   "Schema defining the return payload of the server's 'latest-commits'
@@ -62,7 +63,7 @@
 
   The first Str in each pair represents a repository name.  The corresponding
   Str in the pair represents the id of the latest commit in the repository."
-  {schema/Keyword (schema/maybe LatestCommit)})
+  {schema/Keyword (schema/maybe LatestCommitOrError)})
 
 (def SSLContextOrNil
   (schema/maybe SSLContext))
@@ -117,11 +118,13 @@
                     (when v
                       (ks/mapkeys keyword v))))))
 
-(defn bare-repo
+(defn bare-repo-path
+  "Given a path to a data-dir (either client or storage service) and a repo-name,
+  returns the path on disk to the bare Git repository with the given name."
   [data-dir repo-name]
   (fs/file data-dir (str (name repo-name) ".git")))
 
-(defn submodule-bare-repo
+(defn submodule-bare-repo-path
   [data-dir parent-repo submodule]
   (fs/file data-dir (name parent-repo) (str submodule ".git")))
 

@@ -16,7 +16,7 @@
     (let [data-dir (ks/temp-file-name "data")
           repo-id "single-repo"
           working-dir (ks/temp-file-name repo-id)
-          git-dir (common/bare-repo data-dir repo-id)]
+          git-dir (common/bare-repo-path data-dir repo-id)]
       (initialize-repos! {:repos    {:single-repo {:working-dir working-dir}}}
                          (str data-dir))
       (testing "The data dir is created"
@@ -54,8 +54,8 @@
     (testing "Multiple repos can be initialized"
       (initialize-repos! config (str data-dir)))
     (testing "Content in repos not wiped out during reinitialization"
-      (let [repo1-git-dir (common/bare-repo data-dir repo1-id)
-            repo2-git-dir (common/bare-repo data-dir repo2-id)
+      (let [repo1-git-dir (common/bare-repo-path data-dir repo1-id)
+            repo2-git-dir (common/bare-repo-path data-dir repo2-id)
             repo1 (jgit-utils/get-repository repo1-git-dir repo1-working-dir)
             repo2 (jgit-utils/get-repository repo2-git-dir repo2-working-dir)]
         (spit (fs/file repo1-working-dir "test-file1") "foo")

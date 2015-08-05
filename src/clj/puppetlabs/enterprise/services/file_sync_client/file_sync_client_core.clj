@@ -239,7 +239,7 @@
     {}
     (for [[submodule commit] submodules-commit-info]
       (let [submodule-name (common/extract-submodule-name submodule)
-            target-dir (common/bare-repo submodule-root submodule-name)
+            target-dir (common/bare-repo-path submodule-root submodule-name)
             server-repo-url (str server-repo-url "/" submodule-name)
             clone? (not (non-empty-dir? target-dir))
             status {submodule (apply-updates-to-repo
@@ -297,7 +297,7 @@
   (log/debugf "File sync latest commits from server: %s" latest-commits)
   (into {}
     (for [repo-name repos]
-      (let [target-dir (common/bare-repo data-dir repo-name)
+      (let [target-dir (common/bare-repo-path data-dir repo-name)
             submodule-root (str data-dir "/" (name repo-name))]
         (if (contains? latest-commits repo-name)
           (let [latest-commit (latest-commits repo-name)]
@@ -406,14 +406,16 @@
   (into {}
     (for [repo-id repos]
       (let [submodules (get-in latest-commits [repo-id :submodules])]
-        {repo-id {:latest_commit (get-commit-status (common/bare-repo data-dir repo-id))
+        {repo-id {:latest_commit (get-commit-status (common/bare-repo-path 
+                                                      data-dir repo-id))
                   :submodules (into {}
                                 (for [[submodule _] submodules]
-                                  (let [path (common/submodule-bare-repo
+                                  (let [path (common/submodule-bare-repo-path
                                                data-dir
                                                repo-id
                                                (common/extract-submodule-name submodule))]
                                     {submodule (get-commit-status path)})))}}))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -499,7 +501,7 @@
         (IllegalStateException.
           (str "Directory " working-dir " does not exist and could not be created."
             "It must exist on disk to be sync'ed as a working directory.")))))
-  (let [git-dir (common/bare-repo data-dir repo-id)]
+  (let [git-dir (common/bare-repo-path data-dir repo-id)]
     (if-not (fs/exists? git-dir)
       (throw
         (IllegalArgumentException.
@@ -531,7 +533,7 @@
    repo-id :- schema/Keyword
    working-dir :- common/StringOrFile]
   (when (fs/exists? working-dir)
-    (let [git-dir (common/bare-repo data-dir repo-id)]
+    (let [git-dir (common/bare-repo-path data-dir repo-id)]
       (if-not (fs/exists? git-dir)
         (throw
           (IllegalArgumentException.

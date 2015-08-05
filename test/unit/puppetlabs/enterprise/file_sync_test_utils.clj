@@ -310,3 +310,15 @@
      {:as :text
       :headers {"content-type" "application/json"}
       :body body})))
+
+(defn get-client-status
+  "Makes an HTTP request to the Client Service's /status endpoint."
+  ([]
+   (get-client-status nil))
+  ([level]
+   (http-client/get
+     (str server-base-url
+       (if level
+         (str "/status/v1/services/file-sync-client-service?level=" (name level))
+         "/status/v1/services/file-sync-client-service"))
+     {:as :text})))

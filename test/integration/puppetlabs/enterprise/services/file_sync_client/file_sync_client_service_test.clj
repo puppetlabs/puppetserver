@@ -1,5 +1,6 @@
 (ns puppetlabs.enterprise.services.file-sync-client.file-sync-client-service-test
   (:require [clojure.test :refer :all]
+            [clojure.walk :as walk]
             [schema.test :as schema-test]
             [cheshire.core :as json]
             [puppetlabs.trapperkeeper.core :refer [service] :as tk]
@@ -33,17 +34,6 @@
   {:status  200
    :body    (json/encode {})
    :headers {"content-type" "application/json"}})
-
-(defn fetch-status
-  ([]
-   (fetch-status nil))
-  ([level]
-   (http-client/get
-     (str helpers/server-base-url
-       (if level
-         (str "/status/v1/services/file-sync-client-service?level=" (name level))
-         "/status/v1/services/file-sync-client-service"))
-     {:as :text})))
 
 (deftest ^:integration polling-client-ssl-test
   (testing "polling client will use SSL when configured"
@@ -84,7 +74,7 @@
 (deftest ^:integration working-dir-sync-test
   (let [repo "repo"
         root-data-dir (helpers/temp-dir-as-string)
-        client-repo-dir (common/bare-repo (core/path-to-data-dir root-data-dir) repo)
+        client-repo-dir (common/bare-repo-path (core/path-to-data-dir root-data-dir) repo)
         client-working-dir (fs/file (helpers/temp-dir-as-string))
         local-repo-dir (helpers/temp-dir-as-string)
         local-repo (helpers/init-repo! (fs/file local-repo-dir))]
@@ -129,8 +119,8 @@
           test-file "test.txt"
           root-data-dir (helpers/temp-dir-as-string)
           client-data-dir (core/path-to-data-dir root-data-dir)
-          git-dir (common/bare-repo (str root-data-dir "/storage") repo)
-          client-git-dir (common/bare-repo client-data-dir repo)
+          git-dir (common/bare-repo-path (str root-data-dir "/storage") repo)
+          client-git-dir (common/bare-repo-path client-data-dir repo)
           client-working-dir (helpers/temp-dir-as-string)
           storage-app (tk-app/check-for-errors!
                         (tk/boot-services-with-config
@@ -168,7 +158,7 @@
           (testing "Repo config has proper submodule URLs"
             (let [parent-repo (jgit-utils/get-repository-from-git-dir client-git-dir)
                   repo-config (.getConfig parent-repo)
-                  submodule-client-dir (str (common/submodule-bare-repo client-data-dir repo submodule))]
+                  submodule-client-dir (str (common/submodule-bare-repo-path client-data-dir repo submodule))]
               (is (= submodule-client-dir
                     (.getString
                       repo-config
@@ -271,7 +261,7 @@
 
       (let [sync-agent (helpers/get-sync-agent app)]
         (testing "basic status info"
-          (let [response (fetch-status)
+          (let [response (helpers/get-client-status)
                 body (json/parse-string (:body response))
                 status (get body "status")]
             (is (= "running" (get body "state")))
@@ -286,7 +276,7 @@
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
 
-        (let [response (fetch-status)
+        (let [response (helpers/get-client-status)
               body (json/parse-string (:body response))]
           (is (= "running" (get body "state")))
           (testing "status info contains info on recent check-ins"
@@ -303,7 +293,7 @@
 
             (testing "status contains info on response from latest check-in"
               (let [latest-commits (helpers/get-latest-commits)
-                    latest-response (ks/mapkeys #(keyword %) (get-in body ["status" "last_check_in" "response"]))]
+                    latest-response (walk/keywordize-keys (get-in body ["status" "last_check_in" "response"]))]
                 (is (= latest-commits latest-response))))
 
             (testing "contains nil latest commit if no commits are present"
@@ -324,7 +314,7 @@
             (let [new-state (helpers/wait-for-new-state sync-agent)]
               (is (= :successful (:status new-state))))
 
-            (let [response (fetch-status)
+            (let [response (helpers/get-client-status)
                   body (json/parse-string (:body response))
                   latest-commit-status (get-in body ["status" "repos" repo "latest_commit"])]
               (testing "Latest commit ID"
@@ -342,7 +332,7 @@
                 (is (= "my msg" (get latest-commit-status "message")))))))
 
         (testing "status level is honored"
-          (let [response (fetch-status :critical)
+          (let [response (helpers/get-client-status :critical)
                 body (json/parse-string (:body response))]
             (is (= "running" (get body "state")))
             (is (nil? (get body "status")))
@@ -382,7 +372,7 @@
         (let [new-state (helpers/wait-for-new-state sync-agent)]
           (is (= :successful (:status new-state))))
 
-        (let [response (fetch-status)
+        (let [response (helpers/get-client-status)
               body (json/parse-string (:body response))
               latest-commit-status (get-in body ["status" "repos" "repo" "submodules" submodule-path])]
           (is (= 200 (:status response)))

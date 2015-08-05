@@ -161,32 +161,35 @@
       (setBare true)
       (call)))
 
-(schema/defn latest-commit-id-on-master :- (schema/maybe common/LatestCommit)
-  "Returns the SHA-1 revision ID of the latest commit on the master branch of
-   the repository specified by the given `git-dir`.  Returns `nil` if no commits
-   have been made on the repository."
+(schema/defn latest-commit-data :- common/LatestCommitOrError
+  "Returns information about the latest commit on the master branch of the
+   repository specified by git-dir and working-dir.  If a repository does
+   not exist at the specified paths, an error is returned.  If no commits have
+   been made on the repository, the return value will be {:commit nil}."
   [git-dir working-dir]
   (with-open [repo (jgit-utils/get-repository-from-git-dir git-dir)]
-    (when-let [ref (.getRef repo "refs/heads/master")]
-      (let [latest-commit (-> ref
+    (if (jgit-utils/repo-exists? repo)
+      (let [latest-commit (when-let [ref (.getRef repo "refs/heads/master")]
+                            (-> ref
                               (.getObjectId)
-                              (jgit-utils/commit-id))
+                              (jgit-utils/commit-id)))
             submodules-status (jgit-utils/get-submodules-latest-commits
                                 git-dir working-dir)
             base-data {:commit latest-commit}]
         (if (empty? submodules-status)
           base-data
-          (assoc base-data :submodules submodules-status))))))
+          (assoc base-data :submodules submodules-status)))
+      {:error (str "Repository not found at " git-dir)})))
 
-(defn compute-latest-commits
-  "Computes the latest commit for each repository in sub-paths.  Returns a map
-   of sub-path -> commit ID."
-  [data-dir repos]
+(schema/defn latest-commits-data :- {schema/Keyword common/LatestCommitOrError}
+  "Returns information about the latest commits in the given set of repositories."
+  [data-dir :- common/StringOrFile
+   repos :- GitRepos]
   (let [sub-paths (keys repos)
         map* (if (> (count sub-paths) 1) pmap map)
         latest-commit (fn [sub-path]
-                        (let [repo-path (common/bare-repo data-dir sub-path)
-                              rev (latest-commit-id-on-master
+                        (let [repo-path (common/bare-repo-path data-dir sub-path)
+                              rev (latest-commit-data
                                     repo-path
                                     (get-in repos [sub-path :working-dir]))]
                           [sub-path rev]))]
@@ -350,12 +353,12 @@
   (doall
     (for [submodule submodules]
       (let [repo-name (name repo)
-            submodule-git-dir (common/submodule-bare-repo data-dir repo-name submodule)
+            submodule-git-dir (common/submodule-bare-repo-path data-dir repo-name submodule)
             submodule-working-dir (fs/file submodules-working-dir submodule)
             submodule-path (submodule-path submodules-dir submodule)
             submodule-within-parent (fs/file working-dir submodule-path)
             submodule-url (format "%s/%s/%s.git" server-repo-url repo-name submodule)]
-        (with-open [parent-git (-> (common/bare-repo data-dir repo-name)
+        (with-open [parent-git (-> (common/bare-repo-path data-dir repo-name)
                                  (jgit-utils/get-repository working-dir)
                                  Git/wrap)]
 
@@ -431,7 +434,7 @@
             submodules (if submodule-id
                          (filter #(= % submodule-id) all-submodules)
                          all-submodules)
-            git-dir (common/bare-repo data-dir repo-id)]
+            git-dir (common/bare-repo-path data-dir repo-id)]
         (with-open [git-repo (jgit-utils/get-repository git-dir working-dir)]
           (try
             (remove-submodules!
@@ -494,7 +497,7 @@
   (into {}
     (for [[repo-id {:keys [working-dir]}] repos]
       (with-open [repo (jgit-utils/get-repository
-                         (common/bare-repo data-dir repo-id)
+                         (common/bare-repo-path data-dir repo-id)
                          working-dir)]
         {repo-id {:latest_commit (common/repo->latest-commit-status-info repo)
                   :working_dir (common/working-dir-status-info repo)
@@ -553,7 +556,7 @@
         (let [json-body (json/parse-string (slurp body) true)]
           (capture-client-info! !request-tracker request json-body))
         {:status 200
-         :body (compute-latest-commits data-dir repos)}))))
+         :body (latest-commits-data data-dir repos)}))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -584,7 +587,7 @@
   (initialize-data-dir! (fs/file data-dir))
   (doseq [[repo-id repo-info] (:repos config)]
     (let [working-dir (:working-dir repo-info)
-          git-dir (common/bare-repo data-dir repo-id)]
+          git-dir (common/bare-repo-path data-dir repo-id)]
       ; Create the working dir, if it does not already exist.
       (when-not (fs/exists? working-dir)
         (ks/mkdirs! working-dir))
