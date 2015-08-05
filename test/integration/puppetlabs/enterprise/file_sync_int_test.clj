@@ -168,9 +168,26 @@
                          (jgit-utils/head-rev-id-from-git-dir client-repo-dir))))))))
         (finally (tk-app/stop storage-app))))))
 
+(defn wait-for-client-status
+  [ks]
+  (let [num-retries 100000]
+    (loop [counter num-retries]
+      (let [status-response (helpers/get-client-status)
+            status-body (json/parse-string (:body status-response) true)
+            result (get-in status-body ks)
+            retry-limit-reached? (zero? counter)]
+        (cond
+          (not (nil? result))
+          status-body
+
+          retry-limit-reached?
+          (throw (Exception. (format "Could not get expected result in %s retries" num-retries)))
+
+          :else
+          (recur (dec counter)))))))
+
 (deftest ^:integration server-side-corruption-test
-  (let [num-retries 100000
-        data-dir (helpers/temp-dir-as-string)
+  (let [data-dir (helpers/temp-dir-as-string)
         working-dir-1 (helpers/temp-dir-as-string)
         working-dir-2 (helpers/temp-dir-as-string)]
     ;; This is used to silence the error logged when the server-side repo is
@@ -206,20 +223,10 @@
             ;; everything should be copacetic eventually.  But, once
             ;; a commit ID (not nil) is returned for repo2, we should be
             ;; ready to go.
-            (loop [n num-retries]
-              (let [status-response (helpers/get-client-status)
-                    repo-states (get-in (json/parse-string (:body status-response) true)
-                                  [:status :repos])
-                    done? (zero? n)]
-                (if (or done?
-                        ;; Sync job pulled down the new code for repo2
-                        (get-in repo-states [:repo2 :latest_commit :commit]))
-                  (do
-                    (is (= repo1-commit
-                           (get-in repo-states [:repo1 :latest_commit :commit])))
-                    (is (= repo2-commit
-                           (get-in repo-states [:repo2 :latest_commit :commit]))))
-                  (recur (dec n))))))
+            (let [status-body (wait-for-client-status [:status :repos :repo2 :latest_commit :commit])
+                  repo-states (get-in status-body [:status :repos])]
+              (is (= repo1-commit (get-in repo-states [:repo1 :latest_commit :commit])))
+              (is (= repo2-commit (get-in repo-states [:repo2 :latest_commit :commit])))))
 
           (let [corrupt-repo-path (helpers/temp-dir-as-string)
                 original-repo-path (common/bare-repo-path
@@ -236,24 +243,16 @@
                          " syncing of other repos")
                 ;; Poll against the Client's /status endpoint until we see
                 ;; the error we expect.
-                (loop [n num-retries]
-                  (let [status-response (helpers/get-client-status)
-                        status (:status (json/parse-string (:body status-response) true))
-                        done? (zero? n)]
-                    (if (or done?
-                            ;; This indicates that the sync ran and the
-                            ;; server reported that the repo is missing.
-                            (get-in status [:last_check_in :response :repo1 :error]))
-                      (do
-                        (testing "Corrupted repo sync state is failed"
-                          (is (re-matches
-                                #"Repository not found at .*"
-                                (get-in status [:last_check_in :response :repo1 :error]))))
-                        (testing "Non-corrupted repo sync state is not failed"
-                          (is (= repo2-commit
-                                 (get-in status [:last_check_in :response :repo2 :commit])
-                                 (get-in status [:repos :repo2 :latest_commit :commit])))))
-                      (recur (dec n)))))))
+                (let [status-body (wait-for-client-status [:status :last_check_in :response :repo1 :error])
+                      status (:status status-body)]
+                  (testing "Corrupted repo sync state is failed"
+                    (is (re-matches
+                          #"Repository not found at .*"
+                          (get-in status [:last_check_in :response :repo1 :error]))))
+                  (testing "Non-corrupted repo sync state is not failed"
+                    (is (= repo2-commit
+                          (get-in status [:last_check_in :response :repo2 :commit])
+                          (get-in status [:repos :repo2 :latest_commit :commit])))))))
 
             ;; "Restore" the server-side repo by moving it back to
             ;; its original location
@@ -271,22 +270,11 @@
                   (is repo2-commit))))
 
             (testing "Client recovers when the server-side repo is fixed"
-              ;; This should look familar by now.
-              (loop [n num-retries]
-                (let [status-response (helpers/get-client-status)
-                      repo-states (get-in (json/parse-string (:body status-response) true)
-                                    [:status :repos])
-                      done? (zero? n)]
-                  (if (or done?
-                          (get-in repo-states [:repo2 :latest_commit :commit]))
-                    (do
-                      (testing (str "All repos, including the previously "
-                                 "corrupted one, are synced")
-                        (is (= repo1-commit
-                               (get-in repo-states [:repo1 :latest_commit :commit])))
-                        (is (= repo2-commit
-                               (get-in repo-states [:repo2 :latest_commit :commit])))))
-                    (recur (dec n))))))))))))
+              (let [status-body (wait-for-client-status [:status :repos :repo2 :latest_commit :commit])
+                    repo-states (get-in status-body [:status :repos])]
+                (testing "All repos, including the previously corrupted one, are synced"
+                  (is (= repo1-commit (get-in repo-states [:repo1 :latest_commit :commit])))
+                  (is (= repo2-commit (get-in repo-states [:repo2 :latest_commit :commit]))))))))))))
 
 (defprotocol CallbackService)
 
