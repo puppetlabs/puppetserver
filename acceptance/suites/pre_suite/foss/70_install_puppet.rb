@@ -40,7 +40,7 @@ step "Install MRI Puppet Agents."
 
     if /windows/.match(platform)
       arch = host[:ruby_arch] || 'x86'
-      base_url = ENV['MSI_BASE_URL'] || "http://builds.puppetlabs.lan/puppet-agent/#{test_config[:puppet_build_version]}/artifacts/windows"
+      base_url = ENV['MSI_BASE_URL'] || "http://builds.delivery.puppetlabs.net/puppet-agent/#{test_config[:puppet_build_version]}/artifacts/windows"
       filename = ENV['MSI_FILENAME'] || "puppet-agent-#{arch}.msi"
       install_puppet_from_msi(host, :url => "#{base_url}/#{filename}")
     elsif puppet_version
