@@ -67,7 +67,7 @@
   [app]
   (let [pool-context (-> (service-context app :JRubyPuppetService)
                          :pool-context)]
-    (while (< (count (jruby-core/pool->vec pool-context))
+    (while (< (count (jruby-core/registered-instances pool-context))
               num-jrubies)
       (Thread/sleep 100))))
 
@@ -193,7 +193,27 @@
           ;; cleared.
           (let [catalogs (get-catalog-from-each-jruby borrow-jruby-fn return-jruby-fn)]
             (is (= 0 (num-catalogs-containing catalogs "Notify" "hello1")))
-            (is (= 2 (num-catalogs-containing catalogs "Notify" "hello2")))))))))
+            (is (= 2 (num-catalogs-containing catalogs "Notify" "hello2")))))
+
+        (testing "flush called when a jruby is borrowed"
+          ;; change the resource again
+          (write-foo-pp-file "class foo { notify {'hello3': } }")
+          ;; borrow an instance
+          (let [instance (borrow-jruby-fn)]
+            ;; flush the cache
+            (try
+              (let [response (http-client/delete
+                               "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                               ssl-request-options)]
+                (is (= 204 (:status response)) (ks/pprint-to-string response)))
+              (finally
+                ;; return the instance after the cache flush
+                (return-jruby-fn instance))))
+
+          (let [catalogs (get-catalog-from-each-jruby borrow-jruby-fn return-jruby-fn)]
+            (is (= 0 (num-catalogs-containing catalogs "Notify" "hello1")))
+            (is (= 0 (num-catalogs-containing catalogs "Notify" "hello2")))
+            (is (= 2 (num-catalogs-containing catalogs "Notify" "hello3")))))))))
 
 (deftest ^:integration single-environment-flush-integration-test
   (testing "a single environment is flushed after marking expired"
