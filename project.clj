@@ -16,7 +16,7 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.8.0"]
+                 [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/http-client "0.4.4"]
                  [org.jruby/jruby-core "1.7.20.1"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
@@ -33,7 +33,7 @@
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
                  [joda-time "2.5"]
-                 [clj-time "0.6.0"]
+                 [clj-time "0.7.0"]
                  [liberator "0.12.0"]
                  [puppetlabs/comidi "0.1.1"]
                  [me.raynes/fs "1.4.5"]
