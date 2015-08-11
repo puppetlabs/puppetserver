@@ -1,7 +1,7 @@
 (def tk-version "1.1.1")
 (def tk-jetty-version "1.3.1")
 (def ks-version "1.1.0")
-(def ps-version "1.1.2-SNAPSHOT")
+(def ps-version "2.1.2-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -16,7 +16,8 @@
   :dependencies [[org.clojure/clojure "1.6.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.8.0"]
+                 [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.4.4"]
                  [org.jruby/jruby-core "1.7.20.1"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
@@ -33,7 +34,7 @@
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
                  [joda-time "2.5"]
-                 [clj-time "0.6.0"]
+                 [clj-time "0.7.0"]
                  [liberator "0.12.0"]
                  [puppetlabs/comidi "0.1.1"]
                  [me.raynes/fs "1.4.5"]
@@ -65,7 +66,8 @@
                        :group "puppet"
                        :start-timeout "120"
                        :build-type "foss"
-                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
+                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
+                       :repo-target "PC1"}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"}
 
@@ -83,7 +85,8 @@
                                    [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
                                    [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
-                                   [spyscope "0.1.4" :exclusions [clj-time]]]
+                                   [spyscope "0.1.4" :exclusions [clj-time]]
+                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]]
                    :injections    [(require 'spyscope.core)]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
@@ -91,10 +94,10 @@
              :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.2.10"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.3.16"]]
                       :name "puppetserver"}
-
-             :uberjar {:aot [puppetlabs.trapperkeeper.main]}
+             :uberjar {:aot [puppetlabs.trapperkeeper.main]
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 
