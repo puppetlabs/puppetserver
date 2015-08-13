@@ -40,7 +40,7 @@
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")
 
-  (register-jruby-event-callback
+  (register-event-handler
     [this callback]
     "Register a callback function to receive notifications when JRuby service events occur.
     The callback fn should accept a single arg, which will conform to the JRubyEvent schema."))
