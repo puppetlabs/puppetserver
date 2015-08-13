@@ -68,23 +68,23 @@
                                            "you did not specify the --config option?")))))
 
 (schema/defn create-requested-event :- jruby-schemas/JRubyRequestedEvent
-  [action :- jruby-schemas/JRubyEventAction]
+  [reason :- jruby-schemas/JRubyEventReason]
   {:type :instance-requested
-   :action action})
+   :reason reason})
 
 (schema/defn create-borrowed-event :- jruby-schemas/JRubyBorrowedEvent
   [requested-event :- jruby-schemas/JRubyRequestedEvent
    instance :- jruby-schemas/JRubyPuppetBorrowResult]
   {:type :instance-borrowed
-   :action (:action requested-event)
+   :reason (:reason requested-event)
    :requested-event requested-event
    :instance instance})
 
 (schema/defn create-returned-event :- jruby-schemas/JRubyReturnedEvent
   [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
-   action :- jruby-schemas/JRubyEventAction]
+   reason :- jruby-schemas/JRubyEventReason]
   {:type :instance-returned
-   :action action
+   :reason reason
    :instance instance})
 
 
@@ -100,8 +100,8 @@
 
 (schema/defn instance-requested :- jruby-schemas/JRubyRequestedEvent
   [event-callbacks :- [IFn]
-   action :- jruby-schemas/JRubyEventAction]
-  (notify-event-listeners event-callbacks (create-requested-event action)))
+   reason :- jruby-schemas/JRubyEventReason]
+  (notify-event-listeners event-callbacks (create-requested-event reason)))
 
 (schema/defn instance-borrowed :- jruby-schemas/JRubyBorrowedEvent
   [event-callbacks :- [IFn]
@@ -112,8 +112,8 @@
 (schema/defn instance-returned :- jruby-schemas/JRubyReturnedEvent
   [event-callbacks :- [IFn]
    instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
-   action :- jruby-schemas/JRubyEventAction]
-  (notify-event-listeners event-callbacks (create-returned-event instance action)))
+   reason :- jruby-schemas/JRubyEventReason]
+  (notify-event-listeners event-callbacks (create-returned-event instance reason)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

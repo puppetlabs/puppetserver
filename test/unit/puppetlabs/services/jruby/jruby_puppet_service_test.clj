@@ -130,22 +130,22 @@
           requested (atom {})
           borrowed (atom {})
           returned (atom {})
-          callback (fn [{:keys [type action requested-event instance] :as event}]
+          callback (fn [{:keys [type reason requested-event instance] :as event}]
                      (case type
                        :instance-requested
                        (reset! requested {:sequence (swap! counter inc)
                                           :event event
-                                          :action action})
+                                          :reason reason})
 
                        :instance-borrowed
                        (reset! borrowed {:sequence (swap! counter inc)
-                                         :action action
+                                         :reason reason
                                          :requested-event requested-event
                                          :instance instance})
 
                        :instance-returned
                        (reset! returned {:sequence (swap! counter inc)
-                                         :action action
+                                         :reason reason
                                          :instance instance})))
           event-service (tk/service [[:JRubyPuppetService register-event-handler]]
                           (init [this context]
@@ -163,13 +163,13 @@
             jruby-puppet
             service
             :test-jruby-events)
-          (is (= {:sequence 1 :action :test-jruby-events}
+          (is (= {:sequence 1 :reason :test-jruby-events}
                 (dissoc @requested :event)))
-          (is (= {:sequence 2 :action :test-jruby-events}
+          (is (= {:sequence 2 :reason :test-jruby-events}
                 (dissoc @borrowed :instance :requested-event)))
           (is (jruby-schemas/jruby-puppet-instance? (:instance @borrowed)))
           (is (identical? (:event @requested) (:requested-event @borrowed)))
-          (is (= {:sequence 3 :action :test-jruby-events}
+          (is (= {:sequence 3 :reason :test-jruby-events}
                 (dissoc @returned :instance)))
           (is (= (:instance @borrowed) (:instance @returned)))
           (with-jruby-puppet

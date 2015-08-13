@@ -35,17 +35,17 @@
             (assoc :event-callbacks (atom []))))))
 
   (borrow-instance
-    [this action]
+    [this reason]
     (let [{:keys [pool-context borrow-timeout event-callbacks]} (tk-services/service-context this)
-          requested-event (core/instance-requested @event-callbacks action)]
+          requested-event (core/instance-requested @event-callbacks reason)]
       (let [instance (core/borrow-from-pool-with-timeout pool-context borrow-timeout)]
         (core/instance-borrowed @event-callbacks requested-event instance)
         instance)))
 
   (return-instance
-    [this jruby-instance action]
+    [this jruby-instance reason]
     (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
-      (core/instance-returned @event-callbacks jruby-instance action))
+      (core/instance-returned @event-callbacks jruby-instance reason))
     (core/return-to-pool jruby-instance))
 
   (free-instance-count
@@ -87,8 +87,8 @@
 
   Will throw an IllegalStateException if borrowing an instance of
   JRubyPuppet times out."
-  [jruby-puppet jruby-service action & body]
-  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service ~action)]
+  [jruby-puppet jruby-service reason & body]
+  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service ~reason)]
      (if (nil? pool-instance#)
        (sling/throw+
          {:type    ::jruby-timeout
@@ -100,10 +100,10 @@
                         "jruby-puppet.max-active-instances.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
-         (jruby/return-instance ~jruby-service pool-instance# ~action)
-         (recur (jruby/borrow-instance ~jruby-service ~action)))
+         (jruby/return-instance ~jruby-service pool-instance# ~reason)
+         (recur (jruby/borrow-instance ~jruby-service ~reason)))
        (let [~jruby-puppet (:jruby-puppet pool-instance#)]
          (try
            ~@body
            (finally
-             (jruby/return-instance ~jruby-service pool-instance# ~action)))))))
+             (jruby/return-instance ~jruby-service pool-instance# ~reason)))))))
