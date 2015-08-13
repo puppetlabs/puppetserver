@@ -4,7 +4,7 @@
   "Describes the JRubyPuppet provider service which pools JRubyPuppet instances."
 
   (borrow-instance
-    [this action]
+    [this reason]
     "Borrows an instance from the JRubyPuppet interpreter pool. If there are no
     interpreters left in the pool then the operation blocks until there is one
     available. A timeout (integer measured in milliseconds) can be configured
@@ -12,14 +12,14 @@
     timeout length, or will return nil after the timeout expires if no
     interpreters are available. This timeout defaults to 1200000 milliseconds.
 
-    `action` is an identifier (usually a map) describing the reason for borrowing the
+    `reason` is an identifier (usually a map) describing the reason for borrowing the
     JRuby instance.  It may be used for metrics and logging purposes.")
 
   (return-instance
-    [this jrubypuppet-instance action]
+    [this jrubypuppet-instance reason]
     "Returns the JRubyPuppet interpreter back to the pool.
 
-    `action` is an identifier (usually a map) describing the reason for borrowing the
+    `reason` is an identifier (usually a map) describing the reason for borrowing the
     JRuby instance.  It may be used for metrics and logging purposes, so for
     best results it should be set to the same value as it was set during the
     `borrow-instance` call.")

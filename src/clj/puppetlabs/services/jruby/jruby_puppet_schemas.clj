@@ -195,22 +195,22 @@
   [e]
   (= :instance-returned (:type e)))
 
-(def JRubyEventAction
+(def JRubyEventReason
   schema/Any)
 
 (def JRubyRequestedEvent
   {:type (schema/eq :instance-requested)
-   :action JRubyEventAction})
+   :reason JRubyEventReason})
 
 (def JRubyBorrowedEvent
   {:type (schema/eq :instance-borrowed)
-   :action JRubyEventAction
+   :reason JRubyEventReason
    :requested-event JRubyRequestedEvent
    :instance JRubyPuppetBorrowResult})
 
 (def JRubyReturnedEvent
   {:type (schema/eq :instance-returned)
-   :action JRubyEventAction
+   :reason JRubyEventReason
    :instance JRubyPuppetInstanceOrRetry})
 
 (def JRubyEvent
