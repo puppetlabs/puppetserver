@@ -2,11 +2,11 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils])
-  (:import (java.util.concurrent LinkedBlockingDeque)))
+  (:import (com.puppetlabs.puppetserver RegisteredLinkedBlockingDeque)))
 
   (deftest ^:integration settings-plumbed-into-jruby-container
     (testing "setting plumbed into jruby container for"
-      (let [pool (LinkedBlockingDeque. 1)
+      (let [pool (RegisteredLinkedBlockingDeque. 1)
             config (jruby-testutils/jruby-puppet-config
                      {:http-client-connect-timeout-milliseconds 2
                       :http-client-idle-timeout-milliseconds 5
