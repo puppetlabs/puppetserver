@@ -147,9 +147,9 @@
                        (reset! returned {:sequence (swap! counter inc)
                                          :action action
                                          :instance instance})))
-          event-service (tk/service [[:JRubyPuppetService register-jruby-event-callback]]
+          event-service (tk/service [[:JRubyPuppetService register-event-handler]]
                           (init [this context]
-                            (register-jruby-event-callback callback)
+                            (register-event-handler callback)
                             context))]
       (bootstrap/with-app-with-config
         app

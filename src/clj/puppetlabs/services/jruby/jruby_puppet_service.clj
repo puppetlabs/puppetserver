@@ -70,7 +70,7 @@
           {:keys [pool-context]} service-context]
       (jruby-agents/send-flush-pool! pool-context)))
 
-  (register-jruby-event-callback
+  (register-event-handler
     [this callback-fn]
     (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
       (swap! event-callbacks conj callback-fn))))
