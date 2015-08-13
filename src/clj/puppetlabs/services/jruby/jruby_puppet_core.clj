@@ -89,7 +89,7 @@
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Event Handlers
+;;; Support functions for event notification
 
 (schema/defn notify-event-listeners :- jruby-schemas/JRubyEvent
   [event-callbacks :- [IFn]
