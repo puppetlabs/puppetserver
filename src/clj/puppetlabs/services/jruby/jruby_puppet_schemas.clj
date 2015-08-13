@@ -165,7 +165,6 @@
 
 (def JRubyPuppetBorrowResult
   (schema/pred (some-fn nil?
-                        poison-pill?
                         retry-poison-pill?
                         jruby-puppet-instance?)))
 
@@ -183,3 +182,39 @@
   "Schema for a clojure persistent map for the system environment"
   (schema/both EnvMap
     (schema/either PersistentArrayMap PersistentHashMap)))
+
+(defn event-type-requested?
+  [e]
+  (= :instance-requested (:type e)))
+
+(defn event-type-borrowed?
+  [e]
+  (= :instance-borrowed (:type e)))
+
+(defn event-type-returned?
+  [e]
+  (= :instance-returned (:type e)))
+
+(def JRubyEventReason
+  schema/Any)
+
+(def JRubyRequestedEvent
+  {:type (schema/eq :instance-requested)
+   :reason JRubyEventReason})
+
+(def JRubyBorrowedEvent
+  {:type (schema/eq :instance-borrowed)
+   :reason JRubyEventReason
+   :requested-event JRubyRequestedEvent
+   :instance JRubyPuppetBorrowResult})
+
+(def JRubyReturnedEvent
+  {:type (schema/eq :instance-returned)
+   :reason JRubyEventReason
+   :instance JRubyPuppetInstanceOrRetry})
+
+(def JRubyEvent
+  (schema/conditional
+    event-type-requested? JRubyRequestedEvent
+    event-type-borrowed? JRubyBorrowedEvent
+    event-type-returned? JRubyReturnedEvent))

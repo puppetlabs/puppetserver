@@ -37,7 +37,7 @@
 
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
           (jruby/with-jruby-puppet
-            jruby-puppet jruby-service
+            jruby-puppet jruby-service :ca-disabled-files-test
             (is (not (nil? (fs/list-dir ssl-dir))))
             (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))
 
