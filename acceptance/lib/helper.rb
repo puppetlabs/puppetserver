@@ -29,7 +29,7 @@ module PuppetServerExtensions
     # http://builds.delivery.puppetlabs.net/puppet-agent/
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "26e4ed2c7d8352e37d9831c45ac0d194d82f6c6c")
+                         "PUPPET_BUILD_VERSION", "746a14bb9584120f2228107d15ec6f00f9a9bad4")
 
     @config = {
       :base_dir => base_dir,
