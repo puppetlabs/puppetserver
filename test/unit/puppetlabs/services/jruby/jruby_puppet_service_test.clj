@@ -131,7 +131,7 @@
           borrowed (atom {})
           returned (atom {})
           callback (fn [{:keys [type action requested-event instance] :as event}]
-                     (condp = type
+                     (case type
                        :instance-requested
                        (reset! requested {:sequence (swap! counter inc)
                                           :event event
@@ -153,11 +153,12 @@
                             context))]
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service
-         profiler/puppet-profiler-service
-         event-service]
+        (conj default-services event-service)
         (jruby-service-test-config 1)
         (let [service (app/get-service app :JRubyPuppetService)]
+          ;; We're making an empty call to `with-jruby-puppet` here, because
+          ;; we want to trigger a borrow/return via the same code path that
+          ;; would be used in production.
           (with-jruby-puppet
             jruby-puppet
             service
