@@ -133,13 +133,13 @@
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."
   [pool-context size]
-  (mapv (fn [_] (jruby-core/borrow-from-pool pool-context)) (range size)))
+  (mapv (fn [_] (jruby-core/borrow-from-pool pool-context :test [])) (range size)))
 
 (defn fill-drained-pool
   "Returns a list of JRubyPuppet instances back to their pool."
   [instance-list]
   (doseq [instance instance-list]
-    (jruby-core/return-to-pool instance)))
+    (jruby-core/return-to-pool instance :test [])))
 
 (defn reduce-over-jrubies!
   "Utility function; takes a JRuby pool and size, and a function f from integer

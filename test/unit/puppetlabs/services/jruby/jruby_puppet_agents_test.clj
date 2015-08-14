@@ -87,7 +87,9 @@
                               :pool-context
                               (jruby-core/get-pool))
             retry-pool    (RegisteredLinkedBlockingDeque. 1)
-            _             (-> retry-pool (RetryPoisonPill.) jruby-core/return-to-pool)
+            _             (-> retry-pool
+                              (RetryPoisonPill.)
+                              (jruby-core/return-to-pool :test []))
             mock-pools    [retry-pool retry-pool retry-pool real-pool]
             num-borrows   (atom 0)
             get-mock-pool (fn [_] (let [result (nth mock-pools @num-borrows)]

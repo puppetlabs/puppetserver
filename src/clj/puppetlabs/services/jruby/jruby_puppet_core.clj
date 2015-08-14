@@ -186,9 +186,13 @@
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
-  [pool-context :- jruby-schemas/PoolContext]
-  (jruby-internal/borrow-from-pool
-    pool-context))
+  [pool-context :- jruby-schemas/PoolContext
+   reason :- schema/Any
+   event-callbacks :- [IFn]]
+  (let [requested-event (instance-requested event-callbacks reason)
+        instance (jruby-internal/borrow-from-pool pool-context)]
+    (instance-borrowed event-callbacks requested-event instance)
+    instance))
 
 (schema/defn ^:always-validate
   borrow-from-pool-with-timeout :- jruby-schemas/JRubyPuppetBorrowResult
@@ -199,16 +203,24 @@
   timeout. If the timeout runs out then nil will be returned, indicating that
   there were no instances available."
   [pool-context :- jruby-schemas/PoolContext
-   timeout :- schema/Int]
+   timeout :- schema/Int
+   reason :- schema/Any
+   event-callbacks :- [IFn]]
   {:pre  [(>= timeout 0)]}
-  (jruby-internal/borrow-from-pool-with-timeout
-    pool-context
-    timeout))
+  (let [requested-event (instance-requested event-callbacks reason)
+        instance (jruby-internal/borrow-from-pool-with-timeout
+                   pool-context
+                   timeout)]
+    (instance-borrowed event-callbacks requested-event instance)
+    instance))
 
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
+  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+   reason :- schema/Any
+   event-callbacks :- [IFn]]
+  (instance-returned event-callbacks instance reason)
   (jruby-internal/return-to-pool instance))
 
 (schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
