@@ -69,9 +69,10 @@
   (jruby-internal/get-pool context))
 
 (schema/defn ^:always-validate
-  pool->vec :- [JRubyPuppetInstance]
+  registered-instances :- [JRubyPuppetInstance]
   [context :- jruby-schemas/PoolContext]
   (-> (get-pool context)
+      .getRegisteredElements
       .iterator
       iterator-seq
       vec))
@@ -158,7 +159,7 @@
   mark-environment-expired!
   [context :- jruby-schemas/PoolContext
    env-name :- schema/Str]
-  (doseq [jruby-instance (pool->vec context)]
+  (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
       :environment-registry
       (puppet-env/mark-environment-expired! env-name))))
@@ -166,7 +167,7 @@
 (schema/defn ^:always-validate
   mark-all-environments-expired!
   [context :- jruby-schemas/PoolContext]
-  (doseq [jruby-instance (pool->vec context)]
+  (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
         :environment-registry
         puppet-env/mark-all-environments-expired!)))
