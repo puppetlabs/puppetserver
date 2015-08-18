@@ -19,12 +19,15 @@
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 
+(def default-services
+  [jruby/jruby-puppet-pooled-service
+   profiler/puppet-profiler-service])
+
 (deftest basic-flush-test
   (testing "Flushing the pool results in all new JRuby instances"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 4})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -48,8 +51,7 @@
   (testing "Flush puts a retry poison pill into the old pool"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -62,7 +64,7 @@
                                     (remove-watch pool-state key)
                                     (deliver pool-state-swapped true)))]
         ; borrow an instance so we know that the pool is ready
-        (jruby/with-jruby-puppet jruby-puppet jruby-service)
+        (jruby/with-jruby-puppet jruby-puppet jruby-service :retry-poison-pill-test)
         (add-watch (:pool-state pool-context) :pool-state-watch pool-state-watch-fn)
         (jruby-protocol/flush-jruby-pool! jruby-service)
         ; wait until we know the new pool has been swapped in
@@ -78,8 +80,7 @@
   (testing "with-jruby-puppet retries if it encounters a RetryPoisonPill"
     (tk-testutils/with-app-with-config
       app
-      [jruby/jruby-puppet-pooled-service
-       profiler/puppet-profiler-service]
+      default-services
       (-> (jruby-testutils/jruby-puppet-tk-config
             (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -87,7 +88,9 @@
                               :pool-context
                               (jruby-core/get-pool))
             retry-pool    (RegisteredLinkedBlockingDeque. 1)
-            _             (-> retry-pool (RetryPoisonPill.) jruby-core/return-to-pool)
+            _             (-> retry-pool
+                              (RetryPoisonPill.)
+                              (jruby-core/return-to-pool :test []))
             mock-pools    [retry-pool retry-pool retry-pool real-pool]
             num-borrows   (atom 0)
             get-mock-pool (fn [_] (let [result (nth mock-pools @num-borrows)]
@@ -97,6 +100,7 @@
           (jruby/with-jruby-puppet
             jruby-puppet
             jruby-service
+            :with-jruby-retry-test
             (is (instance? JRubyPuppet jruby-puppet))))
         (is (= 4 @num-borrows))))))
 

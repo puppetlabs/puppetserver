@@ -48,6 +48,7 @@
               (jruby/with-jruby-puppet
                 jruby-puppet
                 jruby-service
+                :ca-files-test
 
                 (letfn [(test-path!
                           [setting expected-path]

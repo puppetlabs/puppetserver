@@ -6,7 +6,6 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [slingshot.slingshot :as sling]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
 
@@ -34,17 +33,18 @@
         (jruby-agents/send-prime-pool! pool-context)
         (-> context
             (assoc :pool-context pool-context)
-            (assoc :borrow-timeout (:borrow-timeout config))))))
+            (assoc :borrow-timeout (:borrow-timeout config))
+            (assoc :event-callbacks (atom []))))))
 
   (borrow-instance
-    [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          borrow-timeout (:borrow-timeout (tk-services/service-context this))]
-      (core/borrow-from-pool-with-timeout pool-context borrow-timeout)))
+    [this reason]
+    (let [{:keys [pool-context borrow-timeout event-callbacks]} (tk-services/service-context this)]
+      (core/borrow-from-pool-with-timeout pool-context borrow-timeout reason @event-callbacks)))
 
   (return-instance
-    [this jruby-instance]
-    (core/return-to-pool jruby-instance))
+    [this jruby-instance reason]
+    (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
+      (core/return-to-pool jruby-instance reason @event-callbacks)))
 
   (free-instance-count
     [this]
@@ -66,7 +66,12 @@
     [this]
     (let [service-context (tk-services/service-context this)
           {:keys [pool-context]} service-context]
-      (jruby-agents/send-flush-pool! pool-context))))
+      (jruby-agents/send-flush-pool! pool-context)))
+
+  (register-event-handler
+    [this callback-fn]
+    (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
+      (swap! event-callbacks conj callback-fn))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
@@ -80,8 +85,8 @@
 
   Will throw an IllegalStateException if borrowing an instance of
   JRubyPuppet times out."
-  [jruby-puppet jruby-service & body]
-  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service)]
+  [jruby-puppet jruby-service reason & body]
+  `(loop [pool-instance# (jruby/borrow-instance ~jruby-service ~reason)]
      (if (nil? pool-instance#)
        (sling/throw+
          {:type    ::jruby-timeout
@@ -93,10 +98,10 @@
                         "jruby-puppet.max-active-instances.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
-         (jruby-core/return-to-pool pool-instance#)
-         (recur (jruby/borrow-instance ~jruby-service)))
+         (jruby/return-instance ~jruby-service pool-instance# ~reason)
+         (recur (jruby/borrow-instance ~jruby-service ~reason)))
        (let [~jruby-puppet (:jruby-puppet pool-instance#)]
          (try
            ~@body
            (finally
-             (jruby/return-instance ~jruby-service pool-instance#)))))))
+             (jruby/return-instance ~jruby-service pool-instance# ~reason)))))))

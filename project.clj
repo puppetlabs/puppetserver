@@ -77,6 +77,12 @@
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
 
+  ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar
+  ;; during `lein jar` that has all the code in the test/ directory. Downstream projects can then
+  ;; depend on this test jar using a :classifier in their :dependencies to reuse the test utility
+  ;; code that we have.
+  :classifiers [["test" :testutils]]
+
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace "0.2.4"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
@@ -90,6 +96,8 @@
                    :injections    [(require 'spyscope.core)]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
+
+             :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
              :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
