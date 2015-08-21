@@ -41,7 +41,7 @@
                                                   :authorization-required false}}
      :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
                              :puppetlabs.services.master.master-service/master-service "/puppet"
-                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/admin"
+                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/puppet-admin-api"
                              :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service ""}
      :puppet-admin          {:client-whitelist       []
                              :authorization-required false}}))
@@ -108,7 +108,7 @@
 (defn jruby-pool
   "Returns a reference to the current pool of JRuby interpreters."
   []
-  (jruby-core/pool->vec (context [:JRubyPuppetService :pool-context])))
+  (jruby-core/registered-instances (context [:JRubyPuppetService :pool-context])))
 
 (defn puppet-environment-state
   "Given a JRuby instance, return the state information about the environments
