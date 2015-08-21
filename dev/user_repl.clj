@@ -39,7 +39,12 @@
      :webserver             {:client-auth "want"
                              :ssl-host    "localhost"
                              :ssl-port    8140}
-     :certificate-authority {:certificate-status {:client-whitelist []}}}))
+     :certificate-authority {:certificate-status {:client-whitelist []}}
+     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                             :puppetlabs.services.master.master-service/master-service ""
+                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/puppet-admin-api"}
+     :puppet-admin          {:client-whitelist       []
+                             :authorization-required false}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
@@ -102,7 +107,7 @@
 (defn jruby-pool
   "Returns a reference to the current pool of JRuby interpreters."
   []
-  (jruby-core/pool->vec (context [:JRubyPuppetService :pool-context])))
+  (jruby-core/registered-instances (context [:JRubyPuppetService :pool-context])))
 
 (defn puppet-environment-state
   "Given a JRuby instance, return the state information about the environments
