@@ -3,7 +3,7 @@ set -x
 
 export GEM_SOURCE=http://rubygems.delivery.puppetlabs.net
 
-export GENCONFIG_LAYOUT="${GENCONFIG_LAYOUT:-redhat6-64ma-redhat6-64a-redhat6-64u}"
+export GENCONFIG_LAYOUT="${GENCONFIG_LAYOUT:-redhat6-64ma-debian6-64a-windows2008r2-64a}"
 export BEAKER_TESTSUITE="${BEAKER_TESTSUITE:-acceptance/suites/tests/00_smoke}"
 export BEAKER_PRESUITE="${BEAKER_PRESUITE:-acceptance/suites/pre_suite/foss}"
 export BEAKER_POSTSUITE="acceptance/suites/post_suite/"
@@ -26,6 +26,6 @@ bundle exec beaker \
   --pre-suite $BEAKER_PRESUITE \
   --keyfile $BEAKER_KEYFILE \
   --load-path "acceptance/lib" \
-  --preserve-hosts \
+  --preserve-hosts onfail \
   --debug \
   --timeout 360
