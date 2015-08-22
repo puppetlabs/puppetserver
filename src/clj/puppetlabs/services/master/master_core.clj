@@ -9,11 +9,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def puppet-API-versions
+(def puppet-API-version
   "v3")
-
-(def puppet-ca-API-versions
-  "v1")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -150,3 +147,18 @@
     :else
     (throw (IllegalArgumentException.
              (str "Route not found for service " master-ns)))))
+
+(schema/defn ^:always-validate
+  get-handler :- IFn
+  [handle-request-fn :- IFn
+   path :- schema/Str
+   authorization-fn :- IFn
+   use-legacy-auth-conf :- schema/Bool
+   puppet-version :- schema/Str]
+  (let [base-handler (-> (root-routes handle-request-fn)
+                         (#(comidi/context path %))
+                         comidi/routes->handler)
+        handler-maybe-with-authorization (if use-legacy-auth-conf
+                                           base-handler
+                                           (authorization-fn base-handler))]
+    (wrap-middleware handler-maybe-with-authorization puppet-version)))

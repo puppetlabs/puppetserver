@@ -157,7 +157,8 @@
     (update-in [:master-run-dir] #(or % default-master-run-dir))
     (update-in [:master-log-dir] #(or % default-master-log-dir))
     (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
-    (update-in [:max-requests-per-instance] #(or % 0))))
+    (update-in [:max-requests-per-instance] #(or % 0))
+    (update-in [:use-legacy-auth-conf] #(or % (nil? %)))))
 
 (def facter-jar
   "Well-known name of the facter jar file"

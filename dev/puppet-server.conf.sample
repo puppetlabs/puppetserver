@@ -118,3 +118,13 @@ certificate-authority: {
 puppet-admin: {
     client-whitelist: [localhost]
 }
+
+authorization: {
+    rules: [
+        {
+            path: "/"
+            type: "path"
+            allow: "*"
+        }
+    ]
+}

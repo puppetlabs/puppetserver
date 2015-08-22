@@ -55,7 +55,8 @@
   {:product     {:name "puppet-server"
                  :update-server-url "http://localhost:11111"}
    :jruby-puppet pool-config
-   :certificate-authority {:certificate-status {:client-whitelist []}}})
+   :authorization {:rules
+                   [{:path "/" :type "path" :allow "*"}]}})
 
 (schema/defn ^:always-validate
   jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig

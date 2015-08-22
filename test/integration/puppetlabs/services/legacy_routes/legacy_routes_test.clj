@@ -15,7 +15,8 @@
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.legacy-routes.legacy-routes-service :as legacy-routes]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
-            [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]))
+            [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
@@ -67,7 +68,8 @@
          master-service/master-service
          legacy-routes/legacy-routes-service
          admin/puppet-admin-service
-         disabled-ca/certificate-authority-disabled-service]
+         disabled-ca/certificate-authority-disabled-service
+         authorization/authorization-service]
         {}
 
         (is (= 404 (:status (http-get "/production/certificate_statuses/all")))

@@ -2,15 +2,17 @@
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
             [puppetlabs.services.legacy-routes.legacy-routes-core :refer :all]
+            [puppetlabs.services.ca.certificate-authority-core :as ca-core]
             [puppetlabs.services.master.master-core :as master-core]
+
             [ring.mock.request :as mock]
             [ring.util.codec :as ring-codec]))
 (use-fixtures :once schema-test/validate-schemas)
 
 (def master-mount "/puppet")
 (def ca-mount "/puppet-ca")
-(def master-api-version master-core/puppet-API-versions)
-(def ca-api-version master-core/puppet-ca-API-versions)
+(def master-api-version master-core/puppet-API-version)
+(def ca-api-version ca-core/puppet-ca-API-version)
 (def accept-header [:headers "accept"])
 (def content-type-request-header [:headers "content-type"])
 

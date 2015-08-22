@@ -14,7 +14,8 @@
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
-                 [puppetlabs/trapperkeeper ~tk-version]
+                 [puppetlabs/trapperkeeper ~tk-version :exclusions [puppetlabs/typesafe-config]]
+                 [puppetlabs/trapperkeeper-authorization "0.0.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]

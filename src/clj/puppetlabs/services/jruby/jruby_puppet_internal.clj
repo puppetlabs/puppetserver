@@ -176,7 +176,8 @@
   (let [{:keys [ruby-load-path gem-home
                 http-client-ssl-protocols http-client-cipher-suites
                 http-client-connect-timeout-milliseconds
-                http-client-idle-timeout-milliseconds]} config]
+                http-client-idle-timeout-milliseconds
+                use-legacy-auth-conf]} config]
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
@@ -195,6 +196,7 @@
         http-client-connect-timeout-milliseconds)
       (.put puppet-server-config "http_idle_timeout_milliseconds"
         http-client-idle-timeout-milliseconds)
+      (.put puppet-server-config "use_legacy_auth_conf" use-legacy-auth-conf)
       (let [instance (jruby-schemas/map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id

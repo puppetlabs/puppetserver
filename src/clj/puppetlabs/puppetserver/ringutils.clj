@@ -3,7 +3,6 @@
            (java.security.cert X509Certificate))
   (:require [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.response :as ring]
             [schema.core :as schema]))
@@ -13,7 +12,7 @@
 
 (def WhitelistSettings
   {(schema/optional-key :authorization-required) schema/Bool
-   :client-whitelist [schema/Str]})
+   (schema/optional-key :client-whitelist)       [schema/Str]})
 
 (def RingRequest
   {:uri schema/Str
@@ -23,18 +22,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
-(defn get-cert-subject
-  "Pull the common name of the subject off the certificate."
-  [certificate]
-  (-> certificate
-      (ca/get-subject)
-      (ssl-utils/x500-name->CN)))
-
 (defn log-access-denied
   [uri certificate]
   "Log a message to info stating that the client is not in the
    access control whitelist."
-  (let [subject (get-cert-subject certificate)]
+  (let [subject (ssl-utils/get-cn-from-x509-certificate certificate)]
     (log/info
       (str "Client '" subject "' access to " uri " rejected;\n"
            "client not found in whitelist configuration."))))
@@ -45,7 +37,7 @@
   (let [whitelist (-> settings
                       :client-whitelist
                       (set))
-        client    (get-cert-subject certificate)]
+        client    (ssl-utils/get-cn-from-x509-certificate certificate)]
     (contains? whitelist client)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,7 +86,7 @@
   (fn [req]
     (if (client-allowed-access? settings req)
       (handler req)
-      {:status 401 :body "Unauthorized"})))
+      {:status 403 :body "Forbidden."})))
 
 (defn wrap-exception-handling
   "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
@@ -120,3 +112,39 @@
       ; In that case, don't add the header.
       (when response
         (ring/header response "X-Puppet-Version" version)))))
+
+;; This function exists to support backward-compatible usage of a
+;; client-whitelist to protect access to some Clojure endpoints.  When support
+;; for client-whitelist authorization is dropped, this function should deleted.
+;; Callers would presumably be using a trapperkeeper-authorization handler
+;; for all endpoint authorization.
+(schema/defn ^:always-validate
+  wrap-with-trapperkeeper-or-client-whitelist-authorization
+  "Middleware function that routes a request through either an authorization
+  handler derived from the supplied 'authorization-fn' or to a client-whitelist
+  handler.
+
+  The 'authorization-fn' is expected to return a handler when called
+  and this function and accept a single argument, an downstream handler that the
+  authorization-fn should route a handled request to.  The authorization-fn
+  is called with 'base-handler' as its parameter.
+
+  Requests are only routed to the client-whitelist handler if the request 'uri'
+  starts with the value provided to this function for 'whitelist-path' and if
+  the 'whitelist-settings' are non-empty.  In all other cases, requests are
+  routed to the handler constructed from the 'authorization-fn'"
+  [base-handler :- IFn
+   authorization-fn :- IFn
+   whitelist-path :- schema/Str
+   whitelist-settings :- (schema/maybe WhitelistSettings)]
+  (let [handler-with-trapperkeeper-authorization (authorization-fn base-handler)]
+    (if-let [handler-with-client-whitelist-authorization
+             (if (not-empty whitelist-settings)
+               (wrap-with-cert-whitelist-check base-handler whitelist-settings))]
+      (fn [request]
+        (if (and (.startsWith (:uri request) whitelist-path)
+                 whitelist-settings)
+          (handler-with-client-whitelist-authorization request)
+          (handler-with-trapperkeeper-authorization request)))
+      (fn [request]
+        (handler-with-trapperkeeper-authorization request)))))

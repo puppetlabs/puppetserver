@@ -50,7 +50,7 @@
         (is (= "hello" (:body response)))))
     (testing "access denied when cert not on whitelist"
       (let [response (ring-handler (test-request other-cert))]
-        (is (= 401 (:status response))))))
+        (is (= 403 (:status response))))))
   (let [ring-handler (build-ring-handler
                        {:authorization-required false
                         :client-whitelist       []})]

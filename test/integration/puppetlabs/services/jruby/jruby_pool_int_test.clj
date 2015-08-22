@@ -12,10 +12,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as puppet-admin]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.http.client.sync :as http-client]
-            [me.raynes.fs :as fs]
-            [clojure.tools.logging :as log]))
+            [me.raynes.fs :as fs]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -217,7 +216,8 @@
            jruby/jruby-puppet-pooled-service
            jetty9/jetty9-service
            webrouting/webrouting-service
-           puppet-admin/puppet-admin-service]
+           puppet-admin/puppet-admin-service
+           authorization/authorization-service]
           (merge (jruby-testutils/jruby-puppet-tk-config
                    (jruby-testutils/jruby-puppet-config {:max-active-instances      4
                                                          :max-requests-per-instance 10}))

@@ -47,7 +47,7 @@
           (let [response (http-client/delete
                            (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                            ssl-request-options)]
-            (is (= 401 (:status response))
+            (is (= 403 (:status response))
                 (ks/pprint-to-string response)))))))
 
   (testing "server tolerates client specifying an 'Accept: */*' header"

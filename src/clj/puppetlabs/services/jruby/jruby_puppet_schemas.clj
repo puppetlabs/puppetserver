@@ -71,7 +71,11 @@
         milliseconds, that an outbound HTTP connection will wait for data to be
         available after a request is sent before closing the socket.  If 0, the
         timeout is infinite and if negative, the value is undefined by the
-        application and is governed by the default system behavior."
+        application and is governed by the default system behavior.
+
+    * :use-legacy-auth-conf - Whether to use the legacy core Puppet auth.conf
+        (true) or trapperkeeper-authorization (false) to authorize requests
+        being made to core Puppet endpoints."
   ;; NOTE: there is a bug in the version of schema we're using, which causes
   ;; the order of things that you put into a `both` to be very important.
   ;; The `vector?` pred here MUST come before the `[schema/Str]`.  For more info
@@ -89,7 +93,8 @@
    :http-client-idle-timeout-milliseconds    schema/Int
    :borrow-timeout              schema/Int
    :max-active-instances        schema/Int
-   :max-requests-per-instance   schema/Int})
+   :max-requests-per-instance   schema/Int
+   :use-legacy-auth-conf        schema/Bool})
 
 (def JRubyPoolAgent
   "An agent configured for use in managing JRuby pools"

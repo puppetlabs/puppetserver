@@ -15,8 +15,13 @@
             ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
-            [ring.util.response :as rr]
-            [compojure.route :as route]))
+            [ring.util.response :as rr]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Constants
+
+(def puppet-ca-API-version
+  "v1")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
@@ -134,11 +139,6 @@
   [subject settings]
   :allowed-methods [:get :put :delete]
 
-  :allowed? (fn [context]
-              (ringutils/client-allowed-access?
-                (get-in settings [:access-control :certificate-status])
-                (:request context)))
-
   :available-media-types media-types
 
   :can-put-to-missing? false
@@ -177,7 +177,6 @@
   :handle-conflict
   (fn [context]
     (as-plain-text-response context (::conflict context)))
-
 
   :handle-exception
   (fn [context]
@@ -241,11 +240,6 @@
   [settings]
   :allowed-methods [:get]
 
-  :allowed? (fn [context]
-              (ringutils/client-allowed-access?
-                (get-in settings [:access-control :certificate-status])
-                (:request context)))
-
   :available-media-types media-types
 
   :handle-exception
@@ -286,3 +280,29 @@
       (ringutils/wrap-exception-handling)
       (ringutils/wrap-with-puppet-version-header puppet-version)
       (ringutils/wrap-response-logging)))
+
+(schema/defn ^:always-validate
+  get-handler :- IFn
+  [ca-settings :- ca/CaSettings
+   path :- schema/Str
+   authorization-fn :- IFn
+   puppet-version :- schema/Str]
+  ;; For backward compatibility, requests to the .../certificate_status* endpoint
+  ;; will be authorized by a client-whitelist, if one is configured for
+  ;; 'certificate_status'.  When we are able to drop support for
+  ;; client-whitelist authorization later on, we should be able to get rid of
+  ;; the 'wrap-with-trapperkeeper-or-client-whitelist-authorization' function
+  ;; and replace with a line chaining the handler into a call to
+  ;; 'authorization-fn'.
+  (let [whitelist-path (str path
+                            (if (not= \/ path) "/")
+                            puppet-ca-API-version
+                            "/certificate_status")]
+    (-> (web-routes ca-settings)
+        (#(comidi/context path %))
+        comidi/routes->handler
+        (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
+          authorization-fn
+          whitelist-path
+          (get-in ca-settings [:access-control :certificate-status]))
+        (wrap-middleware puppet-version))))
