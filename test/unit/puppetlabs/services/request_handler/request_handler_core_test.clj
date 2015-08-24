@@ -235,14 +235,14 @@
 
 (deftest request-handler-test
   (let [dummy-service (reify jruby/JRubyPuppetService
-                        (borrow-instance [_] {})
-                        (return-instance [_ _])
+                        (borrow-instance [_ _] {})
+                        (return-instance [_ _ _])
                         (free-instance-count [_])
                         (mark-all-environments-expired! [_])
                         (flush-jruby-pool! [_]))
         dummy-service-with-timeout (reify jruby/JRubyPuppetService
-                                     (borrow-instance [_] nil)
-                                     (return-instance [_ _])
+                                     (borrow-instance [_ _] nil)
+                                     (return-instance [_ _ _])
                                      (free-instance-count [_])
                                      (mark-all-environments-expired! [_])
                                      (flush-jruby-pool! [_]))]

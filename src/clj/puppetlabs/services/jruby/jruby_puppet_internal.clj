@@ -39,6 +39,15 @@
   (CompatVersion/RUBY1_9))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def JRubyPuppetInternalBorrowResult
+  (schema/pred (some-fn nil?
+                 jruby-schemas/poison-pill?
+                 jruby-schemas/retry-poison-pill?
+                 jruby-schemas/jruby-puppet-instance?)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
 (schema/defn get-system-env :- jruby-schemas/EnvPersistentMap
@@ -141,7 +150,7 @@
         (.put puppet-config dir (fs/absolute-path value))))
     puppet-config))
 
-(schema/defn borrow-with-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
+(schema/defn borrow-with-timeout-fn :- JRubyPuppetInternalBorrowResult
   [timeout :- schema/Int
    pool :- jruby-schemas/pool-queue-type]
   (.pollFirst pool timeout TimeUnit/MILLISECONDS))
@@ -221,11 +230,11 @@
   [context :- jruby-schemas/PoolContext]
   (get-in context [:config :max-active-instances]))
 
-(schema/defn borrow-without-timeout-fn :- jruby-schemas/JRubyPuppetBorrowResult
+(schema/defn borrow-without-timeout-fn :- JRubyPuppetInternalBorrowResult
   [pool :- jruby-schemas/pool-queue-type]
   (.takeFirst pool))
 
-(schema/defn borrow-from-pool!* :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
+(schema/defn borrow-from-pool!* :- jruby-schemas/JRubyPuppetBorrowResult
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
   If successful, updates the state information and returns the JRuby instance.
   Returns nil if the borrow function returns nil; throws an exception if
@@ -259,7 +268,7 @@
                       (get-pool pool-context)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool-with-timeout :- (schema/maybe jruby-schemas/JRubyPuppetInstanceOrRetry)
+  borrow-from-pool-with-timeout :- jruby-schemas/JRubyPuppetBorrowResult
   "Borrows a JRubyPuppet interpreter from the pool, like borrow-from-pool but a
   blocking timeout is provided. If an instance is available then it will be
   immediately returned to the caller, if not then this function will block
