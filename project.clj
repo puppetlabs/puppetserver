@@ -56,6 +56,9 @@
   :test-paths ["test/unit" "test/integration"]
   :resource-paths ["resources" "src/ruby"]
 
+  ; .jars need to work on Java 7
+  :javac-options ["-target" "1.7"]
+
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
