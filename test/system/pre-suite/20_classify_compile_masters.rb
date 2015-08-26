@@ -2,8 +2,8 @@
 # https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.2.x/setup/scale/install/20_classification/10_compile_masters.rb
 
 require 'scooter'
-require 'pry'
-require 'pry-debugger'
+#require 'pry'
+#require 'pry-debugger'
 
 
 test_name 'Classify Compile Master Nodes' do
