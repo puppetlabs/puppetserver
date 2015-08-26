@@ -1,0 +1,28 @@
+def location_for(place, fake_version = nil)
+  if place =~ /^(git:[^#]*)#(.*)/
+    [fake_version, { :git => $1, :branch => $2, :require => false }].compact
+  elsif place =~ /^file:\/\/(.*)/
+    ['>= 0', { :path => File.expand_path($1), :require => false }]
+  else
+    [place, { :require => false }]
+  end
+end
+
+source 'http://rubygems.delivery.puppetlabs.net' do
+  gem 'sqa-utils'
+  gem 'scooter', '~> 2.2'
+end
+
+source ENV['GEM_SOURCE'] || 'https://rubygems.org' do
+  beaker_version = ENV['BEAKER_VERSION']
+  group :test, :system_tests do
+    if beaker_version
+      gem 'beaker', *location_for(beaker_version)
+    else
+      gem 'beaker', '~> 2.18.2'
+    end
+  end
+gem 'pry'
+gem 'pry-debugger'
+
+end

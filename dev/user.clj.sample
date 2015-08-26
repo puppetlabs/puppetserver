@@ -68,4 +68,3 @@
 ;;         :repl-options {:nrepl-middleware [io.aviso.nrepl/pretty-middleware]}
 ;;         :injections   [(require 'pjstadig.humane-test-output)
 ;;                        (pjstadig.humane-test-output/activate!)]}}
-
