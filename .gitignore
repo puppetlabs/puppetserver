@@ -30,3 +30,4 @@ Gemfile.local
 /junit/
 /tmp/
 acceptance/scripts/hosts.cfg
+
