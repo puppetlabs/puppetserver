@@ -1,10 +1,7 @@
-# so much code lifted from
-# https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.2.x/setup/scale/install/20_classification/10_compile_masters.rb
+# Stolen from https://github.com/erikPrime/pe-file-sync, who stole it from 
+# https://github.com/puppetlabs/pe_acceptance_tests
 
 require 'scooter'
-#require 'pry'
-#require 'pry-debugger'
-
 
 test_name 'Classify Compile Master Nodes' do
   skip_test 'No compile masters' unless any_hosts_as?(:compile_master)
@@ -52,4 +49,3 @@ test_name 'Install Compile Masters' do
   end
 
 end
-
