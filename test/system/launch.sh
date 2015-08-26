@@ -76,7 +76,7 @@ case "$1" in
   echo "$0 checking contents of beakerlog.log"
   for h in $(grep "Using available host" beakerlog.log | grep -oE "[0-9a-z]{15}.delivery.puppetlabs.net" )
     do
-    echo "\t$0 found host $h.  Storing in beakerhosts"
+    echo -e "\t$0 found host $h.  Storing in beakerhosts"
     echo $h >> beakerhosts
   done
  
