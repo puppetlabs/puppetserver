@@ -75,7 +75,8 @@
         :master-code-dir code-dir
         :master-var-dir  var-dir
         :master-run-dir  run-dir
-        :master-log-dir  log-dir}}))
+        :master-log-dir  log-dir
+        :use-legacy-auth-conf false}}))
   ([options]
    (merge (jruby-puppet-config) options)))
 

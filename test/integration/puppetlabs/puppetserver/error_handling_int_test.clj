@@ -26,7 +26,7 @@
             not anything wacky like HTML (I'm looking at you, Jetty.)"
     (bootstrap/with-puppetserver-running
       app
-      {:certificate-authority {:certificate-status {:authorization-required false}}}
+      {}
       (with-test-logging
         (testing "the Puppet Master's main API"
           ;; This next line of code is wacky, so here's an explanation -

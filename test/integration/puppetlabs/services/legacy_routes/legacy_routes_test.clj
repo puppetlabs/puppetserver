@@ -34,7 +34,7 @@
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."
     (bootstrap/with-puppetserver-running app
-      {:certificate-authority {:certificate-status {:authorization-required false}}}
+      {}
       (is (= 200 (:status (http-get "/v2.0/environments"))))
       (is (= 200 (:status (http-get "/production/node/localhost"))))
       (is (= 200 (:status (http-get "/production/certificate_statuses/all")))))))

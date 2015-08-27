@@ -67,6 +67,11 @@ jruby-puppet: {
 
     # (optional) maximum number of JRuby instances to allow
     max-active-instances: 1
+
+    # (optional) Authorize access to Puppet master endpoints via rules specified
+    # in the legacy Puppet auth.conf file (if true or not specified) or via rules
+    # specified in the  Puppet Server HOCON-formatted auth.conf (if false).
+    use-legacy-auth-conf: false
 }
 
 # settings related to HTTP client requests made by Puppet Server
@@ -98,25 +103,6 @@ http-client: {
 profiler: {
     # enable or disable profiling for the Ruby code; defaults to 'false'.
     enabled: true
-}
-
-# CA-related settings
-certificate-authority: {
-
-    # settings for the certificate_status HTTP endpoint
-    certificate-status: {
-
-        # this setting contains a list of client certnames who are whitelisted to
-        # have access to the certificate_status endpoint.  Any requests made to
-        # this endpoint that do not present a valid client cert mentioned in
-        # this list will be denied access.
-        client-whitelist: []
-    }
-}
-
-# Settings related to the puppet-admin HTTP API
-puppet-admin: {
-    client-whitelist: [localhost]
 }
 
 authorization: {

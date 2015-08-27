@@ -23,9 +23,12 @@
 (deftest ^:integration legacy-routes-auth-conf
   (testing "The legacy web routing with puppet 4 version custom auth.conf"
     (testing "when localhost has access to the resource named `private`"
-      (bootstrap/with-puppetserver-running app {}
-        (logutils/with-test-logging
-          (is (= 200 (:status (http-get "/production/node/public"))))
-          (is (= 403 (:status (http-get "/production/node/private"))))
-          (is (= 200 (:status (http-get "/production/catalog/public"))))
-          (is (= 403 (:status (http-get "/production/catalog/private")))))))))
+      (logutils/with-test-logging
+        (bootstrap/with-puppetserver-running
+          app
+          {:jruby-puppet {:use-legacy-auth-conf true}}
+          (logutils/with-test-logging
+            (is (= 200 (:status (http-get "/production/node/public"))))
+            (is (= 403 (:status (http-get "/production/node/private"))))
+            (is (= 200 (:status (http-get "/production/catalog/public"))))
+            (is (= 403 (:status (http-get "/production/catalog/private"))))))))))

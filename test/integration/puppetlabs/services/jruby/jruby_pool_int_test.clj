@@ -127,8 +127,7 @@
   (testing "Flushing the pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -144,8 +143,7 @@
   (testing "instance borrowed from old pool before pool flush begins and returned *after* new pool is available"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -170,8 +168,7 @@
   (testing "file handle opened from old pool instance is held open across pool flush"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 2}}
+      {:jruby-puppet {:max-active-instances 2}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -227,8 +224,7 @@
                   :web-router-service
                                 {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
                                  :puppetlabs.services.master.master-service/master-service                           ""
-                                 :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"}
-                  :puppet-admin {:client-whitelist ["localhost"]}})
+                                 :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"}})
           (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
                 context (tk-services/service-context jruby-service)
                 pool-context (:pool-context context)]

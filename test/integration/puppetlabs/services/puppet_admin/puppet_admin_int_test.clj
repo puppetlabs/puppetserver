@@ -5,6 +5,7 @@
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]))
 
@@ -40,19 +41,22 @@
 
 (deftest ^:integration admin-api-access-control-test
   (testing "access denied when cert not on whitelist"
-    (bootstrap/with-puppetserver-running app
-      {:puppet-admin {:client-whitelist ["notlocalhost"]}}
-      (doseq [endpoint endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
-                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                           ssl-request-options)]
-            (is (= 403 (:status response))
-                (ks/pprint-to-string response)))))))
+    (logutils/with-test-logging
+      (bootstrap/with-puppetserver-running
+        app
+        {:puppet-admin  {:client-whitelist ["notlocalhost"]}
+         :authorization {:rules []}}
+        (doseq [endpoint endpoints]
+          (testing (str "for " endpoint " endpoint")
+            (let [response (http-client/delete
+                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
+                             ssl-request-options)]
+              (is (= 403 (:status response))
+                  (ks/pprint-to-string response))))))))
 
   (testing "server tolerates client specifying an 'Accept: */*' header"
     (bootstrap/with-puppetserver-running app
-      {:puppet-admin {:client-whitelist ["localhost"]}}
+      {}
       (doseq [endpoint endpoints]
         (testing (str "for " endpoint " endpoint")
           (let [response (http-client/delete
