@@ -40,13 +40,15 @@
                               "puppetlabs.services.ca.certificate-authority-service")
           ca-handler-info (when
                             real-ca-service?
-                            {:mount       (get-route ca-service)
-                             :handler     (ca-core/get-handler
-                                            (ca/config->ca-settings (get-config))
-                                            path
-                                            wrap-with-authorization-check
-                                            puppet-version)
-                             :api-version ca-core/puppet-ca-API-version})
+                            (let [ca-mount (get-route ca-service)]
+                              {:mount       ca-mount
+                               :handler     (ca-core/get-handler
+                                              (ca/config->ca-settings (get-config))
+                                              path
+                                              ca-mount
+                                              wrap-with-authorization-check
+                                              puppet-version)
+                               :api-version ca-core/puppet-ca-API-version}))
           ring-handler (legacy-routes-core/build-ring-handler
                          master-handler-info
                          ca-handler-info)]

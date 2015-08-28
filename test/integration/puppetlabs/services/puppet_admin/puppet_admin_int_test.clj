@@ -54,6 +54,50 @@
               (is (= 403 (:status response))
                   (ks/pprint-to-string response))))))))
 
+  (testing "access allowed when cert on whitelist"
+    (logutils/with-test-logging
+      (bootstrap/with-puppetserver-running
+        app
+        {:puppet-admin  {:client-whitelist ["localhost"]}
+         :authorization {:rules []}}
+        (doseq [endpoint endpoints]
+          (testing (str "for " endpoint " endpoint")
+            (let [response (http-client/delete
+                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
+                             ssl-request-options)]
+              (is (= 204 (:status response))
+                  (ks/pprint-to-string response))))))))
+
+  (testing "access denied when cert denied by rule"
+    (bootstrap/with-puppetserver-running
+      app
+      {:puppet-admin  nil
+       :authorization {:rules [{:path "/puppet-admin-api/v1"
+                                :type "path"
+                                :allow "notlocalhost"}]}}
+      (doseq [endpoint endpoints]
+        (testing (str "for " endpoint " endpoint")
+          (let [response (http-client/delete
+                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
+                           ssl-request-options)]
+            (is (= 403 (:status response))
+                (ks/pprint-to-string response)))))))
+
+  (testing "access allowed when cert allowed by rule"
+    (bootstrap/with-puppetserver-running
+      app
+      {:puppet-admin  nil
+       :authorization {:rules [{:path "/puppet-admin-api/v1"
+                                :type "path"
+                                :allow "localhost"}]}}
+      (doseq [endpoint endpoints]
+        (testing (str "for " endpoint " endpoint")
+          (let [response (http-client/delete
+                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
+                           ssl-request-options)]
+            (is (= 204 (:status response))
+                (ks/pprint-to-string response)))))))
+
   (testing "server tolerates client specifying an 'Accept: */*' header"
     (bootstrap/with-puppetserver-running app
       {}
