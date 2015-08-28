@@ -70,7 +70,7 @@ jruby-puppet: {
 
     # (optional) Authorize access to Puppet master endpoints via rules specified
     # in the legacy Puppet auth.conf file (if true or not specified) or via rules
-    # specified in the  Puppet Server HOCON-formatted auth.conf (if false).
+    # specified in the Puppet Server HOCON-formatted auth.conf (if false).
     use-legacy-auth-conf: false
 }
 
@@ -105,6 +105,7 @@ profiler: {
     enabled: true
 }
 
+# authorization rules for web service endpoints
 authorization: {
     rules: [
         {
