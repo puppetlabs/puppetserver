@@ -61,7 +61,9 @@ module PuppetServerExtensions
 
     # precedence is environment variable, option file, default value
     value = ((env_var_name && ENV[env_var_name]) || value || default_value)
-    if value
+    if value == ""
+      value = default_value
+    elsif value
       value = value.to_sym
     end
 
