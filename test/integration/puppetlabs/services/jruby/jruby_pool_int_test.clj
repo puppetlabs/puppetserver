@@ -107,19 +107,19 @@
   [jruby-service]
   ;; borrow until we get an instance that doesn't have a constant,
   ;; so we'll know that the new pool is online
-  (loop [instance (jruby-protocol/borrow-instance jruby-service)]
+  (loop [instance (jruby-protocol/borrow-instance jruby-service :wait-for-new-pool)]
     (let [has-constant? (constant-defined? instance)]
-      (jruby-protocol/return-instance jruby-service instance)
+      (jruby-protocol/return-instance jruby-service instance :wait-for-new-pool)
       (when has-constant?
-        (recur (jruby-protocol/borrow-instance jruby-service))))))
+        (recur (jruby-protocol/borrow-instance jruby-service :wait-for-new-pool))))))
 
 (defn borrow-until-desired-borrow-count
   [jruby-service desired-borrow-count]
-  (loop [instance (jruby-protocol/borrow-instance jruby-service)]
+  (loop [instance (jruby-protocol/borrow-instance jruby-service :borrow-until-desired-borrow-count)]
     (let [borrow-count (:borrow-count @(:state instance))]
-      (jruby-protocol/return-instance jruby-service instance)
+      (jruby-protocol/return-instance jruby-service instance :borrow-until-desired-borrow-count)
       (if (< (inc borrow-count) desired-borrow-count)
-        (recur (jruby-protocol/borrow-instance jruby-service))))))
+        (recur (jruby-protocol/borrow-instance jruby-service :borrow-until-desired-borrow-count))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -154,13 +154,14 @@
         (is (true? (set-constants-and-verify pool-context 4)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)
               ;; borrow an instance and hold the reference to it.
-              instance (jruby-protocol/borrow-instance jruby-service)]
+              instance (jruby-protocol/borrow-instance jruby-service
+                         :hold-instance-while-pool-flush-in-progress-test)]
           ;; trigger a flush
           (is (true? (trigger-flush ssl-request-options)))
           ;; wait for the new pool to become available
           (wait-for-new-pool jruby-service)
           ;; return the instance
-          (jruby-protocol/return-instance jruby-service instance)
+          (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
           @flush-complete)
         ;; now the pool is flushed, and the constants should be cleared
@@ -179,7 +180,8 @@
         (is (true? (set-constants-and-verify pool-context 2)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)
               ;; borrow an instance and hold the reference to it.
-              instance (jruby-protocol/borrow-instance jruby-service)
+              instance (jruby-protocol/borrow-instance jruby-service
+                         :hold-instance-while-pool-flush-in-progress-test)
               sc (:scripting-container instance)]
           (.runScriptlet sc
                          (str "$unique_file = "
@@ -196,7 +198,7 @@
             (finally
               (.runScriptlet sc "$unique_file.unlink")))
           ;; return the instance
-          (jruby-protocol/return-instance jruby-service instance)
+          (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
           @flush-complete)
         ;; now the pool is flushed, and the constants should be cleared
@@ -236,13 +238,15 @@
             (let [flush-complete (add-watch-for-flush-complete pool-context)
                   ;; borrow one instance and hold the reference to it, to prevent
                   ;; the flush operation from completing
-                  instance1 (jruby-protocol/borrow-instance jruby-service)]
+                  instance1 (jruby-protocol/borrow-instance jruby-service
+                              :max-requests-flush-while-pool-flush-in-progress-test)]
               ;; we are going to borrow and return a second instance until we get its
               ;; request count up to max-requests - 1, so that we can use it to test
               ;; flushing behavior the next time we return it.
               (borrow-until-desired-borrow-count jruby-service 9)
               ;; now we grab a reference to that instance and hold onto it for later.
-              (let [instance2 (jruby-protocol/borrow-instance jruby-service)]
+              (let [instance2 (jruby-protocol/borrow-instance jruby-service
+                                :max-requests-flush-while-pool-flush-in-progress-test)]
                 (is (= 9 (:borrow-count @(:state instance2))))
 
                 ;; trigger a flush
@@ -269,14 +273,14 @@
                 ;; pull it out of the old pool and create a new instance in the new pool
                 ;; to replace it.  So we should end up with 3 instances in the new pool,
                 ;; two of which should have the ruby constants and one of which should not.
-                (jruby-protocol/return-instance jruby-service instance2)
+                (jruby-protocol/return-instance jruby-service instance2 :max-requests-flush-while-pool-flush-in-progress-test)
                 (is (true? (check-jrubies-for-constant-counts pool-context 2 1))))
 
               ;; now we'll set the ruby constant on the 3 instances in the new pool
               (is (true? (set-constants-and-verify pool-context 3)))
 
               ;; and finally, we return the last instance from the old pool
-              (jruby-protocol/return-instance jruby-service instance1)
+              (jruby-protocol/return-instance jruby-service instance1 :max-requests-flush-while-pool-flush-in-progress-test)
 
               ;; wait until the flush is complete
               @flush-complete)
