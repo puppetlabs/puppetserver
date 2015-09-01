@@ -11,7 +11,7 @@ end
 if on(ca, "test ! -f /root/.ssh/id_rsa", :accept_all_exit_codes => true).exit_code == 0
   on(ca, "ssh-keygen -f /root/.ssh/id_rsa -N \"\"")
 end
-ca_key = on(ca, "cat /root/.ssh/id_rsa.pub").stdout.chomp
+ca_ssh_key = on(ca, "cat /root/.ssh/id_rsa.pub").stdout.chomp
 
 #Pre-setup: Get Hostnames and FQDNs of Puppet Master & Root CA
 pm_hostname = fact_on(master, "hostname").chomp
@@ -27,7 +27,7 @@ p_ssl = "/etc/puppetlabs/puppet/ssl"
 
 step 'Push External CA public key onto all hosts' do
   hosts.each do |h|
-    on(h, "echo #{ca_key} >> /root/.ssh/authorized_keys")
+    on(h, "echo #{ca_ssh_key} >> /root/.ssh/authorized_keys")
   end
 end
 
@@ -38,7 +38,7 @@ step 'Install Git & Pull Down rakeca on External CA' do
   on(ca, "git clone https://github.com/LuvCurves/rakeca")
 end
 
-step 'turn on the fields defiend in SERVER-816' do
+step 'turn on the fields defined in SERVER-816' do
   #TODO: Someday we will deal with this string of hacks in a more graceful way
   keyusage = 'keyUsage=critical,nonRepudiation,digitalSignature,keyEncipherment,dataEncipherment'
   #extendedKeyUsage = 'extendedKeyUsage=serverAuth,clientAuth'
