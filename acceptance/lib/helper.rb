@@ -22,7 +22,7 @@ module PuppetServerExtensions
                          "PUPPETSERVER_VERSION", nil, :string)
 
     puppet_version = get_option_value(options[:puppet_version],
-                         nil, "Puppet Version", "PUPPET_VERSION", nil, :symbol) ||
+                         nil, "Puppet Version", "PUPPET_VERSION", nil, :string) ||
                          get_puppet_version
 
     # puppet-agent version corresponds to packaged development version located at:
