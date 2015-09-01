@@ -1,11 +1,6 @@
 test_name 'QA-1393 - C62572 - Register Agent with Puppet Master using an External CA'
 
 lockfile = '/opt/puppetlabs/puppet/cache/state/agent_catalog_run.lock'
-lockcopy = '/tmp/foo'
-
-teardown do
-  "rm -fr #{lockcopy}"
-end
 
 step 'Run puppet agent --test on all agents to retrieve new certificates' do
   agents.each do |my_agent|
