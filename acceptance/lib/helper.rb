@@ -9,27 +9,28 @@ module PuppetServerExtensions
     base_dir = File.join(File.dirname(__FILE__), '..')
 
     install_type = get_option_value(options[:puppetserver_install_type],
-      [:git, :package], "install type", "PUPPETSERVER_INSTALL_TYPE", :package)
+      [:git, :package], "install type", "PUPPETSERVER_INSTALL_TYPE", :package, :symbol)
 
     install_mode =
         get_option_value(options[:puppetserver_install_mode],
                          [:install, :upgrade], "install mode",
-                         "PUPPETSERVER_INSTALL_MODE", :install)
+                         "PUPPETSERVER_INSTALL_MODE", :install, :symbol)
 
     puppetserver_version =
         get_option_value(options[:puppetserver_version],
                          nil, "Puppet Server Version",
-                         "PUPPETSERVER_VERSION", nil)
+                         "PUPPETSERVER_VERSION", nil, :string)
 
     puppet_version = get_option_value(options[:puppet_version],
-                         nil, "Puppet Version", "PUPPET_VERSION", nil) ||
+                         nil, "Puppet Version", "PUPPET_VERSION", nil, :string) ||
                          get_puppet_version
 
     # puppet-agent version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppet-agent/
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
-                         "PUPPET_BUILD_VERSION", "96ffe59c225cc9e4c34cf6c75dbca7356b1fb80e")
+                         "PUPPET_BUILD_VERSION",
+                         "96ffe59c225cc9e4c34cf6c75dbca7356b1fb80e", :string)
 
     @config = {
       :base_dir => base_dir,
@@ -57,11 +58,13 @@ module PuppetServerExtensions
   end
 
   def self.get_option_value(value, legal_values, description,
-    env_var_name = nil, default_value = nil)
+    env_var_name = nil, default_value = nil, value_type = :symbol)
 
     # precedence is environment variable, option file, default value
     value = ((env_var_name && ENV[env_var_name]) || value || default_value)
-    if value
+    if value == "" and value_type == :string
+      value = default_value
+    elsif value and value_type == :symbol
       value = value.to_sym
     end
 
