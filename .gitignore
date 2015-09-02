@@ -17,3 +17,4 @@ dev/user.clj
 .lein-repl-history
 ext/packaging
 checkouts
+Gemfile.lock
