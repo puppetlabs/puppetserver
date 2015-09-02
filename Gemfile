@@ -5,7 +5,7 @@ gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
-  gem 'beaker', '~>1.20.0'
+  gem 'beaker', '~>1.21.0'
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '0.12.1'
   end
