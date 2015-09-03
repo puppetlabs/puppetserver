@@ -282,35 +282,26 @@
       (ringutils/wrap-response-logging)))
 
 (schema/defn ^:always-validate
-  get-handler :- IFn
-  ([ca-settings :- ca/CaSettings
-    path :- schema/Str
-    authorization-fn :- IFn
-    puppet-version :- schema/Str]
-    (get-handler ca-settings path path authorization-fn puppet-version))
-  ([ca-settings :- ca/CaSettings
-    path-for-comidi :- schema/Str
-    path-after-legacy-translation :- schema/Str
-    authorization-fn :- IFn
-    puppet-version :- schema/Str]
-    ;; For backward compatibility, requests to the .../certificate_status* endpoint
-    ;; will be authorized by a client-whitelist, if one is configured for
-    ;; 'certificate_status'.  When we are able to drop support for
-    ;; client-whitelist authorization later on, we should be able to get rid of
-    ;; the 'wrap-with-trapperkeeper-or-client-whitelist-authorization' function
-    ;; and replace with a line chaining the handler into a call to
-    ;; 'authorization-fn'.  Also, when we drop support for the legacy-routes-service,
-    ;; we should also be able to get rid of the `get-handler` variant which
-    ;; takes in 'path-after-legacy-translation' as a parameter.
-    (let [whitelist-path (str path-after-legacy-translation
-                              (if (not= \/ path-after-legacy-translation) "/")
-                              puppet-ca-API-version
-                              "/certificate_status")]
-      (-> (web-routes ca-settings)
-          (#(comidi/context path-for-comidi %))
-          comidi/routes->handler
-          (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
-            authorization-fn
-            whitelist-path
-            (get-in ca-settings [:access-control :certificate-status]))
-          (wrap-middleware puppet-version)))))
+  get-wrapped-handler :- IFn
+  [route-handler :- IFn
+   ca-settings :- ca/CaSettings
+   path :- schema/Str
+   authorization-fn :- IFn
+   puppet-version :- schema/Str]
+  ;; For backward compatibility, requests to the .../certificate_status* endpoint
+  ;; will be authorized by a client-whitelist, if one is configured for
+  ;; 'certificate_status'.  When we are able to drop support for
+  ;; client-whitelist authorization later on, we should be able to get rid of
+  ;; the 'wrap-with-trapperkeeper-or-client-whitelist-authorization' function
+  ;; and replace with a line chaining the handler into a call to
+  ;; 'authorization-fn'.
+  (let [whitelist-path (str path
+                            (if (not= \/ path) "/")
+                            puppet-ca-API-version
+                            "/certificate_status")]
+    (-> route-handler
+        (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
+          authorization-fn
+          whitelist-path
+          (get-in ca-settings [:access-control :certificate-status]))
+        (wrap-middleware puppet-version))))

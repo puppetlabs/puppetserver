@@ -1,6 +1,7 @@
 (ns puppetlabs.services.legacy-routes.legacy-routes-service
   (:require [puppetlabs.trapperkeeper.core :as tk]
             [clojure.tools.logging :as log]
+            [puppetlabs.comidi :as comidi]
             [puppetlabs.services.legacy-routes.legacy-routes-core :as legacy-routes-core]
             [puppetlabs.services.ca.certificate-authority-core :as ca-core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -26,25 +27,32 @@
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
+          master-route-handler (-> (master-core/root-routes handle-request)
+                                   (#(comidi/context path %))
+                                   comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount
                                               master-ns
                                               master-route-config)
-                               :handler     (master-core/get-handler
-                                              handle-request
-                                              path
+                               :handler     (master-core/get-wrapped-handler
+                                              master-route-handler
                                               wrap-with-authorization-check
                                               use-legacy-auth-conf
                                               puppet-version)
                                :api-version master-core/puppet-API-version}
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")
+          ca-settings (ca/config->ca-settings (get-config))
+          ca-route-handler (-> ca-settings
+                               (ca-core/web-routes)
+                               (#(comidi/context path %))
+                               comidi/routes->handler)
           ca-handler-info (when
                             real-ca-service?
                             (let [ca-mount (get-route ca-service)]
                               {:mount       ca-mount
-                               :handler     (ca-core/get-handler
-                                              (ca/config->ca-settings (get-config))
-                                              path
+                               :handler     (ca-core/get-wrapped-handler
+                                              ca-route-handler
+                                              ca-settings
                                               ca-mount
                                               wrap-with-authorization-check
                                               puppet-version)

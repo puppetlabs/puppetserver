@@ -42,9 +42,10 @@
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
-                          (core/get-handler
-                            handle-request
-                            path
+                          (core/get-wrapped-handler
+                            (-> (core/root-routes handle-request)
+                                (#(comidi/context path %))
+                                comidi/routes->handler)
                             wrap-with-authorization-check
                             use-legacy-auth-conf
                             puppet-version))]

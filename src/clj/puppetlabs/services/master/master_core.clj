@@ -149,16 +149,12 @@
              (str "Route not found for service " master-ns)))))
 
 (schema/defn ^:always-validate
-  get-handler :- IFn
-  [handle-request-fn :- IFn
-   path :- schema/Str
+  get-wrapped-handler :- IFn
+  [route-handler :- IFn
    authorization-fn :- IFn
    use-legacy-auth-conf :- schema/Bool
    puppet-version :- schema/Str]
-  (let [base-handler (-> (root-routes handle-request-fn)
-                         (#(comidi/context path %))
-                         comidi/routes->handler)
-        handler-maybe-with-authorization (if use-legacy-auth-conf
-                                           base-handler
-                                           (authorization-fn base-handler))]
+  (let [handler-maybe-with-authorization (if use-legacy-auth-conf
+                                           route-handler
+                                           (authorization-fn route-handler))]
     (wrap-middleware handler-maybe-with-authorization puppet-version)))

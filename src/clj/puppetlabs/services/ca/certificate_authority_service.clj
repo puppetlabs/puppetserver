@@ -3,7 +3,8 @@
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
-            [puppetlabs.services.protocols.ca :refer [CaService]]))
+            [puppetlabs.services.protocols.ca :refer [CaService]]
+            [puppetlabs.comidi :as comidi]))
 
 (tk/defservice certificate-authority-service
   CaService
@@ -26,10 +27,14 @@
      (log/info "CA Service adding a ring handler")
      (add-ring-handler
        this
-       (core/get-handler settings
-                         path
-                         wrap-with-authorization-check
-                         puppet-version)))
+       (core/get-wrapped-handler
+         (-> (core/web-routes settings)
+             (#(comidi/context path %))
+             comidi/routes->handler)
+         settings
+         path
+         wrap-with-authorization-check
+         puppet-version)))
    context)
 
   (initialize-master-ssl!
