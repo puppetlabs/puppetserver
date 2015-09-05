@@ -109,9 +109,11 @@ profiler: {
 authorization: {
     rules: [
         {
-            path: "/"
-            type: "path"
-            allow: "*"
+            match-request: {
+                path: "/"
+                type: "path"
+            }
+            allow-unauthenticated: true
         }
     ]
 }

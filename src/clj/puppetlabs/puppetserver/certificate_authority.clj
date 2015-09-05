@@ -714,8 +714,7 @@
 (schema/defn ^:always-validate
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
-   service return a map with of all the CA settings.
-   Throws an exception if any required configuration is not found."
+   service return a map with of all the CA settings."
   [{:keys [puppet-server jruby-puppet certificate-authority]}]
   (-> (select-keys puppet-server (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))

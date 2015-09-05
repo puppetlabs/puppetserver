@@ -32,19 +32,20 @@
   []
   (if-let [conf (resolve 'user/puppet-server-conf)]
     ((deref conf))
-    {:global                {:logging-config "./dev/logback-dev.xml"}
-     :jruby-puppet          (jruby-testutils/jruby-puppet-config {:max-active-instances 1
-                                                                  :use-legacy-auth-conf false})
-     :webserver             {:client-auth "want"
-                             :ssl-host    "localhost"
-                             :ssl-port    8140}
-     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
-                             :puppetlabs.services.master.master-service/master-service                           "/puppet"
-                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"
-                             :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service      ""}
-     :authorization         {:rules [{:path  "/"
-                                      :type  "path"
-                                      :allow "*"}]}}))
+    {:global             {:logging-config "./dev/logback-dev.xml"}
+     :jruby-puppet       (jruby-testutils/jruby-puppet-config {:max-active-instances 1
+                                                               :use-legacy-auth-conf false})
+     :webserver          {:client-auth "want"
+                          :ssl-host    "localhost"
+                          :ssl-port    8140}
+     :web-router-service {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
+                          :puppetlabs.services.master.master-service/master-service                           "/puppet"
+                          :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"
+                          :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service      ""}
+     :authorization      {:rules [{:match-request
+                                          {:path "/"
+                                           :type "path"}
+                                   :allow-unauthenticated true}]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle

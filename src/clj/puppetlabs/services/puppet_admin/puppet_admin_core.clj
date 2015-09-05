@@ -121,7 +121,7 @@
    jruby-service :- (schema/protocol jruby-puppet/JRubyPuppetService)
    authorization-fn :- IFn]
   (-> (versioned-routes jruby-service)
-      (#(comidi/context path %))
+      ((partial comidi/context path))
       (comidi/routes->handler)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
       ;; For backward compatibility, requests to the puppet-admin endpoint

@@ -44,7 +44,7 @@
            ring-handler (when path
                           (core/get-wrapped-handler
                             (-> (core/root-routes handle-request)
-                                (#(comidi/context path %))
+                                ((partial comidi/context path))
                                 comidi/routes->handler)
                             wrap-with-authorization-check
                             use-legacy-auth-conf

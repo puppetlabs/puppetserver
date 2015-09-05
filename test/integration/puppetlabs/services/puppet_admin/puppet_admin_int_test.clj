@@ -72,8 +72,9 @@
     (bootstrap/with-puppetserver-running
       app
       {:puppet-admin  nil
-       :authorization {:rules [{:path "/puppet-admin-api/v1"
-                                :type "path"
+       :authorization {:rules [{:match-request
+                                       {:path "/puppet-admin-api/v1"
+                                        :type "path"}
                                 :allow "notlocalhost"}]}}
       (doseq [endpoint endpoints]
         (testing (str "for " endpoint " endpoint")
@@ -87,8 +88,9 @@
     (bootstrap/with-puppetserver-running
       app
       {:puppet-admin  nil
-       :authorization {:rules [{:path "/puppet-admin-api/v1"
-                                :type "path"
+       :authorization {:rules [{:match-request
+                                       {:path "/puppet-admin-api/v1"
+                                        :type "path"}
                                 :allow "localhost"}]}}
       (doseq [endpoint endpoints]
         (testing (str "for " endpoint " endpoint")

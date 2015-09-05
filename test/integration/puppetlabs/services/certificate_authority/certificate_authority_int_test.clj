@@ -53,9 +53,10 @@
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["localhost"]}}
-         :authorization {:rules [ {:path "/puppet-ca/v1/certificate"
-                                   :type "path"
-                                   :allow [ "nonlocalhost" ]}]}}
+         :authorization         {:rules [{:match-request
+                                                 {:path "/puppet-ca/v1/certificate"
+                                                  :type "path"}
+                                          :allow ["nonlocalhost"]}]}}
         (testing "are allowed"
           (doseq [ca-mount-point ca-mount-points
                   endpoint ["certificate_status/localhost"
@@ -78,8 +79,9 @@
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["notlocalhost"]}}
-         :authorization         {:rules [{:path  "/puppet-ca/v1/certificate"
-                                          :type  "path"
+         :authorization         {:rules [{:match-request
+                                                 {:path "/puppet-ca/v1/certificate"
+                                                  :type "path"}
                                           :allow ["localhost"]}]}}
         (testing "are denied"
           (doseq [ca-mount-point ca-mount-points
@@ -101,9 +103,10 @@
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
         app
-        {:authorization {:rules [ {:path "^/puppet-ca/v1/certificate_status(?:es)?/([^/]+)$"
-                                   :type "regex"
-                                   :allow [ "$1" ]}]}}
+        {:authorization {:rules [{:match-request
+                                         {:path "^/puppet-ca/v1/certificate_status(?:es)?/([^/]+)$"
+                                          :type "regex"}
+                                  :allow ["$1"]}]}}
         (testing "are allowed for matching client"
           (doseq [ca-mount-point ca-mount-points
                   endpoint ["certificate_status/localhost"

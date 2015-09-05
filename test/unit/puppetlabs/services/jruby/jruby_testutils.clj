@@ -52,11 +52,11 @@
   as opposed to a version that has been processed and transformed to comply
   with the JRubyPuppetConfig schema)."
   [pool-config]
-  {:product     {:name "puppet-server"
-                 :update-server-url "http://localhost:11111"}
-   :jruby-puppet pool-config
+  {:product       {:name              "puppet-server"
+                   :update-server-url "http://localhost:11111"}
+   :jruby-puppet  pool-config
    :authorization {:rules
-                   [{:path "/" :type "path" :allow "*"}]}})
+                   [{:match-request {:path "/" :type "path"} :allow "*"}]}})
 
 (schema/defn ^:always-validate
   jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig

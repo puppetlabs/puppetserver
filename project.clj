@@ -17,10 +17,11 @@
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
+                 [org.clojure/tools.reader "0.9.1"]
                  ;; end version conflict resolution dependencies
 
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.1.1"]
+                 [puppetlabs/trapperkeeper-authorization "0.1.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]

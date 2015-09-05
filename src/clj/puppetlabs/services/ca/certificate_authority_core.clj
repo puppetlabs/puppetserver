@@ -296,7 +296,7 @@
   ;; and replace with a line chaining the handler into a call to
   ;; 'authorization-fn'.
   (let [whitelist-path (str path
-                            (if (not= \/ path) "/")
+                            (if (not= \/ (last path)) "/")
                             puppet-ca-API-version
                             "/certificate_status")]
     (-> route-handler

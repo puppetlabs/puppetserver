@@ -29,7 +29,7 @@
        this
        (core/get-wrapped-handler
          (-> (core/web-routes settings)
-             (#(comidi/context path %))
+             ((partial comidi/context path))
              comidi/routes->handler)
          settings
          path

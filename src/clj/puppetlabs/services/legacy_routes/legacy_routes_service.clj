@@ -28,7 +28,7 @@
                                 master-ns
                                 config)
           master-route-handler (-> (master-core/root-routes handle-request)
-                                   (#(comidi/context path %))
+                                   ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount
                                               master-ns
@@ -44,7 +44,7 @@
           ca-settings (ca/config->ca-settings (get-config))
           ca-route-handler (-> ca-settings
                                (ca-core/web-routes)
-                               (#(comidi/context path %))
+                               ((partial comidi/context path))
                                comidi/routes->handler)
           ca-handler-info (when
                             real-ca-service?

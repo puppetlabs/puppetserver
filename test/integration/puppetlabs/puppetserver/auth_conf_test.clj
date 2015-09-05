@@ -60,13 +60,14 @@
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
         app
-        {:jruby-puppet {:use-legacy-auth-conf false}
-         :authorization {:rules [{:path  "^/puppet/v3/catalog/private$"
-                                  :type  "regex"
-                                  :allow ["private" "localhost"]}
-                                 {:path  "^/puppet/v3/node/private$"
-                                  :type  "regex"
-                                  :allow ["private" "localhost"]}]}}
+        {:jruby-puppet  {:use-legacy-auth-conf false}
+         :authorization {:rules
+                         [{:match-request {:path "^/puppet/v3/catalog/private$"
+                                           :type "regex"}
+                           :allow         ["private" "localhost"]}
+                          {:match-request {:path "^/puppet/v3/node/private$"
+                                           :type "regex"}
+                           :allow         ["private" "localhost"]}]}}
         (logutils/with-test-logging
           (testing "for puppet 4 routes"
             (let [response (http-get "puppet/v3/node/public?environment=production")]
