@@ -718,7 +718,8 @@
   [{:keys [puppet-server jruby-puppet certificate-authority]}]
   (-> (select-keys puppet-server (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
-      (assoc :access-control certificate-authority)))
+      (assoc :access-control (select-keys certificate-authority
+                                          [:certificate-status]))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
