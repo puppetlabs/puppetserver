@@ -14,7 +14,14 @@
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
+
+                 ;; begin version conflict resolution dependencies
+                 [puppetlabs/typesafe-config "0.1.4"]
+                 [org.clojure/tools.reader "0.9.1"]
+                 ;; end version conflict resolution dependencies
+
                  [puppetlabs/trapperkeeper ~tk-version]
+                 [puppetlabs/trapperkeeper-authorization "0.1.2"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
@@ -33,8 +40,8 @@
                  [org.jruby/jruby-stdlib "1.7.20.1"]
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [joda-time "2.5"]
-                 [clj-time "0.7.0"]
+                 [joda-time "2.7"]
+                 [clj-time "0.10.0"]
                  [liberator "0.12.0"]
                  [puppetlabs/comidi "0.1.1"]
                  [me.raynes/fs "1.4.5"]

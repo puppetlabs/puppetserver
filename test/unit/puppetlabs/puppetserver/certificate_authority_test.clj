@@ -1124,13 +1124,6 @@
                                     :critical false
                                     :value {:dns-name ["ahostname" "foo*bar"]}})))))
 
-(deftest config-test
-  (testing "throws meaningful user error when required config not found"
-    (is (thrown-with-msg?
-         IllegalStateException
-         #".*certificate-authority: \{ certificate-status: \{ client-whitelist: \[...] } }.*puppet-server.conf.*"
-         (config->ca-settings {})))))
-
 (deftest default-master-dns-alt-names
   (testing "Master certificate has default DNS alt names if none are specified"
     (let [settings  (assoc (testutils/master-settings confdir)

@@ -12,10 +12,9 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as puppet-admin]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.http.client.sync :as http-client]
-            [me.raynes.fs :as fs]
-            [clojure.tools.logging :as log]))
+            [me.raynes.fs :as fs]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -128,8 +127,7 @@
   (testing "Flushing the pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -145,8 +143,7 @@
   (testing "instance borrowed from old pool before pool flush begins and returned *after* new pool is available"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -171,8 +168,7 @@
   (testing "file handle opened from old pool instance is held open across pool flush"
     (bootstrap/with-puppetserver-running
       app
-      {:puppet-admin {:client-whitelist ["localhost"]}
-       :jruby-puppet {:max-active-instances 2}}
+      {:jruby-puppet {:max-active-instances 2}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -217,7 +213,8 @@
            jruby/jruby-puppet-pooled-service
            jetty9/jetty9-service
            webrouting/webrouting-service
-           puppet-admin/puppet-admin-service]
+           puppet-admin/puppet-admin-service
+           authorization/authorization-service]
           (merge (jruby-testutils/jruby-puppet-tk-config
                    (jruby-testutils/jruby-puppet-config {:max-active-instances      4
                                                          :max-requests-per-instance 10}))
@@ -227,8 +224,7 @@
                   :web-router-service
                                 {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
                                  :puppetlabs.services.master.master-service/master-service                           ""
-                                 :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"}
-                  :puppet-admin {:client-whitelist ["localhost"]}})
+                                 :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"}})
           (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
                 context (tk-services/service-context jruby-service)
                 pool-context (:pool-context context)]

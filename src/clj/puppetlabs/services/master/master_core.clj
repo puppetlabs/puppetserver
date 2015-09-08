@@ -9,11 +9,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def puppet-API-versions
+(def puppet-API-version
   "v3")
-
-(def puppet-ca-API-versions
-  "v1")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -150,3 +147,14 @@
     :else
     (throw (IllegalArgumentException.
              (str "Route not found for service " master-ns)))))
+
+(schema/defn ^:always-validate
+  get-wrapped-handler :- IFn
+  [route-handler :- IFn
+   authorization-fn :- IFn
+   use-legacy-auth-conf :- schema/Bool
+   puppet-version :- schema/Str]
+  (let [handler-maybe-with-authorization (if use-legacy-auth-conf
+                                           route-handler
+                                           (authorization-fn route-handler))]
+    (wrap-middleware handler-maybe-with-authorization puppet-version)))

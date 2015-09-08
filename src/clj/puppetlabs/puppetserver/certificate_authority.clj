@@ -13,6 +13,7 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
             [clj-yaml.core :as yaml]))
 
@@ -39,15 +40,13 @@
   "Defines which clients are allowed access to the various CA endpoints.
    Each endpoint has a sub-section containing the client whitelist.
    Currently we only control access to the certificate_status(es) endpoints."
-  {:certificate-status
-   {(schema/optional-key :authorization-required) schema/Bool
-    :client-whitelist                             [schema/Str]}})
+  {(schema/optional-key :certificate-status) ringutils/WhitelistSettings})
 
 (def CaSettings
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:access-control           AccessControl
+  {:access-control           (schema/maybe AccessControl)
    :allow-duplicate-certs    schema/Bool
    :autosign                 (schema/either schema/Str schema/Bool)
    :cacert                   schema/Str
@@ -715,17 +714,12 @@
 (schema/defn ^:always-validate
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
-   service return a map with of all the CA settings.
-   Throws an exception if any required configuration is not found."
+   service return a map with of all the CA settings."
   [{:keys [puppet-server jruby-puppet certificate-authority]}]
-  (if-not certificate-authority
-    (throw (IllegalStateException.
-            (str "Missing required configuration for CA; "
-                 "certificate-authority: { certificate-status: { client-whitelist: [...] } } "
-                 "not found in puppet-server.conf"))))
   (-> (select-keys puppet-server (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
-      (assoc :access-control certificate-authority)))
+      (assoc :access-control (select-keys certificate-authority
+                                          [:certificate-status]))))
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings

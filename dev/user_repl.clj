@@ -11,10 +11,10 @@
             [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
             [puppetlabs.services.puppet-admin.puppet-admin-service :refer [puppet-admin-service]]
             [puppetlabs.services.legacy-routes.legacy-routes-service :refer [legacy-routes-service]]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
-            [clojure.java.io :as io]
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
@@ -32,19 +32,20 @@
   []
   (if-let [conf (resolve 'user/puppet-server-conf)]
     ((deref conf))
-    {:global                {:logging-config "./dev/logback-dev.xml"}
-     :jruby-puppet          (jruby-testutils/jruby-puppet-config {:max-active-instances 1})
-     :webserver             {:client-auth "want"
-                             :ssl-host    "localhost"
-                             :ssl-port    8140}
-     :certificate-authority {:certificate-status {:client-whitelist       []
-                                                  :authorization-required false}}
-     :web-router-service    {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
-                             :puppetlabs.services.master.master-service/master-service "/puppet"
-                             :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service "/puppet-admin-api"
-                             :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service ""}
-     :puppet-admin          {:client-whitelist       []
-                             :authorization-required false}}))
+    {:global             {:logging-config "./dev/logback-dev.xml"}
+     :jruby-puppet       (jruby-testutils/jruby-puppet-config {:max-active-instances 1
+                                                               :use-legacy-auth-conf false})
+     :webserver          {:client-auth "want"
+                          :ssl-host    "localhost"
+                          :ssl-port    8140}
+     :web-router-service {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
+                          :puppetlabs.services.master.master-service/master-service                           "/puppet"
+                          :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"
+                          :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service      ""}
+     :authorization      {:rules [{:match-request
+                                          {:path "/"
+                                           :type "path"}
+                                   :allow-unauthenticated true}]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
@@ -63,7 +64,8 @@
                puppet-server-config-service
                certificate-authority-service
                puppet-admin-service
-               legacy-routes-service]
+               legacy-routes-service
+               authorization-service]
               (puppet-server-conf))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))

@@ -14,7 +14,8 @@
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
-   [:JRubyPuppetService]]
+   [:JRubyPuppetService]
+   [:AuthorizationService wrap-with-authorization-check]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -27,8 +28,10 @@
          product-name (or (get-in config [:product :name])
                           {:group-id    "puppetlabs"
                            :artifact-id "puppetserver"})
-         update-server-url (get-in config [:product :update-server-url])]
-
+         update-server-url (get-in config [:product :update-server-url])
+         use-legacy-auth-conf (get-in config
+                                      [:jruby-puppet :use-legacy-auth-conf]
+                                      true)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -38,12 +41,17 @@
      (log/info "Master Service adding ring handlers")
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
-           ring-handler (when path (-> (core/root-routes handle-request)
-                                       (#(comidi/context path %))
-                                       comidi/routes->handler
-                                       (core/wrap-middleware puppet-version)))]
+           ring-handler (when path
+                          (core/get-wrapped-handler
+                            (-> (core/root-routes handle-request)
+                                ((partial comidi/context path))
+                                comidi/routes->handler)
+                            wrap-with-authorization-check
+                            use-legacy-auth-conf
+                            puppet-version))]
        (if (map? route-config)
-         (add-ring-handler this ring-handler {:route-id :master-routes})
+         (add-ring-handler this ring-handler
+                           {:route-id :master-routes})
          (add-ring-handler this ring-handler))))
    context)
   (start

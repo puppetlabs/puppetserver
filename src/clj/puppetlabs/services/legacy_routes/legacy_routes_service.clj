@@ -6,46 +6,57 @@
             [puppetlabs.services.ca.certificate-authority-core :as ca-core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.master.master-core :as master-core]
-            [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.legacy-routes :as legacy-routes]
-            [puppetlabs.services.master.master-service :as master-service]))
+            [puppetlabs.trapperkeeper.services :as tk-services]))
 
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
-   [:PuppetServerConfigService get-config]]
+   [:PuppetServerConfigService get-config]
+   [:AuthorizationService wrap-with-authorization-check]]
   (init
     [this context]
     (let [ca-service (tk-services/get-service this :CaService)
           path (get-route this)
           config (get-config)
           puppet-version (get-in config [:puppet-server :puppet-version])
+          use-legacy-auth-conf (get-in config
+                                       [:jruby-puppet :use-legacy-auth-conf]
+                                       true)
           master-ns (keyword (tk-services/service-symbol
                                (tk-services/get-service this :MasterService)))
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
-          master-handler-info {:mount (master-core/get-master-mount
-                                        master-ns
-                                        master-route-config)
-                               :handler (-> (master-core/root-routes
-                                              handle-request)
-                                            (#(comidi/context path %))
-                                            comidi/routes->handler
-                                            (master-core/wrap-middleware
-                                              puppet-version))
-                               :api-version master-core/puppet-API-versions}
+          master-route-handler (-> (master-core/root-routes handle-request)
+                                   ((partial comidi/context path))
+                                   comidi/routes->handler)
+          master-handler-info {:mount       (master-core/get-master-mount
+                                              master-ns
+                                              master-route-config)
+                               :handler     (master-core/get-wrapped-handler
+                                              master-route-handler
+                                              wrap-with-authorization-check
+                                              use-legacy-auth-conf
+                                              puppet-version)
+                               :api-version master-core/puppet-API-version}
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")
+          ca-settings (ca/config->ca-settings (get-config))
+          ca-route-handler (-> ca-settings
+                               (ca-core/web-routes)
+                               ((partial comidi/context path))
+                               comidi/routes->handler)
           ca-handler-info (when
                             real-ca-service?
-                            {:mount (get-route ca-service)
-                             :handler (-> (ca-core/web-routes
-                                            (ca/config->ca-settings (get-config)))
-                                          (#(comidi/context path %))
-                                          comidi/routes->handler
-                                          (ca-core/wrap-middleware puppet-version))
-                             :api-version master-core/puppet-ca-API-versions})
+                            (let [ca-mount (get-route ca-service)]
+                              {:mount       ca-mount
+                               :handler     (ca-core/get-wrapped-handler
+                                              ca-route-handler
+                                              ca-settings
+                                              ca-mount
+                                              wrap-with-authorization-check
+                                              puppet-version)
+                               :api-version ca-core/puppet-ca-API-version}))
           ring-handler (legacy-routes-core/build-ring-handler
                          master-handler-info
                          ca-handler-info)]

@@ -14,8 +14,7 @@
    {:name "puppet-server", :update-server-url "http://localhost:11111"},
    :jruby-puppet
    {:gem-home "./target/jruby-gem-home",
-    :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]},
-   :certificate-authority {:certificate-status {:client-whitelist []}}})
+    :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]}})
 
 (defmacro with-stdin-str
   "Evaluates body in a context in which System/in is bound to a fresh

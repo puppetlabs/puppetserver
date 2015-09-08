@@ -1,13 +1,13 @@
 (ns puppetlabs.services.puppet-admin.puppet-admin-core
   (:import (clojure.lang IFn))
-  (:require [puppetlabs.puppetserver.ringutils :as ringutils]
+  (:require [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
             [liberator.core :refer [defresource]]
     ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
-            [clojure.tools.logging :as log]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]))
 
 
@@ -15,9 +15,7 @@
 ;;; Schemas
 
 (def PuppetAdminSettings
-  {:client-whitelist [schema/Str]
-   (schema/optional-key :authorization-required) schema/Bool})
-
+  ringutils/WhitelistSettings)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Liberator resources
@@ -101,24 +99,40 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(schema/defn ^:always-validate config->puppet-admin-settings :- PuppetAdminSettings
-  "Given the full Puppet Server config map, extract and return the settings for
-  the Puppet Admin web service."
+(schema/defn ^:always-validate config->puppet-admin-settings
+  :- (schema/maybe PuppetAdminSettings)
+  "Given the full Puppet Server config map, extract and return the Puppet
+  Admin web service settings."
   [config]
-  (if-let [settings (:puppet-admin config)]
-    settings
-    (throw (IllegalArgumentException.
-             (str "'puppet admin' section required but not found in "
-                  "configuration settings")))))
+  (:puppet-admin config))
+
+(schema/defn ^:always-validate puppet-admin-settings->whitelist-settings
+  :- ringutils/WhitelistSettings
+  "Given the full Puppet Admin web service settings, extract and return the
+  embedded client whitelist settings."
+  [admin-settings :- (schema/maybe PuppetAdminSettings)]
+  (select-keys admin-settings [:client-whitelist
+                               :authorization-required]))
 
 (schema/defn ^:always-validate build-ring-handler :- IFn
   "Returns the ring handler for the Puppet Admin API."
   [path :- schema/Str
-   settings :- PuppetAdminSettings
-   jruby-service :- (schema/protocol jruby-puppet/JRubyPuppetService)]
+   settings :- ringutils/WhitelistSettings
+   jruby-service :- (schema/protocol jruby-puppet/JRubyPuppetService)
+   authorization-fn :- IFn]
   (-> (versioned-routes jruby-service)
-      (#(comidi/context path %))
+      ((partial comidi/context path))
       (comidi/routes->handler)
       ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-      (ringutils/wrap-with-cert-whitelist-check settings)
+      ;; For backward compatibility, requests to the puppet-admin endpoint
+      ;; will be authorized by a client-whitelist, if one is configured for
+      ;; 'certificate_status'.  When we are able to drop support for
+      ;; client-whitelist authorization later on, we should be able to get rid
+      ;; of the 'wrap-with-trapperkeeper-or-client-whitelist-authorization'
+      ;; function and replace with a line chaining the handler into a call to
+      ;; 'authorization-fn'.
+      (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
+        authorization-fn
+        path
+        settings)
       pl-ring-params/wrap-params))
