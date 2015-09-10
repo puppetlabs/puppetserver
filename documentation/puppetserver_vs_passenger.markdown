@@ -32,7 +32,7 @@ processors. For the vast majority of cases, this shouldn't pose any problems, as
 
 ## Ruby Compatibility For Extensions
 
-Ruby extension code in your modules needs to run under both Ruby 1.9 and Ruby 2.1. This is because Puppet Server runs Puppet functions and custom resource types under JRuby (which is a Ruby 1.9-compatible interpreter), and the official `puppet-agent` releases run custom facts and types/providers under MRI Ruby 2.1.
+Ruby extension code in your modules needs to run under both Ruby 1.9 and Ruby 2.1. This is because Puppet Server runs Puppet functions and custom resource types under JRuby 1.7 (which is a Ruby 1.9-compatible interpreter), and the official `puppet-agent` releases run custom facts and types/providers under MRI Ruby 2.1.
 
 ## Installing And Removing Gems
 
