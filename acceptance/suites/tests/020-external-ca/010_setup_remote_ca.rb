@@ -25,7 +25,7 @@ ca_dir = "/root/rakeca"
 int_ca_dir = "/root/rakeca/intermediate"
 p_ssl = "/etc/puppetlabs/puppet/ssl"
 
-step 'Push External CA public key onto all hosts' do
+step 'Push External CA SSH public key onto all hosts' do
   hosts.each do |h|
     on(h, "echo #{ca_ssh_key} >> /root/.ssh/authorized_keys")
   end
