@@ -35,7 +35,7 @@ step 'Install Git & Pull Down rakeca on External CA' do
   install_package ca, 'git'
   on(ca, "gem install rake")
   on(ca, "rm -rf rakeca")
-  on(ca, "git clone https://github.com/LuvCurves/rakeca")
+  on(ca, "git clone https://github.com/puppetlabs/rakeca")
 end
 
 step 'turn on the fields defined in SERVER-816' do
