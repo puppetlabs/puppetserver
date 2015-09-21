@@ -1,42 +1,85 @@
 package com.puppetlabs.puppetserver.pool;
 
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import com.puppetlabs.puppetserver.pool.LockablePool;
 
-/**
- * A LinkedBlockingDeque that assumes the structure will be used as a Pool,
- * where elements are recycled over time.  Adds a <tt>registerLast</tt> method
- * that can be used to register new elements when they are first introduced to
- * the Pool, and a <tt>getRegisteredElements</tt> method that can be used to
- * get a set of all of the known elements, regardless of whether they are
- * currently available in the pool or not.
- *
- * @param <E> the type of element that can be added to the queue.
- */
-public class JRubyPool<E> extends LinkedBlockingDeque<E> {
+public final class JRubyPool<E> implements LockablePool<E> {
+    private final LinkedBlockingDeque<E> live_queue;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
     private final Set<E> registeredElements = new CopyOnWriteArraySet<>();
 
-    public JRubyPool(int capacity) {
-        super(capacity);
+    public JRubyPool(int size) {
+        live_queue = new LinkedBlockingDeque<>(size);
     }
 
-    /**
-     * This method is analagous to <tt>putLast</tt> in the parent class, but
-     * also causes the element to be added to the list of "registered" elements
-     * that will be returned by <tt>getRegisteredInstances</tt>.
-     *
-     * Note that this method is synchronized to try to ensure that the addition
-     * to the queue and the list of registered instances are visible roughly
-     * atomically to consumers, but because the underlying queue uses
-     * its own lock, it is possible for it to be modified on another thread while
-     * this method is being executed.
-     *
-     * @param e the element to register and put at the end of the queue.
-     */
-    synchronized public void registerLast(E e) throws InterruptedException {
+    @Override
+    public void register(E e) throws InterruptedException {
+        live_queue.putLast(e);
         registeredElements.add(e);
-        putLast(e);
+    }
+
+    @Override
+    public E borrowItem() throws InterruptedException, IllegalStateException {
+        if (lock.isWriteLockedByCurrentThread()) {
+          throw new IllegalStateException("The current implementation has a risk of deadlock if you attempt to borrow a JRuby instance while holding the write lock!");
+        }
+        E item = live_queue.takeFirst();
+        lock.readLock().lock();
+        return item;
+    }
+
+    @Override
+    public E borrowItemWithTimeout(long timeout, TimeUnit unit) throws InterruptedException, IllegalStateException {
+        if (lock.isWriteLockedByCurrentThread()) {
+          throw new IllegalStateException("The current implementation has a risk of deadlock if you attempt to borrow a JRuby instance while holding the write lock!");
+        }
+        E item = live_queue.pollFirst(timeout, unit);
+        lock.readLock().lock();
+        return item;
+    }
+
+    @Override
+    public void returnItem(E e) throws InterruptedException {
+        try {
+            live_queue.putFirst(e);
+        }
+        finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    @Override
+    public void insertPill(E e) throws InterruptedException {
+        live_queue.putFirst(e);
+    }
+
+    @Override
+    public void clear() {
+        live_queue.clear();
+    }
+
+    @Override
+    public int remainingCapacity() {
+        return live_queue.remainingCapacity();
+    }
+
+    @Override
+    public int size() {
+        return live_queue.size();
+    }
+
+    @Override
+    public void lock() throws InterruptedException {
+        lock.writeLock().lock();
+    }
+
+    @Override
+    public void unlock() throws InterruptedException {
+        lock.writeLock().unlock();
     }
 
     /**
@@ -46,4 +89,5 @@ public class JRubyPool<E> extends LinkedBlockingDeque<E> {
     public Set<E> getRegisteredElements() {
         return registeredElements;
     }
+
 }

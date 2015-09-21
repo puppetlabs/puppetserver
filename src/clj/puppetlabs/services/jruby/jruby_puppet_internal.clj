@@ -154,7 +154,7 @@
 (schema/defn borrow-with-timeout-fn :- JRubyPuppetInternalBorrowResult
   [timeout :- schema/Int
    pool :- jruby-schemas/pool-queue-type]
-  (.pollFirst pool timeout TimeUnit/MILLISECONDS))
+  (.borrowItemWithTimeout pool timeout TimeUnit/MILLISECONDS))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -212,7 +212,7 @@
                                                            JRubyPuppet)
                         :scripting-container  scripting-container
                         :environment-registry env-registry})]
-        (.registerLast pool instance)
+        (.register pool instance)
         instance))))
 
 (schema/defn ^:always-validate
@@ -235,7 +235,7 @@
 
 (schema/defn borrow-without-timeout-fn :- JRubyPuppetInternalBorrowResult
   [pool :- jruby-schemas/pool-queue-type]
-  (.takeFirst pool))
+  (.borrowItem pool))
 
 (schema/defn borrow-from-pool!* :- jruby-schemas/JRubyPuppetBorrowResult
   "Given a borrow function and a pool, attempts to borrow a JRuby instance from a pool.
@@ -247,7 +247,7 @@
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
           (do
-            (.putFirst pool instance)
+            (.returnItem pool instance)
             (throw (IllegalStateException.
                      "Unable to borrow JRuby instance from pool"
                      (:err instance))))
@@ -300,9 +300,10 @@
                      (:id instance)
                      max-requests)
           (flush-instance-fn pool instance))
-        (.putFirst pool instance)))
-    ;; if we get here, we got a Retry, so we just put it back into the pool.
-    (.putFirst (:pool instance) instance)))
+        (.returnItem pool instance)))
+    ;; if we get here, it was from a borrow and we got a Retry, so we just
+    ;; return it to the pool.
+    (.returnItem (:pool instance) instance)))
 
 (schema/defn ^:always-validate new-main :- jruby-schemas/JRubyMain
   "Return a new JRuby Main instance which should only be used for CLI purposes,
