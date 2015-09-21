@@ -1,9 +1,9 @@
 (ns puppetlabs.services.jruby.jruby-puppet-schemas
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env])
-  (:import (java.util.concurrent BlockingDeque)
-           (clojure.lang Atom Agent IFn PersistentArrayMap PersistentHashMap)
+  (:import (clojure.lang Atom Agent IFn PersistentArrayMap PersistentHashMap)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
+           (com.puppetlabs.puppetserver.pool LockablePool)
            (org.jruby Main Main$Status)
            (org.jruby.embed ScriptingContainer)))
 
@@ -13,7 +13,7 @@
 (def pool-queue-type
   "The Java datastructure type used to store JRubyPuppet instances which are
   free to be borrowed."
-  BlockingDeque)
+  LockablePool)
 
 (defrecord PoisonPill
   ;; A sentinel object to put into a pool in case an error occurs while we're trying
