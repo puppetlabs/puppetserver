@@ -1,4 +1,4 @@
-package com.puppetlabs.puppetserver;
+package com.puppetlabs.puppetserver.pool;
 
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -14,10 +14,10 @@ import java.util.concurrent.LinkedBlockingDeque;
  *
  * @param <E> the type of element that can be added to the queue.
  */
-public class RegisteredLinkedBlockingDeque<E> extends LinkedBlockingDeque<E> {
+public class JRubyPool<E> extends LinkedBlockingDeque<E> {
     private final Set<E> registeredElements = new CopyOnWriteArraySet<>();
 
-    public RegisteredLinkedBlockingDeque(int capacity) {
+    public JRubyPool(int capacity) {
         super(capacity);
     }
 

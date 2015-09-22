@@ -4,7 +4,8 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [me.raynes.fs :as fs]
             [clojure.tools.logging :as log])
-  (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet RegisteredLinkedBlockingDeque)
+  (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
+           (com.puppetlabs.puppetserver.pool JRubyPool)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
            (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
@@ -60,7 +61,7 @@
   "Instantiate a new queue object to use as the pool of free JRubyPuppet's."
   [size]
   {:post [(instance? jruby-schemas/pool-queue-type %)]}
-  (RegisteredLinkedBlockingDeque. size))
+  (JRubyPool. size))
 
 (schema/defn ^:always-validate managed-environment :- jruby-schemas/EnvMap
   "The environment variables that should be passed to the Puppet JRuby

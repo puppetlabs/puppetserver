@@ -14,7 +14,8 @@
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas RetryPoisonPill)
-           (com.puppetlabs.puppetserver JRubyPuppet RegisteredLinkedBlockingDeque)))
+           (com.puppetlabs.puppetserver JRubyPuppet)
+           (com.puppetlabs.puppetserver.pool JRubyPool)))
 
 (use-fixtures :once schema-test/validate-schemas)
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
@@ -87,7 +88,7 @@
             real-pool     (-> (tk-services/service-context jruby-service)
                               :pool-context
                               (jruby-core/get-pool))
-            retry-pool    (RegisteredLinkedBlockingDeque. 1)
+            retry-pool    (JRubyPool. 1)
             _             (-> retry-pool
                               (RetryPoisonPill.)
                               (jruby-core/return-to-pool :test []))
