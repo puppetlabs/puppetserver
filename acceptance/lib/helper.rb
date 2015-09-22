@@ -30,7 +30,7 @@ module PuppetServerExtensions
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Development Build Version",
                          "PUPPET_BUILD_VERSION",
-                         "96ffe59c225cc9e4c34cf6c75dbca7356b1fb80e", :string)
+                         "1.2.5", :string)
 
     @config = {
       :base_dir => base_dir,
