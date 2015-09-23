@@ -1,5 +1,6 @@
 package com.puppetlabs.puppetserver.pool;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 public interface LockablePool<E> {
@@ -79,4 +80,11 @@ public interface LockablePool<E> {
     * borrow operations again.
     */
     void unlock() throws InterruptedException;
+
+   /**
+    * Returns a set of all of the known elements that have been registered with
+    * this pool, regardless of whether they are
+    * currently available in the pool or not.
+    */
+    Set<E> getRegisteredElements();
 }
