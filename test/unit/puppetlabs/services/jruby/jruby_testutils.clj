@@ -55,8 +55,11 @@
   {:product       {:name              "puppet-server"
                    :update-server-url "http://localhost:11111"}
    :jruby-puppet  pool-config
-   :authorization {:rules
-                   [{:match-request {:path "/" :type "path"} :allow "*"}]}})
+   :authorization {:version 1
+                   :rules [{:match-request {:path "/" :type "path"}
+                            :allow "*"
+                            :sort-order 1
+                            :name "allow all"}]}})
 
 (schema/defn ^:always-validate
   jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig

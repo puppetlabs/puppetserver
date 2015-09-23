@@ -61,13 +61,18 @@
       (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet  {:use-legacy-auth-conf false}
-         :authorization {:rules
+         :authorization {:version 1
+                         :rules
                          [{:match-request {:path "^/puppet/v3/catalog/private$"
                                            :type "regex"}
-                           :allow         ["private" "localhost"]}
+                           :allow         ["private" "localhost"]
+                           :sort-order 1
+                           :name "catalog"}
                           {:match-request {:path "^/puppet/v3/node/private$"
                                            :type "regex"}
-                           :allow         ["private" "localhost"]}]}}
+                           :allow         ["private" "localhost"]
+                           :sort-order 1
+                           :name "node"}]}}
         (logutils/with-test-logging
           (testing "for puppet 4 routes"
             (let [response (http-get "puppet/v3/node/public?environment=production")]
