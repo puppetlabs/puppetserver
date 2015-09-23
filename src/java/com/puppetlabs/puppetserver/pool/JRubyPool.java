@@ -8,17 +8,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import com.puppetlabs.puppetserver.pool.LockablePool;
 
 public final class JRubyPool<E> implements LockablePool<E> {
-    private final LinkedBlockingDeque<E> live_queue;
+    private final LinkedBlockingDeque<E> liveQueue;
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
     private final Set<E> registeredElements = new CopyOnWriteArraySet<>();
 
     public JRubyPool(int size) {
-        live_queue = new LinkedBlockingDeque<>(size);
+        liveQueue = new LinkedBlockingDeque<>(size);
     }
 
     @Override
-    public void register(E e) throws InterruptedException {
-        live_queue.putLast(e);
+    synchronized public void register(E e) throws InterruptedException {
+        liveQueue.putLast(e);
         registeredElements.add(e);
     }
 
@@ -27,7 +27,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
         if (lock.isWriteLockedByCurrentThread()) {
           throw new IllegalStateException("The current implementation has a risk of deadlock if you attempt to borrow a JRuby instance while holding the write lock!");
         }
-        E item = live_queue.takeFirst();
+        E item = liveQueue.takeFirst();
         lock.readLock().lock();
         return item;
     }
@@ -37,7 +37,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
         if (lock.isWriteLockedByCurrentThread()) {
           throw new IllegalStateException("The current implementation has a risk of deadlock if you attempt to borrow a JRuby instance while holding the write lock!");
         }
-        E item = live_queue.pollFirst(timeout, unit);
+        E item = liveQueue.pollFirst(timeout, unit);
         lock.readLock().lock();
         return item;
     }
@@ -45,7 +45,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     @Override
     public void returnItem(E e) throws InterruptedException {
         try {
-            live_queue.putFirst(e);
+            liveQueue.putFirst(e);
         }
         finally {
             lock.readLock().unlock();
@@ -54,22 +54,22 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void insertPill(E e) throws InterruptedException {
-        live_queue.putFirst(e);
+        liveQueue.putFirst(e);
     }
 
     @Override
     public void clear() {
-        live_queue.clear();
+        liveQueue.clear();
     }
 
     @Override
     public int remainingCapacity() {
-        return live_queue.remainingCapacity();
+        return liveQueue.remainingCapacity();
     }
 
     @Override
     public int size() {
-        return live_queue.size();
+        return liveQueue.size();
     }
 
     @Override

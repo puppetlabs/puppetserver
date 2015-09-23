@@ -30,11 +30,11 @@
         lock-acquired? (promise)
         unlock? (promise)]
     (is (= 3 (count instances)))
-    (let [lock-thread (future (do (deliver future-started? true)
-                                  (.lock pool)
-                                  (deliver lock-acquired? true)
-                                  @unlock?
-                                  (.unlock pool)))]
+    (let [lock-thread (future (deliver future-started? true)
+                              (.lock pool)
+                              (deliver lock-acquired? true)
+                              @unlock?
+                              (.unlock pool))]
       @future-started?
       (testing "pool.lock() blocks until all instances are returned to the pool"
         (is (not (realized? lock-acquired?)))
@@ -67,20 +67,20 @@
           lock-acquired? (promise)
           unlock? (promise)]
       (is (= 2 (count instances)))
-      (let [lock-thread (future (do (deliver lock-thread-started? true)
-                                    (.lock pool)
-                                    (deliver lock-acquired? true)
-                                    @unlock?
-                                    (.unlock pool)))]
+      (let [lock-thread (future (deliver lock-thread-started? true)
+                                (.lock pool)
+                                (deliver lock-acquired? true)
+                                @unlock?
+                                (.unlock pool))]
         @lock-thread-started?
         (is (not (realized? lock-acquired?)))
         (let [borrow-after-lock-requested-thread-started? (promise)
               borrow-after-lock-requested-instance-acquired? (promise)
               borrow-after-lock-requested-thread
-              (future (do (deliver borrow-after-lock-requested-thread-started? true)
-                          (let [instance (.borrowItem pool)]
-                            (deliver borrow-after-lock-requested-instance-acquired? true)
-                            (.returnItem pool instance))))]
+              (future (deliver borrow-after-lock-requested-thread-started? true)
+                      (let [instance (.borrowItem pool)]
+                        (deliver borrow-after-lock-requested-instance-acquired? true)
+                        (.returnItem pool instance)))]
           @borrow-after-lock-requested-thread-started?
           (is (not (realized? borrow-after-lock-requested-instance-acquired?)))
 
@@ -92,10 +92,10 @@
           (let [borrow-after-lock-acquired-thread-started? (promise)
                 borrow-after-lock-acquired-instance-acquired? (promise)
                 borrow-after-lock-acquired-thread
-                (future (do (deliver borrow-after-lock-acquired-thread-started? (promise))
-                            (let [instance (.borrowItem pool)]
-                              (deliver borrow-after-lock-acquired-instance-acquired? true)
-                              (.returnItem pool instance))))]
+                (future (deliver borrow-after-lock-acquired-thread-started? (promise))
+                        (let [instance (.borrowItem pool)]
+                          (deliver borrow-after-lock-acquired-instance-acquired? true)
+                          (.returnItem pool instance)))]
             @borrow-after-lock-acquired-thread-started?
             (is (not (realized? borrow-after-lock-acquired-instance-acquired?)))
 
@@ -114,18 +114,18 @@
           instances (borrow-n-instances pool 2)
           blocked-borrow-thread-started? (promise)
           blocked-borrow-thread-borrowed? (promise)
-          blocked-borrow-thread (future (do (deliver blocked-borrow-thread-started? true)
-                                            (let [instance (.borrowItem pool)]
-                                              (deliver blocked-borrow-thread-borrowed? true)
-                                              (.returnItem pool instance))))
+          blocked-borrow-thread (future (deliver blocked-borrow-thread-started? true)
+                                        (let [instance (.borrowItem pool)]
+                                          (deliver blocked-borrow-thread-borrowed? true)
+                                          (.returnItem pool instance)))
           lock-thread-started? (promise)
           lock-acquired? (promise)
           unlock? (promise)
-          lock-thread (future (do (deliver lock-thread-started? true)
-                                  (.lock pool)
-                                  (deliver lock-acquired? true)
-                                  @unlock?
-                                  (.unlock pool)))]
+          lock-thread (future (deliver lock-thread-started? true)
+                              (.lock pool)
+                              (deliver lock-acquired? true)
+                              @unlock?
+                              (.unlock pool))]
       @blocked-borrow-thread-started?
       @lock-thread-started?
       (is (not (realized? blocked-borrow-thread-borrowed?)))
@@ -166,12 +166,10 @@
     (let [pool (create-populated-pool 2)]
       (.lock pool)
       (is (true? true))
-      (let [borrow-thread-1 (future (do
-                                      (let [instance (.borrowItem pool)]
-                                        (.returnItem pool instance))))
-            borrow-thread-2 (future (do
-                                      (let [instance (.borrowItem pool)]
-                                        (.returnItem pool instance))))]
+      (let [borrow-thread-1 (future (let [instance (.borrowItem pool)]
+                                      (.returnItem pool instance)))
+            borrow-thread-2 (future (let [instance (.borrowItem pool)]
+                                      (.returnItem pool instance)))]
         ;; this is racey, but the only ways i could think of to make it non-racey
         ;; depended on knowledge of the implementation
         (Thread/sleep 500)

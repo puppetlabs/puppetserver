@@ -3,23 +3,24 @@ package com.puppetlabs.puppetserver.pool;
 import java.util.concurrent.TimeUnit;
 
 public interface LockablePool<E> {
-    public void register(E e) throws InterruptedException;
 
-    public E borrowItem() throws InterruptedException;
+    void register(E e) throws InterruptedException;
 
-    public E borrowItemWithTimeout(long timout, TimeUnit unit) throws InterruptedException;
+    E borrowItem() throws InterruptedException;
 
-    public void returnItem(E e) throws InterruptedException;
+    E borrowItemWithTimeout(long timout, TimeUnit unit) throws InterruptedException;
 
-    public void insertPill(E e) throws InterruptedException;
+    void returnItem(E e) throws InterruptedException;
 
-    public void clear();
+    void insertPill(E e) throws InterruptedException;
 
-    public int remainingCapacity();
+    void clear();
 
-    public int size();
+    int remainingCapacity();
 
-    public void lock() throws InterruptedException;
+    int size();
 
-    public void unlock() throws InterruptedException;
+    void lock() throws InterruptedException;
+
+    void unlock() throws InterruptedException;
 }
