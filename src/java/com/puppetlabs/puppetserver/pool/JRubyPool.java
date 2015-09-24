@@ -44,8 +44,8 @@ public final class JRubyPool<E> implements LockablePool<E> {
     */
     @Override
     synchronized public void register(E e) throws InterruptedException {
-        liveQueue.putLast(e);
         registeredElements.add(e);
+        liveQueue.putLast(e);
     }
 
     /**
