@@ -32,11 +32,14 @@ public final class JRubyPool<E> implements LockablePool<E> {
     * added to the list of "registered" elements that will be returned by
     * <tt>getRegisteredInstances</tt>.
     *
-    * Note that this method is synchronized to try to ensure that the addition
-    * to the queue and the list of registered instances are visible roughly
-    * atomically to consumers, but because the underlying queue uses its own
-    * lock, it is possible for it to be modified on another thread while this
-    * method is being executed.
+    * This method is synchronized not for thread safety, but to try to ensure that
+    * to consumers of this class adding an instance to the queue and adding it to
+    * the set of registered elements is visible roughly atomically. `synchronize`
+    * guarantees that registration is atomic, so (ignoring borrows happening)
+    * `RegisteredElements` and `liveQueue` can only diverge by 1. "This is only
+    * "roughly" atomic, as the underlying queue uses its own lock, so it is
+    * possible for it to be modified on another thread while this method is being
+    * executed.
     *
     * @param e the element to register and put at the end of the queue.
     *
