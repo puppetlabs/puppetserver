@@ -29,12 +29,12 @@
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (if (:use-legacy-auth-conf config)
-        (log/warn
-          (str "The 'use-legacy-auth-conf' setting in the 'jruby-puppet' section "
-               "is deprecated and will be removed in a future release.  Change "
-               "the value of this setting to 'false' and migrate your authorization "
-               "rule definitions in the /etc/puppetlabs/puppet/auth.conf file to "
-               "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+        (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
+                  "'true'.  Support for the legacy Puppet auth.conf file is"
+                  "deprecated and will be removed in a future release.  Change"
+                  "this setting to 'false' and migrate your authorization rule"
+                  "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
+                  "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
       (core/add-facter-jar-to-system-classloader (:ruby-load-path config))
       (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
         (jruby-agents/send-prime-pool! pool-context)

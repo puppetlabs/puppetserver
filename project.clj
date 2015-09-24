@@ -21,7 +21,7 @@
                  ;; end version conflict resolution dependencies
 
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.1.3"]
+                 [puppetlabs/trapperkeeper-authorization "0.1.3-SNAPSHOT"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]

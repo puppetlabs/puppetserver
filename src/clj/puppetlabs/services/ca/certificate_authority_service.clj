@@ -18,11 +18,11 @@
          puppet-version (get-in-config [:puppet-server :puppet-version])]
      (if (not-empty (:access-control settings))
        (log/warn
-         (str "The 'client-whitelist' and 'authorization-required' settings in "
-              "the 'certificate-authority.certificate-status' section are "
-              "deprecated and will be removed in a future release.  Remove these "
-              "settings and instead create an appropriate authorization rule in "
-              "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+         "The 'client-whitelist' and 'authorization-required' settings in the"
+         "'certificate-authority.certificate-status' section are deprecated and"
+         "will be removed in a future release.  Remove these settings and create"
+         "an appropriate authorization rule in the"
+         "/etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
      (add-ring-handler

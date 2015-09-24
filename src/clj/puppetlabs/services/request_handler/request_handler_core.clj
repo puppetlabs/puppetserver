@@ -39,17 +39,6 @@
    :ssl-client-header        (unmunge-http-header-name
                                (:ssl-client-header puppet-server))})
 
-(defn get-cert-common-name
-  "Given a request, return the Common Name from the client certificate subject."
-  [ssl-client-cert]
-  (if-let [cert ssl-client-cert]
-    (if-let [cert-dn (-> cert .getSubjectX500Principal .getName)]
-      (if-let [cert-cn (ks/cn-for-dn cert-dn)]
-        cert-cn
-        (log/errorf "cn not found in client certificate dn: %s"
-                   cert-dn))
-      (log/error "dn not found for client certificate subject"))))
-
 (defn response->map
   "Converts a JRubyPuppetResponse instance to a map."
   [response]
@@ -113,13 +102,27 @@
 
 (defn header-auth-info
   "Return a map with authentication info based on header content"
-  [header-dn-name header-dn-val header-auth-val]
+  [header-dn-name header-dn-val header-auth-name header-auth-val]
   (if (ssl-utils/valid-x500-name? header-dn-val)
-    {:client-cert-cn (ssl-utils/x500-name->CN header-dn-val)
-     :authenticated  (= "SUCCESS" header-auth-val)}
     (do
-      (if-not (nil? header-dn-val)
-        (log/errorf "The DN '%s' provided by the HTTP header '%s' is malformed."
+      (let [cn (ssl-utils/x500-name->CN header-dn-val)
+            authenticated (= "SUCCESS" header-auth-val)]
+        (log/debugf "CN '%s' provided by HTTP header '%s'"
+                    cn header-dn-val)
+        (log/debugf (str "Verification of client '%s' provided by HTTP "
+                         "header '%s': '%s'.  Authenticated: %s.")
+                    cn
+                    header-auth-name
+                    header-auth-val
+                    authenticated)
+        {:client-cert-cn cn
+         :authenticated authenticated}))
+    (do
+      (if (nil? header-dn-val)
+        (log/debugf (str "No DN provided by the HTTP header '%s'.  Treating "
+                         "client as unauthenticated.") header-dn-name)
+        (log/errorf (str "DN '%s' provided by the HTTP header '%s' is "
+                         "malformed.  Treating client as unauthenticated.")
                     header-dn-val header-dn-name))
       unauthenticated-client-info)))
 
@@ -173,40 +176,68 @@
                cert-count
                " found"))))))
 
-(defn auth-maybe-with-client-header-info
-  "Return authentication info based on client headers"
-  [config headers]
-  (let [header-dn-name   (:ssl-client-header config)
-        header-dn-val    (get headers header-dn-name)
-        header-auth-name (:ssl-client-verify-header config)
-        header-auth-val  (get headers header-auth-name)
-        header-cert-val  (get headers header-client-cert-name)]
-    (if (:allow-header-cert-info config)
-      (-> (header-auth-info header-dn-name
-                            header-dn-val
-                            header-auth-val)
-          (assoc :client-cert (header-cert header-cert-val)))
-      (do
-        (doseq [[header-name header-val] {header-dn-name           header-dn-val
-                                          header-auth-name         header-auth-val
-                                          header-client-cert-name  header-cert-val}]
-          (if header-val
-            (log/warn "The HTTP header" header-name "was specified,"
-                      "but the master config option allow-header-cert-info"
-                      "was either not set, or was set to false."
-                      "This header will be ignored.")))
-        unauthenticated-client-info))))
+(defn ssl-auth-info
+  "Get map of client authentication info from the supplied
+   `java.security.cert.X509Certificate` object.  If the supplied object is nil,
+   the information returned would represent an 'unauthenticated' client."
+  [ssl-client-cert]
+  (if ssl-client-cert
+    (let [cn (ssl-utils/get-cn-from-x509-certificate ssl-client-cert)
+          authenticated (not (empty? cn))]
+      (log/debugf "CN '%s' provided by SSL certificate.  Authenticated: %s."
+                  cn authenticated)
+      {:client-cert-cn cn
+       :authenticated  authenticated})
+    (do
+      (log/debugf "No SSL client certificate provided. "
+                  "Treating client as unauthenticated.")
+      unauthenticated-client-info)))
 
-(defn auth-maybe-with-ssl-info
-  "Merge information from the SSL client cert into the jruby request if
-  available and information was not expected to be provided via client headers"
-  [config ssl-client-cert request]
-  (if (:allow-header-cert-info config)
-    request
-    (let [cn   (get-cert-common-name ssl-client-cert)]
-      (merge request {:client-cert    ssl-client-cert
-                      :client-cert-cn cn
-                      :authenticated  (not (nil? cn))}))))
+(defn client-auth-info
+  "Get map of client authentication info for the client.  Map has the following
+  keys:
+
+  * :client-cert - A `java.security.cert.X509Certificate` object or nil
+  * :client-cert-cn - The CN (Common Name) of the client, typically associated
+                      with the CN attribute from the Distinguished Name
+                      in an X.509 certificate's Subject.
+  * :authenticated - A boolean representing whether or not the client is
+                     considered to have been successfully authenticated.
+
+  Parameters:
+
+  * config - Map of configuration data
+  * request - Ring request containing client data"
+  [config request]
+  (if-let [authorization (:authorization request)]
+    {:client-cert    (:certificate authorization)
+     :client-cert-cn (:name authorization)
+     :authenticated  (true? (:authentic? authorization))}
+    (let [headers (:headers request)
+          header-dn-name (:ssl-client-header config)
+          header-dn-val (get headers header-dn-name)
+          header-auth-name (:ssl-client-verify-header config)
+          header-auth-val (get headers header-auth-name)
+          header-cert-val (get headers header-client-cert-name)]
+      (if (:allow-header-cert-info config)
+        (-> (header-auth-info header-dn-name
+                              header-dn-val
+                              header-auth-name
+                              header-auth-val)
+            (assoc :client-cert (header-cert header-cert-val)))
+        (do
+          (doseq [[header-name header-val]
+                  {header-dn-name header-dn-val
+                   header-auth-name header-auth-val
+                   header-client-cert-name header-cert-val}]
+            (if header-val
+              (log/warn "The HTTP header" header-name "was specified,"
+                        "but the master config option allow-header-cert-info"
+                        "was either not set, or was set to false."
+                        "This header will be ignored.")))
+          (let [ssl-cert (:ssl-client-cert request)]
+            (-> (ssl-auth-info ssl-cert)
+                (assoc :client-cert ssl-cert))))))))
 
 (defn as-jruby-request
   "Given a ring HTTP request, return a new map that contains all of the data
@@ -221,20 +252,16 @@
         Server.  If so, then the DN, authentication status, and, optionally, the
         certificate will be provided by HTTP headers."
   [config request]
-  (let [headers   (:headers request)
-        jruby-req {:uri            (:uri request)
-                   :params         (:params request)
-                   :remote-addr    (:remote-addr request)
-                   :headers        headers
-                   :body           (:body request)
-                   :request-method (-> (:request-method request)
-                                       name
-                                       string/upper-case)}]
-    (merge jruby-req
-           (->> (auth-maybe-with-client-header-info config
-                                                    headers)
-                (auth-maybe-with-ssl-info config
-                                          (:ssl-client-cert request))))))
+  (merge
+    {:uri            (:uri request)
+     :params         (:params request)
+     :remote-addr    (:remote-addr request)
+     :headers        (:headers request)
+     :body           (:body request)
+     :request-method (-> (:request-method request)
+                         name
+                         string/upper-case)}
+    (client-auth-info config request)))
 
 (defn make-request-mutable
   [request]
