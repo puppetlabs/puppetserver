@@ -112,3 +112,19 @@
            ~@body
            (finally
              (jruby/return-instance ~jruby-service pool-instance# ~reason)))))))
+
+(defmacro with-lock
+  "Acquires a lock on the pool, executes the body, and releases the lock."
+  [jruby-service & body]
+  `(let [pool# (-> ~jruby-service
+                   tk-services/service-context
+                   :pool-context
+                   core/get-pool)]
+     (log/debug "Acquiring lock on JRubyPool...")
+     (.lock pool#)
+     (log/debug "Lock acquired")
+     (try
+      ~@body
+      (finally
+       (.unlock pool#)
+       (log/debug "Lock on JRubyPool released")))))
