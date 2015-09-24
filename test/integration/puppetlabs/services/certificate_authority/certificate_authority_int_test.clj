@@ -53,10 +53,13 @@
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["localhost"]}}
-         :authorization         {:rules [{:match-request
-                                                 {:path "/puppet-ca/v1/certificate"
-                                                  :type "path"}
-                                          :allow ["nonlocalhost"]}]}}
+         :authorization         {:version 1
+                                 :rules [{:match-request
+                                          {:path "/puppet-ca/v1/certificate"
+                                           :type "path"}
+                                          :allow ["nonlocalhost"]
+                                          :sort-order 1
+                                          :name "cert"}]}}
         (testing "are allowed"
           (doseq [ca-mount-point ca-mount-points
                   endpoint ["certificate_status/localhost"
@@ -65,12 +68,13 @@
               (let [response (http-get (str ca-mount-point endpoint))]
                 (is (= 200 (:status response))
                     (ks/pprint-to-string response))))))
-        (testing "are denied when denied by rule to the certificate endpoint"
-          (doseq [ca-mount-point ca-mount-points]
-            (let [response (http-get (str ca-mount-point
-                                          "certificate/localhost"))]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))))))))
+        (logutils/with-test-logging
+          (testing "are denied when denied by rule to the certificate endpoint"
+            (doseq [ca-mount-point ca-mount-points]
+              (let [response (http-get (str ca-mount-point
+                                            "certificate/localhost"))]
+                (is (= 403 (:status response))
+                    (ks/pprint-to-string response))))))))))
 
 (deftest ^:integration cert-not-on-whitelist-test
   (testing "requests made when cert not on whitelist"
@@ -79,18 +83,22 @@
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["notlocalhost"]}}
-         :authorization         {:rules [{:match-request
-                                                 {:path "/puppet-ca/v1/certificate"
-                                                  :type "path"}
-                                          :allow ["localhost"]}]}}
-        (testing "are denied"
-          (doseq [ca-mount-point ca-mount-points
-                  endpoint ["certificate_status/localhost"
-                            "certificate_statuses/ignored"]]
-            (testing (str "for the " endpoint " endpoint")
-              (let [response (http-get (str ca-mount-point endpoint))]
-                (is (= 403 (:status response))
-                    (ks/pprint-to-string response))))))
+         :authorization         {:version 1
+                                 :rules [{:match-request
+                                          {:path "/puppet-ca/v1/certificate"
+                                           :type "path"}
+                                          :allow ["localhost"]
+                                          :sort-order 1
+                                          :name "cert"}]}}
+        (logutils/with-test-logging
+          (testing "are denied"
+            (doseq [ca-mount-point ca-mount-points
+                    endpoint ["certificate_status/localhost"
+                              "certificate_statuses/ignored"]]
+              (testing (str "for the " endpoint " endpoint")
+                (let [response (http-get (str ca-mount-point endpoint))]
+                  (is (= 403 (:status response))
+                      (ks/pprint-to-string response)))))))
         (testing "are allowed when allowed by rule to the certificate endpoint"
           (doseq [ca-mount-point ca-mount-points]
             (let [response (http-get (str ca-mount-point
@@ -100,21 +108,24 @@
 
 (deftest ^:integration no-whitelist-defined-test
   (testing "requests made when no whitelist is defined"
-    (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running
-        app
-        {:authorization {:rules [{:match-request
-                                         {:path "^/puppet-ca/v1/certificate_status(?:es)?/([^/]+)$"
-                                          :type "regex"}
-                                  :allow ["$1"]}]}}
-        (testing "are allowed for matching client"
-          (doseq [ca-mount-point ca-mount-points
-                  endpoint ["certificate_status/localhost"
-                            "certificate_statuses/localhost"]]
-            (testing (str "for the " endpoint " endpoint")
-              (let [response (http-get (str ca-mount-point endpoint))]
-                (is (= 200 (:status response))
-                    (ks/pprint-to-string response))))))
+    (bootstrap/with-puppetserver-running
+      app
+      {:authorization {:version 1
+                       :rules [{:match-request
+                                {:path "^/puppet-ca/v1/certificate_status(?:es)?/([^/]+)$"
+                                 :type "regex"}
+                                :allow ["$1"]
+                                :sort-order 1
+                                :name "cert status"}]}}
+      (testing "are allowed for matching client"
+        (doseq [ca-mount-point ca-mount-points
+                endpoint ["certificate_status/localhost"
+                          "certificate_statuses/localhost"]]
+          (testing (str "for the " endpoint " endpoint")
+            (let [response (http-get (str ca-mount-point endpoint))]
+              (is (= 200 (:status response))
+                  (ks/pprint-to-string response))))))
+      (logutils/with-test-logging
         (testing "are denied for non-matching client"
           (doseq [ca-mount-point ca-mount-points
                   endpoint ["certificate_status/nonlocalhost"

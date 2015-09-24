@@ -42,10 +42,13 @@
                           :puppetlabs.services.master.master-service/master-service                           "/puppet"
                           :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"
                           :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service      ""}
-     :authorization      {:rules [{:match-request
-                                          {:path "/"
-                                           :type "path"}
-                                   :allow-unauthenticated true}]}}))
+     :authorization      {:version 1
+                          :rules [{:match-request
+                                   {:path "/"
+                                    :type "path"}
+                                   :allow-unauthenticated true
+                                   :sort-order 1
+                                   :name "allow all"}]}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle

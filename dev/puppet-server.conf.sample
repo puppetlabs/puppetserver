@@ -107,6 +107,7 @@ profiler: {
 
 # authorization rules for web service endpoints
 authorization: {
+    version: 1
     rules: [
         {
             match-request: {
@@ -114,6 +115,8 @@ authorization: {
                 type: "path"
             }
             allow-unauthenticated: true
+            sort-order: 1
+            name: "allow all"
         }
     ]
 }
