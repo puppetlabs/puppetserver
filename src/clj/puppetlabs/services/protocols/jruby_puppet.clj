@@ -43,4 +43,8 @@
   (register-event-handler
     [this callback]
     "Register a callback function to receive notifications when JRuby service events occur.
-    The callback fn should accept a single arg, which will conform to the JRubyEvent schema."))
+    The callback fn should accept a single arg, which will conform to the JRubyEvent schema.")
+
+  (with-lock
+    [this f]
+    "Acquires a lock on the pool, executes f, and releases the lock."))

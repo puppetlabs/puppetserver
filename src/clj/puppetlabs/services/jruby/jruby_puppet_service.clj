@@ -78,7 +78,12 @@
   (register-event-handler
     [this callback-fn]
     (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
-      (swap! event-callbacks conj callback-fn))))
+      (swap! event-callbacks conj callback-fn)))
+
+  (with-lock
+    [this f]
+    (let [{:keys [pool-context]} (tk-services/service-context this)]
+      (core/with-lock pool-context f))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
