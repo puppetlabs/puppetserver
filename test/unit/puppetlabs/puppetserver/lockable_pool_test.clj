@@ -172,9 +172,11 @@
                                       (.returnItem pool instance)))]
         ;; this is racey, but the only ways i could think of to make it non-racey
         ;; depended on knowledge of the implementation
-        (Thread/sleep 500)
-        (is (not (realized? borrow-thread-1)))
-        (is (not (realized? borrow-thread-2)))
+        ;; Uncomment and make non-racey when we have an implementation that
+        ;; allows reentrant borrows.
+        ;; (Thread/sleep 500)
+        ;; (is (not (realized? borrow-thread-1)))
+        ;; (is (not (realized? borrow-thread-2)))
 
         ;; Current implementation of JRubyPool is not reentrant. This assertion
         ;; tests that the error we expect is thrown, rather than a deadlock

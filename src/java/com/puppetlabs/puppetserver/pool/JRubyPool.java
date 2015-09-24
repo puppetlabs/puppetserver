@@ -166,9 +166,9 @@ public final class JRubyPool<E> implements LockablePool<E> {
     /**
     * Acquires a write lock from <tt>ReentrantReadWriteLock</tt>.
     *
-    * Note that this implementation does not fulfill requirement (e); with
-    * this implementation, the thread holding the lock cannot perform a borrow
-    * while it's holding the lock.
+    * Note that this implementation does not fulfill requirement (e) in the
+    * LockablePool javadocs for lock(); with this implementation, the thread
+    * holding the lock cannot perform a borrow while it's holding the lock.
     */
     @Override
     public void lock() throws InterruptedException {
