@@ -3,17 +3,33 @@
 ;; via the REPL.  To use this, simply make a copy of this file named `user.clj`
 ;; and modify it to your liking.
 (ns user
-  (:require [puppetlabs.trapperkeeper.config :as config]))
+  (:require [puppetlabs.trapperkeeper.config :as config]
+            [user-repl :as user-repl]))
 
 ;; The `user_repl.clj` file has utility functions for starting, stopping, and
-;; loading Puppet Server from the REPL.  If you define a no-arg function here that returns
-;; configuration data for Puppet Server, it will use that config instead of the
-;; defaults.  You could just supply a map literal here, but I like to parse
-;; the config from my config files on disk, so that I am using the same settings
-;; that I would get if I ran the server via `lein run --config`.
+;; loading Puppet Server from the REPL.  It will call back into this namespace
+;; (a no-arg function called 'puppet-server-conf') to get the config for the
+;; server.
+;;
+;; You could just supply a map literal here, but we generally use `config/load-config`
+;; to parse the config from a file.
+;;
+;; The default implementation of this function just copies the sample config file
+;; from dev/puppet-server.conf.sample to ~/.puppet-server and loads it from there.
+;; This is suitable for just getting a server up and running as quickly as possible,
+;; but is not advised for long-term dev environments.  (The main reason being
+;; that the sample config file uses "./target" as a location for a lot of files
+;; such as puppet's confdir and codedir, and if you run "lein clean" you'll lose
+;; any customizations you've made therein.)
 (defn puppet-server-conf
   []
-  (config/load-config "/Users/cprice/.puppet-server/puppet-server.conf"))
+  (let [conf-file (user-repl/initialize-default-config-file)]
+    (config/load-config conf-file))
+  ;; a better way to handle config for a long-term dev environment is to create
+  ;; your own copy of the dev/puppet-server.conf.sample file somewhere, edit it
+  ;; carefully to reflect your needs, and then load it directly, like this:
+  ;(config/load-config "/Users/cprice/work/puppet-server/conf/puppet-server.conf")
+  )
 
 ;; The `go` function in the `user-repl` namespace  will start up an instance of
 ;; Pupppet Server.  This function will load that namespace, switch to it, and call `go`.

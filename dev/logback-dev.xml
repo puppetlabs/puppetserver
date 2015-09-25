@@ -6,6 +6,7 @@
     </appender>
 
     <logger name="org.eclipse.jetty" level="info"/>
+    <logger name="puppetlabs.dujour.version-check" level="info"/>
 
     <root level="debug">
         <appender-ref ref="STDOUT" />
