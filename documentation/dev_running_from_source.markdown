@@ -43,8 +43,8 @@ Step 0: Quick Start for Developers
     # Launch the clojure REPL
     $ lein repl
     # Run Puppet Server
-    user=> (help)
     user=> (go)
+    user=> (help)
 
 You should now have a running server.  Your confdir is set to `./target/master-conf`;
 see ~/.puppet-server/puppet-server.conf to examine this and other default paths.
@@ -183,9 +183,9 @@ To start the server from the REPL, run the following:
 
     $ lein repl
     nREPL server started on port 47631 on host 127.0.0.1
-    user=> (help)
-    ...
     user=> (go)
+    user=> (help)
+
 
 Then, if you make changes to the source code, all you need to do in order to
 restart the server with the latest changes is:
