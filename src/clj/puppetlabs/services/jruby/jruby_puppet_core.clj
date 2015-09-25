@@ -271,21 +271,6 @@
         argv (into-array String (concat ["-rjar-dependencies"] args))]
     (.run main argv)))
 
-(schema/defn ^:always-validate with-lock
-  "Acquires a lock on the pool, executes the provided function, and releases
-  the lock."
-  [pool-context :- jruby-schemas/PoolContext
-   f :- IFn]
-  (let [pool (get-pool pool-context)]
-    (log/debug "Acquiring lock on JRubyPool...")
-    (.lock pool)
-    (log/debug "Lock acquired")
-    (try
-     (f)
-     (finally
-      (.unlock pool)
-      (log/debug "Lock on JRubyPool released")))))
-
 (schema/defn ^:always-validate cli-run! :- (schema/maybe jruby-schemas/JRubyMainStatus)
   "Run a JRuby CLI command, e.g. gem, irb, etc..."
   [config :- {schema/Keyword schema/Any}
@@ -298,3 +283,15 @@
       (cli-ruby! config
         (concat ["-e" (format "load '%s'" url) "--"] args))
       (log/errorf "command %s could not be found in %s" command bin-dir))))
+
+(defmacro with-lock
+  "Acquires a lock on the pool, executes the body, and releases the lock."
+  [pool-context & body]
+  `(let [pool# (core/get-pool ~pool-context)]
+    (log/debug "Acquiring lock on JRubyPool...")
+     (.lock pool#)
+     (try
+      ~@body
+      (finally
+       (.unlock pool#)
+       (log/debug "Lock on JRubyPool released")))))

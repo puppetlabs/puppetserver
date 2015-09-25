@@ -46,5 +46,5 @@
     The callback fn should accept a single arg, which will conform to the JRubyEvent schema.")
 
   (with-lock
-    [this f]
-    "Acquires a lock on the pool, executes f, and releases the lock."))
+    [this & body]
+    "Acquires a lock on the pool, executes body, and releases the lock."))

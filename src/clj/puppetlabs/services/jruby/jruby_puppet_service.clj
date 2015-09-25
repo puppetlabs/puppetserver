@@ -81,9 +81,9 @@
       (swap! event-callbacks conj callback-fn)))
 
   (with-lock
-    [this f]
+    [this & body]
     (let [{:keys [pool-context]} (tk-services/service-context this)]
-      (core/with-lock pool-context f))))
+      (core/with-lock pool-context body))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
