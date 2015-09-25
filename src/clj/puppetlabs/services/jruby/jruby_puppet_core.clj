@@ -283,15 +283,3 @@
       (cli-ruby! config
         (concat ["-e" (format "load '%s'" url) "--"] args))
       (log/errorf "command %s could not be found in %s" command bin-dir))))
-
-(defmacro with-lock
-  "Acquires a lock on the pool, executes the body, and releases the lock."
-  [pool-context & body]
-  `(let [pool# (core/get-pool ~pool-context)]
-    (log/debug "Acquiring lock on JRubyPool...")
-     (.lock pool#)
-     (try
-      ~@body
-      (finally
-       (.unlock pool#)
-       (log/debug "Lock on JRubyPool released")))))

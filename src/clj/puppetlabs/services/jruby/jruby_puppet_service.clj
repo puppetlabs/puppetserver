@@ -78,12 +78,7 @@
   (register-event-handler
     [this callback-fn]
     (let [event-callbacks (:event-callbacks (tk-services/service-context this))]
-      (swap! event-callbacks conj callback-fn)))
-
-  (with-lock
-    [this & body]
-    (let [{:keys [pool-context]} (tk-services/service-context this)]
-      (core/with-lock pool-context body))))
+      (swap! event-callbacks conj callback-fn))))
 
 (defmacro with-jruby-puppet
   "Encapsulates the behavior of borrowing and returning an instance of
@@ -117,3 +112,19 @@
            ~@body
            (finally
              (jruby/return-instance ~jruby-service pool-instance# ~reason)))))))
+
+(defmacro with-lock
+  "Acquires a lock on the pool, executes the body, and releases the lock."
+  [jruby-service & body]
+  `(let [pool# (-> ~jruby-service
+                   tk-services/service-context
+                   :pool-context
+                   core/get-pool)]
+     (log/debug "Acquiring lock on JRubyPool...")
+     (.lock pool#)
+     (log/debug "Lock acquired")
+     (try
+      ~@body
+      (finally
+       (.unlock pool#)
+       (log/debug "Lock on JRubyPool released")))))
