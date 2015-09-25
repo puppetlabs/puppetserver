@@ -15,9 +15,10 @@ same things that were tricky about running the Webrick server from source:
 * Knowing what your certname is
 * Making sure that your certname is resolvable
 
-In Puppet Server, confdir/vardir/codedir *always* come from your config.  They
-are never dynamically determined based on your user or anything magical like that.
-So, if you need to know where they are, look at your config file(s).
+In Puppet Server, we always specify /vardir/codedir explicitly in the Puppet Server
+config.  This way, they are never dynamically determined based on your user or
+anything magical like that.  So, if you need to know where they are, look at your
+config file(s).
 
 Your certname comes from `facter fqdn` or puppet.conf, just like it does in Webrick.
 If `facter fqdn` returns something that is not resolvable, you're gonna have a bad
