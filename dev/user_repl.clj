@@ -17,45 +17,33 @@
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [me.raynes.fs :as fs]
+            [clojure.string :as str]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
 
-(defn puppet-server-conf
-  "This function returns a map containing all of the config settings that
-  will be used when running Puppet Server in the repl.  It provides some
-  reasonable defaults, but if you'd like to use your own settings, you can
-  define a var `puppet-server-conf` in your `user` namespace, and those settings
-  will be used instead.  (If there is a `user.clj` on the classpath, lein
-  will automatically load it when the REPL is started.)"
+(defn initialize-default-config-file
+  "Checks to see if ~/.puppet-server/puppetserver.conf exists; if it does not,
+  copies ./dev/puppet-server.conf.sample to that location."
   []
-  (if-let [conf (resolve 'user/puppet-server-conf)]
-    ((deref conf))
-    {:global             {:logging-config "./dev/logback-dev.xml"}
-     :jruby-puppet       (jruby-testutils/jruby-puppet-config {:max-active-instances 1
-                                                               :use-legacy-auth-conf false})
-     :webserver          {:client-auth "want"
-                          :ssl-host    "localhost"
-                          :ssl-port    8140}
-     :web-router-service {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service "/puppet-ca"
-                          :puppetlabs.services.master.master-service/master-service                           "/puppet"
-                          :puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service         "/puppet-admin-api"
-                          :puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service      ""}
-     :authorization      {:version 1
-                          :rules [{:match-request
-                                   {:path "/"
-                                    :type "path"}
-                                   :allow-unauthenticated true
-                                   :sort-order 1
-                                   :name "allow all"}]}}))
+  (let [conf-dir (fs/expand-home "~/.puppet-server")
+        default-conf-file-dest (fs/file conf-dir "puppet-server.conf")]
+    (when-not (fs/exists? conf-dir)
+      (println "Creating .puppet-server dir")
+      (fs/mkdirs conf-dir))
+    (when-not (fs/exists? default-conf-file-dest)
+      (println "Copying puppet-server.conf.sample to" conf-dir)
+      (fs/copy "./dev/puppet-server.conf.sample" default-conf-file-dest))
+    (fs/absolute-path default-conf-file-dest)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
 
-(def system nil)
+(def ^:private system nil)
 
-(defn init []
+(defn- init []
   (alter-var-root #'system
     (fn [_] (tk/build-app
               [jetty9-service
@@ -69,26 +57,42 @@
                puppet-admin-service
                legacy-routes-service
                authorization-service]
-              (puppet-server-conf))))
+              ((resolve 'user/puppet-server-conf)))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 
-(defn start []
+(defn- start []
   (alter-var-root #'system
                   (fn [s] (if s (tka/start s))))
   (tka/check-for-errors! system))
 
-(defn stop []
+(defn stop
+  "Stop the running server"
+  []
   (alter-var-root #'system
                   (fn [s] (when s (tka/stop s)))))
 
-(defn go []
+(defn go
+  "Initialize and start the server"
+  []
   (init)
   (start))
 
-(defn reset []
+(defn reset
+  "Stop the running server, reload code, and restart."
+  []
   (stop)
   (refresh :after 'user-repl/go))
+
+(defn help
+  "Prints a list of all of the public functions and their docstrings"
+  []
+  (let [fns (ns-publics 'user-repl)]
+    (doseq [f fns]
+      ;; TODO; inspect arglists
+      (println (format "(%s): %s\n"
+                       (key f)
+                       (-> (val f) meta :doc))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for interacting with running system
@@ -115,7 +119,7 @@
   []
   (jruby-core/registered-instances (context [:JRubyPuppetService :pool-context])))
 
-(defn puppet-environment-state
+(defn- puppet-environment-state
   "Given a JRuby instance, return the state information about the environments
   that it is aware of."
   [jruby-instance]
