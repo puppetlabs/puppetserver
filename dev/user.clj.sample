@@ -3,8 +3,7 @@
 ;; via the REPL.  To use this, simply make a copy of this file named `user.clj`
 ;; and modify it to your liking.
 (ns user
-  (:require [puppetlabs.trapperkeeper.config :as config]
-            [user-repl :as user-repl]))
+  (:require [puppetlabs.trapperkeeper.config :as config]))
 
 ;; The `user_repl.clj` file has utility functions for starting, stopping, and
 ;; loading Puppet Server from the REPL.  It will call back into this namespace
@@ -23,9 +22,10 @@
 ;; any customizations you've made therein.)
 (defn puppet-server-conf
   []
-  (let [conf-file (user-repl/initialize-default-config-file)]
+  (let [conf-file ((-> 'user-repl/initialize-default-config-file resolve deref))]
     (config/load-config conf-file))
-  ;; a better way to handle config for a long-term dev environment is to create
+  ;; a better way to handle config for a long-term dev environment is to comment
+  ;; out the two previous lines, create
   ;; your own copy of the dev/puppet-server.conf.sample file somewhere, edit it
   ;; carefully to reflect your needs, and then load it directly, like this:
   ;(config/load-config "/Users/cprice/work/puppet-server/conf/puppet-server.conf")
