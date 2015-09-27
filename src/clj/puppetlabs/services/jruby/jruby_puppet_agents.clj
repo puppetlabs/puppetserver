@@ -57,7 +57,7 @@
                        id count))))
       (catch Exception e
         (.clear pool)
-        (.putFirst pool (PoisonPill. e))
+        (.insertPill pool (PoisonPill. e))
         (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
 
 (schema/defn ^:always-validate
@@ -109,11 +109,13 @@
                      id count))
         (catch Exception e
           (.clear new-pool)
-          (.putFirst new-pool (PoisonPill. e))
+          (.insertPill new-pool (PoisonPill. e))
           (throw (IllegalStateException.
                    "There was a problem adding a JRubyPuppet instance to the pool."
                    e)))))
-    (jruby-internal/return-to-pool (RetryPoisonPill. (:pool old-pool)))))
+    ;; Add a "RetryPoisonPill" to the pool in case something else is in the
+    ;; process of borrowing from the old pool.
+    (.insertPill (:pool old-pool) (RetryPoisonPill. (:pool old-pool)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

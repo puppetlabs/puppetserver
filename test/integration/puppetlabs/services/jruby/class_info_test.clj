@@ -5,7 +5,7 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire])
-  (:import (com.puppetlabs.puppetserver RegisteredLinkedBlockingDeque)))
+  (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
 
 (defn create-file
   [file content]
@@ -70,7 +70,7 @@
 
 (deftest ^:integration class-info-test
   (testing "class info properly enumerated for"
-    (let [pool (RegisteredLinkedBlockingDeque. 1)
+    (let [pool (JRubyPool. 1)
           code-dir (ks/temp-dir)
           conf-dir (ks/temp-dir)
           config (jruby-testutils/jruby-puppet-config
