@@ -4,6 +4,7 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.trapperkeeper.app :as tk-app]
             [schema.core :as schema]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
@@ -174,3 +175,21 @@
                   (range size))]
     (fill-drained-pool jrubies)
     result))
+
+(defn get-lock
+  "Given a trapperkeeper application with the JRubyPuppetService running,
+  returns the ReentrantReadWriteLock instance used by its JRubyPool."
+  [app]
+  (let [jruby-pool (-> app
+                       tk-app/app-context
+                       deref
+                       :JRubyPuppetService
+                       :pool-context
+                       jruby-core/get-pool)
+        f (->> jruby-pool
+               .getClass
+               .getDeclaredFields
+               (filter #(= "lock" (.getName %)))
+               first)]
+    (.setAccessible f true)
+    (.get f jruby-pool)))
