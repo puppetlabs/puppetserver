@@ -92,17 +92,45 @@ This file contains the settings for Puppet Server itself.
         value will give the best performance.
     * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
       an instance from the JRuby pool in milliseconds. Defaults to 1200000.
+    * `use-legacy-auth-conf`: Optionally, set the method to be used for
+      authorizing access to the HTTP endpoints served by the "master" service.
+      The applicable endpoints include those listed in the
+      [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
+      For a value of `true`, also the default value if not specified,
+      authorization will be done in core Ruby puppet-agent code via the legacy
+      [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html)
+      file.  For a value of `false`, authorization will be done by
+      `trapperkeeper-authorization` via rules specified in an `authorization`
+      configuration.  See the [`auth.conf`](#authconf) section on this page for
+      more information.  Note that the legacy `auth.conf` is now deprecated in
+      Puppet Server, so it is recommended to use `trapperkeeper-authorization`
+      instead.
 * The `profiler` settings configure profiling:
     * `enabled`: if this is set to `true`, it enables profiling for the Puppet
     Ruby code. Defaults to `false`.
 * The `puppet-admin` section configures the Puppet Server's administrative API.
   (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
+  With the introduction of `trapperkeeper-authorization` for authorizing
+  requests made to Puppet Server, the settings in this section are now
+  deprecated.  You should consider removing these settings and configuring
+  the desired authorization behavior through `trapperkeeper-authorization`
+  instead.  See the [`auth.conf`](#authconf) section for more details.
     * `authorization-required` determines whether a client
     certificate is required to access the endpoints in this API.  If set to
-    `false`, the client-whitelist will be ignored. Defaults to `true`.
+    `false`, all requests will be permitted to access this API.  If set to
+    `true`, only the clients whose certnames are included in the
+    `client-whitelist` setting are allowed access to the admin API.  If this
+    setting is not specified but the `client-whitelist` setting is specified,
+    the default value for this setting is `true`.
     * `client-whitelist` contains a list of client certnames that are whitelisted
     to access the admin API. Any requests made to this endpoint that do not
-    present a valid client cert mentioned in this list will be denied access.
+    present a valid client certificate mentioned in this list will be denied
+    access.
+
+   If neither the `authorization-required` nor the `client-whitelist` setting
+   is specified, authorization to the admin API endpoints is controlled by
+   `trapperkeeper-authorization`, through settings specified in the
+   [`auth.conf`](#authconf) file.
 
 ~~~
 # configuration for the JRuby interpreters
@@ -117,6 +145,7 @@ jruby-puppet: {
     master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
     max-requests-per-instance: 0
+    use-legacy-auth-conf: false
 }
 
 # settings related to HTTP client requests made by Puppet Server
@@ -150,66 +179,229 @@ profiler: {
     enabled: true
 }
 
-# Settings related to the puppet-admin HTTP API
-puppet-admin: {
-    client-whitelist: []
-}
+# Settings related to the puppet-admin HTTP API - deprecated in favor
+# of "auth.conf"
+# puppet-admin: {
+#    client-whitelist: []
+# }
 ~~~
+
+### `auth.conf`
+
+This file contains rules for authorizing access to the HTTP endpoints that
+Puppet Server hosts.  The file looks something like this:
+
+~~~
+authorization: {
+    version: 1
+    # allow-header-cert-info: false
+    rules: [
+        {
+            # Allow nodes to retrieve their own catalog
+            match-request: {
+                path: "^/puppet/v3/catalog/([^/]+)$"
+                type: regex
+                method: [get, post]
+            }
+            allow: "$1"
+            sort-order: 500
+            name: "puppetlabs catalog"
+        },
+...
+~~~
+
+Puppet Server uses `trapperkeeper-authorization` for authorization control.
+For more detailed information on the format of this file, see
+[Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md).
+
+If you need to customize the authorization rules for Puppet Server, it is
+recommended that you create new rules rather than customizing the default
+"puppetlabs" rules which appear in this file.  In order for your rules to
+"override" any corresponding "puppetlabs" rules, you should use a
+`sort-order` for those rules which is in the range of 1 to 399 (inclusive).
+Note that default rules from Puppet occupy the range from 400 to 600 (inclusive).
+
+For example, if you wanted to customize the behavior of the default "catalog"
+rule from above to not only allow nodes to retrieve their own catalog but also
+allow an "administrative" node to retrieve any node's catalog, you could add
+a rule like this:
+
+~~~
+authorization: {
+    version: 1
+    # allow-header-cert-info: false
+    rules: [
+        {
+            # Allow nodes to retrieve their own catalog
+            # and admin nodes to retrieve any catalogs
+            match-request: {
+                path: "^/puppet/v3/catalog/([^/]+)$"
+                type: regex
+                method: [get, post]
+            }
+            allow: ["$1", "myadmin.host.com"]
+            sort-order: 200
+            name: "my catalog"
+        },
+        {
+            # Allow nodes to retrieve their own catalog
+            match-request: {
+                path: "^/puppet/v3/catalog/([^/]+)$"
+                type: regex
+                method: [get, post]
+            }
+            allow: "$1"
+            sort-order: 500
+            name: "puppetlabs catalog"
+        },
+...
+~~~
+
+If you want to add a rule but let the default rules from Puppet take
+precedence over your new rule, you should use a `sort-order` for the rule
+which is in the range from 601 to 998 (inclusive).
+
+Note that, for backward compatibility, the values of other configuration
+settings control the specific endpoints for which `trapperkeeper-authorization`
+is usedr:
+
+* [`jruby-puppet.use-legacy-auth-conf`](#puppetserverconf) - Controls the
+ method to be used for authorizing access to the HTTP endpoints served by the
+ "master" service.  The applicable endpoints include those listed in the
+ [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
+
+ For a value of `true`, also the default value if not specified, authorization
+ will be done in core Ruby puppet-agent code via the legacy
+ [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html)
+ file.  For a value of `false`, authorization will be done through via
+ `trapperkeeper-authorization`.
+
+* `puppet-admin.authorization-required` and `puppet-admin.client-whitelist` -
+ If either of these settings is present in the configuration, requests made to
+ Puppet Server's administrative API will be performed per the values for these
+ settings.  See the [`puppetserver.conf/puppet-admin`](#puppetserverconf)
+ section for more information on these settings.  If neither the
+ `puppet-admin.authorization-required` nor the `puppet-admin.client-whitelist`
+ setting is specified, requests to Puppet Server's administrative API will be
+ done via `trapperkeeper-authorization`.
+
+ * `certificate-authority.certificate-status.authorization-required` and
+  `certificate-authority.certificate-status.client-whitelist` -
+  If either of these settings is present in the configuration, requests made
+  to Puppet Server's
+  [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md)
+  API will be performed per the values for these settings.  See the
+  [`ca.conf`](#caconf) section for more information on these settings.  If
+  neither the `certificate-authority.certificate-status.authorization-required`
+  nor the `certificate-authority.certificate-status.client-whitelist` setting is
+  specified, requests to Puppet Server's administrative API will be done via
+  `trapperkeeper-authorization`.
+
+Support for the use of the legacy `auth.conf` for the "master" endpoints and
+for the client whitelists for the Puppet admin and certificate status endpoints
+is deprecated.  You should consider configuring the above settings such that
+only `trapperkeeper-authorization` is used for authorizing requests.
 
 ### `master.conf`
 
-This file contains settings for Puppet master features, such as node identification and authorization.
+This file contains settings for Puppet master features, such as node
+identification and authorization.  The only setting that this file supports is
+`allow-header-cert-info`.  That setting is now deprecated in favor of the
+`authorization.allow-header-cert-info` setting in the `auth.conf` file that
+`trapperkeeper-authorization` uses.  For more information on the `auth.conf`
+file in general, see the [`auth.conf`](#authconf) section.  For more information
+on the `authorization.allow-header-cert-info` setting, see the
+[`Configuring the Authorization Service`](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info)
+page.
 
-In a default installation, this file doesn't exist. You'll need to create it if you want to set non-default values for these settings.
+In a default installation, this file doesn't exist.
 
 * `allow-header-cert-info` determines whether Puppet Server should use authorization info from the `X-Client-Verify`, `X-Client-CN`, and `X-Client-Cert` HTTP headers. Defaults to `false`.
 
     This setting is used to enable [external SSL termination.](./external_ssl_termination.markdown) If enabled, Puppet Server will ignore any actual certificate presented to the Jetty webserver, and will rely completely on header data to authorize requests. This is very dangerous unless you've secured your network to prevent any untrusted access to Puppet Server.
 
-    You can change Puppet's `ssl_client_verify_header` setting to use another header name instead of `X-Client-Verify`; the `ssl_client_header` setting can rename `X-Client-CN`. The `X-Client-Cert` header can't be renamed.
+    When the `master.allow-header-cert-info` setting is being used, you can
+    change Puppet's `ssl_client_verify_header` setting to use another header
+    name instead of `X-Client-Verify`; the `ssl_client_header` setting can
+    rename `X-Client-CN`.  The `X-Client-Cert` header can't be renamed.  When
+    the `authorization.allow-header-cert-info` setting is being used, however,
+    none of the `X-Client` headers can be renamed; identity must be specified
+    through the `X-Client-Verify`, `X-Client-CN`, and `X-Client-Cert` headers.
     
-    Note that this setting only applies to HTTP endpoints served by the "master"
-    service.  The applicable endpoints include those listed in the
+    Note that the `master.allow-header-cert-info` setting only applies to HTTP
+    endpoints served by the "master" service.  The applicable endpoints include
+    those listed in the
     [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
-    Note that this setting does not apply to the endpoints listed in the
+    The `master.allow-header-cert-info` setting does not apply to the endpoints
+    listed in the
     [CA V1 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#ca-v1-http-api)
     or to any of the [Puppet Admin API](#puppetserverconf) endpoints.
 
+    The `authorization.allow-header-cert-info` setting, however, applies to all
+    HTTP endpoints that Puppet Server handles - including ones served by the
+    "master" service and the CA and Puppet Admin APIs.
+
+    If `trapperkeeper-authorization` is enabled for authorizing requests to the
+    "master" HTTP endpoints - via the
+    [`jruby-puppet.use-legacy-auth-conf`](#puppetserverconf) setting being set
+    to `false` - the value of the `authorization.allow-header-cert-info`
+    setting controls how the user's identity is derived for authorization
+    purposes.  In this case, the value of the `master.allow-header-cert-info`
+    setting would be ignored.
+
 ~~~
-master: {
-    # allow-header-cert-info: false
-}
+# Deprecated in favor of `authorization.allow-header-cert-info` in "auth.conf"
+# master: {
+#   allow-header-cert-info: false
+# }
 ~~~
 
 ### `ca.conf`
 
-This file contains settings for the Certificate Authority service.
+This file contains settings for the Certificate Authority service.  The only
+settings that this file supports are `authorization-required` and
+`client-whitelist`.  These settings are now deprecated in favor of the
+authorization settings in the `auth.conf` file that
+`trapperkeeper-authorization` uses.  For more information, see the
+[`auth.conf`](#authconf) section.  Since these settings are now deprecated,
+the `ca.conf` file no longer appears in a Puppet Server package.
 
-* `certificate-status` contains settings for the certificate_status HTTP endpoint.
-This endpoint allows certs to be signed, revoked, and deleted via HTTP requests.
-This provides full control over Puppet's security, and access should almost
-always be heavily restricted. Puppet Enterprise uses this endpoint to provide
-a cert signing interface in the PE console. For full documentation, see the
-[Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
+* `certificate-status` contains settings for the `certificate_status` and
+ `certificate_statuses` HTTP endpoints.  These endpoints allow certs to be
+ signed, revoked, and deleted via HTTP requests.  This provides full control
+ over Puppet's security, and access should almost always be heavily restricted.
+ Puppet Enterprise uses these endpoints to provide a cert signing interface in
+ the PE console. For full documentation, see the
+ [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
 
     * `authorization-required` determines whether a client certificate
-    is required to access the certificate status endpoints. If set to 'false' the
-    whitelist will be ignored. Defaults to `true`.
+     is required to access the certificate status(es) endpoints.  If set to
+     `false`, all requests will be permitted to access this API.  If set to
+     `true`, only the clients whose certnames are included in the
+     `client-whitelist` setting are allowed access to the admin API.  If this
+     setting is not specified but the `client-whitelist` setting is specified,
+     the default value for this setting is `true`.
 
     * `client-whitelist` contains a list of client certnames that are whitelisted
-    to access the certificate_status endpoint. Any requests made to this
-    endpoint that do not present a valid client cert mentioned in this list will
-    be denied access.
+     to access the certificate_status(es) endpoints.  Any requests made to this
+     endpoint that do not present a valid client certificate mentioned in this
+     list will be denied access.
+
+   If neither the `authorization-required` nor the `client-whitelist` setting
+   is specified, authorization to the certificate status(es) endpoints is
+   controlled by `trapperkeeper-authorization`, through settings specified in
+   the [`auth.conf`](#authconf) file.
 
 ~~~
-# CA-related settings
-certificate-authority: {
-    certificate-status: {
-        authorization-required: true
-        client-whitelist: []
-    }
-}
+# CA-related settings - deprecated in favor of "auth.conf"
+# certificate-authority: {
+#    certificate-status: {
+#        authorization-required: true
+#        client-whitelist: []
+#    }
+# }
 ~~~
+
 
 ## Logging
 
