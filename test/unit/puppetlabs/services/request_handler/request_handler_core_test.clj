@@ -59,7 +59,8 @@
                              :content-type "text/plain"
                              :query-string "one=1%201&two=2&arr[]=3&arr[]=4"
                              :params       {:bogus ""}})]
-      (is (= {"one" "1 1", "two" "2", "arr[]" ["3", "4"]}
+      (is (= {"one" "1 1", "two" "2", "arr[]" ["3", "4"]
+              :bogus ""}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= "" (:body wrapped-request))
@@ -70,7 +71,8 @@
                             {:body         (StringReader. body-string)
                              :content-type "application/x-www-form-urlencoded"
                              :params       {:bogus ""}})]
-      (is (= {"one" "1", "two" "2 2", "arr[]" ["3" "4"]}
+      (is (= {"one" "1", "two" "2 2", "arr[]" ["3" "4"]
+              :bogus ""}
              (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= body-string (:body wrapped-request))
@@ -81,7 +83,7 @@
                             {:body         (StringReader. body-string)
                              :content-type "text/plain"
                              :params       {:bogus ""}})]
-      (is (= {} (:params wrapped-request))
+      (is (= {:bogus ""} (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= body-string (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
@@ -97,7 +99,7 @@
                              :content-type       "text/plain"
                              :character-encoding "UTF-16"
                              :params             {:bogus ""}})]
-      (is (= {} (:params wrapped-request))
+      (is (= {:bogus ""} (:params wrapped-request))
           "Unexpected params in wrapped request")
       (is (= body-string-from-utf16 (:body wrapped-request))
           "Unexpected body for jruby in wrapped request")))
