@@ -92,19 +92,10 @@
    body into the ring request map.  Includes some special processing for
    a request destined for JRubyPuppet."
   [request]
-  (let [body-for-jruby (body-for-jruby request)
-        request-with-params (-> request
-                                (assoc :body body-for-jruby)
-                                pl-ring-params/params-request)]
-    ; :params may or may not been populated by ring middleware at this point.
-    ; Even if they were, though, they may have key/value pairs in them that
-    ; originated from the comidi route destructuring.  Ignore whatever may
-    ; have been there and repopulate it with what ring pulled from the form
-    ; and query params.
-    (assoc request-with-params :params
-                               (merge-with merge
-                                           (:form-params request-with-params)
-                                           (:query-params request-with-params)))))
+  (let [body-for-jruby (body-for-jruby request)]
+    (-> request
+        (assoc :body body-for-jruby)
+        pl-ring-params/params-request)))
 
 (def unauthenticated-client-info
   "Return a map with default info for an unauthenticated client"
