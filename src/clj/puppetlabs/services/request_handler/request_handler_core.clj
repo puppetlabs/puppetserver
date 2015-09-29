@@ -4,11 +4,11 @@
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.codec :as ring-codec]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
+            [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
 
@@ -210,9 +210,9 @@
   * request - Ring request containing client data"
   [config request]
   (if-let [authorization (:authorization request)]
-    {:client-cert    (:certificate authorization)
-     :client-cert-cn (:name authorization)
-     :authenticated  (true? (:authentic? authorization))}
+    {:client-cert    (ring-auth/authorized-certificate request)
+     :client-cert-cn (ring-auth/authorized-name request)
+     :authenticated  (true? (ring-auth/authorized-authentic? request))}
     (let [headers (:headers request)
           header-dn-name (:ssl-client-header config)
           header-dn-val (get headers header-dn-name)
