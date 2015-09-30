@@ -4,6 +4,8 @@ title: "Puppet Server: Configuration"
 canonical: "/puppetserver/latest/configuration.html"
 ---
 
+[auth.conf]: /puppet/latest/reference/config_file_auth.html
+
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
 up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences](./puppet_conf_setting_diffs.markdown) page.
 
@@ -98,7 +100,7 @@ This file contains the settings for Puppet Server itself.
       [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
       For a value of `true`, also the default value if not specified,
       authorization will be done in core Ruby puppet-agent code via the legacy
-      [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html)
+      [Puppet auth.conf][auth.conf]
       file.  For a value of `false`, authorization will be done by
       `trapperkeeper-authorization` via rules specified in an `authorization`
       configuration.  See the [`auth.conf`](#authconf) section on this page for
@@ -214,6 +216,8 @@ Puppet Server uses `trapperkeeper-authorization` for authorization control.
 For more detailed information on the format of this file, see
 [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md).
 
+#### Creating custom rules
+
 If you need to customize the authorization rules for Puppet Server, it is
 recommended that you create new rules rather than customizing the default
 "puppetlabs" rules which appear in this file.  In order for your rules to
@@ -260,6 +264,155 @@ authorization: {
 If you want to add a rule but let the default rules from Puppet take
 precedence over your new rule, you should use a `sort-order` for the rule
 which is in the range from 601 to 998 (inclusive).
+
+#### Legacy Puppet auth.conf compatibility considerations
+
+In general, the functionality provided for `trapperkeeper-authorization`
+"auth.conf"  rules is comparable to rule definitions with the core
+[Puppet auth.conf][auth.conf] file.  This section details some differences
+around rule definitions to keep in mind when migrating custom rules to the
+`trapperkeeper-authorization` "auth.conf" format.
+
+##### `path`
+
+For the `path` directive, core Puppet's "auth.conf" would use the presence of
+a tilde (`~`) character to distinguish a path representing a regex vs. a literal
+string which the endpoint must start with in order to be a match.
+
+For example:
+
+~~~~
+#regex
+path ~ ^/puppet/v3/report/([^/]+)$
+
+#literal string
+path /puppet/v3/report/
+~~~~
+
+For a `trapperkeeper-authorization` "auth.conf" rule, the distinction between
+a regex vs. a literal "starts-with" string is done via the use of an explicit
+`type` attribute in the rule.
+
+For example:
+
+~~~~
+#regex
+path: "^/puppet/v3/report/([^/]+)$"
+type: regex
+
+#literal string
+path: "/puppet/v3/report/"
+type: path
+~~~~
+
+Note also that it is advisible to delimit the contents of the `path` with
+double-quotes for `trapperkeeper-authorization` "auth.conf" rules.  While
+the HOCON configuration format does not always require wrapping string values
+with double-quotes, special characters - commonly used in regular expressions
+like (`*`) - cause HOCON parsing to fail unless the entire value is surrounded by
+double-quotes.
+
+##### `method`
+
+For the `method` directive, core Puppet's "auth.conf" would use "indirector"
+names in place of the actual HTTP method used by the request.
+
+For example:
+
+~~~~
+method: find
+~~~~
+
+For a `trapperkeeper-authorization` "auth.conf" rule, the actual HTTP-level
+method would be used instead - rather than the "indirector" names.  For the above
+example, this would be:
+
+~~~~
+method: [get, post]
+~~~~
+
+For a complete translation of "indirector" names to HTTP methods, see the
+[Puppet auth.conf](https://docs.puppetlabs.com/puppet/latest/reference/config_file_auth.html#method)
+documentation.
+
+##### `environment`
+
+For Puppet 4.x master endpoints, the `environment`, when applicable, is
+supplied via a query string parameter to the base URL in the request.
+`trapperkeeper-authorization` "auth.conf" rules provide a more generic
+approach for matching requests via query parameters.
+
+For example, a core Puppet "auth.conf" rule would include the following to
+indicate that a rule should only be considered a match for the "production"
+or "test" environments:
+
+~~~~
+environment: production,test
+~~~~
+
+For a `trapperkeeper-authorization` "auth.conf" rule, this could be
+expressed instead via the use of a `query-params` setting:
+
+~~~~
+query-params: {
+    environment: [ production, test ]
+}
+~~~~
+
+For Puppet 3.x master endpoints, the `environment` was represented as the first
+subpath in the URL as opposed to as a query parameter.  As noted in the
+[Puppet 3.x agent compatibility](#puppet-3x-agent-compatibility) section below,
+Puppet Server translates
+incoming Puppet 3.x-style URLs to Puppet 4.x-style URLs before evaluating
+them against `trapperkeeper-authorization` "auth.conf" rules, so the
+`query-params` approach above would replace environment-specific rules both for
+Puppet 3.x and Puppet 4.x.
+
+##### `auth`
+
+Via the `auth` directive, a core Puppet "auth.conf" rule would allow for
+specifying whether a rule was applicable to authenticated clients (i.e., ones
+that provide a client certificate), unauthenticated clients, or both.
+
+Rules in `trapperkeeper-authorization`'s "auth.conf" can make this distinction
+via the use of the `allow-unauthenticated` setting.
+
+For example, a rule that allows the client to not be authenticated in order to
+be a match could be specified like this in a core Puppet "auth.conf" rule:
+
+~~~~
+auth: any
+~~~~
+
+A corresponding `trapperkeeper-authorization` "auth.conf" rule would have:
+
+~~~~
+allow-unauthenticated: true
+~~~~
+
+##### `allow_ip` and `deny_ip`
+
+`trapperkeeper-authorization` "auth.conf" rules do not support either the
+`allow_ip` or `deny_ip` directives.
+
+#### Puppet 3.x agent compatibility
+
+Between the core Puppet 3.x and 4.x releases, the URL structure for Puppet
+master and CA endpoints changed.  For more information on the relevant
+changes, see:
+
+* [Puppet's HTTPS API (current)](/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
+* [Default Puppet 4.1.0 auth.conf](https://github.com/puppetlabs/puppet/blob/4.1.0/conf/auth.conf)
+* [Default Puppet 3.8.0 auth.conf](https://github.com/puppetlabs/puppet/blob/3.8.0/conf/auth.conf)
+
+Puppet Server lets agents make requests at the old URLs, but internally it
+handles them as requests to the new endpoints.  Rules in "auth.conf" that match
+Puppet 3-style URLs will have _no effect._  For more information, see
+the [Puppet agent compatibility](./compatibility_with_puppet_agent.markdown)
+documentation.
+
+#### Related configuration settings
 
 Note that, for backward compatibility, the values of other configuration
 settings control the specific endpoints for which `trapperkeeper-authorization`

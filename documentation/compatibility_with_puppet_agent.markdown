@@ -48,11 +48,33 @@ Puppet 3 and 4 use different HTTPS URLs to fetch configurations. Puppet Server l
 
 This means you must:
 
-* Find any _custom_ rules you've added to your [auth.conf file][auth.conf]. (Don't worry about default rules.)
+* Find any _custom_ rules you've added to your auth.conf file.  (Don't worry
+  about default rules.)
+
+ If you have set `jruby-puppet.use-legacy-auth-conf` in the "puppetserver.conf"
+ file to `false`, the "auth.conf" file that you will need to change is
+ `/etc/puppetlabs/puppetserver/conf.d/auth.conf`.  See the
+ [Puppet Server auth.conf](./configuration.markdown#authconf) page for more
+ information on this file format.
+
+ If you have not set `jruby-puppet.use-legacy-auth-conf` or have set
+ `jruby-puppet.use-legacy-auth-conf` to `true`, the "auth.conf" file that you
+ will need to change is `/etc/puppetlabs/puppet/auth.conf`.  See the
+ [Puppet auth.conf][auth.conf] page for more information on this file format.
+ Consider using a value of `false` for `jruby-puppet.use-legacy-auth-conf` and
+ switching to the newer "auth.conf" format since support for the legacy Puppet
+ "auth.conf" file under Puppet Server is deprecated and planned to be removed
+ in a future release.
+
 * Change each `path` to match Puppet 4 URLs.
     * Add `/puppet/v3` to the beginning of most paths.
-    * The `certificate_status` endpoint ignores auth.conf; configure access in Puppet Server's [ca.conf][] file.
-* Add the rules to `/etc/puppetlabs/puppet/auth.conf` on your Puppet Server.
+    * Note that `certificate*` endpoints are not validated via "auth.conf" rules
+      when `jruby-puppet.use-legacy-auth-conf` is not set or set to `true`.
+      If you need to configure authorization for these endpoints, consider
+      configuring this setting to `false`.  See the
+      [Puppet Server auth.conf](./configuration.markdown#authconf) page for
+      more information.
+* Add the rules to the appropriate "auth.conf" file on your Puppet Server.
 
 For more information, see:
 
@@ -63,7 +85,7 @@ For more information, see:
 
 #### auth.conf Rule Example
 
-Puppet 3 rules:
+Puppet 3 rules, using the legacy Puppet "auth.conf" format:
 
     # Puppet 3 auth.conf on the master
     path ~ ^/catalog/([^/]+).uuid$
@@ -75,9 +97,44 @@ Puppet 3 rules:
     method find
     allow $1
 
-Puppet Server 2 rules supporting both 3.x and 4.x agent nodes:
+When `jruby-puppet.use-legacy-auth-conf` is `false`, Puppet Server 2 rules in
+`/etc/puppetlabs/puppetserver/conf.d/auth.conf` supporting both 3.x and 4.x
+agent nodes:
 
-    # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1
+    authorization: {
+        version: 1
+        rules: [
+            ...
+            {
+              # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.2+
+              match-request: {
+                path: "^/puppet/v3/catalog/([^/]+).uuid$"
+                type: regex
+                method: [get, post]
+              }
+              allow: "/^$1|.uuid.*/"
+              sort-order: 200
+              name: "my catalog"
+            },
+            {
+              # Default rule, should follow the more specific rules
+              match-request: {
+                path: "^/puppet/v3/catalog/([^/]+)$"
+                type: regex
+                method: [get, post]
+              }
+              allow: "$1"
+              sort-order: 500
+              name: "puppetlabs catalog"
+            },
+            ...
+        ]
+     }
+
+When `jruby-puppet.use-legacy-auth-conf` is `true`,  Puppet Server 2 rules
+in `/etc/puppetlabs/puppet/auth.conf` supporting both 3.x and 4.x agent nodes:
+
+    # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1+
     path ~ ^/puppet/v3/catalog/([^/]+).uuid$
     method find
     allow /^$1\.uuid.*/
