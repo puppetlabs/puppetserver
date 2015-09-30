@@ -229,12 +229,12 @@
           (doseq [[header-name header-val]
                   {header-dn-name header-dn-val
                    header-auth-name header-auth-val
-                   header-client-cert-name header-cert-val}]
-            (if header-val
-              (log/warn "The HTTP header" header-name "was specified,"
-                        "but the master config option allow-header-cert-info"
-                        "was either not set, or was set to false."
-                        "This header will be ignored.")))
+                   header-client-cert-name header-cert-val}
+                  :when header-val]
+            (log/warn "The HTTP header" header-name "was specified,"
+                      "but the master config option allow-header-cert-info"
+                      "was either not set, or was set to false."
+                      "This header will be ignored."))
           (let [ssl-cert (:ssl-client-cert request)]
             (-> (ssl-auth-info ssl-cert)
                 (assoc :client-cert ssl-cert))))))))

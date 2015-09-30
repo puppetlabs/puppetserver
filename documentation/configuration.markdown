@@ -263,7 +263,7 @@ which is in the range from 601 to 998 (inclusive).
 
 Note that, for backward compatibility, the values of other configuration
 settings control the specific endpoints for which `trapperkeeper-authorization`
-is usedr:
+is used:
 
 * [`jruby-puppet.use-legacy-auth-conf`](#puppetserverconf) - Controls the
  method to be used for authorizing access to the HTTP endpoints served by the
@@ -273,7 +273,7 @@ is usedr:
  For a value of `true`, also the default value if not specified, authorization
  will be done in core Ruby puppet-agent code via the legacy
  [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html)
- file.  For a value of `false`, authorization will be done through via
+ file.  For a value of `false`, authorization will be done via
  `trapperkeeper-authorization`.
 
 * `puppet-admin.authorization-required` and `puppet-admin.client-whitelist` -
