@@ -19,11 +19,11 @@
                                settings)]
       (if (not-empty whitelist-settings)
         (log/warn
-          (str "The 'client-whitelist' and 'authorization-required' settings in "
-               "the 'puppet-admin' section are deprecated and will be removed "
-               "in a future release.  Remove these settings and instead create an "
-               "appropriate authorization rule in the "
-               "/etc/puppetlabs/puppetserver/conf.d file.")))
+          "The 'client-whitelist' and 'authorization-required' settings in"
+          "the 'puppet-admin' section are deprecated and will be removed"
+          "in a future release.  Remove these settings and create an"
+          "appropriate authorization rule in the"
+          "/etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
       (add-ring-handler
         this
         (core/build-ring-handler route

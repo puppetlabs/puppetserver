@@ -2,6 +2,7 @@
   (:import (java.io StringReader ByteArrayInputStream))
   (:require [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [clojure.test :refer :all]
@@ -34,15 +35,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
-
-(deftest get-cert-common-name-test
-  (testing (str "expected common name can be extracted from the certificate on "
-                "a request")
-    (let [cert (ssl-utils/pem->cert
-                 (str test-resources-dir "/localhost.pem"))]
-      (is (= "localhost" (core/get-cert-common-name cert)))))
-  (testing "nil returned for cn when certificate on request is nil"
-    (is (nil? (core/get-cert-common-name nil)))))
 
 (deftest wrap-params-for-jruby-test
   (testing "get with no query parameters returns empty params"
@@ -122,6 +114,39 @@
            "x-client-verify"))
     (is (= (core/unmunge-http-header-name "HTTP_X_CLIENT_DN")
            "x-client-dn"))))
+
+(deftest cert-info-from-authorization
+  (testing "authorization section in request"
+    (let [url-encoded-cert (-> (str test-resources-dir "/localhost.pem")
+                               slurp
+                               ring-codec/url-encode)
+          cert-from-authorization (:cert (ssl-simple/gen-self-signed-cert
+                                          "authorization-client"
+                                          1
+                                          {:keylength 512}))
+          cert-from-ssl (:cert (ssl-simple/gen-self-signed-cert
+                                "ssl-client"
+                                1
+                                {:keylength 512}))]
+      (doseq [allow-header-cert-info [false true]]
+        (testing (str "for allow-header-cert-info " allow-header-cert-info)
+          (let [req (core/as-jruby-request
+                     (puppet-server-config allow-header-cert-info)
+                     {:request-method :GET
+                      :authorization {:name "authorization-client"
+                                      :authentic? true
+                                      :certificate cert-from-authorization}
+                      :headers {"x-client-verify" "SUCCESS"
+                                "x-client-dn" "CN=x-client"
+                                "x-client-cert" url-encoded-cert}
+                      :ssl-client-cert cert-from-ssl})]
+            (testing "has proper authenticated value"
+              (is (true? (get req :authenticated))))
+            (testing "has proper name"
+              (is (= "authorization-client" (get req :client-cert-cn))))
+            (testing "has proper cert"
+              (is (identical? cert-from-authorization
+                              (get req :client-cert))))))))))
 
 (deftest cert-info-in-headers
   "In the case where Puppet Server is running under HTTP with an upstream HTTPS
