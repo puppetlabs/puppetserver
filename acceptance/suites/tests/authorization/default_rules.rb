@@ -31,16 +31,14 @@ def curl_authenticated(path)
   curl += '--key $(puppet config print hostprivkey) '
   curl += '--cacert $(puppet config print localcacert) '
   curl += "--write-out '\\nSTATUSCODE=%{http_code}\\n' "
-  curl += 'https://$(hostname -f):8140'
-  curl += path
+  curl += "https://#{master}:8140#{path}"
   on(master, curl)
 end
 
 def curl_unauthenticated(path)
   curl = 'curl --insecure '
   curl += "--write-out '\\nSTATUSCODE=%{http_code}\\n' "
-  curl += 'https://$(hostname -f):8140'
-  curl += path
+  curl += "https://#{master}:8140#{path}"
   on(master, curl)
 end
 
@@ -58,7 +56,8 @@ end
 def report_query(node)
   curl = "/puppet/v3/report/#{node}?environment=production "
   curl += '-X PUT -H "Content-Type: text/pson" '
-  curl += '--data "{\"host\":\"$(hostname -f)\", \"metrics\":{}, \"logs\":[], \"resource_statuses\":{}}"'
+  curl += '--data "{\"host\":\"' + node
+  curl += '\",\"metrics\":{},\"logs\":[],\"resource_statuses\":{}}"'
 end
 
 with_puppet_running_on(master, {}) do
@@ -71,35 +70,35 @@ with_puppet_running_on(master, {}) do
   end
 
   step 'catalog endpoint' do
-    curl_authenticated('/puppet/v3/catalog/$(hostname -f)?environment=production')
+    curl_authenticated("/puppet/v3/catalog/#{master}?environment=production")
     assert_allowed
 
     curl_authenticated('/puppet/v3/catalog/notme?environment=production')
     assert_denied(/denied by rule 'puppetlabs catalog'/)
 
-    curl_unauthenticated('/puppet/v3/catalog/$(hostname -f)?environment=production')
+    curl_unauthenticated("/puppet/v3/catalog/#{master}?environment=production")
     assert_denied(/denied by rule 'puppetlabs catalog'/)
   end
 
   step 'node endpoint' do
-    curl_authenticated('/puppet/v3/node/$(hostname -f)?environment=production')
+    curl_authenticated("/puppet/v3/node/#{master}?environment=production")
     assert_allowed
 
     curl_authenticated('/puppet/v3/node/notme?environment=production')
     assert_denied(/denied by rule 'puppetlabs node'/)
 
-    curl_unauthenticated('/puppet/v3/node/$(hostname -f)?environment=production')
+    curl_unauthenticated("/puppet/v3/node/#{master}?environment=production")
     assert_denied(/denied by rule 'puppetlabs node'/)
   end
 
   step 'report endpoint' do
-    curl_authenticated(report_query('$(hostname -f)'))
+    curl_authenticated(report_query(master))
     assert_allowed
 
     curl_authenticated(report_query('notme'))
     assert_denied(/denied by rule 'puppetlabs report'/)
 
-    curl_unauthenticated(report_query('$(hostname -f)'))
+    curl_unauthenticated(report_query(master))
     assert_denied(/denied by rule 'puppetlabs report'/)
   end
 
