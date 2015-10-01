@@ -26,7 +26,9 @@
           "Initializing with the following settings from core Puppet:\n%s"
           (ks/pprint-to-string puppet-config))
         (core/init-webserver! override-webserver-settings!
-                              (get-in tk-config [:webserver])
+                              (get-in tk-config
+                                      [:webserver :puppet-server]
+                                      (get-in tk-config [:webserver]))
                               puppet-config)
         (assoc context :puppet-config
                        {:puppet-server puppet-config}))))

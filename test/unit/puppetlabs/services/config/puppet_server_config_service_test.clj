@@ -91,3 +91,27 @@
                                                             :cacert "meow")
                 ; do nothing - bootstrap should throw the exception
                 )))))))
+
+(deftest multi-webserver-setting-override
+  (let [webserver-config {:ssl-cert "thehostcert"
+                          :ssl-key "thehostprivkey"
+                          :ssl-ca-cert "thelocalcacert"
+                          :ssl-crl-path "thecacrl"
+                          :port 8081}]
+    (testing (str "webserver settings not overridden when mult-webserver config is provided"
+                  "and full ssl cert configuration is available")
+      (with-test-logging
+        (tk-testutils/with-app-with-config
+          app
+          service-and-deps
+          (assoc required-config :webserver {:puppet-server webserver-config})
+          (is (logged? #"Not overriding webserver settings with values from core Puppet")))))
+
+    (testing (str "webserver settings not overridden when single webserver is provided"
+                  "and full ssl cert configuration is available")
+      (with-test-logging
+        (tk-testutils/with-app-with-config
+          app
+          service-and-deps
+          (assoc required-config :webserver webserver-config)
+          (is (logged? #"Not overriding webserver settings with values from core Puppet")))))))
