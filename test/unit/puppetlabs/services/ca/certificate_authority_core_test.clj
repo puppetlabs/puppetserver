@@ -621,7 +621,7 @@
   (testing "a request with a certificate not on the whitelist is rejected"
     (let [settings (assoc (testutils/ca-settings cadir)
                      :access-control {:certificate-status
-                                      {:client-whitelist []}})
+                                      {:client-whitelist ["not-localhost"]}})
           test-app (build-ring-handler settings "1.2.3.4")]
       (doseq [endpoint ["certificate_status" "certificate_statuses"]]
         (testing endpoint

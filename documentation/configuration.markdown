@@ -26,22 +26,6 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 * [`master.conf`](./config_file_master.html) ([deprecated][])
 * [`ca.conf`](./config_file_ca.html) ([deprecated][])
 
-#### Example (Legacy)
-
-If you are not using the new authorization methods, follow this structure to configure  `certificate_status` and `certificate_statuses` endpoint access in `ca.conf`:
-
-~~~
-# CA-related settings - deprecated in favor of "auth.conf"
-certificate-authority: {
-   certificate-status: {
-       authorization-required: true
-       client-whitelist: []
-   }
-}
-~~~
-
-This example requires authorization but does not whitelist any clients.
-
 ## Logging
 
 All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetserver/puppetserver.log` (open source releases) or `/var/log/pe-puppetserver/puppetserver.log` (Puppet Enterprise). The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
