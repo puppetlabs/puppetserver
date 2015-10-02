@@ -268,7 +268,7 @@ which is in the range from 601 to 998 (inclusive).
 #### Legacy Puppet auth.conf compatibility considerations
 
 In general, the functionality provided for `trapperkeeper-authorization`
-"auth.conf"  rules is comparable to rule definitions with the core
+"auth.conf" rules is comparable to rule definitions with the core
 [Puppet auth.conf][auth.conf] file.  This section details some differences
 around rule definitions to keep in mind when migrating custom rules to the
 `trapperkeeper-authorization` "auth.conf" format.
