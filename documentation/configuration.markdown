@@ -5,15 +5,16 @@ canonical: "/puppetserver/latest/configuration.html"
 ---
 
 [auth.conf]: /puppet/latest/reference/config_file_auth.html
+[`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
+[`puppetserver.conf`]: ./configuration.html#puppetserverconf
 
-Puppet Server honors almost all settings in `puppet.conf` and should pick them
-up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences](./puppet_conf_setting_diffs.markdown) page.
+Puppet Server honors almost all settings in `puppet.conf` and should pick them up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority, we have introduced new Puppet Server-specific configuration files and settings. These new files and settings are detailed below.  For more information on the specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby master, see the [puppet.conf differences](./puppet_conf_setting_diffs.markdown) page.
 
 ## Config Files
 
-All of Puppet Server's new config files and settings (with the exception of the [logging config file](#logging)) are located in the `conf.d` directory. These new config files are in HOCON format. HOCON keeps the basic structure of JSON, but is a more human-readable config file format. You can find details about this format in the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
+All of Puppet Server's new config files and settings (with the exception of the [logging config file](#logging)) are located in the `conf.d` directory, located by default at `/etc/puppetlabs/puppetserver/conf.d`. These new config files are in the HOCON format, which keeps the basic structure of JSON but is more human-readable. For more information, see the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
 
-At startup, Puppet Server reads all the `.conf` files found in this directory, located at `/etc/puppetlabs/puppetserver/conf.d`. Note that if you change these files and their settings, you must restart Puppet Server for those changes to take effect. The `conf.d` directory contains the following files and settings:
+At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory. You must restart Puppet Server for any changes to those files to take effect. The `conf.d` directory contains the following files and settings:
 
 ### `global.conf`
 
@@ -48,8 +49,7 @@ web-router-service: {
 }
 ~~~
 
-The above settings set the webserver to require a valid certificate from the client; to listen on all available hostnames for encrypted HTTPS traffic; and to use port 8140 for encrypted HTTPS traffic. For full documentation, including a complete list of available settings and values, see
-[Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
+The above settings set the webserver to require a valid certificate from the client; to listen on all available hostnames for encrypted HTTPS traffic; and to use port 8140 for encrypted HTTPS traffic. For full documentation, including a complete list of available settings and values, see [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
 
 By default, Puppet Server is configured to use the correct Puppet Master and CA certificates. If you're using an external CA and have provided your own certificates and keys, make sure `webserver.conf` points to the correct file. For details about configuring an external CA, see the [External CA Configuration](./external_ca_configuration.markdown) page.
 
@@ -63,76 +63,41 @@ This file contains the settings for Puppet Server itself.
 
 > **Note:** Most users should never set the `master-conf-dir` or `master-code-dir` settings to a non-default value. If you do, you must also change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module` will use the same directories as Puppet Server. Note also that a non-default `confdir` must be specified on the command line when running commands, since that setting must be set before Puppet tries to find its config file.
 
-* The `jruby-puppet` settings configure the interpreter:
-    * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
-    * `gem-home`: This setting determines where JRuby looks for gems. It is
+*   The `jruby-puppet` settings configure the interpreter:
+    *   `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
+    *   `gem-home`: This setting determines where JRuby looks for gems. It is
       also used by the `puppetserver gem` command line tool. If not specified,
       uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
-    * `master-conf-dir`: Optionally, set the path to the Puppet
+    *   `master-conf-dir`: Optionally, set the path to the Puppet
       [configuration directory][]. If not specified, the default is `/etc/puppetlabs/puppet`.
-    * `master-code-dir`: Optionally, set the path to the Puppet [code directory][].
+    *   `master-code-dir`: Optionally, set the path to the Puppet [code directory][].
       If not specified, the default is `/etc/puppetlabs/code`.
-    * `master-var-dir`: Optionally, set the path to the Puppet [cache directory][].
+    *   `master-var-dir`: Optionally, set the path to the Puppet [cache directory][].
       If not specified, the default is
       `/opt/puppetlabs/server/data/puppetserver`.
-    * `master-run-dir`: Optionally, set the path to the run directory, where the service's PID file is stored.
+    *   `master-run-dir`: Optionally, set the path to the run directory, where the service's PID file is stored.
       If not specified, the default is `/var/run/puppetlabs/puppetserver`.
-    * `master-log-dir`: Optionally, set the path to the log directory.
+    *   `master-log-dir`: Optionally, set the path to the log directory.
       If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
-    * `max-active-instances`: Optionally, set the maximum number of JRuby
+    *   `max-active-instances`: Optionally, set the maximum number of JRuby
       instances to allow. Defaults to 'num-cpus - 1', with a minimum default
       value of 1 and a maximum default value of 4.
-    * `max-requests-per-instance`: Optionally, limit how many HTTP requests a
-      given JRuby instance will handle in its lifetime. When a JRuby instance
-      reaches this limit, it gets flushed from memory and replaced with a fresh
-      one. Defaults to 0, which disables automatic JRuby flushing.
+    *   `max-requests-per-instance`: Optionally, limit how many HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it gets flushed from memory and replaced with a fresh one. Defaults to 0, which disables automatic JRuby flushing.
 
-        This can be useful for working around buggy module code that would
-        otherwise cause memory leaks, but it causes a slight performance penalty
-        whenever a new JRuby has to reload all of the Puppet Ruby code.  If memory
-        leaks from module code are not an issue in your deployment, the default
-        value will give the best performance.
-    * `borrow-timeout`: Optionally, set the timeout when attempting to borrow
-      an instance from the JRuby pool in milliseconds. Defaults to 1200000.
-    * `use-legacy-auth-conf`: Optionally, set the method to be used for
-      authorizing access to the HTTP endpoints served by the "master" service.
-      The applicable endpoints include those listed in the
-      [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
-      For a value of `true`, also the default value if not specified,
-      authorization will be done in core Ruby puppet-agent code via the legacy
-      [Puppet auth.conf][auth.conf]
-      file.  For a value of `false`, authorization will be done by
-      `trapperkeeper-authorization` via rules specified in an `authorization`
-      configuration.  See the [`auth.conf`](#authconf) section on this page for
-      more information.  Note that the legacy `auth.conf` is now deprecated in
-      Puppet Server, so it is recommended to use `trapperkeeper-authorization`
-      instead.
-* The `profiler` settings configure profiling:
-    * `enabled`: if this is set to `true`, it enables profiling for the Puppet
-    Ruby code. Defaults to `false`.
-* The `puppet-admin` section configures the Puppet Server's administrative API.
-  (This is a new API, which isn't provided by Rack or WEBrick Puppet masters.)
-  With the introduction of `trapperkeeper-authorization` for authorizing
-  requests made to Puppet Server, the settings in this section are now
-  deprecated.  You should consider removing these settings and configuring
-  the desired authorization behavior through `trapperkeeper-authorization`
-  instead.  See the [`auth.conf`](#authconf) section for more details.
-    * `authorization-required` determines whether a client
-    certificate is required to access the endpoints in this API.  If set to
-    `false`, all requests will be permitted to access this API.  If set to
-    `true`, only the clients whose certnames are included in the
-    `client-whitelist` setting are allowed access to the admin API.  If this
-    setting is not specified but the `client-whitelist` setting is specified,
-    the default value for this setting is `true`.
-    * `client-whitelist` contains a list of client certnames that are whitelisted
-    to access the admin API. Any requests made to this endpoint that do not
-    present a valid client certificate mentioned in this list will be denied
-    access.
+        This can be useful for working around buggy module code that would otherwise cause memory leaks, but it causes a slight performance penalty whenever a new JRuby has to reload all of the Puppet Ruby code.  If memory leaks from module code are not an issue in your deployment, the default value will give the best performance.
+    *   `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
+    *   `use-legacy-auth-conf`: Optionally, set the method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints include those listed in the [Puppet v3 HTTP API](/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
 
-   If neither the `authorization-required` nor the `client-whitelist` setting
-   is specified, authorization to the admin API endpoints is controlled by
-   `trapperkeeper-authorization`, through settings specified in the
-   [`auth.conf`](#authconf) file.
+      For a value of `true` or if this setting is not specified, Puppet uses the core Ruby `puppet-agent` code for authorization via the legacy [Puppet `auth.conf`][auth.conf] format, which is [deprecated][] and will be removed in a future version of Puppet Server.
+      
+      For a value of `false`, Puppet uses a new HOCON configuration file format and location. See the [`auth.conf`](#authconf) section below for more information.
+*   The `profiler` settings configure profiling:
+    *   `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. Default: `false`.
+*   The `puppet-admin` section configures the Puppet Server's administrative API. (This is a new API and isn't provided by Rack or WEBrick Puppet masters.) With the introduction of a new method for authorizing requests made to Puppet Server in Puppet Server 2.2, the settings in this section are now deprecated. You should consider removing these settings in favor of the new authorization method and `auth.conf` format and location. See the [`auth.conf`](#authconf) section for more information.
+    *   `authorization-required` determines whether a client certificate is required to access the endpoints in this API. If set to `false`, all requests will be permitted to access this API. If set to `true`, only the clients whose certnames are included in the `client-whitelist` setting are allowed access to the admin API. If this setting is not specified but the `client-whitelist` setting is specified, the default value for this setting is `true`.
+    *   `client-whitelist` contains an array of client certificate names that are whitelisted to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
+
+   If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf`](#authconf) formats to access the admin API endpoints.
 
 ~~~
 # configuration for the JRuby interpreters
@@ -190,168 +155,65 @@ profiler: {
 
 ### `auth.conf`
 
-This file contains rules for authorizing access to the HTTP endpoints that
-Puppet Server hosts.  The file looks something like this:
+This file, located by default at `/etc/puppetlabs/puppet/auth.conf`, contains rules for authorizing access to Puppet Server's HTTP API endpoints. As of version 2.2, Puppet Server can use [`trapperkeeper-authorization`][] for authentication, which is configured by a new HOCON `/etc/puppetlabs/puppet/auth.conf`. The core [Puppet `auth.conf`][auth.conf] authorization method and configuration file format is deprecated and will be removed in a future version of Puppet Server.
 
-~~~
-authorization: {
-    version: 1
-    # allow-header-cert-info: false
-    rules: [
-        {
-            # Allow nodes to retrieve their own catalog
-            match-request: {
-                path: "^/puppet/v3/catalog/([^/]+)$"
-                type: regex
-                method: [get, post]
-            }
-            allow: "$1"
-            sort-order: 500
-            name: "puppetlabs catalog"
-        },
-...
-~~~
+The new Puppet Server authentication basic configuration and functionality is similar to the legacy method: you define rules in `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule. However, the new HOCON format provides different parameters and syntax, and slightly different functionality, for rules than the legacy format.
 
-Puppet Server uses `trapperkeeper-authorization` for authorization control.
-For more detailed information on the format of this file, see
-[Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md).
+#### Parameters
 
-#### Creating custom rules
-
-If you need to customize the authorization rules for Puppet Server, it is
-recommended that you create new rules rather than customizing the default
-"puppetlabs" rules which appear in this file.  In order for your rules to
-"override" any corresponding "puppetlabs" rules, you should use a
-`sort-order` for those rules which is in the range of 1 to 399 (inclusive).
-Note that default rules from Puppet occupy the range from 400 to 600 (inclusive).
-
-For example, if you wanted to customize the behavior of the default "catalog"
-rule from above to not only allow nodes to retrieve their own catalog but also
-allow an "administrative" node to retrieve any node's catalog, you could add
-a rule like this:
-
-~~~
-authorization: {
-    version: 1
-    # allow-header-cert-info: false
-    rules: [
-        {
-            # Allow nodes to retrieve their own catalog
-            # and admin nodes to retrieve any catalogs
-            match-request: {
-                path: "^/puppet/v3/catalog/([^/]+)$"
-                type: regex
-                method: [get, post]
-            }
-            allow: ["$1", "myadmin.host.com"]
-            sort-order: 200
-            name: "my catalog"
-        },
-        {
-            # Allow nodes to retrieve their own catalog
-            match-request: {
-                path: "^/puppet/v3/catalog/([^/]+)$"
-                type: regex
-                method: [get, post]
-            }
-            allow: "$1"
-            sort-order: 500
-            name: "puppetlabs catalog"
-        },
-...
-~~~
-
-If you want to add a rule but let the default rules from Puppet take
-precedence over your new rule, you should use a `sort-order` for the rule
-which is in the range from 601 to 998 (inclusive).
-
-#### Legacy Puppet auth.conf compatibility considerations
-
-In general, the functionality provided for `trapperkeeper-authorization`
-"auth.conf"  rules is comparable to rule definitions with the core
-[Puppet auth.conf][auth.conf] file.  This section details some differences
-around rule definitions to keep in mind when migrating custom rules to the
-`trapperkeeper-authorization` "auth.conf" format.
+You can use the following parameters when writing or migrating custom rules.
 
 ##### `path`
 
-For the `path` directive, core Puppet's "auth.conf" would use the presence of
-a tilde (`~`) character to distinguish a path representing a regex vs. a literal
-string which the endpoint must start with in order to be a match.
-
-For example:
+For the `path` parameter, the legacy `auth.conf` format uses the presence of a tilde (`~`) character to distinguish a path representing a regular expression from a literal string that a matching endpoint must start with.
 
 ~~~~
-#regex
+# Regular expression to match a path in a URL.
 path ~ ^/puppet/v3/report/([^/]+)$
 
-#literal string
+# Literal string to match at the start of a URL's path.
 path /puppet/v3/report/
 ~~~~
 
-For a `trapperkeeper-authorization` "auth.conf" rule, the distinction between
-a regex vs. a literal "starts-with" string is done via the use of an explicit
-`type` attribute in the rule.
-
-For example:
+For HOCON `auth.conf` rules, distinguish between a regular expression and a literal string by explicitly stating the `type` attribute.
 
 ~~~~
-#regex
+# Regular expression to match a path in a URL.
 path: "^/puppet/v3/report/([^/]+)$"
 type: regex
 
-#literal string
+# Literal string to match at the start of a URL's path.
 path: "/puppet/v3/report/"
 type: path
 ~~~~
 
-Note also that it is advisible to delimit the contents of the `path` with
-double-quotes for `trapperkeeper-authorization` "auth.conf" rules.  While
-the HOCON configuration format does not always require wrapping string values
-with double-quotes, special characters - commonly used in regular expressions
-like (`*`) - cause HOCON parsing to fail unless the entire value is surrounded by
-double-quotes.
+> **Note:** Remember to delimit the contents of the `path` with double quotes for HOCON `auth.conf` rules. While the HOCON configuration format does not always require wrapping string values with double quotes, special characters commonly used in regular expressions (such as `*`) break HOCON parsing unless the entire value is surrounded by double quotes.
 
 ##### `method`
 
-For the `method` directive, core Puppet's "auth.conf" would use "indirector"
-names in place of the actual HTTP method used by the request.
-
-For example:
+For the `method` parameter's value, the legacy `auth.conf` format uses indirector names in place of the request's HTTP method. For a complete translation of indirector names to HTTP methods, see the [Puppet `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html#method).
 
 ~~~~
 method: find
 ~~~~
 
-For a `trapperkeeper-authorization` "auth.conf" rule, the actual HTTP-level
-method would be used instead - rather than the "indirector" names.  For the above
-example, this would be:
+For HOCON `auth.conf` rules, use HTTP methods instead of indicators in the parameter's value.
 
 ~~~~
 method: [get, post]
 ~~~~
 
-For a complete translation of "indirector" names to HTTP methods, see the
-[Puppet auth.conf](https://docs.puppetlabs.com/puppet/latest/reference/config_file_auth.html#method)
-documentation.
-
 ##### `environment`
 
-For Puppet 4.x master endpoints, the `environment`, when applicable, is
-supplied via a query string parameter to the base URL in the request.
-`trapperkeeper-authorization` "auth.conf" rules provide a more generic
-approach for matching requests via query parameters.
+For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter to the request's base URL. 
 
-For example, a core Puppet "auth.conf" rule would include the following to
-indicate that a rule should only be considered a match for the "production"
-or "test" environments:
+In the legacy Puppet `auth.conf` format, the `environment` parameter takes a comma-separated list and applies them as query parameters to the base URL.
 
 ~~~~
 environment: production,test
 ~~~~
 
-For a `trapperkeeper-authorization` "auth.conf" rule, this could be
-expressed instead via the use of a `query-params` setting:
+In the new HOCON format, use the `query-params` setting and provide the list as a HOCON array of the setting's `environment` parameter:
 
 ~~~~
 query-params: {
@@ -359,78 +221,44 @@ query-params: {
 }
 ~~~~
 
-For Puppet 3.x master endpoints, the `environment` was represented as the first
-subpath in the URL as opposed to as a query parameter.  As noted in the
-[Puppet 3.x agent compatibility](#puppet-3x-agent-compatibility) section below,
-Puppet Server translates
-incoming Puppet 3.x-style URLs to Puppet 4.x-style URLs before evaluating
-them against `trapperkeeper-authorization` "auth.conf" rules, so the
-`query-params` approach above would replace environment-specific rules both for
-Puppet 3.x and Puppet 4.x.
+> **Note:** For Puppet 3 master endpoints, the `environment` was represented as the first subpath in the URL instead of as a query parameter. As noted in the [Puppet 3 agent compatibility section](#puppet-3-agent-compatibility), Puppet Server translates incoming Puppet 3-style URLs to Puppet 4-style URLs before evaluating them against the new HOCON `auth.conf` rules, so the `query-params` approach above would replace environment-specific rules both for Puppet 3 and Puppet 4.
 
-##### `auth`
+##### `auth` (Legacy) and `allow-unauthenticated`
 
-Via the `auth` directive, a core Puppet "auth.conf" rule would allow for
-specifying whether a rule was applicable to authenticated clients (i.e., ones
-that provide a client certificate), unauthenticated clients, or both.
+In the legacy Puppet `auth.conf` format, use the `auth` parameter to specify whether a rule applies only to authenticated clients, such as those that provide a client certificate (`on`), only to unauthenticated clients (`off`), or to both (`any`).
 
-Rules in `trapperkeeper-authorization`'s "auth.conf" can make this distinction
-via the use of the `allow-unauthenticated` setting.
-
-For example, a rule that allows the client to not be authenticated in order to
-be a match could be specified like this in a core Puppet "auth.conf" rule:
+For example, this legacy `auth.conf` rule matches all clients, including those that do not have to be authenticated:
 
 ~~~~
 auth: any
 ~~~~
 
-A corresponding `trapperkeeper-authorization` "auth.conf" rule would have:
+If you enable the new authentication method, Puppet Server only evaluates whether to allow or deny requests _after_ a rule is matched. As such, there is no directly equivalent behavior to the legacy `auth` parameter. However, you can instruct Puppet Server to allow or deny requests from unauthenticated clients by using the Boolean `allow-unauthenticated` parameter:
 
 ~~~~
 allow-unauthenticated: true
 ~~~~
 
-##### `allow_ip` and `deny_ip`
+> **Note:** The new authentication method introduced in Puppet Server 2.2 does not support the `allow_ip` or `deny_ip` parameters.
 
-`trapperkeeper-authorization` "auth.conf" rules do not support either the
-`allow_ip` or `deny_ip` directives.
+#### Puppet 3 agent compatibility
 
-#### Puppet 3.x agent compatibility
+Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
 
-Between the core Puppet 3.x and 4.x releases, the URL structure for Puppet
-master and CA endpoints changed.  For more information on the relevant
-changes, see:
+*   [Puppet 4 HTTPS API documentation](/puppet/latest/reference/http_api/http_api_index.html)
+*   [Puppet 3 HTTPS API documentation](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
+*   [Puppet 4 `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html)
+*   [Puppet 3 `auth.conf` documentation](/puppet/3.8/reference/config_file_auth.html)
 
-* [Puppet's HTTPS API (current)](/puppet/latest/reference/http_api/http_api_index.html)
-* [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
-* [Default Puppet 4.1.0 auth.conf](https://github.com/puppetlabs/puppet/blob/4.1.0/conf/auth.conf)
-* [Default Puppet 3.8.0 auth.conf](https://github.com/puppetlabs/puppet/blob/3.8.0/conf/auth.conf)
+Puppet Server allows agents to make requests at the old URLs and internally translates them as requests to the new endpoints. However, rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._ For more information, see the [Puppet agent compatibility](./compatibility_with_puppet_agent.markdown) documentation.
 
-Puppet Server lets agents make requests at the old URLs, but internally it
-handles them as requests to the new endpoints.  Rules in "auth.conf" that match
-Puppet 3-style URLs will have _no effect._  For more information, see
-the [Puppet agent compatibility](./compatibility_with_puppet_agent.markdown)
-documentation.
+#### Related Configuration Settings
 
-#### Related configuration settings
+For backward compatibility, other [`puppetserver.conf`][] settings control specific endpoints for the new Puppet Server authorization method:
 
-Note that, for backward compatibility, the values of other configuration
-settings control the specific endpoints for which `trapperkeeper-authorization`
-is used:
+*   [`use-legacy-auth-conf` in the `jruby-puppet` section](#puppetserverconf): If `true`, use the legacy Ruby authorization methods and  [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html) format. If `false`, use the new `trapperkeeper-authorization` authorization method and HOCON `auth.conf` format. Default: `true`.
 
-* [`jruby-puppet.use-legacy-auth-conf`](#puppetserverconf) - Controls the
- method to be used for authorizing access to the HTTP endpoints served by the
- "master" service.  The applicable endpoints include those listed in the
- [Puppet V3 HTTP API](https://docs.puppetlabs.com/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
-
- For a value of `true`, also the default value if not specified, authorization
- will be done in core Ruby puppet-agent code via the legacy
- [`auth.conf`](https://docs.puppetlabs.com/puppet/4.2/reference/config_file_auth.html)
- file.  For a value of `false`, authorization will be done via
- `trapperkeeper-authorization`.
-
-* `puppet-admin.authorization-required` and `puppet-admin.client-whitelist` -
- If either of these settings is present in the configuration, requests made to
+*   `authorization-required` and `client-whitelist` in the `puppet-admin` section: If either of these settings is present in the configuration, requests made to
  Puppet Server's administrative API will be performed per the values for these
  settings.  See the [`puppetserver.conf/puppet-admin`](#puppetserverconf)
  section for more information on these settings.  If neither the
@@ -509,52 +337,60 @@ In a default installation, this file doesn't exist.
 # }
 ~~~
 
+#### HOCON `auth.conf` Examples
+
+~~~
+authorization: {
+    version: 1
+    # allow-header-cert-info: false
+    rules: [
+        {
+            # Allow nodes to retrieve their own catalog
+            match-request: {
+                path: "^/puppet/v3/catalog/([^/]+)$"
+                type: regex
+                method: [get, post]
+            }
+            allow: "$1"
+            sort-order: 500
+            name: "puppetlabs catalog"
+        },
+        ...
+    ]
+}
+~~~
+
+For more information on this format, see
+[the `trapperkeepr-authorization` documentation](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md).
+
 ### `ca.conf`
 
-This file contains settings for the Certificate Authority service.  The only
-settings that this file supports are `authorization-required` and
-`client-whitelist`.  These settings are now deprecated in favor of the
-authorization settings in the `auth.conf` file that
-`trapperkeeper-authorization` uses.  For more information, see the
-[`auth.conf`](#authconf) section.  Since these settings are now deprecated,
-the `ca.conf` file no longer appears in a Puppet Server package.
+This file contains settings for the Certificate Authority (CA) service.
 
-* `certificate-status` contains settings for the `certificate_status` and
- `certificate_statuses` HTTP endpoints.  These endpoints allow certs to be
- signed, revoked, and deleted via HTTP requests.  This provides full control
- over Puppet's security, and access should almost always be heavily restricted.
- Puppet Enterprise uses these endpoints to provide a cert signing interface in
- the PE console. For full documentation, see the
- [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md) page.
+> **Deprecation Note:** This file only supports the `authorization-required` and `client-whitelist` settings, which are deprecated as of Puppet Server 2.2 in favor of new authorization methods configured in the HOCON-based [`auth.conf`](#authconf) file. Since these settings are deprecated and the new authorization methods are enabled by default, Puppet Server no longer includes a default `ca.conf` file in the Puppet Server package.
 
-    * `authorization-required` determines whether a client certificate
-     is required to access the certificate status(es) endpoints.  If set to
-     `false`, all requests will be permitted to access this API.  If set to
-     `true`, only the clients whose certnames are included in the
-     `client-whitelist` setting are allowed access to the admin API.  If this
-     setting is not specified but the `client-whitelist` setting is specified,
-     the default value for this setting is `true`.
+The `certificate-status` setting in `ca.conf` provides legacy configuration options for access to the `certificate_status` and `certificate_statuses` HTTP endpoints. These endpoints allow certificates to be signed, revoked, and deleted via HTTP requests, which provides full control over Puppet's ability to securely authorize access; therefore, you should **always** restrict access to `ca.conf`. 
 
-    * `client-whitelist` contains a list of client certnames that are whitelisted
-     to access the certificate_status(es) endpoints.  Any requests made to this
-     endpoint that do not present a valid client certificate mentioned in this
-     list will be denied access.
+> **Puppet Enterprise Note:** Puppet Enterprise uses these endpoints to provide a console interface for certificate signing. For more information, see the [Certificate Status documentation](/puppet/latest/reference/http_api/http_certificate_status.html).
 
-   If neither the `authorization-required` nor the `client-whitelist` setting
-   is specified, authorization to the certificate status(es) endpoints is
-   controlled by `trapperkeeper-authorization`, through settings specified in
-   the [`auth.conf`](#authconf) file.
+This setting takes two parameters: `authorization-required` and `client-whitelist`. If neither parameter is specified, or if the `client-whitelist` is specified but empty, Puppet Server uses the [new authorization methods][`trapperkeeper-authorization`] and [`auth.conf` format](#authconf) introduced in Puppet Server 2.2 to control access to certificate status endpoints.
+
+*   `authorization-required` determines whether a client certificate is required to access certificate status endpoints. If this parameter is set to `false`, all requests can access this API. If set to `true`, only the clients whose certificate names are included in the `client-whitelist` setting can access the admin API. If this parameter is not specified but the `client-whitelist` parameter is, this parameter's value defaults to `true`.
+*   `client-whitelist` contains a list of client certificate names that are whitelisted for access to the certificate status endpoints. Puppet Server denies access to requests at these endpoints that do not present a valid client certificate named in this list.
+
+#### Example (Legacy)
+
+If you are not using the new authorization methods, follow this structure to configure  `certificate_status` and `certificate_statuses` endpoint access in `ca.conf`:
 
 ~~~
 # CA-related settings - deprecated in favor of "auth.conf"
-# certificate-authority: {
-#    certificate-status: {
-#        authorization-required: true
-#        client-whitelist: []
-#    }
-# }
+certificate-authority: {
+   certificate-status: {
+       authorization-required: true
+       client-whitelist: []
+   }
+}
 ~~~
-
 
 ## Logging
 
