@@ -1,7 +1,9 @@
 (ns puppetlabs.puppetserver.certificate-authority
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File]
+           [java.nio.file Files Paths LinkOption]
+           [java.nio.file.attribute FileAttribute PosixFilePermissions])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -140,6 +142,46 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(def empty-string-array
+  "The API for Paths/get requires a string array which is empty for all of the
+  needs of this namespace. "
+  (into-array String []))
+
+(defn get-path-obj
+  "Create a Path object from the provided path."
+  [path]
+  (Paths/get path empty-string-array))
+
+(schema/defn set-file-perms :- File
+  "Set the provided permissions on the given path. The permissions string is in
+  the form of the standard 9 character posix format, ie \"rwxr-xr-x\"."
+  [path :- schema/Str
+   permissions :- schema/Str]
+  (-> (get-path-obj path)
+      (Files/setPosixFilePermissions
+        (PosixFilePermissions/fromString permissions))
+      (.toFile)))
+
+(schema/defn get-file-perms :- schema/Str
+  "Returns the currently set permissions of the given file path."
+  [path :- schema/Str]
+  (-> (get-path-obj path)
+      (Files/getPosixFilePermissions (into-array LinkOption []))
+      PosixFilePermissions/toString))
+
+(schema/defn create-file-with-perms :- File
+  "Create a new empty file which has the provided posix file permissions. The
+  permissions string is in the form of the standard 9 character posix format. "
+  [path :- schema/Str
+   permissions :- schema/Str]
+  (-> (get-path-obj path)
+      (Files/createFile
+       (into-array FileAttribute
+                   [(-> permissions
+                        (PosixFilePermissions/fromString)
+                        (PosixFilePermissions/asFileAttribute))]))
+      (.toFile)))
 
 (schema/defn cert-validity-dates :- {:not-before Date :not-after Date}
   "Calculate the not-before & not-after dates that define a certificate's
