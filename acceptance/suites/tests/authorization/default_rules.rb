@@ -12,17 +12,13 @@
 test_name 'Default auth.conf rules'
 
 step 'Turn on new auth support' do
-  modify_tk_config(
-    master,
-    File.join(master['puppetserver-confdir'], 'puppetserver.conf'),
-    {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
+  modify_tk_config(master, options['puppetserver-config'],
+                   {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
 end
 
 teardown do
-  modify_tk_config(
-    master,
-    File.join(master['puppetserver-confdir'], 'puppetserver.conf'),
-    {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
+  modify_tk_config(master, options['puppetserver-config'],
+                   {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
 end
 
 def curl_authenticated(path)
