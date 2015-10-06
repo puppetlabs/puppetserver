@@ -33,6 +33,7 @@
     :hostprivkey
     :hostpubkey
     :localcacert
+    :privatekeydir
     :serial
     :signeddir
     :requestdir

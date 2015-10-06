@@ -519,7 +519,7 @@
 
     (testing "Does not replace files if they all exist"
       (let [files (-> (settings->ssldir-paths settings)
-                      (dissoc :certdir :requestdir)
+                      (dissoc :certdir :requestdir :privatekeydir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
         (initialize-master-ssl! settings "master" ca-settings)
