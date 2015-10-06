@@ -1,9 +1,6 @@
 #!/bin/bash
 set -x
 
-# get to the correct directory
-while [ ! -d acceptance ] ; do cd ..; done
-
 export GEM_SOURCE=http://rubygems.delivery.puppetlabs.net
 export GENCONFIG_LAYOUT="${GENCONFIG_LAYOUT:-redhat6-64ma-ubuntu1404-64a-windows2008r2-64a}"
 export BEAKER_TESTSUITE="${BEAKER_TESTSUITE:-acceptance/suites/tests/}"
@@ -37,9 +34,9 @@ case $1 in
   fi
   
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
+  BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   BEAKER="$BEAKER --config $BEAKER_CONFIG"
   BEAKER="$BEAKER --preserve-hosts"
-  BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   $BEAKER
   echo "Beaker exited with $?"
   cp log/latest/hosts_preserved.yml .
@@ -52,11 +49,6 @@ case $1 in
     Either put a hosts_preserved.yml or use this script with -p to create new hosts and run the pre-suite against them"
     exit -1;
   fi
-
-  if [ -z $BEAKER_TESTSUITE ];
-    then echo "$0 BEAKER_TESTSUITE not set.  Export BEAKER_TESTSUITE."
-    exit -1;
-  fi
   
   BEAKER="$BEAKER --config hosts_preserved.yml"
   BEAKER="$BEAKER --preserve-hosts"
@@ -66,20 +58,15 @@ case $1 in
 
 
 * )
-  # run it the old way  
-  bundle exec beaker \
-  --config $BEAKER_CONFIG \
-  --type aio \
-  --helper $BEAKER_HELPER \
-  --options-file $BEAKER_OPTIONS \
-  --tests $BEAKER_TESTSUITE \
-  --post-suite $BEAKER_POSTSUITE \
-  --pre-suite $BEAKER_PRESUITE \
-  --keyfile $BEAKER_KEYFILE \
-  --load-path "acceptance/lib" \
-  --preserve-hosts onfail \
+  # run it with the old options.
+  BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
+  BEAKER="$BEAKER --config $BEAKER_CONFIG"
+  BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
+  BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
+  BEAKER="$BEAKER --preserve-hosts onfail \
   --debug \
-  --timeout 360
+  --timeout 360"
+   $BEAKER
   ;;
 esac
 
