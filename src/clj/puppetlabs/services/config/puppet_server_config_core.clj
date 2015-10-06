@@ -25,21 +25,21 @@
     :capub
     :ca-ttl
     :certdir
-    :certname
     :cert-inventory
+    :certname
     :codedir ; This is not actually needed in Puppet Server, but it's needed in PE (file sync)
     :csrdir
-    :csr-attributes
-    :dns-alt-names
     :hostcert
-    :hostcrl
     :hostprivkey
     :hostpubkey
     :keylength
     :localcacert
+    :privatekeydir
     :requestdir
     :serial
     :signeddir
+    :dns-alt-names
+    :csr-attributes
     :ssl-client-header
     :ssl-client-verify-header})
 

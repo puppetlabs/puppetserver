@@ -34,6 +34,7 @@
    :hostpubkey     schema/Str
    :keylength      schema/Int
    :localcacert    schema/Str
+   :privatekeydir schema/Str
    :requestdir     schema/Str
    :csr-attributes schema/Str})
 
@@ -156,6 +157,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
+
+(def p-key-perms
+  "Posix permissions for all private keys on disk."
+  "rw-r-----")
+
+(def p-key-dir-perms
+  "Posix permissions for the private key directory on disk."
+  "rwxr-x---")
 
 (def empty-string-array
   "The API for Paths/get requires a string array which is empty for all of the
@@ -437,7 +446,8 @@
                                         public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
-    (utils/key->pem! private-key (:cakey ca-settings))
+    (utils/key->pem! private-key
+      (create-file-with-perms (:cakey ca-settings) p-key-perms))
     (utils/cert->pem! cacert (:cacert ca-settings))
     (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
@@ -588,6 +598,7 @@
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
+  (set-file-perms (:privatekeydir settings) p-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->cert (:cacert ca-settings))
@@ -613,7 +624,8 @@
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:hostpubkey settings))
-    (utils/key->pem! private-key (:hostprivkey settings))
+    (utils/key->pem! private-key
+     (create-file-with-perms (:hostprivkey settings) p-key-perms))
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))))

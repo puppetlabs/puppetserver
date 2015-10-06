@@ -22,6 +22,7 @@
         :hostprivkey    (str ssldir "/private_keys/" hostname ".pem")
         :hostpubkey     (str ssldir "/public_keys/" hostname ".pem")
         :localcacert    (str ssldir "/certs/ca.pem")
+        :privatekeydir (str ssldir "/private_keys")
         :requestdir     (str ssldir "/certificate_requests")
         :csr-attributes (str confdir "/csr_attributes.yaml")
         :keylength      512})))
