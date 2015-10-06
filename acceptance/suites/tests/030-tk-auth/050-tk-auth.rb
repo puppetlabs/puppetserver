@@ -2,16 +2,18 @@ require 'hocon/config_factory'
 
 confine :except, :platform => 'windows'
 
+
+#TODO: in the near future this class ought to be split out to a lib.
 class Auth_Test
     @@total_fails=0
     @@total_passes=0
   attr_accessor :on_host, #this is the host on which we run the curl
     :host, :port, :method, :path, :url_cn, #these are the things we need to build the url
     :url, # build from the above attributes 
-    :cn, #commonName in the certificate
-    :hostcert_file, :key_file, :cacert_file,
+    :cn, #commonName in the certificate, used to find cert files
+    :hostcert_file, :key_file, :cacert_file, #requires cn be set above.
     :auth_string, #curl string composed of from above three attribs 
-    :rule,
+    :rule, #rule under test
     :expected_result, 
     :actual_result,
     :actual_result_detail, #TODO: maybe make this a hash...
@@ -21,25 +23,8 @@ class Auth_Test
     args.each do |k,v|
       instance_variable_set("@#{k}", v) unless v.nil?
     end
-    resolve_path
     set_defaults
     calculate_expected_result unless @expected_result
-  end
-
-
-  def resolve_path
-    #TODO: Improve this.
-    if (@rule['type'] == 'regex') &&
-       (@rule['allow'] == '$1') &&
-       (@path.include?('([^/]+)$') ) 
-    then
-      # it is a valid regex rule and we just passed in a raw unprocessed path
-      # so we overwrite path, stripping out the regex
-      # and set url_cn
-      @path = @path.match.('[a-zA-Z0-9\/]+')[0]
-      @url_cn ||= @cn
-    end
-    #TODO: elseif path and url_cn are set then continue as normal.
   end
 
 
@@ -74,6 +59,7 @@ class Auth_Test
           end
       else 
         puts 'How did we get here?'
+        @porf = 'FAIL'
     end
 
     puts @porf
@@ -140,44 +126,49 @@ end #ends the class.
 
 
 def generate_tests(ruleset)
-  array_o_tests = Array.new
+  array_of_tests = Array.new
   methods = ['GET', 'PUT', 'POST', 'DELETE', 'HEAD', 'OPTIONS', 'TRACE', 'CONNECT']
   ruleset.each do |r|
     methods.each do |m|
 
-      #Now the ugly:
-      #case path contains regex, 
-      #case path contains /puppet/v3/status
       case r['match-request']['path']
       when '/puppet/v3/status'
         path = '/puppet/v3/status/dummyValue?environment=production'
       when '^/puppet/v3/node/([^/]+)$'
+        #TODO: Get clarity about where to put the special cases.
+        #Currently Auth_Test contains a function that strips regex 
+        #from the path.
         path = "/puppet/v3/node/#{master}?environment=production"
       when '^/puppet/v3/catalog/([^/]+)$'
         path = "/puppet/v3/catalog/#{master}?environment=production"
       when '^/puppet/v3/report/([^/]+)$'
+        #TODO: Handle report behavior
         # path = "/puppet/v3/report/#{master}?environment=production"
-        # newp!
-        next
-      #Special Snowflakes  
+        next  #Skipping over it for now.
       when '/puppet-ca/v1/certificate_request'
+        #TODO: considering building a full certificate request
+        #so that we can change our expected_result to a 200
         path = '/puppet-ca/v1/certificate_request'
         if m = 'PUT' || 'GET' then
           expected_result = '404'
         end
       when '/puppet-ca/v1/certificate/'
+        #TODO: In order to make the GET case for this end point work,
+        #we need to provide a valid node name and environment.
+        #/puppet-ca/v1/certificate/:nodename?environment=:environment
         if m == 'GET' then
           expected_result = '404'
         end
         path = '/puppet-ca/v1/certificate/' 
       when /\^/
+
         path = r['match-request']['path'].match('[a-zA-Z0-9\/]+')[0]
       else
         path = r['match-request']['path']
       end
 
 
-      array_o_tests << Auth_Test.new(   :host             => master, 
+      array_of_tests << Auth_Test.new(  :host             => master, 
                                         :method           => m,
                                         :path             => path,
                                         :cn               => master,
@@ -185,7 +176,7 @@ def generate_tests(ruleset)
                                         :expected_result  => expected_result)
     end
   end
-  return array_o_tests
+  return array_of_tests
 end
 
 
