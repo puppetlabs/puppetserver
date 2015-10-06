@@ -36,7 +36,7 @@ case $1 in
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   BEAKER="$BEAKER --config $BEAKER_CONFIG"
-  BEAKER="$BEAKER --preserve-hosts"
+  BEAKER="$BEAKER --preserve-hosts always"
   $BEAKER
   echo "Beaker exited with $?"
   cp log/latest/hosts_preserved.yml .
@@ -45,13 +45,13 @@ case $1 in
 
 -r | --r* )
   if [ ! -s ./hosts_preserved.yml ];
-  then echo "$0: Can not find hosts_preserved.yml; can not run without presuite./n \
-    Either put a hosts_preserved.yml or use this script with -p to create new hosts and run the pre-suite against them"
+  then echo "$0: Can not find hosts_preserved.yml; can not run without presuite.\n \
+    Either provide a hosts_preserved.yml or use this script with -p to create new hosts and run the pre-suite against them."
     exit -1;
   fi
   
   BEAKER="$BEAKER --config hosts_preserved.yml"
-  BEAKER="$BEAKER --preserve-hosts"
+  BEAKER="$BEAKER --preserve-hosts always"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   $BEAKER
   ;;
@@ -63,9 +63,8 @@ case $1 in
   BEAKER="$BEAKER --config $BEAKER_CONFIG"
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
-  BEAKER="$BEAKER --preserve-hosts onfail \
-  --debug \
-  --timeout 360"
+  BEAKER="$BEAKER --preserve-hosts onfail"
+  BEAKER="$BEAKER --debug --timeout 360"
    $BEAKER
   ;;
 esac
