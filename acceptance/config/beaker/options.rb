@@ -9,5 +9,6 @@
   "puppetserver-package" => 'puppetserver',
   "use-service" => true,
   "master-start-curl-retries" => 60,
-  "puppetserver-confdir" => '/etc/puppetlabs/puppetserver/conf.d'
+  "puppetserver-confdir" => '/etc/puppetlabs/puppetserver/conf.d',
+  "puppetserver-config" => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf'
 }
