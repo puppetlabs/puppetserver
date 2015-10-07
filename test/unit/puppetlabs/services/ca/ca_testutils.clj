@@ -1,7 +1,8 @@
 (ns puppetlabs.services.ca.ca-testutils
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.certificate-authority :as ca]))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -55,4 +56,6 @@
   [cadir]
   (let [tmp-ssldir (ks/temp-dir)]
     (fs/copy-dir cadir tmp-ssldir)
+    ;; This is to ensure no warnings are logged during tests
+    (ca/set-file-perms (str tmp-ssldir "/ca/ca_key.pem") "rw-r-----")
     (ca-settings (str tmp-ssldir "/ca"))))

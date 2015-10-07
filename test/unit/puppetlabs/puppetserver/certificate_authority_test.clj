@@ -14,7 +14,8 @@
             [clojure.string :as string]
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.puppetserver.certificate-authority :as ca]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -444,7 +445,15 @@
           (is (thrown-with-msg?
                IllegalStateException
                (re-pattern (str "Missing:\n" path))
-               (initialize! settings))))))))
+               (initialize! settings)))))))
+
+  (testing "The CA private key has its permissions properly reset"
+    (let [settings (testutils/ca-sandbox! cadir)]
+      (set-file-perms (:cakey settings) "rw-r--r--")
+      (logutils/with-test-logging
+        (initialize! settings)
+        (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
+        (is (= ca/private-key-perms (ca/get-file-perms (:cakey settings))))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
