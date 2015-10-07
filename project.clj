@@ -18,6 +18,7 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
                  [org.clojure/tools.reader "0.9.1"]
+                 [ring/ring-core "1.4.0"]
                  ;; end version conflict resolution dependencies
 
                  [puppetlabs/trapperkeeper ~tk-version]

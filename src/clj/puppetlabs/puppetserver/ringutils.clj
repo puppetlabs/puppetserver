@@ -16,7 +16,7 @@
 
 (def RingRequest
   {:uri schema/Str
-   (schema/optional-key :ssl-client-cert) X509Certificate
+   (schema/optional-key :ssl-client-cert) (schema/maybe X509Certificate)
    schema/Keyword schema/Any})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -139,7 +139,8 @@
    whitelist-settings :- (schema/maybe WhitelistSettings)]
   (let [handler-with-trapperkeeper-authorization (authorization-fn base-handler)]
     (if-let [handler-with-client-whitelist-authorization
-             (if (not-empty whitelist-settings)
+             (if (or (false? (:authorization-required whitelist-settings))
+                     (not-empty (:client-whitelist whitelist-settings)))
                (wrap-with-cert-whitelist-check base-handler whitelist-settings))]
       (fn [request]
         (if (and (.startsWith (:uri request) whitelist-path)

@@ -129,8 +129,9 @@ This file contains the settings for Puppet Server itself.
     present a valid client certificate mentioned in this list will be denied
     access.
 
-   If neither the `authorization-required` nor the `client-whitelist` setting
-   is specified, authorization to the admin API endpoints is controlled by
+   If `authorization-required` is not set or set to `true` and the
+   `client-whitelist` setting is not set or set to an empty list,
+   authorization to the admin API endpoints is controlled by
    `trapperkeeper-authorization`, through settings specified in the
    [`auth.conf`](#authconf) file.
 
@@ -430,25 +431,25 @@ is used:
  `trapperkeeper-authorization`.
 
 * `puppet-admin.authorization-required` and `puppet-admin.client-whitelist` -
- If either of these settings is present in the configuration, requests made to
- Puppet Server's administrative API will be performed per the values for these
- settings.  See the [`puppetserver.conf/puppet-admin`](#puppetserverconf)
- section for more information on these settings.  If neither the
- `puppet-admin.authorization-required` nor the `puppet-admin.client-whitelist`
- setting is specified, requests to Puppet Server's administrative API will be
+ If `authorization-required` is set to `false` or if the `client-whitelist` has
+ one or more entries, requests made to Puppet Server's administrative API
+ will be performed per the values for these settings.  See the
+ [`puppetserver.conf/puppet-admin`](#puppetserverconf)
+ section for more information on these settings.  If `authorization-required`
+ is not set or set to `true` and the `client-whitelist` is not set or set to
+ an empty list, requests to Puppet Server's administrative API will be
  done via `trapperkeeper-authorization`.
 
  * `certificate-authority.certificate-status.authorization-required` and
   `certificate-authority.certificate-status.client-whitelist` -
-  If either of these settings is present in the configuration, requests made
-  to Puppet Server's
+  If `authorization-required` is set to `false` or if the `client-whitelist`
+  has one or more entries, requests made to Puppet Server's
   [Certificate Status](https://github.com/puppetlabs/puppet/blob/master/api/docs/http_certificate_status.md)
   API will be performed per the values for these settings.  See the
   [`ca.conf`](#caconf) section for more information on these settings.  If
-  neither the `certificate-authority.certificate-status.authorization-required`
-  nor the `certificate-authority.certificate-status.client-whitelist` setting is
-  specified, requests to Puppet Server's administrative API will be done via
-  `trapperkeeper-authorization`.
+  `authorization-required` is not set or set to `true` and the
+  `client-whitelist` is not set or set to an empty list, requests to Puppet
+  Server's administrative API will be done via `trapperkeeper-authorization`.
 
 Support for the use of the legacy `auth.conf` for the "master" endpoints and
 for the client whitelists for the Puppet admin and certificate status endpoints
@@ -540,10 +541,11 @@ the `ca.conf` file no longer appears in a Puppet Server package.
      endpoint that do not present a valid client certificate mentioned in this
      list will be denied access.
 
-   If neither the `authorization-required` nor the `client-whitelist` setting
-   is specified, authorization to the certificate status(es) endpoints is
-   controlled by `trapperkeeper-authorization`, through settings specified in
-   the [`auth.conf`](#authconf) file.
+   If `authorization-required` is not set or set to `true` and the
+   `client-whitelist` setting is not set or set to an empty list,
+   authorization to the admin API endpoints is controlled by
+   `trapperkeeper-authorization`, through settings specified in the
+   [`auth.conf`](#authconf) file.
 
 ~~~
 # CA-related settings - deprecated in favor of "auth.conf"
