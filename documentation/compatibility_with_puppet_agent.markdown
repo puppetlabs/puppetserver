@@ -1,159 +1,130 @@
 ---
 layout: default
-title: "Puppet Server: Backwards Compatibility With Puppet 3 Agents"
+title: "Puppet Server: Backward Compatibility with Puppet 3 Agents"
 canonical: "/puppetserver/latest/compatibility_with_puppet_agent.markdown"
 ---
 
-
-[ca.conf]: ./configuration.html#caconf
+[ca.conf]: ./config_file_ca.html
 [auth.conf]: /puppet/latest/reference/config_file_auth.html
+[future parser]: /puppet/3.8/reference/experiments_future.html
+[upgrade puppet]: /puppet/latest/reference/upgrade_major_pre.html
+[deprecated]: /puppetserver/2.2/deprecated_features.html
+[Puppet Server `auth.conf` documentation]: ./config_file_auth.html
 
-This version of Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agent nodes. This feature was added in Puppet Server 2.1.
-
-Once you get your Puppet 3 nodes talking to a newer Puppet Server, you should start upgrading them to Puppet 4.
-
+Since version 2.1, Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agent nodes. Once your Puppet 3 nodes can talk to a newer Puppet Server, you should start upgrading them to Puppet 4.
 
 ## Preparing Puppet 3 Nodes for Puppet Server 2
 
-Backwards compatibility is enabled by default, but you should make sure your Puppet code is ready for Puppet 4 before pointing old agent nodes at a new Puppet server. You may also need to edit auth.conf.
+Backward compatibility is enabled by default, but you should ensure your Puppet code is ready for Puppet 4 before pointing old agent nodes at a new Puppet server. You might also need to edit `auth.conf`.
 
 Before migrating Puppet 3 nodes to Puppet Server 2, do all of the following:
 
-- Update Puppet to the most recent 3.x version on your agent nodes and existing Puppet master.
-- Set `stringify_facts = false` on all nodes, and fix your code if necessary.
-- Set `parser = future` on your Puppet master(s), and fix your code if necessary.
-- Modify your custom auth.conf rules for the new Puppet Server version.
+* Update Puppet to the most recent Puppet 3 version on your agents and masters.
+* Set `stringify_facts = false` on all nodes, and fix your code if necessary.
+* Set `parser = future` on your Puppet masters, and fix your code if necessary.
+* Modify your custom `auth.conf` rules for the new Puppet Server version.
 
-Keep reading for more details.
+### Update Puppet 3
 
-### Update Puppet 3.x
+Follow the steps in [the Puppet documentation][upgrade Puppet] for details on how to prepare your Puppet 3 deployment for a major version upgrade. This is especially important on your Puppet master, where you'll want the newest version of the [future parser][]. 
 
-Make sure your existing 3.x deployment is running the most recent Puppet 3 version. This is especially important on your Puppet master, where you'll want the newest version of the future parser.
+### Transfer and Update `auth.conf`
 
-### Stop Stringifying Facts
-
-Set `stringify_facts = false` in puppet.conf on every node in your deployment. This will match Puppet 4's behavior. If you want to edit puppet.conf using Puppet, you can use an [`inifile` resource](https://forge.puppetlabs.com/puppetlabs/inifile).
-
-**Note:** If any of your Puppet code _treats boolean facts like strings,_ this will break something. Search for comparisons like `if $::is_virtual == "true" {...}`. If you need to support 4.x and 3.x with the same code, you can use something like `if str2bool("$::is_virtual") {...}`.
-
-### Use the Future Parser
-
-Set `parser = future` in puppet.conf on your Puppet master servers. This lets them compile catalogs using Puppet 4's version of the Puppet language.
-
-Run Puppet with the future parser enabled for a while before trying to upgrade, and resolve any language incompatibilities first.
-
-### Transfer and Modify Custom auth.conf Rules
-
-Puppet 3 and 4 use different HTTPS URLs to fetch configurations. Puppet Server lets agents make requests at the old URLs, but internally it handles them as requests to the new endpoints. Any rules in auth.conf that match Puppet 3-style URLs will have _no effect._
+Puppet 3 and 4 use different HTTPS URLs to fetch configurations. Puppet Server lets agents make requests at the old URLs, but internally it handles them as requests to the new endpoints. Any rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._
 
 This means you must:
 
-* Find any _custom_ rules you've added to your auth.conf file.  (Don't worry
-  about default rules.)
+* Check any _custom_ rules you've added to your `auth.conf` file. (Don't worry about default rules.)
 
- If you have set `jruby-puppet.use-legacy-auth-conf` in the "puppetserver.conf"
- file to `false`, the "auth.conf" file that you will need to change is
- `/etc/puppetlabs/puppetserver/conf.d/auth.conf`.  See the
- [Puppet Server auth.conf](./configuration.markdown#authconf) page for more
- information on this file format.
+    If you set `jruby-puppet.use-legacy-auth-conf` in the `puppetserver.conf` file to `false`, you must reimplement your authorization rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf` and use the configuration file's new HOCON format. See the [Puppet Server `auth.conf` documentation][] for more information.
 
- If you have not set `jruby-puppet.use-legacy-auth-conf` or have set
- `jruby-puppet.use-legacy-auth-conf` to `true`, the "auth.conf" file that you
- will need to change is `/etc/puppetlabs/puppet/auth.conf`.  See the
- [Puppet auth.conf][auth.conf] page for more information on this file format.
- Consider using a value of `false` for `jruby-puppet.use-legacy-auth-conf` and
- switching to the newer "auth.conf" format since support for the legacy Puppet
- "auth.conf" file under Puppet Server is deprecated and planned to be removed
- in a future release.
-
+    If you don't set `jruby-puppet.use-legacy-auth-conf` or set `jruby-puppet.use-legacy-auth-conf` to `true`, implement your rules using the legacy format in `/etc/puppetlabs/puppet/auth.conf`. See the [Puppet `auth.conf` documentation][auth.conf] for more information on this file format, and note that support for this legacy format under Puppet Server is [deprecated][] and will be removed in a future release.
 * Change each `path` to match Puppet 4 URLs.
     * Add `/puppet/v3` to the beginning of most paths.
-    * Note that `certificate*` endpoints are not validated via "auth.conf" rules
-      when `jruby-puppet.use-legacy-auth-conf` is not set or set to `true`.
-      If you need to configure authorization for these endpoints, consider
-      configuring this setting to `false`.  See the
-      [Puppet Server auth.conf](./configuration.markdown#authconf) page for
-      more information.
-* Add the rules to the appropriate "auth.conf" file on your Puppet Server.
+    * Note that `certificate*` endpoints are not validated by `auth.conf` rules when `jruby-puppet.use-legacy-auth-conf` is not set or set to `true`. If you need to configure authorization for these endpoints, consider configuring this setting to `false`. See the [Puppet Server `auth.conf` documentation][] for more information.
+* Add the rules to the appropriate `auth.conf` file on your Puppet Server.
 
 For more information, see:
 
-* [Puppet's HTTPS API (current)](/puppet/latest/reference/http_api/http_api_index.html)
-* [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
-* [Default Puppet 4.1.0 auth.conf](https://github.com/puppetlabs/puppet/blob/4.1.0/conf/auth.conf)
-* [Default Puppet 3.8.0 auth.conf](https://github.com/puppetlabs/puppet/blob/3.8.0/conf/auth.conf)
+* [Puppet 4 HTTPS API documentation](/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet 3 HTTPS API documentation](/references/3.8.0/developer/file.http_api_index.html)
+* [Puppet 4 `auth.conf` documentation][auth.conf]
+* [Puppet 3 `auth.conf` documentation](/puppet/3.8/reference/config_file_auth.html)
 
-#### auth.conf Rule Example
+#### Example `auth.conf` Rules for Puppet 3 and 4 Agents
 
-Puppet 3 rules, using the legacy Puppet "auth.conf" format:
+The other examples in this section convert this Puppet 3 example `auth.conf` rule to be compatible with Puppet 4:
 
-    # Puppet 3 auth.conf on the master
-    path ~ ^/catalog/([^/]+).uuid$
-    method find
-    allow /^$1\.uuid.*/
+~~~
+# Puppet 3 auth.conf on the master
+path ~ ^/catalog/([^/]+).uuid$
+method find
+allow /^$1\.uuid.*/
 
-    # Default rule, should follow the more specific rules
-    path ~ ^/catalog/([^/]+)$
-    method find
-    allow $1
+# Default rule, should follow the more specific rules
+path ~ ^/catalog/([^/]+)$
+method find
+allow $1
+~~~
 
-When `jruby-puppet.use-legacy-auth-conf` is `false`, Puppet Server 2 rules in
-`/etc/puppetlabs/puppetserver/conf.d/auth.conf` supporting both 3.x and 4.x
-agent nodes:
+To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is false, modify the rules to follow the new HOCON `auth.conf` format and place the new rules in `/etc/puppetlabs/puppet/conf.d/auth.conf`:
 
-    authorization: {
-        version: 1
-        rules: [
-            ...
-            {
-              # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.2+
-              match-request: {
+~~~
+authorization: {
+    version: 1
+    rules: [
+        ...
+        {
+            # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.2+
+            match-request: {
                 path: "^/puppet/v3/catalog/([^/]+).uuid$"
                 type: regex
                 method: [get, post]
-              }
-              allow: "/^$1|.uuid.*/"
-              sort-order: 200
-              name: "my catalog"
-            },
-            {
-              # Default rule, should follow the more specific rules
-              match-request: {
+            }
+            allow: "/^$1|.uuid.*/"
+            sort-order: 200
+            name: "my catalog"
+        },
+        {
+            # Default rule, should follow the more specific rules
+            match-request: {
                 path: "^/puppet/v3/catalog/([^/]+)$"
                 type: regex
                 method: [get, post]
-              }
-              allow: "$1"
-              sort-order: 500
-              name: "puppetlabs catalog"
-            },
-            ...
-        ]
-     }
+            }
+            allow: "$1"
+            sort-order: 500
+            name: "puppetlabs catalog"
+        },
+        ...
+    ]
+}
+~~~
 
-When `jruby-puppet.use-legacy-auth-conf` is `true`,  Puppet Server 2 rules
-in `/etc/puppetlabs/puppet/auth.conf` supporting both 3.x and 4.x agent nodes:
+To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is true, modify the rules to specify the v3 endpoints while following the legacy `auth.conf` format, then place the new rules in `/etc/puppetlabs/puppet/auth.conf`:
 
-    # Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1+
-    path ~ ^/puppet/v3/catalog/([^/]+).uuid$
-    method find
-    allow /^$1\.uuid.*/
+~~~
+# Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1+
+path ~ ^/puppet/v3/catalog/([^/]+).uuid$
+method find
+allow /^$1\.uuid.*/
 
-    # Default rule, should follow the more specific rules
-    path ~ ^/puppet/v3/catalog/([^/]+)$
-    method find
-    allow $1
+# Default rule, should follow the more specific rules
+path ~ ^/puppet/v3/catalog/([^/]+)$
+method find
+allow $1
+~~~
 
-## Details About Backwards Compatibility
+## Details About Backward Compatibility
 
-Compatibility is provided by the `legacy-routes-service`, which intercepts Puppet 3 HTTPS API requests, transforms the URLs and request headers into Puppet 4 compatible requests, and passes them to the Puppet master service.
+The `legacy-routes-service` intercepts Puppet 3 HTTPS API requests, transforms the URLs and request headers into Puppet 4 compatible requests, and passes them to the Puppet master service.
 
 ### HTTP Headers
 
 There are some minor differences in headers between native Puppet 4 requests and modified Puppet 3 requests. Specifically:
 
-* The `X-Puppet-Version` header is absent in Puppet 3 requests. This should only matter if you use this header to configure a third party reverse proxy like HAProxy or NGINX.
+* The `X-Puppet-Version` header is absent in Puppet 3 requests. This should only matter if you use this header to configure a third-party reverse proxy like HAProxy or NGINX.
 * The `Accept:` request header is munged to match the content the Puppet 4 master service can provide. For example, `Accept: raw` and `Accept: s` are translated to `Accept: binary`.
 
-    This shouldn't affect any Puppet deployment because this header is rarely, if ever, used to configure reverse proxies.
-* The `content-type` for file bucket content requests is internally treated as `application/octet-stream`, but the request and the response are treated as `text/plain` for compatibility with Puppet 3.  This too should have no impact on any Puppet deployment.
+    This header is rarely, if ever, used to configure reverse proxies.
+* The `content-type` for file bucket content requests is internally treated as `application/octet-stream`, but the request and the response are treated as `text/plain` for compatibility with Puppet 3.
