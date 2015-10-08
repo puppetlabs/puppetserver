@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/config_file_ca.html"
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [new `auth.conf`]: ./conf_file_auth.html
 [Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.html
-[deprecated]: ./deprecated_settings.html
+[deprecated]: ./deprecated_features.html
 [`puppetserver.conf`]: ./conf_file_puppetserver.html
 
 The `ca.conf` file configures legacy settings for the Puppet Server Certificate Authority (CA) service. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
@@ -18,7 +18,7 @@ The `certificate-status` setting in `ca.conf` provides legacy configuration opti
 
 > **Puppet Enterprise Note:** Puppet Enterprise uses these endpoints to provide a console interface for certificate signing. For more information, see the [Certificate Status documentation](/puppet/latest/reference/http_api/http_certificate_status.html).
 
-This setting takes two parameters: `authorization-required` and `client-whitelist`. If neither parameter is specified, or if the `client-whitelist` is specified but empty, Puppet Server uses the [new authorization methods][`trapperkeeper-authorization`] and [new `auth.conf`][] introduced in Puppet Server 2.2 to control access to certificate status endpoints.
+This setting takes two parameters: `authorization-required` and `client-whitelist`. If `authorization-required` is not set or set to `true` and `client-whitelist` is not set or set to an empty list, Puppet Server uses the [new authorization methods][`trapperkeeper-authorization`] and [new `auth.conf`][] format introduced in Puppet Server 2.2 to control access to the Puppet Server administration API endpoints.
 
 * `authorization-required` determines whether a client certificate is required to access certificate status endpoints. If this parameter is set to `false`, all requests can access this API. If set to `true`, only the clients whose certificate names are included in the `client-whitelist` setting can access the admin API. If this parameter is not specified but the `client-whitelist` parameter is, this parameter's value defaults to `true`.
 * `client-whitelist` contains a list of client certificate names that are whitelisted for access to the certificate status endpoints. Puppet Server denies access to requests at these endpoints that do not present a valid client certificate named in this list.

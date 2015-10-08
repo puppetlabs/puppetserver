@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/configuration.html"
 [auth.conf]: /puppet/latest/reference/config_file_auth.html
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [`puppetserver.conf`]: ./config_file_puppetserver.html
-[deprecated]: ./deprecated_settings.html
+[deprecated]: ./deprecated_features.html
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority (CA), we introduced new Puppet Server-specific configuration files and settings. 
 

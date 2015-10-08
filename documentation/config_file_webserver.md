@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/config_file_webserver.html"
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [new `auth.conf`]: ./conf_file_auth.html
 [Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.html
-[deprecated]: ./deprecated_settings.html
+[deprecated]: ./deprecated_features.html
 [`puppetserver.conf`]: ./conf_file_puppetserver.html
 
 The `webserver.conf` file configures the Puppet Server web server. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).

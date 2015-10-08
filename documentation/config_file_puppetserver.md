@@ -8,7 +8,7 @@ canonical: "/puppetserver/latest/config_file_puppetserver.html"
 [code directory]: /puppet/latest/reference/dirs_codedir.html
 [cache directory]: /puppet/latest/reference/dirs_vardir.html
 [`auth.conf` documentation]: ./conf_file_auth.html
-[deprecated]: ./deprecated_settings.html
+[deprecated]: ./deprecated_features.html
 
 The `puppetserver.conf` file contains settings for Puppet Server software. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
 
