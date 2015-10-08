@@ -4,37 +4,39 @@ title: "Puppet Server Configuration Files: webserver.conf"
 canonical: "/puppetserver/latest/config_file_webserver.html"
 ---
 
-[`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
-[new `auth.conf`]: ./conf_file_auth.html
-[Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.html
-[deprecated]: ./deprecated_features.html
-[`puppetserver.conf`]: ./conf_file_puppetserver.html
+The `webserver.conf` file configures the Puppet Server `webserver` service. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html). To configure the mount points for the Puppet administrative API web applications, see the [`web-routes.conf` documentation](./config_file_web-routes.md).
 
-The `webserver.conf` file configures the Puppet Server web server. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
-
-## Example
+## Examples
 
 The `webserver.conf` file looks something like this:
 
 ~~~
+# Configure the webserver.
 webserver: {
-    client-auth = need
+    # Log webserver access to a specific file.
+    access-log-config = /etc/puppetlabs/puppetserver/request-logging.xml
+    # Require a valid certificate from the client.
+    client-auth = want
+    # Listen for HTTPS traffic on all available hostnames.
     ssl-host = 0.0.0.0
+    # Listen for HTTPS traffic on port 8140.
     ssl-port = 8140
-}
-
-# Configure the mount points for the web apps.
-web-router-service: {
-    # These two should not be modified because the Puppet 3.x agent expects them to
-    # be mounted at "/"
-    "puppetlabs.services.ca.certificate-authority-service/certificate-authority-service": ""
-    "puppetlabs.services.master.master-service/master-service": ""
-
-    # This controls the mount point for the puppet admin API.
-    "puppetlabs.services.puppet-admin.puppet-admin-service/puppet-admin-service": "/puppet-admin-api"
 }
 ~~~
 
-The above settings set the webserver to require a valid certificate from the client; to listen on all available hostnames for encrypted HTTPS traffic; and to use port 8140 for encrypted HTTPS traffic. For full documentation, including a complete list of available settings and values, see [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
+These are the most important values to manage in a Puppet Server installation. For further documentation, including a complete list of available settings and values, see [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
 
-By default, Puppet Server is configured to use the correct Puppet Master and CA certificates. If you're using an external CA and have provided your own certificates and keys, make sure `webserver.conf` points to the correct file. For details about configuring an external CA, see the [External CA Configuration](./external_ca_configuration.markdown) page.
+By default, Puppet Server is configured to use the correct Puppet master and certificate authority (CA) certificates. If you're using an external CA and provided your own certificates and keys, make sure the SSL-related parameters in `webserver.conf` point to the correct file. 
+
+~~~
+webserver: {
+    ...
+    ssl-cert    : /path/to/master.pem
+    ssl-key     : /path/to/master.key
+    ssl-ca-cert : /path/to/ca_bundle.pem
+    ssl-cert-chain : /path/to/ca_bundle.pem
+    ssl-crl-path : /etc/puppetlabs/puppet/ssl/crl.pem
+}
+~~~
+
+Configuring an external CA requires additional steps, which are described in the [External CA Configuration documentation](./external_ca_configuration.markdown).

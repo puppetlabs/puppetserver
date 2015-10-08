@@ -5,14 +5,14 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 ---
 
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
-[new `auth.conf`]: ./conf_file_auth.html
+[new `auth.conf`]: ./config_file_auth.html
 [Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.html
 [deprecated]: ./deprecated_features.html
-[`puppetserver.conf`]: ./conf_file_puppetserver.html
+[`puppetserver.conf`]: ./config_file_puppetserver.html
 
 The `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
 
-> **Deprecation Note:** As of version 2.2, Puppet Server can use [`trapperkeeper-authorization`][] for authentication, which is configured by rules and settings in `auth.conf` using a new HOCON configuration file format, and the new `conf.d` location for Puppet Server configuration files. The legacy [Puppet `auth.conf`][] whitelist-based authorization method and configuration file format are [deprecated][] and will be removed in a future version of Puppet Server.
+> **Deprecation Note:** As of version 2.2, Puppet Server can use [`trapperkeeper-authorization`][] for authentication, which is configured by rules and settings in `auth.conf` using a new HOCON configuration file format, and the new `conf.d` location for Puppet Server configuration files. The legacy [Puppet `auth.conf`][] file format and whitelist-based authorization method are [deprecated][].
 >
 > You can enable this new method by setting the `use-legacy-auth-conf` parameter in the `jruby-puppet` section to `false`. It defaults to `true`. 
 >

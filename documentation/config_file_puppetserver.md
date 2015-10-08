@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/config_file_puppetserver.html"
 [configuration directory]: /puppet/latest/reference/dirs_confdir.html
 [code directory]: /puppet/latest/reference/dirs_codedir.html
 [cache directory]: /puppet/latest/reference/dirs_vardir.html
-[`auth.conf` documentation]: ./conf_file_auth.html
+[`auth.conf` documentation]: ./config_file_auth.html
 [deprecated]: ./deprecated_features.html
 
 The `puppetserver.conf` file contains settings for Puppet Server software. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
@@ -90,4 +90,4 @@ profiler: {
 }
 ~~~
 
-> **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of new authorization methods provided in Puppet Server 2.2. For details, see the [`auth.conf` documentation][./config_file_auth.html].
+> **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of new authorization methods provided in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].

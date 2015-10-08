@@ -67,7 +67,7 @@ method find
 allow $1
 ~~~
 
-To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is false, modify the rules to follow the new HOCON `auth.conf` format and place the new rules in `/etc/puppetlabs/puppet/conf.d/auth.conf`:
+To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is false, modify the rules to follow the new HOCON `auth.conf` format and place the new rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf`:
 
 ~~~
 authorization: {

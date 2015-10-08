@@ -21,30 +21,15 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 
 * [`global.conf`](./config_file_global.html)
 * [`webserver.conf`](./config_file_webserver.html)
+* [`web-routes.conf`](./config_file_web-routes.html)
 * [`puppetserver.conf`](./config_file_puppetserver.html)
 * [`auth.conf`](./config_file_auth.html)
 * [`master.conf`](./config_file_master.html) ([deprecated][])
 * [`ca.conf`](./config_file_ca.html) ([deprecated][])
 
-#### Example (Legacy)
-
-If you are not using the new authorization methods, follow this structure to configure  `certificate_status` and `certificate_statuses` endpoint access in `ca.conf`:
-
-~~~
-# CA-related settings - deprecated in favor of "auth.conf"
-certificate-authority: {
-   certificate-status: {
-       authorization-required: true
-       client-whitelist: []
-   }
-}
-~~~
-
-This example requires authorization but does not whitelist any clients.
-
 ## Logging
 
-All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetserver/puppetserver.log` (open source releases) or `/var/log/pe-puppetserver/puppetserver.log` (Puppet Enterprise). The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
+All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver-access.log`, the log level is 'INFO', and Puppet Server sends nothing to syslog.
 
 The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
 
