@@ -9,6 +9,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
 
 * [About Puppet Server](./services_master_puppetserver.markdown)
 * [Release Notes](./release_notes.markdown)
+* [Deprecated Features](./deprecated_features.markdown)
 * [Notable Differences vs. the Apache/Passenger Stack](./puppetserver_vs_passenger.markdown)
 * [Installation](./install_from_packages.markdown)
 * [Configuring Puppet Server](./configuration.markdown)
