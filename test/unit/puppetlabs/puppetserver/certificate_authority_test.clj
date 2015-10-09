@@ -59,12 +59,6 @@
         x "x-"]
     (str r w x)))
 
-(def no-write-perms
-  (for [r "r-"
-        w "-"
-        x "x-"]
-    (str r w x)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
@@ -1170,8 +1164,8 @@
   (let [tmpdir (fs/tmpdir)]
     (testing "A newly created file contains the properly set permissions"
       (doseq [u all-perms
-              g no-write-perms
-              o no-write-perms]
+              g all-perms
+              o all-perms]
         (let [tmp-file (str tmpdir (UUID/randomUUID) (.getTime (Date.)))
               perms (str u g o)]
           (create-file-with-perms tmp-file perms)
@@ -1180,8 +1174,8 @@
 
     (testing "Changing the perms of an already created file"
       (let [perms-list (for [u all-perms
-                             g no-write-perms
-                             o no-write-perms]
+                             g all-perms
+                             o all-perms]
                          (str u g o))]
         (loop [perms perms-list]
           (when-not (empty? perms)
