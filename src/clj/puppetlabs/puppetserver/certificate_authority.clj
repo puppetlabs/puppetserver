@@ -184,13 +184,13 @@
   permissions string is in the form of the standard 9 character posix format. "
   [path :- schema/Str
    permissions :- schema/Str]
-  (-> (get-path-obj path)
-      (Files/createFile
-       (into-array FileAttribute
-                   [(-> permissions
-                        (PosixFilePermissions/fromString)
-                        (PosixFilePermissions/asFileAttribute))]))
-      (.toFile)))
+  (let [perms-set (PosixFilePermissions/fromString permissions)]
+    (-> (get-path-obj path)
+        (Files/createFile
+         (into-array FileAttribute
+                     [(PosixFilePermissions/asFileAttribute perms-set)]))
+        (Files/setPosixFilePermissions perms-set)
+        (.toFile))))
 
 (schema/defn cert-validity-dates :- {:not-before Date :not-after Date}
   "Calculate the not-before & not-after dates that define a certificate's
