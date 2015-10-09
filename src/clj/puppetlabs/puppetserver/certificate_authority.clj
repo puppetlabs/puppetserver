@@ -616,25 +616,6 @@
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))))
 
-(schema/defn ^:always-validate
-  ensure-master-file-perms!
-  [settings :- MasterSettings]
-  (let [p-key-dir (:privatekeydir settings)
-        cur-dir-perms (get-file-perms p-key-dir)]
-    (when-not (= private-key-dir-perms cur-dir-perms)
-      (set-file-perms p-key-dir private-key-dir-perms)
-      (log/warnf (str "The private key directory at '%s' had permissions set as "
-                      "'%s' and should be set to '%s' this has been corrected")
-                 p-key-dir cur-dir-perms private-key-dir-perms))
-    (doseq [key-file (fs/find-files p-key-dir #".*pem$")]
-      (let [key-path (.getPath key-file)
-            cur-key-perms (get-file-perms key-path)]
-        (when-not (= private-key-perms cur-key-perms)
-          (set-file-perms key-path private-key-perms)
-          (log/warnf (str "The private key located at '%s' had permissions set as "
-                          "'%s' and should be set to '%s' this has been fixed.")
-                     key-file cur-key-perms private-key-perms))))))
-
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
    necessary SSL files exist on disk by regenerating all of them if any
@@ -646,9 +627,7 @@
                               (select-keys required-master-files)
                               (vals))]
        (if (every? fs/exists? required-files)
-         (do
-           (ensure-master-file-perms! settings)
-           (log/info "Master already initialized for SSL"))
+         (log/info "Master already initialized for SSL")
          (let [{found   true
                 missing false} (group-by fs/exists? required-files)]
            (if (= required-files missing)
