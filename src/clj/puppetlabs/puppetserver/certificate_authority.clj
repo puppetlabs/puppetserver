@@ -158,11 +158,11 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(def p-key-perms
+(def private-key-perms
   "Posix permissions for all private keys on disk."
   "rw-r-----")
 
-(def p-key-dir-perms
+(def private-key-dir-perms
   "Posix permissions for the private key directory on disk."
   "rwxr-x---")
 
@@ -447,7 +447,7 @@
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key
-      (create-file-with-perms (:cakey ca-settings) p-key-perms))
+      (create-file-with-perms (:cakey ca-settings) private-key-perms))
     (utils/cert->pem! cacert (:cacert ca-settings))
     (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
@@ -598,7 +598,7 @@
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
-  (set-file-perms (:privatekeydir settings) p-key-dir-perms)
+  (set-file-perms (:privatekeydir settings) private-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->cert (:cacert ca-settings))
@@ -625,7 +625,7 @@
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:hostpubkey settings))
     (utils/key->pem! private-key
-     (create-file-with-perms (:hostprivkey settings) p-key-perms))
+     (create-file-with-perms (:hostprivkey settings) private-key-perms))
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))))
@@ -635,19 +635,19 @@
   [settings :- MasterSettings]
   (let [p-key-dir (:privatekeydir settings)
         cur-dir-perms (get-file-perms p-key-dir)]
-    (when-not (= p-key-dir-perms cur-dir-perms)
-      (set-file-perms p-key-dir p-key-dir-perms)
+    (when-not (= private-key-dir-perms cur-dir-perms)
+      (set-file-perms p-key-dir private-key-dir-perms)
       (log/warnf (str "The private key directory at '%s' had permissions set as "
                       "'%s' and should be set to '%s' this has been corrected")
-                 p-key-dir cur-dir-perms p-key-dir-perms))
+                 p-key-dir cur-dir-perms private-key-dir-perms))
     (doseq [key-file (fs/find-files p-key-dir #".*pem$")]
       (let [key-path (.getPath key-file)
             cur-key-perms (get-file-perms key-path)]
-        (when-not (= p-key-perms cur-key-perms)
-          (set-file-perms key-path p-key-perms)
+        (when-not (= private-key-perms cur-key-perms)
+          (set-file-perms key-path private-key-perms)
           (log/warnf (str "The private key located at '%s' had permissions set as "
                           "'%s' and should be set to '%s' this has been fixed.")
-                     key-file cur-key-perms p-key-perms))))))
+                     key-file cur-key-perms private-key-perms))))))
 
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
@@ -995,11 +995,11 @@
   [settings :- CaSettings]
   (let [ca-p-key (:cakey settings)
         cur-perms (get-file-perms ca-p-key)]
-    (when-not (= p-key-perms cur-perms)
-      (set-file-perms ca-p-key p-key-perms)
+    (when-not (= private-key-perms cur-perms)
+      (set-file-perms ca-p-key private-key-perms)
       (log/warnf (str "The private CA key at '%s' was found to have the wrong "
                       "permissions set as '%s'. This has been corrected to '%s'.")
-                 ca-p-key cur-perms p-key-perms))))
+                 ca-p-key cur-perms private-key-perms))))
 
 (schema/defn ^:always-validate
   initialize!
