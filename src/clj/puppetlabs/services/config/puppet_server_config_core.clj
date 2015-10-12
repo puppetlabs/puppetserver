@@ -30,10 +30,12 @@
     :codedir ; This is not actually needed in Puppet Server, but it's needed in PE (file sync)
     :csrdir
     :hostcert
+    :hostcrl
     :hostprivkey
     :hostpubkey
     :keylength
     :localcacert
+    :manage-internal-file-permissions
     :privatekeydir
     :requestdir
     :serial

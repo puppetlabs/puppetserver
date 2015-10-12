@@ -441,13 +441,23 @@
                (re-pattern (str "Missing:\n" path))
                (initialize! settings)))))))
 
-  (testing "The CA private key has its permissions properly reset"
+  (testing (str "The CA private key has its permissions properly reset when "
+                ":manage-internal-file-permissions is true.")
     (let [settings (testutils/ca-sandbox! cadir)]
       (set-file-perms (:cakey settings) "rw-r--r--")
       (logutils/with-test-logging
         (initialize! settings)
         (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
-        (is (= ca/private-key-perms (ca/get-file-perms (:cakey settings))))))))
+        (is (= ca/private-key-perms (ca/get-file-perms (:cakey settings)))))))
+
+  (testing (str "The CA private key's permissions are not reset if "
+                ":manage-internal-file-permissions is false.")
+    (let [perms "rw-r--r--"
+          settings (assoc (testutils/ca-sandbox! cadir)
+                     :manage-internal-file-permissions false)]
+      (set-file-perms (:cakey settings) perms)
+      (initialize! settings)
+      (is (= perms (ca/get-file-perms (:cakey settings)))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
