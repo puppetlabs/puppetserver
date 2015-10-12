@@ -13,8 +13,7 @@
             [clojure.string :as string]
             [clj-time.core :as time]
             [clj-time.coerce :as time-coerce]
-            [me.raynes.fs :as fs]
-            [puppetlabs.puppetserver.certificate-authority :as ca]))
+            [me.raynes.fs :as fs]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -447,7 +446,7 @@
       (logutils/with-test-logging
         (initialize! settings)
         (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
-        (is (= ca/private-key-perms (ca/get-file-perms (:cakey settings)))))))
+        (is (= private-key-perms (get-file-perms (:cakey settings)))))))
 
   (testing (str "The CA private key's permissions are not reset if "
                 ":manage-internal-file-permissions is false.")
@@ -456,7 +455,7 @@
                      :manage-internal-file-permissions false)]
       (set-file-perms (:cakey settings) perms)
       (initialize! settings)
-      (is (= perms (ca/get-file-perms (:cakey settings)))))))
+      (is (= perms (get-file-perms (:cakey settings)))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
