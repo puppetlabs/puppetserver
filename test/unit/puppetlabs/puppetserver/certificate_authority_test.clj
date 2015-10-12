@@ -1,7 +1,6 @@
 (ns puppetlabs.puppetserver.certificate-authority-test
   (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream)
-           (java.security InvalidParameterException)
-           (java.util UUID Date))
+           (java.security InvalidParameterException))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
@@ -1077,28 +1076,27 @@
       (is (= #{"puppet" "master"} (set alt-names))))))
 
 (deftest file-permissions
-  (let [tmpdir (fs/tmpdir)]
-    (testing "A newly created file contains the properly set permissions"
-      (doseq [u all-perms
-              g all-perms
-              o all-perms]
-        (let [tmp-file (str tmpdir (UUID/randomUUID) (.getTime (Date.)))
-              perms (str u g o)]
-          (create-file-with-perms tmp-file perms)
-          (is (= perms (get-file-perms tmp-file)))
-          (fs/delete tmp-file))))
+  (testing "A newly created file contains the properly set permissions"
+    (doseq [u all-perms
+            g all-perms
+            o all-perms]
+      (let [tmp-file (fs/temp-name "ca-file-perms-test")
+            perms (str u g o)]
+        (create-file-with-perms tmp-file perms)
+        (is (= perms (get-file-perms tmp-file)))
+        (fs/delete tmp-file))))
 
-    (testing "Changing the perms of an already created file"
-      (let [perms-list (for [u all-perms
-                             g all-perms
-                             o all-perms]
-                         (str u g o))]
-        (loop [perms perms-list]
-          (when-not (empty? perms)
-            (let [tmp-file (str tmpdir (UUID/randomUUID) (.getTime (Date.)))
-                  [init-perm change-perm] (take 2 perms)]
-              (create-file-with-perms tmp-file init-perm)
-              (set-file-perms tmp-file change-perm)
-              (is (= change-perm (get-file-perms tmp-file)))
-              (fs/delete tmp-file)
-              (recur (nthnext perms 2)))))))))
+  (testing "Changing the perms of an already created file"
+    (let [perms-list (for [u all-perms
+                           g all-perms
+                           o all-perms]
+                       (str u g o))]
+      (loop [perms perms-list]
+        (when-not (empty? perms)
+          (let [tmp-file (fs/temp-name "ca-file-perms-test")
+                [init-perm change-perm] (take 2 perms)]
+            (create-file-with-perms tmp-file init-perm)
+            (set-file-perms tmp-file change-perm)
+            (is (= change-perm (get-file-perms tmp-file)))
+            (fs/delete tmp-file)
+            (recur (nthnext perms 2))))))))
