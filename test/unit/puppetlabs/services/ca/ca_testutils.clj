@@ -44,6 +44,7 @@
    :cert-inventory        (str cadir "/inventory.txt")
    :csrdir                (str cadir "/requests")
    :keylength             512
+   :manage-internal-file-permissions true
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
    :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]})

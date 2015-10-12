@@ -61,6 +61,7 @@
    :cert-inventory           schema/Str
    :csrdir                   schema/Str
    :keylength                schema/Int
+   :manage-internal-file-permissions schema/Bool
    :ruby-load-path           [schema/Str]
    :signeddir                schema/Str
    :serial                   schema/Str})
@@ -216,6 +217,7 @@
           :ca-name
           :ca-ttl
           :keylength
+          :manage-internal-file-permissions
           :ruby-load-path))
 
 (schema/defn settings->ssldir-paths
@@ -970,7 +972,8 @@
      (if (every? fs/exists? required-files)
        (do
          (log/info "CA already initialized for SSL")
-         (ensure-ca-file-perms! settings))
+         (when (:manage-internal-file-permissions settings)
+           (ensure-ca-file-perms! settings)))
        (let [{found   true
               missing false} (group-by fs/exists? required-files)]
          (if (= required-files missing)

@@ -33,6 +33,7 @@
     :hostprivkey
     :hostpubkey
     :localcacert
+    :manage-internal-file-permissions
     :privatekeydir
     :serial
     :signeddir
