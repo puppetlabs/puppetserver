@@ -1,7 +1,8 @@
 (ns puppetlabs.services.ca.ca-testutils
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.certificate-authority :as ca]))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -21,6 +22,7 @@
         :hostprivkey    (str ssldir "/private_keys/" hostname ".pem")
         :hostpubkey     (str ssldir "/public_keys/" hostname ".pem")
         :localcacert    (str ssldir "/certs/ca.pem")
+        :privatekeydir (str ssldir "/private_keys")
         :requestdir     (str ssldir "/certificate_requests")
         :csr-attributes (str confdir "/csr_attributes.yaml")
         :keylength      512})))
@@ -42,6 +44,7 @@
    :cert-inventory        (str cadir "/inventory.txt")
    :csrdir                (str cadir "/requests")
    :keylength             512
+   :manage-internal-file-permissions true
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
    :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]})
@@ -53,4 +56,6 @@
   [cadir]
   (let [tmp-ssldir (ks/temp-dir)]
     (fs/copy-dir cadir tmp-ssldir)
+    ;; This is to ensure no warnings are logged during tests
+    (ca/set-file-perms (str tmp-ssldir "/ca/ca_key.pem") "rw-r-----")
     (ca-settings (str tmp-ssldir "/ca"))))
