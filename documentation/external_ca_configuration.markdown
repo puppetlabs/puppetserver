@@ -35,7 +35,7 @@ For more information on the `bootstrap.cfg` file, see [Service Bootstrapping](./
 
 ## Web Server Configuration
 
-The [webserver.conf](./configuration.markdown#webserverconf) file for Puppet Server performs a function similar to that of VirtualHost configuration for
+The [webserver.conf](./config_file_webserver.html) file for Puppet Server performs a function similar to that of VirtualHost configuration for
 a Ruby Puppet master running on an Apache server. Several `ssl-` settings
 should be added to the `webserver.conf` file to enable the web server to
 use the correct SSL configuration:
