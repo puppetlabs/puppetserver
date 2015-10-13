@@ -1,6 +1,3 @@
-## Ignore project specific files here
-## For OS and IDE specific files, use a global gitignore
-## See: https://help.github.com/articles/ignoring-files/
 scratch
 pom.xml
 *jar
