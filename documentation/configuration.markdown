@@ -54,6 +54,26 @@ By default, the following information is logged for each HTTP request:
 
 The Logback configuration file is at `/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback configuration file in [`webserver.conf`](#webserverconf) with the [`access-log-config`](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#access-log-config) setting. For more information on configuring the logged data, see the [Logback Access Pattern Layout](http://logback.qos.ch/manual/layouts.html#AccessPatternLayout).
 
+### Authorization
+
+Additional logging as it relates `auth.conf` can be enabled in Puppet Server's
+`logback.xml` file. By default, only a single message is logged when a request
+is denied.
+
+To enable a one-time logging of the parsed and transformed `auth.conf` file add
+the following to Puppet Server's `logback.xml` file:
+
+~~~
+<logger name="puppetlabs.trapperkeeper.services.authorization.authorization-service" level="DEBUG"/>
+~~~
+
+To enable rule-by-rule logging for each request as it's checked for
+authorization add the following to Puppet Server's `logback.xml` file:
+
+~~~
+<logger name="puppetlabs.trapperkeeper.authorization.rules" level="TRACE"/>
+~~~
+
 ## Service Bootstrapping
 
 Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`); in that file, you should see some lines that look like this: 
