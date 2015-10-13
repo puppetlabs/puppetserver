@@ -1,7 +1,9 @@
 (ns puppetlabs.puppetserver.certificate-authority
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream])
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File]
+           [java.nio.file Files Paths LinkOption]
+           [java.nio.file.attribute FileAttribute PosixFilePermissions])
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -32,6 +34,7 @@
    :hostpubkey     schema/Str
    :keylength      schema/Int
    :localcacert    schema/Str
+   :privatekeydir schema/Str
    :requestdir     schema/Str
    :csr-attributes schema/Str})
 
@@ -59,6 +62,7 @@
    :cert-inventory           schema/Str
    :csrdir                   schema/Str
    :keylength                schema/Int
+   :manage-internal-file-permissions schema/Bool
    :ruby-load-path           [schema/Str]
    :signeddir                schema/Str
    :serial                   schema/Str})
@@ -155,6 +159,54 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
+(def private-key-perms
+  "Posix permissions for all private keys on disk."
+  "rw-r-----")
+
+(def private-key-dir-perms
+  "Posix permissions for the private key directory on disk."
+  "rwxr-x---")
+
+(def empty-string-array
+  "The API for Paths/get requires a string array which is empty for all of the
+  needs of this namespace. "
+  (into-array String []))
+
+(defn get-path-obj
+  "Create a Path object from the provided path."
+  [path]
+  (Paths/get path empty-string-array))
+
+(schema/defn set-file-perms :- File
+  "Set the provided permissions on the given path. The permissions string is in
+  the form of the standard 9 character posix format, ie \"rwxr-xr-x\"."
+  [path :- schema/Str
+   permissions :- schema/Str]
+  (-> (get-path-obj path)
+      (Files/setPosixFilePermissions
+        (PosixFilePermissions/fromString permissions))
+      (.toFile)))
+
+(schema/defn get-file-perms :- schema/Str
+  "Returns the currently set permissions of the given file path."
+  [path :- schema/Str]
+  (-> (get-path-obj path)
+      (Files/getPosixFilePermissions (into-array LinkOption []))
+      PosixFilePermissions/toString))
+
+(schema/defn create-file-with-perms :- File
+  "Create a new empty file which has the provided posix file permissions. The
+  permissions string is in the form of the standard 9 character posix format. "
+  [path :- schema/Str
+   permissions :- schema/Str]
+  (let [perms-set (PosixFilePermissions/fromString permissions)]
+    (-> (get-path-obj path)
+        (Files/createFile
+         (into-array FileAttribute
+                     [(PosixFilePermissions/asFileAttribute perms-set)]))
+        (Files/setPosixFilePermissions perms-set)
+        (.toFile))))
+
 (schema/defn cert-validity-dates :- {:not-before Date :not-after Date}
   "Calculate the not-before & not-after dates that define a certificate's
    period of validity. The value of `ca-ttl` is expected to be in seconds,
@@ -179,6 +231,7 @@
           :ca-name
           :ca-ttl
           :keylength
+          :manage-internal-file-permissions
           :ruby-load-path))
 
 (schema/defn settings->ssldir-paths
@@ -395,7 +448,8 @@
                                         public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
-    (utils/key->pem! private-key (:cakey ca-settings))
+    (utils/key->pem! private-key
+      (create-file-with-perms (:cakey ca-settings) private-key-perms))
     (utils/cert->pem! cacert (:cacert ca-settings))
     (utils/crl->pem! cacrl (:cacrl ca-settings))))
 
@@ -546,6 +600,7 @@
   (log/debug (str "Initializing SSL for the Master; settings:\n"
                   (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
+  (set-file-perms (:privatekeydir settings) private-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
   (let [ca-cert        (utils/pem->cert (:cacert ca-settings))
@@ -571,7 +626,8 @@
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:hostpubkey settings))
-    (utils/key->pem! private-key (:hostprivkey settings))
+    (utils/key->pem! private-key
+     (create-file-with-perms (:hostprivkey settings) private-key-perms))
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))))
@@ -914,6 +970,18 @@
       (when-not (fs/exists? path)
         (ks/mkdirs! path)))))
 
+(schema/defn ensure-ca-file-perms!
+  "Ensure that the CA's private key file has the correct permissions set. If it
+  does not, then correct them."
+  [settings :- CaSettings]
+  (let [ca-p-key (:cakey settings)
+        cur-perms (get-file-perms ca-p-key)]
+    (when-not (= private-key-perms cur-perms)
+      (set-file-perms ca-p-key private-key-perms)
+      (log/warnf (str "The private CA key at '%s' was found to have the wrong "
+                      "permissions set as '%s'. This has been corrected to '%s'.")
+                 ca-p-key cur-perms private-key-perms))))
+
 (schema/defn ^:always-validate
   initialize!
   "Given the CA configuration settings, ensure that all
@@ -926,7 +994,10 @@
                             (select-keys required-ca-files)
                             (vals))]
      (if (every? fs/exists? required-files)
-       (log/info "CA already initialized for SSL")
+       (do
+         (log/info "CA already initialized for SSL")
+         (when (:manage-internal-file-permissions settings)
+           (ensure-ca-file-perms! settings)))
        (let [{found   true
               missing false} (group-by fs/exists? required-files)]
          (if (= required-files missing)
