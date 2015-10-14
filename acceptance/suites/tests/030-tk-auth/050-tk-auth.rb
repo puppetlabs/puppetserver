@@ -63,12 +63,12 @@ test_name "TK Auth Deep Test" do
   
     step 'Turn on new auth support' do
       modify_tk_config(master, options['puppetserver-config'],
-        {'jruby-puppet' => {'use-legacy-auth_conf' => false}})
+        {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
     end
 
     teardown do
       modify_tk_config(master, options['puppetserver-config'],
-        {'jruby-puppet' => {'use-legacy-auth_conf' => true}})
+        {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
     end
 
 
