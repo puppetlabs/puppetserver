@@ -63,8 +63,14 @@ test_name "TK Auth Deep Test" do
   
     step 'Turn on new auth support' do
       modify_tk_config(master, options['puppetserver-config'],
-                       {'jruby-puppet' => {'use-legacy-auth_conf' => false}})
+        {'jruby-puppet' => {'use-legacy-auth_conf' => false}})
     end
+
+    teardown do
+      modify_tk_config(master, options['puppetserver-config'],
+        {'jruby-puppet' => {'use-legacy-auth_conf' => true}})
+    end
+
 
     step 'Generate and execute tests for each rule in auth.conf...' do
       authconf_text = on(master, 'cat /etc/puppetlabs/puppetserver/conf.d/auth.conf').stdout
@@ -72,7 +78,6 @@ test_name "TK Auth Deep Test" do
       tests=generate_tests(authconf_hash['authorization']['rules'])
 
       tests.each do |t|
-        #TODO: discuss if the entire curlstring should come from the class or not...
         w = "-w \"\\nhttpresponse: %{http_code}\\n\" -s --show-error --include"
         curlstr = "curl #{w} #{t.auth_string} -X #{t.method} #{t.url}"
         t.actual_result_detail = on(master, curlstr, :acceptable_exit_codes => [-1, 0, 1, 7, 18, 28])
