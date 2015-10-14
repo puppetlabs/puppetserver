@@ -51,6 +51,12 @@
   [csr-attributes-file-name]
   (str csr-attributes-dir "/" csr-attributes-file-name))
 
+(def all-perms
+  (for [r "r-"
+        w "w-"
+        x "x-"]
+    (str r w x)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
@@ -431,7 +437,25 @@
           (is (thrown-with-msg?
                IllegalStateException
                (re-pattern (str "Missing:\n" path))
-               (initialize! settings))))))))
+               (initialize! settings)))))))
+
+  (testing (str "The CA private key has its permissions properly reset when "
+                ":manage-internal-file-permissions is true.")
+    (let [settings (testutils/ca-sandbox! cadir)]
+      (set-file-perms (:cakey settings) "rw-r--r--")
+      (logutils/with-test-logging
+        (initialize! settings)
+        (is (logged? #"/ca/ca_key.pem' was found to have the wrong permissions set as 'rw-r--r--'. This has been corrected to 'rw-r-----'."))
+        (is (= private-key-perms (get-file-perms (:cakey settings)))))))
+
+  (testing (str "The CA private key's permissions are not reset if "
+                ":manage-internal-file-permissions is false.")
+    (let [perms "rw-r--r--"
+          settings (assoc (testutils/ca-sandbox! cadir)
+                     :manage-internal-file-permissions false)]
+      (set-file-perms (:cakey settings) perms)
+      (initialize! settings)
+      (is (= perms (get-file-perms (:cakey settings)))))))
 
 (deftest retrieve-ca-cert!-test
   (testing "CA file copied when it doesn't already exist"
@@ -536,7 +560,7 @@
 
     (testing "Does not replace files if they all exist"
       (let [files (-> (settings->ssldir-paths settings)
-                      (dissoc :certdir :requestdir)
+                      (dissoc :certdir :requestdir :privatekeydir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
         (initialize-master-ssl! settings "master" ca-settings)
@@ -1136,3 +1160,29 @@
                         (utils/get-extension-value utils/subject-alt-name-oid)
                         (:dns-name))]
       (is (= #{"puppet" "master"} (set alt-names))))))
+
+(deftest file-permissions
+  (testing "A newly created file contains the properly set permissions"
+    (doseq [u all-perms
+            g all-perms
+            o all-perms]
+      (let [tmp-file (fs/temp-name "ca-file-perms-test")
+            perms (str u g o)]
+        (create-file-with-perms tmp-file perms)
+        (is (= perms (get-file-perms tmp-file)))
+        (fs/delete tmp-file))))
+
+  (testing "Changing the perms of an already created file"
+    (let [perms-list (for [u all-perms
+                           g all-perms
+                           o all-perms]
+                       (str u g o))]
+      (loop [perms perms-list]
+        (when-not (empty? perms)
+          (let [tmp-file (fs/temp-name "ca-file-perms-test")
+                [init-perm change-perm] (take 2 perms)]
+            (create-file-with-perms tmp-file init-perm)
+            (set-file-perms tmp-file change-perm)
+            (is (= change-perm (get-file-perms tmp-file)))
+            (fs/delete tmp-file)
+            (recur (nthnext perms 2))))))))
