@@ -61,21 +61,31 @@ end
 
 test_name "TK Auth Deep Test" do
   
+    step 'Turn on new auth support' do
+      modify_tk_config(master, options['puppetserver-config'],
+        {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
+    end
+
+    teardown do
+      modify_tk_config(master, options['puppetserver-config'],
+        {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
+    end
+
+
     step 'Generate and execute tests for each rule in auth.conf...' do
-      authconf_text = on(master, 'cat /etc/puppetlabs/puppetserver/conf.d/auth.conf').stdout
+      authconf_text = on(master, "cat #{options['puppetserver-confdir']}/auth.conf").stdout
       authconf_hash = Hocon.parse(authconf_text)
       tests=generate_tests(authconf_hash['authorization']['rules'])
 
       tests.each do |t|
-        #TODO: discuss if the entire curlstring should come from the class or not...
-        w = "-w \"\\nhttpresponse: %{http_code}\\n\" --max-time 2 -s --show-error --include"
+        w = "-w \"\\nhttpresponse: %{http_code}\\n\" -s --show-error --include"
         curlstr = "curl #{w} #{t.auth_string} -X #{t.method} #{t.url}"
-        t.actual_result_detail = on(master, curlstr, :acceptable_exit_codes => [-1, 0, 1, 7, 28])
+        t.actual_result_detail = on(master, curlstr, :acceptable_exit_codes => [-1, 0, 1, 7, 18, 28])
         t.set_porf
       end
 
       tests.each do |t|
-        assert_match("PASS",t.porf,'FAILED on #{t.method} #{t.path}\nEXPECTED: #{t.expected_result}\nACTUAL: #{t.actual_result}\n')
+        assert_match("PASS",t.porf,"FAILED on #{t.method} #{t.path}\nEXPECTED: #{t.expected_result}\nACTUAL: #{t.actual_result}\n")
         t.show_detail if t.porf == 'FAIL'
       end
 
