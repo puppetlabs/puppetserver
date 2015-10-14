@@ -37,6 +37,8 @@
     :hostpubkey
     :keylength
     :localcacert
+    :manage-internal-file-permissions
+    :privatekeydir    
     :requestdir
     :serial
     :signeddir
