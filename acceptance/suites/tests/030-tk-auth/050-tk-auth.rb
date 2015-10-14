@@ -73,7 +73,7 @@ test_name "TK Auth Deep Test" do
 
 
     step 'Generate and execute tests for each rule in auth.conf...' do
-      authconf_text = on(master, 'cat /etc/puppetlabs/puppetserver/conf.d/auth.conf').stdout
+      authconf_text = on(master, "cat #{options['puppetserver-confdir']}/auth.conf").stdout
       authconf_hash = Hocon.parse(authconf_text)
       tests=generate_tests(authconf_hash['authorization']['rules'])
 
