@@ -61,6 +61,11 @@ end
 
 test_name "TK Auth Deep Test" do
   
+    step 'Turn on new auth support' do
+      modify_tk_config(master, options['puppetserver-config'],
+                       {'jruby-puppet' => {'use-legacy-auth_conf' => false}})
+    end
+
     step 'Generate and execute tests for each rule in auth.conf...' do
       authconf_text = on(master, 'cat /etc/puppetlabs/puppetserver/conf.d/auth.conf').stdout
       authconf_hash = Hocon.parse(authconf_text)
