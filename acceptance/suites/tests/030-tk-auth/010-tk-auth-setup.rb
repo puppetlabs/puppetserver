@@ -45,7 +45,7 @@ ENDOFTEXT
   end
 
   step 'restart puppetserver' do
-    on(master, 'service #{options[:puppetservice]} restart') 
+    on(master, "service #{options[:puppetservice]} restart") 
   end
 
   step 'validate that an agent only host can perform a successful agent run' do
