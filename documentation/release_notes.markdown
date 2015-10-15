@@ -10,11 +10,100 @@ canonical: "/puppetserver/latest/release_notes.html"
 [configuration directory]: /puppet/latest/reference/dirs_confdir.html
 [code directory]: /puppet/latest/reference/dirs_codedir.html
 [cache directory]: /puppet/latest/reference/dirs_vardir.html
+[`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
+[Configuration documentation]: ./configuration.html
+[deprecated]: ./deprecated_features.html
+[Puppet `auth.conf` file]: /puppet/latest/reference/config_file_auth.html
+[`auth.conf`]: ./config_file_auth.html
+[`ca.conf`]: ./config_file_ca.html
+[`master.conf`]: ./config_file_master.html
 
+## Puppet Server 2.2
+
+Released October 15, 2015.
+
+### Supported Platforms
+
+Puppet Server 2.2 supports the following platforms:
+
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 7
+
+### What's New
+
+#### New Authentication Method and `auth.conf` Format
+
+Puppet Server 2.2 introduces support for the Clojure [`trapperkeeper-authorization`][] as a replacement for the [deprecated][] Ruby authentication system that uses the [Puppet `auth.conf` file][]. This also provides new authentication options for administration, certificate status, and certification authority endpoints.
+
+If you enable this new authentication method, you must convert any custom authorization rules and settings to [the new HOCON-based format][`auth.conf`]. For more information on these new features, instructions on enabling them, and help converting authorization rules, see the updated [Configuration documentation][] and [`auth.conf` documentation][`auth.conf`].
+
+* [SERVER-111](https://tickets.puppetlabs.com/browse/SERVER-111) - auth.conf replacement 
+* [SERVER-763](https://tickets.puppetlabs.com/browse/SERVER-763) - Add allow-header-cert-info authorization support to all Puppet Server service APIs
+
+### Bug Fixes
+
+#### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
+
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
+
+This fix was also applied to [Puppet Server 2.1.x](#puppet-server-212) and [1.2.x](#puppet-server-122).
+
+* [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
+
+### Deprecated Features
+
+For detailed information about features deprecated in Puppet Server 2.2, see the new [Deprecated Features documentation][deprecated].
+
+#### Ruby Authorization Methods and `auth.conf` Format
+
+With the new authentication methods introduced in Puppet Server 2.2, the legacy [`auth.conf`][] rules and configuration file format are [deprecated][].
+
+#### `certificate-authority` and `puppet-admin` Settings
+
+The [`ca.conf`][] and [`master.conf`][] configuration files and their settings are now either [deprecated][] or provided by the new authentication methods and `auth.conf` format.
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.0%22)
+
+## Puppet Server 2.1.2
+
+Released October 15, 2015.
+
+### Bug Fixes
+
+#### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
+
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
+
+* [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
+
+#### Resolve an Issue with FreeIPA 4.x CA Signed Certificates
+
+When running Puppet agent against a Puppet Server with a FreeIPA 4.x CA signed certificate, Puppet agent fails with an error:
+
+    [puppet-server] Puppet java.util.ArrayList cannot be cast to java.lang.String
+    
+Puppet Server 2.1.2 resolves this issue.
+
+* [SERVER-816](https://tickets.puppetlabs.com/browse/SERVER-816)
+
+#### Correctly Flush Caches of Actively Used JRuby Instances
+
+In previous versions of Puppet Server, Puppet Server could not flush the caches of JRuby instances if they were borrowed from a pool when the cache flush request was issued. This version resolves the issue.
+
+* [SERVER-813](https://tickets.puppetlabs.com/browse/SERVER-813)
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.1.2%22)
 
 ## Puppet Server 2.1.1
 
-Released June 17, 2015
+Released June 17, 2015.
 
 This is a security and bug fix release in the Puppet Server 2.1 series; no new features have been added since 2.1.0. We recommend that all users upgrade.
 
@@ -69,40 +158,40 @@ We fixed two bugs in the CA service's responses, which caused issues for service
 
 ## Puppet Server 2.1
 
-Release June 2, 2015.
+Released June 2, 2015.
 
-This release contains several new features, improvements, and bug fixes. In keeping with [semantic versioning][semver] practices, this release of Puppet Server introduces changes that contain new backwards compatible functionality.
+This release contains several new features, improvements, and bug fixes. In keeping with [semantic versioning][semver] practices, this release of Puppet Server introduces changes that contain new backward-compatible functionality.
 
 ### Supported Platforms
 
-Puppet Server 2.1 ships for the following supported platforms:
+Puppet Server 2.1 supports the following platforms:
 
- * Enterprise Linux 7
- * Enterprise Linux 6
- * Ubuntu 14.04
- * Ubuntu 12.04
- * Debian 7
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 7
 
-### What's New in Puppet Server 2.1
+### What's New
 
-#### Backwards Compatibility with Puppet 3
+#### Backward Compatibility with Puppet 3
 
-Puppet Server 2.1 now supports both Puppet 4 and Puppet 3 agents. This is new functionality compared to Puppet Server 2.0 which only supported Puppet 4 agents.
+Puppet Server 2.1 now supports both Puppet 4 and Puppet 3 agents. This is new functionality compared to Puppet Server 2.0, which only supported Puppet 4 agents.
 
-Please see [Compatibility with Puppet Agent](./compatibility_with_puppet_agent.markdown) for more information.
+For more information, see [Compatibility with Puppet Agent](./compatibility_with_puppet_agent.html).
 
 #### New JRuby Pool features
 
-##### Flush JRuby after max-requests reached
+##### Flush JRuby After `max-requests` Reached
 
 Puppet Server 2.1 introduces a new feature that allows the JRuby containers and associated threads to be flushed and re-initialized after a configurable number of HTTP requests.  This functionality is similar to the PassengerMaxRequests functionality that is often tuned in Puppet+Passenger configurations.
 
-More info:
+For more information, see:
 
-* [Tuning Guide](./tuning_guide.markdown)
+* [Tuning Guide](./tuning_guide.html)
 * [SERVER-325](https://tickets.puppetlabs.com/browse/SERVER-325)
 
-##### Other JRuby Pool Related Items
+##### Other JRuby Pool-Related Items
 
 * [SERVER-246](https://tickets.puppetlabs.com/browse/SERVER-246) - Add :borrow-timeout config option.
 * [SERVER-324](https://tickets.puppetlabs.com/browse/SERVER-324) - Added support to the `environment-cache` API for flushing an environment by name, as opposed to only having the ability to flush all environments.
@@ -111,13 +200,13 @@ More info:
 * [SERVER-408](https://tickets.puppetlabs.com/browse/SERVER-408) - Expose configurable `borrow-timeout` to allow JRuby pool borrows to timeout.
 * [SERVER-448](https://tickets.puppetlabs.com/browse/SERVER-448) - Change default max-active-instances to not exceed 4 JRubies.
 
-#### REST auth.conf
+#### REST `auth.conf`
 
 As a result of the REST API URL changes between Puppet Server 1.x and 2.0, Puppet Server 2.1 users who have modified their `auth.conf` will need to make changes when using Puppet 3 agents with Puppet Server 2.1.  Please see [Compatibility with Puppet Agent](./compatibility_with_puppet_agent.markdown) for more information.
 
-These auth.conf changes follow the same changes required for any users upgrading from Puppet 3.x to Puppet 4.x.
+These `auth.conf` changes follow the same changes required for any users upgrading from Puppet 3.x to Puppet 4.x.
 
-### Maintenance & Small Improvements
+### Maintenance and Small Improvements
 
 * [SERVER-380](https://tickets.puppetlabs.com/browse/SERVER-380) - Upgrade Jetty to 9.2.x.
 * [SERVER-437](https://tickets.puppetlabs.com/browse/SERVER-437) - Upgrade stable branch to jvm-ssl-utils 0.8.0.
@@ -130,7 +219,7 @@ These auth.conf changes follow the same changes required for any users upgrading
 * [SERVER-614](https://tickets.puppetlabs.com/browse/SERVER-614) - Fix set_connect_timeout_milliseconds error when sending report to PuppetDB.
 * [SERVER-680](https://tickets.puppetlabs.com/browse/SERVER-680) - Upgraded JRuby dependency to 1.7.20 in order to take advantage of some of the memory management improvements we’ve seen in our internal testing.
 
-### Misc Bug Fixes
+### Miscellaneous Bug Fixes
 
 * [SERVER-157](http://tickets.puppetlabs.com/browse/SERVER-157) - Utilize keylength puppet conf value for generating SSL cert keys.
 * [SERVER-273](http://tickets.puppetlabs.com/browse/SERVER-273) - Upgrade to JRuby 1.7.19 / fix for jruby-pool DELETE memory leak.
@@ -156,22 +245,22 @@ These auth.conf changes follow the same changes required for any users upgrading
 
 In keeping with [semantic versioning][semver] practices, this release
 of Puppet Server introduces changes that break compatibility with
-Puppet 3.x agents. Please carefully read these release notes before
+Puppet 3.x agents. Carefully read these release notes before
 attempting to upgrade your Puppet installation, as the locations of
-key files have moved, and changes to the Puppet Server API may require
+key files have moved, and changes to the Puppet Server API might require
 configuration changes.
 
 ### Supported Platforms
 
-Puppet Server 2.0 ships for the following supported platforms:
+Puppet Server 2.0 supports the following platforms:
 
- * Enterprise Linux 7
- * Enterprise Linux 6
- * Ubuntu 14.04
- * Ubuntu 12.04
- * Debian 7
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 7
 
-### What's New in Puppet Server 2.0
+### What's New
 
 #### Repository Location and Pre-Installation
 
@@ -179,11 +268,10 @@ As with Puppet 4.0, Puppet Server 2.0 is now distributed via the new
 Puppet Collection repositories. Puppet Server 2.0 is part of Puppet
 Collection 1.
 
-In order to install Puppet Server 2.0, you'll need to install a
-release package appropriate to your operating system. See the
-[Puppet 4 installation guide][pup4install] for information on how to
-prepare your system for installation, and specific installation
-instructions.
+To install Puppet Server 2.0, you'll need to install a release package
+appropriate to your operating system. See the 
+[Puppet 4 installation guide][pup4install] for information on how to 
+prepare your system for installation, and specific installation instructions.
 
 * [SERVER-524](https://tickets.puppetlabs.com/browse/SERVER-524) - Set
   repo-target to PC1 for 2.0 release
@@ -210,28 +298,26 @@ installed, as well.
 * [SERVER-409](https://tickets.puppetlabs.com/browse/SERVER-409) -
   Plumb confdir, vardir, codedir, logdir, rundir values
 
-#### REST auth.conf
+#### REST `auth.conf`
 
 As a result of the REST API URL changes between Puppet Server 1.x
-and 2.0, Puppet Server 1.x users who have modified their `auth.conf` will
-need to make changes when upgrading to Puppet Server 2.0.  See
-[SERVER-526](https://tickets.puppetlabs.com/browse/SERVER-526) for
-some additional information.
+and 2.0, Puppet Server 1.x users who have modified their `auth.conf` file will
+need to make changes when upgrading to Puppet Server 2.0. For more information, see
+[SERVER-526](https://tickets.puppetlabs.com/browse/SERVER-526).
 
-These auth.conf changes follow the same changes required for any users
+These `auth.conf` changes follow the same changes required for users
 upgrading from Puppet 3.x to Puppet 4.x.
 
-#### Backwards Compatibility
+#### Backward Compatibility
 
-Puppet Server 2.0 is not backwards compatible with Puppet 3.x agents.
+Puppet Server 2.0 is not backward compatible with Puppet 3.x agents.
 Version 2.0 of Puppet Server is only compatible with Puppet 4.x
-agents. If upgrading all your agents and masters in concert will be a
-problem for you, please consider waiting until we release Puppet
-Server 2.1.
+agents. If upgrading all your agents and masters in concert is
+problematic, use Puppet Server 2.1 instead.
 
 ### Known Issues
 
-#### Installing gems when Puppet Server is behind a proxy requires manual download of gems
+#### Installing Gems when Puppet Server is Behind a Proxy Requires Manual Download of Gems
 
 When a Puppet master must access the Internet via a proxy server, it
 is not possible to use the `puppetserver gem` command to install
@@ -246,7 +332,7 @@ gems. To work around this issue until we release a fix:
 
 ### Bug Fixes
 
-#### Puppet Server now reports when new versions are available.
+#### Puppet Server Reports When New Versions Are Available
 
 Due to a mismatch in naming conventions, Puppet Server was unable to
 report the availability of new versions. We've addressed this bug by
@@ -258,18 +344,18 @@ project and package names.
 * [SERVER-457](https://tickets.puppetlabs.com/browse/SERVER-457) - Get
   dujour working with Puppet Server 2.0.0 RC
 
-#### Fix inconsistent behavior around `always_cache_features` setting
+#### Fix Inconsistent Behavior Around `always_cache_features` Setting
 
-We've fixed a bug in puppetserver where always\_cache\_features was not always
-overridden because it could be changed in puppet.conf. The behavior is
+We've fixed a bug in puppetserver where `always_cache_features` was not always
+overridden because it could be changed in `puppet.conf`. The behavior is
 now explicitly managed in code rather than configuration.
 
 * [SERVER-410](https://tickets.puppetlabs.com/browse/SERVER-410) -
-  Explicitly override `always\_cache\_features` in puppetserver
+  Explicitly override `always_cache_features` in puppetserver
 
-#### Fix unreliable puppetserver start behavior
+#### Fix Unreliable puppetserver Start Behavior
 
-We've Fixed a bug where puppetserver was not starting reliably from
+We've fixed a bug where puppetserver was not starting reliably from
 the service management framework due to the "rundir" not being
 writable.
 
@@ -277,7 +363,7 @@ writable.
   Handle rundir creation for puppet and puppetserver in Puppet
   Server 2.x
 
-#### Fix misleading silence from `puppetserver foreground` command
+#### Fix Misleading Silence from `puppetserver foreground` Command
 
 We've fixed a bug where the puppetserver foreground command would not
 produce any output, making it appear as if the command had not started
@@ -289,7 +375,4 @@ in 2.0.0.
 
 ### All Changes
 
-For a list of all changes in this release, see this JIRA page:
-
 * [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.0.0%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
-
