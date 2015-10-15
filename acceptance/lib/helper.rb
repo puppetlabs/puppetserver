@@ -155,20 +155,6 @@ module PuppetServerExtensions
     end
   end
 
-  def upgrade_package(host, name)
-    variant, _, _, _ = master['platform'].to_array
-    case variant
-      when /^(fedora|centos|eos|el)$/
-        on(host, "rm -f $(rpm --verify #{name} | cut -f 4)")
-        on(host, "yum -y reinstall #{name}")
-        on(host, "yum -y upgrade #{name}")
-      when /^(ubuntu|debian|cumulus)$/
-        on(host, "apt-get install -o Dpkg::Options::='--force-confnew' -y --force-yes #{name}")
-      else
-        raise "Package #{name} cannot be upgraded on #{host}"
-    end
-  end
-
   def get_defaults_var(host, varname)
     package_name = options['puppetserver-package']
     variant, version, _, _ = master['platform'].to_array
