@@ -54,11 +54,11 @@ In another shell, you can run the agent:
     # Go to the directory where you checked out puppet-server
     $ cd puppet-server
     # Set ruby and bin paths
-    $ export RUBYLIB="./ruby/puppet/lib:./ruby/facter/lib"
-    $ export PATH=$PATH:./ruby/puppet/bin:./ruby/facter/
+    $ export RUBYLIB=./ruby/puppet/lib:./ruby/facter/lib
+    $ export PATH=./ruby/puppet/bin:./ruby/facter/bin:$PATH
     # Create the modules directory for the production environment, to avoid the
     #  annoying module error during pluginsync
-    $ mkdir -p ./target/master-code/environments/production/modules
+    $ mkdir -p ./target/master-code-dir/environments/production/modules
     # Run the agent
     $ puppet agent --no-daemonize --debug --trace --verbose \
          --confdir ./target/master-conf-dir \
