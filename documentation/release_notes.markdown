@@ -15,9 +15,7 @@ features have been added since 1.1.0. We recommend that all users upgrade.
 
 #### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
 
-Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
-
-This fix was also applied to [Puppet Server 2.1.x](#puppet-server-212) and [1.2.x](#puppet-server-122).
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 1.1.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
 
 * [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
 
