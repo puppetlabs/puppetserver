@@ -26,8 +26,6 @@
   (comidi/routes
     (comidi/GET ["/node/" [#".*" :rest]] request
                    (request-handler request))
-    (comidi/GET ["/facts/" [#".*" :rest]] request
-                   (request-handler request))
     (comidi/GET ["/file_content/" [#".*" :rest]] request
                    (request-handler request))
     (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
@@ -54,12 +52,6 @@
     (comidi/GET "/environments" request
                    (request-handler request))
     (comidi/GET ["/status/" [#".*" :rest]] request
-                   (request-handler request))
-
-    ;; TODO: when we get rid of the legacy dashboard after 3.4, we should remove
-    ;; this endpoint as well.  It makes more sense for this type of query to be
-    ;; directed to PuppetDB.
-    (comidi/GET ["/facts_search/" [#".*" :rest]] request
                    (request-handler request))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
