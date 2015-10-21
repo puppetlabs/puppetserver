@@ -129,11 +129,8 @@ with_puppet_running_on(master, {}) do
   end
 
   step 'status endpoint' do
-    curl_authenticated('/puppet/v3/status/foo?environment=production')
-    assert_allowed
-
     curl_unauthenticated('/puppet/v3/status/foo?environment=production')
-    assert_denied(/denied by rule 'puppetlabs status'/)
+    assert_allowed
   end
 
   step 'certificate_revocation_list endpoint' do
