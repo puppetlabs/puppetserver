@@ -120,11 +120,8 @@
                    tk-services/service-context
                    :pool-context
                    core/get-pool)]
-     (log/debug "Acquiring lock on JRubyPool...")
-     (.lock pool#)
-     (log/debug "Lock acquired")
+     (core/lock-pool pool#)
      (try
       ~@body
       (finally
-       (.unlock pool#)
-       (log/debug "Lock on JRubyPool released")))))
+        (core/unlock-pool pool#)))))

@@ -263,6 +263,21 @@
   (instance-returned event-callbacks instance reason)
   (jruby-internal/return-to-pool instance))
 
+(schema/defn ^:always-validate
+  lock-pool
+  "Locks the JRuby pool for exclusive access."
+  [pool :- jruby-schemas/pool-queue-type]
+  (log/debug "Acquiring lock on JRubyPool...")
+  (.lock pool)
+  (log/debug "Lock acquired"))
+
+(schema/defn ^:always-validate
+  unlock-pool
+  "Unlocks the JRuby pool, restoring concurernt access."
+  [pool :- jruby-schemas/pool-queue-type]
+  (.unlock pool)
+  (log/debug "Lock on JRubyPool released"))
+
 (schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
   "Run JRuby as though native `ruby` were invoked with args on the CLI"
   [config :- {schema/Keyword schema/Any}
