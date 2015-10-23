@@ -10,37 +10,39 @@ canonical: "/puppetserver/latest/config_file_puppetserver.html"
 [`auth.conf` documentation]: ./config_file_auth.html
 [deprecated]: ./deprecated_features.html
 
-The `puppetserver.conf` file contains settings for Puppet Server software. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html).
+The `puppetserver.conf` file contains settings for Puppet Server software. For an overview, see [Puppet Server Configuration](./configuration.html).
 
 ## Settings
 
-> **Note:** Most users should never set the `master-conf-dir` or `master-code-dir` settings to a non-default value. If you do, change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module`  use the same directories as Puppet Server. Also note that a non-default `confdir` must be specified on the command line when running commands, since that setting must be set before Puppet tries to find its config file.
+> **Note:** Under most conditions, you won't change the default settings for `master-conf-dir` or `master-code-dir`. However, if you do, also change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module` use the same directories as Puppet Server. You must also specify the non-default `confdir` when running commands, since that setting must be set before Puppet tries to find its config file.
 
 * The `jruby-puppet` settings configure the interpreter:
-    * `ruby-load-path`: Where the Puppet Server expects to find Puppet, Facter, etc.
-    * `gem-home`: This setting determines where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If not specified, uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
-    * `master-conf-dir`: Optionally, set the path to the Puppet [configuration directory][]. If not specified, the default is `/etc/puppetlabs/puppet`.
-    * `master-code-dir`: Optionally, set the path to the Puppet [code directory][]. If not specified, the default is `/etc/puppetlabs/code`.
-    * `master-var-dir`: Optionally, set the path to the Puppet [cache directory][]. If not specified, the default is `/opt/puppetlabs/server/data/puppetserver`.
-    * `master-run-dir`: Optionally, set the path to the run directory, where the service's PID file is stored. If not specified, the default is `/var/run/puppetlabs/puppetserver`.
-    * `master-log-dir`: Optionally, set the path to the log directory. If not specified, uses the Puppet default `/var/log/puppetlabs/puppetserver`.
-    * `max-active-instances`: Optionally, set the maximum number of JRuby instances to allow. Defaults to 'num-cpus - 1', with a minimum default value of 1 and a maximum default value of 4.
-    * `max-requests-per-instance`: Optionally, limit how many HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it gets flushed from memory and replaced with a fresh one. Defaults to 0, which disables automatic JRuby flushing.
+    * `ruby-load-path`: The location where Puppet Server expects to find Puppet, Facter, and other components.
+    * `gem-home`: The location where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If nothing is specified, JRuby uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
+    * `master-conf-dir`: Optional. The path to the Puppet [configuration directory][]. The default is `/etc/puppetlabs/puppet`.
+    * `master-code-dir`: Optional. The path to the Puppet [code directory][]. The default is `/etc/puppetlabs/code`.
+    * `master-var-dir`: Optional. The path to the Puppet [cache directory][]. The default is `/opt/puppetlabs/server/data/puppetserver`.
+    * `master-run-dir`: Optional. The path to the run directory, where the service's PID file is stored. The default is `/var/run/puppetlabs/puppetserver`.
+    * `master-log-dir`: Optional. The path to the log directory. If nothing is specified, it uses the Puppet default `/var/log/puppetlabs/puppetserver`.
+    * `max-active-instances`: Optional. The maximum number of JRuby instances allowed. The default is 'num-cpus - 1', with a minimum value of 1 and a maximum value of 4.
+    * `max-requests-per-instance`: Optional. The number of HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. The default is 0, which disables automatic JRuby flushing.
 
-    This can be useful for working around buggy module code that would otherwise cause memory leaks, but it causes a slight performance penalty whenever a new JRuby has to reload all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value will give the best performance.
-    * `borrow-timeout`: Optionally, set the timeout when attempting to borrow an instance from the JRuby pool in milliseconds. Defaults to 1200000.
-    * `use-legacy-auth-conf`: Optionally, set the method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints include those listed in the [Puppet v3 HTTP API](/puppet/4.2/reference/http_api/http_api_index.html#puppet-v3-http-api).
+    JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
+    * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
+    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
 
-    For a value of `true` or if this setting is not specified, Puppet uses the legacy Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which is [deprecated][] and will be removed in a future version of Puppet Server.
+    If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
     
-    For a value of `false`, Puppet uses a new HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
+    For a value of `false`, Puppet uses the HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
 * The `profiler` settings configure profiling:
-    * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. Default: `false`.
-* The `puppet-admin` section configures the Puppet Server's administrative API. (This is a new API and isn't provided by Rack or WEBrick Puppet masters.) With the introduction of a new method for authorizing requests made to Puppet Server in Puppet Server 2.2, the settings in this section are now deprecated. You should consider removing these settings in favor of the new authorization method and `auth.conf` format and location. See the [`auth.conf` documentation][] for more information.
+    * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
+* The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.) The settings in this section are now deprecated. Remove these settings and replace them with the authorization method that was introduced in Puppet Server 2.2, using a HOCON format for `auth.conf`. See the [`auth.conf` documentation][] for more information.
     * `authorization-required` determines whether a client certificate is required to access the endpoints in this API. If set to `false`, all requests will be permitted to access this API. If set to `true`, only the clients whose certnames are included in the `client-whitelist` setting are allowed access to the admin API. If this setting is not specified but the `client-whitelist` setting is specified, the default value for this setting is `true`.
-    * `client-whitelist` contains an array of client certificate names that are whitelisted to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
+    * `client-whitelist` contains an array of client certificate names that are allowed to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
 
     If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf` documentation][] formats to access the admin API endpoints.
+
+### Examples
 
 ~~~
 # Configuration for the JRuby interpreters.
@@ -90,4 +92,4 @@ profiler: {
 }
 ~~~
 
-> **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of new authorization methods provided in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].
+> **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of authorization methods introduced in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].

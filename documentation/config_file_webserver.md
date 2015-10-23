@@ -4,7 +4,7 @@ title: "Puppet Server Configuration Files: webserver.conf"
 canonical: "/puppetserver/latest/config_file_webserver.html"
 ---
 
-The `webserver.conf` file configures the Puppet Server `webserver` service. For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html). To configure the mount points for the Puppet administrative API web applications, see the [`web-routes.conf` documentation](./config_file_web-routes.md).
+The `webserver.conf` file configures the Puppet Server `webserver` service. For an overview, see [Puppet Server Configuration](./configuration.html). To configure the mount points for the Puppet administrative API web applications, see the [`web-routes.conf` documentation](./config_file_web-routes.md).
 
 ## Examples
 
@@ -24,9 +24,9 @@ webserver: {
 }
 ~~~
 
-These are the most important values to manage in a Puppet Server installation. For further documentation, including a complete list of available settings and values, see [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
+These are the main values for managing a Puppet Server installation. For further documentation, including a complete list of available settings and values, see [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md).
 
-By default, Puppet Server is configured to use the correct Puppet master and certificate authority (CA) certificates. If you're using an external CA and provided your own certificates and keys, make sure the SSL-related parameters in `webserver.conf` point to the correct file. 
+By default, Puppet Server is configured to use the correct Puppet master and certificate authority (CA) certificates. If you're using an external CA and providing your own certificates and keys, make sure the SSL-related parameters in `webserver.conf` point to the correct file. 
 
 ~~~
 webserver: {
@@ -39,4 +39,4 @@ webserver: {
 }
 ~~~
 
-Configuring an external CA requires additional steps, which are described in the [External CA Configuration documentation](./external_ca_configuration.markdown).
+Configuring an external CA requires additional steps, which are described in [External CA Configuration](./external_ca_configuration.markdown).

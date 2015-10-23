@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/config_file_web-routes.html"
 
 The `web-routes.conf` file configures the Puppet Server `web-router-service`, which sets mount points for Puppet Server's web applications. You should not modify these mount points, as Puppet 4 agents rely on Puppet Server mounting them to specific URLs.
 
-For a broader overview of Puppet Server configuration, see the [configuration documentation](./configuration.html). To configure the `webserver` service, see the [`webserver.conf` documentation](./config_file_webserver.html).
+For an overview, see [Puppet Server Configuration](./configuration.html). To configure the `webserver` service, see the [`webserver.conf` documentation](./config_file_webserver.html).
 
 ## Example
 

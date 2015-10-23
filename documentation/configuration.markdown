@@ -1,6 +1,6 @@
 ---
 layout: default
-title: "Puppet Server: Configuration"
+title: "Puppet Server Configuration"
 canonical: "/puppetserver/latest/configuration.html"
 ---
 
@@ -9,13 +9,13 @@ canonical: "/puppetserver/latest/configuration.html"
 [`puppetserver.conf`]: ./config_file_puppetserver.html
 [deprecated]: ./deprecated_features.html
 
-Puppet Server honors almost all settings in `puppet.conf` and should pick them up automatically. However, for some tasks, such as configuring the webserver or an external Certificate Authority (CA), we introduced new Puppet Server-specific configuration files and settings. 
+Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings. 
 
-These new files and settings are detailed below. For more information on specific differences in Puppet Server's support for `puppet.conf` settings as compared to the Ruby Puppet master software, see the documentation on [`puppet.conf` differences](./puppet_conf_setting_diffs.markdown).
+These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
 
 ## Configuration Files
 
-All of Puppet Server's new configuration files and settings (with the exception of the [logging config file](#logging)) are in the `conf.d` directory, located by default at `/etc/puppetlabs/puppetserver/conf.d`. These new config files are in the HOCON format, which keeps the basic structure of JSON but is more human-readable. For more information, see the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
+Puppet Server's configuration files and settings (with the exception of the [logging config file](#logging)) are in the `conf.d` directory, located by default at `/etc/puppetlabs/puppetserver/conf.d`. These config files are in the HOCON format, which keeps the basic structure of JSON but is more readable. For more information, see the [HOCON documentation](https://github.com/typesafehub/config/blob/master/HOCON.md).
 
 At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory. You must restart Puppet Server for any changes to those files to take effect. The `conf.d` directory contains the following files and settings:
 
@@ -29,9 +29,9 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 
 ## Logging
 
-All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver-access.log`, the log level is 'INFO', and Puppet Server sends nothing to syslog.
+Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver-access.log`, the log level is 'INFO', and Puppet Server sends nothing to syslog.
 
-The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
+The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
 
 Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
 
@@ -52,15 +52,15 @@ By default, the following information is logged for each HTTP request:
 * local port
 * elapsed time to serve the request, in milliseconds
 
-The Logback configuration file is at `/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to change the logging behavior, and/or specify a different Logback configuration file in [`webserver.conf`](#webserverconf) with the [`access-log-config`](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#access-log-config) setting. For more information on configuring the logged data, see the [Logback Access Pattern Layout](http://logback.qos.ch/manual/layouts.html#AccessPatternLayout).
+The Logback configuration file is at `/etc/puppetlabs/puppetserver/request-logging.xml`. You can edit this file to change the logging behavior. Specify a different Logback configuration file in [`webserver.conf`](#webserverconf) with the [`access-log-config`](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#access-log-config) setting. For more information on configuring the logged data, see [Logback Access Pattern Layout](http://logback.qos.ch/manual/layouts.html#AccessPatternLayout).
 
 ### Authorization
 
-Additional logging as it relates `auth.conf` can be enabled in Puppet Server's
+To enable additional logging related to `auth.conf`, edit Puppet Server's
 `logback.xml` file. By default, only a single message is logged when a request
 is denied.
 
-To enable a one-time logging of the parsed and transformed `auth.conf` file add
+To enable a one-time logging of the parsed and transformed `auth.conf` file, add
 the following to Puppet Server's `logback.xml` file:
 
 ~~~
@@ -68,7 +68,7 @@ the following to Puppet Server's `logback.xml` file:
 ~~~
 
 To enable rule-by-rule logging for each request as it's checked for
-authorization add the following to Puppet Server's `logback.xml` file:
+authorization, add the following to Puppet Server's `logback.xml` file:
 
 ~~~
 <logger name="puppetlabs.trapperkeeper.authorization.rules" level="TRACE"/>
@@ -76,7 +76,7 @@ authorization add the following to Puppet Server's `logback.xml` file:
 
 ## Service Bootstrapping
 
-Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`); in that file, you should see some lines that look like this: 
+Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`). In that file, find the lines that look like this: 
 
 ~~~
 # To enable the CA service, leave the following line uncommented
@@ -91,11 +91,11 @@ In most cases, you'll want the CA service enabled. However, if you're running a 
 
 Puppet Server usually cannot use SSLv3, because it is disabled by default at the JRE layer. (As of javase 7u75 / 1.7.0_u75. See the [7u75 Update Release Notes](http://www.oracle.com/technetwork/java/javase/7u75-relnotes-2389086.html) for more information.)
 
-You should almost always leave SSLv3 disabled, because it isn't secure anymore; it's been broken since the [POODLE vulnerability](https://blogs.oracle.com/security/entry/information_about_ssl_poodle_vulnerability). If you have clients that can't use newer protocols, you should try to upgrade them instead of downgrading Puppet Server.
+You should almost always leave SSLv3 disabled, because it is compromized by the [POODLE vulnerability](https://blogs.oracle.com/security/entry/information_about_ssl_poodle_vulnerability) and no longer secure. If you have clients that can't use newer protocols, you should try to upgrade them instead of downgrading Puppet Server.
 
 However, if you absolutely must, you can allow Puppet Server to negotiate with SSLv3 clients.
 
-To enable SSLv3 at the JRE layer, first create a properties file (e.g. `/etc/sysconfig/puppetserver-properties/java.security`) with the following content:
+To enable SSLv3 at the JRE layer, first create a properties file (for example, `/etc/sysconfig/puppetserver-properties/java.security`) with the following content:
 
 ~~~
 # Override properties in $JAVA_HOME/jre/lib/security/java.security
@@ -106,4 +106,4 @@ To enable SSLv3 at the JRE layer, first create a properties file (e.g. `/etc/sys
 jdk.tls.disabledAlgorithms=
 ~~~
 
-Once this property file exists, update `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`, and add the option `-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`. This will configure the JVM to override the `jdk.tls.disabledAlgorithms` property defined in `$JAVA_HOME/jre/lib/security/java.security`. The `puppetserver` service needs to be restarted for this setting to take effect.
+Once this property file exists, update `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`, and add the option `-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`. This will configure the JVM to override the `jdk.tls.disabledAlgorithms` property defined in `$JAVA_HOME/jre/lib/security/java.security`. Restart the `puppetserver` service for this setting to take effect.
