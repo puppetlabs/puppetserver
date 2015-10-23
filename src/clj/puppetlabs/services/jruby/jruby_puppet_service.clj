@@ -115,13 +115,15 @@
 
 (defmacro with-lock
   "Acquires a lock on the pool, executes the body, and releases the lock."
-  [jruby-service & body]
-  `(let [pool# (-> ~jruby-service
-                   tk-services/service-context
+  [jruby-service reason & body]
+  `(let [context# (-> ~jruby-service
+                      tk-services/service-context)
+         pool# (-> context#
                    :pool-context
-                   core/get-pool)]
-     (core/lock-pool pool#)
+                   core/get-pool)
+         event-callbacks# (:event-callbacks context#)]
+     (core/lock-pool pool# ~reason @event-callbacks#)
      (try
       ~@body
       (finally
-        (core/unlock-pool pool#)))))
+        (core/unlock-pool pool# ~reason @event-callbacks#)))))
