@@ -70,20 +70,24 @@
         (jruby-service-test-config 1)
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
 
-          (testing "FOO"
+          (testing "locking events trigger event notifications"
             (jruby-service/with-jruby-puppet
               jruby-puppet
               jruby-service
               :with-lock-events-test
-              (is (= [:instance-requested :instance-borrowed] @events)))
-            (is (= [:instance-requested :instance-borrowed :instance-returned] @events))
+              (testing "borrowing a jruby triggers 'requested'/'borrow' events"
+                (is (= [:instance-requested :instance-borrowed] @events))))
+            (testing "returning a jruby triggers 'returned' event"
+              (is (= [:instance-requested :instance-borrowed :instance-returned] @events)))
             (jruby-service/with-lock
               jruby-service
               :with-lock-events-test
-              (is (= [:instance-requested :instance-borrowed :instance-returned
-                      :lock-requested :lock-acquired] @events))))
-          (is (= [:instance-requested :instance-borrowed :instance-returned
-                  :lock-requested :lock-acquired :lock-released] @events)))))))
+              (testing "acquiring a lock triggers 'lock-requested'/'lock-acquired' events"
+                (is (= [:instance-requested :instance-borrowed :instance-returned
+                        :lock-requested :lock-acquired] @events)))))
+          (testing "releasing the lock triggers 'lock-released' event"
+            (is (= [:instance-requested :instance-borrowed :instance-returned
+                    :lock-requested :lock-acquired :lock-released] @events))))))))
 
 (deftest ^:integration borrow-and-return-affect-read-lock-test
   (tk-bootstrap/with-app-with-config
