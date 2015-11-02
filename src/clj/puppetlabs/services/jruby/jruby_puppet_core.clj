@@ -105,6 +105,20 @@
    :reason reason
    :instance instance})
 
+(schema/defn create-lock-requested-event :- jruby-schemas/JRubyLockRequestedEvent
+  [reason :- jruby-schemas/JRubyEventReason]
+  {:type :lock-requested
+   :reason reason})
+
+(schema/defn create-lock-acquired-event :- jruby-schemas/JRubyLockAcquiredEvent
+  [reason :- jruby-schemas/JRubyEventReason]
+  {:type :lock-acquired
+   :reason reason})
+
+(schema/defn create-lock-released-event :- jruby-schemas/JRubyLockReleasedEvent
+  [reason :- jruby-schemas/JRubyEventReason]
+  {:type :lock-released
+   :reason reason})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Support functions for event notification
@@ -132,6 +146,22 @@
    instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
    reason :- jruby-schemas/JRubyEventReason]
   (notify-event-listeners event-callbacks (create-returned-event instance reason)))
+
+(schema/defn lock-requested :- jruby-schemas/JRubyLockRequestedEvent
+  [event-callbacks :- [IFn]
+   reason :- jruby-schemas/JRubyEventReason]
+  (notify-event-listeners event-callbacks (create-lock-requested-event reason)))
+
+(schema/defn lock-acquired :- jruby-schemas/JRubyLockAcquiredEvent
+  [event-callbacks :- [IFn]
+   reason :- jruby-schemas/JRubyEventReason]
+  (notify-event-listeners event-callbacks (create-lock-acquired-event reason)))
+
+(schema/defn lock-released :- jruby-schemas/JRubyLockReleasedEvent
+  [event-callbacks :- [IFn]
+   reason :- jruby-schemas/JRubyEventReason]
+  (notify-event-listeners event-callbacks (create-lock-released-event reason)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -262,6 +292,28 @@
    event-callbacks :- [IFn]]
   (instance-returned event-callbacks instance reason)
   (jruby-internal/return-to-pool instance))
+
+(schema/defn ^:always-validate
+  lock-pool
+  "Locks the JRuby pool for exclusive access."
+  [pool :- jruby-schemas/pool-queue-type
+   reason :- schema/Any
+   event-callbacks :- [IFn]]
+  (log/debug "Acquiring lock on JRubyPool...")
+  (lock-requested event-callbacks reason)
+  (.lock pool)
+  (lock-acquired event-callbacks reason)
+  (log/debug "Lock acquired"))
+
+(schema/defn ^:always-validate
+  unlock-pool
+  "Unlocks the JRuby pool, restoring concurernt access."
+  [pool :- jruby-schemas/pool-queue-type
+   reason :- schema/Any
+   event-callbacks :- [IFn]]
+  (.unlock pool)
+  (lock-released event-callbacks reason)
+  (log/debug "Lock on JRubyPool released"))
 
 (schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
   "Run JRuby as though native `ruby` were invoked with args on the CLI"

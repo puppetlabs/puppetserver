@@ -1,26 +1,45 @@
 (ns puppetlabs.services.jruby.jruby-locking-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]
+            [puppetlabs.trapperkeeper.core :as tk]))
+
+(use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
+(use-fixtures :once schema-test/validate-schemas)
+
+(defn jruby-service-test-config
+  [pool-size]
+  (jruby-testutils/jruby-puppet-tk-config
+    (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})))
 
 (deftest ^:integration with-lock-test
-  (bootstrap/with-puppetserver-running app {:jruby-puppet {:max-active-instances 1}}
+  (tk-bootstrap/with-app-with-config
+    app
+    [jruby-service/jruby-puppet-pooled-service
+     profiler/puppet-profiler-service]
+    (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
           lock (jruby-testutils/get-lock app)]
 
       (testing "initial state of write lock is unlocked"
         (is (not (.isWriteLocked lock))))
       (testing "with-lock macro holds write lock while executing body"
-        (jruby-service/with-lock jruby-service
+        (jruby-service/with-lock jruby-service :with-lock-holds-lock-test
           (is (.isWriteLocked lock))))
       (testing "with-lock macro releases write lock after exectuing body"
         (is (not (.isWriteLocked lock)))))))
 
 (deftest ^:integration with-lock-exception-test
-  (bootstrap/with-puppetserver-running app {:jruby-puppet {:max-active-instances 1}}
+  (tk-bootstrap/with-app-with-config
+    app
+    [jruby-service/jruby-puppet-pooled-service
+     profiler/puppet-profiler-service]
+    (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
           lock (jruby-testutils/get-lock app)]
 
@@ -28,14 +47,54 @@
         (is (not (.isWriteLocked lock))))
 
       (testing "with-lock macro releases lock even if body throws exception"
-        (is (thrown? RuntimeException
-                     (jruby-service/with-lock jruby-service
+        (is (thrown? IllegalStateException
+                     (jruby-service/with-lock jruby-service :with-lock-exception-test
                        (is (.isWriteLocked lock))
-                       (throw (RuntimeException. "exception")))))
+                       (throw (IllegalStateException. "exception")))))
         (is (not (.isWriteLocked lock)))))))
 
+(deftest ^:integration with-lock-event-notification-test
+  (testing "locking sends event notifications"
+    (let [events (atom [])
+          callback (fn [{:keys [type] :as event}]
+                     (swap! events conj type))
+          event-service (tk/service [[:JRubyPuppetService register-event-handler]]
+                                    (init [this context]
+                                          (register-event-handler callback)
+                                          context))]
+      (tk-bootstrap/with-app-with-config
+        app
+        [jruby-service/jruby-puppet-pooled-service
+         profiler/puppet-profiler-service
+         event-service]
+        (jruby-service-test-config 1)
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+
+          (testing "locking events trigger event notifications"
+            (jruby-service/with-jruby-puppet
+              jruby-puppet
+              jruby-service
+              :with-lock-events-test
+              (testing "borrowing a jruby triggers 'requested'/'borrow' events"
+                (is (= [:instance-requested :instance-borrowed] @events))))
+            (testing "returning a jruby triggers 'returned' event"
+              (is (= [:instance-requested :instance-borrowed :instance-returned] @events)))
+            (jruby-service/with-lock
+              jruby-service
+              :with-lock-events-test
+              (testing "acquiring a lock triggers 'lock-requested'/'lock-acquired' events"
+                (is (= [:instance-requested :instance-borrowed :instance-returned
+                        :lock-requested :lock-acquired] @events)))))
+          (testing "releasing the lock triggers 'lock-released' event"
+            (is (= [:instance-requested :instance-borrowed :instance-returned
+                    :lock-requested :lock-acquired :lock-released] @events))))))))
+
 (deftest ^:integration borrow-and-return-affect-read-lock-test
-  (bootstrap/with-puppetserver-running app {:jruby-puppet {:max-active-instances 1}}
+  (tk-bootstrap/with-app-with-config
+    app
+    [jruby-service/jruby-puppet-pooled-service
+     profiler/puppet-profiler-service]
+    (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
           lock (jruby-testutils/get-lock app)]
 

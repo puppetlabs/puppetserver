@@ -212,6 +212,18 @@
   [e]
   (= :instance-returned (:type e)))
 
+(defn event-type-lock-requested?
+  [e]
+  (= :lock-requested (:type e)))
+
+(defn event-type-lock-acquired?
+  [e]
+  (= :lock-acquired (:type e)))
+
+(defn event-type-lock-released?
+  [e]
+  (= :lock-released (:type e)))
+
 (def JRubyEventReason
   schema/Any)
 
@@ -230,8 +242,23 @@
    :reason JRubyEventReason
    :instance JRubyPuppetInstanceOrRetry})
 
+(def JRubyLockRequestedEvent
+  {:type (schema/eq :lock-requested)
+   :reason JRubyEventReason})
+
+(def JRubyLockAcquiredEvent
+  {:type (schema/eq :lock-acquired)
+   :reason JRubyEventReason})
+
+(def JRubyLockReleasedEvent
+  {:type (schema/eq :lock-released)
+   :reason JRubyEventReason})
+
 (def JRubyEvent
   (schema/conditional
     event-type-requested? JRubyRequestedEvent
     event-type-borrowed? JRubyBorrowedEvent
-    event-type-returned? JRubyReturnedEvent))
+    event-type-returned? JRubyReturnedEvent
+    event-type-lock-requested? JRubyLockRequestedEvent
+    event-type-lock-acquired? JRubyLockAcquiredEvent
+    event-type-lock-released? JRubyLockReleasedEvent))
