@@ -25,15 +25,13 @@
             {:get ["catalog"
                    "node"
                    "environment"
-                   "facts"
                    "file_content"
                    "file_metadatas"
                    "file_metadata"
                    "file_bucket_file"
                    "resource_type"
                    "resource_types"
-                   "status"
-                   "facts_search"]
+                   "status"]
              :post ["catalog"]
              :put ["file_bucket_file"
                    "report"]

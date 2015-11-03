@@ -17,7 +17,7 @@ group :test do
   gem 'rspec'
   gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 2.24.0')
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
-    gem 'sqa-utils', '0.12.1'
+    gem 'sqa-utils', '0.13.3'
   end
   gem 'httparty'
   gem 'uuidtools'
