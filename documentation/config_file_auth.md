@@ -134,6 +134,18 @@ auth: any
 
 > **Note:** In the HOCON Puppet Server authentication method, there is no directly equivalent behavior to the deprecated `auth` parameter's `on` value.
 
+### `allow-header-cert-info`
+
+> **Note:** If you've enabled the new authentication method introduced in Puppet Server 2.2, Puppet Server ignores the setting of the same name in [`master.conf`](./config_file_master.html) in favor of this setting in the new `auth.conf` file. If you use the deprecated authentication method and legacy [Puppet `auth.conf`][] file, you must instead configure this setting in `master.conf`.
+
+This setting determines whether to enable [external SSL termination](./external_ssl_termination.markdown) on all HTTP endpoints that Puppet Server handles, including those served by the "master" service, the certificate authority API, and the Puppet Admin API. It also controls how Puppet Server derives the user's identity for authorization purposes.
+
+If this setting is enabled, Puppet Server ignores any presented certificate and relies completely on header data to authorize requests. **This is very insecure; do not do this unless you've secured your network to prevent _any_ untrusted access to Puppet Server.**
+
+You cannot rename any of the `X-Client` headers when this setting is enabled. Identity must be specified through the `X-Client-Verify`, `X-Client-DN`, and `X-Client-Cert` headers.
+
+For more information, see [External SSL Termination](./external_ssl_termination.html#disable-https-for-puppet-server) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
+
 ## Puppet 3 Agent Compatibility
 
 Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
