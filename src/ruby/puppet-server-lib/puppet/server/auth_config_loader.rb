@@ -8,6 +8,6 @@ require 'puppet/server/auth_config'
 
 class Puppet::Server::AuthConfigLoader
   def self.authconfig
-    Puppet::Server::AuthConfig.new
+    @cached_authconfig ||= Puppet::Server::AuthConfig.new
   end
 end
