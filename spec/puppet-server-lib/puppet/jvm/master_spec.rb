@@ -24,7 +24,7 @@ describe 'Puppet::Server::Master' do
     end
 
     it "returns the correct puppet version number" do
-      expect(subject).to eq('4.2.3')
+      expect(subject).to eq('4.3.0')
     end
   end
 
