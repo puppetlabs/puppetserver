@@ -203,7 +203,7 @@
   (if-let [authorization (:authorization request)]
     {:client-cert    (ring-auth/authorized-certificate request)
      :client-cert-cn (ring-auth/authorized-name request)
-     :authenticated  (true? (ring-auth/authorized-authentic? request))}
+     :authenticated  (true? (ring-auth/authorized-authenticated request))}
     (let [headers (:headers request)
           header-dn-name (:ssl-client-header config)
           header-dn-val (get headers header-dn-name)

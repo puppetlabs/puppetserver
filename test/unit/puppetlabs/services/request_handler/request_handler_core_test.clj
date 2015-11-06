@@ -134,7 +134,7 @@
                      (puppet-server-config allow-header-cert-info)
                      {:request-method :GET
                       :authorization {:name "authorization-client"
-                                      :authentic? true
+                                      :authenticated true
                                       :certificate cert-from-authorization}
                       :headers {"x-client-verify" "SUCCESS"
                                 "x-client-dn" "CN=x-client"
