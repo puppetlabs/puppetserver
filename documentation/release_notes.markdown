@@ -10,7 +10,6 @@ canonical: "/puppetserver/latest/release_notes.html"
 [configuration directory]: /puppet/latest/reference/dirs_confdir.html
 [code directory]: /puppet/latest/reference/dirs_codedir.html
 [cache directory]: /puppet/latest/reference/dirs_vardir.html
-[`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [Configuration documentation]: ./configuration.html
 [deprecated]: ./deprecated_features.html
 [Puppet `auth.conf` file]: /puppet/latest/reference/config_file_auth.html
