@@ -17,13 +17,55 @@ canonical: "/puppetserver/latest/release_notes.html"
 [`ca.conf`]: ./config_file_ca.html
 [`master.conf`]: ./config_file_master.html
 
+## Puppet Server 2.2
+
+Released November 17, 2015.
+
+Puppet Server 2.2 supports the following platforms:
+
+### Supported Platforms
+
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 8
+* Debian 7
+
+### What's New
+
+#### New Authentication Method and `auth.conf` Format
+
+Puppet Server 2.2 introduces support for the Clojure [`trapperkeeper-authorization`][] as a replacement for the [deprecated][] Ruby authentication system that uses the [Puppet `auth.conf` file][]. This also provides new authentication options for administration, certificate status, and certification authority endpoints.
+
+If you enable this new authentication method, you must convert any custom authorization rules and settings to [the new HOCON-based format][`auth.conf`]. For more information on these new features, instructions on enabling them, and help converting authorization rules, see the updated [Configuration documentation][] and [`auth.conf` documentation][`auth.conf`].
+
+* [SERVER-111](https://tickets.puppetlabs.com/browse/SERVER-111) - auth.conf replacement 
+* [SERVER-763](https://tickets.puppetlabs.com/browse/SERVER-763) - Add allow-header-cert-info authorization support to all Puppet Server service APIs
+
+### Deprecated Features
+
+For detailed information about features deprecated in Puppet Server 2.2, see the new [Deprecated Features documentation][deprecated].
+
+#### Ruby Authorization Methods and `auth.conf` Format
+
+With the new authentication methods introduced in Puppet Server 2.2, the legacy [`auth.conf`][] rules and configuration file format are [deprecated][].
+
+#### `certificate-authority` and `puppet-admin` Settings
+
+The [`ca.conf`][] and [`master.conf`][] configuration files and their settings are now either [deprecated][] or provided by the new authentication methods and `auth.conf` format.
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.0%22)
+
 ## Puppet Server 2.1.2
 
 Released October 19, 2015.
 
 ### Supported Platforms
 
-Puppet Server 2.1 supports the following platforms:
+Puppet Server 2.1.2 supports the following platforms:
 
 * Enterprise Linux 7
 * Enterprise Linux 6
@@ -36,7 +78,7 @@ Puppet Server 2.1 supports the following platforms:
 
 #### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
 
-Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.1.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
 
 * [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
 
