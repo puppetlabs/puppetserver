@@ -65,11 +65,12 @@
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
   [pool-context :- jruby-schemas/PoolContext
-   {:keys [scripting-container id]} :- JRubyPuppetInstance
+   {:keys [scripting-container id pool] :as instance} :- JRubyPuppetInstance
    new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
+  (.unregister pool instance)
   (.terminate scripting-container)
   (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
              id)

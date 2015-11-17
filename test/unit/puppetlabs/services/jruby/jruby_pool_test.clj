@@ -145,12 +145,16 @@
       (let [instance (jruby-core/borrow-from-pool pool-context :test [])]
         (is (= id (:id instance))))))
   (testing "JRuby instance is flushed after exceeding max requests"
-    (let [pool-context  (create-pool-context 1)
-          instance      (jruby-core/borrow-from-pool pool-context :test [])
-          id            (:id instance)]
-      (jruby-core/return-to-pool instance :test [])
-      (let [instance (jruby-core/borrow-from-pool pool-context :test [])]
-        (is (not= id (:id instance))))))
+    (let [pool-context  (create-pool-context 1)]
+      (is (= 1 (count (jruby-core/registered-instances pool-context))))
+      (let [instance (jruby-core/borrow-from-pool pool-context :test [])
+            id (:id instance)]
+        (jruby-core/return-to-pool instance :test [])
+        (let [instance (jruby-core/borrow-from-pool pool-context :test [])]
+          (is (not= id (:id instance))))
+        (testing "instance is removed from registered elements after flushing"
+          (is (= 1 (count (jruby-core/registered-instances pool-context))))))))
+
   (testing "JRuby instance is not flushed if max requests setting is set to 0"
     (let [pool-context  (create-pool-context 0)
           instance      (jruby-core/borrow-from-pool pool-context :test [])
