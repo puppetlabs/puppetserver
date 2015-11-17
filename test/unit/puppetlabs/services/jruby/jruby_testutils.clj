@@ -122,7 +122,7 @@
                     :jruby-puppet         (create-mock-jruby-instance)
                     :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
-    (.put pool instance)
+    (.registerLast pool instance)
     instance))
 
 (defn mock-pool-instance-fixture

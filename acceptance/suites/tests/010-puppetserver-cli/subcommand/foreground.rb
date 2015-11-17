@@ -7,8 +7,7 @@ end
 cli = "puppetserver"
 service = options['puppetservice']
 
-# puppetserver seems to take about 45s to start up
-timout_length = "60s"
+timout_length = "180s"
 foreground_cmd = "#{cli} foreground --debug"
 timeout_cmd = "timeout -s INT #{timout_length} #{foreground_cmd}"
 
@@ -17,7 +16,7 @@ expected_messages = {
   /Initializing the JRuby service/ => "JRuby didn't initialize",
   /Starting web server/ => "Expected web server to start",
   /Puppet Server has successfully started and is now ready to handle requests/ => "puppetserver never finished starting",
-  /Finished shutdown sequence/ => "Test ended without puppetserver shutting down gracefully"
+  /Beginning shutdown sequence/ => "Test ended without puppetserver triggering shutdown"
 }
 
 # Start of test
@@ -28,7 +27,7 @@ step "Run #{cli} with foreground subcommand, wait for #{timout_length}"
 on(master, timeout_cmd, :acceptable_exit_codes => [124]) do |result|
   assert_no_match(/error:/i, result.stderr, "Unexpected error running puppetserver!")
 
-  step "Check that #{cli} ran successfully and shutdown gracefully"
+  step "Check that #{cli} ran successfully and shutdown triggered"
   expected_messages.each do |message, explanation|
     assert_match(message, result.stdout, explanation)
   end
