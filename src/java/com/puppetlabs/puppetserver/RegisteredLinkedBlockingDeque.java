@@ -40,6 +40,21 @@ public class RegisteredLinkedBlockingDeque<E> extends LinkedBlockingDeque<E> {
     }
 
     /**
+     * This method removes an element from the list of "registered" elements,
+     * such that it will no longer be returned by calls to
+     * <tt>getRegisteredInstances</tt>.
+     *
+     * This method does not remove the element from the underlying queue; it
+     * is assumed that the caller has already done so via the methods of the
+     * parent class.
+     *
+     * @param e the element to remove from the list of registered instances.
+     */
+    synchronized public void unregister(E e) throws InterruptedException {
+        registeredElements.remove(e);
+    }
+
+    /**
      * @return a set of all of the known elements that have been registered with
      *         this queue.
      */
