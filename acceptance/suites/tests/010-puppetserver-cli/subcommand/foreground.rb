@@ -7,8 +7,7 @@ end
 cli = "puppetserver"
 service = options['puppetservice']
 
-# puppetserver seems to take about 45s to start up
-timout_length = "60s"
+timout_length = "180s"
 foreground_cmd = "#{cli} foreground --debug"
 timeout_cmd = "timeout -s INT #{timout_length} #{foreground_cmd}"
 
