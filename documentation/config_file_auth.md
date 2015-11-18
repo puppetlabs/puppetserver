@@ -11,15 +11,21 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 
 The `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For an overview, see [Puppet Server Configuration](./configuration.html).
 
-> **Deprecation Note:** As of version 2.2, Puppet Server can use [`trapperkeeper-authorization`][] for authentication, which is configured by rules and settings in `auth.conf` using a HOCON configuration file format, and a different location for Puppet Server configuration files. The [Puppet `auth.conf`][] file format and whitelist-based authorization method are [deprecated][].
->
-> To enable this new method, set the `use-legacy-auth-conf` parameter in the `jruby-puppet` section to `false`. It defaults to `true`. 
->
-> Puppet Server warns you that the legacy authentication method is deprecated if `use-legacy-auth-conf` is set to `true` or to its default.
-
 The new Puppet Server authentication configuration and functionality is similar to the legacy method in that you define rules in `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule. 
 
 However, the new HOCON format provides different parameters and syntax, and the new method provides slightly different functionality. The following sections describe how to configure both methods.
+
+> ### Aside: Changes to Authorization in Puppet Server 2.2.0
+> 
+> Puppet Server 2.2.0 introduces a significant change in how it manages authentication to API endpoints. It uses [`trapperkeeper-authorization`][] for authentication, which is configured by rules and settings in Puppet Server's own `auth.conf`, with a HOCON configuration file format in a different location than the [Puppet `auth.conf`][] file.
+>
+> The older Puppet `auth.conf` file and whitelist-based authorization method are [deprecated][]. Puppet Server's new `auth.conf` file, documented below, also uses a different format for authorization rules. Additionally, there are several conditions that can affect whether Puppet Server uses the new or old authorization methods:
+>
+> * Requests to Puppet master service endpoints already manageable through the older authorization methods and [Puppet `auth.conf`][] file---such as catalog, node, and report---will use Puppet Server's new `auth.conf` rules **only** if the `use-legacy-auth-conf` setting in `puppet-server.conf` is set to false. Also, Puppet Server warns you that the legacy authentication method is deprecated if `use-legacy-auth-conf` is set to true (which is its default).
+> * Requests to certificate status and administration endpoints will use the new `auth.conf` rules **only** if the corresponding `client-whitelists` setting is empty or unspecified and the `authorization-required` flag is set to true (which is its default).
+> * Requests to other certificate administration endpoints---such as certificate, certificate_request, and certificate_revocation_list---will **always** use the new `auth.conf` rules. This happens regardless of the `client-whitelist`, `authorization-required`, or `use-legacy-auth-conf` settings, as versions of Puppet Server before 2.2.0 can't manage those endpoints.
+>
+> **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppetlabs.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppetlabs.com/puppetlabs/hocon).
 
 ## Parameters
 
@@ -127,6 +133,18 @@ auth: any
 ~~~
 
 > **Note:** In the HOCON Puppet Server authentication method, there is no directly equivalent behavior to the deprecated `auth` parameter's `on` value.
+
+### `allow-header-cert-info`
+
+> **Note:** If you've enabled the new authentication method introduced in Puppet Server 2.2, Puppet Server ignores the setting of the same name in [`master.conf`](./config_file_master.html) in favor of this setting in the new `auth.conf` file. If you use the deprecated authentication method and legacy [Puppet `auth.conf`][] file, you must instead configure this setting in `master.conf`.
+
+This setting determines whether to enable [external SSL termination](./external_ssl_termination.markdown) on all HTTP endpoints that Puppet Server handles, including those served by the "master" service, the certificate authority API, and the Puppet Admin API. It also controls how Puppet Server derives the user's identity for authorization purposes.
+
+If this setting is enabled, Puppet Server ignores any presented certificate and relies completely on header data to authorize requests. **This is very insecure; do not do this unless you've secured your network to prevent _any_ untrusted access to Puppet Server.**
+
+You cannot rename any of the `X-Client` headers when this setting is enabled. Identity must be specified through the `X-Client-Verify`, `X-Client-DN`, and `X-Client-Cert` headers.
+
+For more information, see [External SSL Termination](./external_ssl_termination.html#disable-https-for-puppet-server) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
 
 ## Puppet 3 Agent Compatibility
 

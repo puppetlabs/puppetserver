@@ -51,6 +51,24 @@ public final class JRubyPool<E> implements LockablePool<E> {
         liveQueue.putLast(e);
     }
 
+
+    /**
+     * This method removes an element from the list of "registered" elements,
+     * such that it will no longer be returned by calls to
+     * <tt>getRegisteredInstances</tt>.
+     *
+     * This method does not remove the element from the underlying queue; it
+     * is assumed that the caller has already done so via the methods of the
+     * parent class.
+     *
+     * @param e the element to remove from the list of registered instances.
+     */
+    @Override
+    synchronized public void unregister(E e) throws InterruptedException {
+        registeredElements.remove(e);
+    }
+
+
     /**
     * This method is analagous to <tt>takeFirst</tt> in the
     * <tt>LinkedBlockingDeque</tt> class, but also causes a read lock to be
