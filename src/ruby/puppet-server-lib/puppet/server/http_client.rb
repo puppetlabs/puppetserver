@@ -89,6 +89,7 @@ class Puppet::Server::HttpClient
   def self.terminate
     unless @client.nil?
       @client.close
+      @client = nil
     end
   end
 

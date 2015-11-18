@@ -12,6 +12,13 @@ public interface LockablePool<E> {
     */
     void register(E e) throws InterruptedException;
 
+
+    /**
+     * Unregister an instance from the pool, removing it from the list of
+     * existing instances.
+     */
+    void unregister(E e) throws InterruptedException;
+
    /**
     * Borrow an instance. This and <tt>borrowItemWithTimeout</tt> are the
     * only entry points for accessing instances.
