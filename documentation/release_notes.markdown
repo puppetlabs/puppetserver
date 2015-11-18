@@ -20,7 +20,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 2.2.0
 
-Released November 18, 2015.
+Released November 19, 2015.
 
 ### Supported Platforms
 
@@ -70,14 +70,6 @@ The [`ca.conf`][] and [`master.conf`][] configuration files and their settings a
 
 * [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.0%22)
 
-## Puppet Server 2.1.3
-
-Released November 18, 2015.
-
-This release fixes the [`max-requests-per-instance` memory leak issue](#max-requests-per-instance-causes-a-memory-leak) bug. It adds no further support or functionality.
-
-* [SERVER-1006](https://tickets.puppetlabs.com/browse/SERVER-1006)
-
 ## Puppet Server 2.1.2
 
 Released October 19, 2015.
@@ -101,7 +93,7 @@ When using the optional `max-requests-per-instance` setting in [`puppetserver.co
 
 However, the outgoing JRuby instances are not flushed as expected during garbage collection, resulting in Puppet Server causing a memory leak that could destabilize the server after a sufficient number of replacement cycles.
 
-This issue is resolved in Puppet Server 2.2.0 and 2.1.3. You can also avoid this issue by setting `max-requests-per-instance` to 0. If you're actively mitigating other memory leaks via the `max-active-instances` setting, you can replace the `max-requests-per-instance` behavior with a cron job that regularly flushes the entire JRuby pool, such as:
+This issue is resolved in Puppet Server 2.2.0. You can also avoid this issue by setting `max-requests-per-instance` to 0. If you're actively mitigating other memory leaks via the `max-active-instances` setting, you can replace the `max-requests-per-instance` behavior with a cron job that regularly flushes the entire JRuby pool, such as:
 
 ~~~ bash
 curl -X DELETE \
