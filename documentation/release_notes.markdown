@@ -16,14 +16,13 @@ canonical: "/puppetserver/latest/release_notes.html"
 [`auth.conf`]: ./config_file_auth.html
 [`ca.conf`]: ./config_file_ca.html
 [`master.conf`]: ./config_file_master.html
+[`puppetserver.conf`]: ./config_file_puppetserver.html
 
-## Puppet Server 2.1.2
+## Puppet Server 2.2.0
 
-Released October 19, 2015.
+Released November 19, 2015.
 
 ### Supported Platforms
-
-Puppet Server 2.1 supports the following platforms:
 
 * Enterprise Linux 7
 * Enterprise Linux 6
@@ -34,9 +33,83 @@ Puppet Server 2.1 supports the following platforms:
 
 ### Bug Fixes
 
+#### `max-requests-per-instance` Setting No Longer Leaks Memory
+
+When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`][], Puppet Server should flush the JRuby instance from memory and replaced with a fresh instance after serving a number of requests defined by that setting. This should be useful when dealing with memory leaks in module code.
+
+However, the outgoing JRuby instances were not being flushed as expected during garbage collection, resulting in Puppet Server leaking memory. This could destabilize the server after a sufficient number of replacement cycles.
+
+Puppet Server 2.2.0 resolves this issue by properly flushing the JRuby instance after serving the configured number of requests.
+
+* [SERVER-1006](https://tickets.puppetlabs.com/browse/SERVER-1006)
+
+### What's New
+
+#### New Authentication Method and `auth.conf` Format
+
+Puppet Server 2.2.0 introduces support for the Clojure [`trapperkeeper-authorization`][] as a replacement for the [deprecated][] Ruby authentication system that uses the [Puppet `auth.conf` file][]. This also provides new authentication options for administration, certificate status, and certification authority endpoints.
+
+If you enable this new authentication method, you must convert any custom authorization rules and settings to [the new HOCON-based format][`auth.conf`]. For more information on these new features, instructions on enabling them, and help converting authorization rules, see the updated [Configuration documentation][] and [`auth.conf` documentation][`auth.conf`].
+
+* [SERVER-111](https://tickets.puppetlabs.com/browse/SERVER-111) - auth.conf replacement 
+* [SERVER-763](https://tickets.puppetlabs.com/browse/SERVER-763) - Add allow-header-cert-info authorization support to all Puppet Server service APIs
+
+### Deprecated Features
+
+For detailed information about features deprecated in Puppet Server 2.2, see the new [Deprecated Features documentation][deprecated].
+
+#### Ruby Authorization Methods and `auth.conf` Format
+
+With the new authentication methods introduced in Puppet Server 2.2.0, the legacy [`auth.conf`][] rules and configuration file format are [deprecated][].
+
+#### `certificate-authority` and `puppet-admin` Settings
+
+The [`ca.conf`][] and [`master.conf`][] configuration files and their settings are now either [deprecated][] or provided by the new authentication methods and `auth.conf` format.
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.0%22)
+
+## Puppet Server 2.1.2
+
+Released October 19, 2015.
+
+### Supported Platforms
+
+Puppet Server 2.1.2 supports the following platforms:
+
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 8
+* Debian 7
+
+### Known Issues
+
+#### `max-requests-per-instance` Causes a Memory Leak 
+
+When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`](./configuration.html#puppetserverconf), Puppet Server should flush the JRuby instance from memory and replaced with a fresh instance after serving a number of requests defined by that setting. This can be handy when dealing with memory leaks in module code.
+
+However, the outgoing JRuby instances are not flushed as expected during garbage collection, resulting in Puppet Server causing a memory leak that could destabilize the server after a sufficient number of replacement cycles.
+
+This issue is resolved in Puppet Server 2.2.0. You can also avoid this issue by setting `max-requests-per-instance` to 0. If you're actively mitigating other memory leaks via the `max-active-instances` setting, you can replace the `max-requests-per-instance` behavior with a cron job that regularly flushes the entire JRuby pool, such as:
+
+~~~ bash
+curl -X DELETE \
+  --cacert /etc/puppetlabs/puppet/ssl/certs/ca.pem \
+  --cert /etc/puppetlabs/puppet/ssl/certs/pe-internal-classifier.pem \
+  --key /etc/puppetlabs/puppet/ssl/private_keys/pe-internal-classifier.pem \
+  https://<master hostname>:8140/puppet-admin-api/v1/jruby-pool
+~~~
+
+* [SERVER-1006](https://tickets.puppetlabs.com/browse/SERVER-1006)
+
+### Bug Fixes
+
 #### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
 
-Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.1.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
 
 * [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
 
