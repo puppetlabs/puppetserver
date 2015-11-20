@@ -57,6 +57,8 @@ def report_query(node)
 end
 
 with_puppet_running_on(master, {}) do
+  masterfqdn = on(master, '/opt/puppetlabs/bin/facter fqdn').stdout.chomp
+
   step 'environments endpoint' do
     curl_authenticated('/puppet/v3/environments')
     assert_allowed
@@ -66,35 +68,35 @@ with_puppet_running_on(master, {}) do
   end
 
   step 'catalog endpoint' do
-    curl_authenticated("/puppet/v3/catalog/#{master}?environment=production")
+    curl_authenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production")
     assert_allowed
 
     curl_authenticated('/puppet/v3/catalog/notme?environment=production')
     assert_denied(/denied by rule 'puppetlabs catalog'/)
 
-    curl_unauthenticated("/puppet/v3/catalog/#{master}?environment=production")
+    curl_unauthenticated("/puppet/v3/catalog/#{masterfqdn}?environment=production")
     assert_denied(/denied by rule 'puppetlabs catalog'/)
   end
 
   step 'node endpoint' do
-    curl_authenticated("/puppet/v3/node/#{master}?environment=production")
+    curl_authenticated("/puppet/v3/node/#{masterfqdn}?environment=production")
     assert_allowed
 
     curl_authenticated('/puppet/v3/node/notme?environment=production')
     assert_denied(/denied by rule 'puppetlabs node'/)
 
-    curl_unauthenticated("/puppet/v3/node/#{master}?environment=production")
+    curl_unauthenticated("/puppet/v3/node/#{masterfqdn}?environment=production")
     assert_denied(/denied by rule 'puppetlabs node'/)
   end
 
   step 'report endpoint' do
-    curl_authenticated(report_query(master))
+    curl_authenticated(report_query(masterfqdn))
     assert_allowed
 
     curl_authenticated(report_query('notme'))
     assert_denied(/denied by rule 'puppetlabs report'/)
 
-    curl_unauthenticated(report_query(master))
+    curl_unauthenticated(report_query(masterfqdn))
     assert_denied(/denied by rule 'puppetlabs report'/)
   end
 
