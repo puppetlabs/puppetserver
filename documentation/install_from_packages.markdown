@@ -4,13 +4,14 @@ title: "Puppet Server: Installing From Packages"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
-[repodocs]: https://docs.puppetlabs.com/guides/puppetlabs_package_repositories.html
-[passengerguide]: https://docs.puppetlabs.com/guides/passenger.html
-
+[repodocs]: /guides/puppetlabs_package_repositories.html
+[passengerguide]: /guides/passenger.html
 
 ## System Requirements
 
-Puppet Server is configured to use 2GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, please see [Memory Allocation](#memory-allocation).
+Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
+
+> **Note:** Puppet Server 2.2 depends on [Puppet Agent 1.3.0](/puppet/latest/reference/about_agent.html) or newer. If you're also using PuppetDB, also check its [requirements](/puppetdb/latest/#system-requirements).
 
 ## Quick Start
 
@@ -48,8 +49,8 @@ By default, Puppet Server will be configured to use 2GB of RAM. However, if you 
 
 ### Location 
 
-* `/etc/sysconfig/puppetserver` - RHEL
-* `/etc/default/puppetserver` - Debian 
+* `/etc/sysconfig/puppetserver` --- RHEL
+* `/etc/default/puppetserver` --- Debian 
 
 1. Open the init config file: 
 
@@ -58,11 +59,10 @@ By default, Puppet Server will be configured to use 2GB of RAM. However, if you 
 
     Replace 2g with the amount of memory you want to allocate to Puppet Server. For example, to allocate 1GB of memory, use `JAVA_ARGS="-Xms1g -Xmx1g"`; for 512MB, use `JAVA_ARGS="-Xms512m -Xmx512m"`.
 
-    For more information about the recommended settings for the JVM, please see [Oracle's docs on JVM tuning.](http://docs.oracle.com/cd/E15523_01/web.1111/e13814/jvm_tuning.htm)
+    For more information about the recommended settings for the JVM, see [Oracle's docs on JVM tuning.](http://docs.oracle.com/cd/E15523_01/web.1111/e13814/jvm_tuning.htm)
 
 2. Restart the `puppetserver` service after making any changes to this file.
 
 ## Reporting Issues
 
-Submit issues at [https://tickets.puppetlabs.com/browse/SERVER](https://tickets.puppetlabs.com/browse/SERVER).
-
+Submit issues to our [bug tracker](https://tickets.puppetlabs.com/browse/SERVER).
