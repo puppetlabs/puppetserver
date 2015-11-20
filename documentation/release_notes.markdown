@@ -22,6 +22,9 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 Released November 19, 2015.
 
+> ### New requirements
+> Puppet Server 2.2 depends on [Puppet Agent 1.3.0](/puppet/latest/reference/about_agent.html) or newer, which installs Puppet 4.3 and compatible versions of its related tools and dependencies. For versions of Puppet Server compatible with earlier versions of Puppet Agent, we recommend the latest version of Puppet Server 2.1.
+
 ### Supported Platforms
 
 * Enterprise Linux 7
