@@ -28,9 +28,15 @@ module PuppetServerExtensions
     # puppet-agent version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppet-agent/
     puppet_build_version = get_option_value(options[:puppet_build_version],
-                         nil, "Puppet Development Build Version",
+                         nil, "Puppet Agent Development Build Version",
                          "PUPPET_BUILD_VERSION",
                          "2b6b9db87bb5e6329a5cc6520b6c6db569d4113f", :string)
+
+    # puppetdb version corresponds to packaged development version located at:
+    # http://builds.delivery.puppetlabs.net/puppetdb/
+    puppetdb_build_version =
+      get_option_value(options[:puppetdb_build_version], nil,
+                       "PuppetDB Version", "PUPPETDB_BUILD_VERSION", "3.2.1", :string)
 
     @config = {
       :base_dir => base_dir,
@@ -39,11 +45,27 @@ module PuppetServerExtensions
       :puppetserver_version => puppetserver_version,
       :puppet_version => puppet_version,
       :puppet_build_version => puppet_build_version,
+      :puppetdb_build_version => puppetdb_build_version,
     }
 
     pp_config = PP.pp(@config, "")
 
     Beaker::Log.notify "Puppet Server Acceptance Configuration:\n\n#{pp_config}\n\n"
+  end
+
+  # PuppetDB development packages aren't available on as many platforms as
+  # Puppet Server's packages, so we need to restrict the PuppetDB-related
+  # testing to a subset of the platforms.
+  # This guards both the installation of the PuppetDB package repository file
+  # and the running of the PuppetDB test(s).
+  def puppetdb_supported_platforms()
+    [
+      /debian-7/,
+      /debian-8/,
+      /el/, # includes cent6,7 and redhat6,7
+      /ubuntu-12/,
+      /ubuntu-14/,
+    ]
   end
 
   class << self
