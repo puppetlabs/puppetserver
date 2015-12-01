@@ -299,8 +299,10 @@
                           "maximum number of requests (%s)")
                      (:id instance)
                      max-requests)
-          (flush-instance-fn pool instance)
-          (.releaseItem pool instance false))
+          (try
+            (flush-instance-fn pool instance)
+            (finally
+              (.releaseItem pool instance false))))
         (.releaseItem pool instance)))
     ;; if we get here, it was from a borrow and we got a Retry, so we just
     ;; return it to the pool.
