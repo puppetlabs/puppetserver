@@ -24,7 +24,7 @@
      profiler/puppet-profiler-service]
     (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-          lock (jruby-testutils/get-lock app)]
+          lock (jruby-testutils/get-lock-from-app app)]
 
       (testing "initial state of write lock is unlocked"
         (is (not (.isWriteLocked lock))))
@@ -41,7 +41,7 @@
      profiler/puppet-profiler-service]
     (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-          lock (jruby-testutils/get-lock app)]
+          lock (jruby-testutils/get-lock-from-app app)]
 
       (testing "initial state of write lock is unlocked"
         (is (not (.isWriteLocked lock))))
@@ -96,7 +96,7 @@
      profiler/puppet-profiler-service]
     (jruby-service-test-config 1)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-          lock (jruby-testutils/get-lock app)]
+          lock (jruby-testutils/get-lock-from-app app)]
 
       (is (= 0 (.getReadLockCount lock)))
       (is (not (.isWriteLocked lock)))
