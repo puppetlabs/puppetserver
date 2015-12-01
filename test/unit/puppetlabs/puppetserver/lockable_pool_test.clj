@@ -191,3 +191,27 @@
         (.unlock pool)
         @borrow-thread-1
         @borrow-thread-2))))
+
+(deftest pool-release-item-test
+  (testing (str "releaseItem call with value 'false' does not return item to "
+                "pool but does allow pool to still be lockable")
+    (let [pool (create-populated-pool 1)
+          instance (.borrowItem pool)]
+      (is (= 0 (.size pool)))
+      (.releaseItem pool instance false)
+      (is (= 0 (.size pool)))
+      (.lock pool)
+      (is (true? true))
+      (.unlock pool)
+      (is (true? true))))
+  (testing (str "releaseItem call with value 'true' does not return item to "
+                "pool and allows pool to still be lockable")
+    (let [pool (create-populated-pool 1)
+          instance (.borrowItem pool)]
+      (is (= 0 (.size pool)))
+      (.releaseItem pool instance true)
+      (is (= 1 (.size pool)))
+      (.lock pool)
+      (is (true? true))
+      (.unlock pool)
+      (is (true? true)))))
