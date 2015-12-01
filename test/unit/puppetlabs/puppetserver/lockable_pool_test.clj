@@ -21,7 +21,7 @@
 (defn return-instances
   [pool instances]
   (doseq [instance instances]
-    (.returnItem pool instance)))
+    (.releaseItem pool instance)))
 
 (deftest pool-lock-is-blocking-test
   (let [pool (create-populated-pool 3)
@@ -40,11 +40,11 @@
         (is (not (realized? lock-acquired?)))
 
         (testing "other threads may successfully return instances while pool.lock() is being executed"
-          (.returnItem pool (first instances))
+          (.releaseItem pool (first instances))
           (is (not (realized? lock-acquired?)))
-          (.returnItem pool (second instances))
+          (.releaseItem pool (second instances))
           (is (not (realized? lock-acquired?)))
-          (.returnItem pool (nth instances 2)))
+          (.releaseItem pool (nth instances 2)))
 
         @lock-acquired?
         (is (not (realized? lock-thread)))
@@ -55,7 +55,7 @@
 
       (testing "borrows may be resumed after unlock()"
         (let [instance (.borrowItem pool)]
-          (.returnItem pool instance))
+          (.releaseItem pool instance))
         ;; make sure we got here
         (is (true? true))))))
 
@@ -80,7 +80,7 @@
               (future (deliver borrow-after-lock-requested-thread-started? true)
                       (let [instance (.borrowItem pool)]
                         (deliver borrow-after-lock-requested-instance-acquired? true)
-                        (.returnItem pool instance)))]
+                        (.releaseItem pool instance)))]
           @borrow-after-lock-requested-thread-started?
           (is (not (realized? borrow-after-lock-requested-instance-acquired?)))
 
@@ -95,7 +95,7 @@
                 (future (deliver borrow-after-lock-acquired-thread-started? (promise))
                         (let [instance (.borrowItem pool)]
                           (deliver borrow-after-lock-acquired-instance-acquired? true)
-                          (.returnItem pool instance)))]
+                          (.releaseItem pool instance)))]
             @borrow-after-lock-acquired-thread-started?
             (is (not (realized? borrow-after-lock-acquired-instance-acquired?)))
 
@@ -117,7 +117,7 @@
           blocked-borrow-thread (future (deliver blocked-borrow-thread-started? true)
                                         (let [instance (.borrowItem pool)]
                                           (deliver blocked-borrow-thread-borrowed? true)
-                                          (.returnItem pool instance)))
+                                          (.releaseItem pool instance)))
           lock-thread-started? (promise)
           lock-acquired? (promise)
           unlock? (promise)
@@ -156,7 +156,7 @@
       (is (thrown? IllegalStateException (.borrowItem pool)))
       ;; (let [instance (.borrowItem pool)]
       ;;   (is (true? true))
-      ;;   (.returnItem pool instance))
+      ;;   (.releaseItem pool instance))
 
       (is (true? true))
       (.unlock pool))))
@@ -167,9 +167,9 @@
       (.lock pool)
       (is (true? true))
       (let [borrow-thread-1 (future (let [instance (.borrowItem pool)]
-                                      (.returnItem pool instance)))
+                                      (.releaseItem pool instance)))
             borrow-thread-2 (future (let [instance (.borrowItem pool)]
-                                      (.returnItem pool instance)))]
+                                      (.releaseItem pool instance)))]
         ;; this is racey, but the only ways i could think of to make it non-racey
         ;; depended on knowledge of the implementation
         ;; Uncomment and make non-racey when we have an implementation that
@@ -185,7 +185,7 @@
         (is (thrown? IllegalStateException (.borrowItem pool)))
         ;; (let [instance (.borrowItem pool)]
         ;;   (is (true? true))
-        ;;   (.returnItem pool instance))
+        ;;   (.releaseItem pool instance))
 
         (is (true? true))
         (.unlock pool)

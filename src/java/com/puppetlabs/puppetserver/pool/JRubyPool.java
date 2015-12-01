@@ -12,7 +12,7 @@ import com.puppetlabs.puppetserver.pool.LockablePool;
  * and a ReentrantReadWriteLock. Implements the <tt>LockablePool</tt>
  * interface such that when a <tt>borrowItem</tt> is performed an instance is
  * taken from the deque and a read lock is acquired, when a
- * <tt>returnItem</tt> is performed an instance is put back onto the deque and
+ * <tt>releaseItem</tt> is performed an instance is put back onto the deque and
  * a read lock is released, and <tt>lock</tt> locks a write lock.
  *
  * @param <E> the type of element that can be added to the LinkedBlockingDeque.
@@ -117,20 +117,40 @@ public final class JRubyPool<E> implements LockablePool<E> {
     }
 
     /**
-    * This method is analagous to <tt>putFirst</tt> in the
+    * This method is analogous to <tt>putFirst</tt> in the
     * <tt>LinkedBlockingDeque</tt> class, but also causes a read lock to be
-    * unlocked from the <tt>ReentrantReadWriteLock</tt>.
+    * unlocked from the <tt>ReentrantReadWriteLock</tt>.  This method should
+    * only be called from the same thread that was running when the item was
+    * originally borrowed.
     *
-    * @param e the element to add to the queue
-    *
+    * @param e the element to return to the pool
     * @throws InterruptedException
     */
     @Override
-    public void returnItem(E e) throws InterruptedException {
+    public void releaseItem(E e) throws InterruptedException {
+        releaseItem(e, true);
+    }
+
+    /**
+    * This method is analogous to <tt>putFirst</tt> in the
+    * <tt>LinkedBlockingDeque</tt> class, but also causes a read lock to be
+    * unlocked from the <tt>ReentrantReadWriteLock</tt>.  This method should
+    * only be called from the same thread that was running when the item was
+    * originally borrowed.
+    *
+    * @param e the element to return to the pool
+    * @param returnToPool whether to return the element to the pool (true)
+    *                     or just throw the element away (false)
+    * @throws InterruptedException
+    */
+    @Override
+    public void releaseItem(E e, boolean returnToPool)
+            throws InterruptedException {
         try {
-            liveQueue.putFirst(e);
-        }
-        finally {
+            if (returnToPool) {
+                liveQueue.putFirst(e);
+            }
+        } finally {
             lock.readLock().unlock();
         }
     }
@@ -142,7 +162,6 @@ public final class JRubyPool<E> implements LockablePool<E> {
     * operation that should be done without acquiring a read lock.
     *
     * @param e the element to add to the queue
-    *
     * @throws InterruptedException
     */
     @Override
