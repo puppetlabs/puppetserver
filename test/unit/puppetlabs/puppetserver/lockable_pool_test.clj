@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.lockable-pool-test
-  (:require [clojure.test :refer :all])
+  (:require [clojure.test :refer :all]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils])
   (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
 
 (defn create-empty-pool
@@ -196,22 +197,24 @@
   (testing (str "releaseItem call with value 'false' does not return item to "
                 "pool but does allow pool to still be lockable")
     (let [pool (create-populated-pool 1)
+          lock (jruby-testutils/get-lock-from-pool pool)
           instance (.borrowItem pool)]
       (is (= 0 (.size pool)))
       (.releaseItem pool instance false)
       (is (= 0 (.size pool)))
       (.lock pool)
-      (is (true? true))
+      (is (.isWriteLocked lock))
       (.unlock pool)
-      (is (true? true))))
-  (testing (str "releaseItem call with value 'true' does not return item to "
+      (is (not (.isWriteLocked  lock)))))
+  (testing (str "releaseItem call with value 'true' returns item to "
                 "pool and allows pool to still be lockable")
     (let [pool (create-populated-pool 1)
+          lock (jruby-testutils/get-lock-from-pool pool)
           instance (.borrowItem pool)]
       (is (= 0 (.size pool)))
       (.releaseItem pool instance true)
       (is (= 1 (.size pool)))
       (.lock pool)
-      (is (true? true))
+      (is (.isWriteLocked lock))
       (.unlock pool)
-      (is (true? true)))))
+      (is (not (.isWriteLocked  lock))))))
