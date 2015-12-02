@@ -24,7 +24,9 @@ step 'Configure PuppetDB via site.pp' do
   sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
   create_remote_file(master, sitepp, <<SITEPP)
 node default {
-  class { 'puppetdb': }
+  class { 'puppetdb':
+    manage_firewall => false,
+  }
   class { 'puppetdb::master::config':
     puppet_service_name     => #{options['puppetservice']},
     manage_report_processor => true,
