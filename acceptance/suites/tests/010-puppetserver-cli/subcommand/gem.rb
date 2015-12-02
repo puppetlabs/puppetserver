@@ -22,7 +22,7 @@ gem_cleanup = "#{cli} gem cleanup"
 # teardown
 teardown do
   step "Teardown: Remove all installed gems."
-  gems.each do |gem_name|
+  gems.keys.each do |gem_name|
     on(master, "#{gem_uninstall} #{gem_name}")
   end
   step "Teardown: Remove all gems not required to meet a dependency."
