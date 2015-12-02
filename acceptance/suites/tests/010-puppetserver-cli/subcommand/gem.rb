@@ -6,7 +6,7 @@ test_name "Puppetserver 'gem' subcommand tests."
 cli = "puppetserver"
 
 # define gems to test
-gems = ['nokogiri-1.6.7-java', 'excon']
+gems = ['nokogiri-1.6.7', 'excon']
 
 additional_gem_source = ENV['GEM_SOURCE']
 # define command lines
