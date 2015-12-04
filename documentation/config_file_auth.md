@@ -79,8 +79,8 @@ Indirector | HTTP
 -----------|------
 find       | GET and POST
 search     | GET and POST, for endpoints with names that end in "s" or "_search"
-save       | PUT
-destroy    | DELETE
+put        | PUT
+delete     | DELETE
 
 For more details, see the [Puppet `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html#method).
 
