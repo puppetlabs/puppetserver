@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.lockable-pool-test
-  (:require [clojure.test :refer :all]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils])
-  (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
+  (:require [clojure.test :refer :all])
+  (:import (com.puppetlabs.puppetserver.pool JRubyPool)
+           (java.util.concurrent TimeUnit)))
 
 (defn create-empty-pool
   [size]
@@ -150,15 +150,9 @@
     (let [pool (create-populated-pool 2)]
       (.lock pool)
       (is (true? true))
-      ;; Current implementation of JRubyPool is not reentrant. This assertion
-      ;; tests that the error we expect is thrown, rather than a deadlock
-      ;; happening. The tests for the behavior we want have been commented out
-      ;; until we change the implementation.
-      (is (thrown? IllegalStateException (.borrowItem pool)))
-      ;; (let [instance (.borrowItem pool)]
-      ;;   (is (true? true))
-      ;;   (.releaseItem pool instance))
-
+      (let [instance (.borrowItem pool)]
+        (is (true? true))
+        (.releaseItem pool instance))
       (is (true? true))
       (.unlock pool))))
 
@@ -171,22 +165,13 @@
                                       (.releaseItem pool instance)))
             borrow-thread-2 (future (let [instance (.borrowItem pool)]
                                       (.releaseItem pool instance)))]
-        ;; this is racey, but the only ways i could think of to make it non-racey
-        ;; depended on knowledge of the implementation
-        ;; Uncomment and make non-racey when we have an implementation that
-        ;; allows reentrant borrows.
-        ;; (Thread/sleep 500)
-        ;; (is (not (realized? borrow-thread-1)))
-        ;; (is (not (realized? borrow-thread-2)))
+        (Thread/sleep 500)
+        (is (not (realized? borrow-thread-1)))
+        (is (not (realized? borrow-thread-2)))
 
-        ;; Current implementation of JRubyPool is not reentrant. This assertion
-        ;; tests that the error we expect is thrown, rather than a deadlock
-        ;; happening. The tests for the behavior we want have been commented out
-        ;; until we change the implementation.
-        (is (thrown? IllegalStateException (.borrowItem pool)))
-        ;; (let [instance (.borrowItem pool)]
-        ;;   (is (true? true))
-        ;;   (.releaseItem pool instance))
+        (let [instance (.borrowItem pool)]
+          (is (true? true))
+          (.releaseItem pool instance))
 
         (is (true? true))
         (.unlock pool)
@@ -196,25 +181,34 @@
 (deftest pool-release-item-test
   (testing (str "releaseItem call with value 'false' does not return item to "
                 "pool but does allow pool to still be lockable")
-    (let [pool (create-populated-pool 1)
-          lock (jruby-testutils/get-lock-from-pool pool)
+    (let [pool (create-populated-pool 2)
           instance (.borrowItem pool)]
-      (is (= 0 (.size pool)))
+      (is (= 1 (.size pool)))
       (.releaseItem pool instance false)
-      (is (= 0 (.size pool)))
-      (.lock pool)
-      (is (.isWriteLocked lock))
-      (.unlock pool)
-      (is (not (.isWriteLocked  lock)))))
-  (testing (str "releaseItem call with value 'true' returns item to "
-                "pool and allows pool to still be lockable")
-    (let [pool (create-populated-pool 1)
-          lock (jruby-testutils/get-lock-from-pool pool)
-          instance (.borrowItem pool)]
-      (is (= 0 (.size pool)))
-      (.releaseItem pool instance true)
+      (.unregister pool instance)
       (is (= 1 (.size pool)))
       (.lock pool)
-      (is (.isWriteLocked lock))
+      (is (nil? @(future (.borrowItemWithTimeout pool
+                                                 1
+                                                 TimeUnit/MICROSECONDS))))
       (.unlock pool)
-      (is (not (.isWriteLocked  lock))))))
+      (is (not (nil? @(future (.borrowItemWithTimeout pool
+                                                      1
+                                                      TimeUnit/MICROSECONDS)))))
+      (is (true? true))))
+  (testing (str "releaseItem call with value 'true' returns item to "
+                "pool and allows pool to still be lockable")
+    (let [pool (create-populated-pool 2)
+          instance (.borrowItem pool)]
+      (is (= 1 (.size pool)))
+      (.releaseItem pool instance true)
+      (is (= 2 (.size pool)))
+      (.lock pool)
+      (is (nil? @(future (.borrowItemWithTimeout pool
+                                                 1
+                                                 TimeUnit/MICROSECONDS))))
+      (.unlock pool)
+      (is (not (nil? @(future (.borrowItemWithTimeout pool
+                                                      1
+                                                      TimeUnit/MICROSECONDS)))))
+      (is (true? true)))))

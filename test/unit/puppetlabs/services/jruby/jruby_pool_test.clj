@@ -161,12 +161,19 @@
         (testing "instance is removed from registered elements after flushing"
           (is (= 1 (count (jruby-core/registered-instances pool-context))))))
       (testing "Can lock pool after a flush via max requests"
-        (let [pool (jruby-internal/get-pool pool-context)
-              lock (jruby-testutils/get-lock-from-pool pool)]
+        (let [pool (jruby-internal/get-pool pool-context)]
           (.lock pool)
-          (is (.isWriteLocked lock))
+          (is (nil? @(future (jruby-core/borrow-from-pool-with-timeout
+                              pool-context
+                              1
+                              :test
+                              []))))
           (.unlock pool)
-          (is (not (.isWriteLocked lock)))))))
+          (is (not (nil? @(future (jruby-core/borrow-from-pool-with-timeout
+                                  pool-context
+                                  1
+                                  :test
+                                  [])))))))))
 
   (testing "JRuby instance is not flushed if max requests setting is set to 0"
     (let [pool-context  (create-pool-context 0)
