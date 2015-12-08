@@ -240,14 +240,18 @@ public final class JRubyPool<E> implements LockablePool<E> {
     }
 
     /**
-     * This method is analogous to <tt>clear</tt> in the
-     * <tt>LinkedList</tt> class.
+     * This method is analogous to <tt>clear</tt> in the <tt>LinkedList</tt>
+     * class.  This method clears all elements currently in the queue and
+     * also unregisters them from the set of registered elements.
      */
     @Override
     public void clear() {
         lock.lock();
         try {
-            liveQueue.clear();
+            int queueSize = liveQueue.size();
+            for (int i=0; i<queueSize; i++) {
+                registeredElements.remove(liveQueue.removeFirst());
+            }
         } finally {
             lock.unlock();
         }

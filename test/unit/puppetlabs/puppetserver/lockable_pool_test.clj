@@ -24,6 +24,12 @@
   (doseq [instance instances]
     (.releaseItem pool instance)))
 
+(deftest pool-register-above-maximum-throws-exception
+  (let [pool (create-empty-pool 1)]
+    (.register pool "foo ok")
+    (is (thrown? IllegalStateException
+                 (.register pool "foo bar")))))
+
 (deftest pool-lock-is-blocking-test
   (let [pool (create-populated-pool 3)
         instances (borrow-n-instances pool 3)
@@ -145,7 +151,7 @@
       ;; make sure we got here
       (is (true? true)))))
 
-(deftest pool-lock-reentrant-test
+(deftest pool-lock-reentrant-for-borrow-from-locking-thread
   (testing "the thread that holds the pool lock may borrow instances while holding the lock"
     (let [pool (create-populated-pool 2)]
       (.lock pool)
@@ -161,13 +167,23 @@
     (let [pool (create-populated-pool 2)]
       (.lock pool)
       (is (true? true))
-      (let [borrow-thread-1 (future (let [instance (.borrowItem pool)]
+      (let [borrow-thread-started-1? (promise)
+            borrow-thread-started-2? (promise)
+            borrow-thread-borrowed-1? (promise)
+            borrow-thread-borrowed-2? (promise)
+            borrow-thread-1 (future (deliver borrow-thread-started-1? true)
+                                    (let [instance (.borrowItem pool)]
+                                      (deliver borrow-thread-borrowed-1? true)
                                       (.releaseItem pool instance)))
-            borrow-thread-2 (future (let [instance (.borrowItem pool)]
+            borrow-thread-2 (future (deliver borrow-thread-started-2? true)
+                                    (let [instance (.borrowItem pool)]
+                                      (deliver borrow-thread-borrowed-2? true)
                                       (.releaseItem pool instance)))]
+        @borrow-thread-started-1?
+        @borrow-thread-started-2?
         (Thread/sleep 500)
-        (is (not (realized? borrow-thread-1)))
-        (is (not (realized? borrow-thread-2)))
+        (is (not (realized? borrow-thread-borrowed-1?)))
+        (is (not (realized? borrow-thread-borrowed-2?)))
 
         (let [instance (.borrowItem pool)]
           (is (true? true))
@@ -177,6 +193,68 @@
         (.unlock pool)
         @borrow-thread-1
         @borrow-thread-2))))
+
+(deftest pool-lock-reentrant-for-one-lock-test
+  (testing "another thread cannot lock the pool while it is already locked"
+    (let [pool (create-populated-pool 1)]
+      (.lock pool)
+      (is (true? true))
+      (let [lock-thread-started? (promise)
+            lock-thread-locked? (promise)
+            lock-thread (future (deliver lock-thread-started? true)
+                                (.lock pool)
+                                (deliver lock-thread-locked? true)
+                                (.unlock pool))]
+        @lock-thread-started?
+        (Thread/sleep 500)
+        (is (not (realized? lock-thread-locked?)))
+        (.unlock pool)
+        (is (true? true))
+        @lock-thread
+        (is (true? true))))))
+
+(deftest pool-lock-reentrant-for-many-locks-test
+  (testing "multiple threads cannot lock the pool while it is already locked"
+    (let [pool (create-populated-pool 1)]
+      (.lock pool)
+      (is (true? true))
+      (let [lock-thread-started-1? (promise)
+            lock-thread-started-2? (promise)
+            lock-thread-locked-1? (promise)
+            lock-thread-locked-2? (promise)
+            lock-thread-1 (future (deliver lock-thread-started-1? true)
+                                  (.lock pool)
+                                  (deliver lock-thread-locked-1? true)
+                                  (.unlock pool))
+            lock-thread-2 (future (deliver lock-thread-started-2? true)
+                                  (.lock pool)
+                                  (deliver lock-thread-locked-2? true)
+                                  (.unlock pool))]
+        @lock-thread-started-1?
+        @lock-thread-started-2?
+        (Thread/sleep 500)
+        (is (not (realized? lock-thread-locked-1?)))
+        (is (not (realized? lock-thread-locked-2?)))
+        (.unlock pool)
+        (is (true? true))
+        @lock-thread-1
+        (is (true? true))
+        @lock-thread-2
+        (is (true? true))))))
+
+(deftest pool-unlock-from-thread-not-holding-lock-fails
+  (testing "call to unlock pool from thread not holding lock throws exception"
+    (let [pool (create-populated-pool 1)
+          lock-started? (promise)
+          unlock? (promise)
+          lock-thread (future (.lock pool)
+                              (deliver lock-started? true)
+                              @unlock?
+                              (.unlock pool))]
+      (is (thrown? IllegalStateException (.unlock pool)))
+      (deliver unlock? true)
+      @lock-thread
+      (is (true? true)))))
 
 (deftest pool-release-item-test
   (testing (str "releaseItem call with value 'false' does not return item to "
@@ -212,3 +290,66 @@
                                                       1
                                                       TimeUnit/MICROSECONDS)))))
       (is (true? true)))))
+
+(deftest pool-borrow-blocks-borrow-when-pool-empty
+  (testing "borrow from pool blocks while the pool is empty"
+    (let [pool (create-populated-pool 1)
+          item (.borrowItem pool)
+          borrow-thread-started? (promise)
+          borrow-thread-borrowed? (promise)
+          borrow-thread (future (deliver borrow-thread-started? true)
+                                (let [instance (.borrowItem pool)]
+                                  (deliver borrow-thread-borrowed? true)
+                                  (.releaseItem pool instance)))]
+      @borrow-thread-started?
+      (Thread/sleep 500)
+      (is (not (realized? borrow-thread-borrowed?)))
+      (.releaseItem pool item)
+      @borrow-thread
+      (is (true? true)))))
+
+(deftest pool-timed-borrows-test
+  (testing "pool borrows with timeout"
+    (let [pool (create-populated-pool 1)
+          item (.borrowItem pool)]
+      (testing "borrow times out and returns nil when pool is empty"
+        (is (nil? (.borrowItemWithTimeout pool 1 TimeUnit/MICROSECONDS))))
+      (.releaseItem pool item)
+      (testing "borrow succeeds when pool is non-empty"
+        (is (identical? item (.borrowItemWithTimeout pool
+                                                     1
+                                                     TimeUnit/MICROSECONDS)))))))
+
+(deftest pool-insert-pill-test
+  (testing "inserted pill is next item borrowed"
+    (let [pool (create-populated-pool 1)
+          pill (str "i'm a pill")]
+      (.insertPill pool pill)
+      (is (identical? (.borrowItem pool) pill)))))
+
+(deftest pool-clear-test
+  (testing (str "pool clear removes all elements from queue and only matching"
+                "registered elements")
+    (let [pool (create-populated-pool 3)
+          instance (.borrowItem pool)]
+      (is (= 2 (.size pool)))
+      (is (= 3 (-> pool
+                   (.getRegisteredElements)
+                   (.size))))
+      (.clear pool)
+      (is (= 0 (.size pool)))
+      (let [registered-elements (.getRegisteredElements pool)]
+        (is (= 1 (.size registered-elements)))
+        (is (identical? instance (-> registered-elements
+                                    (.iterator)
+                                    iterator-seq
+                                    first)))))))
+
+(deftest pool-remaining-capacity
+  (testing "remaining capacity in pool correct per instances in the queue"
+    (let [pool (create-populated-pool 5)]
+      (is (= 0 (.remainingCapacity pool)))
+      (let [instances (borrow-n-instances pool 2)]
+        (is (= 2 (.remainingCapacity pool)))
+        (return-instances pool instances)
+        (is (= 0 (.remainingCapacity pool)))))))
