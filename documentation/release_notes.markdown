@@ -4,6 +4,28 @@ title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
+## Puppet Server 1.1.3
+
+Released December 9, 2015.
+
+This is a bug fix release in the Puppet Server 1.1 series; no new features have been added since 1.1.0. We recommend that all users upgrade.
+
+### Bug Fixes
+
+#### `max-requests-per-instance` Setting No Longer Leaks Memory
+
+When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`](/puppetserver/1.1/configuration.html#puppetserverconf), Puppet Server should flush the JRuby instance from memory and replace it with a fresh instance after serving a number of requests defined by that setting. This should be useful when dealing with memory leaks in module code.
+
+However, the outgoing JRuby instances were not being flushed as expected during garbage collection, resulting in Puppet Server leaking memory. This could destabilize the server after a sufficient number of replacement cycles.
+
+Puppet Server 1.1.3 resolves this issue by properly flushing the JRuby instance after serving the configured number of requests.
+
+* [SERVER-1006](https://tickets.puppetlabs.com/browse/SERVER-1006)
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%201.1.3%22)
+
 ## Puppet Server 1.1.2
 
 Released October 19, 2015.
@@ -81,6 +103,26 @@ re-introduction of the /status endpoint documentation.
 Released June 2, 2015
 
 In addition to several bug fixes, this release adds a new feature which can be configured to allow the master to automatically flush individual JRuby pool instances after a specified number of web requests have been handled. This upgrades Puppet Server's dependency on JRuby to 1.7.20 in order to take advantage of memory optimizations and other fixes.
+
+### Known Issues
+
+#### `max-requests-per-instance` Causes a Memory Leak 
+
+When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`](./configuration.html#puppetserverconf), Puppet Server should flush the JRuby instance from memory and replace it with a fresh instance after serving a number of requests defined by that setting. This can be handy when dealing with memory leaks in module code.
+
+However, the outgoing JRuby instances are not flushed as expected during garbage collection, resulting in Puppet Server causing a memory leak that could destabilize the server after a sufficient number of replacement cycles.
+
+This issue is resolved in Puppet Server 1.1.3 and 2.2.0. You can also avoid this issue by setting `max-requests-per-instance` to 0. If you're actively mitigating other memory leaks via the `max-active-instances` setting, you can replace the `max-requests-per-instance` behavior with a cron job that regularly flushes the entire JRuby pool, such as:
+
+~~~ bash
+curl -X DELETE \
+  --cacert /etc/puppetlabs/puppet/ssl/certs/ca.pem \
+  --cert /etc/puppetlabs/puppet/ssl/certs/pe-internal-classifier.pem \
+  --key /etc/puppetlabs/puppet/ssl/private_keys/pe-internal-classifier.pem \
+  https://<master hostname>:8140/puppet-admin-api/v1/jruby-pool
+~~~
+
+* [SERVER-1006](https://tickets.puppetlabs.com/browse/SERVER-1006)
 
 ### New Features
 
