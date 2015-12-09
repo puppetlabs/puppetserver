@@ -247,7 +247,7 @@
   (let [instance (borrow-fn pool)]
     (cond (instance? PoisonPill instance)
           (do
-            (.returnItem pool instance)
+            (.releaseItem pool instance)
             (throw (IllegalStateException.
                      "Unable to borrow JRuby instance from pool"
                      (:err instance))))
@@ -299,11 +299,14 @@
                           "maximum number of requests (%s)")
                      (:id instance)
                      max-requests)
-          (flush-instance-fn pool instance))
-        (.returnItem pool instance)))
+          (try
+            (flush-instance-fn pool instance)
+            (finally
+              (.releaseItem pool instance false))))
+        (.releaseItem pool instance)))
     ;; if we get here, it was from a borrow and we got a Retry, so we just
     ;; return it to the pool.
-    (.returnItem (:pool instance) instance)))
+    (.releaseItem (:pool instance) instance)))
 
 (schema/defn ^:always-validate new-main :- jruby-schemas/JRubyMain
   "Return a new JRuby Main instance which should only be used for CLI purposes,

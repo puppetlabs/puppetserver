@@ -105,7 +105,10 @@
               instance  (jruby-internal/borrow-from-pool!*
                           jruby-internal/borrow-without-timeout-fn
                           (:pool old-pool))]
-          (flush-instance! pool-context instance new-pool id config profiler)
+          (try
+            (flush-instance! pool-context instance new-pool id config profiler)
+            (finally
+              (.releaseItem (:pool old-pool) instance false)))
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
         (catch Exception e
