@@ -19,4 +19,5 @@ branches:
   only:
     - master
     - stable
+    - 2.1.x
     - 1.x
