@@ -176,7 +176,18 @@
     (fill-drained-pool jrubies)
     result))
 
-(defn get-lock
+(defn get-lock-from-pool
+  "Given a JRubyPool, returns its internal ReentrantReadWriteLock instance."
+  [jruby-pool]
+  (let [f (->> jruby-pool
+               .getClass
+               .getDeclaredFields
+               (filter #(= "lock" (.getName %)))
+               first)]
+    (.setAccessible f true)
+    (.get f jruby-pool)))
+
+(defn get-lock-from-app
   "Given a trapperkeeper application with the JRubyPuppetService running,
   returns the ReentrantReadWriteLock instance used by its JRubyPool."
   [app]
@@ -185,11 +196,5 @@
                        deref
                        :JRubyPuppetService
                        :pool-context
-                       jruby-core/get-pool)
-        f (->> jruby-pool
-               .getClass
-               .getDeclaredFields
-               (filter #(= "lock" (.getName %)))
-               first)]
-    (.setAccessible f true)
-    (.get f jruby-pool)))
+                       jruby-core/get-pool)]
+    (get-lock-from-pool jruby-pool)))

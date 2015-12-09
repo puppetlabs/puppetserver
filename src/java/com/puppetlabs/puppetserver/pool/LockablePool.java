@@ -36,9 +36,15 @@ public interface LockablePool<E> {
     E borrowItemWithTimeout(long timout, TimeUnit unit) throws InterruptedException;
 
    /**
-    * Return an instance to the pool.
+    * Release an item back into the pool.
     */
-    void returnItem(E e) throws InterruptedException;
+    void releaseItem(E e) throws InterruptedException;
+
+   /**
+    * Release an item.  For a returnToPool value of 'true', return the item
+    * back to the pool.  For a value of 'false', discard the item.
+    */
+    void releaseItem(E e, boolean returnToPool) throws InterruptedException;
 
    /**
     * Insert a poison pill to the pool. This is different from returning an
