@@ -18,6 +18,33 @@ canonical: "/puppetserver/latest/release_notes.html"
 [`master.conf`]: ./config_file_master.html
 [`puppetserver.conf`]: ./config_file_puppetserver.html
 
+## Puppet Server 2.2.1
+
+Released December 9, 2015.
+
+This is a bug fix release in the Puppet Server 2.2 series; no new features have been added since 2.2.0. We recommend that all users upgrade.
+
+### Supported Platforms
+
+* Enterprise Linux 7
+* Enterprise Linux 6
+* Ubuntu 14.04
+* Ubuntu 12.04
+* Debian 8
+* Debian 7
+
+### Bug Fixes
+
+#### Locks Properly Release on Flushed Instances
+
+With the new pool locking functionality in Puppet Server 2.2.0, instances that are flushed when using the `max-requests-per-instance` setting or the JRuby pool flush endpoints do not unlock the corresponding threads' read locks. Under certain circumstances, this could cause Puppet Server to stop responding to requests and log "Too Many Open Files" exceptions. This release resolves this issue.
+
+* [SERVER-1016](https://tickets.puppetlabs.com/browse/SERVER-1016?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.1%22)
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.1%22)
+
 ## Puppet Server 2.2.0
 
 Released November 19, 2015.
@@ -34,11 +61,19 @@ Released November 19, 2015.
 * Debian 8
 * Debian 7
 
+### Known Issues
+
+#### Locks Aren't Released on Flushed Instances
+
+With the new pool locking functionality in Puppet Server 2.2.0, instances that are flushed when using the `max-requests-per-instance` setting or the JRuby pool flush endpoints do not unlock the corresponding threads' read locks. Under certain circumstances, this can cause Puppet Server to stop responding to requests and log "Too Many Open Files" exceptions. This issue is fixed in Puppet Server 2.2.1.
+
+* [SERVER-1016](https://tickets.puppetlabs.com/browse/SERVER-1016?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.2.1%22)
+
 ### Bug Fixes
 
 #### `max-requests-per-instance` Setting No Longer Leaks Memory
 
-When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`][], Puppet Server should flush the JRuby instance from memory and replaced with a fresh instance after serving a number of requests defined by that setting. This should be useful when dealing with memory leaks in module code.
+When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`][], Puppet Server should flush the JRuby instance from memory and replace it with a fresh instance after serving a number of requests defined by that setting. This should be useful when dealing with memory leaks in module code.
 
 However, the outgoing JRuby instances were not being flushed as expected during garbage collection, resulting in Puppet Server leaking memory. This could destabilize the server after a sufficient number of replacement cycles.
 
