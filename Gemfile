@@ -20,6 +20,7 @@ group :test do
     gem 'sqa-utils', '0.13.3'
   end
   gem 'uuidtools'
+  gem 'httparty'
 end
 
 if File.exists? "#{__FILE__}.local"
