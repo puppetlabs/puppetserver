@@ -15,11 +15,10 @@ gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
-  gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 2.24.0')
+  gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 2.30.1')
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '0.13.3'
   end
-  gem 'httparty'
   gem 'uuidtools'
 end
 
