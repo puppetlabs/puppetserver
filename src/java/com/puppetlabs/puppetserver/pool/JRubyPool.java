@@ -262,8 +262,13 @@ public final class JRubyPool<E> implements LockablePool<E> {
                     notWriteLocked.await();
                 }
             }
-            while (registeredElements.size() != liveQueue.size()) {
-                allRegisteredInQueue.await();
+            try {
+                while (registeredElements.size() != liveQueue.size()) {
+                    allRegisteredInQueue.await();
+                }
+            } catch (Exception e) {
+                freeWriteLock();
+                throw e;
             }
         } finally {
             lock.unlock();
@@ -271,7 +276,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     }
 
     @Override
-    public void unlock() throws InterruptedException {
+    public void unlock() {
         final ReentrantLock lock = this.lock;
         lock.lock();
         try {
@@ -291,11 +296,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
                         lockErrorMessage +
                         ".");
             }
-            writeLockThread = null;
-            // Need to use 'signalAll' here because there might be multiple
-            // waiters (e.g., multiple borrowers) queued up, waiting for the
-            // pool to be unlocked.
-            notWriteLocked.signalAll();
+            freeWriteLock();
         } finally {
             lock.unlock();
         }
@@ -308,6 +309,14 @@ public final class JRubyPool<E> implements LockablePool<E> {
     private void addFirst(E e) {
         liveQueue.addFirst(e);
         signalNotEmpty();
+    }
+
+    private void freeWriteLock() {
+        writeLockThread = null;
+        // Need to use 'signalAll' here because there might be multiple
+        // waiters (e.g., multiple borrowers) queued up, waiting for the
+        // pool to be unlocked.
+        notWriteLocked.signalAll();
     }
 
     private void signalNotEmpty() {

@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.lockable-pool-test
   (:require [clojure.test :refer :all])
   (:import (com.puppetlabs.puppetserver.pool JRubyPool)
-           (java.util.concurrent TimeUnit)))
+           (java.util.concurrent TimeUnit ExecutionException)))
 
 (defn create-empty-pool
   [size]
@@ -278,6 +278,24 @@
         (is (true? true))
         @lock-thread-2
         (is (true? true))))))
+
+(deftest pool-lock-not-held-after-thread-interrupt
+  (let [pool (create-populated-pool 1)
+        item (.borrowItem pool)
+        lock-thread-obj (promise)
+        lock-thread-locked? (promise)
+        lock-thread (future (deliver lock-thread-obj (Thread/currentThread))
+                            (.lock pool)
+                            (deliver lock-thread-locked? true))]
+    (testing (str "write locker's thread can be interrupted while waiting for "
+                  "instances to be returned")
+      (.interrupt @lock-thread-obj)
+      (is (thrown? ExecutionException @lock-thread))
+      (is (not (realized? lock-thread-locked?))))
+    (.releaseItem pool item)
+    (testing "new write lock can be taken after prior write lock interrupted"
+      (.lock pool)
+      (is (true? true)))))
 
 (deftest pool-unlock-from-thread-not-holding-lock-fails
   (testing "call to unlock pool when no lock held throws exception"

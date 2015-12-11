@@ -158,7 +158,7 @@ public interface LockablePool<E> {
     * @throws IllegalStateException if the calling thread does not currently
     *                               hold the exclusive lock
     */
-    void unlock() throws InterruptedException;
+    void unlock();
 
    /**
     * Returns a set of all of the elements that are currently registered with
