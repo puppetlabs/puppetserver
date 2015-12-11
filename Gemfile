@@ -19,7 +19,6 @@ group :test do
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '0.13.3'
   end
-  gem 'httparty'
   gem 'uuidtools'
   gem 'httparty'
 end
