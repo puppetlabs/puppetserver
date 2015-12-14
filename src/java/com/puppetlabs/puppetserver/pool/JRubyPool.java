@@ -317,6 +317,16 @@ public final class JRubyPool<E> implements LockablePool<E> {
         // waiters (e.g., multiple borrowers) queued up, waiting for the
         // pool to be unlocked.
         notWriteLocked.signalAll();
+        // Borrowers that are woken up when an instance is returned to the
+        // pool and the write lock is held would then start waiting on a
+        // 'notWriteLocked' signal instead.  Re-signalling 'notEmpty' here
+        // allows any borrowers still waiting on the 'notEmpty' signal to be
+        // reawoken when the write lock is released, compensating for any
+        // 'notEmpty' signals that might have been essentially ignored from
+        // when the write lock was held.
+        if (liveQueue.size() > 0) {
+            notEmpty.signalAll();
+        }
     }
 
     private void signalNotEmpty() {

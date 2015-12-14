@@ -415,6 +415,94 @@
         @borrow-thread
         (is (true? true))))))
 
+(deftest pool-can-borrow-after-borrow-interrupted-during-lock
+  (testing (str "can do a borrow after another borrow was interrupted "
+                "while a write lock was held")
+    (let [pool (create-populated-pool 1)
+          borrow-1 (.borrowItem pool)
+          borrow-thread-started-2 (promise)
+          borrow-thread-started-3? (promise)
+          borrow-thread-2 (future
+                           (deliver borrow-thread-started-2
+                                    (Thread/currentThread))
+                           (.borrowItem pool))
+          borrow-thread-3 (future
+                           (deliver borrow-thread-started-3? true)
+                           (.borrowItem pool))
+          borrow-thread-obj-2 @borrow-thread-started-2
+          _ @borrow-thread-started-3?
+          lock-thread-started? (promise)
+          lock-thread-locked? (promise)
+          unlock? (promise)
+          lock-thread (future
+                       (deliver lock-thread-started? true)
+                       (.lock pool)
+                       (deliver lock-thread-locked? true)
+                       @unlock?
+                       (.unlock pool))]
+      @lock-thread-started?
+      (.releaseItem pool borrow-1)
+      @lock-thread-locked?
+      (is (true? true))
+      ;; Interrupt the second borrow thread so that it will stop waiting for the
+      ;; pool to be not empty and not locked.
+      (.interrupt borrow-thread-obj-2)
+      (is (thrown? ExecutionException @borrow-thread-2)
+          "second borrow could not be interrupted")
+      (is (not (realized? borrow-thread-3)))
+      (deliver unlock? true)
+      @lock-thread
+      (is (true? true))
+      ;; If the third borrow doesn't block indefinitely, we've confirmed that
+      ;; the interruption of the second borrow while the write lock was
+      ;; held did not adversely affect the ability of the third borrow call
+      ;; to return.
+      (is (identical? borrow-1 @borrow-thread-3)
+          (str "did not get back the same instance from the third borrow"
+               "attempt as was returned from the first borrow attempt")))))
+
+(deftest pool-can-borrow-after-borrow-timed-out-during-lock
+  (testing (str "can do a timed borrow from pool after previous borrow "
+                "timed out while a write lock was held")
+    (let [pool (create-populated-pool 1)
+          borrow-1 (.borrowItem pool)
+          borrow-thread-started-2? (promise)
+          borrow-thread-started-3? (promise)
+          borrow-thread-2 (future
+                           (deliver borrow-thread-started-2? true)
+                           (.borrowItemWithTimeout
+                            pool
+                            50
+                            TimeUnit/MILLISECONDS))
+          borrow-thread-3 (future
+                           (deliver borrow-thread-started-3? true)
+                           (.borrowItemWithTimeout pool
+                                                   1
+                                                   TimeUnit/SECONDS))
+          _ @borrow-thread-started-2?
+          _ @borrow-thread-started-3?
+          unlock? (promise)
+          lock-thread-started? (promise)
+          lock-thread-locked? (promise)
+          lock-thread (future
+                       (deliver lock-thread-started? true)
+                       (.lock pool)
+                       (deliver lock-thread-locked? true)
+                       @unlock?
+                       (.unlock pool))]
+      @lock-thread-started?
+      (.releaseItem pool borrow-1)
+      @lock-thread-locked?
+      (is (true? true))
+      (is (nil? @borrow-thread-2)
+          "second borrow attempt did not time out")
+      (deliver unlock? true)
+      @lock-thread
+      (is (true? true))
+      (is (identical? borrow-1 @borrow-thread-3)
+          (str "did not get back the same instance from the third borrow"
+               "attempt as was returned from the first borrow attempt")))))
+
 (deftest pool-insert-pill-test
   (testing "inserted pill is next item borrowed"
     (let [pool (create-populated-pool 1)
