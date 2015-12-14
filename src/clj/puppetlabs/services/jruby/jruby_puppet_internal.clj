@@ -11,7 +11,8 @@
            (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
            (org.jruby.embed ScriptingContainer LocalContextScope)
            (java.util.concurrent TimeUnit)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (java.io InputStream PrintStream)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -27,17 +28,12 @@
   classpath.
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
-  "puppet-server-lib")
+  "classpath:/puppet-server-lib")
 
 (def compile-mode
   "The JRuby compile mode to use for all ruby components, e.g. the master
   service and CLI tools."
   RubyInstanceConfig$CompileMode/OFF)
-
-(def compat-version
-  "The JRuby compatibility version to use for all ruby components, e.g. the
-  master service and CLI tools."
-  (CompatVersion/RUBY1_9))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -100,7 +96,6 @@
   ; Note, this behavior should remain consistent with new-main
   (doto scripting-container
     (.setLoadPaths (managed-load-path ruby-load-path))
-    (.setCompatVersion compat-version)
     (.setCompileMode compile-mode)
     (.setEnvironment (managed-environment (get-system-env) gem-home))))
 
@@ -312,13 +307,21 @@
   "Return a new JRuby Main instance which should only be used for CLI purposes,
   e.g. for the ruby, gem, and irb subcommands.  Internal core services should
   use `create-scripting-container` instead of `new-main`."
-  [config :- jruby-schemas/JRubyPuppetConfig]
+  [config :- jruby-schemas/JRubyPuppetConfig
+   input-stream :- (schema/maybe InputStream)
+   output-stream :- (schema/maybe PrintStream)
+   error-stream :- (schema/maybe PrintStream)]
   (let [jruby-config (RubyInstanceConfig.)
         {:keys [ruby-load-path gem-home]} config]
     ; Note, this behavior should remain consistent with prep-scripting-container
     (doto jruby-config
       (.setLoadPaths (managed-load-path ruby-load-path))
-      (.setCompatVersion compat-version)
       (.setCompileMode compile-mode)
       (.setEnvironment (managed-environment (get-system-env) gem-home)))
+    (when input-stream
+      (.setInput jruby-config input-stream))
+    (when output-stream
+      (.setOutput jruby-config output-stream))
+    (when error-stream
+      (.setError jruby-config error-stream))
     (Main. jruby-config)))
