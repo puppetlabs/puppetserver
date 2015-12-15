@@ -42,6 +42,11 @@
             (assoc :pool-context pool-context)
             (assoc :borrow-timeout (:borrow-timeout config))
             (assoc :event-callbacks (atom []))))))
+  (stop
+   [this context]
+   (let [{:keys [pool-context]} (tk-services/service-context this)]
+     (jruby-agents/send-flush-pool! pool-context :shutdown))
+   context)
 
   (borrow-instance
     [this reason]

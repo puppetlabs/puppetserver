@@ -174,6 +174,15 @@
    :size size})
 
 (schema/defn ^:always-validate
+  cleanup-pool-instance!
+  "Cleans up and cleanly terminates a JRubyPuppet instance and removes it from the pool."
+  [{:keys [scripting-container jruby-puppet pool] :as instance} :- JRubyPuppetInstance]
+  (.unregister pool instance)
+  (.terminate jruby-puppet)
+  (.terminate scripting-container)
+  (log/infof "Cleaned up old JRuby instance with id %s." (:id instance)))
+
+(schema/defn ^:always-validate
   create-pool-instance! :- JRubyPuppetInstance
   "Creates a new JRubyPuppet instance and adds it to the pool."
   [pool     :- jruby-schemas/pool-queue-type
@@ -189,6 +198,7 @@
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
+    (log/infof "Creating JRuby instance with id %s." id)
     (let [scripting-container   (create-scripting-container
                                  ruby-load-path
                                  gem-home

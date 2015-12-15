@@ -65,16 +65,12 @@
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
   [pool-context :- jruby-schemas/PoolContext
-   {:keys [scripting-container jruby-puppet id pool] :as instance} :- JRubyPuppetInstance
+   instance :- JRubyPuppetInstance
    new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
-  (.unregister pool instance)
-  (.terminate jruby-puppet)
-  (.terminate scripting-container)
-  (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
-             id)
+  (jruby-internal/cleanup-pool-instance! instance)
   (jruby-internal/create-pool-instance! new-pool new-id config
                                         (partial send-flush-instance! pool-context)
                                         profiler))
@@ -83,7 +79,8 @@
   flush-pool!
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
-  [pool-context :- jruby-schemas/PoolContext]
+  [pool-context :- jruby-schemas/PoolContext
+   reason :- jruby-schemas/FlushReason]
   ;; Since this function is only called by the pool-agent, and since this
   ;; is the only entry point into the pool flushing code that is exposed by the
   ;; service API, we know that if we receive multiple flush requests before the
@@ -107,7 +104,11 @@
                           jruby-internal/borrow-without-timeout-fn
                           old-pool)]
           (try
-            (flush-instance! pool-context instance new-pool id config profiler)
+            (jruby-internal/cleanup-pool-instance! instance)
+            (when (= reason :flush-requested)
+              (jruby-internal/create-pool-instance! new-pool id config
+                                                    (partial send-flush-instance! pool-context)
+                                                    profiler))
             (finally
               (.releaseItem old-pool instance false)))
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
@@ -142,8 +143,11 @@
 (schema/defn ^:always-validate
   send-flush-pool! :- jruby-schemas/JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool and create a new one."
-  [pool-context :- jruby-schemas/PoolContext]
-  (send-agent (:pool-agent pool-context) #(flush-pool! pool-context)))
+  ([pool-context :- jruby-schemas/PoolContext]
+   (send-flush-pool! pool-context :flush-requested))
+  ([pool-context :- jruby-schemas/PoolContext
+    reason :- jruby-schemas/FlushReason]
+   (send-agent (:pool-agent pool-context) #(flush-pool! pool-context reason))) )
 
 (schema/defn ^:always-validate
   send-flush-instance! :- jruby-schemas/JRubyPoolAgent
