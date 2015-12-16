@@ -5,6 +5,7 @@
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [puppetlabs.comidi :as comidi :refer [GET ANY PUT]]
+            [bidi.schema :as bidi-schema]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
@@ -252,7 +253,7 @@
       (ca/get-certificate-statuses settings)
       (as-json-or-pson context))))
 
-(schema/defn ^:always-validate web-routes :- comidi/BidiRoute
+(schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair
   [ca-settings :- ca/CaSettings]
   (comidi/routes
     (comidi/context ["/v1"]

@@ -13,7 +13,7 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0"]
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
@@ -44,9 +44,9 @@
                  [joda-time "2.7"]
                  [clj-time "0.10.0"]
                  [liberator "0.12.0"]
-                 [puppetlabs/comidi "0.1.1"]
+                 [puppetlabs/comidi "0.3.1-SNAPSHOT"]
+                 [prismatic/schema "1.0.4"]
                  [me.raynes/fs "1.4.5"]
-                 [prismatic/schema "0.4.0"]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [commons-codec "1.9"]
