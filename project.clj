@@ -97,7 +97,8 @@
                                    [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]
-                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]]
+                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
+                                   [beckon "0.1.1"]]
                    :injections    [(require 'spyscope.core)]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
