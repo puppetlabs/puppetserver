@@ -219,6 +219,8 @@
   {:config                config
    :profiler              profiler
    :pool-agent            (jruby-agents/pool-agent agent-shutdown-fn)
+   ;; For an explanation of why we need a separate agent for the `flush-instance`,
+   ;; see the comments in jruby-puppet-agents/send-flush-instance
    :flush-instance-agent  (jruby-agents/pool-agent agent-shutdown-fn)
    :pool-state            (atom (jruby-internal/create-pool-from-config config))})
 

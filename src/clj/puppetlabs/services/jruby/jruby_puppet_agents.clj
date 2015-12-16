@@ -150,6 +150,19 @@
   [pool-context :- jruby-schemas/PoolContext
    pool :- jruby-schemas/pool-queue-type
    instance :- JRubyPuppetInstance]
+  ;; We use a separate agent from the main `pool-agent` here, because there is a possibility for deadlock otherwise.
+  ;; e.g.:
+  ;; 1. A flush-pool request comes in, and we start using the main pool agent to flush the pool.  We do that by
+  ;;    borrowing all of the instances from the pool as they are returned to it, and the agent doesn't return
+  ;;    control until it has borrowed the correct number of instances.
+  ;; 2. While that is happening, an individual instance reaches the 'max-requests' value.  This instance will never
+  ;;    be returned to the pool; it is handled by sending a function to an agent, which will flush the individual
+  ;;    instance, create a replacement one, and return that to the pool.
+  ;;
+  ;; If we use the same agent for both of these operations, then step 2 will never begin until step 1 completes, and
+  ;; step 1 will never complete because the `max-requests` instance will never be returned to the pool.
+  ;;
+  ;; Using a separate agent for the 'max-requests' instance flush alleviates this issue.
   (let [{:keys [flush-instance-agent config profiler]} pool-context
         id (next-instance-id (:id instance) pool-context)]
     (send-agent flush-instance-agent #(flush-instance! pool-context instance pool id config profiler))))
