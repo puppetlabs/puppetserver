@@ -17,16 +17,19 @@
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
-                 [org.clojure/tools.reader "0.9.1"]
-                 [ring/ring-core "1.4.0"]
+                 [org.clojure/tools.macro "0.1.5"]
                  ;; end version conflict resolution dependencies
 
-                 [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.5.0"]
-                 [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
-                 [puppetlabs/http-client "0.4.4"]
+                 [cheshire "5.3.1"]
+                 [slingshot "0.10.3"]
+                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
+                 [commons-lang "2.6"]
+                 [commons-io "2.4"]
+                 [clj-time "0.10.0"]
+                 [prismatic/schema "1.0.4"]
+                 [me.raynes/fs "1.4.5"]
+                 [liberator "0.12.0"]
+
                  [org.jruby/jruby-core "1.7.20.1"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  ;; jffi and jnr-x86asm are explicit dependencies because,
@@ -39,21 +42,14 @@
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.20.1"]
-                 [org.clojure/data.json "0.2.3"]
-                 [org.clojure/tools.macro "0.1.5"]
-                 [joda-time "2.7"]
-                 [clj-time "0.10.0"]
-                 [liberator "0.12.0"]
-                 [puppetlabs/comidi "0.3.1-SNAPSHOT"]
-                 [prismatic/schema "1.0.4"]
-                 [me.raynes/fs "1.4.5"]
-                 [commons-lang "2.6"]
-                 [commons-io "2.4"]
-                 [commons-codec "1.9"]
-                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
-                 [slingshot "0.10.3"]
-                 [cheshire "5.3.1"]
-                 [trptcolin/versioneer "0.1.0"]]
+
+                 [puppetlabs/trapperkeeper ~tk-version]
+                 [puppetlabs/trapperkeeper-authorization "0.5.0"]
+                 [puppetlabs/kitchensink ~ks-version]
+                 [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
+                 [puppetlabs/http-client "0.4.4"]
+                 [puppetlabs/comidi "0.3.1"]]
 
   :main puppetlabs.trapperkeeper.main
 
