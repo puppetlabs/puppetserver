@@ -11,7 +11,8 @@
            (org.jruby.embed LocalContextScope)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (clojure.lang IFn)
-           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)
+           (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -29,6 +30,39 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test fixtures
 
+(schema/defn ^:always-validate with-puppet-conf-files
+  "Test fixture; Accepts a map with the following characteristics:
+
+  * keys are simple filenames (no paths) that will be created in puppet's $confdir
+  * values are paths to a test-specific file that should be copied to puppet's confdir,
+    a la `$confdir/<key>`.
+
+  For each entry in the map, copies the files into $confdir, runs the test function,
+  and then deletes all of the files from $confdir.
+
+  Optionally accepts a second argument `dest-dir`, which specifies the location
+  of Puppet's $confdir.  If this argument is not provided, defaults to
+  `jruby-testutils/conf-dir`."
+  ([puppet-conf-files]
+   (with-puppet-conf-files puppet-conf-files conf-dir))
+  ([puppet-conf-files :- {schema/Str (schema/pred (some-fn string? #(instance? File %)))}
+    dest-dir :- schema/Str]
+
+   (let [target-paths (reduce
+                       (fn [acc filename]
+                         (assoc acc filename (fs/file dest-dir filename)))
+                       {}
+                       (keys puppet-conf-files))]
+     (fn [f]
+       (doseq [filename (keys puppet-conf-files)]
+         (fs/copy+ (get puppet-conf-files filename)
+                   (get target-paths filename)))
+       (try
+         (f)
+         (finally
+           (doseq [target-path (vals target-paths)]
+             (fs/delete target-path))))))))
+
 (defn with-puppet-conf
   "This function returns a test fixture that will copy a specified puppet.conf
   file into the provided location for testing, and then delete it after the
@@ -37,13 +71,7 @@
   ([puppet-conf-file]
    (with-puppet-conf puppet-conf-file conf-dir))
   ([puppet-conf-file dest-dir]
-   (let [target-path (fs/file dest-dir "puppet.conf")]
-     (fn [f]
-       (fs/copy+ puppet-conf-file target-path)
-       (try
-         (f)
-         (finally
-           (fs/delete target-path)))))))
+   (with-puppet-conf-files {"puppet.conf" puppet-conf-file} dest-dir)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
