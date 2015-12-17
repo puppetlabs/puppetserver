@@ -44,8 +44,10 @@
             (assoc :event-callbacks (atom []))))))
   (stop
    [this context]
-   (let [{:keys [pool-context]} (tk-services/service-context this)]
-     (jruby-agents/send-flush-pool! pool-context :shutdown))
+   (let [{:keys [pool-context]} (tk-services/service-context this)
+         flush-complete? (promise)]
+     (jruby-agents/send-flush-pool! pool-context :shutdown flush-complete?)
+     @flush-complete?)
    context)
 
   (borrow-instance
@@ -108,7 +110,8 @@
                         "misconfigured or trying to serve too many agent nodes. "
                         "Check Puppet Server settings: "
                         "jruby-puppet.max-active-instances.")}))
-     (if (jruby-schemas/shutdown-poison-pill? pool-instance#)
+     (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
+       (jruby/return-instance ~jruby-service pool-instance# ~reason)
        (sling/throw+
         {:type    ::service-unavailable
          :message (str "Attempted to borrow a JRuby instance from the pool "

@@ -4,7 +4,7 @@
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
-  (:import (clojure.lang IFn)
+  (:import (clojure.lang IFn IDeref)
            (com.puppetlabs.puppetserver PuppetProfiler)
            (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance ShutdownPoisonPill)))
 
@@ -80,7 +80,8 @@
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
   [pool-context :- jruby-schemas/PoolContext
-   reason :- jruby-schemas/FlushReason]
+   reason :- jruby-schemas/FlushReason
+   flush-complete? :- IDeref]
   ;; Since this function is only called by the pool-agent, and since this
   ;; is the only entry point into the pool flushing code that is exposed by the
   ;; service API, we know that if we receive multiple flush requests before the
@@ -93,7 +94,7 @@
         new-pool (:pool new-pool-state)
         old-pool-state @pool-state
         old-pool (:pool old-pool-state)
-        count    (:size old-pool-state)]
+        count (:size old-pool-state)]
     (log/info "Replacing old JRuby pool with new instance.")
     (when (= reason :shutdown)
       (.insertPill new-pool (ShutdownPoisonPill. new-pool)))
@@ -101,10 +102,10 @@
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
     (doseq [i (range count)]
       (try
-        (let [id        (inc i)
-              instance  (jruby-internal/borrow-from-pool!*
-                          jruby-internal/borrow-without-timeout-fn
-                          old-pool)]
+        (let [id (inc i)
+              instance (jruby-internal/borrow-from-pool!*
+                        jruby-internal/borrow-without-timeout-fn
+                        old-pool)]
           (try
             (jruby-internal/cleanup-pool-instance! instance)
             (when (= reason :flush-requested)
@@ -119,11 +120,13 @@
           (.clear new-pool)
           (.insertPill new-pool (PoisonPill. e))
           (throw (IllegalStateException.
-                   "There was a problem adding a JRubyPuppet instance to the pool."
-                   e)))))
+                  "There was a problem adding a JRubyPuppet instance to the pool."
+                  e)))))
     ;; Add a "RetryPoisonPill" to the pool in case something else is in the
     ;; process of borrowing from the old pool.
-    (.insertPill old-pool (RetryPoisonPill. old-pool))))
+    (.insertPill old-pool (RetryPoisonPill. old-pool)))
+  (finally
+    (deliver flush-complete? true)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -146,10 +149,11 @@
   send-flush-pool! :- jruby-schemas/JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool and create a new one."
   ([pool-context :- jruby-schemas/PoolContext]
-   (send-flush-pool! pool-context :flush-requested))
+   (send-flush-pool! pool-context :flush-requested (promise)))
   ([pool-context :- jruby-schemas/PoolContext
-    reason :- jruby-schemas/FlushReason]
-   (send-agent (:pool-agent pool-context) #(flush-pool! pool-context reason))) )
+    reason :- jruby-schemas/FlushReason
+    flush-complete? :- IDeref]
+   (send-agent (:pool-agent pool-context) #(flush-pool! pool-context reason flush-complete?))) )
 
 (schema/defn ^:always-validate
   send-flush-instance! :- jruby-schemas/JRubyPoolAgent
