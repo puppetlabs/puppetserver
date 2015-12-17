@@ -266,6 +266,13 @@
     (= (:type x)
        :puppetlabs.services.request-handler.request-handler-core/bad-request)))
 
+(defn service-unavailable?
+  [x]
+  "Determine if the supplied slingshot message is for a 'service unavailable'"
+  (when (map? x)
+    (= (:type x)
+       :puppetlabs.services.jruby.jruby-puppet-service/service-unavailable)))
+
 (defn jruby-timeout?
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
   [x]
@@ -290,6 +297,8 @@
       (catch bad-request? e
         (output-error request e 400))
       (catch jruby-timeout? e
+        (output-error request e 503))
+      (catch service-unavailable? e
         (output-error request e 503)))))
 
 (defn wrap-with-jruby-instance

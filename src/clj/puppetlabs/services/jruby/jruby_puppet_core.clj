@@ -103,7 +103,7 @@
    :instance instance})
 
 (schema/defn create-returned-event :- jruby-schemas/JRubyReturnedEvent
-  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+  [instance :- jruby-schemas/JRubyPuppetInstanceOrPill
    reason :- jruby-schemas/JRubyEventReason]
   {:type :instance-returned
    :reason reason
@@ -147,7 +147,7 @@
 
 (schema/defn instance-returned :- jruby-schemas/JRubyReturnedEvent
   [event-callbacks :- [IFn]
-   instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+   instance :- jruby-schemas/JRubyPuppetInstanceOrPill
    reason :- jruby-schemas/JRubyEventReason]
   (notify-event-listeners event-callbacks (create-returned-event instance reason)))
 
@@ -260,7 +260,7 @@
         puppet-env/mark-all-environments-expired!)))
 
 (schema/defn ^:always-validate
-  borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
+  borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrPill
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool-context :- jruby-schemas/PoolContext
@@ -294,7 +294,7 @@
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry
+  [instance :- jruby-schemas/JRubyPuppetInstanceOrPill
    reason :- schema/Any
    event-callbacks :- [IFn]]
   (instance-returned event-callbacks instance reason)

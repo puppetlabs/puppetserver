@@ -6,7 +6,7 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
   (:import (clojure.lang IFn)
            (com.puppetlabs.puppetserver PuppetProfiler)
-           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance)))
+           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance ShutdownPoisonPill)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -95,6 +95,8 @@
         old-pool (:pool old-pool-state)
         count    (:size old-pool-state)]
     (log/info "Replacing old JRuby pool with new instance.")
+    (when (= reason :shutdown)
+      (.insertPill new-pool (ShutdownPoisonPill. new-pool)))
     (reset! pool-state new-pool-state)
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
     (doseq [i (range count)]

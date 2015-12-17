@@ -108,6 +108,11 @@
                         "misconfigured or trying to serve too many agent nodes. "
                         "Check Puppet Server settings: "
                         "jruby-puppet.max-active-instances.")}))
+     (if (jruby-schemas/shutdown-poison-pill? pool-instance#)
+       (sling/throw+
+        {:type    ::service-unavailable
+         :message (str "Attempted to borrow a JRuby instance from the pool "
+                       "during a shutdown. Please try again.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby/return-instance ~jruby-service pool-instance# ~reason)
