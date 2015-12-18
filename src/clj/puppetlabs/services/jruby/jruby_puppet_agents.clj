@@ -76,6 +76,13 @@
                                         profiler))
 
 (schema/defn ^:always-validate
+  pool-initialized? :- schema/Bool
+  "Determine if the current pool has been fully initialized."
+  [expected-pool-size :- schema/Int
+   pool :- jruby-schemas/pool-queue-type]
+  (= expected-pool-size (count (.getRegisteredElements pool))))
+
+(schema/defn ^:always-validate
   flush-pool!
   "Flush of the current JRuby pool.  NOTE: this function should never
   be called except by the pool-agent."
@@ -94,39 +101,42 @@
         new-pool (:pool new-pool-state)
         old-pool-state @pool-state
         old-pool (:pool old-pool-state)
-        count (:size old-pool-state)]
+        old-pool-size (:size old-pool-state)]
     (log/info "Replacing old JRuby pool with new instance.")
-    (when (= reason :shutdown)
-      (.insertPill new-pool (ShutdownPoisonPill. new-pool)))
-    (reset! pool-state new-pool-state)
-    (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
-    (doseq [i (range count)]
-      (try
-        (let [id (inc i)
-              instance (jruby-internal/borrow-from-pool!*
-                        jruby-internal/borrow-without-timeout-fn
-                        old-pool)]
+    (if (and (= reason :shutdown) (not (pool-initialized? old-pool-size old-pool)))
+      (throw (IllegalStateException. "Attempting to flush a pool that does not appear to have successfully initialized. Aborting."))
+      (do
+        (when (= reason :shutdown)
+          (.insertPill new-pool (ShutdownPoisonPill. new-pool)))
+        (reset! pool-state new-pool-state)
+        (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
+        (doseq [i (range old-pool-size)]
           (try
-            (jruby-internal/cleanup-pool-instance! instance)
-            (when (= reason :flush-requested)
-              (jruby-internal/create-pool-instance! new-pool id config
-                                                    (partial send-flush-instance! pool-context)
-                                                    profiler))
-            (finally
-              (.releaseItem old-pool instance false)))
-          (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                     id count))
-        (catch Exception e
-          (.clear new-pool)
-          (.insertPill new-pool (PoisonPill. e))
-          (throw (IllegalStateException.
-                  "There was a problem adding a JRubyPuppet instance to the pool."
-                  e)))))
-    ;; Add a "RetryPoisonPill" to the pool in case something else is in the
-    ;; process of borrowing from the old pool.
-    (.insertPill old-pool (RetryPoisonPill. old-pool)))
-  (finally
-    (deliver flush-complete? true)))
+            (let [id (inc i)
+                  instance (jruby-internal/borrow-from-pool!*
+                            jruby-internal/borrow-without-timeout-fn
+                            old-pool)]
+              (try
+                (jruby-internal/cleanup-pool-instance! instance)
+                (when (= reason :flush-requested)
+                  (jruby-internal/create-pool-instance! new-pool id config
+                                                        (partial send-flush-instance! pool-context)
+                                                        profiler))
+                (finally
+                  (.releaseItem old-pool instance false)))
+              (log/infof "Finished creating JRubyPuppet instance %d of %d"
+                         id old-pool-size))
+            (catch Exception e
+              (.clear new-pool)
+              (.insertPill new-pool (PoisonPill. e))
+              (throw (IllegalStateException.
+                      "There was a problem adding a JRubyPuppet instance to the pool."
+                      e)))))
+        ;; Add a "RetryPoisonPill" to the pool in case something else is in the
+        ;; process of borrowing from the old pool.
+        (.insertPill old-pool (RetryPoisonPill. old-pool))))
+        (finally
+          (deliver flush-complete? true))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

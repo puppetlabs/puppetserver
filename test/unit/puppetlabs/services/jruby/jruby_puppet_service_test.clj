@@ -5,6 +5,7 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as services]
@@ -16,7 +17,8 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [me.raynes.fs :as fs]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.internal :as tk-internal]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 (use-fixtures :once schema-test/validate-schemas)
@@ -38,27 +40,26 @@
 
 (deftest test-error-during-init
   (testing
-      (str "If there as an exception while putting a JRubyPuppet instance in "
-           "the pool the application should shut down.")
+   (str "If there as an exception while putting a JRubyPuppet instance in "
+        "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-internal/create-pool-instance!
-                    (fn [& _] (throw (Exception. "42")))]
-                   (let [got-expected-exception (atom false)]
-                     (try
-                       (bootstrap/with-app-with-config
-                         app
-                         default-services
-                         (jruby-service-test-config 1)
-                         (tk/run-app app))
-                       (catch Exception e
-                         (let [cause (stacktrace/root-cause e)]
-                           (is (= (.getMessage cause) "42"))
-                           (reset! got-expected-exception true))))
-                     (is (true? @got-expected-exception)
-                                "Did not get expected exception."))
-                   (is (logged?
-                         #"^shutdown-on-error triggered because of exception!"
-                                :error))))))
+     (with-redefs [jruby-internal/create-pool-instance!
+                   (fn [& _] (throw (Exception. "42")))]
+       (let [got-expected-exception (atom false)]
+         (try
+           ; We use this instead of with-app-with-config because with-app-with-config has an implicit stop
+           ; and the exception raised above will already trigger a stop. Instead we just use tk/run-app to
+           ; block on waiting for the exception to be thrown
+           (ks-testutils/with-no-jvm-shutdown-hooks
+            (let [app (tk-internal/throw-app-error-if-exists!
+                       (tk/boot-services-with-config default-services (jruby-service-test-config 1)))]
+              (tk/run-app app)))
+           (catch Exception e
+             (let [cause (stacktrace/root-cause e)]
+               (is (= (.getMessage cause) "42"))
+               (reset! got-expected-exception true))))
+         (is (true? @got-expected-exception)
+             "Did not get expected exception."))))))
 
 (deftest test-pool-size
   (testing "The pool is created and the size is correctly reported"
