@@ -123,7 +123,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
         lock.lock();
         try {
             final Thread currentThread = Thread.currentThread();
-            while (item == null) {
+            do {
                 if (isWriteLockHeldByAnotherThread(currentThread)) {
                     notWriteLocked.await();
                 } else if (liveQueue.size() < 1) {
@@ -131,7 +131,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
                 } else {
                     item = liveQueue.removeFirst();
                 }
-            }
+            } while (item == null);
         } finally {
             lock.unlock();
         }
@@ -158,17 +158,23 @@ public final class JRubyPool<E> implements LockablePool<E> {
             // be available to be borrowed follows the logic that the JDK's
             // `LinkedBlockingDeque` in `pollFirst` uses.  See:
             // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/LinkedBlockingDeque.java#l522
-            while (item == null && remainingMaxTimeToWait > 0) {
+            do {
                 if (isWriteLockHeldByAnotherThread(currentThread)) {
+                    if (remainingMaxTimeToWait <= 0) {
+                        break;
+                    }
                     remainingMaxTimeToWait =
                             notWriteLocked.awaitNanos(remainingMaxTimeToWait);
                 } else if (liveQueue.size() < 1) {
+                    if (remainingMaxTimeToWait <= 0) {
+                        break;
+                    }
                     remainingMaxTimeToWait =
                             notEmpty.awaitNanos(remainingMaxTimeToWait);
                 } else {
                     item = liveQueue.removeFirst();
                 }
-            }
+            } while (item == null);
         } finally {
             lock.unlock();
         }
