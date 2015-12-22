@@ -6,7 +6,7 @@ test_name "Puppetserver 'gem' subcommand tests."
 cli = "puppetserver"
 
 # define gems to test
-gems = ['nokogiri', 'excon']
+gems = {'nokogiri' => '1.6.7', 'excon' => '0.45.4'}
 
 additional_gem_source = ENV['GEM_SOURCE']
 # define command lines
@@ -22,9 +22,9 @@ gem_cleanup = "#{cli} gem cleanup"
 # teardown
 teardown do
   step "Teardown: Remove all installed gems."
-  all_gems_string = gems.join(" ")
-  on(master, "#{gem_uninstall} #{all_gems_string}")
-
+  gems.keys.each do |gem_name|
+    on(master, "#{gem_uninstall} #{gem_name}")
+  end
   step "Teardown: Remove all gems not required to meet a dependency."
   on(master, "#{gem_cleanup}")
 end
@@ -37,9 +37,9 @@ step "Get initial list of installed gems."
 
 initial_installed_gems = get_gem_list(master, "#{gem_list}")
 
-gems.each do |gem_name|
+gems.each do |gem_name, gem_version|
   step "Install test gem."
-  on(master, "#{gem_install} #{gem_name}")
+  on(master, "#{gem_install} #{gem_name} -v #{gem_version}")
 
   step "Check that test gem is present."
   on(master, "#{gem_list}") do
