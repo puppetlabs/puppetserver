@@ -14,7 +14,7 @@ export BEAKER_HELPER="acceptance/lib/helper.rb"
 # export PACKAGE_BUILD_VERSION="2.1.2.SNAPSHOT.2015.08.20T0208"
 bundle install --path vendor/bundle
 
-bundle exec beaker-hostgenerator $GENCONFIG_LAYOUT > $BEAKER_CONFIG
+bundle exec genconfig2 $GENCONFIG_LAYOUT > $BEAKER_CONFIG
 
 bundle exec beaker \
   --config $BEAKER_CONFIG \
