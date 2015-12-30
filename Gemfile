@@ -6,7 +6,9 @@ gem 'jira-ruby', :group => :development
 group :test do
   gem 'rspec'
   gem 'beaker', '~>1.21.0'
-  gem 'beaker-hostgenerator', '~> 0.2'
+  if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
+    gem 'sqa-utils', '0.12.1'
+  end
 end
 
 if File.exists? "#{__FILE__}.local"
