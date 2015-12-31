@@ -25,7 +25,7 @@ BEAKER="$BEAKER --load-path acceptance/lib"
 
 case $1 in
   -p | --p* )
-  bundle exec genconfig2 $GENCONFIG_LAYOUT > $BEAKER_CONFIG
+  bundle exec beaker-hostgenerator $GENCONFIG_LAYOUT > $BEAKER_CONFIG
     
   if [ -z "$PACKAGE_BUILD_VERSION" ]; 
     #TODO: curl builds.puppetlabs.lan/puppetserver.  Parse HTML, find most recent folder name.
