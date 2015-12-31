@@ -34,14 +34,15 @@ Copy/modify the local RHEL-7 host config at
 basic 2-node configuration.
 
 Please note, the most recent host configurations can be generated with the
-`genconfig` command available from the `sqa-utils` gem.  Generating a new host
-configuration takes the form of `bundle exec genconfig redhat7-64ma`
+`beaker-hostgenerator` command available from the `beaker-hostgenerator` gem.
+Generating a new host configuration takes the form of `bundle exec
+beaker-hostgenerator redhat7-64ma`
 
 The host expression is a bit strange and is parsed as per the documentation at
-`bundle exec genconfig --help`.  See also [the
-source][genconfig].
+`bundle exec beaker-hostgenerator --help`.  See also [the
+source][beaker-hostgenerator].
 
-[genconfig]: https://github.com/puppetlabs/sqa-utils-gem/blob/76d8dbc/lib/genconfig/cli.rb#L20-L47
+[beaker-hostgenerator]: https://github.com/puppetlabs/beaker-hostgenerator
 
 #### Define the PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
 
