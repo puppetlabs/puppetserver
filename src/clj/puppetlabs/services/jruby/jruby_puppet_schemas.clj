@@ -80,21 +80,21 @@
   ;; the order of things that you put into a `both` to be very important.
   ;; The `vector?` pred here MUST come before the `[schema/Str]`.  For more info
   ;; see https://github.com/Prismatic/schema/issues/68
-  {:ruby-load-path              (schema/both (schema/pred vector?) [schema/Str])
-   :gem-home                    schema/Str
-   :master-conf-dir             (schema/maybe schema/Str)
-   :master-code-dir             (schema/maybe schema/Str)
-   :master-var-dir              (schema/maybe schema/Str)
-   :master-run-dir              (schema/maybe schema/Str)
-   :master-log-dir              (schema/maybe schema/Str)
-   :http-client-ssl-protocols   [schema/Str]
-   :http-client-cipher-suites   [schema/Str]
+  {:ruby-load-path (schema/both (schema/pred vector?) [schema/Str])
+   :gem-home schema/Str
+   :master-conf-dir (schema/maybe schema/Str)
+   :master-code-dir (schema/maybe schema/Str)
+   :master-var-dir (schema/maybe schema/Str)
+   :master-run-dir (schema/maybe schema/Str)
+   :master-log-dir (schema/maybe schema/Str)
+   :http-client-ssl-protocols [schema/Str]
+   :http-client-cipher-suites [schema/Str]
    :http-client-connect-timeout-milliseconds schema/Int
-   :http-client-idle-timeout-milliseconds    schema/Int
-   :borrow-timeout              schema/Int
-   :max-active-instances        schema/Int
-   :max-requests-per-instance   schema/Int
-   :use-legacy-auth-conf        schema/Bool})
+   :http-client-idle-timeout-milliseconds schema/Int
+   :borrow-timeout schema/Int
+   :max-active-instances schema/Int
+   :max-requests-per-instance schema/Int
+   :use-legacy-auth-conf schema/Bool})
 
 (def JRubyPoolAgent
   "An agent configured for use in managing JRuby pools"
