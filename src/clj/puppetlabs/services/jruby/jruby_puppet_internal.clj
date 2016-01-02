@@ -95,10 +95,13 @@
   [ruby-load-path :- [schema/Str]]
   (cons ruby-code-dir ruby-load-path))
 
-(defn prep-scripting-container
-  [scripting-container ruby-load-path gem-home]
-  ; Note, this behavior should remain consistent with new-main
-  (doto scripting-container
+(schema/defn ^:always-validate init-jruby-config :- jruby-schemas/ConfigurableJRuby
+  "Applies configuration to a JRuby... thing.  See comments in `ConfigurableJRuby`
+  schema for more details."
+  [jruby-config :- jruby-schemas/ConfigurableJRuby
+   ruby-load-path :- [schema/Str]
+   gem-home :- schema/Str]
+  (doto jruby-config
     (.setLoadPaths (managed-load-path ruby-load-path))
     (.setCompatVersion compat-version)
     (.setCompileMode compile-mode)
@@ -112,7 +115,7 @@
          (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
   (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-    (prep-scripting-container ruby-load-path gem-home)))
+      (init-jruby-config ruby-load-path gem-home)))
 
 (defn create-scripting-container
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
@@ -132,7 +135,7 @@
     ;; we need to explicitly require 'jar-dependencies' so that it is used
     ;; to manage jar loading.  We do this so that we can instruct
     ;; 'jar-dependencies' to not actually load any jars.  See the environment
-    ;; variable configuration in 'prep-scripting-container' for more
+    ;; variable configuration in 'init-jruby-config' for more
     ;; information.
     (.runScriptlet "require 'jar-dependencies'")
     (.runScriptlet "require 'puppet/server/master'")))
@@ -313,12 +316,9 @@
   e.g. for the ruby, gem, and irb subcommands.  Internal core services should
   use `create-scripting-container` instead of `new-main`."
   [config :- jruby-schemas/JRubyPuppetConfig]
-  (let [jruby-config (RubyInstanceConfig.)
-        {:keys [ruby-load-path gem-home]} config]
-    ; Note, this behavior should remain consistent with prep-scripting-container
-    (doto jruby-config
-      (.setLoadPaths (managed-load-path ruby-load-path))
-      (.setCompatVersion compat-version)
-      (.setCompileMode compile-mode)
-      (.setEnvironment (managed-environment (get-system-env) gem-home)))
+  (let [{:keys [ruby-load-path gem-home]} config
+        jruby-config (init-jruby-config
+                      (RubyInstanceConfig.)
+                      ruby-load-path
+                      gem-home)]
     (Main. jruby-config)))

@@ -4,7 +4,7 @@
   (:import (clojure.lang Atom Agent IFn PersistentArrayMap PersistentHashMap)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (com.puppetlabs.puppetserver.pool LockablePool)
-           (org.jruby Main Main$Status)
+           (org.jruby Main Main$Status RubyInstanceConfig)
            (org.jruby.embed ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -167,6 +167,14 @@
   [x]
   (instance? Main$Status x))
 
+(defn jruby-scripting-container?
+  [x]
+  (instance? ScriptingContainer x))
+
+(defn jruby-instance-config?
+  [x]
+  (instance? RubyInstanceConfig x))
+
 (defn poison-pill?
   [x]
   (instance? PoisonPill x))
@@ -190,6 +198,19 @@
 
 (def JRubyMainStatus
   (schema/pred jruby-main-status-instance?))
+
+(def ConfigurableJRuby
+  ;; This schema is a bit weird.  We have some common configuration that we need
+  ;; to apply to two different kinds of JRuby objects: `ScriptingContainer` and
+  ;; `JRubyInstanceConfig`.  These classes both have the same signatures for
+  ;; all of the setter methods that we need to call on them (see
+  ;; `jruby-internal/init-jruby-config`), but unfortunately the JRuby API doesn't
+  ;; define an interface for those methods.  So, rather than duplicating the logic
+  ;; in multiple places in the code, we use this (gross) schema to enforce that
+  ;; an object must be an instance of one of those two types.
+  (schema/conditional
+   jruby-scripting-container? (schema/pred jruby-scripting-container?)
+   jruby-instance-config? (schema/pred jruby-instance-config?)))
 
 (def EnvMap
   "System Environment variables have strings for the keys and values of a map"

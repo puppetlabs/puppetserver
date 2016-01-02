@@ -80,9 +80,9 @@
                                 (select-keys options [:ssl-protocols :cipher-suites]))
          sc                   (ScriptingContainer. LocalContextScope/SINGLETHREAD
                                                    LocalVariableBehavior/PERSISTENT)]
-     (jruby-internal/prep-scripting-container sc
-                                            jruby-testutils/ruby-load-path
-                                            jruby-testutils/gem-home)
+     (jruby-internal/init-jruby-config sc
+                                       jruby-testutils/ruby-load-path
+                                       jruby-testutils/gem-home)
      (.runScriptlet sc "require 'puppet/server/http_client'")
      (let [http-client-class (.runScriptlet sc "Puppet::Server::HttpClient")]
        (.callMethod sc http-client-class "initialize_settings" http-client-settings Object))
