@@ -82,7 +82,8 @@
                                                    LocalVariableBehavior/PERSISTENT)]
      (jruby-internal/init-jruby-config sc
                                        jruby-testutils/ruby-load-path
-                                       jruby-testutils/gem-home)
+                                       jruby-testutils/gem-home
+                                       jruby-testutils/compile-mode)
      (.runScriptlet sc "require 'puppet/server/http_client'")
      (let [http-client-class (.runScriptlet sc "Puppet::Server::HttpClient")]
        (.callMethod sc http-client-class "initialize_settings" http-client-settings Object))

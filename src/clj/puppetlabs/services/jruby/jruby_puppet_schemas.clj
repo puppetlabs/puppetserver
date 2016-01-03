@@ -28,6 +28,13 @@
   ;; with the new pool.
   [pool])
 
+(def supported-jruby-compile-modes
+  #{:jit :force :off})
+
+(def SupportedJRubyCompileModes
+  "Schema defining the supported values for the JRuby CompileMode setting."
+  (apply schema/enum supported-jruby-compile-modes))
+
 (def JRubyPuppetConfig
   "Schema defining the config map for the JRubyPuppet pooling functions.
 
@@ -36,6 +43,9 @@
     * :ruby-load-path - a vector of file paths, containing the locations of puppet source code.
 
     * :gem-home - The location that JRuby gems are stored
+
+    * :compile-mode - The value to use for JRuby's CompileMode setting.  Legal
+        values are `:jit`, `:force`, and `:off`.  Defaults to `:off`.
 
     * :master-conf-dir - file path to puppetmaster's conf dir;
         if not specified, will use the puppet default.
@@ -78,6 +88,7 @@
         being made to core Puppet endpoints."
   {:ruby-load-path [schema/Str]
    :gem-home schema/Str
+   :compile-mode SupportedJRubyCompileModes
    :master-conf-dir (schema/maybe schema/Str)
    :master-code-dir (schema/maybe schema/Str)
    :master-var-dir (schema/maybe schema/Str)

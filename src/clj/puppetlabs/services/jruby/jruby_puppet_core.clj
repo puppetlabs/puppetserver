@@ -17,6 +17,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
+(def default-jruby-compile-mode
+  "Default value for JRuby's 'CompileMode' setting."
+  :off)
+
 (def default-borrow-timeout
   "Default timeout when borrowing instances from the JRuby pool in
    milliseconds. Current value is 1200000ms, or 20 minutes."
@@ -180,6 +184,7 @@
       (assoc :http-client-idle-timeout-milliseconds
              (get-in config [:http-client :idle-timeout-milliseconds]
                      default-http-socket-timeout))
+      (update-in [:compile-mode] #(or % default-jruby-compile-mode))
       (update-in [:borrow-timeout] #(or % default-borrow-timeout))
       (update-in [:master-conf-dir] #(or % default-master-conf-dir))
       (update-in [:master-var-dir] #(or % default-master-var-dir))
