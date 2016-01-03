@@ -9,9 +9,10 @@
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
            (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
-           (org.jruby.embed ScriptingContainer LocalContextScope)
+           (org.jruby.embed LocalContextScope)
            (java.util.concurrent TimeUnit)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -111,7 +112,7 @@
     (.setEnvironment (managed-environment (get-system-env) gem-home))))
 
 (schema/defn ^:always-validate empty-scripting-container :- ScriptingContainer
-  "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
+  "Creates a clean instance of a JRuby `ScriptingContainer` with no code loaded."
   [ruby-load-path :- [schema/Str]
    gem-home :- schema/Str
    compile-mode :- jruby-schemas/SupportedJRubyCompileModes]
@@ -122,10 +123,7 @@
   (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
       (init-jruby-config ruby-load-path gem-home compile-mode)))
 
-(schema/defn ^:always-validate create-scripting-container
-  ;; NOTE: the return type is commented out for now, because, for some reason, it
-  ;; causes an issue with the `.callMethod` method overloads later :/
-  ;:- ScriptingContainer
+(schema/defn ^:always-validate create-scripting-container :- ScriptingContainer
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
   puppet and facter code inside it."
   [ruby-load-path :- [schema/Str]
@@ -216,12 +214,13 @@
                         :max-requests         (:max-requests-per-instance config)
                         :flush-instance-fn    flush-instance-fn
                         :state                (atom {:borrow-count 0})
-                        :jruby-puppet         (.callMethod scripting-container
-                                                           ruby-puppet-class
-                                                           "new"
-                                                           (into-array Object
-                                                                       [puppet-config puppet-server-config])
-                                                           JRubyPuppet)
+                        :jruby-puppet         (.callMethodWithArgArray
+                                               scripting-container
+                                               ruby-puppet-class
+                                               "new"
+                                               (into-array Object
+                                                           [puppet-config puppet-server-config])
+                                               JRubyPuppet)
                         :scripting-container  scripting-container
                         :environment-registry env-registry})]
         (.register pool instance)

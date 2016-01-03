@@ -1,11 +1,11 @@
 (ns puppetlabs.puppetserver.ruby.http-client-test
   (:import (org.jruby.embed LocalContextScope LocalVariableBehavior
-                            ScriptingContainer EvalFailedException)
+                            EvalFailedException)
            (org.apache.http ConnectionClosedException)
-           (com.puppetlabs.http.client HttpClientException)
            (javax.net.ssl SSLHandshakeException)
            (java.util HashMap)
-           (java.io IOException))
+           (java.io IOException)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]

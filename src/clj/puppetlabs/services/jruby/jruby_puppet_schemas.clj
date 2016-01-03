@@ -5,7 +5,7 @@
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (com.puppetlabs.puppetserver.pool LockablePool)
            (org.jruby Main Main$Status RubyInstanceConfig)
-           (org.jruby.embed ScriptingContainer)))
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas

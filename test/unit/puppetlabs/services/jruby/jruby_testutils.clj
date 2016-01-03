@@ -8,9 +8,10 @@
             [schema.core :as schema]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
-           (org.jruby.embed ScriptingContainer LocalContextScope)
+           (org.jruby.embed LocalContextScope)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -121,14 +122,14 @@
    flush-instance-fn :- IFn
    _ :- (schema/maybe PuppetProfiler)]
   (let [instance (jruby-schemas/map->JRubyPuppetInstance
-                   {:pool                 pool
-                    :id                   id
-                    :max-requests         (:max-requests-per-instance config)
-                    :flush-instance-fn    flush-instance-fn
-                    :state                (atom {:borrow-count 0})
-                    :jruby-puppet         (create-mock-jruby-instance)
-                    :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-                    :environment-registry (puppet-env/environment-registry)})]
+                  {:pool pool
+                   :id id
+                   :max-requests (:max-requests-per-instance config)
+                   :flush-instance-fn flush-instance-fn
+                   :state (atom {:borrow-count 0})
+                   :jruby-puppet (create-mock-jruby-instance)
+                   :scripting-container (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+                   :environment-registry (puppet-env/environment-registry)})]
     (.register pool instance)
     instance))
 
