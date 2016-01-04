@@ -198,11 +198,13 @@
               pool-context (:pool-context context)]
           (let [jrubies (jruby-testutils/drain-pool pool-context pool-size)]
             (is (= 1 (count jrubies)))
-            (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
-          (let [test-start-in-millis (System/currentTimeMillis)]
-            (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
-            (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
-            (is (= (:borrow-timeout context) timeout)))))))
+            (is (every? jruby-schemas/jruby-puppet-instance? jrubies))
+            (let [test-start-in-millis (System/currentTimeMillis)]
+              (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
+              (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
+              (is (= (:borrow-timeout context) timeout)))
+            ; Test cleanup. This instance needs to be returned so that the stop can complete.
+            (doseq [inst jrubies] (jruby-protocol/return-instance service inst :test)))))))
 
   (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
