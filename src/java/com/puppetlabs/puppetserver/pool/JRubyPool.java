@@ -221,6 +221,22 @@ public final class JRubyPool<E> implements LockablePool<E> {
         final ReentrantLock lock = this.lock;
         lock.lock();
         try {
+            // It would be simpler to just call .clear() on both the liveQueue
+            // and registeredElements here.  It is possible, however, that this
+            // method might be called while one or more elements are being
+            // borrowed from the liveQueue.  If the associated element from
+            // registeredElements were removed, it would then be possible for
+            // the borrowed elements to be returned to the pool, making them
+            // appear in liveQueue but not in registeredElements.  This would
+            // be bad because any subsequent actions that need to be done to
+            // all members of the pool - for example, marking environments in
+            // the pool instance as expired - might inadvertently skip over
+            // any of the elements that are no longer in registeredElements
+            // but can appear in liveQueue.
+            //
+            // To avoid this problem, the implementation only removes elements
+            // from registeredElements which have a corresponding entry which
+            // is being removed from the liveQueue.
             int queueSize = liveQueue.size();
             for (int i=0; i<queueSize; i++) {
                 registeredElements.remove(liveQueue.removeFirst());
