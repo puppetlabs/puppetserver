@@ -1,5 +1,6 @@
 package com.puppetlabs.puppetserver.pool;
 
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -36,13 +37,13 @@ public final class JRubyPool<E> implements LockablePool<E> {
     // this class, the pool is backed by a non-synchronized JDK `LinkedList`.
 
     // Underlying queue which holds the elements that clients can borrow.
-    private final LinkedList<E> liveQueue;
+    private final Deque<E> liveQueue;
 
     // Lock which guards all accesses to the underlying queue and registered
     // element set.  Constructed as "nonfair" for performance, like the lock
     // that a `LinkedBlockingDeque` does.  Not clear that we need this
     // to be a "fair" lock.
-    private final ReentrantLock lock = new ReentrantLock();
+    private final ReentrantLock lock = new ReentrantLock(false);
 
     // Condition signaled when all elements that have been registered have been
     // returned to the queue.  Awaited when a lock has been requested but
