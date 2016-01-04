@@ -233,24 +233,6 @@
         @borrow-thread-1
         @borrow-thread-2))))
 
-(deftest pool-lock-reentrant-for-one-lock-test
-  (testing "another thread cannot lock the pool while it is already locked"
-    (let [pool (create-populated-pool 1)]
-      (.lock pool)
-      (is (true? true))
-      (let [lock-thread-started? (promise)
-            lock-thread-locked? (promise)
-            lock-thread (future (deliver lock-thread-started? true)
-                                (.lock pool)
-                                (deliver lock-thread-locked? true)
-                                (.unlock pool))]
-        @lock-thread-started?
-        (is (not (realized? lock-thread-locked?)))
-        (.unlock pool)
-        (is (true? true))
-        @lock-thread
-        (is (true? true))))))
-
 (deftest pool-lock-reentrant-for-many-locks-test
   (testing "multiple threads cannot lock the pool while it is already locked"
     (let [pool (create-populated-pool 1)]
