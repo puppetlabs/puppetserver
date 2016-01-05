@@ -28,7 +28,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     // concurrency.  It uses a single `ReentrantLock` to provide mutual
     // exclusion around offer and take requests, with condition variables
     // used to park and later reawaken requests as needed, e.g., when pool
-    // items are unavailable for borrowing or when the write lock is
+    // items are unavailable for borrowing or when the pool lock is
     // unavailable.
     //
     // See http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/LinkedBlockingDeque.java#l157
@@ -40,25 +40,25 @@ public final class JRubyPool<E> implements LockablePool<E> {
     private final Deque<E> liveQueue;
 
     // Lock which guards all accesses to the underlying queue and registered
-    // element set.  Constructed as "nonfair" for performance, like the lock
-    // that a `LinkedBlockingDeque` does.  Not clear that we need this
+    // element set.  Constructed as "nonfair" for performance, like the
+    // lock that a `LinkedBlockingDeque` does.  Not clear that we need this
     // to be a "fair" lock.
-    private final ReentrantLock lock = new ReentrantLock(false);
+    private final ReentrantLock queueLock = new ReentrantLock(false);
 
     // Condition signaled when all elements that have been registered have been
     // returned to the queue.  Awaited when a lock has been requested but
     // one or more registered elements has been borrowed from the pool.
-    private final Condition allRegisteredInQueue = lock.newCondition();
+    private final Condition allRegisteredInQueue = queueLock.newCondition();
 
     // Condition signaled when an element has been added into the queue.
     // Awaited when a request has been made to borrow an item but no elements
     // currently exist in the queue.
-    private final Condition notEmpty = lock.newCondition();
+    private final Condition queueNotEmpty = queueLock.newCondition();
 
     // Condition signaled when the pool has been unlocked.  Awaited when a
     // request has been made to borrow an item or lock the pool but the pool
     // is currently locked.
-    private final Condition notWriteLocked = lock.newCondition();
+    private final Condition poolNotLocked = queueLock.newCondition();
 
     // Holds a reference to all of the elements that have been registered.
     // Newly registered elements are also added into the `liveQueue`.
@@ -71,9 +71,9 @@ public final class JRubyPool<E> implements LockablePool<E> {
     // Maximum size that the underlying queue can grow to.
     private int maxSize;
 
-    // Thread which currently holds the write lock.  null indicates that
-    // there is no current write lock holder.  Using the current Thread
-    // object for tracking the lock owner is comparable to what the JDK's
+    // Thread which currently holds the pool lock.  null indicates that
+    // there is no current pool lock holder.  Using the current Thread
+    // object for tracking the pool lock owner is comparable to what the JDK's
     // `ReentrantLock` class does via the `AbstractOwnableSynchronizer` class:
     //
     // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/locks/ReentrantLock.java#l164
@@ -85,7 +85,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     // not be susceptible to per-thread / per-CPU caching causing the wrong
     // value to be seen by a thread.  `volatile` seems safer and doesn't appear
     // to impose any noticeable performance degradation.
-    private volatile Thread writeLockThread = null;
+    private volatile Thread poolLockThread = null;
 
     /**
      * Create a JRubyPool
@@ -99,7 +99,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void register(E e) {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             if (registeredElements.size() == maxSize)
@@ -107,7 +107,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
                         "Unable to register additional instance, pool full");
             registeredElements.add(e);
             liveQueue.addLast(e);
-            signalNotEmpty();
+            signalPoolNotEmpty();
         } finally {
             lock.unlock();
         }
@@ -115,7 +115,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void unregister(E e) {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             registeredElements.remove(e);
@@ -128,15 +128,15 @@ public final class JRubyPool<E> implements LockablePool<E> {
     @Override
     public E borrowItem() throws InterruptedException {
         E item = null;
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             final Thread currentThread = Thread.currentThread();
             do {
-                if (isWriteLockHeldByAnotherThread(currentThread)) {
-                    notWriteLocked.await();
+                if (isPoolLockHeldByAnotherThread(currentThread)) {
+                    poolNotLocked.await();
                 } else if (liveQueue.size() < 1) {
-                    notEmpty.await();
+                    queueNotEmpty.await();
                 } else {
                     item = liveQueue.removeFirst();
                 }
@@ -152,11 +152,11 @@ public final class JRubyPool<E> implements LockablePool<E> {
     public E borrowItemWithTimeout(long timeout, TimeUnit unit) throws
             InterruptedException {
         E item = null;
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         long remainingMaxTimeToWait = unit.toNanos(timeout);
 
-        // `lock.lockInterruptibly()` is called here as opposed to just
-        // `lock.lock` to follow the pattern that the JDK's
+        // `queueLock.lockInterruptibly()` is called here as opposed to just
+        // `queueLock.queueLock` to follow the pattern that the JDK's
         // `LinkedBlockingDeque` does for a timed poll from a deque.  See:
         // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/LinkedBlockingDeque.java#l516
         lock.lockInterruptibly();
@@ -168,18 +168,18 @@ public final class JRubyPool<E> implements LockablePool<E> {
             // `LinkedBlockingDeque` in `pollFirst` uses.  See:
             // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/LinkedBlockingDeque.java#l522
             do {
-                if (isWriteLockHeldByAnotherThread(currentThread)) {
+                if (isPoolLockHeldByAnotherThread(currentThread)) {
                     if (remainingMaxTimeToWait <= 0) {
                         break;
                     }
                     remainingMaxTimeToWait =
-                            notWriteLocked.awaitNanos(remainingMaxTimeToWait);
+                            poolNotLocked.awaitNanos(remainingMaxTimeToWait);
                 } else if (liveQueue.size() < 1) {
                     if (remainingMaxTimeToWait <= 0) {
                         break;
                     }
                     remainingMaxTimeToWait =
-                            notEmpty.awaitNanos(remainingMaxTimeToWait);
+                            queueNotEmpty.awaitNanos(remainingMaxTimeToWait);
                 } else {
                     item = liveQueue.removeFirst();
                 }
@@ -198,7 +198,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void releaseItem(E e, boolean returnToPool) {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             if (returnToPool) {
@@ -215,7 +215,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
      */
     @Override
     public void insertPill(E e) {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             addFirst(e);
@@ -226,7 +226,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void clear() {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             // It would be simpler to just call .clear() on both the liveQueue
@@ -257,7 +257,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     @Override
     public int remainingCapacity() {
         int remainingCapacity;
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             remainingCapacity = maxSize - liveQueue.size();
@@ -270,7 +270,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
     @Override
     public int size() {
         int size;
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             size = liveQueue.size();
@@ -282,15 +282,15 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void lock() throws InterruptedException {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             final Thread currentThread = Thread.currentThread();
-            while (!isWriteLockHeldByCurrentThread(currentThread)) {
-                if (!isWriteLockHeld()) {
-                    writeLockThread = currentThread;
+            while (!isPoolLockHeldByCurrentThread(currentThread)) {
+                if (!isPoolLockHeld()) {
+                    poolLockThread = currentThread;
                 } else {
-                    notWriteLocked.await();
+                    poolNotLocked.await();
                 }
             }
             try {
@@ -298,7 +298,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
                     allRegisteredInQueue.await();
                 }
             } catch (Exception e) {
-                freeWriteLock();
+                freePoolLock();
                 throw e;
             }
         } finally {
@@ -308,14 +308,14 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     @Override
     public void unlock() {
-        final ReentrantLock lock = this.lock;
+        final ReentrantLock lock = this.queueLock;
         lock.lock();
         try {
             final Thread currentThread = Thread.currentThread();
-            if (!isWriteLockHeldByCurrentThread(currentThread)) {
+            if (!isPoolLockHeldByCurrentThread(currentThread)) {
                 String lockErrorMessage;
-                if (isWriteLockHeldByAnotherThread(currentThread)) {
-                    lockErrorMessage = "held by " + writeLockThread;
+                if (isPoolLockHeldByAnotherThread(currentThread)) {
+                    lockErrorMessage = "held by " + poolLockThread;
                 } else {
                     lockErrorMessage = "not held by any thread";
                 }
@@ -327,7 +327,7 @@ public final class JRubyPool<E> implements LockablePool<E> {
                         lockErrorMessage +
                         ".");
             }
-            freeWriteLock();
+            freePoolLock();
         } finally {
             lock.unlock();
         }
@@ -339,35 +339,35 @@ public final class JRubyPool<E> implements LockablePool<E> {
 
     private void addFirst(E e) {
         liveQueue.addFirst(e);
-        signalNotEmpty();
+        signalPoolNotEmpty();
     }
 
-    private void freeWriteLock() {
-        writeLockThread = null;
+    private void freePoolLock() {
+        poolLockThread = null;
         // Need to use 'signalAll' here because there might be multiple
         // waiters (e.g., multiple borrowers) queued up, waiting for the
         // pool to be unlocked.
-        notWriteLocked.signalAll();
+        poolNotLocked.signalAll();
         // Borrowers that are woken up when an instance is returned to the
-        // pool and the write lock is held would then start waiting on a
-        // 'notWriteLocked' signal instead.  Re-signalling 'notEmpty' here
-        // allows any borrowers still waiting on the 'notEmpty' signal to be
-        // reawoken when the write lock is released, compensating for any
-        // 'notEmpty' signals that might have been essentially ignored from
-        // when the write lock was held.
+        // pool and the pool queueLock is held would then start waiting on a
+        // 'poolNotLocked' signal instead.  Re-signalling 'queueNotEmpty' here
+        // allows any borrowers still waiting on the 'queueNotEmpty' signal to be
+        // reawoken when the pool lock is released, compensating for any
+        // 'queueNotEmpty' signals that might have been essentially ignored from
+        // when the pool lock was held.
         if (liveQueue.size() > 0) {
-            notEmpty.signalAll();
+            queueNotEmpty.signalAll();
         }
     }
 
-    private void signalNotEmpty() {
+    private void signalPoolNotEmpty() {
         // Could use 'signalAll' here instead of 'signal' but 'signal' is
         // less expensive in that only one waiter will be woken up.  Can use
         // signal here because the thread being awoken will be able to borrow
         // a pool instance and any further waiters will be woken up by
         // subsequent posts of this signal when instances are added/returned to
         // the queue.
-        notEmpty.signal();
+        queueNotEmpty.signal();
         signalIfAllRegisteredInQueue();
     }
 
@@ -375,22 +375,22 @@ public final class JRubyPool<E> implements LockablePool<E> {
         // Could use 'signalAll' here instead of 'signal'.  Doesn't really
         // matter though in that there will only be one waiter at most which
         // is active at a time - a caller of lock() that has just acquired
-        // the lock but is waiting for all registered elements to be returned
-        // to the queue.
+        // the pool lock but is waiting for all registered elements to be
+        // returned to the queue.
         if (registeredElements.size() == liveQueue.size()) {
             allRegisteredInQueue.signal();
         }
     }
 
-    private boolean isWriteLockHeld() {
-        return writeLockThread != null;
+    private boolean isPoolLockHeld() {
+        return poolLockThread != null;
     }
 
-    private boolean isWriteLockHeldByCurrentThread(Thread currentThread) {
-        return writeLockThread == currentThread;
+    private boolean isPoolLockHeldByCurrentThread(Thread currentThread) {
+        return poolLockThread == currentThread;
     }
 
-    private boolean isWriteLockHeldByAnotherThread(Thread currentThread) {
-        return (writeLockThread != null) && (writeLockThread != currentThread);
+    private boolean isPoolLockHeldByAnotherThread(Thread currentThread) {
+        return (poolLockThread != null) && (poolLockThread != currentThread);
     }
 }
