@@ -12,7 +12,8 @@
             [clojure.tools.logging :as log])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (java.io InputStream PrintStream)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -319,21 +320,40 @@
 
 (schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
   "Run JRuby as though native `ruby` were invoked with args on the CLI"
-  [config :- {schema/Keyword schema/Any}
-   args :- [schema/Str]]
-  (let [main (jruby-internal/new-main (initialize-config config))
-        argv (into-array String (concat ["-rjar-dependencies"] args))]
-    (.run main argv)))
+  ([config :- {schema/Keyword schema/Any}
+    args :- [schema/Str]]
+    (cli-ruby! config args nil nil nil))
+  ([config :- {schema/Keyword schema/Any}
+    args :- [schema/Str]
+    input-stream :- (schema/maybe InputStream)
+    output-stream :- (schema/maybe PrintStream)
+    error-stream :- (schema/maybe PrintStream)]
+   (let [main (jruby-internal/new-main (initialize-config config)
+                                       input-stream
+                                       output-stream
+                                       error-stream)
+         argv (into-array String (concat ["-rjar-dependencies"] args))]
+     (.run main argv))))
 
 (schema/defn ^:always-validate cli-run! :- (schema/maybe jruby-schemas/JRubyMainStatus)
   "Run a JRuby CLI command, e.g. gem, irb, etc..."
-  [config :- {schema/Keyword schema/Any}
-   command :- schema/Str
-   args :- [schema/Str]]
-  (let [bin-dir "META-INF/jruby.home/bin"
-        load-path (format "%s/%s" bin-dir command)
-        url (io/resource load-path (.getClassLoader org.jruby.Main))]
-    (if url
-      (cli-ruby! config
-        (concat ["-e" (format "load '%s'" url) "--"] args))
-      (log/errorf "command %s could not be found in %s" command bin-dir))))
+  ([config :- {schema/Keyword schema/Any}
+    command :- schema/Str
+    args :- [schema/Str]]
+   (cli-run! config command args nil nil nil))
+  ([config :- {schema/Keyword schema/Any}
+    command :- schema/Str
+    args :- [schema/Str]
+    input-stream :- (schema/maybe InputStream)
+    output-stream :- (schema/maybe PrintStream)
+    error-stream :- (schema/maybe PrintStream)]
+   (let [bin-dir "META-INF/jruby.home/bin"
+         load-path (format "%s/%s" bin-dir command)
+         url (io/resource load-path (.getClassLoader org.jruby.Main))]
+     (if url
+       (cli-ruby! config
+                  (concat ["-e" (format "load '%s'" url) "--"] args)
+                  input-stream
+                  output-stream
+                  error-stream)
+       (log/errorf "command %s could not be found in %s" command bin-dir)))))

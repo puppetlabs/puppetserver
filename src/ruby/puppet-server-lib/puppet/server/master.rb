@@ -97,7 +97,7 @@ class Puppet::Server::Master
     # and so would not be subject to any potentially stale settings data being
     # used to enumerate manifests.
     environment = @env_loader.list.find do |env_from_loader|
-      env_from_loader.name == env
+      env_from_loader.name.to_s == env
     end
     unless environment.nil?
       environments = Hash[env, self.class.getManifests(environment)]

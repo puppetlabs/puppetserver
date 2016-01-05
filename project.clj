@@ -18,6 +18,7 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
                  [org.clojure/tools.reader "0.9.1"]
+                 [org.yaml/snakeyaml "1.14"]
                  [ring/ring-core "1.4.0"]
                  ;; end version conflict resolution dependencies
 
@@ -27,21 +28,14 @@
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.4.4"]
-                 [org.jruby/jruby-core "1.7.20.1"
-                  :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
-                 ;; jffi and jnr-x86asm are explicit dependencies because,
-                 ;; in JRuby's poms, they are defined using version ranges,
-                 ;; and :pedantic? :abort won't tolerate this.
-                 [com.github.jnr/jffi "1.2.9"]
-                 [com.github.jnr/jffi "1.2.9" :classifier "native"]
-                 [com.github.jnr/jnr-x86asm "1.0.2"]
+                 [org.jruby/jruby-core "9.0.4.0"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.20.1"]
+                 [org.jruby/jruby-stdlib "9.0.4.0"]
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [joda-time "2.7"]
+                 [joda-time "2.8.2"]
                  [clj-time "0.10.0"]
                  [liberator "0.12.0"]
                  [puppetlabs/comidi "0.1.1"]
@@ -50,7 +44,7 @@
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [commons-codec "1.9"]
-                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
+                 [clj-yaml "0.4.0"]
                  [slingshot "0.10.3"]
                  [cheshire "5.3.1"]
                  [trptcolin/versioneer "0.1.0"]]
@@ -129,13 +123,14 @@
 
   :repl-options {:init-ns user}
 
-  ;; NOTE: jruby-stdlib packages some unexpected things inside
-  ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle
-  ;; jar into its META-INF directory.  This is highly undesirable
+  ;; NOTE: jruby-stdlib packages some unexpected things inside of its jar.
+  ;; e.g., it puts a pre-built copy of the bouncycastle and snakeyaml
+  ;; jars into its META-INF directory.  This is highly undesirable
   ;; for projects that already have a dependency on a different
-  ;; version of bouncycastle.  Therefore, when building uberjars,
+  ;; versions of these jars.  Therefore, when building uberjars,
   ;; you should take care to exclude the things that you don't want
   ;; in your final jar.  Here is an example of how you could exclude
   ;; that from the final uberjar:
-  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
+  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/stdlib/org/bouncycastle"
+                       #"META-INF/jruby.home/lib/ruby/stdlib/org/yaml/snakeyaml"]
   )
