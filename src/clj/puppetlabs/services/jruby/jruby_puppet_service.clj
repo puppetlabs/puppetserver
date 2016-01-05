@@ -46,7 +46,7 @@
    [this context]
    (let [{:keys [pool-context]} (tk-services/service-context this)
          flush-complete? (promise)]
-     (jruby-agents/send-flush-pool! pool-context :shutdown flush-complete?)
+     (jruby-agents/send-flush-pool-for-shutdown! pool-context flush-complete?)
      @flush-complete?)
    context)
 
@@ -80,7 +80,7 @@
     [this]
     (let [service-context (tk-services/service-context this)
           {:keys [pool-context]} service-context]
-      (jruby-agents/send-flush-pool! pool-context)))
+      (jruby-agents/send-flush-and-repopulate-pool! pool-context)))
 
   (register-event-handler
     [this callback-fn]
