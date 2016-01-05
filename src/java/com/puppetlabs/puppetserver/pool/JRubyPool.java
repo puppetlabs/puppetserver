@@ -74,10 +74,18 @@ public final class JRubyPool<E> implements LockablePool<E> {
     // Thread which currently holds the write lock.  null indicates that
     // there is no current write lock holder.  Using the current Thread
     // object for tracking the lock owner is comparable to what the JDK's
-    // `ReentrantLock` class does:
+    // `ReentrantLock` class does via the `AbstractOwnableSynchronizer` class:
     //
     // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/locks/ReentrantLock.java#l164
-    private Thread writeLockThread = null;
+    // http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share/classes/java/util/concurrent/locks/AbstractOwnableSynchronizer.java#l64
+    //
+    // Unlike the `AbstractOwnableSynchronizer` class implementation, we marked
+    // this variable as `volatile` because we couldn't convince ourselves
+    // that it would be safe to update this variable from different threads and
+    // not be susceptible to per-thread / per-CPU caching causing the wrong
+    // value to be seen by a thread.  `volatile` seems safer and doesn't appear
+    // to impose any noticeable performance degradation.
+    private volatile Thread writeLockThread = null;
 
     /**
      * Create a JRubyPool
