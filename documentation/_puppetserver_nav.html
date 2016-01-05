@@ -1,4 +1,4 @@
-{% capture server_version %}2.1{% endcapture %}
+{% capture server_version %}2.2{% endcapture %}
 
 
 <h3 id="puppetserver-{{server_version}}-docs">Puppet Server {{ server_version }} Docs</h3>
@@ -9,7 +9,18 @@
       <li><a href="/puppetserver/{{ server_version }}/release_notes.html">Release Notes</a></li>
       <li><a href="/puppetserver/{{ server_version }}/puppetserver_vs_passenger.html">Notable Differences vs. the Apache/Passenger Stack</a></li>
       <li><a href="/puppetserver/{{ server_version }}/install_from_packages.html">Installation</a></li>
-      <li><a href="/puppetserver/{{ server_version }}/configuration.html">Configuring Puppet Server</a></li>
+      <li><strong>Configuring Puppet Server</strong>
+        <ul>
+          <li><a href="/puppetserver/{{ server_version }}/configuration.html">Puppet Server's Config Files</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_puppetserver.html">puppetserver.conf: Main Config File</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_auth.html">auth.conf: Access Control</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_webserver.html">webserver.conf: Jetty Web Server Config</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_web-routes.html">web-routes.conf: Mount Points for Component Services</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_global.html">global.conf: Trapperkeeper Settings</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_ca.html">ca.conf: CA Service Access Control (deprecated)</a></li>
+          <li><a href="/puppetserver/{{ server_version }}/config_file_master.html">master.conf: Authorization by HTTP Header (deprecated)</a></li>
+        </ul>
+      </li>
       <li><a href="/puppetserver/{{ server_version }}/puppet_conf_setting_diffs.html">Differing Behavior in puppet.conf</a></li>
       <li><a href="/puppetserver/{{ server_version }}/gems.html">Using Ruby Gems</a></li>
       <li><a href="/puppetserver/{{ server_version }}/subcommands.html">Subcommands</a></li>
