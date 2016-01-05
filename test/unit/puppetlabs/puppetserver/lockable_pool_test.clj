@@ -48,7 +48,7 @@
           (is (= 1 (.size registered-elements)))
           (is (false? (contains? registered-elements second-instance))))))))
 
-(deftest pool-lock-is-blocking-test-until-borrows-returned-test
+(deftest pool-lock-is-blocking-until-borrows-returned-test
   (let [pool (create-populated-pool 3)
         instances (borrow-n-instances pool 3)
         future-started? (promise)
@@ -85,15 +85,16 @@
         ;; make sure we got here
         (is (true? true))))))
 
-(deftest pool-lock-is-blocking-test-until-borrows-unregistered-test
+(deftest pool-lock-is-blocking-until-borrows-unregistered-test
   (let [pool (create-populated-pool 3)
-        instances (borrow-n-instances pool 2)
-        future-started? (promise)]
+        instances (borrow-n-instances pool 2)]
     (is (= 2 (count instances)))
-    (let [lock-thread (future (deliver future-started? true)
-                              (.lock pool))]
+    (let [future-started? (promise)
+          lock-thread (future (deliver future-started? true)
+                              (.lock pool)
+                              (.unlock pool))]
       @future-started?
-      (testing "pool.lock() blocks until all instances are unregistered"
+      (testing "pool.lock() blocks until borrowed instances are unregistered"
         (is (not (realized? lock-thread)))
 
         (testing (str "other threads may successfully unregister instances "
@@ -101,6 +102,21 @@
           (.unregister pool (first instances))
           (is (not (realized? lock-thread)))
           (.unregister pool (second instances)))
+
+        @lock-thread
+        ;; make sure we got here
+        (is (true? true))))
+    (let [future-started? (promise)
+          last-instance (.borrowItem pool)
+          lock-thread (future (deliver future-started? true)
+                              (.lock pool))]
+      @future-started?
+      (testing "pool.lock() blocks until last borrowed instance is unregistered"
+        (is (not (realized? lock-thread)))
+
+        (testing (str "last instance can be unregistered while pool.lock() "
+                      "is being executed")
+          (.unregister pool last-instance))
 
         @lock-thread
         ;; make sure we got here
@@ -498,9 +514,7 @@
     (let [pool (create-populated-pool 3)
           instance (.borrowItem pool)]
       (is (= 2 (.size pool)))
-      (is (= 3 (-> pool
-                   (.getRegisteredElements)
-                   (.size))))
+      (is (= 3 (.. pool getRegisteredElements size)))
       (.clear pool)
       (is (= 0 (.size pool)))
       (let [registered-elements (.getRegisteredElements pool)]

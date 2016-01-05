@@ -104,26 +104,26 @@
       profiler/puppet-profiler-service]
      (jruby-service-test-config 2)
      (jruby-testutils/wait-for-jrubies app)
-     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-       (let [instance (jruby-protocol/borrow-instance
-                       jruby-service
-                       :with-lock-and-borrow-contention-test)]
-         (let [lock-thread-started? (promise)
-               unlock-thread? (promise)
-               lock-thread (future (jruby-service/with-lock
-                                    jruby-service
-                                    :with-lock-and-borrow-contention-test
-                                    (deliver lock-thread-started? true)
-                                    @unlock-thread?))]
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           instance (jruby-protocol/borrow-instance
+                     jruby-service
+                     :with-lock-and-borrow-contention-test)
+           lock-acquired? (promise)
+           unlock-thread? (promise)
+           lock-thread (future (jruby-service/with-lock
+                                jruby-service
+                                :with-lock-and-borrow-contention-test
+                                (deliver lock-acquired? true)
+                                @unlock-thread?))]
            (testing "lock not granted yet when instance still borrowed"
              (is (not (realized?
-                       lock-thread-started?))))
+                       lock-acquired?))))
            (jruby-protocol/return-instance
             jruby-service instance :with-lock-and-borrow-contention-test)
-           @lock-thread-started?
+           @lock-acquired?
            (testing "cannot borrow from non-locking thread when locked"
              (is (not (can-borrow-from-different-thread? jruby-service))))
            (deliver unlock-thread? true)
            @lock-thread
            (testing "can borrow from non-locking thread after lock released"
-             (is (can-borrow-from-different-thread? jruby-service)))))))))
+             (is (can-borrow-from-different-thread? jruby-service)))))))
