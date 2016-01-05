@@ -369,6 +369,10 @@
        (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
        @stop-complete?
        (let [app-context (tk-app/app-context app)]
+         ;; We have to re-initialize the JRubyPuppetService here because
+         ;; otherwise the tk-app/stop that is included in the
+         ;; with-puppetserver-running macro will fail, as the
+         ;; JRubyPuppetService is already stopped.
          (swap! app-context assoc :JRubyPuppetService {})
          (tk-internal/run-lifecycle-fn! app-context tk-services/init "init" :JRubyPuppetService jruby-service)
          (tk-internal/run-lifecycle-fn! app-context tk-services/start "start" :JRubyPuppetService jruby-service))))))
