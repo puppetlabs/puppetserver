@@ -23,7 +23,8 @@
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.protocols.request-handler :as handler]
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
-            [puppetlabs.ssl-utils.core :as ssl-utils]))
+            [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.kitchensink.testutils :as ks-testutils]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -323,31 +324,32 @@
 
 (deftest ^:integration test-503-when-app-shuts-down
   (testing "During a shutdown the agent requests result in a 503 response"
-    (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
-                    handler-service/request-handler-service ps-config/puppet-server-config-service
-                    jetty9/jetty9-service]
-          config (-> (jruby-testutils/jruby-puppet-tk-config
-                      (jruby-testutils/jruby-puppet-config {:max-active-instances 2}))
-                     (assoc-in [:webserver :port] 8081))
-          app (tk/boot-services-with-config services config)
-          cert (ssl-utils/pem->cert
-                (str test-resources-dir "/localhost-cert.pem"))
-          jruby-service (tk-app/get-service app :JRubyPuppetService)
-          jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
-          handler-service (tk-app/get-service app :RequestHandlerService)
-          request { :uri "/puppet/v3/environments", :params {}, :headers {},
-                   :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
-          ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
-          stop-complete? (future (tk-app/stop app))]
-        (let [start (System/currentTimeMillis)]
-          (while (and
-                  (< (- (System/currentTimeMillis) start) 10000)
-                  (not= 503 (:status (ping-environment))))
-            (Thread/yield))
-          (is (= 503 (:status (ping-environment))))
-          (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
-          @stop-complete?
-          (is (= 503 (:status (ping-environment))))))))
+    (ks-testutils/with-no-jvm-shutdown-hooks
+     (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
+                     handler-service/request-handler-service ps-config/puppet-server-config-service
+                     jetty9/jetty9-service]
+           config (-> (jruby-testutils/jruby-puppet-tk-config
+                       (jruby-testutils/jruby-puppet-config {:max-active-instances 2}))
+                      (assoc-in [:webserver :port] 8081))
+           app (tk/boot-services-with-config services config)
+           cert (ssl-utils/pem->cert
+                 (str test-resources-dir "/localhost-cert.pem"))
+           jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
+           handler-service (tk-app/get-service app :RequestHandlerService)
+           request {:uri "/puppet/v3/environments", :params {}, :headers {},
+                    :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
+           ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
+           stop-complete? (future (tk-app/stop app))]
+       (let [start (System/currentTimeMillis)]
+         (while (and
+                 (< (- (System/currentTimeMillis) start) 10000)
+                 (not= 503 (:status (ping-environment))))
+           (Thread/yield))
+         (is (= 503 (:status (ping-environment))))
+         (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
+         @stop-complete?
+         (is (= 503 (:status (ping-environment)))))))))
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"

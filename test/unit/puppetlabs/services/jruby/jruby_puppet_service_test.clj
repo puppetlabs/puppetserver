@@ -90,13 +90,14 @@
                                  :test-pool-population)
                                context))]
 
-      ; Bootstrap TK, causing the 'init' function above to be executed.
-      (tk/boot-services-with-config
+      (ks-testutils/with-no-jvm-shutdown-hooks
+       ; Bootstrap TK, causing the 'init' function above to be executed.
+       (tk/boot-services-with-config
         (conj default-services test-service)
         (jruby-service-test-config 1))
 
-      ; If execution gets here, the test passed.
-      (is (true? true)))))
+       ; If execution gets here, the test passed.
+       (is (true? true))))))
 
 (deftest test-with-jruby-puppet
   (testing "the `with-jruby-puppet macro`"
