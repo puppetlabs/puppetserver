@@ -32,6 +32,7 @@
     [jruby-service/jruby-puppet-pooled-service
      profiler/puppet-profiler-service]
     (jruby-service-test-config 1)
+    (jruby-testutils/wait-for-jrubies app)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
       (testing "initial state of write lock is unlocked"
         (is (can-borrow-from-different-thread? jruby-service))
@@ -47,6 +48,7 @@
     [jruby-service/jruby-puppet-pooled-service
      profiler/puppet-profiler-service]
     (jruby-service-test-config 1)
+    (jruby-testutils/wait-for-jrubies app)
     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
 
       (testing "initial state of write lock is unlocked"
