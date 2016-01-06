@@ -3,8 +3,8 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (defn run!
-  [config args]
-  (jruby-core/cli-run! config "gem" args))
+  [input args]
+  (jruby-core/cli-run! (:config input) "gem" args))
 
 (defn -main
   [& args]

@@ -4,4 +4,4 @@
 
 (defn -main
   [& args]
-  (cli/run jruby-core/cli-ruby! args))
+  (cli/run #(jruby-core/cli-ruby! (:config %1) %2) args))

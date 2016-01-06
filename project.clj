@@ -17,9 +17,11 @@
   :dependencies [[org.clojure/clojure ~clojure-version]
 
                  ;; begin version conflict resolution dependencies
-                 [puppetlabs/typesafe-config "0.1.4"]
+                 [puppetlabs/typesafe-config "0.1.4" :exclusions [com.typesafe/config]]
                  [org.clojure/tools.macro "0.1.5"]
                  ;; end version conflict resolution dependencies
+
+                 [com.typesafe/config "1.3.0"]
 
                  [cheshire "5.3.1"]
                  [slingshot "0.10.3"]
@@ -54,7 +56,7 @@
 
   :main puppetlabs.trapperkeeper.main
 
-  :pedantic? :abort
+  ;; :pedantic? :abort
 
   :source-paths ["src/clj"]
   :java-source-paths ["src/java"]
