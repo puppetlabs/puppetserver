@@ -30,6 +30,7 @@
                  [prismatic/schema "1.0.4"]
                  [me.raynes/fs "1.4.5"]
                  [liberator "0.12.0"]
+                 [org.apache.commons/commons-exec "1.3"]
 
                  [org.jruby/jruby-core "1.7.20.1"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
