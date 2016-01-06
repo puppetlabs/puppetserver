@@ -3,8 +3,8 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]))
 
 (defn run!
-  [config args]
-  (jruby-core/cli-run! config "irb" args))
+  [input args]
+  (jruby-core/cli-run! (:config input) "irb" args))
 
 (defn -main
   [& args]
