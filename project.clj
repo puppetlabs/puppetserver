@@ -1,4 +1,3 @@
-(def clojure-version "1.7.0")
 (def tk-version "1.1.3")
 (def tk-jetty-version "1.3.1")
 (def ks-version "1.1.0")
@@ -14,7 +13,7 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure ~clojure-version]
+  :dependencies [[org.clojure/clojure "1.7.0"]
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
@@ -104,16 +103,10 @@
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
-             :ezbake {:dependencies ^:replace [;; we need to explicitly specify the clojure version
-                                               ;; here, because without it, lein brings in its own
-                                               ;; version, and older versions of lein (such as version
-                                               ;; 2.5.1 that is used on our jenkins servers at the time
-                                               ;; of this writing) depend on clojure 1.6.
-                                               [org.clojure/clojure ~clojure-version]
-                                               [puppetlabs/puppetserver ~ps-version]
+             :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.3.21"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.3.21" :exclusions [org.clojure/clojure]]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
