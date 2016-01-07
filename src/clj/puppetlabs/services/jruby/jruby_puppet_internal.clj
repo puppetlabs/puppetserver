@@ -9,9 +9,10 @@
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
            (java.util HashMap)
            (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
-           (org.jruby.embed ScriptingContainer LocalContextScope)
+           (org.jruby.embed LocalContextScope)
            (java.util.concurrent TimeUnit)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -28,11 +29,6 @@
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
   "puppet-server-lib")
-
-(def compile-mode
-  "The JRuby compile mode to use for all ruby components, e.g. the master
-  service and CLI tools."
-  RubyInstanceConfig$CompileMode/OFF)
 
 (def compat-version
   "The JRuby compatibility version to use for all ruby components, e.g. the
@@ -95,44 +91,55 @@
   [ruby-load-path :- [schema/Str]]
   (cons ruby-code-dir ruby-load-path))
 
-(defn prep-scripting-container
-  [scripting-container ruby-load-path gem-home]
-  ; Note, this behavior should remain consistent with new-main
-  (doto scripting-container
+(schema/defn ^:always-validate get-compile-mode :- RubyInstanceConfig$CompileMode
+  [config-compile-mode :- jruby-schemas/SupportedJRubyCompileModes]
+  (case config-compile-mode
+    :jit RubyInstanceConfig$CompileMode/JIT
+    :force RubyInstanceConfig$CompileMode/FORCE
+    :off RubyInstanceConfig$CompileMode/OFF))
+
+(schema/defn ^:always-validate init-jruby-config :- jruby-schemas/ConfigurableJRuby
+  "Applies configuration to a JRuby... thing.  See comments in `ConfigurableJRuby`
+  schema for more details."
+  [jruby-config :- jruby-schemas/ConfigurableJRuby
+   ruby-load-path :- [schema/Str]
+   gem-home :- schema/Str
+   compile-mode :- jruby-schemas/SupportedJRubyCompileModes]
+  (doto jruby-config
     (.setLoadPaths (managed-load-path ruby-load-path))
     (.setCompatVersion compat-version)
-    (.setCompileMode compile-mode)
+    (.setCompileMode (get-compile-mode compile-mode))
     (.setEnvironment (managed-environment (get-system-env) gem-home))))
 
-(defn empty-scripting-container
-  "Creates a clean instance of `org.jruby.embed.ScriptingContainer` with no code loaded."
-  [ruby-load-path gem-home]
+(schema/defn ^:always-validate empty-scripting-container :- ScriptingContainer
+  "Creates a clean instance of a JRuby `ScriptingContainer` with no code loaded."
+  [ruby-load-path :- [schema/Str]
+   gem-home :- schema/Str
+   compile-mode :- jruby-schemas/SupportedJRubyCompileModes]
   {:pre [(sequential? ruby-load-path)
          (every? string? ruby-load-path)
          (string? gem-home)]
    :post [(instance? ScriptingContainer %)]}
   (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-    (prep-scripting-container ruby-load-path gem-home)))
+      (init-jruby-config ruby-load-path gem-home compile-mode)))
 
-(defn create-scripting-container
+(schema/defn ^:always-validate create-scripting-container :- ScriptingContainer
   "Creates an instance of `org.jruby.embed.ScriptingContainer` and loads up the
   puppet and facter code inside it."
-  [ruby-load-path gem-home]
-  {:pre [(sequential? ruby-load-path)
-         (every? string? ruby-load-path)
-         (string? gem-home)]
-   :post [(instance? ScriptingContainer %)]}
+  [ruby-load-path :- [schema/Str]
+   gem-home :- schema/Str
+   compile-mode :- jruby-schemas/SupportedJRubyCompileModes]
   ;; for information on other legal values for `LocalContextScope`, there
   ;; is some documentation available in the JRuby source code; e.g.:
   ;; https://github.com/jruby/jruby/blob/1.7.11/core/src/main/java/org/jruby/embed/LocalContextScope.java#L58
   ;; I'm convinced that this is the safest and most reasonable value
   ;; to use here, but we could potentially explore optimizations in the future.
-  (doto (empty-scripting-container ruby-load-path gem-home)
+  (doto (empty-scripting-container ruby-load-path gem-home compile-mode)
     ;; As of JRuby 1.7.20 (and the associated 'jruby-openssl' it pulls in),
     ;; we need to explicitly require 'jar-dependencies' so that it is used
     ;; to manage jar loading.  We do this so that we can instruct
     ;; 'jar-dependencies' to not actually load any jars.  See the environment
-    ;; variable configuration in 'prep-scripting-container' for more
+    ;; variable configuration in 'init-jruby-config' for more
     ;; information.
     (.runScriptlet "require 'jar-dependencies'")
     (.runScriptlet "require 'puppet/server/master'")))
@@ -174,7 +181,7 @@
    config   :- jruby-schemas/JRubyPuppetConfig
    flush-instance-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
-  (let [{:keys [ruby-load-path gem-home
+  (let [{:keys [ruby-load-path gem-home compile-mode
                 http-client-ssl-protocols http-client-cipher-suites
                 http-client-connect-timeout-milliseconds
                 http-client-idle-timeout-milliseconds
@@ -182,7 +189,10 @@
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
-    (let [scripting-container   (create-scripting-container ruby-load-path gem-home)
+    (let [scripting-container   (create-scripting-container
+                                 ruby-load-path
+                                 gem-home
+                                 compile-mode)
           env-registry          (puppet-env/environment-registry)
           ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
           puppet-config         (config->puppet-config config)
@@ -204,12 +214,13 @@
                         :max-requests         (:max-requests-per-instance config)
                         :flush-instance-fn    flush-instance-fn
                         :state                (atom {:borrow-count 0})
-                        :jruby-puppet         (.callMethod scripting-container
-                                                           ruby-puppet-class
-                                                           "new"
-                                                           (into-array Object
-                                                                       [puppet-config puppet-server-config])
-                                                           JRubyPuppet)
+                        :jruby-puppet         (.callMethodWithArgArray
+                                               scripting-container
+                                               ruby-puppet-class
+                                               "new"
+                                               (into-array Object
+                                                           [puppet-config puppet-server-config])
+                                               JRubyPuppet)
                         :scripting-container  scripting-container
                         :environment-registry env-registry})]
         (.register pool instance)
@@ -313,12 +324,10 @@
   e.g. for the ruby, gem, and irb subcommands.  Internal core services should
   use `create-scripting-container` instead of `new-main`."
   [config :- jruby-schemas/JRubyPuppetConfig]
-  (let [jruby-config (RubyInstanceConfig.)
-        {:keys [ruby-load-path gem-home]} config]
-    ; Note, this behavior should remain consistent with prep-scripting-container
-    (doto jruby-config
-      (.setLoadPaths (managed-load-path ruby-load-path))
-      (.setCompatVersion compat-version)
-      (.setCompileMode compile-mode)
-      (.setEnvironment (managed-environment (get-system-env) gem-home)))
+  (let [{:keys [ruby-load-path gem-home compile-mode]} config
+        jruby-config (init-jruby-config
+                      (RubyInstanceConfig.)
+                      ruby-load-path
+                      gem-home
+                      compile-mode)]
     (Main. jruby-config)))

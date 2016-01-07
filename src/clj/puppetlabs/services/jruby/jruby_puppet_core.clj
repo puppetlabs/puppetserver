@@ -17,6 +17,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
+(def default-jruby-compile-mode
+  "Default value for JRuby's 'CompileMode' setting."
+  :off)
+
 (def default-borrow-timeout
   "Default timeout when borrowing instances from the JRuby pool in
    milliseconds. Current value is 1200000ms, or 20 minutes."
@@ -170,25 +174,26 @@
   initialize-config :- jruby-schemas/JRubyPuppetConfig
   [config :- {schema/Keyword schema/Any}]
   (-> (get-in config [:jruby-puppet])
-    (assoc :http-client-ssl-protocols
-      (get-in config [:http-client :ssl-protocols]))
-    (assoc :http-client-cipher-suites
-      (get-in config [:http-client :cipher-suites]))
-    (assoc :http-client-connect-timeout-milliseconds
-      (get-in config [:http-client :connect-timeout-milliseconds]
-        default-http-connect-timeout))
-    (assoc :http-client-idle-timeout-milliseconds
-      (get-in config [:http-client :idle-timeout-milliseconds]
-        default-http-socket-timeout))
-    (update-in [:borrow-timeout] #(or % default-borrow-timeout))
-    (update-in [:master-conf-dir] #(or % default-master-conf-dir))
-    (update-in [:master-var-dir] #(or % default-master-var-dir))
-    (update-in [:master-code-dir] #(or % default-master-code-dir))
-    (update-in [:master-run-dir] #(or % default-master-run-dir))
-    (update-in [:master-log-dir] #(or % default-master-log-dir))
-    (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
-    (update-in [:max-requests-per-instance] #(or % 0))
-    (update-in [:use-legacy-auth-conf] #(or % (nil? %)))))
+      (assoc :http-client-ssl-protocols
+             (get-in config [:http-client :ssl-protocols]))
+      (assoc :http-client-cipher-suites
+             (get-in config [:http-client :cipher-suites]))
+      (assoc :http-client-connect-timeout-milliseconds
+             (get-in config [:http-client :connect-timeout-milliseconds]
+                     default-http-connect-timeout))
+      (assoc :http-client-idle-timeout-milliseconds
+             (get-in config [:http-client :idle-timeout-milliseconds]
+                     default-http-socket-timeout))
+      (update-in [:compile-mode] #(keyword (or % default-jruby-compile-mode)))
+      (update-in [:borrow-timeout] #(or % default-borrow-timeout))
+      (update-in [:master-conf-dir] #(or % default-master-conf-dir))
+      (update-in [:master-var-dir] #(or % default-master-var-dir))
+      (update-in [:master-code-dir] #(or % default-master-code-dir))
+      (update-in [:master-run-dir] #(or % default-master-run-dir))
+      (update-in [:master-log-dir] #(or % default-master-log-dir))
+      (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
+      (update-in [:max-requests-per-instance] #(or % 0))
+      (update-in [:use-legacy-auth-conf] #(or % (nil? %)))))
 
 (def facter-jar
   "Well-known name of the facter jar file"

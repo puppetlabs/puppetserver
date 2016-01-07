@@ -4,8 +4,8 @@
   (:import (clojure.lang Atom Agent IFn PersistentArrayMap PersistentHashMap)
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (com.puppetlabs.puppetserver.pool LockablePool)
-           (org.jruby Main Main$Status)
-           (org.jruby.embed ScriptingContainer)))
+           (org.jruby Main Main$Status RubyInstanceConfig)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -28,6 +28,13 @@
   ;; with the new pool.
   [pool])
 
+(def supported-jruby-compile-modes
+  #{:jit :force :off})
+
+(def SupportedJRubyCompileModes
+  "Schema defining the supported values for the JRuby CompileMode setting."
+  (apply schema/enum supported-jruby-compile-modes))
+
 (def JRubyPuppetConfig
   "Schema defining the config map for the JRubyPuppet pooling functions.
 
@@ -36,6 +43,9 @@
     * :ruby-load-path - a vector of file paths, containing the locations of puppet source code.
 
     * :gem-home - The location that JRuby gems are stored
+
+    * :compile-mode - The value to use for JRuby's CompileMode setting.  Legal
+        values are `:jit`, `:force`, and `:off`.  Defaults to `:off`.
 
     * :master-conf-dir - file path to puppetmaster's conf dir;
         if not specified, will use the puppet default.
@@ -76,25 +86,22 @@
     * :use-legacy-auth-conf - Whether to use the legacy core Puppet auth.conf
         (true) or trapperkeeper-authorization (false) to authorize requests
         being made to core Puppet endpoints."
-  ;; NOTE: there is a bug in the version of schema we're using, which causes
-  ;; the order of things that you put into a `both` to be very important.
-  ;; The `vector?` pred here MUST come before the `[schema/Str]`.  For more info
-  ;; see https://github.com/Prismatic/schema/issues/68
-  {:ruby-load-path              (schema/both (schema/pred vector?) [schema/Str])
-   :gem-home                    schema/Str
-   :master-conf-dir             (schema/maybe schema/Str)
-   :master-code-dir             (schema/maybe schema/Str)
-   :master-var-dir              (schema/maybe schema/Str)
-   :master-run-dir              (schema/maybe schema/Str)
-   :master-log-dir              (schema/maybe schema/Str)
-   :http-client-ssl-protocols   [schema/Str]
-   :http-client-cipher-suites   [schema/Str]
+  {:ruby-load-path [schema/Str]
+   :gem-home schema/Str
+   :compile-mode SupportedJRubyCompileModes
+   :master-conf-dir (schema/maybe schema/Str)
+   :master-code-dir (schema/maybe schema/Str)
+   :master-var-dir (schema/maybe schema/Str)
+   :master-run-dir (schema/maybe schema/Str)
+   :master-log-dir (schema/maybe schema/Str)
+   :http-client-ssl-protocols [schema/Str]
+   :http-client-cipher-suites [schema/Str]
    :http-client-connect-timeout-milliseconds schema/Int
-   :http-client-idle-timeout-milliseconds    schema/Int
-   :borrow-timeout              schema/Int
-   :max-active-instances        schema/Int
-   :max-requests-per-instance   schema/Int
-   :use-legacy-auth-conf        schema/Bool})
+   :http-client-idle-timeout-milliseconds schema/Int
+   :borrow-timeout schema/Int
+   :max-active-instances schema/Int
+   :max-requests-per-instance schema/Int
+   :use-legacy-auth-conf schema/Bool})
 
 (def JRubyPoolAgent
   "An agent configured for use in managing JRuby pools"
@@ -167,6 +174,14 @@
   [x]
   (instance? Main$Status x))
 
+(defn jruby-scripting-container?
+  [x]
+  (instance? ScriptingContainer x))
+
+(defn jruby-instance-config?
+  [x]
+  (instance? RubyInstanceConfig x))
+
 (defn poison-pill?
   [x]
   (instance? PoisonPill x))
@@ -190,6 +205,19 @@
 
 (def JRubyMainStatus
   (schema/pred jruby-main-status-instance?))
+
+(def ConfigurableJRuby
+  ;; This schema is a bit weird.  We have some common configuration that we need
+  ;; to apply to two different kinds of JRuby objects: `ScriptingContainer` and
+  ;; `JRubyInstanceConfig`.  These classes both have the same signatures for
+  ;; all of the setter methods that we need to call on them (see
+  ;; `jruby-internal/init-jruby-config`), but unfortunately the JRuby API doesn't
+  ;; define an interface for those methods.  So, rather than duplicating the logic
+  ;; in multiple places in the code, we use this (gross) schema to enforce that
+  ;; an object must be an instance of one of those two types.
+  (schema/conditional
+   jruby-scripting-container? (schema/pred jruby-scripting-container?)
+   jruby-instance-config? (schema/pred jruby-instance-config?)))
 
 (def EnvMap
   "System Environment variables have strings for the keys and values of a map"

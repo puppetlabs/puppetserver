@@ -35,7 +35,19 @@
       (is (= 5 (-> minimal-config
                    (assoc-in [:jruby-puppet :max-requests-per-instance] 5)
                    (jruby-core/initialize-config)
-                   :max-requests-per-instance))))))
+                   :max-requests-per-instance))))
+    (testing "compile-mode is set to default if not specified"
+      (is (= jruby-core/default-jruby-compile-mode
+             (:compile-mode config))))
+    (testing "compile-mode is honored if specified"
+      (is (= :off (-> minimal-config
+                      (assoc-in [:jruby-puppet :compile-mode] "off")
+                      (jruby-core/initialize-config)
+                      :compile-mode)))
+      (is (= :jit (-> minimal-config
+                      (assoc-in [:jruby-puppet :compile-mode] "jit")
+                      (jruby-core/initialize-config)
+                      :compile-mode))))))
 
 (deftest test-jruby-service-core-funcs
   (let [pool-size        2
