@@ -38,6 +38,13 @@
   [jruby-puppet-pooled-service
    profiler/puppet-profiler-service])
 
+; This test will occasionally display a stacktrace. This may be due to
+; with-test-logging losing one of the threads. The stack trace looks like this:
+;
+; 2016-01-07 16:40:10,219 ERROR [clojure-agent-send-pool-4] [p.t.internal] shutdown-on-error triggered because of exception!
+; java.lang.IllegalStateException: Attempting to flush a pool that does not appear to have successfully initialized. Aborting.
+;
+; Don't worry, everything is fine.
 (deftest test-error-during-init
   (testing
    (str "If there is an exception while putting a JRubyPuppet instance in "
@@ -46,18 +53,17 @@
      (with-redefs [jruby-internal/create-pool-instance!
                    (fn [& _] (throw (Exception. "42")))]
        (let [got-expected-exception (atom false)]
-         (try
-           ; We use this instead of with-app-with-config because with-app-with-config has an implicit stop
-           ; and the exception raised above will already trigger a stop. Instead we just use tk/run-app to
-           ; block on waiting for the exception to be thrown
-           (ks-testutils/with-no-jvm-shutdown-hooks
-            (let [app (tk-internal/throw-app-error-if-exists!
-                       (tk/boot-services-with-config default-services (jruby-service-test-config 1)))]
-              (tk/run-app app)))
-           (catch Exception e
-             (let [cause (stacktrace/root-cause e)]
-               (is (= (.getMessage cause) "42"))
-               (reset! got-expected-exception true))))
+         (logging/with-test-logging
+          (bootstrap/with-app-with-config
+           app
+           default-services
+           (jruby-service-test-config 1)
+           (try
+             (tk/run-app app)
+             (catch Exception e
+               (let [cause (stacktrace/root-cause e)]
+                 (is (= (.getMessage cause) "42"))
+                 (reset! got-expected-exception true))))))
          (is (true? @got-expected-exception)
              "Did not get expected exception."))))))
 
