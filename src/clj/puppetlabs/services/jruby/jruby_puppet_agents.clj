@@ -94,8 +94,9 @@
   (let [{:keys [config profiler pool-state]} pool-context
         new-pool-state (jruby-internal/create-pool-from-config config)
         new-pool (:pool new-pool-state)
-        old-pool @pool-state
-        count    (:size old-pool)]
+        old-pool-state @pool-state
+        old-pool (:pool old-pool-state)
+        count    (:size old-pool-state)]
     (log/info "Replacing old JRuby pool with new instance.")
     (reset! pool-state new-pool-state)
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
@@ -104,11 +105,11 @@
         (let [id        (inc i)
               instance  (jruby-internal/borrow-from-pool!*
                           jruby-internal/borrow-without-timeout-fn
-                          (:pool old-pool))]
+                          old-pool)]
           (try
             (flush-instance! pool-context instance new-pool id config profiler)
             (finally
-              (.releaseItem (:pool old-pool) instance false)))
+              (.releaseItem old-pool instance false)))
           (log/infof "Finished creating JRubyPuppet instance %d of %d"
                      id count))
         (catch Exception e
@@ -119,7 +120,7 @@
                    e)))))
     ;; Add a "RetryPoisonPill" to the pool in case something else is in the
     ;; process of borrowing from the old pool.
-    (.insertPill (:pool old-pool) (RetryPoisonPill. (:pool old-pool)))))
+    (.insertPill old-pool (RetryPoisonPill. old-pool))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

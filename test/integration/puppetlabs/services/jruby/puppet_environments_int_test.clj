@@ -57,20 +57,6 @@
     {:headers     {"Accept" "pson"}
      :as          :text}))
 
-(defn service-context
-  [app service-id]
-  (-> (tk-app/app-context app)
-      deref
-      service-id))
-
-(defn wait-for-jrubies
-  [app]
-  (let [pool-context (-> (service-context app :JRubyPuppetService)
-                         :pool-context)]
-    (while (< (count (jruby-core/registered-instances pool-context))
-              num-jrubies)
-      (Thread/sleep 100))))
-
 (defn get-catalog
   "Make an HTTP request to get a catalog."
   []
@@ -163,7 +149,7 @@
                                              :environment-flush-integration-test))]
         ;; wait for all of the jrubies to be ready so that we can
         ;; validate cache state differences between them.
-        (wait-for-jrubies app)
+        (jruby-testutils/wait-for-jrubies app)
 
         (testing "flush called when no jrubies are borrowed"
           ;;; Now we grab a catalog from the first jruby instance.  This
