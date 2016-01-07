@@ -184,7 +184,7 @@
       (assoc :http-client-idle-timeout-milliseconds
              (get-in config [:http-client :idle-timeout-milliseconds]
                      default-http-socket-timeout))
-      (update-in [:compile-mode] #(or % default-jruby-compile-mode))
+      (update-in [:compile-mode] #(keyword (or % default-jruby-compile-mode)))
       (update-in [:borrow-timeout] #(or % default-borrow-timeout))
       (update-in [:master-conf-dir] #(or % default-master-conf-dir))
       (update-in [:master-var-dir] #(or % default-master-var-dir))
