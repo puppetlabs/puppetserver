@@ -40,7 +40,7 @@
 
 (deftest test-error-during-init
   (testing
-   (str "If there as an exception while putting a JRubyPuppet instance in "
+   (str "If there is an exception while putting a JRubyPuppet instance in "
         "the pool the application should shut down.")
     (logging/with-test-logging
      (with-redefs [jruby-internal/create-pool-instance!

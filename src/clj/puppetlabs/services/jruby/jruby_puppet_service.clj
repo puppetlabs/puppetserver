@@ -45,9 +45,11 @@
   (stop
    [this context]
    (let [{:keys [pool-context]} (tk-services/service-context this)
-         flush-complete? (promise)]
-     (jruby-agents/send-flush-pool-for-shutdown! pool-context flush-complete?)
-     @flush-complete?)
+         on-complete (promise)]
+     (log/debug "Beginning flush of JRuby pools for shutdown")
+     (jruby-agents/send-flush-pool-for-shutdown! pool-context on-complete)
+     @on-complete
+     (log/debug "Finished flush of JRuby pools for shutdown"))
    context)
 
   (borrow-instance

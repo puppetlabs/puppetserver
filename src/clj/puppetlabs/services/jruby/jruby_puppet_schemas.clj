@@ -303,6 +303,3 @@
     event-type-lock-requested? JRubyLockRequestedEvent
     event-type-lock-acquired? JRubyLockAcquiredEvent
     event-type-lock-released? JRubyLockReleasedEvent))
-
-(def FlushReason
-  (schema/enum :shutdown :flush-requested))

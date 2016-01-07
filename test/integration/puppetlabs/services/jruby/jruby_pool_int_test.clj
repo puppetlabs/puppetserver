@@ -17,7 +17,6 @@
             [puppetlabs.http.client.sync :as http-client]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
-            [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.request-handler.request-handler-service :as handler-service]
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]

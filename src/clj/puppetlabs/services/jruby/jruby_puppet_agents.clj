@@ -89,7 +89,7 @@
   [pool-context :- jruby-schemas/PoolContext
    old-pool-state :- jruby-schemas/PoolState
    new-pool-state :- jruby-schemas/PoolState
-   refill :- schema/Bool]
+   refill? :- schema/Bool]
   (let [{:keys [config profiler pool-state]} pool-context
         new-pool (:pool new-pool-state)
         old-pool (:pool old-pool-state)
@@ -105,7 +105,7 @@
                         old-pool)]
           (try
             (jruby-internal/cleanup-pool-instance! instance)
-            (when refill
+            (when refill?
               (jruby-internal/create-pool-instance! new-pool id config
                                                     (partial send-flush-instance! pool-context)
                                                     profiler)
@@ -125,13 +125,14 @@
 
 (schema/defn ^:always-validate
   flush-pool-for-shutdown!
-  "Flush of the current JRuby pool when shutting down during a stop."
+  "Flush of the current JRuby pool when shutting down during a stop.
+  Delivers the on-complete promise when the pool has been flushed."
   ;; Since this function is only called by the pool-agent, we know that if we
   ;; receive multiple flush requests before the first one finishes, they will
   ;; be queued up and we don't need to worry about race conditions between the
   ;; steps we perform here in the body.
   [pool-context :- jruby-schemas/PoolContext
-   flush-complete? :- IDeref]
+   on-complete :- IDeref]
   (try
     (log/info "Flush request received; creating new JRuby pool.")
     (let [{:keys [config pool-state]} pool-context
@@ -140,12 +141,12 @@
           old-pool-state @pool-state
           old-pool (:pool old-pool-state)
           old-pool-size (:size old-pool-state)]
-      (if-not (pool-initialized? old-pool-size old-pool)
+      (when-not (pool-initialized? old-pool-size old-pool)
         (throw (IllegalStateException. "Attempting to flush a pool that does not appear to have successfully initialized. Aborting.")))
       (.insertPill new-pool (ShutdownPoisonPill. new-pool))
       (swap-and-drain-pool! pool-context old-pool-state new-pool-state false))
     (finally
-      (deliver flush-complete? true))))
+      (deliver on-complete true))))
 
 (schema/defn ^:always-validate
   flush-and-repopulate-pool!
@@ -189,8 +190,8 @@
   send-flush-pool-for-shutdown! :- jruby-schemas/JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool to prepare for shutdown."
   [pool-context :- jruby-schemas/PoolContext
-   flush-complete? :- IDeref]
-  (send-agent (:pool-agent pool-context) #(flush-pool-for-shutdown! pool-context flush-complete?)) )
+   on-complete :- IDeref]
+  (send-agent (:pool-agent pool-context) #(flush-pool-for-shutdown! pool-context on-complete)) )
 
 (schema/defn ^:always-validate
   send-flush-instance! :- jruby-schemas/JRubyPoolAgent
