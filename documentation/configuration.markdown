@@ -9,7 +9,7 @@ canonical: "/puppetserver/latest/configuration.html"
 [`puppetserver.conf`]: ./config_file_puppetserver.html
 [deprecated]: ./deprecated_features.html
 
-Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings. 
+Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings.
 
 These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
 
@@ -29,11 +29,9 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 
 ## Logging
 
-Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver-access.log`, the log level is 'INFO', and Puppet Server sends nothing to syslog.
+Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, or specify a different Logback config file in [`global.conf`](#globalconf).
 
-The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, or specify a different Logback config file in [`global.conf`](#globalconf). For more information on configuring Logback itself, see the [Logback Configuration Manual](http://logback.qos.ch/manual/configuration.html). Puppet Server picks up changes to logback.xml at runtime, so you don't need to restart the service for changes to take effect.
-
-Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
+For more information on the `logback.xml` file, see [its documentation](./config_file_logbackxml.html) and the [Logback documentation](http://logback.qos.ch/manual/configuration.html). For advanced logging configuration tips, such as configuring Logstash or outputting logs in JSON format, see [the Advanced Logging Configuration guide](./config_logging_advanced.html).
 
 ### HTTP Traffic
 
@@ -76,7 +74,7 @@ authorization, add the following to Puppet Server's `logback.xml` file:
 
 ## Service Bootstrapping
 
-Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`). In that file, find the lines that look like this: 
+Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`). In that file, find the lines that look like this:
 
 ~~~
 # To enable the CA service, leave the following line uncommented
