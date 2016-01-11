@@ -16,13 +16,17 @@ require 'json'
 
 test_name 'PuppetDB integration'
 
-step 'Install PuppetDB module' do
-  on(master, puppet('module install puppetlabs-puppetdb'))
-end
+## PE comes with PuppetDB already installed and configured, so we can just
+## skip that part when testing PE and skip right to validating the agent
+## report was sent from Puppet Server to PuppetDB
+if !master.is_pe?
+  step 'Install PuppetDB module' do
+    on(master, puppet('module install puppetlabs-puppetdb'))
+  end
 
-step 'Configure PuppetDB via site.pp' do
-  sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
-  create_remote_file(master, sitepp, <<SITEPP)
+  step 'Configure PuppetDB via site.pp' do
+    sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
+    create_remote_file(master, sitepp, <<SITEPP)
 node default {
   class { 'puppetdb':
     manage_firewall => false,
@@ -34,13 +38,14 @@ node default {
   }
 }
 SITEPP
-  on(master, "chmod 644 #{sitepp}")
-  teardown do
-    on(master, "rm -f #{sitepp}")
+    on(master, "chmod 644 #{sitepp}")
+    teardown do
+      on(master, "rm -f #{sitepp}")
+    end
   end
 end
 
-step 'Install PuppetDB with agent run' do
+step 'Submit agent report to PuppetDB via server' do
   with_puppet_running_on(master, {}) do
     on(master, puppet_agent("--test --server #{master}"), :acceptable_exit_codes => [0,2])
   end
