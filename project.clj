@@ -1,4 +1,4 @@
-(def clojure-version "1.7.0")
+(def clj-version "1.7.0")
 (def tk-version "1.1.3")
 (def tk-jetty-version "1.3.1")
 (def ks-version "1.1.0")
@@ -14,7 +14,7 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure ~clojure-version]
+  :dependencies [[org.clojure/clojure ~clj-version]
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
@@ -109,7 +109,7 @@
                                                ;; version, and older versions of lein (such as version
                                                ;; 2.5.1 that is used on our jenkins servers at the time
                                                ;; of this writing) depend on clojure 1.6.
-                                               [org.clojure/clojure ~clojure-version]
+                                               [org.clojure/clojure ~clj-version]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
