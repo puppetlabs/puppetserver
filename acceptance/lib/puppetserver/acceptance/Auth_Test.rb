@@ -49,7 +49,13 @@ class Auth_Test
           if @expected_result == @actual_result then
             @porf = 'PASS'
           else @porf = 'FAIL'
-          @@total_fails += 1
+            @@total_fails += 1
+          end
+      when 'Range'
+          if @expected_result.include?(@actual_result.to_i)
+            @porf = 'PASS'
+          else @porf = 'FAIL'
+            @@total_fails += 1
           end
       else
         puts 'How did we get here?'
@@ -83,6 +89,7 @@ class Auth_Test
     if @rule['allow'] != nil then
       return true if @rule['allow'].include?('*') #TODO: express that -k won't work
       return true if @rule['allow'].include?('$1') #TODO and its a regex and the cn is signed and the cn is in the url regex thing
+      return true if @rule['allow'].include?(:host) #if the rule says allow hostname, it should be authorized.      
     end
     return false
   end
@@ -91,7 +98,7 @@ class Auth_Test
   def calculate_expected_result
     if method_match(@method, @rule['match-request']['method']) &&
            authorized? then
-      @expected_result = '200'
+      @expected_result = (200..299)
     else
       @expected_result = Array['400','403','404']
     end
