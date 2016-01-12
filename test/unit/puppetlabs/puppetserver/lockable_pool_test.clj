@@ -55,6 +55,7 @@
         lock-acquired? (promise)
         unlock? (promise)]
     (is (= 3 (count instances)))
+    (is (not (.isLocked pool)))
     (let [lock-thread (future (deliver future-started? true)
                               (.lock pool)
                               (deliver lock-acquired? true)
@@ -74,10 +75,10 @@
 
         @lock-acquired?
         (is (not (realized? lock-thread)))
+        (is (.isLocked pool))
         (deliver unlock? true)
         @lock-thread
-        ;; make sure we got here
-        (is (true? true)))
+        (is (not (.isLocked pool))))
 
       (testing "borrows may be resumed after unlock()"
         (let [instance (.borrowItem pool)]
@@ -89,9 +90,15 @@
   (let [pool (create-populated-pool 3)
         instances (borrow-n-instances pool 2)]
     (is (= 2 (count instances)))
+    (is (not (.isLocked pool)))
+
     (let [future-started? (promise)
+          lock-acquired? (promise)
+          unlock? (promise)
           lock-thread (future (deliver future-started? true)
                               (.lock pool)
+                              (deliver lock-acquired? true)
+                              @unlock?
                               (.unlock pool))]
       @future-started?
       (testing "pool.lock() blocks until borrowed instances are unregistered"
@@ -103,9 +110,13 @@
           (is (not (realized? lock-thread)))
           (.unregister pool (second instances)))
 
+        @lock-acquired?
+        (is (not (realized? lock-thread)))
+        (is (.isLocked pool))
+        (deliver unlock? true)
         @lock-thread
-        ;; make sure we got here
-        (is (true? true))))
+        (is (not (.isLocked pool)))))
+
     (let [future-started? (promise)
           last-instance (.borrowItem pool)
           lock-thread (future (deliver future-started? true)
@@ -119,8 +130,7 @@
           (.unregister pool last-instance))
 
         @lock-thread
-        ;; make sure we got here
-        (is (true? true))))))
+        (is (.isLocked pool))))))
 
 (deftest pool-lock-blocks-borrows-test
   (testing "no other threads may borrow once pool.lock() has been invoked (before or after it returns)"
@@ -130,6 +140,7 @@
           lock-acquired? (promise)
           unlock? (promise)]
       (is (= 2 (count instances)))
+      (is (not (.isLocked pool)))
       (let [lock-thread (future (deliver lock-thread-started? true)
                                 (.lock pool)
                                 (deliver lock-acquired? true)
@@ -149,6 +160,7 @@
 
           (return-instances pool instances)
           @lock-acquired?
+          (is (.isLocked pool))
           (is (not (realized? borrow-after-lock-requested-instance-acquired?)))
           (is (not (realized? lock-thread)))
 
@@ -168,8 +180,7 @@
             @borrow-after-lock-requested-thread
             @borrow-after-lock-acquired-instance-acquired?
             @borrow-after-lock-acquired-thread
-            ;; just to assert that we got past the blocking calls
-            (is (true? true))))))))
+            (is (not (.isLocked pool)))))))))
 
 (deftest pool-lock-supersedes-existing-borrows-test
   (testing "if there are pending borrows when pool.lock() is called, they aren't fulfilled until after unlock()"
@@ -198,31 +209,34 @@
       (is (not (realized? blocked-borrow-thread-borrowed?)))
       (is (not (realized? lock-thread)))
       @lock-acquired?
+      (is (.isLocked pool))
 
       (deliver unlock? true)
       @lock-thread
       @blocked-borrow-thread-borrowed?
       @blocked-borrow-thread
 
-      ;; make sure we got here
-      (is (true? true)))))
+      (is (not (.isLocked pool))))))
 
 (deftest pool-lock-reentrant-for-borrow-from-locking-thread
   (testing "the thread that holds the pool lock may borrow instances while holding the lock"
     (let [pool (create-populated-pool 2)]
+      (is (not (.isLocked pool)))
       (.lock pool)
-      (is (true? true))
+      (is (.isLocked pool))
       (let [instance (.borrowItem pool)]
         (is (true? true))
         (.releaseItem pool instance))
       (is (true? true))
-      (.unlock pool))))
+      (.unlock pool)
+      (is (not (.isLocked pool))))))
 
 (deftest pool-lock-reentrant-with-many-borrows-test
   (testing "the thread that holds the pool lock may borrow instances while holding the lock, even with other borrows queued"
     (let [pool (create-populated-pool 2)]
+      (is (not (.isLocked pool)))
       (.lock pool)
-      (is (true? true))
+      (is (.isLocked pool))
       (let [borrow-thread-started-1? (promise)
             borrow-thread-started-2? (promise)
             borrow-thread-borrowed-1? (promise)
@@ -247,13 +261,15 @@
         (is (true? true))
         (.unlock pool)
         @borrow-thread-1
-        @borrow-thread-2))))
+        @borrow-thread-2
+        (is (not (.isLocked pool)))))))
 
 (deftest pool-lock-reentrant-for-many-locks-test
   (testing "multiple threads cannot lock the pool while it is already locked"
     (let [pool (create-populated-pool 1)]
+      (is (not (.isLocked pool)))
       (.lock pool)
-      (is (true? true))
+      (is (.isLocked pool))
       (let [lock-thread-started-1? (promise)
             lock-thread-started-2? (promise)
             lock-thread-locked-1? (promise)
@@ -275,7 +291,7 @@
         @lock-thread-1
         (is (true? true))
         @lock-thread-2
-        (is (true? true))))))
+        (is (not (.isLocked pool)))))))
 
 (deftest pool-lock-not-held-after-thread-interrupt
   (let [pool (create-populated-pool 1)
@@ -289,11 +305,12 @@
                   "instances to be returned")
       (.interrupt @lock-thread-obj)
       (is (thrown? ExecutionException @lock-thread))
-      (is (not (realized? lock-thread-locked?))))
+      (is (not (realized? lock-thread-locked?)))
+      (is (not (.isLocked pool))))
     (.releaseItem pool item)
     (testing "new write lock can be taken after prior write lock interrupted"
       (.lock pool)
-      (is (true? true)))))
+      (is (.isLocked pool)))))
 
 (deftest pool-unlock-from-thread-not-holding-lock-fails
   (testing "call to unlock pool when no lock held throws exception"
@@ -308,10 +325,11 @@
                               @unlock?
                               (.unlock pool))]
       @lock-started?
+      (is (.isLocked pool))
       (is (thrown? IllegalStateException (.unlock pool)))
       (deliver unlock? true)
       @lock-thread
-      (is (true? true)))))
+      (is (not (.isLocked pool))))))
 
 (deftest pool-release-item-test
   (testing (str "releaseItem call with value 'false' does not return item to "
@@ -322,7 +340,9 @@
       (.releaseItem pool instance false)
       (.unregister pool instance)
       (is (= 1 (.size pool)))
+      (is (not (.isLocked pool)))
       (.lock pool)
+      (is (.isLocked pool))
       (is (nil? @(future (.borrowItemWithTimeout pool
                                                  1
                                                  TimeUnit/MICROSECONDS))))
@@ -330,7 +350,7 @@
       (is (not (nil? @(future (.borrowItemWithTimeout pool
                                                       1
                                                       TimeUnit/MICROSECONDS)))))
-      (is (true? true))))
+      (is (not (.isLocked pool)))))
   (testing (str "releaseItem call with value 'true' returns item to "
                 "pool and allows pool to still be lockable")
     (let [pool (create-populated-pool 2)
@@ -338,7 +358,9 @@
       (is (= 1 (.size pool)))
       (.releaseItem pool instance true)
       (is (= 2 (.size pool)))
+      (is (not (.isLocked pool)))
       (.lock pool)
+      (is (.isLocked pool))
       (is (nil? @(future (.borrowItemWithTimeout pool
                                                  1
                                                  TimeUnit/MICROSECONDS))))
@@ -346,7 +368,7 @@
       (is (not (nil? @(future (.borrowItemWithTimeout pool
                                                       1
                                                       TimeUnit/MICROSECONDS)))))
-      (is (true? true)))))
+      (is (not (.isLocked pool))))))
 
 (deftest pool-borrow-blocks-borrow-when-pool-empty
   (testing "borrow from pool blocks while the pool is empty"
@@ -396,8 +418,9 @@
 (deftest pool-can-do-blocking-borrow-after-borrow-timed-out-during-lock
   (testing (str "can do a blocking borrow from pool after previous borrow "
                 "timed out while a write lock was held")
-    (let [pool (create-populated-pool 1)
-          _ (.lock pool)]
+    (let [pool (create-populated-pool 1)]
+      (.lock pool)
+      (is (.isLocked pool))
       (is (nil? @(future (.borrowItemWithTimeout pool
                                                  1
                                                  TimeUnit/MICROSECONDS))))
@@ -411,7 +434,7 @@
         (is (not (realized? borrow-thread-borrowed?)))
         (.unlock pool)
         @borrow-thread
-        (is (true? true))))))
+        (is (not (.isLocked pool)))))))
 
 (deftest pool-can-borrow-after-borrow-interrupted-during-lock
   (testing (str "can do a borrow after another borrow was interrupted "
@@ -441,7 +464,7 @@
       @lock-thread-started?
       (.releaseItem pool borrow-1)
       @lock-thread-locked?
-      (is (true? true))
+      (is (.isLocked pool))
       ;; Interrupt the second borrow thread so that it will stop waiting for the
       ;; pool to be not empty and not locked.
       (.interrupt borrow-thread-obj-2)
@@ -450,7 +473,7 @@
       (is (not (realized? borrow-thread-3)))
       (deliver unlock? true)
       @lock-thread
-      (is (true? true))
+      (is (not (.isLocked pool)))
       ;; If the third borrow doesn't block indefinitely, we've confirmed that
       ;; the interruption of the second borrow while the write lock was
       ;; held did not adversely affect the ability of the third borrow call
@@ -491,12 +514,12 @@
       @lock-thread-started?
       (.releaseItem pool borrow-1)
       @lock-thread-locked?
-      (is (true? true))
+      (is (.isLocked pool))
       (is (nil? @borrow-thread-2)
           "second borrow attempt did not time out")
       (deliver unlock? true)
       @lock-thread
-      (is (true? true))
+      (is (not (.isLocked pool)))
       (is (identical? borrow-1 @borrow-thread-3)
           (str "did not get back the same instance from the third borrow"
                "attempt as was returned from the first borrow attempt")))))

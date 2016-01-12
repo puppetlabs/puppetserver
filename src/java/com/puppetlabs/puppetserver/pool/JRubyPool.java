@@ -307,6 +307,19 @@ public final class JRubyPool<E> implements LockablePool<E> {
     }
 
     @Override
+    public boolean isLocked() {
+        boolean locked;
+        final ReentrantLock lock = this.queueLock;
+        lock.lock();
+        try {
+            locked = isPoolLockHeld();
+        } finally {
+            lock.unlock();
+        }
+        return locked;
+    }
+
+    @Override
     public void unlock() {
         final ReentrantLock lock = this.queueLock;
         lock.lock();
