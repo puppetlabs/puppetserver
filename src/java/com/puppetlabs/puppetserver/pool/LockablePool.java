@@ -149,6 +149,15 @@ public interface LockablePool<E> {
     */
     void lock() throws InterruptedException;
 
+    /**
+     * Returns whether or not the pool is currently locked.  Note that the
+     * value returned may no longer be accurate by the time it is consumed by
+     * the caller since activity on the pool, e.g., locks taken or released,
+     * is not implicitly held off until the caller has a chance to consume
+     * the value returned from a call to this method.
+     */
+    boolean isLocked();
+
    /**
     * Release the exclusive pool lock so that other threads may begin to
     * perform borrow operations again.  Note that this method must be called
