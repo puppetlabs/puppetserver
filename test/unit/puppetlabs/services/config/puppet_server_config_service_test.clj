@@ -12,7 +12,12 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
-            [clj-semver.core :as semver]))
+            [clj-semver.core :as semver]
+            [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.trapperkeeper.internal :as tk-internal]
+            [puppetlabs.kitchensink.testutils :as ks-testutils]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]
+            [puppetlabs.trapperkeeper.services :as tk-services]))
 
 (def service-and-deps
   [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
@@ -83,14 +88,35 @@
       [jruby-internal/create-pool-instance!
          jruby-testutils/create-mock-pool-instance]
       (with-test-logging
-        (is (thrown-with-msg?
-              Exception
-              #".*configuration.*conflict.*:cacert, :cacrl"
-              (tk-testutils/with-app-with-config
-                app service-and-deps (assoc required-config :cacrl "bogus"
-                                                            :cacert "meow")
-                ; do nothing - bootstrap should throw the exception
-                )))))))
+       ;; this is unfortunate.  There is a race condition in this test where
+       ;; the JRuby service continues to try to initialize the JRuby pool in
+       ;; the background after the test exits, and this can cause transient
+       ;; classloader errors or other weird CI failures.  The long-term fix
+       ;; is described in SERVER-1087 and related tickets, but for now, we
+       ;; just need to make sure that we don't let the test exit until the pool
+       ;; is initialized.  In order to do that *and* test the exception, we
+       ;; have to expand the `with-app-with-config` macro a bit and dig into
+       ;; the guts of TK more than I'd prefer, but the long-term fix is probably
+       ;; a ways out.
+       (ks-testutils/with-no-jvm-shutdown-hooks
+        (let [app (tk/boot-services-with-config
+                   service-and-deps
+                   (assoc required-config :cacrl "bogus"
+                                          :cacert "meow"))]
+          (is (thrown-with-msg?
+               Exception
+               #".*configuration.*conflict.*:cacert, :cacrl"
+               (tk-internal/throw-app-error-if-exists! app)))
+
+          ;; Our config for this test only specifies one JRuby instance, so
+          ;; once we've successfully done a borrow, we can be assured that the
+          ;; initialization has completed and it's safe for us to allow the
+          ;; test to exit.
+          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+                jruby-instance (jruby/borrow-instance jruby-service :config-key-conflicts-test)]
+            (jruby/return-instance jruby-service jruby-instance :config-key-conflicts-test))
+
+          (tk-app/stop app)))))))
 
 (deftest multi-webserver-setting-override
   (let [webserver-config {:ssl-cert "thehostcert"
