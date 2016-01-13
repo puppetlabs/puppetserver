@@ -89,7 +89,7 @@ class Auth_Test
     if @rule['allow'] != nil then
       return true if @rule['allow'].include?('*') #TODO: express that -k won't work
       return true if @rule['allow'].include?('$1') #TODO and its a regex and the cn is signed and the cn is in the url regex thing
-      return true if @rule['allow'].include?(:host) #if the rule says allow hostname, it should be authorized.      
+      return true if @rule['allow'].include?(host) #if the rule says allow hostname, it should be authorized.      
     end
     return false
   end
