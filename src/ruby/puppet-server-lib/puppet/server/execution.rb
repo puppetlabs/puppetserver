@@ -1,7 +1,7 @@
 require 'puppet/server'
 
 require 'java'
-java_import com.puppetlabs.puppetserver.ExecutionStubImpl
+java_import com.puppetlabs.puppetserver.ShellUtils
 
 class Puppet::Server::Execution
   def self.initialize_execution_stub
@@ -22,7 +22,7 @@ class Puppet::Server::Execution
   end
 
   def self.execute(command)
-    result = ExecutionStubImpl.executeCommand(command)
+    result = ShellUtils.executeCommand(command)
     Puppet::Util::Execution::ProcessOutput.new(result.getOutput, result.getExitCode)
   end
 end

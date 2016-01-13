@@ -9,22 +9,22 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
-public class ExecutionStubImpl {
+public class ShellUtils {
 
-    private static final Logger log = LoggerFactory.getLogger(ExecutionStubImpl.class);
+    private static final Logger log = LoggerFactory.getLogger(ShellUtils.class);
 
     /**
      * Takes a prepared CommandLine instance and executes it using some sane
      * defaults and a DefaultExecutor. Also makes a delicious pancake.
      *
      * @param commandLine CommandLine instance to execute
-     * @return An ExecutionStubResult with output[String], error[String], and
+     * @return An ExecutionResult with output[String], error[String], and
      *                  the exit code[Integer] of the process
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    private static ExecutionStubResult executeExecutor(CommandLine commandLine)
+    private static ExecutionResult executeExecutor(CommandLine commandLine)
             throws InterruptedException, IOException {
         DefaultExecutor executor = new DefaultExecutor();
         ByteArrayOutputStream errStream = new ByteArrayOutputStream();
@@ -45,7 +45,7 @@ public class ExecutionStubImpl {
             log.warn("Executed an external process which logged to STDERR: " + stdErr);
         }
 
-        return new ExecutionStubResult(outStream.toString(), stdErr, exitCode);
+        return new ExecutionResult(outStream.toString(), stdErr, exitCode);
     }
 
     /**
@@ -54,13 +54,13 @@ public class ExecutionStubImpl {
      *
      * @param command the command [String] to execute. arguments can be
      *                included in the string.
-     * @return An ExecutionStubResult with output[String], error[String], and
+     * @return An ExecutionResult with output[String], error[String], and
      *                the exit code[Integer] of the process
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    public static ExecutionStubResult executeCommand(String command)
+    public static ExecutionResult executeCommand(String command)
             throws InterruptedException, IOException {
         CommandLine commandLine = CommandLine.parse(command);
 
@@ -72,13 +72,13 @@ public class ExecutionStubImpl {
      *
      * @param command the command [String] to execute.
      * @param arguments arguments [Array of Strings] to add to the command being executed
-     * @return An ExecutionStubResult with output[String], error[String], and
+     * @return An ExecutionResult with output[String], error[String], and
      *                 the exit code[Integer] of the process
      *
      * @throws InterruptedException
      * @throws IOException
      */
-    public static ExecutionStubResult executeCommand(String command, String[] arguments)
+    public static ExecutionResult executeCommand(String command, String[] arguments)
             throws InterruptedException, IOException {
         CommandLine commandLine = new CommandLine(command);
         commandLine.addArguments(arguments, false);

@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.shell-utils
   (:require [schema.core :as schema]
             [clojure.java.io :as io])
-  (:import (com.puppetlabs.puppetserver ExecutionStubImpl)
+  (:import (com.puppetlabs.puppetserver ShellUtils)
            (java.io IOException)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -48,7 +48,7 @@
     command-arguments :- [schema/Str]]
    (validate-command! command)
    (try
-     (let [process (ExecutionStubImpl/executeCommand command (into-array String command-arguments))]
+     (let [process (ShellUtils/executeCommand command (into-array String command-arguments))]
        {:exit-code (.getExitCode process)
         :stderr (.getError process)
         :stdout (.getOutput process)})
