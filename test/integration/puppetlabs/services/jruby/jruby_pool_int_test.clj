@@ -296,7 +296,7 @@
 (defprotocol BonusService
   (bonus-service-fn [this]))
 
-(deftest ^:integration test-hup-comes-back
+#_(deftest ^:integration test-hup-comes-back
   (testing "After a HUP signal puppetserver can still handle requests"
     (let [call-seq (atom [])
           lc-fn (fn [context action] (swap! call-seq conj action) context)
