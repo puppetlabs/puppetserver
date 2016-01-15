@@ -13,6 +13,12 @@
                           vc/VersionedCodeService
                           [[:ConfigService get-in-config]]
 
+  (init
+   [this context]
+   (if (nil? (get-in-config [:versioned-code :code-id-command]))
+     (log/info "No code-id-command set for versioned-code-service. Code-id will be nil."))
+   context)
+
   (current-code-id
    [this environment]
    "Returns the current code id (representing the freshest code) for the given environment.
