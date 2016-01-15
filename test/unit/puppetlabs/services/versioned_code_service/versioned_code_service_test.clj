@@ -19,6 +19,17 @@
   {:versioned-code {:code-id-command script}})
 
 (deftest test-code-id-execution
+  (testing "nil is returned if no code-id-command is set"
+    (logging/with-test-logging
+     (tk-testutils/with-app-with-config
+      app
+
+      [vcs/versioned-code-service]
+      {}
+      (let [vcs (tk-app/get-service app :VersionedCodeService)]
+        (is (nil? (vc/current-code-id vcs "foo")))
+        (is (logged? #"No code-id-command set" :info))))))
+
   (testing "code id is successfully generated"
     (tk-testutils/with-app-with-config
      app
@@ -38,15 +49,6 @@
       (let [vcs (tk-app/get-service app :VersionedCodeService)]
         (is (= "" (vc/current-code-id vcs "foo")))
         (is (logged? (format "Error output generated while calculating code id. command executed: '%s', stderr: '%s'" (script-path "warn") "foo\n")))))))
-
-  (testing "nil is returned for non-zero exit code"
-    (tk-testutils/with-app-with-config
-     app
-
-     [vcs/versioned-code-service]
-     (vcs-config (script-path "false"))
-     (let [vcs (tk-app/get-service app :VersionedCodeService)]
-       (is (nil? (vc/current-code-id vcs "foo"))))))
 
   (testing "exit-code, stdout and stderr are all logged for non-zero exit"
     (logging/with-test-logging
