@@ -296,8 +296,8 @@
 (defprotocol BonusService
   (bonus-service-fn [this]))
 
-#_(deftest ^:integration test-hup-comes-back
-  (testing "After a HUP signal puppetserver can still handle requests"
+#_(deftest ^:integration test-restart-comes-back
+  (testing "After a TK restart puppetserver can still handle requests"
     (let [call-seq (atom [])
           lc-fn (fn [context action] (swap! call-seq conj action) context)
           bonus-service (tk-services/service BonusService
@@ -310,8 +310,7 @@
        app
        (conj (tk-bootstrap/parse-bootstrap-config! bootstrap/dev-bootstrap-file) bonus-service)
        {:jruby-puppet {:max-active-instances 1}}
-       (tk-internal/register-sighup-handler [app])
-       (beckon/raise! "HUP")
+       (tk-internal/restart-tk-apps [app])
        (let [start (System/currentTimeMillis)]
          (while (and (not= (count @call-seq) 5)
                      (< (- (System/currentTimeMillis) start) 90000))
