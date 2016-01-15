@@ -6,7 +6,7 @@
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (com.puppetlabs.puppetserver.pool JRubyPool)
-           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill)
+           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill ShutdownPoisonPill)
            (java.util HashMap)
            (org.jruby CompatVersion Main RubyInstanceConfig RubyInstanceConfig$CompileMode)
            (org.jruby.embed LocalContextScope)
@@ -42,6 +42,7 @@
   (schema/pred (some-fn nil?
                  jruby-schemas/poison-pill?
                  jruby-schemas/retry-poison-pill?
+                 jruby-schemas/shutdown-poison-pill?
                  jruby-schemas/jruby-puppet-instance?)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -174,6 +175,15 @@
    :size size})
 
 (schema/defn ^:always-validate
+  cleanup-pool-instance!
+  "Cleans up and cleanly terminates a JRubyPuppet instance and removes it from the pool."
+  [{:keys [scripting-container jruby-puppet pool] :as instance} :- JRubyPuppetInstance]
+  (.unregister pool instance)
+  (.terminate jruby-puppet)
+  (.terminate scripting-container)
+  (log/infof "Cleaned up old JRuby instance with id %s." (:id instance)))
+
+(schema/defn ^:always-validate
   create-pool-instance! :- JRubyPuppetInstance
   "Creates a new JRubyPuppet instance and adds it to the pool."
   [pool     :- jruby-schemas/pool-queue-type
@@ -189,6 +199,7 @@
     (when-not ruby-load-path
       (throw (Exception.
                "JRuby service missing config value 'ruby-load-path'")))
+    (log/infof "Creating JRuby instance with id %s." id)
     (let [scripting-container   (create-scripting-container
                                  ruby-load-path
                                  gem-home
@@ -269,12 +280,15 @@
           ((some-fn nil? jruby-schemas/retry-poison-pill?) instance)
           instance
 
+          (instance? ShutdownPoisonPill instance)
+          instance
+
           :else
           (throw (IllegalStateException.
                    (str "Borrowed unrecognized object from pool!: " instance))))))
 
 (schema/defn ^:always-validate
-  borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrRetry
+  borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrPill
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
   [pool-context :- jruby-schemas/PoolContext]
@@ -298,7 +312,7 @@
 (schema/defn ^:always-validate
   return-to-pool
   "Return a borrowed pool instance to its free pool."
-  [instance :- jruby-schemas/JRubyPuppetInstanceOrRetry]
+  [instance :- jruby-schemas/JRubyPuppetInstanceOrPill]
   (if (jruby-schemas/jruby-puppet-instance? instance)
     (let [new-state (swap! (:state instance)
                            update-in [:borrow-count] inc)

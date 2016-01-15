@@ -28,6 +28,13 @@
   ;; with the new pool.
   [pool])
 
+(defrecord ShutdownPoisonPill
+  ;; A sentinel object to put into a pool when we are shutting down.
+  ;; This can be used to build `borrow` functionality that will detect the
+  ;; case where we're trying to borrow during a shutdown, so we can return
+  ;; a sane error code.
+  [pool])
+
 (def supported-jruby-compile-modes
   #{:jit :force :off})
 
@@ -190,14 +197,20 @@
   [x]
   (instance? RetryPoisonPill x))
 
-(def JRubyPuppetInstanceOrRetry
+(defn shutdown-poison-pill?
+  [x]
+  (instance? ShutdownPoisonPill x))
+
+(def JRubyPuppetInstanceOrPill
   (schema/conditional
     jruby-puppet-instance? (schema/pred jruby-puppet-instance?)
-    retry-poison-pill? (schema/pred retry-poison-pill?)))
+    retry-poison-pill? (schema/pred retry-poison-pill?)
+    shutdown-poison-pill? (schema/pred shutdown-poison-pill?)))
 
 (def JRubyPuppetBorrowResult
   (schema/pred (some-fn nil?
                         retry-poison-pill?
+                        shutdown-poison-pill?
                         jruby-puppet-instance?)))
 
 (def JRubyMain
@@ -268,7 +281,7 @@
 (def JRubyReturnedEvent
   {:type (schema/eq :instance-returned)
    :reason JRubyEventReason
-   :instance JRubyPuppetInstanceOrRetry})
+   :instance JRubyPuppetInstanceOrPill})
 
 (def JRubyLockRequestedEvent
   {:type (schema/eq :lock-requested)

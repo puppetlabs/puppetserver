@@ -4,9 +4,9 @@
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
-  (:import (clojure.lang IFn)
+  (:import (clojure.lang IFn IDeref)
            (com.puppetlabs.puppetserver PuppetProfiler)
-           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance)))
+           (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance ShutdownPoisonPill)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -65,62 +65,103 @@
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
   [pool-context :- jruby-schemas/PoolContext
-   {:keys [scripting-container jruby-puppet id pool] :as instance} :- JRubyPuppetInstance
+   instance :- JRubyPuppetInstance
    new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
-  (.unregister pool instance)
-  (.terminate jruby-puppet)
-  (.terminate scripting-container)
-  (log/infof "Cleaned up old JRuby instance with id %s, creating replacement."
-             id)
+  (jruby-internal/cleanup-pool-instance! instance)
   (jruby-internal/create-pool-instance! new-pool new-id config
                                         (partial send-flush-instance! pool-context)
                                         profiler))
 
 (schema/defn ^:always-validate
-  flush-pool!
-  "Flush of the current JRuby pool.  NOTE: this function should never
-  be called except by the pool-agent."
-  [pool-context :- jruby-schemas/PoolContext]
-  ;; Since this function is only called by the pool-agent, and since this
-  ;; is the only entry point into the pool flushing code that is exposed by the
-  ;; service API, we know that if we receive multiple flush requests before the
-  ;; first one finishes, they will be queued up and the body of this function
-  ;; will be executed atomically; we don't need to worry about race conditions
-  ;; between the steps we perform here in the body.
-  (log/info "Flush request received; creating new JRuby pool.")
+  pool-initialized? :- schema/Bool
+  "Determine if the current pool has been fully initialized."
+  [expected-pool-size :- schema/Int
+   pool :- jruby-schemas/pool-queue-type]
+  (= expected-pool-size (count (.getRegisteredElements pool))))
+
+(schema/defn ^:always-validate
+  swap-and-drain-pool!
+  "Replace the current pool with a new pool and drain the old pool,
+  optionally refilling the new pool with fresh jrubies."
+  [pool-context :- jruby-schemas/PoolContext
+   old-pool-state :- jruby-schemas/PoolState
+   new-pool-state :- jruby-schemas/PoolState
+   refill? :- schema/Bool]
   (let [{:keys [config profiler pool-state]} pool-context
-        new-pool-state (jruby-internal/create-pool-from-config config)
         new-pool (:pool new-pool-state)
-        old-pool-state @pool-state
         old-pool (:pool old-pool-state)
-        count    (:size old-pool-state)]
+        old-pool-size (:size old-pool-state)]
     (log/info "Replacing old JRuby pool with new instance.")
     (reset! pool-state new-pool-state)
     (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
-    (doseq [i (range count)]
+    (doseq [i (range old-pool-size)]
       (try
-        (let [id        (inc i)
-              instance  (jruby-internal/borrow-from-pool!*
-                          jruby-internal/borrow-without-timeout-fn
-                          old-pool)]
+        (let [id (inc i)
+              instance (jruby-internal/borrow-from-pool!*
+                        jruby-internal/borrow-without-timeout-fn
+                        old-pool)]
           (try
-            (flush-instance! pool-context instance new-pool id config profiler)
+            (jruby-internal/cleanup-pool-instance! instance)
+            (when refill?
+              (jruby-internal/create-pool-instance! new-pool id config
+                                                    (partial send-flush-instance! pool-context)
+                                                    profiler)
+              (log/infof "Finished creating JRubyPuppet instance %d of %d"
+                         id old-pool-size))
             (finally
-              (.releaseItem old-pool instance false)))
-          (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                     id count))
+              (.releaseItem old-pool instance false))))
         (catch Exception e
           (.clear new-pool)
           (.insertPill new-pool (PoisonPill. e))
           (throw (IllegalStateException.
-                   "There was a problem adding a JRubyPuppet instance to the pool."
-                   e)))))
+                  "There was a problem adding a JRubyPuppet instance to the pool."
+                  e)))))
     ;; Add a "RetryPoisonPill" to the pool in case something else is in the
     ;; process of borrowing from the old pool.
     (.insertPill old-pool (RetryPoisonPill. old-pool))))
+
+(schema/defn ^:always-validate
+  flush-pool-for-shutdown!
+  "Flush of the current JRuby pool when shutting down during a stop.
+  Delivers the on-complete promise when the pool has been flushed."
+  ;; Since this function is only called by the pool-agent, we know that if we
+  ;; receive multiple flush requests before the first one finishes, they will
+  ;; be queued up and we don't need to worry about race conditions between the
+  ;; steps we perform here in the body.
+  [pool-context :- jruby-schemas/PoolContext
+   on-complete :- IDeref]
+  (try
+    (log/info "Flush request received; creating new JRuby pool.")
+    (let [{:keys [config pool-state]} pool-context
+          new-pool-state (jruby-internal/create-pool-from-config config)
+          new-pool (:pool new-pool-state)
+          old-pool-state @pool-state
+          old-pool (:pool old-pool-state)
+          old-pool-size (:size old-pool-state)]
+      (when-not (pool-initialized? old-pool-size old-pool)
+        (throw (IllegalStateException. "Attempting to flush a pool that does not appear to have successfully initialized. Aborting.")))
+      (.insertPill new-pool (ShutdownPoisonPill. new-pool))
+      (swap-and-drain-pool! pool-context old-pool-state new-pool-state false))
+    (finally
+      (deliver on-complete true))))
+
+(schema/defn ^:always-validate
+  flush-and-repopulate-pool!
+  "Flush of the current JRuby pool.  NOTE: this function should never
+  be called except by the pool-agent."
+  [pool-context :- jruby-schemas/PoolContext]
+  ;; Since this function is only called by the pool-agent, we know that if we
+  ;; receive multiple flush requests before the first one finishes, they will
+  ;; be queued up and we don't need to worry about race conditions between the
+  ;; steps we perform here in the body.
+  (log/info "Flush request received; creating new JRuby pool.")
+  (let [{:keys [config pool-state]} pool-context
+        new-pool-state (jruby-internal/create-pool-from-config config)
+        old-pool @pool-state]
+    (swap-and-drain-pool! pool-context old-pool new-pool-state true)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -140,10 +181,17 @@
     (send-agent pool-agent #(prime-pool! pool-context config profiler))))
 
 (schema/defn ^:always-validate
-  send-flush-pool! :- jruby-schemas/JRubyPoolAgent
+  send-flush-and-repopulate-pool! :- jruby-schemas/JRubyPoolAgent
   "Sends requests to the agent to flush the existing pool and create a new one."
   [pool-context :- jruby-schemas/PoolContext]
-  (send-agent (:pool-agent pool-context) #(flush-pool! pool-context)))
+  (send-agent (:pool-agent pool-context) #(flush-and-repopulate-pool! pool-context)))
+
+(schema/defn ^:always-validate
+  send-flush-pool-for-shutdown! :- jruby-schemas/JRubyPoolAgent
+  "Sends requests to the agent to flush the existing pool to prepare for shutdown."
+  [pool-context :- jruby-schemas/PoolContext
+   on-complete :- IDeref]
+  (send-agent (:pool-agent pool-context) #(flush-pool-for-shutdown! pool-context on-complete)) )
 
 (schema/defn ^:always-validate
   send-flush-instance! :- jruby-schemas/JRubyPoolAgent

@@ -42,6 +42,15 @@
             (assoc :pool-context pool-context)
             (assoc :borrow-timeout (:borrow-timeout config))
             (assoc :event-callbacks (atom []))))))
+  (stop
+   [this context]
+   (let [{:keys [pool-context]} (tk-services/service-context this)
+         on-complete (promise)]
+     (log/debug "Beginning flush of JRuby pools for shutdown")
+     (jruby-agents/send-flush-pool-for-shutdown! pool-context on-complete)
+     @on-complete
+     (log/debug "Finished flush of JRuby pools for shutdown"))
+   context)
 
   (borrow-instance
     [this reason]
@@ -73,7 +82,7 @@
     [this]
     (let [service-context (tk-services/service-context this)
           {:keys [pool-context]} service-context]
-      (jruby-agents/send-flush-pool! pool-context)))
+      (jruby-agents/send-flush-and-repopulate-pool! pool-context)))
 
   (register-event-handler
     [this callback-fn]
@@ -103,6 +112,12 @@
                         "misconfigured or trying to serve too many agent nodes. "
                         "Check Puppet Server settings: "
                         "jruby-puppet.max-active-instances.")}))
+     (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
+       (jruby/return-instance ~jruby-service pool-instance# ~reason)
+       (sling/throw+
+        {:type    ::service-unavailable
+         :message (str "Attempted to borrow a JRuby instance from the pool "
+                       "during a shutdown. Please try again.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby/return-instance ~jruby-service pool-instance# ~reason)

@@ -5,6 +5,7 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as services]
@@ -16,7 +17,8 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [me.raynes.fs :as fs]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [puppetlabs.trapperkeeper.internal :as tk-internal]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 (use-fixtures :once schema-test/validate-schemas)
@@ -36,29 +38,34 @@
   [jruby-puppet-pooled-service
    profiler/puppet-profiler-service])
 
+; This test will occasionally display a stacktrace. This may be due to
+; with-test-logging losing one of the threads. The stack trace looks like this:
+;
+; 2016-01-07 16:40:10,219 ERROR [clojure-agent-send-pool-4] [p.t.internal] shutdown-on-error triggered because of exception!
+; java.lang.IllegalStateException: Attempting to flush a pool that does not appear to have successfully initialized. Aborting.
+;
+; Don't worry, everything is fine.
 (deftest test-error-during-init
   (testing
-      (str "If there as an exception while putting a JRubyPuppet instance in "
-           "the pool the application should shut down.")
+   (str "If there is an exception while putting a JRubyPuppet instance in "
+        "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-internal/create-pool-instance!
-                    (fn [& _] (throw (Exception. "42")))]
-                   (let [got-expected-exception (atom false)]
-                     (try
-                       (bootstrap/with-app-with-config
-                         app
-                         default-services
-                         (jruby-service-test-config 1)
-                         (tk/run-app app))
-                       (catch Exception e
-                         (let [cause (stacktrace/root-cause e)]
-                           (is (= (.getMessage cause) "42"))
-                           (reset! got-expected-exception true))))
-                     (is (true? @got-expected-exception)
-                                "Did not get expected exception."))
-                   (is (logged?
-                         #"^shutdown-on-error triggered because of exception!"
-                                :error))))))
+     (with-redefs [jruby-internal/create-pool-instance!
+                   (fn [& _] (throw (Exception. "42")))]
+       (let [got-expected-exception (atom false)]
+         (logging/with-test-logging
+          (bootstrap/with-app-with-config
+           app
+           default-services
+           (jruby-service-test-config 1)
+           (try
+             (tk/run-app app)
+             (catch Exception e
+               (let [cause (stacktrace/root-cause e)]
+                 (is (= (.getMessage cause) "42"))
+                 (reset! got-expected-exception true))))))
+         (is (true? @got-expected-exception)
+             "Did not get expected exception."))))))
 
 (deftest test-pool-size
   (testing "The pool is created and the size is correctly reported"
@@ -89,13 +96,14 @@
                                  :test-pool-population)
                                context))]
 
-      ; Bootstrap TK, causing the 'init' function above to be executed.
-      (tk/boot-services-with-config
+      (ks-testutils/with-no-jvm-shutdown-hooks
+       ; Bootstrap TK, causing the 'init' function above to be executed.
+       (tk/boot-services-with-config
         (conj default-services test-service)
         (jruby-service-test-config 1))
 
-      ; If execution gets here, the test passed.
-      (is (true? true)))))
+       ; If execution gets here, the test passed.
+       (is (true? true))))))
 
 (deftest test-with-jruby-puppet
   (testing "the `with-jruby-puppet macro`"
@@ -197,11 +205,13 @@
               pool-context (:pool-context context)]
           (let [jrubies (jruby-testutils/drain-pool pool-context pool-size)]
             (is (= 1 (count jrubies)))
-            (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
-          (let [test-start-in-millis (System/currentTimeMillis)]
-            (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
-            (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
-            (is (= (:borrow-timeout context) timeout)))))))
+            (is (every? jruby-schemas/jruby-puppet-instance? jrubies))
+            (let [test-start-in-millis (System/currentTimeMillis)]
+              (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
+              (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
+              (is (= (:borrow-timeout context) timeout)))
+            ; Test cleanup. This instance needs to be returned so that the stop can complete.
+            (doseq [inst jrubies] (jruby-protocol/return-instance service inst :test)))))))
 
   (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
