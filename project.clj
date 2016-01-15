@@ -41,6 +41,7 @@
                  [org.jruby/jruby-stdlib "1.7.20.1"]
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
+                 [net.logstash.logback/logstash-logback-encoder "4.5.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [joda-time "2.7"]
                  [clj-time "0.10.0"]
                  [liberator "0.12.0"]
