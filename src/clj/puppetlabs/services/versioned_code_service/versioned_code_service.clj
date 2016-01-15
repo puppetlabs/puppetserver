@@ -14,6 +14,8 @@
 
   (current-code-id
    [this environment]
+   "Returns the current code id (representing the freshest code) for the given environment.
+   In the case of a non-zero return from the code-id-command, returns nil."
    (let [code-id-script (get-in-config [:versioned-code :code-id-command])
          {:keys [exit-code stderr stdout]} (shell-utils/execute-command code-id-script [environment])]
      ; TODO Decide what to do about normalizing/sanitizing output with respect to
