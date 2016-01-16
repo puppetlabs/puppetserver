@@ -7,7 +7,7 @@
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/services/jruby/puppet_environments_int_test")
+  "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test")
 
 (def executables-dir
   (fs/absolute-path "./dev-resources/puppetlabs/puppetserver/shell_utils_test"))
