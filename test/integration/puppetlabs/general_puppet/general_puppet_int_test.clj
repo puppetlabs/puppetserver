@@ -23,8 +23,8 @@
 
 (def num-jrubies 1)
 
-(deftest ^:integration environment-flush-integration-test
-  (testing "environments are flushed after marking expired"
+(deftest ^:integration test-external-command-execution
+  (testing "puppet functions can call external commands successfully"
     ; The generate puppet function runs a fully qualified command with arguments.
     ; This function calls into Puppet::Util::Execution.execute(), which calls into
     ; our shell-utils code via Puppet::Util::ExecutionStub which we call in
