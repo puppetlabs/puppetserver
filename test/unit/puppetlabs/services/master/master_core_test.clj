@@ -8,10 +8,12 @@
 (use-fixtures :once schema-test/validate-schemas)
 
 (defn build-ring-handler
-  [request-handler puppet-version]
-  (-> (root-routes request-handler)
-      (comidi/routes->handler)
-      (wrap-middleware puppet-version)))
+  ([request-handler puppet-version]
+   (build-ring-handler request-handler puppet-version (constantly nil)))
+  ([request-handler puppet-version code-id-fn]
+   (-> (root-routes request-handler code-id-fn)
+       (comidi/routes->handler)
+       (wrap-middleware puppet-version))))
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
@@ -62,6 +64,35 @@
                          :uri            "/v3/file_bucket_file/bar"})]
           (is (= "something-crazy/for-content-type"
                  (get-in resp [:request :content-type]))))))))
+
+(deftest code-id-injection-test
+  (testing "code_id is calculated and added to the catalog request."
+    (let [handler (fn ([req] {:request req}))
+          app     (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
+          resp    (app {:request-method :get
+                        :uri            "/v3/catalog/bar"})]
+      (is (= "foo-is-my-codeid" (get-in resp [:request :params "code_id"])))))
+  (testing "code_id is not added to non-catalog requests"
+    (let [handler (fn ([req] {:request req}))
+          app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
+          request (fn r ([path] (r :get path))
+                    ([method path] (app (mock/request method path))))]
+      (doseq [[method paths]
+              {:get ["node"
+                     "environment"
+                     "file_content"
+                     "file_metadatas"
+                     "file_metadata"
+                     "file_bucket_file"
+                     "resource_type"
+                     "resource_types"
+                     "status"]
+               :put ["file_bucket_file"
+                     "report"]
+               :head ["file_bucket_file"]}
+              path paths]
+        (let [resp (request method (str "/v3/" path "/bar"))]
+          (is (= "wtf-no-code-id" (get-in resp [:request :params "code_id"] "wtf-no-code-id"))))))))
 
 (defn assert-failure-msg
   "Assert the message thrown by validate-memory-requirements! matches re"

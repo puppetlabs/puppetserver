@@ -1,7 +1,6 @@
 (ns puppetlabs.general-puppet.general-puppet-int-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.puppet-environments-int-test :refer
              [write-site-pp-file get-catalog catalog-contains?]]
@@ -38,3 +37,27 @@
      (testing "calling generate successfully executes shell command"
        (let [catalog (get-catalog)]
          (is (catalog-contains? catalog "Notify" "this command echoes a thing\n")))))))
+
+(deftest ^:integration code-id-request-test
+  (testing "code id is added to the request body for catalog requests"
+    ; As we have set code-id-command to echo, the code id will
+    ; be the result of running `echo $environment`, which will
+    ; be production here.
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}
+          :versioned-code
+          {:code-id-command (script-path "echo")}}
+     (let [catalog (get-catalog)]
+       (is (= "production" (get catalog "code_id"))))))
+  (testing "code id is added to the request body for catalog requests"
+    ; As we have set code-id-command to warn, the code id will
+    ; be the result of running `warn $environment`, which will
+    ; exit non-zero and return nil.
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}
+          :versioned-code
+          {:code-id-command (script-path "warn")}}
+     (let [catalog (get-catalog)]
+       (is nil? (get catalog "code_id"))))))

@@ -15,7 +15,8 @@
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:VersionedCodeService current-code-id]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -43,7 +44,7 @@
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
                           (core/get-wrapped-handler
-                            (-> (core/root-routes handle-request)
+                            (-> (core/root-routes handle-request current-code-id)
                                 ((partial comidi/context path))
                                 comidi/routes->handler)
                             wrap-with-authorization-check

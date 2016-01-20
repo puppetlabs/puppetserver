@@ -3,6 +3,7 @@
            (clojure.lang IFn))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.services.request-handler.request-handler-core :as request-core]
             [puppetlabs.comidi :as comidi]
             [schema.core :as schema]))
 
@@ -19,7 +20,8 @@
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler]
+  [request-handler
+   get-code-id-fn]
   (comidi/routes
     (comidi/GET ["/node/" [#".*" :rest]] request
                    (request-handler request))
@@ -37,9 +39,11 @@
                    (request-handler request))
 
     (comidi/GET ["/catalog/" [#".*" :rest]] request
-                   (request-handler request))
+                   ((request-core/catalog-request-handler
+                     request-handler get-code-id-fn) request))
     (comidi/POST ["/catalog/" [#".*" :rest]] request
-                    (request-handler request))
+                    ((request-core/catalog-request-handler
+                      request-handler get-code-id-fn) request))
     (comidi/PUT ["/report/" [#".*" :rest]] request
                    (request-handler request))
     (comidi/GET ["/resource_type/" [#".*" :rest]] request
@@ -102,10 +106,11 @@
 
 (defn root-routes
   "Creates all of the web routes for the master."
-  [request-handler]
+  [request-handler
+   get-code-id-fn]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler))
+                    (v3-routes request-handler get-code-id-fn))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
