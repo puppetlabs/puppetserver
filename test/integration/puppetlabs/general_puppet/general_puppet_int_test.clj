@@ -4,6 +4,7 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.puppet-environments-int-test :refer
              [write-site-pp-file get-catalog catalog-contains?]]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
@@ -52,12 +53,15 @@
        (is (= "production" (get catalog "code_id"))))))
   (testing "code id is added to the request body for catalog requests"
     ; As we have set code-id-command to warn, the code id will
-    ; be the result of running `warn $environment`, which will
+    ; be the result of running `warn_echo_and_error $environment`, which will
     ; exit non-zero and return nil.
-    (bootstrap/with-puppetserver-running
-     app {:jruby-puppet
-          {:max-active-instances num-jrubies}
-          :versioned-code
-          {:code-id-command (script-path "warn")}}
-     (let [catalog (get-catalog)]
-       (is nil? (get catalog "code_id"))))))
+    (logging/with-test-logging
+     (bootstrap/with-puppetserver-running
+      app {:jruby-puppet
+           {:max-active-instances num-jrubies}
+           :versioned-code
+           {:code-id-command (script-path "warn_echo_and_error")}}
+      (let [catalog (get-catalog)]
+        (is nil? (get catalog "code_id"))
+        (is (logged? #"Non-zero exit code returned while calculating code id." :error))
+        (is (logged? #"Executed an external process which logged to STDERR: production" :warn)))))))
