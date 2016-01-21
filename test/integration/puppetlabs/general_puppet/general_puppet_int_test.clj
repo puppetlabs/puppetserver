@@ -7,14 +7,14 @@
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test")
+  (fs/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
 
-(def executables-dir
-  (fs/absolute-path "./dev-resources/puppetlabs/puppetserver/shell_utils_test"))
+(def common-resources-dir
+  (fs/absolute-path "./dev-resources/puppetlabs/common"))
 
 (defn script-path
   [script-name]
-  (str executables-dir "/" script-name))
+  (str common-resources-dir "/" script-name))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf
