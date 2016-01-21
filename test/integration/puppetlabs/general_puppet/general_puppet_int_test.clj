@@ -62,6 +62,6 @@
            :versioned-code
            {:code-id-command (script-path "warn_echo_and_error")}}
       (let [catalog (get-catalog)]
-        (is nil? (get catalog "code_id"))
+        (is (nil? (get catalog "code_id")))
         (is (logged? #"Non-zero exit code returned while calculating code id." :error))
         (is (logged? #"Executed an external process which logged to STDERR: production" :warn)))))))
