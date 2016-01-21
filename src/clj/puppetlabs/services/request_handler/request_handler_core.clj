@@ -331,8 +331,8 @@
   [req]
   ((:params (wrap-params-for-jruby req)) "environment"))
 
-(defn catalog-request-handler
-  "Specialized handler for catalogs. Adds code_id to the request before passing
+(defn wrap-with-code-id
+  "Specialized middleware for catalogs. Adds code_id to the request before passing
   it on to the specified handler."
   [handler get-code-id-fn]
   (fn [req]

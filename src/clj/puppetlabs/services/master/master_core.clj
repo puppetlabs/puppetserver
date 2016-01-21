@@ -39,10 +39,10 @@
                    (request-handler request))
 
     (comidi/GET ["/catalog/" [#".*" :rest]] request
-                   ((request-core/catalog-request-handler
+                   ((request-core/wrap-with-code-id
                      request-handler get-code-id-fn) request))
     (comidi/POST ["/catalog/" [#".*" :rest]] request
-                    ((request-core/catalog-request-handler
+                    ((request-core/wrap-with-code-id
                       request-handler get-code-id-fn) request))
     (comidi/PUT ["/report/" [#".*" :rest]] request
                    (request-handler request))
