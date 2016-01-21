@@ -329,7 +329,9 @@
   "Gets the environment from a request, after the params map has been populated
   via wrap-params-for-jruby."
   [req]
-  ((:params (wrap-params-for-jruby req)) "environment"))
+  (-> req
+      wrap-params-for-jruby
+      (get-in [:params "environment"])))
 
 (defn wrap-with-code-id
   "Specialized middleware for catalogs. Adds code_id to the request before passing
