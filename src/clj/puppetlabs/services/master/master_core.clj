@@ -22,40 +22,39 @@
    endpoints are handled separately by the CA service."
   [request-handler
    get-code-id-fn]
-  (comidi/routes
-    (comidi/GET ["/node/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/file_content/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
-                   (request-handler request))
+  (let [request-handler-with-code-id (request-core/wrap-with-code-id request-handler get-code-id-fn)]
+    (comidi/routes
+     (comidi/GET ["/node/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_content/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_metadata/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
+                  (request-handler request))
 
-    (comidi/GET ["/catalog/" [#".*" :rest]] request
-                   ((request-core/wrap-with-code-id
-                     request-handler get-code-id-fn) request))
-    (comidi/POST ["/catalog/" [#".*" :rest]] request
-                    ((request-core/wrap-with-code-id
-                      request-handler get-code-id-fn) request))
-    (comidi/PUT ["/report/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/resource_type/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/resource_types/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET ["/environment/" [#".*" :rest]] request
-                   (request-handler request))
-    (comidi/GET "/environments" request
-                   (request-handler request))
-    (comidi/GET ["/status/" [#".*" :rest]] request
-                   (request-handler request))))
+     (comidi/GET ["/catalog/" [#".*" :rest]] request
+                 (request-handler-with-code-id request))
+     (comidi/POST ["/catalog/" [#".*" :rest]] request
+                 (request-handler-with-code-id request))
+     (comidi/PUT ["/report/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/resource_type/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/resource_types/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/environment/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET "/environments" request
+                 (request-handler request))
+     (comidi/GET ["/status/" [#".*" :rest]] request
+                 (request-handler request)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
