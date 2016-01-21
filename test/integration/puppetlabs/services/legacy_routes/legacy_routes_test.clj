@@ -1,10 +1,8 @@
 (ns puppetlabs.services.legacy-routes.legacy-routes-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.master.master-service :as master-service]
             [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.request-handler.request-handler-service :as handler]
@@ -18,7 +16,8 @@
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]))
+            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
+            [puppetlabs.testutils :as testutils :refer [http-get]]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
@@ -26,12 +25,7 @@
 (use-fixtures
   :once
   schema-test/validate-schemas
-  (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
-
-(defn http-get [path]
-  (http-client/get
-    (str "https://localhost:8140" path)
-    bootstrap/request-options))
+  (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."

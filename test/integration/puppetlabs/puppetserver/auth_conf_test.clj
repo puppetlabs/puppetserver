@@ -9,6 +9,7 @@
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
             [ring.util.codec :as ring-codec])
   (:import (java.io StringWriter)))
@@ -19,12 +20,7 @@
 (use-fixtures
   :once
   schema-test/validate-schemas
-  (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
-
-(defn http-get [path]
-  (http-client/get
-    (str "https://localhost:8140/" path)
-    bootstrap/request-options))
+  (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 (deftest ^:integration legacy-auth-conf-used-when-legacy-auth-conf-true
   (testing "Authorization is done per legacy auth.conf when :use-legacy-auth-conf true"

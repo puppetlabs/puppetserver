@@ -1,6 +1,5 @@
 (ns puppetlabs.services.jruby.jruby-testutils
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
@@ -11,8 +10,7 @@
            (org.jruby.embed LocalContextScope)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (clojure.lang IFn)
-           (com.puppetlabs.puppetserver.jruby ScriptingContainer)
-           (java.io File)))
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -26,52 +24,6 @@
 (def var-dir "./target/master-var")
 (def run-dir "./target/master-var/run")
 (def log-dir "./target/master-var/log")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; JRubyPuppet Test fixtures
-
-(schema/defn ^:always-validate with-puppet-conf-files
-  "Test fixture; Accepts a map with the following characteristics:
-
-  * keys are simple filenames (no paths) that will be created in puppet's $confdir
-  * values are paths to a test-specific file that should be copied to puppet's confdir,
-    a la `$confdir/<key>`.
-
-  For each entry in the map, copies the files into $confdir, runs the test function,
-  and then deletes all of the files from $confdir.
-
-  Optionally accepts a second argument `dest-dir`, which specifies the location
-  of Puppet's $confdir.  If this argument is not provided, defaults to
-  `jruby-testutils/conf-dir`."
-  ([puppet-conf-files]
-   (with-puppet-conf-files puppet-conf-files conf-dir))
-  ([puppet-conf-files :- {schema/Str (schema/pred (some-fn string? #(instance? File %)))}
-    dest-dir :- schema/Str]
-
-   (let [target-paths (reduce
-                       (fn [acc filename]
-                         (assoc acc filename (fs/file dest-dir filename)))
-                       {}
-                       (keys puppet-conf-files))]
-     (fn [f]
-       (doseq [filename (keys puppet-conf-files)]
-         (fs/copy+ (get puppet-conf-files filename)
-                   (get target-paths filename)))
-       (try
-         (f)
-         (finally
-           (doseq [target-path (vals target-paths)]
-             (fs/delete target-path))))))))
-
-(defn with-puppet-conf
-  "This function returns a test fixture that will copy a specified puppet.conf
-  file into the provided location for testing, and then delete it after the
-  tests have completed. If no destination dir is provided then the puppet.conf
-  file is copied to the default location of './target/master-conf'."
-  ([puppet-conf-file]
-   (with-puppet-conf puppet-conf-file conf-dir))
-  ([puppet-conf-file dest-dir]
-   (with-puppet-conf-files {"puppet.conf" puppet-conf-file} dest-dir)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
