@@ -71,14 +71,14 @@
 (deftest code-id-injection-test
   (testing "code_id is calculated and added to the catalog request."
     (let [handler (fn ([req] {:request req}))
-          app     (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
-          resp    (app {:request-method :get
-                        :uri "/v3/catalog/bar"})]
+          app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
+          resp (app {:request-method :get
+                     :uri "/v3/catalog/bar"})]
       (is (= "foo-is-my-codeid" (get-in resp [:request :params "code_id"])))))
   (testing "code_id is not added to non-catalog requests"
     (let [handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
-          request     (partial app-request app)]
+          request (partial app-request app)]
       (doseq [[method paths]
               {:get ["node"
                      "environment"
