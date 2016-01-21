@@ -15,11 +15,14 @@
        (comidi/routes->handler)
        (wrap-middleware puppet-version))))
 
+(defn app-request
+  ([app path] (app-request app :get path))
+  ([app method path] (app (mock/request method path))))
+
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
         app         (build-ring-handler handler "1.2.3")
-        request     (fn r ([path] (r :get path))
-                          ([method path] (app (mock/request method path))))]
+        request     (partial app-request app)]
     (is (= 200 (:status (request "/v3/environments"))))
     (is (= 404 (:status (request "/foo"))))
     (is (= 404 (:status (request "/foo/bar"))))
@@ -75,8 +78,7 @@
   (testing "code_id is not added to non-catalog requests"
     (let [handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
-          request (fn r ([path] (r :get path))
-                    ([method path] (app (mock/request method path))))]
+          request     (partial app-request app)]
       (doseq [[method paths]
               {:get ["node"
                      "environment"
