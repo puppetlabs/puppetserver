@@ -1,21 +1,21 @@
 (ns puppetlabs.general-puppet.general-puppet-int-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.puppet-environments-int-test :refer
              [write-site-pp-file get-catalog catalog-contains?]]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test")
+  (fs/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
 
-(def executables-dir
-  (fs/absolute-path "./dev-resources/puppetlabs/puppetserver/shell_utils_test"))
+(def common-resources-dir
+  (fs/absolute-path "./dev-resources/puppetlabs/common"))
 
 (defn script-path
   [script-name]
-  (str executables-dir "/" script-name))
+  (str common-resources-dir "/" script-name))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf
@@ -38,3 +38,30 @@
      (testing "calling generate successfully executes shell command"
        (let [catalog (get-catalog)]
          (is (catalog-contains? catalog "Notify" "this command echoes a thing\n")))))))
+
+(deftest ^:integration code-id-request-test
+  (testing "code id is added to the request body for catalog requests"
+    ; As we have set code-id-command to echo, the code id will
+    ; be the result of running `echo $environment`, which will
+    ; be production here.
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}
+          :versioned-code
+          {:code-id-command (script-path "echo")}}
+     (let [catalog (get-catalog)]
+       (is (= "production" (get catalog "code_id"))))))
+  (testing "code id is added to the request body for catalog requests"
+    ; As we have set code-id-command to warn, the code id will
+    ; be the result of running `warn_echo_and_error $environment`, which will
+    ; exit non-zero and return nil.
+    (logging/with-test-logging
+     (bootstrap/with-puppetserver-running
+      app {:jruby-puppet
+           {:max-active-instances num-jrubies}
+           :versioned-code
+           {:code-id-command (script-path "warn_echo_and_error")}}
+      (let [catalog (get-catalog)]
+        (is (nil? (get catalog "code_id")))
+        (is (logged? #"Non-zero exit code returned while calculating code id." :error))
+        (is (logged? #"Executed an external process which logged to STDERR: production" :warn)))))))

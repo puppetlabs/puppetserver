@@ -3,7 +3,7 @@
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
             [me.raynes.fs :as fs]))
 
-(def test-resources (fs/absolute-path "./dev-resources/puppetlabs/puppetserver/shell_utils_test"))
+(def test-resources (fs/absolute-path "./dev-resources/puppetlabs/common"))
 
 (defn script-path
   [script-name]
