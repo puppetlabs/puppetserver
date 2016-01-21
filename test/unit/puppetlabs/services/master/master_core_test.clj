@@ -94,7 +94,7 @@
                :head ["file_bucket_file"]}
               path paths]
         (let [resp (request method (str "/v3/" path "/bar"))]
-          (is (= "wtf-no-code-id" (get-in resp [:request :params "code_id"] "wtf-no-code-id"))))))))
+          (is nil? (get-in resp [:request :params "code_id"])))))))
 
 (defn assert-failure-msg
   "Assert the message thrown by validate-memory-requirements! matches re"
