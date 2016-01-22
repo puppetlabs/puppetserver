@@ -77,6 +77,7 @@
          profiler/puppet-profiler-service
          event-service]
         (jruby-service-test-config 1)
+        (jruby-testutils/wait-for-jrubies app)
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
 
           (testing "locking events trigger event notifications"
