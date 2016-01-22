@@ -4,7 +4,7 @@
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.testutils :as testutils :refer
+    [puppetlabs.puppetserver.testutils :as testutils :refer
      [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]

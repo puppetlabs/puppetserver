@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.testutils :as testutils]
+            [puppetlabs.puppetserver.testutils :as testutils]
             [schema.core :as schema]))
 
 (use-fixtures :once

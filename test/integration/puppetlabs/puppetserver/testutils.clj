@@ -1,4 +1,4 @@
-(ns puppetlabs.testutils
+(ns puppetlabs.puppetserver.testutils
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [cheshire.core :as json]

@@ -24,7 +24,7 @@
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
-            [puppetlabs.testutils :as testutils :refer
+            [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]))
 
 (def test-resources-dir

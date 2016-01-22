@@ -3,7 +3,7 @@
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.testutils :as testutils]
+            [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]

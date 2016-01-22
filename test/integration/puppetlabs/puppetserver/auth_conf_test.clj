@@ -9,7 +9,7 @@
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.testutils :as testutils :refer [http-get]]
+            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
             [ring.util.codec :as ring-codec])
   (:import (java.io StringWriter)))

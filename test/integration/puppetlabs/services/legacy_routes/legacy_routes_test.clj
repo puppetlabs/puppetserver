@@ -17,7 +17,7 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
-            [puppetlabs.testutils :as testutils :refer [http-get]]))
+            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")

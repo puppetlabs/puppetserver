@@ -3,7 +3,7 @@
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
-            [puppetlabs.testutils :as testutils]))
+            [puppetlabs.puppetserver.testutils :as testutils]))
 
 (use-fixtures :once
               (testutils/with-puppet-conf

@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [me.raynes.fs :as fs]
-            [puppetlabs.testutils :as testutils]
+            [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]))
 
 (def test-resources-dir
