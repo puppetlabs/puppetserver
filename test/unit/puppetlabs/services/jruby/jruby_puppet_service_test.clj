@@ -38,13 +38,6 @@
   [jruby-puppet-pooled-service
    profiler/puppet-profiler-service])
 
-; This test will occasionally display a stacktrace. This may be due to
-; with-test-logging losing one of the threads. The stack trace looks like this:
-;
-; 2016-01-07 16:40:10,219 ERROR [clojure-agent-send-pool-4] [p.t.internal] shutdown-on-error triggered because of exception!
-; java.lang.IllegalStateException: Attempting to flush a pool that does not appear to have successfully initialized. Aborting.
-;
-; Don't worry, everything is fine.
 (deftest test-error-during-init
   (testing
    (str "If there is an exception while putting a JRubyPuppet instance in "
@@ -218,6 +211,14 @@
       app
       default-services
       (jruby-service-test-config 1)
+      ;; This test doesn't technically need to wait for jruby pool
+      ;; initialization to be done but if it doesn't, the pool initialization
+      ;; may continue on during the execution of a subsequent test and
+      ;; interfere with the next test's results.  This wait ensures that the
+      ;; pool initialization agent will be dormant by the time this test
+      ;; finishes.  It should be possible to remove this when SERVER-1087 is
+      ;; resolved.
+      (jruby-testutils/wait-for-jrubies app)
       (let [service (app/get-service app :JRubyPuppetService)
             context (services/service-context service)]
         (is (= (:borrow-timeout context) jruby-core/default-borrow-timeout))))))
@@ -230,6 +231,14 @@
         app
         default-services
         (jruby-service-test-config-with-timeouts connect-timeout socket-timeout)
+        ;; This test doesn't technically need to wait for jruby pool
+        ;; initialization to be done but if it doesn't, the pool initialization
+        ;; may continue on during the execution of a subsequent test and
+        ;; interfere with the next test's results.  This wait ensures that the
+        ;; pool initialization agent will be dormant by the time this test
+        ;; finishes.  It should be possible to remove this when SERVER-1087 is
+        ;; resolved.
+        (jruby-testutils/wait-for-jrubies app)
         (let [service          (app/get-service app :JRubyPuppetService)
               context          (services/service-context service)
               pool-context-cfg (get-in context [:pool-context :config])]
@@ -241,6 +250,14 @@
       app
       default-services
       (jruby-service-test-config 1)
+      ;; This test doesn't technically need to wait for jruby pool
+      ;; initialization to be done but if it doesn't, the pool initialization
+      ;; may continue on during the execution of a subsequent test and
+      ;; interfere with the next test's results.  This wait ensures that the
+      ;; pool initialization agent will be dormant by the time this test
+      ;; finishes.  It should be possible to remove this when SERVER-1087 is
+      ;; resolved.
+      (jruby-testutils/wait-for-jrubies app)
       (let [service          (app/get-service app :JRubyPuppetService)
             context          (services/service-context service)
             pool-context-cfg (get-in context [:pool-context :config])]
@@ -259,10 +276,18 @@
       (fs/touch facter-jar)
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        default-services
         (assoc-in (jruby-service-test-config 1)
           [:jruby-puppet :ruby-load-path]
           (into [] (cons (fs/absolute-path temp-dir)
                      jruby-testutils/ruby-load-path)))
+        ;; This test doesn't technically need to wait for jruby pool
+        ;; initialization to be done but if it doesn't, the pool initialization
+        ;; may continue on during the execution of a subsequent test and
+        ;; interfere with the next test's results.  This wait ensures that the
+        ;; pool initialization agent will be dormant by the time this test
+        ;; finishes.  It should be possible to remove this when SERVER-1087 is
+        ;; resolved.
+        (jruby-testutils/wait-for-jrubies app)
         (is (true? (some #(= facter-jar (.getFile %))
                      (.getURLs (ClassLoader/getSystemClassLoader)))))))))
