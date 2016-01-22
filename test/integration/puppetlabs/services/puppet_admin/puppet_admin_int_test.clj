@@ -4,7 +4,6 @@
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]

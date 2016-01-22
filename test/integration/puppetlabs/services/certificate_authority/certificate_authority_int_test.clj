@@ -2,7 +2,6 @@
   (:require
     [clojure.test :refer :all]
     [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils :refer
      [ca-cert localhost-cert localhost-key ssl-request-options http-get]]

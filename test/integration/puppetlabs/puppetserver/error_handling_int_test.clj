@@ -3,7 +3,6 @@
     [clojure.test :refer :all]
     [puppetlabs.trapperkeeper.testutils.logging :refer :all]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
