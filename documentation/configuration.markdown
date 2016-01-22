@@ -35,6 +35,8 @@ The default Logback configuration file is at `/etc/puppetserver/logback.xml` or 
 
 Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` or `/etc/logrotate.d/pe-puppetserver`.
 
+For some tips on advanced logging configuration, including information about configuring your system to send log data to logstash, see the [Advanced Logging Configuration](./config_logging_advanced.html) documentation.
+
 ### HTTP Traffic
 
 Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate file than the main log file. By default, this is located at `/var/log/puppetlabs/puppetserver/puppetserver-access.log` (open source releases) and `/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
