@@ -6,7 +6,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
-            [puppetlabs.services.protocols.master :as master]))
+            [puppetlabs.services.protocols.master :as master]
+            [puppetlabs.kitchensink.core :as ks]))
 
 (defservice master-service
   master/MasterService
@@ -50,7 +51,13 @@
                             wrap-with-authorization-check
                             use-legacy-auth-conf
                             puppet-version))]
-       (if (map? route-config)
+       ;; if the webrouting config uses the old-style config where
+       ;; there is a single key with a route-id, we need to deal with that
+       ;; for backward compat.  We have a hard-coded assumption that this route-id
+       ;; must be `master-routes`.  We should be able to remove this hack as soon
+       ;; as we are able to get rid of the legacy routes.
+       (if (and (map? route-config)
+                (= #{:master-routes} (ks/keyset route-config)))
          (add-ring-handler this ring-handler
                            {:route-id :master-routes})
          (add-ring-handler this ring-handler))))

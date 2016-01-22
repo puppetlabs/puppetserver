@@ -55,6 +55,15 @@
        ~config
        ~@body)))
 
+(defmacro with-puppetserver-running-with-config
+  [app config & body]
+  `(let [services# (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file)]
+     (tk-testutils/with-app-with-config
+      ~app
+      services#
+      ~config
+      ~@body)))
+
 (defmacro with-puppetserver-running
   [app config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]

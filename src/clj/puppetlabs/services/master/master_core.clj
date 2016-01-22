@@ -134,8 +134,16 @@
   [master-ns :- schema/Keyword
    config-route]
   (cond
-    (and (map? config-route) (contains? config-route :master-routes))
-    (:master-routes config-route)
+    ;; if the route config is a map, we need to determine whether it's the
+    ;; new-style multi-server config (where there will be a `:route` key and a
+    ;; `:server`, key), or the old style where there is a single key that is
+    ;; assumed to be our hard-coded route id (`:master-routes`).
+    ;; It should be possible to delete this hack (perhaps this entire function)
+    ;; when we remove support for legacy routes.
+    (and (map? config-route) (or (contains? config-route :route)
+                                 (contains? config-route :master-routes)))
+    (or (:route config-route)
+        (:master-routes config-route))
 
     (string? config-route)
     config-route
