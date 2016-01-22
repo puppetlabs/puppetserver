@@ -3,7 +3,8 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.puppetserver.testutils :as testutils :refer [ssl-request-options catalog-request-options get-catalog]]
+            [puppetlabs.puppetserver.testutils :as testutils :refer
+             [ssl-request-options catalog-request-options get-catalog]]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.kitchensink.core :as ks]
