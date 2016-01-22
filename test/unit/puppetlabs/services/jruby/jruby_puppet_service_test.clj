@@ -47,16 +47,16 @@
                    (fn [& _] (throw (Exception. "42")))]
        (let [got-expected-exception (atom false)]
          (logging/with-test-logging
-          (bootstrap/with-app-with-config
-           app
-           default-services
-           (jruby-service-test-config 1)
-           (try
-             (tk/run-app app)
-             (catch Exception e
-               (let [cause (stacktrace/root-cause e)]
-                 (is (= (.getMessage cause) "42"))
-                 (reset! got-expected-exception true))))))
+          (try
+            (bootstrap/with-app-with-config
+             app
+             default-services
+             (jruby-service-test-config 1)
+             (tk/run-app app))
+            (catch Exception e
+              (let [cause (stacktrace/root-cause e)]
+                (is (= (.getMessage cause) "42"))
+                (reset! got-expected-exception true)))))
          (is (true? @got-expected-exception)
              "Did not get expected exception."))))))
 
