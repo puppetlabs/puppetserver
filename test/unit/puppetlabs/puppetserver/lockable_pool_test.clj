@@ -508,17 +508,19 @@
           borrow-1 (.borrowItem pool)
           borrow-thread-started-2 (promise)
           borrow-thread-started-3? (promise)
+          lock-thread-locked? (promise)
           borrow-thread-2 (future
                            (deliver borrow-thread-started-2
                                     (Thread/currentThread))
+                           (timed-deref lock-thread-locked?)
                            (.borrowItem pool))
           borrow-thread-3 (future
                            (deliver borrow-thread-started-3? true)
+                           (timed-deref lock-thread-locked?)
                            (.borrowItem pool))
           borrow-thread-obj-2 @borrow-thread-started-2
           _ @borrow-thread-started-3?
           lock-thread-started? (promise)
-          lock-thread-locked? (promise)
           unlock? (promise)
           lock-thread (future
                        (deliver lock-thread-started? true)
@@ -547,7 +549,7 @@
       ;; held did not adversely affect the ability of the third borrow call
       ;; to return.
       (is (identical? borrow-1 (timed-deref borrow-thread-3))
-          (str "did not get back the same instance from the third borrow"
+          (str "did not get back the same instance from the third borrow "
                "attempt as was returned from the first borrow attempt")))))
 
 (deftest pool-can-borrow-after-borrow-timed-out-during-lock
@@ -557,14 +559,17 @@
           borrow-1 (.borrowItem pool)
           borrow-thread-started-2? (promise)
           borrow-thread-started-3? (promise)
+          lock-thread-locked? (promise)
           borrow-thread-2 (future
                            (deliver borrow-thread-started-2? true)
+                           (timed-deref lock-thread-locked?)
                            (.borrowItemWithTimeout
                             pool
                             50
                             TimeUnit/MILLISECONDS))
           borrow-thread-3 (future
                            (deliver borrow-thread-started-3? true)
+                           (timed-deref lock-thread-locked?)
                            (.borrowItemWithTimeout pool
                                                    1
                                                    TimeUnit/SECONDS))
@@ -572,7 +577,6 @@
           _ @borrow-thread-started-3?
           unlock? (promise)
           lock-thread-started? (promise)
-          lock-thread-locked? (promise)
           lock-thread (future
                        (deliver lock-thread-started? true)
                        (.lock pool)
