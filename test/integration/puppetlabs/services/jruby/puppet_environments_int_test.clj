@@ -66,6 +66,17 @@
       :body
       json/parse-string))
 
+(defn post-catalog
+  "Make an HTTP post request for a catalog."
+  []
+  (-> (http-client/post
+       "https://localhost:8140/puppet/v3/catalog/localhost"
+       (assoc-in (assoc catalog-request-options
+                   :body "environment=production")
+                 [:headers "Content-Type"] "application/x-www-form-urlencoded"))
+      :body
+      json/parse-string))
+
 (defn get-catalog-and-borrow-jruby
   "Gets a catalog, and then borrows a JRuby instance from a pool to ensure that
   a subsequent catalog request will be directed to a different JRuby.  Returns a
