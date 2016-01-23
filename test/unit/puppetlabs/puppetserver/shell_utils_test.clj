@@ -1,7 +1,8 @@
 (ns puppetlabs.puppetserver.shell-utils-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs])
+  (:import (java.io ByteArrayInputStream)))
 
 (def test-resources
   (fs/absolute-path
@@ -34,6 +35,19 @@
     (is (= 5 (:exit-code (sh-utils/execute-command
                           (script-path "num-args")
                           {:args ["a" "b" "c" "d" "e"]}))))))
+
+(deftest sets-env-correctly
+  (testing "sets environment variables correctly"
+    (is (= "foo\n" (:stdout (sh-utils/execute-command
+                             (script-path "echo_foo_env_var")
+                             {:env {"FOO" "foo"}}))))))
+
+(deftest pass-stdin-correctly
+  (testing "passes stdin stream to command"
+    (is (= "foo" (:stdout (sh-utils/execute-command
+                             (script-path "cat")
+                             {:in (ByteArrayInputStream.
+                                   (.getBytes "foo" "UTF-8"))}))))))
 
 (deftest throws-exception-for-non-absolute-path
   (testing "Commands must be given using absolute paths"

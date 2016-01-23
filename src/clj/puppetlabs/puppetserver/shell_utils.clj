@@ -1,8 +1,9 @@
 (ns puppetlabs.puppetserver.shell-utils
   (:require [schema.core :as schema]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [puppetlabs.kitchensink.core :as ks])
   (:import (com.puppetlabs.puppetserver ShellUtils)
-           (java.io IOException)))
+           (java.io IOException InputStream)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -14,7 +15,9 @@
    :stdout schema/Str})
 
 (def ExecutionOptions
-  {(schema/optional-key :args) [schema/Str]})
+  {(schema/optional-key :args) [schema/Str]
+   (schema/optional-key :env) (schema/maybe {schema/Str schema/Str})
+   (schema/optional-key :in) (schema/maybe InputStream)})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -38,7 +41,9 @@
               (format "The referenced command '%s' is not executable" command))))))
 
 (def default-execution-options
-  {:args []})
+  {:args []
+   :env nil
+   :in nil})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -52,10 +57,15 @@
    (execute-command command {}))
   ([command :- schema/Str
     opts :- ExecutionOptions]
-   (let [{:keys [args]} (merge default-execution-options opts)]
+   (let [{:keys [args env in]} (merge default-execution-options opts)]
      (validate-command! command)
      (try
-       (let [process (ShellUtils/executeCommand command (into-array String args))]
+       (let [process (ShellUtils/executeCommand
+                      command
+                      (into-array String args)
+                      (if env
+                        (ks/mapkeys name env))
+                      in)]
          {:exit-code (.getExitCode process)
           :stderr (.getError process)
           :stdout (.getOutput process)})

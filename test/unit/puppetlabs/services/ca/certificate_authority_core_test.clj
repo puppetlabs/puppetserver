@@ -29,8 +29,8 @@
   (str test-pems-dir "/" pem-file-name))
 
 (defn test-autosign-file
-   [autosign-file-name]
-   (str autosign-files-dir "/" autosign-file-name))
+  [autosign-file-name]
+  (fs/absolute-path (str autosign-files-dir "/" autosign-file-name)))
 
 (def localhost-cert
   (utils/pem->cert (test-pem-file "localhost-cert.pem")))
