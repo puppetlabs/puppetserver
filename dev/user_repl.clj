@@ -12,6 +12,7 @@
             [puppetlabs.services.puppet-admin.puppet-admin-service :refer [puppet-admin-service]]
             [puppetlabs.services.legacy-routes.legacy-routes-service :refer [legacy-routes-service]]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
+            [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
@@ -56,7 +57,8 @@
                certificate-authority-service
                puppet-admin-service
                legacy-routes-service
-               authorization-service]
+               authorization-service
+               versioned-code-service]
               ((resolve 'user/puppet-server-conf)))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
