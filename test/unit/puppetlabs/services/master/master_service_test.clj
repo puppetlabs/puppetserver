@@ -15,7 +15,6 @@
     [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
     [puppetlabs.services.ca.certificate-authority-disabled-service :refer [certificate-authority-disabled-service]]
     [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
-    [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
     [puppetlabs.dujour.version-check :as version-check]
     [me.raynes.fs :as fs]))
 
@@ -36,8 +35,7 @@
              request-handler-service
              profiler/puppet-profiler-service
              certificate-authority-service
-             authorization-service
-             versioned-code-service]
+             authorization-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
@@ -99,8 +97,7 @@
                request-handler-service
                profiler/puppet-profiler-service
                certificate-authority-disabled-service
-               authorization-service
-               versioned-code-service]
+               authorization-service]
 
               (-> (jruby-testutils/jruby-puppet-tk-config
                     (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))

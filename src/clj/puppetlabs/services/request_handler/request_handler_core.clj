@@ -325,22 +325,6 @@
       (.handleRequest (:jruby-instance request))
       response->map)))
 
-(defn get-environment-from-request
-  "Gets the environment from a request, after the params map has been populated
-  via wrap-params-for-jruby."
-  [req]
-  (-> req
-      wrap-params-for-jruby
-      (get-in [:params "environment"])))
-
-(defn wrap-with-code-id
-  "Specialized middleware for catalogs. Adds code_id to the request before passing
-  it on to the specified handler."
-  [handler get-code-id-fn]
-  (fn [req]
-    (let [req (assoc-in req [:params "code_id"] (get-code-id-fn (get-environment-from-request req)))]
-      (handler req))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
