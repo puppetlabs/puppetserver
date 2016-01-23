@@ -13,7 +13,8 @@
                                code-id-script (.getMessage %1))]
     (try
       (let [{:keys [exit-code stderr stdout]} (shell-utils/execute-command
-                                               code-id-script [environment])]
+                                               code-id-script
+                                               {:args [environment]})]
         ; TODO Decide what to do about normalizing/sanitizing output with respect to
         ; control characters and encodings
 

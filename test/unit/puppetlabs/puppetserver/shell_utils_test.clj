@@ -19,15 +19,21 @@
 
 (deftest returns-stdout-correctly
   (testing "echo should add content to stdout"
-    (is (= "foo\n" (:stdout (sh-utils/execute-command (script-path "echo") ["foo"]))))))
+    (is (= "foo\n" (:stdout (sh-utils/execute-command
+                             (script-path "echo")
+                             {:args ["foo"]}))))))
 
 (deftest returns-stderr-correctly
   (testing "echo can add content to stderr as well"
-    (is (= "bar\n" (:stderr (sh-utils/execute-command (script-path "warn") ["bar"]))))))
+    (is (= "bar\n" (:stderr (sh-utils/execute-command
+                             (script-path "warn")
+                             {:args ["bar"]}))))))
 
 (deftest pass-args-correctly
   (testing "passes the expected number of args to cmd"
-    (is (= 5 (:exit-code (sh-utils/execute-command (script-path "num-args") ["a" "b" "c" "d" "e"]))))))
+    (is (= 5 (:exit-code (sh-utils/execute-command
+                          (script-path "num-args")
+                          {:args ["a" "b" "c" "d" "e"]}))))))
 
 (deftest throws-exception-for-non-absolute-path
   (testing "Commands must be given using absolute paths"
@@ -39,4 +45,6 @@
 
 (deftest can-read-more-than-the-pipe-buffer
   (testing "Doesn't deadlock when reading more than the pipe can hold"
-    (is (= 128000 (count (:stdout (sh-utils/execute-command (script-path "gen-output") ["128000"])))))))
+    (is (= 128000 (count (:stdout (sh-utils/execute-command
+                                   (script-path "gen-output")
+                                   {:args ["128000"]})))))))

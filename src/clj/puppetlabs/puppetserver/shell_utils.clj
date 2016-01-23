@@ -13,6 +13,9 @@
    :stderr schema/Str
    :stdout schema/Str})
 
+(def ExecutionOptions
+  {(schema/optional-key :args) [schema/Str]})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -34,6 +37,9 @@
       (throw (IllegalArgumentException.
               (format "The referenced command '%s' is not executable" command))))))
 
+(def default-execution-options
+  {:args []})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -43,14 +49,18 @@
   command-arguments (vector of strings) and return the exit-code (integer),
   and the contents of the stdout (string) and stderr (string) for the command."
   ([command :- schema/Str]
-   (execute-command command []))
+   (execute-command command {}))
   ([command :- schema/Str
-    command-arguments :- [schema/Str]]
-   (validate-command! command)
-   (try
-     (let [process (ShellUtils/executeCommand command (into-array String command-arguments))]
-       {:exit-code (.getExitCode process)
-        :stderr (.getError process)
-        :stdout (.getOutput process)})
-     (catch IOException e
-       (throw (IllegalStateException. (format "Exception while executing '%s': %s" command (.getMessage e))))))))
+    opts :- ExecutionOptions]
+   (let [{:keys [args]} (merge default-execution-options opts)]
+     (validate-command! command)
+     (try
+       (let [process (ShellUtils/executeCommand command (into-array String args))]
+         {:exit-code (.getExitCode process)
+          :stderr (.getError process)
+          :stdout (.getOutput process)})
+       (catch IOException e
+         (throw (IllegalStateException.
+                 (format "Exception while executing '%s': %s"
+                         command
+                         (.getMessage e)))))))))
