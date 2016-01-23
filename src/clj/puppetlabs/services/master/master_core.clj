@@ -20,9 +20,10 @@
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler
+  [request-handler-fn
    get-code-id-fn]
-  (let [request-handler-with-code-id (request-core/wrap-with-code-id request-handler get-code-id-fn)]
+  (let [request-handler (comp request-handler-fn request-core/wrap-params-for-jruby)
+        request-handler-with-code-id (request-core/wrap-with-code-id request-handler-fn get-code-id-fn)]
     (comidi/routes
      (comidi/GET ["/node/" [#".*" :rest]] request
                  (request-handler request))

@@ -3,7 +3,7 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.puppet-environments-int-test :refer
-             [write-site-pp-file get-catalog catalog-contains?]]
+             [write-site-pp-file get-catalog catalog-contains? post-catalog]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [me.raynes.fs :as fs]))
 
@@ -50,6 +50,17 @@
           :versioned-code
           {:code-id-command (script-path "echo")}}
      (let [catalog (get-catalog)]
+       (is (= "production" (get catalog "code_id"))))))
+  (testing "code id is added to the request body for catalog requests"
+    ; As we have set code-id-command to echo, the code id will
+    ; be the result of running `echo $environment`, which will
+    ; be production here.
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}
+          :versioned-code
+          {:code-id-command (script-path "echo")}}
+     (let [catalog (post-catalog)]
        (is (= "production" (get catalog "code_id"))))))
   (testing "code id is added to the request body for catalog requests"
     ; As we have set code-id-command to warn, the code id will
