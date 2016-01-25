@@ -25,7 +25,10 @@
         request     (partial app-request app)]
     (is (= 200 (:status (request "/v3/environments"))))
     (is (= 200 (:status (request "/v3/catalog/bar?environment=environment1234"))))
-    (is (= 200 (:status (request :post "/v3/catalog/bar?environment=environment1234"))))
+    (is (= 200 (:status (app (-> {:request-method :post
+                                  :uri "/v3/catalog/bar"
+                                  :content-type "application/x-www-form-urlencoded"}
+                                 (mock/body "environment=environment1234"))))))
     (is (= 404 (:status (request "/foo"))))
     (is (= 404 (:status (request "/foo/bar"))))
     (doseq [[method paths]
