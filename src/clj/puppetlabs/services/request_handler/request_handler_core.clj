@@ -334,9 +334,9 @@
   (fn [request]
     (->> request
          wrap-params-for-jruby
+         (with-code-id current-code-id)
          (as-jruby-request config)
          clojure.walk/stringify-keys
-         (with-code-id current-code-id)
          make-request-mutable
          (.handleRequest (:jruby-instance request))
          response->map)))
