@@ -337,7 +337,7 @@
   (fn [req]
     (let [wrapped-request (wrap-params-for-jruby req)
           env (get-environment-from-request wrapped-request)]
-      (when-not env (throw (IllegalStateException.) "Environment is required in a catalog request."))
+      (when-not env (throw (IllegalStateException. "Environment is required in a catalog request.")))
       (handler (assoc-in wrapped-request [:params "code_id"] (get-code-id-fn env))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
