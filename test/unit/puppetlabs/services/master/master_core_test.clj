@@ -54,17 +54,19 @@
                 "is not overwritten, and simply passed through unmodified.")
     (let [handler     (fn ([req] {:request req}))
           app         (build-ring-handler handler "1.2.3")
-          resp        (app {:request-method :put
-                            :content-type   "application/octet-stream"
-                            :uri            "/v3/file_bucket_file/bar"})]
+          resp        (app (-> {:request-method :put
+                                :content-type "application/octet-stream"
+                                :uri "/v3/file_bucket_file/bar"}
+                               (mock/body "foo")))]
       (is (= "application/octet-stream"
              (get-in resp [:request :content-type])))
 
       (testing "Even if the client sends something insane, "
                "just pass it through and let the puppet code handle it."
-        (let [resp (app {:request-method :put
-                         :content-type   "something-crazy/for-content-type"
-                         :uri            "/v3/file_bucket_file/bar"})]
+        (let [resp (app (-> {:request-method :put
+                          :content-type "something-crazy/for-content-type"
+                          :uri "/v3/file_bucket_file/bar"}
+                            (mock/body "foo")))]
           (is (= "something-crazy/for-content-type"
                  (get-in resp [:request :content-type]))))))))
 
