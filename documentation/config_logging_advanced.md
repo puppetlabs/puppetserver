@@ -59,7 +59,7 @@ The above XML snippet will create an appender that will log to the specified JSO
 
 You could also comment out or remove the other `appender-ref`s, if you decided you *only* wanted to log the JSON format.
 
-#### Adding a JSON version of the Puppet Server HTTP Acces logs
+#### Adding a JSON version of the Puppet Server HTTP Access logs
 
 To add JSON logging for Puppet Server's HTTP requests, modify the `request-logging.xml` file.  Here's an example of adding a logback appender there:
 
