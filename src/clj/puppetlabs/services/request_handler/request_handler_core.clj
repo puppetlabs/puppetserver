@@ -321,12 +321,12 @@
 
 (defn with-code-id
   [current-code-id request]
-  (let [env (get-environment-from-request request)]
-    (when-not env
-      (throw (IllegalStateException. "Environment is required in a catalog request.")))
-    (if (:assoc-code-id request)
-      (assoc-in request [:params "code_id"] (current-code-id env))
-      request)))
+  (if (:assoc-code-id request)
+    (let [env (get-environment-from-request request)]
+      (when-not env
+        (throw (IllegalStateException. "Environment is required in a catalog request.")))
+      (assoc-in request [:params "code_id"] (current-code-id env)))
+    request))
 
 (defn jruby-request-handler
   "Build a request handler fn that processes a request using a JRubyPuppet instance"

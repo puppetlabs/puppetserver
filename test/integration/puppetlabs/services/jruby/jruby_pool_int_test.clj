@@ -19,6 +19,7 @@
             [puppetlabs.trapperkeeper.internal :as tk-internal]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.request-handler.request-handler-service :as handler-service]
+            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.protocols.request-handler :as handler]
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
@@ -325,7 +326,8 @@
     (ks-testutils/with-no-jvm-shutdown-hooks
      (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
                      handler-service/request-handler-service ps-config/puppet-server-config-service
-                     jetty9/jetty9-service]
+                     jetty9/jetty9-service
+                     vcs/versioned-code-service]
            config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config {:max-active-instances 2}))
                       (assoc-in [:webserver :port] 8081))
