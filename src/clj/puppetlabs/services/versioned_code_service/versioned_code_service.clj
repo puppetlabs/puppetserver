@@ -21,8 +21,6 @@
 
   (current-code-id
    [this environment]
-   "Returns the current code id (representing the freshest code) for the given environment.
-   In the case of a non-zero return from the code-id-command, returns nil."
    (if-let [code-id-script (get-in-config [:versioned-code :code-id-command])]
      (let [error-msg #(log/errorf (str "Calculating code id generated an error. "
                                        "Command executed: '%s', error generated: '%s'")

@@ -7,7 +7,6 @@
             [cheshire.core :as json]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
 
 (def test-resources-dir
@@ -58,11 +57,22 @@
      :as          :text}))
 
 (defn get-catalog
-  "Make an HTTP request to get a catalog."
+  "Make an HTTP get request for a catalog."
   []
   (-> (http-client/get
         "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
         catalog-request-options)
+      :body
+      json/parse-string))
+
+(defn post-catalog
+  "Make an HTTP post request for a catalog."
+  []
+  (-> (http-client/post
+       "https://localhost:8140/puppet/v3/catalog/localhost"
+       (assoc-in (assoc catalog-request-options
+                   :body "environment=production")
+                 [:headers "Content-Type"] "application/x-www-form-urlencoded"))
       :body
       json/parse-string))
 

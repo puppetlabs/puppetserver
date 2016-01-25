@@ -318,7 +318,6 @@
   [config]
   (fn [request]
     (->> request
-      wrap-params-for-jruby
       (as-jruby-request config)
       clojure.walk/stringify-keys
       make-request-mutable
@@ -326,11 +325,9 @@
       response->map)))
 
 (defn get-environment-from-request
-  "Gets the environment from a request, after the params map has been populated
-  via wrap-params-for-jruby."
+  "Gets the environment from a request."
   [req]
   (-> req
-      wrap-params-for-jruby
       (get-in [:params "environment"])))
 
 (defn wrap-with-code-id
@@ -338,8 +335,10 @@
   it on to the specified handler."
   [handler get-code-id-fn]
   (fn [req]
-    (let [req (assoc-in req [:params "code_id"] (get-code-id-fn (get-environment-from-request req)))]
-      (handler req))))
+    (let [wrapped-request (wrap-params-for-jruby req)
+          env (get-environment-from-request wrapped-request)]
+      (when-not env (throw (IllegalStateException. "Environment is required in a catalog request.")))
+      (handler (assoc-in wrapped-request [:params "code_id"] (get-code-id-fn env))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
