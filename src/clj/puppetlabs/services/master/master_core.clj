@@ -38,9 +38,9 @@
                 (request-handler request))
 
    (comidi/GET ["/catalog/" [#".*" :rest]] request
-               (request-handler (assoc request :assoc-code-id true)))
+               (request-handler (assoc request :include-code-id? true)))
    (comidi/POST ["/catalog/" [#".*" :rest]] request
-                (request-handler (assoc request :assoc-code-id true)))
+                (request-handler (assoc request :include-code-id? true)))
    (comidi/PUT ["/report/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/resource_type/" [#".*" :rest]] request

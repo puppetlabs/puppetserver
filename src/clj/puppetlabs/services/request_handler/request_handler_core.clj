@@ -320,8 +320,11 @@
       (get-in [:params "environment"])))
 
 (defn with-code-id
+  "Wraps the given request with the current-code-id, if it contains a
+  :include-code-id? key with a truthy value.  current-code-id is passed the
+  environment from the request from it is invoked."
   [current-code-id request]
-  (if (:assoc-code-id request)
+  (if (:include-code-id? request)
     (let [env (get-environment-from-request request)]
       (when-not env
         (throw (IllegalStateException. "Environment is required in a catalog request.")))

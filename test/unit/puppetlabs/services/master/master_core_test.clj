@@ -90,7 +90,7 @@
               path paths]
         (let [resp (request method (str "/v3/" path "/bar?environment=environment1234"))]
           (is (nil? (get-in resp [:request :params "code_id"])))
-          (is (nil? (get-in resp [:request :assoc-code-id]))))))))
+          (is (nil? (get-in resp [:request :include-code-id?]))))))))
 
 (defn assert-failure-msg
   "Assert the message thrown by validate-memory-requirements! matches re"
