@@ -27,7 +27,7 @@
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
-          master-route-handler (-> (master-core/root-routes handle-request (constantly nil))
+          master-route-handler (-> (master-core/root-routes handle-request)
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount

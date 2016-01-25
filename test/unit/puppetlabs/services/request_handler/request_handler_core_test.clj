@@ -276,14 +276,14 @@
     (logutils/with-test-logging
       (testing "slingshot bad requests translated to ring response"
         (let [bad-message "it's real bad"
-              request-handler (core/build-request-handler dummy-service {})]
+              request-handler (core/build-request-handler dummy-service {} (constantly nil))]
           (with-redefs [core/as-jruby-request (fn [_ _]
                                                 (core/throw-bad-request!
                                                   bad-message))]
             (let [response (request-handler {:body (StringReader. "blah")})]
               (is (= 400 (:status response)) "Unexpected response status")
               (is (= bad-message (:body response)) "Unexpected response body")))
-          (let [request-handler (core/build-request-handler dummy-service-with-timeout {})
+          (let [request-handler (core/build-request-handler dummy-service-with-timeout {} (constantly nil))
                 response (request-handler {:body (StringReader. "")})]
             (is (= 503 (:status response)) "Unexpected response status")
             (is (.startsWith

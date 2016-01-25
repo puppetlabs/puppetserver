@@ -313,39 +313,40 @@
       
       (f (assoc request :jruby-instance jruby-instance)))))
 
-(defn jruby-request-handler
-  "Build a request handler fn that processes a request using a JRubyPuppet instance"
-  [config]
-  (fn [request]
-    (->> request
-      (as-jruby-request config)
-      clojure.walk/stringify-keys
-      make-request-mutable
-      (.handleRequest (:jruby-instance request))
-      response->map)))
-
 (defn get-environment-from-request
   "Gets the environment from a request."
   [req]
   (-> req
       (get-in [:params "environment"])))
 
-(defn wrap-with-code-id
-  "Specialized middleware for catalogs. Adds code_id to the request before passing
-  it on to the specified handler."
-  [handler get-code-id-fn]
-  (fn [req]
-    (let [wrapped-request (wrap-params-for-jruby req)
-          env (get-environment-from-request wrapped-request)]
-      (when-not env (throw (IllegalStateException. "Environment is required in a catalog request.")))
-      (handler (assoc-in wrapped-request [:params "code_id"] (get-code-id-fn env))))))
+(defn with-code-id
+  [current-code-id request]
+  (let [env (get-environment-from-request request)]
+    (when-not env
+      (throw (IllegalStateException. "Environment is required in a catalog request.")))
+    (if (:assoc-code-id request)
+      (assoc-in request [:params "code_id"] (current-code-id env))
+      request)))
+
+(defn jruby-request-handler
+  "Build a request handler fn that processes a request using a JRubyPuppet instance"
+  [config current-code-id]
+  (fn [request]
+    (->> request
+         wrap-params-for-jruby
+         (as-jruby-request config)
+         clojure.walk/stringify-keys
+         (with-code-id current-code-id)
+         make-request-mutable
+         (.handleRequest (:jruby-instance request))
+         response->map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn build-request-handler
   "Build the main request handler fn for JRuby requests."
-  [jruby-service config]
-  (-> (jruby-request-handler config)
-    (wrap-with-jruby-instance jruby-service)
-    wrap-with-error-handling))
+  [jruby-service config current-code-id]
+  (-> (jruby-request-handler config current-code-id)
+      (wrap-with-jruby-instance jruby-service)
+      wrap-with-error-handling))

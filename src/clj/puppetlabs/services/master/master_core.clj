@@ -20,42 +20,39 @@
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler-fn
-   get-code-id-fn]
-  (let [request-handler (comp request-handler-fn request-core/wrap-params-for-jruby)
-        request-handler-with-code-id (request-core/wrap-with-code-id request-handler-fn get-code-id-fn)]
-    (comidi/routes
-     (comidi/GET ["/node/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/file_content/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/file_metadata/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
-                  (request-handler request))
+  [request-handler]
+  (comidi/routes
+   (comidi/GET ["/node/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_content/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_metadata/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
+                (request-handler request))
 
-     (comidi/GET ["/catalog/" [#".*" :rest]] request
-                 (request-handler-with-code-id request))
-     (comidi/POST ["/catalog/" [#".*" :rest]] request
-                 (request-handler-with-code-id request))
-     (comidi/PUT ["/report/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/resource_type/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/resource_types/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET ["/environment/" [#".*" :rest]] request
-                 (request-handler request))
-     (comidi/GET "/environments" request
-                 (request-handler request))
-     (comidi/GET ["/status/" [#".*" :rest]] request
-                 (request-handler request)))))
+   (comidi/GET ["/catalog/" [#".*" :rest]] request
+               (request-handler (assoc request :assoc-code-id true)))
+   (comidi/POST ["/catalog/" [#".*" :rest]] request
+                (request-handler (assoc request :assoc-code-id true)))
+   (comidi/PUT ["/report/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/resource_type/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/resource_types/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/environment/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET "/environments" request
+               (request-handler request))
+   (comidi/GET ["/status/" [#".*" :rest]] request
+               (request-handler request))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -106,11 +103,10 @@
 
 (defn root-routes
   "Creates all of the web routes for the master."
-  [request-handler
-   get-code-id-fn]
+  [request-handler]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler get-code-id-fn))
+                    (v3-routes request-handler))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
