@@ -24,11 +24,12 @@
         app         (build-ring-handler handler "1.2.3")
         request     (partial app-request app)]
     (is (= 200 (:status (request "/v3/environments"))))
+    (is (= 200 (:status (request "/v3/catalog/bar?environment=environment1234"))))
+    (is (= 200 (:status (request :post "/v3/catalog/bar?environment=environment1234"))))
     (is (= 404 (:status (request "/foo"))))
     (is (= 404 (:status (request "/foo/bar"))))
     (doseq [[method paths]
-            {:get ["catalog"
-                   "node"
+            {:get ["node"
                    "environment"
                    "file_content"
                    "file_metadatas"
@@ -37,7 +38,6 @@
                    "resource_type"
                    "resource_types"
                    "status"]
-             :post ["catalog"]
              :put ["file_bucket_file"
                    "report"]
              :head ["file_bucket_file"]}
@@ -72,8 +72,7 @@
   (testing "code_id is calculated and added to the catalog request."
     (let [handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
-          resp (app {:request-method :get
-                     :uri "/v3/catalog/bar"})]
+          resp (app-request app "/v3/catalog/bar?environment=environment1234")]
       (is (= "foo-is-my-codeid" (get-in resp [:request :params "code_id"])))))
   (testing "code_id is not added to non-catalog requests"
     (let [handler (fn ([req] {:request req}))
@@ -93,7 +92,7 @@
                      "report"]
                :head ["file_bucket_file"]}
               path paths]
-        (let [resp (request method (str "/v3/" path "/bar"))]
+        (let [resp (request method (str "/v3/" path "/bar?environment=environment1234"))]
           (is (nil? (get-in resp [:request :params "code_id"]))))))))
 
 (defn assert-failure-msg
