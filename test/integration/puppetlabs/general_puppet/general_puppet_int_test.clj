@@ -10,12 +10,9 @@
 (def test-resources-dir
   (fs/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
 
-(def common-resources-dir
-  (fs/absolute-path "./dev-resources/puppetlabs/common"))
-
 (defn script-path
   [script-name]
-  (str common-resources-dir "/" script-name))
+  (str test-resources-dir "/" script-name))
 
 (use-fixtures :once
               (jruby-testutils/with-puppet-conf

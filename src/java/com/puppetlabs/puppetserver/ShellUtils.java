@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Map;
 
 public class ShellUtils {
 
@@ -24,12 +26,14 @@ public class ShellUtils {
      * @throws InterruptedException
      * @throws IOException
      */
-    private static ExecutionResult executeExecutor(CommandLine commandLine)
+    private static ExecutionResult executeExecutor(CommandLine commandLine,
+                                                   Map<String, String> env,
+                                                   InputStream in)
             throws InterruptedException, IOException {
         DefaultExecutor executor = new DefaultExecutor();
         ByteArrayOutputStream errStream = new ByteArrayOutputStream();
         ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream);
+        PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream, in);
 
         // Don't throw exception on non-zero exit code
         executor.setExitValues(null);
@@ -37,7 +41,7 @@ public class ShellUtils {
         // Set up the handlers
         executor.setStreamHandler(streamHandler);
 
-        Integer exitCode = executor.execute(commandLine);
+        Integer exitCode = executor.execute(commandLine, env);
 
         String stdErr = errStream.toString();
 
@@ -64,7 +68,7 @@ public class ShellUtils {
             throws InterruptedException, IOException {
         CommandLine commandLine = CommandLine.parse(command);
 
-        return executeExecutor(commandLine);
+        return executeExecutor(commandLine, null, null);
     }
 
     /**
@@ -80,9 +84,31 @@ public class ShellUtils {
      */
     public static ExecutionResult executeCommand(String command, String[] arguments)
             throws InterruptedException, IOException {
+        return executeCommand(command, arguments, null, null);
+    }
+
+    /**
+     * Executes the given command in a separate process.
+     *
+     * @param command the command [String] to execute.
+     * @param arguments arguments [Array of Strings] to add to the command being executed
+     * @param env environment variables [Map<String, String>] to expose to the command.
+     *            If null, use system environment.
+     * @param in optional stream to use as STDIN [InputStream]; may be null
+     *
+     * @return An ExecutionResult with output[String], error[String], and
+     *                 the exit code[Integer] of the process
+     *
+     * @throws InterruptedException
+     * @throws IOException
+     */
+
+    public static ExecutionResult executeCommand(String command, String[] arguments,
+                                                 Map<String, String> env, InputStream in)
+            throws InterruptedException, IOException {
         CommandLine commandLine = new CommandLine(command);
         commandLine.addArguments(arguments, false);
 
-        return executeExecutor(commandLine);
+        return executeExecutor(commandLine, env, in);
     }
 }
