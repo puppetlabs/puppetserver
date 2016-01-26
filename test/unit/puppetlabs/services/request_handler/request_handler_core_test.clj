@@ -1,6 +1,7 @@
 (ns puppetlabs.services.request-handler.request-handler-core-test
   (:import (java.io StringReader ByteArrayInputStream))
   (:require [clojure.test :refer :all]
+            [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
             [ring.util.codec :as ring-codec]
             [puppetlabs.services.request-handler.request-handler-core :as core]
@@ -8,7 +9,23 @@
             [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services :refer [defservice service] :as svcs]
+            [puppetlabs.services.jruby.puppet-environments-int-test :as jruby-int-test]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+            [puppetlabs.puppetserver.bootstrap-testutils :as jruby-bootstrap]
+            [puppetlabs.services.protocols.versioned-code :as vc]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
+            [puppetlabs.services.request-handler.request-handler-service :as handler-service]
+            [puppetlabs.services.config.puppet-server-config-service :as ps-config]
+            [puppetlabs.services.master.master-service :as master-service]
+            [puppetlabs.services.ca.certificate-authority-service :as ca-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as routing-service]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.puppetserver.testutils :as testutils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -259,6 +276,47 @@
                     (-> (str test-resources-dir "/master-with-all-cas.pem")
                         slurp
                         ring-codec/url-encode))))))
+
+(deftest ^:integration test-jruby-pool-not-full-during-code-id-generation
+   (testing "A jruby instance is held while code id is generated"
+     ; Okay, some prose to describe the test at hand.
+     ; Here we are validating that the code id command is run by the same jruby
+     ; instance that will be handling the current request. To do this we stand
+     ; up most of the stack, and replace the current-code-id function with a
+     ; variety that we can control entry into and exit from. This allows us
+     ; to make a request, and then while the request is in progress, make some
+     ; assertions about the pool state, and then finish the request.
+     (testutils/with-puppet-conf-files
+      {"puppet.conf" (fs/file test-resources-dir "puppet.conf")}
+      jruby-bootstrap/master-conf-dir
+      (let [first-promise (promise)
+            second-promise (promise)
+            custom-vcs (service vc/VersionedCodeService
+                         []
+                         (current-code-id [_ _]
+                                          (deliver first-promise true)
+                                          (deref second-promise 5000 false)))
+            services [master-service/master-service
+                      jruby-service/jruby-puppet-pooled-service
+                      profiler/puppet-profiler-service
+                      handler-service/request-handler-service
+                      ps-config/puppet-server-config-service
+                      jetty9/jetty9-service
+                      ca-service/certificate-authority-service
+                      authorization-service/authorization-service
+                      routing-service/webrouting-service
+                      custom-vcs]]
+        (jruby-bootstrap/with-puppetserver-running-with-services
+         app services {:jruby-puppet {:max-active-instances 1}}
+         (jruby-testutils/wait-for-jrubies app)
+         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+           (future (testutils/get-catalog))
+           (is (deref first-promise 5000 false))
+           ; Because we are blocking inside current-code-id, which happens to be
+           ; used during a jruby request, we can assert that there will be no
+           ; jruby instances left in the pool.
+           (is (zero? (jruby-protocol/free-instance-count jruby-service)))
+           (deliver second-promise true)))))))
 
 (deftest request-handler-test
   (let [dummy-service (reify jruby-protocol/JRubyPuppetService
