@@ -3,17 +3,16 @@
             [puppetlabs.services.master.master-core :refer :all]
             [ring.mock.request :as mock]
             [schema.test :as schema-test]
-            [puppetlabs.comidi :as comidi]))
+            [puppetlabs.comidi :as comidi]
+            [puppetlabs.services.request-handler.request-handler-core :as request-handler-core]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
 (defn build-ring-handler
-  ([request-handler puppet-version]
-   (build-ring-handler request-handler puppet-version (constantly nil)))
-  ([request-handler puppet-version code-id-fn]
-   (-> (root-routes request-handler code-id-fn)
-       (comidi/routes->handler)
-       (wrap-middleware puppet-version))))
+  [request-handler puppet-version]
+  (-> (root-routes request-handler)
+      (comidi/routes->handler)
+      (wrap-middleware puppet-version)))
 
 (defn app-request
   ([app path] (app-request app :get path))
@@ -74,14 +73,9 @@
                  (get-in resp [:request :content-type]))))))))
 
 (deftest code-id-injection-test
-  (testing "code_id is calculated and added to the catalog request."
-    (let [handler (fn ([req] {:request req}))
-          app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
-          resp (app-request app "/v3/catalog/bar?environment=environment1234")]
-      (is (= "foo-is-my-codeid" (get-in resp [:request :params "code_id"])))))
   (testing "code_id is not added to non-catalog requests"
     (let [handler (fn ([req] {:request req}))
-          app (build-ring-handler handler "1.2.3" (constantly "foo-is-my-codeid"))
+          app (build-ring-handler handler "1.2.3")
           request (partial app-request app)]
       (doseq [[method paths]
               {:get ["node"
@@ -98,7 +92,8 @@
                :head ["file_bucket_file"]}
               path paths]
         (let [resp (request method (str "/v3/" path "/bar?environment=environment1234"))]
-          (is (nil? (get-in resp [:request :params "code_id"]))))))))
+          (is (nil? (get-in resp [:request :params "code_id"])))
+          (is (nil? (get-in resp [:request :include-code-id?]))))))))
 
 (defn assert-failure-msg
   "Assert the message thrown by validate-memory-requirements! matches re"
