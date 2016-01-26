@@ -3,14 +3,38 @@
             [clojure.tools.logging :as log]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [clojure.string :as string])
-  (:import (java.io IOException)))
+  (:import (java.io IOException InputStream)
+           (org.apache.commons.io IOUtils)))
+
+(schema/defn ^:always-validate
+  success-with-stderr-msg :- schema/Str
+  [cmd :- schema/Str
+   stderr :- schema/Str]
+  (format "Error output generated while running '%s'. stderr: '%s'"
+          cmd stderr))
+
+(schema/defn ^:always-validate
+  nonzero-msg :- schema/Str
+  [cmd :- schema/Str
+   exit-code :- schema/Int
+   stdout :- schema/Str
+   stderr :- schema/Str]
+  (format (str "Non-zero exit code returned while running '%s'. "
+               "exit-code: '%d', stdout: '%s', stderr: '%s'")
+          cmd exit-code stdout stderr))
+
+(schema/defn ^:always-validate
+  execution-error-msg :- schema/Str
+  [cmd :- schema/Str
+   e :- Exception]
+  (format (str "Running script generated an error. "
+               "Command executed: '%s', error generated: '%s'")
+              cmd (.getMessage e)))
 
 (schema/defn ^:always-validate execute-code-id-script! :- (schema/maybe schema/Str)
   [code-id-script :- schema/Str
    environment :- schema/Str]
-  (let [error-msg #(log/errorf (str "Calculating code id generated an error. "
-                                    "Command executed: '%s', error generated: '%s'")
-                               code-id-script (.getMessage %1))]
+  (let [log-execution-error! #(log/error (execution-error-msg code-id-script %))]
     (try
       (let [{:keys [exit-code stderr stdout]} (shell-utils/execute-command
                                                code-id-script
@@ -27,20 +51,44 @@
         (if (zero? exit-code)
           (do
             (when-not (string/blank? stderr)
-              (log/errorf (str "Error output generated while calculating code id. "
-                               "Command executed: '%s', stderr: '%s'") code-id-script stderr))
+              (log/error (success-with-stderr-msg code-id-script stderr)))
             (string/trim-newline stdout))
           (do
-            (log/errorf (str "Non-zero exit code returned while calculating code id. "
-                             "Command executed: '%s', exit-code '%d', stdout: '%s', stderr: '%s'")
-                        code-id-script exit-code stdout stderr)
+            (log/error (nonzero-msg code-id-script exit-code stdout stderr))
             nil)))
       (catch IllegalArgumentException e
-        (error-msg e)
-        nil)
+        (log-execution-error! e))
       (catch IOException e
-        (error-msg e)
-        nil)
+        (log-execution-error! e))
       (catch InterruptedException e
-        (error-msg e)
-        nil))))
+        (log-execution-error! e)))))
+
+(schema/defn ^:always-validate
+  execute-code-content-script! :- InputStream
+  "Given a string path to an executable script and the environment, code-id, and
+  file-path of a desired revision of a file, returns that file as a stream. Does
+  no exception catching: Being unable to compute code content is considered a
+  fatal error and should be handled by calling code appropriately."
+  [code-content-script :- schema/Str
+   environment :- schema/Str
+   code-id :- schema/Str
+   file-path :- schema/Str]
+  (let [throw-execution-error! (fn [e]
+                                 (throw (IllegalStateException.
+                                         (execution-error-msg code-content-script e))))]
+    (try
+      (let [{:keys [stdout stderr exit-code]} (shell-utils/execute-command-streamed
+                                               code-content-script
+                                               {:args [environment code-id file-path]})]
+        (if (zero? exit-code)
+          (do
+            (when-not (string/blank? stderr)
+              (log/error (success-with-stderr-msg code-content-script stderr)))
+            stdout)
+          (throw (IllegalStateException. (nonzero-msg code-content-script exit-code (IOUtils/toString stdout "UTF-8") stderr)))))
+      (catch IllegalArgumentException e
+        (throw-execution-error! e))
+      (catch IOException e
+        (throw-execution-error! e))
+      (catch InterruptedException e
+        (throw-execution-error! e)))))

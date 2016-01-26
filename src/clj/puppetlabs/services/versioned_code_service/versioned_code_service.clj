@@ -15,10 +15,20 @@
    [this context]
    (if (nil? (get-in-config [:versioned-code :code-id-command]))
      (log/info "No code-id-command set for versioned-code-service. Code-id will be nil."))
+   (if (nil? (get-in-config [:versioned-code :code-content-command]))
+     (log/info "No code-content-command set for versioned-code-service. Attempting to fetch code content will fail."))
    context)
 
   (current-code-id
    [this environment]
    (if-let [code-id-script (get-in-config [:versioned-code :code-id-command])]
      (vc-core/execute-code-id-script! code-id-script environment)
-     nil)))
+     nil))
+
+  (get-code-content
+   [this environment code-id file-path]
+   (if-let [code-content-script (get-in-config [:versioned-code :code-content-command])]
+     (vc-core/execute-code-content-script!
+       code-content-script environment code-id file-path)
+     (throw (IllegalStateException.
+             "Cannot fetch code content without :code-content-command being set.")))))

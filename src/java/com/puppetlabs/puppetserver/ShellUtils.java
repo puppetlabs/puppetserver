@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
@@ -32,8 +33,14 @@ public class ShellUtils {
             throws InterruptedException, IOException {
         DefaultExecutor executor = new DefaultExecutor();
         ByteArrayOutputStream errStream = new ByteArrayOutputStream();
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream, in);
+        // TODO the nice thing here would be to set up a piped stream
+        // arrangement like:
+        //    PipedOutputStream stdoutOutputStream = new PipedOutputStream();
+        //    PipedInputStream stdoutInputStream = new PipedInputStream(stdoutOutputStream);
+        // but this requires that the input stream be read on a different thread
+        // than this one. this is currently out of scope.
+        ByteArrayOutputStream stdoutOutputStream = new ByteArrayOutputStream();
+        PumpStreamHandler streamHandler = new PumpStreamHandler(stdoutOutputStream, errStream, in);
 
         // Don't throw exception on non-zero exit code
         executor.setExitValues(null);
@@ -43,13 +50,14 @@ public class ShellUtils {
 
         Integer exitCode = executor.execute(commandLine, env);
 
+        ByteArrayInputStream stdoutInputStream = new ByteArrayInputStream(stdoutOutputStream.toByteArray());
         String stdErr = errStream.toString();
 
         if ( ! stdErr.isEmpty() ) {
             log.warn("Executed an external process which logged to STDERR: " + stdErr);
         }
 
-        return new ExecutionResult(outStream.toString(), stdErr, exitCode);
+        return new ExecutionResult(stdoutInputStream, stdErr, exitCode);
     }
 
     /**
