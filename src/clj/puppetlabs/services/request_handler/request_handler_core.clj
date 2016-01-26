@@ -285,3 +285,14 @@
   (-> (jruby-request-handler config current-code-id)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
+
+(defn static-file-content-request-handler
+  "Build the main request handler for the /static_file_content endpoint"
+  [get-code-content]
+  (fn [req]
+    (let [environment (get-in req [:params "environment"])
+          code-id (get-in req [:params "code-id"])
+          file-path (get-in req [:params :rest])
+          content-stream (get-code-content environment code-id file-path)]
+      {:status 200
+       :body content-stream})))

@@ -9,7 +9,8 @@
             [ring.util.response :as rr]
             [schema.core :as schema]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]
+            [puppetlabs.services.request-handler.request-handler-core :as request-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -86,8 +87,9 @@
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler jruby-service]
-  (let [environment-class-handler (environment-class-handler jruby-service)]
+  [request-handler jruby-service get-code-content-fn]
+  (let [environment-class-handler (environment-class-handler jruby-service)
+        static-file-content-handler (request-core/static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
      (comidi/GET ["/node/" [#".*" :rest]] request
                  (request-handler request))
@@ -122,7 +124,9 @@
                  (request-handler request))
 
      (comidi/GET ["/environment_classes" [#".*" :rest]] request
-                 (environment-class-handler request)))))
+                 (environment-class-handler request))
+     (comidi/GET ["/static_file_content/" [#".*" :rest]] request
+                 (static-file-content-handler request)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -173,10 +177,12 @@
 
 (defn root-routes
   "Creates all of the web routes for the master."
-  [request-handler jruby-service]
+  [request-handler jruby-service get-code-content-fn]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler jruby-service))))
+                    (v3-routes request-handler
+                               jruby-service
+                               get-code-content-fn))))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
