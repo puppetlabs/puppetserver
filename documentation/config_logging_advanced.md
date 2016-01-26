@@ -37,16 +37,11 @@ To configure Puppet Server to log its main logs to a second log file, in JSON fo
             <maxHistory>5</maxHistory>
         </rollingPolicy>
 
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-            <fieldNames>
-                <timestamp>timegenerated</timestamp>
-                <message>logmsg</message>
-            </fieldNames>
-        </encoder>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
     </appender>
 ```
 
-Logback writes logs using components called [appenders](http://logback.qos.ch/manual/appenders.html).  Note that the above configuration includes the `RollingFileAppender`, to rotate the log files and ensure they don't fill up your disk.  Also, note that the `fieldNames` section above is optional, and in this case is restricting the number of fields that will be included in the JSON to two fields per log entry.  There are additional fields available, and if you omitted the `fieldNames` section you would end up with several additional fields per log entry by default.  For more info see the [Logstash Logback Encoder Docs](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#loggingevent-fields).
+Logback writes logs using components called [appenders](http://logback.qos.ch/manual/appenders.html).  Note that the above configuration includes the `RollingFileAppender`, to rotate the log files and ensure they don't fill up your disk.  Also, note that there are a lot of configuration options available for the `LogstashEncoder` above, including the ability to modify the list of fields that you wish to include, or give them different field names.  For more info see the [Logstash Logback Encoder Docs](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#loggingevent-fields).
 
 The above XML snippet will create an appender that will log to the specified JSON file when active.  In order to activate the appender, you also need to add an `appender-ref`, e.g. in the `<root>` section of your `logback.xml`:
 
@@ -78,7 +73,7 @@ To add JSON logging for Puppet Server's HTTP requests, modify the `request-loggi
               <pattern>
                   <pattern>
                     {
-                      "timegenerated":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
+                      "@timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
                       "clientip":"%remoteIP",
                       "auth":"%user",
                       "verb":"%requestMethod",
@@ -122,9 +117,8 @@ You also need to deal with the `appender-ref`s in this config file as well, e.g.
 
 ### Sending the JSON data to Logstash
 
-If you've followed the steps above, you now have Puppet Server configured to log to files on disk in a JSON format.  Puppet Server does not have any built-in capabilities for streaming this JSON data to an external system such as Logstash, but there are many third-party tools available that can be configured to do this.  Here are a few for you to consider:
+If you've followed the steps above, you now have Puppet Server configured to log to files on disk in a JSON format.  The next step is to configure your system to send the logs to logstash (or another external logging system).  There are several different ways to approach this; here are a few for you to consider:
 
+* Configure logback to send the data to logstash directly, from within Puppet Server.  Checkout the logstash-logback-encoder docs on how to send the logs via [TCP](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#tcp) or [UDP](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#udp).  Note that TCP comes with the risk of bottlenecking Puppet Server if your logstash system is backed up, and UDP comes with the risk of silently dropping log messages.
 * [Filebeat](https://www.elastic.co/products/beats/filebeat) is Elastic's latest tool for shipping log data to logstash.
 * [Logstash Forwarder](https://github.com/elastic/logstash-forwarder) is an earlier tool that Elastic provided that has some of the same capabilities.
-
-
