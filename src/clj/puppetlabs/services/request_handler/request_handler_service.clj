@@ -8,7 +8,8 @@
 (tk/defservice request-handler-service
   handler/RequestHandlerService
   [[:PuppetServerConfigService get-config]
-   [:VersionedCodeService current-code-id]]
+   [:VersionedCodeService current-code-id]
+   [:JRubyPuppetService]]
   (init [this context]
     (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
           config (get-config)]
