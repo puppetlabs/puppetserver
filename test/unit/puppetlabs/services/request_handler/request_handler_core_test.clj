@@ -1,13 +1,13 @@
 (ns puppetlabs.services.request-handler.request-handler-core-test
   (:import (java.io StringReader ByteArrayInputStream))
-  (:require [puppetlabs.services.request-handler.request-handler-core :as core]
+  (:require [clojure.test :refer :all]
+            [slingshot.test :refer :all]
+            [ring.util.codec :as ring-codec]
+            [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [clojure.test :refer :all]
-            [ring.util.codec :as ring-codec]
-            [slingshot.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
