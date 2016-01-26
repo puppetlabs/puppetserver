@@ -8,7 +8,7 @@
             [clojure.test :refer :all]
             [ring.util.codec :as ring-codec]
             [slingshot.test :refer :all]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -261,13 +261,13 @@
                         ring-codec/url-encode))))))
 
 (deftest request-handler-test
-  (let [dummy-service (reify jruby/JRubyPuppetService
+  (let [dummy-service (reify jruby-protocol/JRubyPuppetService
                         (borrow-instance [_ _] {})
                         (return-instance [_ _ _])
                         (free-instance-count [_])
                         (mark-all-environments-expired! [_])
                         (flush-jruby-pool! [_]))
-        dummy-service-with-timeout (reify jruby/JRubyPuppetService
+        dummy-service-with-timeout (reify jruby-protocol/JRubyPuppetService
                                      (borrow-instance [_ _] nil)
                                      (return-instance [_ _ _])
                                      (free-instance-count [_])
