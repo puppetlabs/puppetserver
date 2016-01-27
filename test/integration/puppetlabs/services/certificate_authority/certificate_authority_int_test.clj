@@ -2,9 +2,9 @@
   (:require
     [clojure.test :refer :all]
     [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+    [puppetlabs.puppetserver.testutils :as testutils :refer
+     [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]))
@@ -14,34 +14,15 @@
 
 (use-fixtures :once
               schema-test/validate-schemas
-              (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
+              (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
-
-(def ca-cert
-  (bootstrap/pem-file "certs" "ca.pem"))
-
-(def localhost-cert
-  (bootstrap/pem-file "certs" "localhost.pem"))
-
-(def localhost-key
-  (bootstrap/pem-file "private_keys" "localhost.pem"))
-
-(def ssl-request-options
-  {:ssl-cert    localhost-cert
-   :ssl-key     localhost-key
-   :ssl-ca-cert ca-cert})
 
 (def ca-mount-points
   ["puppet-ca/v1/" ; puppet 4 style
    "production/" ; pre-puppet 4 style
    ])
-
-(defn http-get [path]
-  (http-client/get
-    (str "https://localhost:8140/" path)
-    bootstrap/request-options))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests

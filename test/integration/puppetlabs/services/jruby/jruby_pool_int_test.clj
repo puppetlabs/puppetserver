@@ -5,7 +5,6 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
@@ -24,31 +23,19 @@
             [puppetlabs.services.protocols.request-handler :as handler]
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [puppetlabs.kitchensink.testutils :as ks-testutils]))
+            [puppetlabs.kitchensink.testutils :as ks-testutils]
+            [puppetlabs.puppetserver.testutils :as testutils :refer
+             [ca-cert localhost-cert localhost-key ssl-request-options]]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
 
 (use-fixtures :once
               schema-test/validate-schemas
-              (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
+              (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
-
-(def ca-cert
-  (bootstrap/pem-file "certs" "ca.pem"))
-
-(def localhost-cert
-  (bootstrap/pem-file "certs" "localhost.pem"))
-
-(def localhost-key
-  (bootstrap/pem-file "private_keys" "localhost.pem"))
-
-(def ssl-request-options
-  {:ssl-cert    localhost-cert
-   :ssl-key     localhost-key
-   :ssl-ca-cert ca-cert})
 
 (def script-to-check-if-constant-is-defined
   "! $instance_id.nil?")
@@ -318,7 +305,7 @@
            (Thread/yield)))
        (is (= @call-seq [:init-bonus-service :start-bonus-service :stop-bonus-service :init-bonus-service :start-bonus-service]))
        (let [get-results (http-client/get "https://localhost:8140/puppet/v3/environments"
-                                          bootstrap/request-options)]
+                                          bootstrap/catalog-request-options)]
          (is (= 200 (:status get-results))))))))
 
 (deftest ^:integration test-503-when-app-shuts-down
@@ -360,8 +347,7 @@
            context (tk-services/service-context jruby-service)
            jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
            stop-complete? (future (tk-services/stop jruby-service context))
-           ping-environment #(http-client/get "https://localhost:8140/puppet/v3/environments"
-                                              bootstrap/request-options)]
+           ping-environment #(testutils/http-get "puppet/v3/environments")]
        (let [start (System/currentTimeMillis)]
          (while (and
                  (< (- (System/currentTimeMillis) start) 10000)

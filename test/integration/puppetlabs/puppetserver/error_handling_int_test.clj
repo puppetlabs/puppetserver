@@ -3,13 +3,13 @@
     [clojure.test :refer :all]
     [puppetlabs.trapperkeeper.testutils.logging :refer :all]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+    [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.services.request-handler.request-handler-core :as request-handler]))
 
 (use-fixtures :once
-              (jruby-testutils/with-puppet-conf
+              (testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/puppetserver/error_handling_int_test/puppet.conf"))
 
 ;; Used in the test below.
@@ -38,9 +38,7 @@
           ;; between the ring handler and the JRuby layer, and called on every
           ;; request) to simply ignore any arguments and just throw an Exception.
           (with-redefs [request-handler/as-jruby-request just-throw-it]
-            (let [response (http-client/get
-                             "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
-                             bootstrap/request-options)]
+            (let [response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.Exception: barf"
                      (:body response)))
@@ -49,9 +47,7 @@
         (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
           (with-redefs [ca/get-certificate-status throw-npe]
-            (let [response (http-client/get
-                             "https://localhost:8140/puppet-ca/v1/certificate_status/localhost"
-                             bootstrap/request-options)]
+            (let [response (testutils/http-get "puppet-ca/v1/certificate_status/localhost")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.NullPointerException"
                      (:body response)))

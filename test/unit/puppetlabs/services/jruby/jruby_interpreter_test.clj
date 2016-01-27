@@ -2,10 +2,11 @@
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.puppetserver.testutils :as testutils]))
 
 (use-fixtures :once
-              (jruby-testutils/with-puppet-conf
+              (testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/jruby/jruby_interpreter_test/puppet.conf"))
 
 (deftest create-jruby-instance-test
