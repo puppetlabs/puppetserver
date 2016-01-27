@@ -2,7 +2,6 @@
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [cheshire.core :as json]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.http.client.sync :as http-client])
   (:import (java.io File)))
 
