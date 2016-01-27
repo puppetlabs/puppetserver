@@ -73,4 +73,5 @@
          (throw (IllegalStateException.
                  (format "Exception while executing '%s': %s"
                          command
-                         (.getMessage e)))))))))
+                         (.getMessage e))
+                 e)))))))
