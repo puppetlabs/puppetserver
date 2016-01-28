@@ -1,9 +1,8 @@
 (ns puppetlabs.puppetserver.shell-utils-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [me.raynes.fs :as fs])
-  (:import (java.io ByteArrayInputStream IOException)))
+  (:import (java.io ByteArrayInputStream)))
 
 (def test-resources
   (fs/absolute-path
