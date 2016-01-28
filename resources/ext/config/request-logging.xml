@@ -2,7 +2,7 @@
   <appender name="FILE" class="ch.qos.logback.core.FileAppender">
     <file>/var/log/puppetserver/puppetserver-access.log</file>
     <encoder>
-        <pattern>%h %l %u %user %date "%r" %s %b %h %a %localPort %D</pattern>
+        <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" %D</pattern>
     </encoder>
   </appender>
   <appender-ref ref="FILE" />
