@@ -66,9 +66,7 @@ public class ShellUtils {
      */
     public static ExecutionResult executeCommand(String command)
             throws InterruptedException, IOException {
-        CommandLine commandLine = CommandLine.parse(command);
-
-        return executeExecutor(commandLine, null, null);
+        return executeCommand(command, null);
     }
 
     /**
@@ -109,6 +107,25 @@ public class ShellUtils {
         CommandLine commandLine = new CommandLine(command);
         commandLine.addArguments(arguments, false);
 
-        return executeExecutor(commandLine, env, in);
+        try {
+            return executeExecutor(commandLine, env, in);
+        } catch (IOException e) {
+            // this nonsense is due to a weird edge-case incompatibility between JDK8
+            // and apache commons-exec.  See SERVER-1116; hopefully we can remove this
+            // conditional once that is resolved.
+            if (e.getMessage() == "Stream closed") {
+                log.warn("An error occurred while executing the command '" + command +
+                        ".  The most likely culprit is that you are on JDK8, " +
+                        "and we executed an external process with data on its STDIN that was not " +
+                        "consumed by the process.  Please make sure the command above processes STDIN " +
+                        "correctly.  For more information, see " +
+                        "https://tickets.puppetlabs.com/browse/SERVER-1116 .  If you do not believe " +
+                        "that this is the root cause of this error message, please file a bug at " +
+                        "https://tickets.puppetlabs.com/browse/SERVER.");
+            }
+            throw new IllegalStateException(
+                    "Exception while executing '" + command + "': " + e.getMessage(),
+                    e);
+        }
     }
 }

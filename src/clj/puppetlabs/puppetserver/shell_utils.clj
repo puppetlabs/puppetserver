@@ -59,19 +59,12 @@
     opts :- ExecutionOptions]
    (let [{:keys [args env in]} (merge default-execution-options opts)]
      (validate-command! command)
-     (try
-       (let [process (ShellUtils/executeCommand
-                      command
-                      (into-array String args)
-                      (if env
-                        (ks/mapkeys name env))
-                      in)]
-         {:exit-code (.getExitCode process)
-          :stderr (.getError process)
-          :stdout (.getOutput process)})
-       (catch IOException e
-         (throw (IllegalStateException.
-                 (format "Exception while executing '%s': %s"
-                         command
-                         (.getMessage e))
-                 e)))))))
+     (let [process (ShellUtils/executeCommand
+                     command
+                     (into-array String args)
+                     (if env
+                       (ks/mapkeys name env))
+                     in)]
+       {:exit-code (.getExitCode process)
+        :stderr    (.getError process)
+        :stdout    (.getOutput process)}))))
