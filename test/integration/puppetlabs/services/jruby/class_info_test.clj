@@ -3,6 +3,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire])
   (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
@@ -81,6 +82,7 @@
                      pool 0 config #() nil)
           jruby-puppet (:jruby-puppet instance)
           container (:scripting-container instance)
+          env-registry (:environment-registry instance)
 
           _ (create-file (fs/file conf-dir "puppet.conf")
                          "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
@@ -117,15 +119,12 @@
           _ (gen-classes [bogus-env-dir ["envbogus"]])
           _ (gen-classes [(fs/file base-mod-dir "base-bogus") ["base-bogus1"]])
 
-          get-class-info (fn []
-                           (-> (.getClassInfoForAllEnvironments jruby-puppet)
-                               (roundtrip-via-json)))
           get-class-info-for-env (fn [env]
                                    (-> (.getClassInfoForEnvironment jruby-puppet
                                                                     env)
                                        (roundtrip-via-json)))]
         (try
-          (testing "initial parse for"
+          (testing "initial parse"
             (let [expected-envs-info {"env1" (expected-manifests-info
                                                [env-1-dir-and-manifests
                                                 env-1-mod-1-dir-and-manifests
@@ -134,17 +133,14 @@
                                       "env2" (expected-manifests-info
                                                [env-2-dir-and-manifests
                                                 base-mod-1-and-manifests])}]
-              (testing "all environments"
-                (is (= expected-envs-info (get-class-info)))
-              (testing "one environment by name"
-                (is (= (expected-envs-info "env1")
-                       (get-class-info-for-env "env1"))
-                    "Unexpected info retrieved for 'env1'")
-                (is (= (expected-envs-info "env2")
-                       (get-class-info-for-env "env2"))
-                    "Unexpected info retrieved for 'env2'")))))
+              (is (= (expected-envs-info "env1")
+                     (get-class-info-for-env "env1"))
+                  "Unexpected info retrieved for 'env1'")
+              (is (= (expected-envs-info "env2")
+                     (get-class-info-for-env "env2"))
+                  "Unexpected info retrieved for 'env2'")))
 
-          (testing "changes to module and manifest paths for"
+          (testing "changes to module and manifest paths"
             (create-env-conf env-1-dir (str "manifest="
                                             (.getAbsolutePath (fs/file env-1-dir
                                                                        "manifests"
@@ -167,8 +163,7 @@
                                                [env-2-dir-and-manifests
                                                 env-1-mod-1-dir-and-manifests
                                                 env-1-mod-2-dir-and-manifests])}]
-              (testing "all environments"
-                (is (= expected-envs-info (get-class-info))))
+              (puppet-env/mark-all-environments-expired! env-registry)
               (testing "one environment by name"
                 (is (= (expected-envs-info "env1")
                        (get-class-info-for-env "env1"))
@@ -189,17 +184,16 @@
                                       "env2" (expected-manifests-info
                                                [env-2-dir-and-manifests
                                                 env-1-mod-1-dir-and-manifests])}]
-              (testing "all environments"
-                (is (= expected-envs-info (get-class-info))))
-              (testing "one environment by name"
-                (is (= (expected-envs-info "env1")
-                       (get-class-info-for-env "env1"))
-                    "Unexpected info retrieved for 'env1'")
-                (is (= (expected-envs-info "env2")
-                       (get-class-info-for-env "env2"))
-                    "Unexpected info retrieved for 'env2'"))))
+              (puppet-env/mark-environment-expired! env-registry "env1")
+              (is (= (expected-envs-info "env1")
+                     (get-class-info-for-env "env1"))
+                  "Unexpected info retrieved for 'env1'")
+              (puppet-env/mark-environment-expired! env-registry "env2")
+              (is (= (expected-envs-info "env2")
+                     (get-class-info-for-env "env2"))
+                  "Unexpected info retrieved for 'env2'")))
 
-          (testing "changes to environments for"
+          (testing "changes to environments"
             (fs/delete-dir env-1-dir)
             (let [_ (create-env env-3-dir-and-manifests)
                   expected-envs-info {"env2" (expected-manifests-info
@@ -207,32 +201,14 @@
                                       "env3" (expected-manifests-info
                                                [env-3-dir-and-manifests
                                                 base-mod-1-and-manifests])}]
-              (testing "all environments"
-                (is (= expected-envs-info (get-class-info))))
-              (testing "one environment by name"
-                (is (nil? (get-class-info-for-env "env1"))
-                    "Unexpected info retrieved for 'env1'")
-                (is (= (expected-envs-info "env2")
-                       (get-class-info-for-env "env2"))
-                    "Unexpected info retrieved for 'env2'")
-                (is (= (expected-envs-info "env3")
-                       (get-class-info-for-env "env3"))
-                    "Unexpected info retrieved for 'env3'"))))
-
-          (testing "all environments by key, without serialization"
-            (let [envs-info (.getClassInfoForAllEnvironments jruby-puppet)
-                  expected-envs-info {"env2" (expected-manifests-info
-                                               [env-2-dir-and-manifests])
-                                      "env3" (expected-manifests-info
-                                               [env-3-dir-and-manifests
-                                                base-mod-1-and-manifests])}]
-              (is (= 2 (count envs-info))
-                  "Unexpected number of environments retrieved")
+              (puppet-env/mark-all-environments-expired! env-registry)
+              (is (nil? (get-class-info-for-env "env1"))
+                  "Unexpected info retrieved for 'env1'")
               (is (= (expected-envs-info "env2")
-                     (-> (get envs-info "env2") (roundtrip-via-json)))
+                     (get-class-info-for-env "env2"))
                   "Unexpected info retrieved for 'env2'")
               (is (= (expected-envs-info "env3")
-                     (-> (get envs-info "env3") (roundtrip-via-json)))
+                     (get-class-info-for-env "env3"))
                   "Unexpected info retrieved for 'env3'")))
 
           (testing "non-existent environment"
