@@ -89,14 +89,17 @@ class Puppet::Server::Master
   private
 
   def self.getManifests(env)
-    manifests = []
-    if env.manifest != Puppet::Node::Environment::NO_MANIFEST
-      if File.directory?(env.manifest)
-        manifests = Dir.glob(File.join(env.manifest, '**/*.pp')).sort
-      else
-        manifests = [env.manifest]
+    manifests =
+      case
+        when env.manifest == Puppet::Node::Environment::NO_MANIFEST
+          []
+        when File.directory?(env.manifest)
+          Dir.glob(File.join(env.manifest, '**/*.pp'))
+        when File.exists?(env.manifest)
+          [env.manifest]
+        else
+          []
       end
-    end
 
     module_manifests = env.modules.collect {|mod| mod.all_manifests}
     manifests.concat(module_manifests).flatten.uniq

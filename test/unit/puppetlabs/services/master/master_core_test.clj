@@ -4,13 +4,19 @@
             [ring.mock.request :as mock]
             [schema.test :as schema-test]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.services.request-handler.request-handler-core :as request-handler-core]))
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [cheshire.core :as cheshire]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
+(defn dummy-jruby-service
+  []
+  (reify jruby/JRubyPuppetService))
+
 (defn build-ring-handler
-  [request-handler puppet-version]
-  (-> (root-routes request-handler)
+  [request-handler puppet-version jruby-service]
+  (-> (root-routes request-handler jruby-service)
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 
@@ -20,7 +26,7 @@
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
-        app         (build-ring-handler handler "1.2.3")
+        app         (build-ring-handler handler "1.2.3" dummy-jruby-service)
         request     (partial app-request app)]
     (is (= 200 (:status (request "/v3/environments"))))
     (is (= 200 (:status (request "/v3/catalog/bar?environment=environment1234"))))
@@ -51,11 +57,86 @@
                  ", path: "
                  path))))))
 
+(deftest environment-classes-test
+  (testing "environment_classes query"
+    (let [jruby-puppet (Object.)
+          returned-jruby (atom nil)
+          get-env-jruby (atom nil)
+          jruby-instance {:jruby-puppet jruby-puppet}
+          jruby-service (reify jruby/JRubyPuppetService
+                          (borrow-instance [_ _] jruby-instance)
+                          (return-instance [_ jruby _]
+                            (reset! returned-jruby jruby))
+                          (get-environment-class-info [_ jruby env]
+                            (reset! get-env-jruby jruby)
+                            (if (= env "production")
+                              {"/one/file"
+                               [
+                                {"name" "oneclass",
+                                 "params" [
+                                           {"name" "oneparam",
+                                            "type" "String",
+                                            "default_literal" "'literal'",
+                                            "default_source" "literal"},
+                                           {"name" "twoparam",
+                                            "type" "Integer",
+                                            "default_literal" "3",
+                                            "default_source" "3"}]
+                                 },
+                                {"name" "twoclass"
+                                 "params" []}],
+                               "/two/file" []})))
+          handler (fn ([req] {:request req}))
+          app (build-ring-handler handler "1.2.3" jruby-service)
+          request (partial app-request app)]
+      (testing "returns good data for environment that exists"
+        (let [response (request
+                        "/v3/environment_classes?environment=production")
+              body-from-json (cheshire/parse-string (:body response))]
+          (is (= 200 (:status response))
+              "Unexpected status code returned from request")
+          (is (= {"name" "production",
+                  "files" [
+                           {"path" "/one/file",
+                            "classes" [{
+                                        "name" "oneclass"
+                                        "params" [
+                                                  {"name" "oneparam",
+                                                   "type" "String",
+                                                   "default_literal" "'literal'",
+                                                   "default_source" "literal"},
+                                                  {"name" "twoparam",
+                                                   "type" "Integer",
+                                                   "default_literal" "3",
+                                                   "default_source" "3"}]},
+                                       {
+                                        "name" "twoclass"
+                                        "params" []}]},
+                           {"path" "/two/file"
+                            "classes" []}]}
+                 body-from-json)
+              "Unexpected json body returned from request")
+          (is (identical? jruby-instance @returned-jruby)
+              "Unexpected jruby instance returned to the pool")
+          (is (identical? jruby-puppet @get-env-jruby)
+              "Unexpected jruby puppet used to get environment class info")))
+      (testing "returns 404 not found when non-existent environment supplied"
+        (is (= 404 (:status (request
+                             "/v3/environment_classes?environment=test")))))
+      (testing "returns 400 bad request when environment not supplied"
+        (logging/with-test-logging
+         (is (= 400 (:status (request "/v3/environment_classes"))))))
+      (testing (str "returns 400 bad request when environment has "
+                    "non-alphanumeric characters")
+        (logging/with-test-logging
+         (is (= 400 (:status (request
+                              "/v3/environment_classes?environment=~")))))))))
+
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
                 "is not overwritten, and simply passed through unmodified.")
     (let [handler     (fn ([req] {:request req}))
-          app         (build-ring-handler handler "1.2.3")
+          app         (build-ring-handler handler "1.2.3" dummy-jruby-service)
           resp        (app (-> {:request-method :put
                                 :content-type "application/octet-stream"
                                 :uri "/v3/file_bucket_file/bar"}
@@ -75,7 +156,7 @@
 (deftest code-id-injection-test
   (testing "code_id is not added to non-catalog requests"
     (let [handler (fn ([req] {:request req}))
-          app (build-ring-handler handler "1.2.3")
+          app (build-ring-handler handler "1.2.3" dummy-jruby-service)
           request (partial app-request app)]
       (doseq [[method paths]
               {:get ["node"

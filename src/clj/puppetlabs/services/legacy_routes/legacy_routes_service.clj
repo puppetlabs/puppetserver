@@ -12,6 +12,7 @@
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
    [:PuppetServerConfigService get-config]
+   [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]]
   (init
     [this context]
@@ -27,7 +28,9 @@
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
-          master-route-handler (-> (master-core/root-routes handle-request)
+          jruby-service (tk-services/get-service this :JRubyPuppetService)
+          master-route-handler (-> (master-core/root-routes handle-request
+                                                            jruby-service)
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount

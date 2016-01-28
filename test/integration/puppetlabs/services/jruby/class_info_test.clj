@@ -172,7 +172,7 @@
                        (get-class-info-for-env "env2"))
                     "Unexpected info retrieved for 'env2'"))))
 
-          (testing "changes to manifest content for"
+          (testing "changes to manifest content"
             (fs/delete-dir env-1-mod-2-dir)
             (let [foo-manifest (.getAbsolutePath (fs/file env-1-dir
                                                           "manifests"
@@ -210,6 +210,14 @@
               (is (= (expected-envs-info "env3")
                      (get-class-info-for-env "env3"))
                   "Unexpected info retrieved for 'env3'")))
+
+          (testing "non existent manifest dir for environment"
+            (create-env [(env-dir "env4") nil])
+            (let [expected-envs-info {"env4" (expected-manifests-info
+                                              [base-mod-1-and-manifests])}]
+              (is (= (expected-envs-info "env4")
+                     (get-class-info-for-env "env4"))
+                  "Unexpected info retrieved for 'env4'")))
 
           (testing "non-existent environment"
             (is (nil? (get-class-info-for-env "bogus-env"))))

@@ -3,9 +3,13 @@
            (clojure.lang IFn))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.services.request-handler.request-handler-core :as request-core]
             [puppetlabs.comidi :as comidi]
-            [schema.core :as schema]))
+            [ring.middleware.params :as ring]
+            [ring.util.response :as rr]
+            [schema.core :as schema]
+            [cheshire.core :as cheshire]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -14,13 +18,62 @@
   "v3")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Private
+
+(defn class-info-from-jruby->class-info-for-json
+  "Convert a class info map received from the jruby service into an
+  appropriate map for use in serializing an environment_classes response to
+  JSON"
+  [info-from-jruby environment]
+  (->> info-from-jruby
+       (map #(hash-map :path (key %) :classes (val %)))
+       (sort-by :path)
+       (into [])
+       (hash-map :name environment :files)))
+
+(defn get-environment-class-info
+  "Middleware function for constructing a Ring response from an incoming
+  request for environment_classes information"
+  [jruby-service]
+  (fn [request]
+    (if-let [environment (jruby-request/get-environment-from-request request)]
+      (if (re-matches #"^\w+$" environment)
+        (if-let [class-info
+                 (jruby-protocol/get-environment-class-info jruby-service
+                                                            (:jruby-instance
+                                                             request)
+                                                            environment)]
+          (-> class-info
+              (class-info-from-jruby->class-info-for-json environment)
+              (cheshire/generate-string)
+              (rr/response)
+              (rr/content-type "application/json"))
+          (rr/not-found (str "Could not find environment '" environment "'")))
+        (jruby-request/throw-bad-request!
+         (str
+          "The environment must be purely alphanumeric, not '"
+          environment
+          "'")))
+      (jruby-request/throw-bad-request!
+       "An environment parameter must be specified"))))
+
+(defn environment-class-handler
+  "Handler for processing an incoming environment_classes Ring request"
+  [jruby-service]
+  (->
+   (get-environment-class-info jruby-service)
+   (jruby-request/wrap-with-jruby-instance jruby-service)
+   jruby-request/wrap-with-error-handling
+   ring/wrap-params))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
 (defn v3-routes
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler]
+  [request-handler jruby-service]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
@@ -52,7 +105,10 @@
    (comidi/GET "/environments" request
                (request-handler request))
    (comidi/GET ["/status/" [#".*" :rest]] request
-               (request-handler request))))
+               (request-handler request))
+
+   (comidi/GET ["/environment_classes" [#".*" :rest]] request
+               ((environment-class-handler jruby-service) request))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -103,10 +159,10 @@
 
 (defn root-routes
   "Creates all of the web routes for the master."
-  [request-handler]
+  [request-handler jruby-service]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler))
+                    (v3-routes request-handler jruby-service))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate

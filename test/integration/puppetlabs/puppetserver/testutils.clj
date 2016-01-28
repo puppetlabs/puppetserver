@@ -85,16 +85,19 @@
 ;;; Interacting with puppet code and catalogs
 
 (defn write-foo-pp-file
-  [foo-pp-contents]
-  (let [foo-pp-file (fs/file conf-dir
-                             "environments"
-                             "production"
-                             "modules"
-                             "foo"
-                             "manifests"
-                             "init.pp")]
-    (fs/mkdirs (fs/parent foo-pp-file))
-    (spit foo-pp-file foo-pp-contents)))
+  ([foo-pp-contents]
+   (write-foo-pp-file foo-pp-contents "init"))
+  ([foo-pp-contents pp-name]
+   (let [foo-pp-file (fs/file conf-dir
+                              "environments"
+                              "production"
+                              "modules"
+                              "foo"
+                              "manifests"
+                              (str pp-name ".pp"))]
+     (fs/mkdirs (fs/parent foo-pp-file))
+     (spit foo-pp-file foo-pp-contents)
+     (.getCanonicalPath foo-pp-file))))
 
 (defn get-catalog
   "Make an HTTP get request for a catalog."

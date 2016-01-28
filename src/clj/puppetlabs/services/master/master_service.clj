@@ -32,7 +32,8 @@
          update-server-url (get-in config [:product :update-server-url])
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
-                                      true)]
+                                      true)
+         jruby-service (tk-services/get-service this :JRubyPuppetService)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -44,7 +45,7 @@
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
                           (core/get-wrapped-handler
-                            (-> (core/root-routes handle-request)
+                            (-> (core/root-routes handle-request jruby-service)
                                 ((partial comidi/context path))
                                 comidi/routes->handler)
                             wrap-with-authorization-check

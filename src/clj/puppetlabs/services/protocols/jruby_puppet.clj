@@ -36,6 +36,10 @@
     [this]
     "Mark all cached environments expired, in all JRuby instances.")
 
+  (get-environment-class-info
+    [this jruby-instance env-name]
+    "Get class information for a specific environment")
+
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")

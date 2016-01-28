@@ -1,6 +1,5 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
-            [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
@@ -77,6 +76,10 @@
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))]
       (core/mark-all-environments-expired! pool-context)))
+
+  (get-environment-class-info
+    [this jruby-instance env-name]
+    (.getClassInfoForEnvironment jruby-instance env-name))
 
   (flush-jruby-pool!
     [this]
