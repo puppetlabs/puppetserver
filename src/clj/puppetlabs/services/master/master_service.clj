@@ -53,10 +53,13 @@
        ;; if the webrouting config uses the old-style config where
        ;; there is a single key with a route-id, we need to deal with that
        ;; for backward compat.  We have a hard-coded assumption that this route-id
-       ;; must be `master-routes`.  We should be able to remove this hack as soon
-       ;; as we are able to get rid of the legacy routes.
+       ;; must be `master-routes`.  In Puppet Server 2.0, we also supported a
+       ;; key called `invalid-in-puppet-4` in the same route config, even though
+       ;; that key is no longer used for Puppet Server 2.1 and later.  We
+       ;; should be able to remove this hack as soon as we are able to get rid
+       ;; of the legacy routes.
        (if (and (map? route-config)
-                (= #{:master-routes} (ks/keyset route-config)))
+                (contains? route-config :master-routes))
          (add-ring-handler this ring-handler
                            {:route-id :master-routes})
          (add-ring-handler this ring-handler))))

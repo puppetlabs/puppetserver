@@ -40,7 +40,8 @@
     (bootstrap/with-puppetserver-running app
       {:web-router-service
        {:puppetlabs.services.master.master-service/master-service
-        {:master-routes "/puppet"}}}
+        {:master-routes "/puppet"
+         :invalid-in-puppet-4 "/"}}}
       (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
 
   (testing "The new map-style multi-server route configuration map still works."
