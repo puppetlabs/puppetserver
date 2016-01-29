@@ -19,6 +19,7 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
                  [org.clojure/tools.macro "0.1.5"]
+                 [com.fasterxml.jackson.core/jackson-core "2.5.4"]
                  ;; end version conflict resolution dependencies
 
                  [cheshire "5.3.1"]
@@ -44,6 +45,13 @@
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.20.1"]
+
+                 ;; we do not currently use this dependency directly, but
+                 ;; we have documentation that shows how users can use it to
+                 ;; send their logs to logstash, so we include it in the jar.
+                 ;; we may use it directly in the future
+                 [net.logstash.logback/logstash-logback-encoder "4.5.1"]
+
 
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/trapperkeeper-authorization "0.5.0"]
