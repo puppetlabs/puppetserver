@@ -146,8 +146,9 @@
   * values are paths to a test-specific file that should be copied to puppet's confdir,
     a la `$confdir/<key>`.
 
-  For each entry in the map, copies the files into $confdir, runs the test function,
-  and then deletes all of the files from $confdir.
+  For each entry in the map, copies the files into $confdir.
+  Then it runs the body.
+  Then after running the body it deletes all of the files from $confdir.
 
   Optionally accepts a second argument `dest-dir`, which specifies the location
   of Puppet's $confdir.  If this argument is not provided, defaults to
