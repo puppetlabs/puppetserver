@@ -6,6 +6,12 @@
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schemas
+
+(def PuppetConfFiles
+  {schema/Str (schema/pred (some-fn string? #(instance? File %)))})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Default settings
 
 (def conf-dir
@@ -37,6 +43,35 @@
    ssl-request-options
    {:headers     {"Accept" "pson"}
     :as          :text}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Internal functions
+
+(schema/defn ^:always-validate get-with-puppet-conf-target-paths :- PuppetConfFiles
+  "Helper function that joins the filename onto the dest-dir for each file in
+  puppet-conf-files."
+  [puppet-conf-files :- PuppetConfFiles
+   dest-dir :- schema/Str]
+  (reduce
+   (fn [acc filename]
+     (assoc acc filename (fs/file dest-dir filename)))
+   {}
+   (keys puppet-conf-files)))
+
+(schema/defn ^:always-validate copy-with-puppet-conf-files-into-place!
+  "Copies each file in puppet-conf-files into the corresponding destination in
+  target-paths."
+  [puppet-conf-files :- PuppetConfFiles
+   target-paths :- PuppetConfFiles]
+  (doseq [filename (keys puppet-conf-files)]
+    (fs/copy+ (get puppet-conf-files filename)
+              (get target-paths filename))))
+
+(schema/defn ^:always-validate cleanup-with-puppet-conf-files!
+  "Deletes all of the files in the target-paths map."
+  [target-paths :- PuppetConfFiles]
+  (doseq [target-path (vals target-paths)]
+    (fs/delete target-path)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
@@ -101,7 +136,32 @@
   [catalogs resource-type resource-title]
   (count (filter #(catalog-contains? % resource-type resource-title) catalogs)))
 
-(schema/defn ^:always-validate with-puppet-conf-files
+(defmacro with-puppet-conf-files
+  "A macro that can be used to wrap a single test with the setup and teardown
+  of with-puppet-conf.
+
+  Accepts a map with the following characteristics:
+
+  * keys are simple filenames (no paths) that will be created in puppet's $confdir
+  * values are paths to a test-specific file that should be copied to puppet's confdir,
+    a la `$confdir/<key>`.
+
+  For each entry in the map, copies the files into $confdir.
+  Then it runs the body.
+  Then after running the body it deletes all of the files from $confdir.
+
+  Optionally accepts a second argument `dest-dir`, which specifies the location
+  of Puppet's $confdir.  If this argument is not provided, defaults to
+  `jruby-testutils/conf-dir`."
+  [puppet-conf-files dest-dir & body]
+  `(let [target-paths# (get-with-puppet-conf-target-paths ~puppet-conf-files ~dest-dir)]
+     (copy-with-puppet-conf-files-into-place! ~puppet-conf-files target-paths#)
+     (try
+       ~@body
+       (finally
+         (cleanup-with-puppet-conf-files! target-paths#)))))
+
+(schema/defn ^:always-validate with-puppet-conf-fixture
   "Test fixture; Accepts a map with the following characteristics:
 
   * keys are simple filenames (no paths) that will be created in puppet's $confdir
@@ -113,26 +173,13 @@
 
   Optionally accepts a second argument `dest-dir`, which specifies the location
   of Puppet's $confdir.  If this argument is not provided, defaults to
-  `testutils/conf-dir`."
+  `jruby-testutils/conf-dir`."
   ([puppet-conf-files]
-   (with-puppet-conf-files puppet-conf-files conf-dir))
-  ([puppet-conf-files :- {schema/Str (schema/pred (some-fn string? #(instance? File %)))}
+   (with-puppet-conf-fixture puppet-conf-files conf-dir))
+  ([puppet-conf-files :- PuppetConfFiles
     dest-dir :- schema/Str]
-
-   (let [target-paths (reduce
-                       (fn [acc filename]
-                         (assoc acc filename (fs/file dest-dir filename)))
-                       {}
-                       (keys puppet-conf-files))]
-     (fn [f]
-       (doseq [filename (keys puppet-conf-files)]
-         (fs/copy+ (get puppet-conf-files filename)
-                   (get target-paths filename)))
-       (try
-         (f)
-         (finally
-           (doseq [target-path (vals target-paths)]
-             (fs/delete target-path))))))))
+   (fn [f]
+     (with-puppet-conf-files puppet-conf-files dest-dir (f)))))
 
 (defn with-puppet-conf
   "This function returns a test fixture that will copy a specified puppet.conf
@@ -142,4 +189,4 @@
   ([puppet-conf-file]
    (with-puppet-conf puppet-conf-file conf-dir))
   ([puppet-conf-file dest-dir]
-   (with-puppet-conf-files {"puppet.conf" puppet-conf-file} dest-dir)))
+   (with-puppet-conf-fixture {"puppet.conf" puppet-conf-file} dest-dir)))
