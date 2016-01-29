@@ -59,6 +59,7 @@ You could also comment out or remove the other `appender-ref`s, if you decided y
 To add JSON logging for Puppet Server's HTTP requests, modify the `request-logging.xml` file.  Here's an example of adding a logback appender there:
 
 ``` xml
+{% raw %}
    <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log.json</file>
 
@@ -105,6 +106,7 @@ To add JSON logging for Puppet Server's HTTP requests, modify the `request-loggi
             </providers>
         </encoder>
     </appender>
+{% endraw %}
 ```
 
 For more information on options available for the `pattern` section, see the [Logback Logstash Encoder Docs](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#accessevent-fields).
