@@ -51,7 +51,8 @@
                 "type" "Integer"}
                {"name" (str class "_c"),
                 "type" "String",
-                "default_literal" "c default value"}]})
+                "default_literal" "c default value"
+                "default_source" "'c default value'"}]})
 
 (defn expected-manifests-info
   [manifests]
