@@ -3,7 +3,8 @@
             [clojure.java.io :as io]
             [puppetlabs.kitchensink.core :as ks])
   (:import (com.puppetlabs.puppetserver ShellUtils)
-           (java.io IOException InputStream)))
+           (java.io IOException InputStream OutputStream)
+           (org.apache.commons.io IOUtils)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -13,6 +14,13 @@
   {:exit-code schema/Int
    :stderr schema/Str
    :stdout schema/Str})
+
+(def ExecutionResultStreamed
+  "A map that contains the details of the result of executing a command with
+  stdout as a stream."
+  {:exit-code schema/Int
+   :stderr schema/Str
+   :stdout InputStream})
 
 (def ExecutionOptions
   {(schema/optional-key :args) [schema/Str]
@@ -49,12 +57,12 @@
 ;;; Public
 
 (schema/defn ^:always-validate
-  execute-command :- ExecutionResult
+  execute-command-streamed :- ExecutionResultStreamed
   "Execute the specified fully qualified command (string) and any included
   command-arguments (vector of strings) and return the exit-code (integer),
-  and the contents of the stdout (string) and stderr (string) for the command."
+  and the contents of the stdout (stream) and stderr (string) for the command."
   ([command :- schema/Str]
-   (execute-command command {}))
+   (execute-command-streamed command {}))
   ([command :- schema/Str
     opts :- ExecutionOptions]
    (let [{:keys [args env in]} (merge default-execution-options opts)]
@@ -68,10 +76,23 @@
                       in)]
          {:exit-code (.getExitCode process)
           :stderr (.getError process)
-          :stdout (.getOutput process)})
+          :stdout (.getOutputAsStream process)})
        (catch IOException e
          (throw (IllegalStateException.
                  (format "Exception while executing '%s': %s"
                          command
                          (.getMessage e))
                  e)))))))
+
+(schema/defn ^:always-validate
+  execute-command :- ExecutionResult
+  "Execute the specified fully qualified command (string) and any included
+  command-arguments (vector of strings) and return the exit-code (integer),
+  and the contents of the stdout (string) and stderr (string) for the command."
+  ([command :- schema/Str]
+   (execute-command command {}))
+  ([command :- schema/Str
+    opts :- ExecutionOptions]
+   (let [result (execute-command-streamed command opts)]
+     (update-in result [:stdout]
+                (fn [stdout] (IOUtils/toString stdout "UTF-8"))))))

@@ -6,7 +6,9 @@
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.logging :as logging]
-    [me.raynes.fs :as fs]))
+    [me.raynes.fs :as fs])
+  (:import
+   (org.apache.commons.io IOUtils)))
 
 (def test-resources
   (fs/absolute-path
@@ -18,7 +20,8 @@
 
 (defn vcs-config
   [script]
-  {:versioned-code {:code-id-command script}})
+  {:versioned-code {:code-id-command script
+                    :code-content-command script}})
 
 (deftest test-code-id-execution
   (testing "nil is returned if no code-id-command is set"
@@ -40,3 +43,22 @@
      (vcs-config (script-path "echo"))
      (let [vcs (tk-app/get-service app :VersionedCodeService)]
        (is (= "foo" (vc/current-code-id vcs "foo")))))))
+
+(deftest test-code-content-execution
+  (testing "When calling get-code-content"
+    (testing "and there is no code-content-command"
+      (logging/with-test-logging
+        (tk-testutils/with-app-with-config app [vcs/versioned-code-service] {}
+          (let [vcs (tk-app/get-service app :VersionedCodeService)]
+            (is (thrown-with-msg? IllegalStateException #"without :code-content-command"
+                                  (vc/get-code-content vcs "test" "foobar" "foo/bar/")))))))
+    (testing "and there is a code-content-command"
+      (logging/with-test-logging
+        (tk-testutils/with-app-with-config
+          app
+          [vcs/versioned-code-service]
+          (vcs-config (script-path "echo"))
+          (let [vcs (tk-app/get-service app :VersionedCodeService)
+                result (-> (vc/get-code-content vcs "test" "foobar" "foo/bar/")
+                           (IOUtils/toString "UTF-8"))]
+            (is (= "test foobar foo/bar/\n" result))))))))
