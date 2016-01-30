@@ -295,7 +295,9 @@
                          []
                          (current-code-id [_ _]
                                           (deliver first-promise true)
-                                          (deref second-promise 5000 false)))
+                                          (deref second-promise 5000 false))
+                         (get-code-content [_ _ _ _]
+                                               nil))
             services [master-service/master-service
                       jruby-service/jruby-puppet-pooled-service
                       profiler/puppet-profiler-service
