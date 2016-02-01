@@ -4,7 +4,6 @@
     [puppetlabs.trapperkeeper.testutils.logging :refer :all]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils]
-    [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.services.request-handler.request-handler-core :as request-handler]
     [me.raynes.fs :as fs]))
