@@ -58,3 +58,24 @@
         (testing "witout stderr"
           (let [result (vc-core/execute-code-content-script! (script-path "echo") environment code-id file-path)]
             (is (= (format "%s %s %s\n" environment code-id file-path) (IOUtils/toString result "UTF-8")))))))))
+
+(deftest valid-code-id?-test
+  (testing "valid-code-id? accepts valid code-ids"
+    (is (vc-core/valid-code-id? nil))
+    (is (vc-core/valid-code-id? "dcf16ec"))
+    (is (vc-core/valid-code-id? "master-plan:stage_1:destroy-all-humans")))
+
+  (testing "valid-code-id? rejects invalid code-ids"
+    (is (not (vc-core/valid-code-id? "bad code id")))
+    (is (not (vc-core/valid-code-id? "don't do it!")))
+    (is (not (vc-core/valid-code-id? "not-a-good-code-id?")))
+    (is (not (vc-core/valid-code-id? "Östersund")))
+    (is (not (vc-core/valid-code-id? "( ͡° ͜ʖ ͡°)")))))
+
+(deftest get-current-code-id!-error-test
+  (testing "get-current-code-id! throws on invalid code-ids"
+    (let [invalid-code-id-script (script-path "invalid_code_id")]
+      (is (thrown-with-msg?
+            IllegalStateException
+            #"Invalid code-id 'not a valid code id'.*"
+            (vc-core/get-current-code-id! invalid-code-id-script "testenv"))))))
