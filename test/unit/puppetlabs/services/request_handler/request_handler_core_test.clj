@@ -311,9 +311,13 @@
         (jruby-bootstrap/with-puppetserver-running-with-services
          app services {:jruby-puppet {:max-active-instances 1}}
          (jruby-testutils/wait-for-jrubies app)
-         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (future (testutils/get-catalog))
-           (is (deref first-promise 5000 false))
+         (let [in-catalog-request-future (promise)
+               jruby-service (tk-app/get-service app :JRubyPuppetService)]
+           (future
+            (deliver in-catalog-request-future true)
+            (testutils/get-catalog))
+           (deref in-catalog-request-future)
+           (is (deref first-promise 10000 false))
            ; Because we are blocking inside current-code-id, which happens to be
            ; used during a jruby request, we can assert that there will be no
            ; jruby instances left in the pool.
