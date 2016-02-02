@@ -5,13 +5,11 @@
             [schema.test :as schema-test]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [cheshire.core :as cheshire]))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(defn dummy-jruby-service
-  []
+(def dummy-jruby-service
   (reify jruby/JRubyPuppetService))
 
 (defn build-ring-handler
@@ -59,67 +57,19 @@
 
 (deftest environment-classes-test
   (testing "environment_classes query"
-    (let [jruby-puppet (Object.)
-          returned-jruby (atom nil)
-          get-env-jruby (atom nil)
-          jruby-instance {:jruby-puppet jruby-puppet}
-          jruby-service (reify jruby/JRubyPuppetService
-                          (borrow-instance [_ _] jruby-instance)
-                          (return-instance [_ jruby _]
-                            (reset! returned-jruby jruby))
-                          (get-environment-class-info [_ jruby env]
-                            (reset! get-env-jruby jruby)
+    (let [jruby-service (reify jruby/JRubyPuppetService
+                          (borrow-instance [_ _]
+                            {:jruby-puppet (Object.)})
+                          (return-instance [_ _ _])
+                          (get-environment-class-info [_ _ env]
                             (if (= env "production")
-                              {"/one/file"
-                               [
-                                {"name" "oneclass",
-                                 "params" [
-                                           {"name" "oneparam",
-                                            "type" "String",
-                                            "default_literal" "'literal'",
-                                            "default_source" "literal"},
-                                           {"name" "twoparam",
-                                            "type" "Integer",
-                                            "default_literal" "3",
-                                            "default_source" "3"}]
-                                 },
-                                {"name" "twoclass"
-                                 "params" []}],
-                               "/two/file" []})))
+                              {})))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)
           request (partial app-request app)]
-      (testing "returns good data for environment that exists"
-        (let [response (request
-                        "/v3/environment_classes?environment=production")
-              body-from-json (cheshire/parse-string (:body response))]
-          (is (= 200 (:status response))
-              "Unexpected status code returned from request")
-          (is (= {"name" "production",
-                  "files" [
-                           {"path" "/one/file",
-                            "classes" [{
-                                        "name" "oneclass"
-                                        "params" [
-                                                  {"name" "oneparam",
-                                                   "type" "String",
-                                                   "default_literal" "'literal'",
-                                                   "default_source" "literal"},
-                                                  {"name" "twoparam",
-                                                   "type" "Integer",
-                                                   "default_literal" "3",
-                                                   "default_source" "3"}]},
-                                       {
-                                        "name" "twoclass"
-                                        "params" []}]},
-                           {"path" "/two/file"
-                            "classes" []}]}
-                 body-from-json)
-              "Unexpected json body returned from request")
-          (is (identical? jruby-instance @returned-jruby)
-              "Unexpected jruby instance returned to the pool")
-          (is (identical? jruby-puppet @get-env-jruby)
-              "Unexpected jruby puppet used to get environment class info")))
+      (testing "returns 200 for environment that exists"
+        (is (= 200 (:status (request
+                             "/v3/environment_classes?environment=production")))))
       (testing "returns 404 not found when non-existent environment supplied"
         (is (= 404 (:status (request
                              "/v3/environment_classes?environment=test")))))
