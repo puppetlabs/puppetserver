@@ -60,45 +60,8 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
-  def getClassInfoForAllEnvironments()
-    # The clear_environment_settings(env) ensures that the calls which happen
-    # later on to enumerate all of the manifests for each environment are
-    # using the latest environment.conf settings for each environment.  Without
-    # this call, cached (and, therefore, possibly stale) environment.conf
-    # settings would be used.  We want to return the latest data for any calls
-    # made to this method.
-    @env_loader.list.each do |env|
-      Puppet.settings.clear_environment_settings(env)
-    end
-
-    environments =
-      Hash[@env_loader.list.collect do |env|
-       [env.name, self.class.getManifests(env)]
-      end]
-
-    classes_per_env =
-        Puppet::InfoService::ClassInformationService.new.classes_per_environment(environments)
-    Hash[classes_per_env.collect {|key, value| [key.to_s, value]}]
-  end
-
   def getClassInfoForEnvironment(env)
-    # The clear_environment_settings(env) ensures that the calls which happen
-    # later on to enumerate all of the manifests for each environment are
-    # using the latest environment.conf settings for each environment.  Without
-    # this call, cached (and, therefore, possibly stale) environment.conf
-    # settings would be used.  We want to return the latest data for any calls
-    # made to this method.
-    Puppet.settings.clear_environment_settings(env)
-
-    # It would be more direct and less expensive to call `@env_loader.get(env)`
-    # here.  The problem with doing that, though, is that a Cached `env_loader`
-    # could return an Environment object with cached settings.  The `list` call
-    # to the Cached loader results in new Environment objects being created
-    # and so would not be subject to any potentially stale settings data being
-    # used to enumerate manifests.
-    environment = @env_loader.list.find do |env_from_loader|
-      env_from_loader.name.to_s == env
-    end
+    environment = @env_loader.get(env)
     unless environment.nil?
       environments = Hash[env, self.class.getManifests(environment)]
       classes_per_env =
@@ -126,14 +89,17 @@ class Puppet::Server::Master
   private
 
   def self.getManifests(env)
-    manifests = []
-    if env.manifest != Puppet::Node::Environment::NO_MANIFEST
-      if File.directory?(env.manifest)
-        manifests = Dir.glob(File.join(env.manifest, '**/*.pp')).sort
-      else
-        manifests = [env.manifest]
+    manifests =
+      case
+        when env.manifest == Puppet::Node::Environment::NO_MANIFEST
+          []
+        when File.directory?(env.manifest)
+          Dir.glob(File.join(env.manifest, '**/*.pp'))
+        when File.exists?(env.manifest)
+          [env.manifest]
+        else
+          []
       end
-    end
 
     module_manifests = env.modules.collect {|mod| mod.all_manifests}
     manifests.concat(module_manifests).flatten.uniq

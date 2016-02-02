@@ -1,11 +1,15 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream)
-           (clojure.lang IFn))
+           (clojure.lang IFn)
+           (java.util Map))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
-            [puppetlabs.services.request-handler.request-handler-core :as request-core]
             [puppetlabs.comidi :as comidi]
-            [schema.core :as schema]))
+            [ring.middleware.params :as ring]
+            [ring.util.response :as rr]
+            [schema.core :as schema]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -14,45 +18,111 @@
   "v3")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Private
+
+(def EnvironmentClassesFileEntry
+  "Schema for an individual file entry which is part of the return payload
+  for an environment_classes request"
+  {:path schema/Str
+   :classes [Map]})
+
+(def EnvironmentClassesInfo
+  "Schema for the return payload an environment_classes request"
+  {:name schema/Str
+   :files [EnvironmentClassesFileEntry]})
+
+(schema/defn ^:always-validate
+  class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo
+  "Convert a class info map received from the jruby service into an
+  appropriate map for use in serializing an environment_classes response to
+  JSON"
+  [info-from-jruby :- Map
+   environment :- schema/Str]
+  (->> info-from-jruby
+       (map #(hash-map :path (key %) :classes (val %)))
+       (sort-by :path)
+       (vec)
+       (hash-map :name environment :files)))
+
+(schema/defn ^:always-validate
+  environment-class-info-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for environment_classes information"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (if-let [environment (jruby-request/get-environment-from-request request)]
+      (if (re-matches #"^\w+$" environment)
+        (if-let [class-info
+                 (jruby-protocol/get-environment-class-info jruby-service
+                                                            (:jruby-instance
+                                                             request)
+                                                            environment)]
+          (-> class-info
+              (class-info-from-jruby->class-info-for-json environment)
+              (ringutils/json-response))
+          (rr/not-found (str "Could not find environment '" environment "'")))
+        (jruby-request/throw-bad-request!
+         (str
+          "The environment must be purely alphanumeric, not '"
+          environment
+          "'")))
+      (jruby-request/throw-bad-request!
+       "An environment parameter must be specified"))))
+
+(schema/defn ^:always-validate
+  environment-class-handler :- IFn
+  "Handler for processing an incoming environment_classes Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (->
+   (environment-class-info-fn jruby-service)
+   (jruby-request/wrap-with-jruby-instance jruby-service)
+   jruby-request/wrap-with-error-handling
+   ring/wrap-params))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
 (defn v3-routes
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler]
-  (comidi/routes
-   (comidi/GET ["/node/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/file_content/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/file_metadata/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
-                (request-handler request))
+  [request-handler jruby-service]
+  (let [environment-class-handler (environment-class-handler jruby-service)]
+    (comidi/routes
+     (comidi/GET ["/node/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_content/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_metadata/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
+                  (request-handler request))
 
-   (comidi/GET ["/catalog/" [#".*" :rest]] request
-               (request-handler (assoc request :include-code-id? true)))
-   (comidi/POST ["/catalog/" [#".*" :rest]] request
-                (request-handler (assoc request :include-code-id? true)))
-   (comidi/PUT ["/report/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/resource_type/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/resource_types/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/environment/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET "/environments" request
-               (request-handler request))
-   (comidi/GET ["/status/" [#".*" :rest]] request
-               (request-handler request))))
+     (comidi/GET ["/catalog/" [#".*" :rest]] request
+                 (request-handler (assoc request :include-code-id? true)))
+     (comidi/POST ["/catalog/" [#".*" :rest]] request
+                  (request-handler (assoc request :include-code-id? true)))
+     (comidi/PUT ["/report/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/resource_type/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/resource_types/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET ["/environment/" [#".*" :rest]] request
+                 (request-handler request))
+     (comidi/GET "/environments" request
+                 (request-handler request))
+     (comidi/GET ["/status/" [#".*" :rest]] request
+                 (request-handler request))
+
+     (comidi/GET ["/environment_classes" [#".*" :rest]] request
+                 (environment-class-handler request)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -103,10 +173,10 @@
 
 (defn root-routes
   "Creates all of the web routes for the master."
-  [request-handler]
+  [request-handler jruby-service]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler))
+                    (v3-routes request-handler jruby-service))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
