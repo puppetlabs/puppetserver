@@ -80,6 +80,17 @@
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
 
+(defn static-file-content-request-handler
+  "Build the main request handler for the /static_file_content endpoint"
+  [get-code-content]
+  (fn [req]
+    (let [environment (get-in req [:params "environment"])
+          code-id (get-in req [:params "code-id"])
+          file-path (get-in req [:params :rest])
+          content-stream (get-code-content environment code-id file-path)]
+      {:status 200
+       :body content-stream})))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
@@ -89,7 +100,7 @@
    endpoints are handled separately by the CA service."
   [request-handler jruby-service get-code-content-fn]
   (let [environment-class-handler (environment-class-handler jruby-service)
-        static-file-content-handler (request-core/static-file-content-request-handler get-code-content-fn)]
+        static-file-content-handler (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
      (comidi/GET ["/node/" [#".*" :rest]] request
                  (request-handler request))
