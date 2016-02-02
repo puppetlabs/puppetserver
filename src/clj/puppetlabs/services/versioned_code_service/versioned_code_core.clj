@@ -67,8 +67,8 @@
   "Returns false if code-id contains anything but alpha-numerics and
   '-', '_', or ':'. nil is a valid code-id"
   [code-id :- (schema/maybe String)]
-  (if (nil? code-id)
-    true
+  (or
+    (nil? code-id)
     (not (re-find #"[^_\-:a-zA-Z0-9]" code-id))))
 
 (schema/defn validation-error-msg :- String

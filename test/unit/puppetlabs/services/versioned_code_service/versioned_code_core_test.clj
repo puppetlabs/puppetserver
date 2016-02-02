@@ -67,7 +67,8 @@
 
   (testing "valid-code-id? rejects invalid code-ids"
     (is (not (vc-core/valid-code-id? "bad code id")))
-    (is (not (vc-core/valid-code-id? "don't do it!")))
+    (is (not (vc-core/valid-code-id? "bad-code-id!")))
+    (is (not (vc-core/valid-code-id? "123'456")))
     (is (not (vc-core/valid-code-id? "not-a-good-code-id?")))
     (is (not (vc-core/valid-code-id? "Östersund")))
     (is (not (vc-core/valid-code-id? "( ͡° ͜ʖ ͡°)")))))
