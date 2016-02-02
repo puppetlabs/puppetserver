@@ -63,6 +63,29 @@
       (catch InterruptedException e
         (log-execution-error! e)))))
 
+(schema/defn valid-code-id? :- schema/Bool
+  "Returns false if code-id contains anything but alpha-numerics and
+  '-', '_', or ':'. nil is a valid code-id"
+  [code-id :- (schema/maybe String)]
+  (or
+    (nil? code-id)
+    (not (re-find #"[^_\-:a-zA-Z0-9]" code-id))))
+
+(schema/defn validation-error-msg :- String
+  [code-id :- String]
+  (format
+    "Invalid code-id '%s'. Must contain only alpha-numerics and '-', '_', or ':'"
+    code-id))
+
+(schema/defn get-current-code-id! :- (schema/maybe String)
+  "Execute the code-id-script and validate its output before returning"
+  [code-id-script :- schema/Str
+   environment :- schema/Str]
+  (let [code-id (execute-code-id-script! code-id-script environment)]
+    (when-not (valid-code-id? code-id)
+      (throw (IllegalStateException. (validation-error-msg code-id))))
+    code-id))
+
 (schema/defn ^:always-validate
   execute-code-content-script! :- InputStream
   "Given a string path to an executable script and the environment, code-id, and

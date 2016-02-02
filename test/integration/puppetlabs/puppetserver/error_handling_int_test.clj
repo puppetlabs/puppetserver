@@ -4,13 +4,15 @@
     [puppetlabs.trapperkeeper.testutils.logging :refer :all]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils]
-    [puppetlabs.http.client.sync :as http-client]
     [puppetlabs.puppetserver.certificate-authority :as ca]
-    [puppetlabs.services.request-handler.request-handler-core :as request-handler]))
+    [puppetlabs.services.request-handler.request-handler-core :as request-handler]
+    [me.raynes.fs :as fs]))
+
+(def test-resources "./dev-resources/puppetlabs/puppetserver/error_handling_int_test")
+(def vcs-scripts "./dev-resources/puppetlabs/services/versioned_code_service/versioned_code_core_test")
 
 (use-fixtures :once
-              (testutils/with-puppet-conf
-                "./dev-resources/puppetlabs/puppetserver/error_handling_int_test/puppet.conf"))
+              (testutils/with-puppet-conf (fs/file test-resources "puppet.conf")))
 
 ;; Used in the test below.
 (defn just-throw-it
@@ -54,3 +56,16 @@
               (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))))))
 
+(deftest ^:integration test-invalid-code-id-error
+  (let [vcs-script (fs/absolute-path (fs/file vcs-scripts "invalid_code_id"))]
+    (testing "Catalog request fails when user provided code-id-command returns invalid code-id"
+      (bootstrap/with-puppetserver-running
+        app
+        {:versioned-code {:code-id-command vcs-script
+                          :code-content-command vcs-script}}
+        (with-test-logging
+          (let [response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
+            (is (= 500 (:status response)))
+            (is (re-matches
+                  #"Internal Server Error: java.lang.IllegalStateException: Invalid code-id.+"
+                  (:body response)))))))))

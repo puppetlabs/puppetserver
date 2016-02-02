@@ -22,7 +22,7 @@
   (current-code-id
    [this environment]
    (if-let [code-id-script (get-in-config [:versioned-code :code-id-command])]
-     (vc-core/execute-code-id-script! code-id-script environment)
+     (vc-core/get-current-code-id! code-id-script environment)
      nil))
 
   (get-code-content
