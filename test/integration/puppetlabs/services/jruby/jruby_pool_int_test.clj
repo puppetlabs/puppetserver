@@ -25,7 +25,8 @@
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
-             [ca-cert localhost-cert localhost-key ssl-request-options]]))
+             [ca-cert localhost-cert localhost-key ssl-request-options]]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -329,14 +330,16 @@
            ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
            stop-complete? (future (tk-app/stop app))]
        (let [start (System/currentTimeMillis)]
-         (while (and
-                 (< (- (System/currentTimeMillis) start) 10000)
-                 (not= 503 (:status (ping-environment))))
-           (Thread/yield))
-         (is (= 503 (:status (ping-environment))))
+         (logging/with-test-logging
+          (while (and
+                  (< (- (System/currentTimeMillis) start) 10000)
+                  (not= 503 (:status (ping-environment))))
+            (Thread/yield))
+          (is (= 503 (:status (ping-environment)))))
          (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
          @stop-complete?
-         (is (= 503 (:status (ping-environment)))))))))
+         (logging/with-test-logging
+          (is (= 503 (:status (ping-environment))))))))))
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"
@@ -348,12 +351,13 @@
            jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
            stop-complete? (future (tk-services/stop jruby-service context))
            ping-environment #(testutils/http-get "puppet/v3/environments")]
-       (let [start (System/currentTimeMillis)]
-         (while (and
-                 (< (- (System/currentTimeMillis) start) 10000)
-                 (not= 503 (:status (ping-environment))))
-           (Thread/yield)))
-       (is (= 503 (:status (ping-environment))))
+       (logging/with-test-logging
+        (let [start (System/currentTimeMillis)]
+          (while (and
+                  (< (- (System/currentTimeMillis) start) 10000)
+                  (not= 503 (:status (ping-environment))))
+            (Thread/yield)))
+        (is (= 503 (:status (ping-environment)))))
        (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
        @stop-complete?
        (let [app-context (tk-app/app-context app)]
