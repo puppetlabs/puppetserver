@@ -32,8 +32,8 @@
                                   :uri "/v3/catalog/bar"
                                   :content-type "application/x-www-form-urlencoded"}
                                  (mock/body "environment=environment1234"))))))
-    (is (= 404 (:status (request "/foo"))))
-    (is (= 404 (:status (request "/foo/bar"))))
+    (is (nil? (request "/foo")))
+    (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
             {:get ["node"
                    "environment"
