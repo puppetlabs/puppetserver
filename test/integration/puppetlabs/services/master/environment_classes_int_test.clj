@@ -4,7 +4,8 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.puppetserver.testutils :as testutils]
             [cheshire.core :as cheshire]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [ring.util.response :as ring]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/master/environment_classes_int_test")
@@ -31,50 +32,76 @@
                                       (merge
                                        testutils/ssl-request-options
                                        {:as :text}))
-         response->class-info-map #(-> %1 :body cheshire/parse-string)]
+         response->class-info-map #(-> %1 :body cheshire/parse-string)
+         foo-file (testutils/write-foo-pp-file
+                   "class foo (String $foo_1 = \"is foo\"){}")
+         bar-file (testutils/write-foo-pp-file
+                   "class foo::bar (Integer $foo_2 = 3){}" "bar")
+         expected-initial-response {
+                                    "files"
+                                    [
+                                     {"path" bar-file
+                                      "classes"
+                                      [
+                                       {
+                                        "name" "foo::bar"
+                                        "params"
+                                        [
+                                         {"name" "foo_2",
+                                          "type" "Integer",
+                                          "default_literal" 3,
+                                          "default_source" "3"}]}]}
+                                     {"path" foo-file,
+                                      "classes"
+                                      [
+                                       {
+                                        "name" "foo"
+                                        "params"
+                                        [
+                                         {"name" "foo_1",
+                                          "type" "String",
+                                          "default_literal" "is foo",
+                                          "default_source" "\"is foo\""}]}]}]
+                                    "name" "production"}
+         initial-response (get-production-env-classes)
+         response-e-tag #(ring/get-header % "Etag")
+         initial-e-tag (response-e-tag initial-response)]
      (testing "initial fetch of environment_classes info is good"
-       (let [foo-file (testutils/write-foo-pp-file
-                       "class foo (String $foo_1 = \"is foo\"){}")
-             bar-file (testutils/write-foo-pp-file
-                       "class foo::bar (Integer $foo_2 = 3){}" "bar")
-             response (get-production-env-classes)]
-         (is (= 200 (:status response)))
-         (is (= {"name" "production",
-                 "files" [
-                          {"path" bar-file
-                           "classes" [{
-                                       "name" "foo::bar"
-                                       "params" [
-                                                 {"name" "foo_2",
-                                                  "type" "Integer",
-                                                  "default_literal" 3,
-                                                  "default_source"
-                                                  "3"}]}]}
-                          {"path" foo-file,
-                           "classes" [{
-                                       "name" "foo"
-                                       "params" [
-                                                 {"name" "foo_1",
-                                                  "type" "String",
-                                                  "default_literal"
-                                                  "is foo",
-                                                  "default_source"
-                                                  "\"is foo\""}]}]}]}
-                (response->class-info-map response)))))
+       (is (= 200 (:status initial-response))
+           "unexpected status code for initial response")
+       (is (not (nil? initial-e-tag))
+           "no e-tag found for initial response")
+       (is (= expected-initial-response
+              (response->class-info-map initial-response))
+           "unexpected body for initial response"))
+     (testing "e-tag not updated for second fetch when code has not changed"
+       (let [response (get-production-env-classes)]
+         (is (= 200 (:status response))
+             "unexpected status code for response following no code change")
+         (is (= initial-e-tag (response-e-tag response))
+             "e-tag changed even though code did not")
+         (is (= expected-initial-response
+                (response->class-info-map initial-response))
+             "unexpected body for initial response")))
      (testing (str "environment_classes fetch includes latest info after "
                    "code update")
-       (let [foo-file (testutils/write-foo-pp-file
-                       (str "class foo (Hash[String, Integer] $foo_hash = {"
-                            " foo_1 => 1, foo_2 => 2 }){}"))
-             bar-file (testutils/write-foo-pp-file "" "bar")
-             baz-file (testutils/write-foo-pp-file
+       (testutils/write-foo-pp-file
+        (str "class foo (Hash[String, Integer] $foo_hash = {"
+             " foo_1 => 1, foo_2 => 2 }){}"))
+       (testutils/write-foo-pp-file "" "bar")
+       (let [baz-file (testutils/write-foo-pp-file
                        (str "class foo::baz (String $baz_1 = 'the baz',\n"
                             " Array[String] $baz_arr = ['one', 'two', "
                             "'three']){}\n"
                             "class foo::morebaz ($baz) {}")
                        "baz")
+             borked-file (testutils/write-foo-pp-file
+                          (str "borked manifest") "borked")
              response (get-production-env-classes)]
-         (is (= 200 (:status response)))
+         (is (= 200 (:status response))
+             "unexpected status code for response following code change")
+         (is (not= initial-e-tag (response-e-tag response))
+             "e-tag did not change even though code did")
          (is (= {"name" "production",
                  "files" [
                           {"path" bar-file
@@ -97,6 +124,13 @@
                                        "name" "foo::morebaz"
                                        "params" [
                                                  {"name" "baz"}]}]}
+                          {"path" borked-file
+                           "error" (str "This Name has no effect. A value "
+                                        "was produced and then forgotten ("
+                                        "one or more preceding expressions "
+                                        "may have the wrong form) at "
+                                        borked-file
+                                        ":1:1")}
                           {"path" foo-file,
                            "classes" [{
                                        "name" "foo"
@@ -111,4 +145,5 @@
                                                   (str
                                                    "{ foo_1 => 1, "
                                                    "foo_2 => 2 }")}]}]}]}
-                (response->class-info-map response))))))))
+                (response->class-info-map response))
+             "unexpected body following code change"))))))

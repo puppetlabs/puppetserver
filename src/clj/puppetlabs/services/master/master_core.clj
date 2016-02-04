@@ -1,7 +1,7 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream)
            (clojure.lang IFn)
-           (java.util Map))
+           (java.util Map Map$Entry))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.comidi :as comidi]
@@ -10,7 +10,7 @@
             [schema.core :as schema]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
-            [puppetlabs.services.request-handler.request-handler-core :as request-core]))
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -25,12 +25,68 @@
   "Schema for an individual file entry which is part of the return payload
   for an environment_classes request"
   {:path schema/Str
-   :classes [Map]})
+   schema/Any schema/Any})
 
 (def EnvironmentClassesInfo
   "Schema for the return payload an environment_classes request"
   {:name schema/Str
    :files [EnvironmentClassesFileEntry]})
+
+(defn sort-nested-java-maps
+  "For a data structure, recursively sort any nested maps and sets descending
+  into map values, lists, vectors and set members as well. The result should be
+  that all maps in the data structure become explicitly sorted with natural
+  ordering. This can be used before serialization to ensure predictable
+  serialization.
+
+  The returned data structure is not a transient so it is still able to be
+  modified, therefore caution should be taken to avoid modification else the
+  data will lose its sorted status.
+
+  This function was copypasta'd from clj-kitchensink's core/sort-nested-maps.
+  sort-nested-maps can only deep sort a structure that contains native Clojure
+  types, whereas the data structure that we're sorting in this case contains
+  objects created by JRuby that derive from standard Java interfaces.  This
+  function tolerates Java-derived objects when considering how to apply
+  sorting."
+  [data]
+  (cond
+    (instance? Map data)
+      ;; sorted-map expects each key to be a 'keyword'.  Some of the keys
+      ;; that we get back from JRuby might not be of a type that Clojure's
+      ;; 'keyword' function can turn directly into a Clojure keyword, e.g., a
+      ;; RubySymbol, so .toString is used to get a String representation of
+      ;; the key object, which can then be turned into a Clojure keyword.
+      (into (sorted-map) (for [[k v] data]
+                           [(or (keyword k)
+                                (keyword (.toString k)))
+                            (sort-nested-java-maps v)]))
+    (instance? Iterable data)
+      (map sort-nested-java-maps data)
+    :else data))
+
+(schema/defn ^:always-validate
+  basic-manifest-info-from-jruby->basic-manifest-info-for-json
+    :- {schema/Any schema/Any}
+  "Convert the value for a manifest file entry into an appropriate map for
+  use in serializing an environment_classes response to JSON"
+  [file-info :- Map$Entry]
+  (let [file-detail (val file-info)]
+    (if (instance? Map file-detail)
+      (into {} file-detail)
+      {:classes file-detail})))
+
+(schema/defn ^:always-validate
+  full-manifest-info-from-jruby->full-manifest-info-for-json
+    :- EnvironmentClassesFileEntry
+  "Convert the per-manifest file information received from the jruby service
+  into an appropriate map for use in serializing an environment_classes
+  response to JSON"
+  [file-info :- Map$Entry]
+  (-> file-info
+      (basic-manifest-info-from-jruby->basic-manifest-info-for-json)
+      (assoc :path (key file-info))
+      (sort-nested-java-maps)))
 
 (schema/defn ^:always-validate
   class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo
@@ -40,10 +96,23 @@
   [info-from-jruby :- Map
    environment :- schema/Str]
   (->> info-from-jruby
-       (map #(hash-map :path (key %) :classes (val %)))
+       (map full-manifest-info-from-jruby->full-manifest-info-for-json)
        (sort-by :path)
        (vec)
-       (hash-map :name environment :files)))
+       (sorted-map :name environment :files)))
+
+(schema/defn ^:always-validate
+  process-environment-class-info! :- {schema/Keyword schema/Any}
+  "Process the environment class info, returing a ring response to be
+  propagated back up to the caller of the environment_classes endpoint"
+  [info-from-jruby :- Map
+   environment :- schema/Str]
+  (let [info-for-json (class-info-from-jruby->class-info-for-json
+                       info-from-jruby
+                       environment)
+        ring-response (ringutils/json-response info-for-json)
+        class-info-tag (ks/utf8-string->sha1 (:body ring-response))]
+    (rr/header ring-response "ETag" class-info-tag)))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn
@@ -58,9 +127,8 @@
                                                             (:jruby-instance
                                                              request)
                                                             environment)]
-          (-> class-info
-              (class-info-from-jruby->class-info-for-json environment)
-              (ringutils/json-response))
+          (process-environment-class-info! class-info
+                                           environment)
           (rr/not-found (str "Could not find environment '" environment "'")))
         (jruby-request/throw-bad-request!
          (str
