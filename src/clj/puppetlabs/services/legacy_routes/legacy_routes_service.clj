@@ -30,7 +30,8 @@
                                 config)
           jruby-service (tk-services/get-service this :JRubyPuppetService)
           master-route-handler (-> (master-core/root-routes handle-request
-                                                            jruby-service)
+                                                            jruby-service
+                                                            (constantly nil))
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount

@@ -31,4 +31,4 @@
      (vc-core/execute-code-content-script!
        code-content-script environment code-id file-path)
      (throw (IllegalStateException.
-             "Cannot fetch code content without :code-content-command being set.")))))
+              "Cannot retrieve code content because the \"versioned-code.code-content-command\" setting is not present in configuration.")))))
