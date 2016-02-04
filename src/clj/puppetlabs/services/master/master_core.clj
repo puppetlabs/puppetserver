@@ -176,8 +176,7 @@
   [request-handler jruby-service]
   (comidi/routes
     (comidi/context "/v3"
-                    (v3-routes request-handler jruby-service))
-    (comidi/not-found "Not Found")))
+                    (v3-routes request-handler jruby-service))))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
