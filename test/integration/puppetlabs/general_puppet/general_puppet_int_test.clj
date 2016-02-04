@@ -119,4 +119,6 @@
         (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code_id=foobar&environment=test"
                                         (assoc testutils/ssl-request-options
                                           :as :stream))]
-          (is (= 500 (:status response))))))))
+          (is (= 500 (:status response)))
+          (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
+                 (slurp (:body response)))))))))
