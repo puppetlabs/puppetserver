@@ -47,7 +47,7 @@ agent and server to install and test against, ```PACKAGE_BUILD_VERSION``` and
 the build of the puppet-server package to install.
 
 1. Go to [http://builds.puppetlabs.lan/puppetserver/?C=M;O=D](http://builds.puppetlabs.lan/puppetserver/?C=M;O=D).
-1. This puts the most recent build at the top of the display. It will look like `2016.1.1004.SNAPSHOT.2016.02.03T1410`.
+1. This puts the most recent build at the top of the display. It will look like `.2.2.master.SNAPSHOT.2016.02.04T0323`.
 1. This value (the text, not the link address) is ```PACKAGE_BUILD_VERSION```.
 1. `PUPPET_VERSION` specifies which version of the puppet-agent package to install.
 This is currently `1.3.4`.
