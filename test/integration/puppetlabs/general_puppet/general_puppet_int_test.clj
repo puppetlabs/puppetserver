@@ -75,18 +75,39 @@
 
 (deftest ^:integration static-file-content-endpoint-test
   (logging/with-test-logging
-    (testing "the /static_file_content endpoint successfully streams file content"
+    (testing "the /static_file_content endpoint behaves as expected when :code-content-command is set"
       (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet
          {:max-active-instances num-jrubies}
          :versioned-code
          {:code-content-command (script-path "echo")}}
-        (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code-id=foobar&environment=test"
-                                        (assoc testutils/ssl-request-options
-                                          :as :stream))]
-          (is (= 200 (:status response)))
-          (is (= "test foobar foo/bar/\n" (slurp (:body response)))))))
+        (testing "the /static_file_content endpoint successfully streams file content"
+          (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code_id=foobar&environment=test"
+                                          (assoc testutils/ssl-request-options
+                                            :as :stream))]
+            (is (= 200 (:status response)))
+            (is (= "test foobar foo/bar/\n" (slurp (:body response))))))
+
+        (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
+          (testing "the /static_file_content endpoint returns an error if code_id is not provided"
+            (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?environment=test"
+                                            (assoc testutils/ssl-request-options
+                                              :as :stream))]
+              (is (= 400 (:status response)))
+              (is (= error-message (slurp (:body response))))))
+          (testing "the /static_file_content endpoint returns an error if environment is not provided"
+            (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code_id=foobar"
+                                            (assoc testutils/ssl-request-options
+                                              :as :stream))]
+              (is (= 400 (:status response)))
+              (is (= error-message (slurp (:body response))))))
+          (testing "the /static_file_content endpoint returns an error if file-path is not provided"
+            (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/?code_id=foobar&environment=test"
+                                            (assoc testutils/ssl-request-options
+                                              :as :stream))]
+              (is (= 400 (:status response)))
+              (is (= error-message (slurp (:body response)))))))))
 
     (testing "the /static_file_content endpoint errors if :code-content-command is not set"
       (bootstrap/with-puppetserver-running
@@ -95,7 +116,7 @@
          {:max-active-instances num-jrubies}
          :versioned-code
          {:code-content-command nil}}
-        (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code-id=foobar&environment=test"
+        (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code_id=foobar&environment=test"
                                         (assoc testutils/ssl-request-options
                                           :as :stream))]
           (is (= 500 (:status response))))))))

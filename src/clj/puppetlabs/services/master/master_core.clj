@@ -85,11 +85,15 @@
   [get-code-content]
   (fn [req]
     (let [environment (get-in req [:params "environment"])
-          code-id (get-in req [:params "code-id"])
-          file-path (get-in req [:params :rest])
-          content-stream (get-code-content environment code-id file-path)]
-      {:status 200
-       :body content-stream})))
+          code-id (get-in req [:params "code_id"])
+          file-path (get-in req [:params :rest])]
+      (if (or (nil? environment)
+              (nil? code-id)
+              (or (nil? file-path) (= "" file-path)))
+        {:status 400
+         :body "Error: A /static_file_content request requires an environment, a code-id, and a file-path"}
+        {:status 200
+         :body   (get-code-content environment code-id file-path)}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
