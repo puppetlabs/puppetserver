@@ -69,7 +69,7 @@
   [code-id :- (schema/maybe String)]
   (or
     (nil? code-id)
-    (not (re-find #"[^_\-:a-zA-Z0-9]" code-id))))
+    (not (re-find #"[^_\-:;a-zA-Z0-9]" code-id))))
 
 (schema/defn validation-error-msg :- String
   [code-id :- String]

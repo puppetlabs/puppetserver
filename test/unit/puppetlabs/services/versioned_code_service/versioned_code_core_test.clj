@@ -63,7 +63,10 @@
   (testing "valid-code-id? accepts valid code-ids"
     (is (vc-core/valid-code-id? nil))
     (is (vc-core/valid-code-id? "dcf16ec"))
-    (is (vc-core/valid-code-id? "master-plan:stage_1:destroy-all-humans")))
+    (is (vc-core/valid-code-id? "whatMakesJavaBad;isPartlySemiColons;clojureIsRealNice"))
+    (is (vc-core/valid-code-id? "master-plan:stage_1:destroy-all-humans"))
+    (is (vc-core/valid-code-id? "combining:lots;of_valid-characters"))
+    (is (vc-core/valid-code-id? "urn:code-id:1:4dcf1fd;production")))
 
   (testing "valid-code-id? rejects invalid code-ids"
     (is (not (vc-core/valid-code-id? "bad code id")))
