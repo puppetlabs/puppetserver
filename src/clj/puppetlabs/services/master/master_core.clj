@@ -81,7 +81,9 @@
    ring/wrap-params))
 
 (defn static-file-content-request-handler
-  "Build the main request handler for the /static_file_content endpoint"
+  "Returns a function which is the main request handler for the
+  /static_file_content endpoint, utilizing the provided implementation of
+  `get-code-content`"
   [get-code-content]
   (fn [req]
     (let [environment (get-in req [:params "environment"])
