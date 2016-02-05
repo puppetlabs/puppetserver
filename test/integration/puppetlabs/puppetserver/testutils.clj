@@ -11,26 +11,56 @@
 (def PuppetConfFiles
   {schema/Str (schema/pred (some-fn string? #(instance? File %)))})
 
+(def PuppetResource
+  "Schema for a Puppet resource. Based on
+  https://github.com/puppetlabs/puppet/blob/master/api/schemas/resource_type.json
+  which seems a little out of date and incomplete."
+  {(schema/required-key "type") schema/Str
+   (schema/required-key "title") schema/Str
+   (schema/optional-key "name") schema/Str
+   (schema/optional-key "tags") [schema/Str]
+   (schema/optional-key "exported") schema/Bool
+   (schema/optional-key "parameters") {schema/Str schema/Str}
+   (schema/optional-key "line") schema/Int
+   (schema/optional-key "file") schema/Str
+   (schema/optional-key "parent") schema/Str
+   (schema/optional-key "doc") schema/Str
+   schema/Str schema/Str})
+
+(def PuppetCatalog
+  "Schema for a Puppet catalog. Based on
+  https://github.com/puppetlabs/puppet/blob/master/api/schemas/catalog.json"
+  {(schema/required-key "name") schema/Str
+   (schema/required-key "classes") [schema/Str]
+   (schema/required-key "environment") schema/Str
+   (schema/required-key "version") schema/Int
+   (schema/required-key "resources") [PuppetResource]
+   (schema/required-key "edges") [{schema/Str schema/Str}]
+   (schema/optional-key "code_id") (schema/maybe schema/Str)
+   (schema/optional-key "tags") [schema/Str]
+   (schema/optional-key "catalog_uuid") schema/Str
+   schema/Str schema/Str})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Default settings
 
-(def conf-dir
+(schema/def ^:always-validate conf-dir :- schema/Str
   "./target/master-conf")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Certificates and keys
 
-(defn pem-file
-  [& args]
+(schema/defn ^:always-validate pem-file :- schema/Str
+  [& args :- [schema/Str]]
   (str (apply fs/file conf-dir "ssl" args)))
 
-(def ca-cert
+(schema/def ^:always-validate ca-cert :- schema/Str
   (pem-file "certs" "ca.pem"))
 
-(def localhost-cert
+(schema/def ^:always-validate localhost-cert :- schema/Str
   (pem-file "certs" "localhost.pem"))
 
-(def localhost-key
+(schema/def ^:always-validate localhost-key :- schema/Str
   (pem-file "private_keys" "localhost.pem"))
 
 (def ssl-request-options
@@ -76,18 +106,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(defn http-get
-  [path]
+(schema/defn ^:always-validate http-get
+  [path :- schema/Str]
   (http-client/get
    (str "https://localhost:8140/" path) catalog-request-options))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Interacting with puppet code and catalogs
 
-(defn write-foo-pp-file
+(schema/defn ^:always-validate write-foo-pp-file :- schema/Str
   ([foo-pp-contents]
    (write-foo-pp-file foo-pp-contents "init"))
-  ([foo-pp-contents pp-name]
+  ([foo-pp-contents :- schema/Str
+    pp-name :- schema/Str]
    (let [foo-pp-file (fs/file conf-dir
                               "environments"
                               "production"
@@ -99,7 +130,7 @@
      (spit foo-pp-file foo-pp-contents)
      (.getCanonicalPath foo-pp-file))))
 
-(defn get-catalog
+(schema/defn ^:always-validate get-catalog :- PuppetCatalog
   "Make an HTTP get request for a catalog."
   []
   (-> (http-client/get
@@ -108,7 +139,7 @@
       :body
       json/parse-string))
 
-(defn post-catalog
+(schema/defn ^:always-validate post-catalog :- PuppetCatalog
   "Make an HTTP post request for a catalog."
   []
   (-> (http-client/post
@@ -119,24 +150,33 @@
       :body
       json/parse-string))
 
-(defn write-site-pp-file
-  [site-pp-contents]
+(schema/defn ^:always-validate write-site-pp-file
+  [site-pp-contents :- schema/Str]
   (let [site-pp-file (fs/file conf-dir "environments" "production" "manifests" "site.pp")]
     (fs/mkdirs (fs/parent site-pp-file))
     (spit site-pp-file site-pp-contents)))
 
-(defn resource-matches?
-  [resource-type resource-title resource]
+(schema/defn ^:always-validate resource-matches? :- schema/Bool
+  [resource-type :- schema/Str
+   resource-title :- schema/Str
+   resource :- PuppetResource]
   (and (= resource-type (resource "type"))
        (= resource-title (resource "title"))))
 
-(defn catalog-contains?
-  [catalog resource-type resource-title]
+(schema/defn ^:always-validate catalog-contains? :- schema/Bool
+  [catalog :- PuppetCatalog
+   resource-type :- schema/Str
+   resource-title :- schema/Str]
   (let [resources (get catalog "resources")]
-    (some (partial resource-matches? resource-type resource-title) resources)))
+    (->> resources
+        (some (partial resource-matches? resource-type resource-title))
+        nil?
+        not)))
 
-(defn num-catalogs-containing
-  [catalogs resource-type resource-title]
+(schema/defn ^:always-validate num-catalogs-containing :- schema/Int
+  [catalogs :- [PuppetCatalog]
+   resource-type :- schema/Str
+   resource-title :- schema/Str]
   (count (filter #(catalog-contains? % resource-type resource-title) catalogs)))
 
 (defmacro with-puppet-conf-files
