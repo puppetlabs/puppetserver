@@ -10,7 +10,8 @@
             [schema.core :as schema]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [cheshire.core :as cheshire]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -23,12 +24,12 @@
 
 (def EnvironmentClassesFileEntry
   "Schema for an individual file entry which is part of the return payload
-  for an environment_classes request"
+  for an environment_classes request."
   {:path schema/Str
-   schema/Any schema/Any})
+   schema/Keyword schema/Any})
 
 (def EnvironmentClassesInfo
-  "Schema for the return payload an environment_classes request"
+  "Schema for the return payload an environment_classes request."
   {:name schema/Str
    :files [EnvironmentClassesFileEntry]})
 
@@ -52,24 +53,33 @@
   [data]
   (cond
     (instance? Map data)
-      ;; sorted-map expects each key to be a 'keyword'.  Some of the keys
-      ;; that we get back from JRuby might not be of a type that Clojure's
-      ;; 'keyword' function can turn directly into a Clojure keyword, e.g., a
-      ;; RubySymbol, so .toString is used to get a String representation of
-      ;; the key object, which can then be turned into a Clojure keyword.
-      (into (sorted-map) (for [[k v] data]
-                           [(or (keyword k)
-                                (keyword (.toString k)))
-                            (sort-nested-java-maps v)]))
+    ;; sorted-map expects each key to be a 'keyword'.  Some of the keys
+    ;; that we get back from JRuby might not be of a type that Clojure's
+    ;; 'keyword' function can turn directly into a Clojure keyword, e.g., a
+    ;; RubySymbol, so .toString is used to get a String representation of
+    ;; the key object, which can then be turned into a Clojure keyword.
+    (into (sorted-map) (for [[k v] data]
+                         [(or (keyword k)
+                              (keyword (.toString k)))
+                          (sort-nested-java-maps v)]))
+
     (instance? Iterable data)
-      (map sort-nested-java-maps data)
+    (map sort-nested-java-maps data)
+
     :else data))
+
+(schema/defn ^:always-validate
+  if-none-match-from-request :- (schema/maybe String)
+  "Retrieve the value of an 'If-None-Match' HTTP header from the supplied Ring
+  request.  If the header is not found, returns nil."
+  [request :- {schema/Keyword schema/Any}]
+  (rr/get-header request "If-None-Match"))
 
 (schema/defn ^:always-validate
   basic-manifest-info-from-jruby->basic-manifest-info-for-json
     :- {schema/Any schema/Any}
   "Convert the value for a manifest file entry into an appropriate map for
-  use in serializing an environment_classes response to JSON"
+  use in serializing an environment_classes response to JSON."
   [file-info :- Map$Entry]
   (let [file-detail (val file-info)]
     (if (instance? Map file-detail)
@@ -81,18 +91,18 @@
     :- EnvironmentClassesFileEntry
   "Convert the per-manifest file information received from the jruby service
   into an appropriate map for use in serializing an environment_classes
-  response to JSON"
+  response to JSON."
   [file-info :- Map$Entry]
   (-> file-info
       (basic-manifest-info-from-jruby->basic-manifest-info-for-json)
       (assoc :path (key file-info))
-      (sort-nested-java-maps)))
+      sort-nested-java-maps))
 
 (schema/defn ^:always-validate
   class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo
   "Convert a class info map received from the jruby service into an
   appropriate map for use in serializing an environment_classes response to
-  JSON"
+  JSON."
   [info-from-jruby :- Map
    environment :- schema/Str]
   (->> info-from-jruby
@@ -102,41 +112,84 @@
        (sorted-map :name environment :files)))
 
 (schema/defn ^:always-validate
-  process-environment-class-info! :- {schema/Keyword schema/Any}
+  response-with-etag :- ringutils/RingResponse
+  "Create a Ring response, including the supplied 'body' and an HTTP 'Etag'
+  header set to the supplied 'etag' parameter."
+  [body :- schema/Str
+   etag :- schema/Str]
+  (-> body
+      (rr/response)
+      (rr/header "Etag" etag)))
+
+(schema/defn ^:always-validate
+  not-modified-response :- ringutils/RingResponse
+  "Create an HTTP 304 (Not Modified) response, including an HTTP 'Etag'
+  header set to the supplied 'etag' parameter."
+  [etag]
+  (-> ""
+      (response-with-etag etag)
+      (rr/status 304)))
+
+(schema/defn ^:always-validate
+  process-environment-class-info! :- ringutils/RingResponse
   "Process the environment class info, returing a ring response to be
   propagated back up to the caller of the environment_classes endpoint"
   [info-from-jruby :- Map
-   environment :- schema/Str]
+   environment :- schema/Str
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   request-tag :- (schema/maybe String)]
   (let [info-for-json (class-info-from-jruby->class-info-for-json
                        info-from-jruby
                        environment)
-        ring-response (ringutils/json-response info-for-json)
-        class-info-tag (ks/utf8-string->sha1 (:body ring-response))]
-    (rr/header ring-response "ETag" class-info-tag)))
+        info-as-json (cheshire/generate-string info-for-json)
+        parsed-tag (ks/utf8-string->sha1 info-as-json)]
+    (jruby-protocol/set-environment-class-info-tag!
+     jruby-service
+     environment
+     parsed-tag)
+    (if (= parsed-tag request-tag)
+      (not-modified-response parsed-tag)
+      (-> (response-with-etag info-as-json parsed-tag)
+          (rr/content-type "application/json")))))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
-  request for environment_classes information"
+  request for environment_classes information."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
-    (if-let [environment (jruby-request/get-environment-from-request request)]
-      (if (re-matches #"^\w+$" environment)
-        (if-let [class-info
-                 (jruby-protocol/get-environment-class-info jruby-service
-                                                            (:jruby-instance
-                                                             request)
-                                                            environment)]
-          (process-environment-class-info! class-info
-                                           environment)
-          (rr/not-found (str "Could not find environment '" environment "'")))
-        (jruby-request/throw-bad-request!
-         (str
-          "The environment must be purely alphanumeric, not '"
-          environment
-          "'")))
-      (jruby-request/throw-bad-request!
-       "An environment parameter must be specified"))))
+    (let [environment (jruby-request/get-environment-from-request request)]
+      (if-let [class-info
+               (jruby-protocol/get-environment-class-info jruby-service
+                                                          (:jruby-instance
+                                                           request)
+                                                          environment)]
+        (process-environment-class-info! class-info
+                                         environment
+                                         jruby-service
+                                         (if-none-match-from-request request))
+        (rr/not-found (str "Could not find environment '" environment "'"))))))
+
+(schema/defn ^:always-validate
+  check-for-matching-etag-fn :- IFn
+  "Middleware function which validates whether or not the If-None-Match
+  header on an incoming environment_classes request matches the last Etag
+  computed for the environment whose info is being requested.  If the two
+  match, the middleware function returns an HTTP 304 (Not Modified) Ring
+  response.  If the two do not match, the request is threaded through to the
+  supplied 'f' function."
+  [handler :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)
+          request-tag (if-none-match-from-request request)]
+      (if (and request-tag
+               (= request-tag
+                  (jruby-protocol/get-environment-class-info-tag
+                   jruby-service
+                   environment)))
+        (not-modified-response request-tag)
+        (handler request)))))
 
 (schema/defn ^:always-validate
   environment-class-handler :- IFn
@@ -145,6 +198,8 @@
   (->
    (environment-class-info-fn jruby-service)
    (jruby-request/wrap-with-jruby-instance jruby-service)
+   (check-for-matching-etag-fn jruby-service)
+   jruby-request/validate-environment-fn
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
 

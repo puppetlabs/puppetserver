@@ -69,3 +69,26 @@
   [req]
   (-> req
       (get-in [:params "environment"])))
+
+(defn validate-environment-fn
+  "Middleware function which validates the presence and syntactical content
+  of an environment in a ring request.  If validation fails, a ::bad-request
+  slingshot exception is thrown.  If validation succeeds, the request is
+  threaded through to the supplied 'f' function."
+  [f]
+  (fn [request]
+    (let [environment (get-environment-from-request request)]
+      (cond
+        (nil? environment)
+        (throw-bad-request!
+         "An environment parameter must be specified")
+
+        (not (re-matches #"^\w+$" environment))
+        (throw-bad-request!
+         (str
+          "The environment must be purely alphanumeric, not '"
+          environment
+          "'"))
+
+        :else
+        (f request)))))

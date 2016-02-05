@@ -115,13 +115,17 @@
 ;;; Interacting with puppet code and catalogs
 
 (schema/defn ^:always-validate write-foo-pp-file :- schema/Str
-  ([foo-pp-contents]
+  ([foo-pp-contents :- schema/Str]
    (write-foo-pp-file foo-pp-contents "init"))
   ([foo-pp-contents :- schema/Str
     pp-name :- schema/Str]
+   (write-foo-pp-file foo-pp-contents pp-name "production"))
+  ([foo-pp-contents :- schema/Str
+    pp-name :- schema/Str
+    env-name :- schema/Str]
    (let [foo-pp-file (fs/file conf-dir
                               "environments"
-                              "production"
+                              env-name
                               "modules"
                               "foo"
                               "manifests"
