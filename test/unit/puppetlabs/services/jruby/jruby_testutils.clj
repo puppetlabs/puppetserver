@@ -4,6 +4,7 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services :as tk-service]
             [schema.core :as schema]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
@@ -162,9 +163,8 @@
   "Wait for all jrubies to land in the JRubyPuppetService's pool"
   [app]
   (let [pool-context (-> app
-                         (tk-app/app-context)
-                         deref
-                         :JRubyPuppetService
+                         (tk-app/get-service :JRubyPuppetService)
+                         tk-service/service-context
                          :pool-context)
         num-jrubies (-> pool-context
                         :pool-state

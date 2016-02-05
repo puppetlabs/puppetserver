@@ -2,8 +2,8 @@
   (:require [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [me.raynes.fs :as fs]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [puppetlabs.kitchensink.core :as ks])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (com.puppetlabs.puppetserver.pool JRubyPool)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill ShutdownPoisonPill)
@@ -156,7 +156,7 @@
                            [:master-run-dir "rundir"]
                            [:master-log-dir "logdir"]]]
       (if-let [value (get config setting)]
-        (.put puppet-config dir (fs/absolute-path value))))
+        (.put puppet-config dir (ks/absolute-path value))))
     puppet-config))
 
 (schema/defn borrow-with-timeout-fn :- JRubyPuppetInternalBorrowResult
