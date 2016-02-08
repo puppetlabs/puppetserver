@@ -14,7 +14,7 @@
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
-  (-> (root-routes request-handler jruby-service)
+  (-> (root-routes request-handler jruby-service (constantly nil))
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 

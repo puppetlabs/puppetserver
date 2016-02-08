@@ -50,7 +50,7 @@
       (logging/with-test-logging
         (tk-testutils/with-app-with-config app [vcs/versioned-code-service] {}
           (let [vcs (tk-app/get-service app :VersionedCodeService)]
-            (is (thrown-with-msg? IllegalStateException #"without :code-content-command"
+            (is (thrown-with-msg? IllegalStateException #".*Cannot retrieve code content because the \"versioned-code.code-content-command\" setting is not present in configuration.*"
                                   (vc/get-code-content vcs "test" "foobar" "foo/bar/")))))))
     (testing "and there is a code-content-command"
       (logging/with-test-logging
