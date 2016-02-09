@@ -1,11 +1,11 @@
 (ns puppetlabs.puppetserver.shell-utils-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
-            [me.raynes.fs :as fs])
+            [puppetlabs.kitchensink.core :as ks])
   (:import (java.io ByteArrayInputStream)))
 
 (def test-resources
-  (fs/absolute-path
+  (ks/absolute-path
    "./dev-resources/puppetlabs/puppetserver/shell_utils_test"))
 
 (defn script-path

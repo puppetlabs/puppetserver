@@ -4,10 +4,11 @@
             [me.raynes.fs :as fs]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.kitchensink.core :as ks]))
 
 (def test-resources-dir
-  (fs/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
+  (ks/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
 
 (defn script-path
   [script-name]

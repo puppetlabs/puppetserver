@@ -753,7 +753,7 @@
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
                        (cons lib ruby-load-path)
                        ruby-load-path)
-                     (map fs/absolute-path)
+                     (map ks/absolute-path)
                      (str/join (System/getProperty "path.separator")))
         results (shell-utils/execute-command
                  executable
