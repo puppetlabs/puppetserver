@@ -1,7 +1,8 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream)
            (clojure.lang IFn)
-           (java.util Map Map$Entry))
+           (java.util Map Map$Entry)
+           (org.jruby RubySymbol))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.comidi :as comidi]
@@ -116,7 +117,25 @@
   {:name schema/Str
    :files [EnvironmentClassesFileEntry]})
 
-(defn sort-nested-java-maps
+(defn obj-or-ruby-symbol-as-string
+  "If the supplied object is of type RubySymbol, returns a string
+  representation of the RubySymbol.  Otherwise, just returns the original
+  object."
+  [obj]
+  (if (instance? RubySymbol obj)
+    (.asJavaString obj)
+    obj))
+
+(defn obj->keyword
+  "Attempt to convert the supplied object to a Clojure keyword.  On failure
+  to do so, throws an IllegalArgumentException."
+  [obj]
+  (if-let [obj-as-keyword (-> obj obj-or-ruby-symbol-as-string keyword)]
+    obj-as-keyword
+    (throw (IllegalArgumentException.
+            (str "Object cannot be coerced to a keyword: " obj)))))
+
+(defn sort-nested-environment-class-info-maps
   "For a data structure, recursively sort any nested maps and sets descending
   into map values, lists, vectors and set members as well. The result should be
   that all maps in the data structure become explicitly sorted with natural
@@ -129,25 +148,26 @@
 
   This function was copypasta'd from clj-kitchensink's core/sort-nested-maps.
   sort-nested-maps can only deep sort a structure that contains native Clojure
-  types, whereas the data structure that we're sorting in this case contains
-  objects created by JRuby that derive from standard Java interfaces.  This
-  function tolerates Java-derived objects when considering how to apply
-  sorting."
+  types, whereas this function includes a couple of changes which handle the
+  sorting of the data structure returned from JRuby for a call to get
+  environment class info:
+
+  1) This function sorts keys within any `java.util.Map`, as opposed to just an
+     object for which `map?` returns true.
+
+  2) This function attempts to coerces any keys found within a map to a
+     Clojure keyword before using `sorted-map` to sort the keys.
+     `sorted-map` would otherwise throw an error upon encountering a
+     non-keyword type key."
   [data]
   (cond
     (instance? Map data)
-    ;; sorted-map expects each key to be a 'keyword'.  Some of the keys
-    ;; that we get back from JRuby might not be of a type that Clojure's
-    ;; 'keyword' function can turn directly into a Clojure keyword, e.g., a
-    ;; RubySymbol, so .toString is used to get a String representation of
-    ;; the key object, which can then be turned into a Clojure keyword.
     (into (sorted-map) (for [[k v] data]
-                         [(or (keyword k)
-                              (keyword (.toString k)))
-                          (sort-nested-java-maps v)]))
+                         [(obj->keyword k)
+                          (sort-nested-environment-class-info-maps v)]))
 
     (instance? Iterable data)
-    (map sort-nested-java-maps data)
+    (map sort-nested-environment-class-info-maps data)
 
     :else data))
 
@@ -179,7 +199,7 @@
   (-> file-info
       (basic-manifest-info-from-jruby->basic-manifest-info-for-json)
       (assoc :path (key file-info))
-      sort-nested-java-maps))
+      sort-nested-environment-class-info-maps))
 
 (schema/defn ^:always-validate
   class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo

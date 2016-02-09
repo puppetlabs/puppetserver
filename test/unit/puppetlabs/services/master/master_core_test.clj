@@ -68,7 +68,13 @@
                           (set-environment-class-info-tag! [_ _ _]))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)
-          request (partial app-request app)]
+          request (partial app-request app)
+          etag #(-> %
+                   (environment-class-response!
+                    "production"
+                    jruby-service
+                    nil)
+                   (rr/get-header "Etag"))]
       (testing "returns 200 for environment that exists"
         (is (= 200 (:status (request
                              "/v3/environment_classes?environment=production")))))
@@ -84,98 +90,104 @@
          (is (= 400 (:status (request
                               "/v3/environment_classes?environment=~"))))))
       (testing "calculates etag properly for response payload"
-        (letfn [(etag [x]
-                  (-> x
-                      (environment-class-response!
-                       "production"
-                       jruby-service
-                       nil)
-                      (rr/get-header "Etag")))]
-          (is (= (etag {"/one/file"
-                        [
-                         {"name" "oneclass",
-                          "params" [
-                                    {"name" "oneparam",
-                                     "type" "String",
-                                     "default_literal" "'literal'",
-                                     "default_source" "literal"},
-                                    {"name" "twoparam",
-                                     "type" "Integer",
-                                     "default_literal" "3",
-                                     "default_source" "3"}]
-                          },
-                         {"name" "twoclass"
-                          "params" []}],
-                        "/two/file" []})
-                 (etag {"/one/file"
-                        [
-                         {"name" "oneclass",
-                          "params" [
-                                    {"default_source" "literal"
-                                     "type" "String",
-                                     "name" "oneparam",
-                                     "default_literal" "'literal'"},
-                                    {"name" "twoparam",
-                                     "type" "Integer",
-                                     "default_literal" "3",
-                                     "default_source" "3"}]
-                          },
-                         {"name" "twoclass"
-                          "params" []}],
-                        "/two/file" []}))
-              "hashes unexpectedly not equal for equal maps")
-          (is (= (etag {"/one/file"
-                        [
-                         {"name" "oneclass",
-                          "params" [
-                                    {"name" "oneparam",
-                                     "type" "String",
-                                     "default_literal" "'literal'",
-                                     "default_source" "literal"},
-                                    {"name" "twoparam",
-                                     "type" "Integer",
-                                     "default_literal" "3",
-                                     "default_source" "3"}]
-                          },
-                         {"name" "twoclass"
-                          "params" []}],
-                        "/two/file" []})
-                 (etag {"/one/file"
-                        [
-                         {"name" "oneclass",
-                          "params" [
-                                    {"default_source" "literal"
-                                     "type" "String",
-                                     "name" "oneparam",
-                                     "default_literal" "'literal'"},
-                                    {"type" "Integer",
-                                     "name" "twoparam",
-                                     "default_literal" "3"
-                                     "default_source" "3"}]
-                          },
-                         {"params" []
-                          "name" "twoclass"}],
-                        "/two/file" []}))
-           (str "hashes unexpectedly not equal for equal maps with out of "
-                "order keys"))
-          (is (not= (etag {"/one/file"
-                           [
-                            {"name" "oneclass",
-                             "params" [
-                                       {"name" "oneparam",
-                                        "type" "String",
-                                        "default_literal" "'literal'",
-                                        "default_source" "literal"},
-                                       {"name" "twoparam",
-                                        "type" "Integer",
-                                        "default_literal" "3",
-                                        "default_source" "3"}]
-                             },
-                            {"name" "twoclass"
-                             "params" []}],
-                           "/two/file" []})
-                    (etag {"/two/file" []}))
-              "hashes unexpectedly equal for different payloads"))))))
+        (is (= (etag {"/one/file"
+                      [
+                       {"name" "oneclass",
+                        "params" [
+                                  {"name" "oneparam",
+                                   "type" "String",
+                                   "default_literal" "'literal'",
+                                   "default_source" "literal"},
+                                  {"name" "twoparam",
+                                   "type" "Integer",
+                                   "default_literal" "3",
+                                   "default_source" "3"}]
+                        },
+                       {"name" "twoclass"
+                        "params" []}],
+                      "/two/file" []})
+               (etag {"/one/file"
+                      [
+                       {"name" "oneclass",
+                        "params" [
+                                  {"default_source" "literal"
+                                   "type" "String",
+                                   "name" "oneparam",
+                                   "default_literal" "'literal'"},
+                                  {"name" "twoparam",
+                                   "type" "Integer",
+                                   "default_literal" "3",
+                                   "default_source" "3"}]
+                        },
+                       {"name" "twoclass"
+                        "params" []}],
+                      "/two/file" []}))
+            "hashes unexpectedly not equal for equal maps")
+        (is (= (etag {"/one/file"
+                      [
+                       {"name" "oneclass",
+                        "params" [
+                                  {"name" "oneparam",
+                                   "type" "String",
+                                   "default_literal" "'literal'",
+                                   "default_source" "literal"},
+                                  {"name" "twoparam",
+                                   "type" "Integer",
+                                   "default_literal" "3",
+                                   "default_source" "3"}]
+                        },
+                       {"name" "twoclass"
+                        "params" []}],
+                      "/two/file" []})
+               (etag {"/one/file"
+                      [
+                       {"name" "oneclass",
+                        "params" [
+                                  {"default_source" "literal"
+                                   "type" "String",
+                                   "name" "oneparam",
+                                   "default_literal" "'literal'"},
+                                  {"type" "Integer",
+                                   "name" "twoparam",
+                                   "default_literal" "3"
+                                   "default_source" "3"}]
+                        },
+                       {"params" []
+                        "name" "twoclass"}],
+                      "/two/file" []}))
+            (str "hashes unexpectedly not equal for equal maps with out of "
+                 "order keys"))
+        (is (not= (etag {"/one/file"
+                         [
+                          {"name" "oneclass",
+                           "params" [
+                                     {"name" "oneparam",
+                                      "type" "String",
+                                      "default_literal" "'literal'",
+                                      "default_source" "literal"},
+                                     {"name" "twoparam",
+                                      "type" "Integer",
+                                      "default_literal" "3",
+                                      "default_source" "3"}]
+                           },
+                          {"name" "twoclass"
+                           "params" []}],
+                         "/two/file" []})
+                  (etag {"/two/file" []}))
+            "hashes unexpectedly equal for different payloads"))
+      (testing (str "throws IllegalArgumentException for response "
+                    "which contains invalid map key for etagging")
+        (is (thrown-with-msg?
+             IllegalArgumentException
+             #"Object cannot be coerced to a keyword"
+             (etag {"/one/file"
+                    [ {["array"
+                        "as"
+                        "map"
+                        "key"
+                        "not"
+                        "supported"]
+                       "bogus"}]})))))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
