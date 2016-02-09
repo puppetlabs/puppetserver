@@ -22,11 +22,94 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
+(def EnvironmentClassesFileClassParameter
+  "Schema for an individual parameter found in a class defined within an
+  environment_classes file.  Includes the name of the parameter.  Optionally,
+  if available in the parameter definition, includes the type, source text for
+  the parameter's default value, and a literal (primitive data type)
+  representation of the parameter's default value.
+
+  For example, if a class parameter were defined like this in a Puppet
+  manifest ...
+
+    Integer $someint = 3
+
+  ... then the map representation of that parameter would be:
+
+  {:name \"someint\",
+   :type \"Integer\",
+   :default_source \"3\",
+   :default_literal 3
+  }
+
+  For a parameter default value which contains an expression - something that
+  cannot be coerced into a primitive data type - the map representation omits
+  the default_literal.  For example, this parameter definition in a Puppet
+  manifest ...
+
+   String $osfam = \"$::osfamily\"
+
+  ... would produce a map representation which looks like this ...
+
+  {:name \"osfam\",
+   :type \"String\",
+   :default_source \"\"$::osfamily\"\",
+  }
+
+  The data types that could be used in the value for a :default_literal may
+  vary over time, as the Puppet language continues to evolve.  For this
+  reason, the more permissive schema/Any is used here.  General data types
+  that we could see based on current types that the Puppet language allows
+  today are in the table below:
+
+  Puppet          | :default_literal value
+  ================================================
+  String          | java.lang.String
+  Boolean         | java.lang.Boolean
+  Float/Numeric   | java.lang.Double
+  Integer/Numeric | java.lang.Long
+  Array           | clojure.lang.LazySeq
+  Hash            | clojure.lang.PersistentTreeMap
+
+  For the Regexp, Undef, Default, any Hash objects (top-level or nested within
+  another Array or Hash) whose keys are not of type String, and any Array
+  or Hash objects (top-level or nested within another Array or Hash) which
+  contain a Regexp, Undef, or Default typed value, the :default_literal value
+  will not be populated.  These are not populated because they cannot be
+  represented in JSON transfer without some loss of fidelity as compared to what
+  the original data type from the manifest was."
+  {:name schema/Str
+   (schema/optional-key :type) schema/Str
+   (schema/optional-key :default_source) schema/Str
+   (schema/optional-key :default_literal) schema/Any})
+
+(def EnvironmentClassesFileClass
+  "Schema for an individual class found within an environment_classes file
+  entry.  Includes the name of the class and a vector of information about
+  each parameter found in the class definition."
+  {:name schema/Str
+   :params [EnvironmentClassesFileClassParameter]})
+
+(def EnvironmentClassesFileWithError
+  "Schema for an environment_classes file that could not be parsed.  Includes
+   the path to the file and an error string containing details about the
+   problem encountered during parsing."
+  {:path schema/Str
+   :error schema/Str})
+
+(def EnvironmentClassesFileWithClasses
+  "Schema for an environment_classes file that was successfully parsed.
+  Includes the path to the file and a vector of information about each class
+  found in the file."
+  {:path schema/Str
+   :classes [EnvironmentClassesFileClass]})
+
 (def EnvironmentClassesFileEntry
   "Schema for an individual file entry which is part of the return payload
   for an environment_classes request."
-  {:path schema/Str
-   schema/Keyword schema/Any})
+  (schema/conditional
+   #(contains? % :error) EnvironmentClassesFileWithError
+   #(contains? % :classes) EnvironmentClassesFileWithClasses))
 
 (def EnvironmentClassesInfo
   "Schema for the return payload an environment_classes request."
