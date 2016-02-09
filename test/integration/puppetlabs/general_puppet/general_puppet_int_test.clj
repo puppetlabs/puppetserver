@@ -104,18 +104,20 @@
           (testing "the /static_file_content endpoint returns an error if file-path is not provided"
             (let [response (get-static-file-content "?code_id=foobar&environment=test")]
               (is (= 400 (:status response)))
-              (is (= error-message (slurp (:body response)))))))))
+              (is (= error-message (slurp (:body response))))))))))
 
-    (testing "the /static_file_content endpoint errors if :code-content-command is not set"
-      (bootstrap/with-puppetserver-running
-        app
-        {:jruby-puppet
-         {:max-active-instances num-jrubies}
-         :versioned-code
-         {:code-content-command nil}}
-        (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/foo/bar/?code_id=foobar&environment=test"
-                                        (assoc testutils/ssl-request-options
-                                          :as :stream))]
-          (is (= 500 (:status response)))
-          (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
-                 (slurp (:body response)))))))))
+(deftest ^:integration static-file-content-endpoint-test-no-code-content-command
+  (logging/with-test-logging
+   (testing "the /static_file_content endpoint errors if :code-content-command is not set"
+     (bootstrap/with-puppetserver-running
+      app
+      {:jruby-puppet
+       {:max-active-instances num-jrubies}
+       :versioned-code
+       {:code-content-command nil}}
+      (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/modules/foo/files/bar/?code_id=foobar&environment=test"
+                                      (assoc testutils/ssl-request-options
+                                        :as :stream))]
+        (is (= 500 (:status response)))
+        (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
+                        (slurp (:body response)))))))))
