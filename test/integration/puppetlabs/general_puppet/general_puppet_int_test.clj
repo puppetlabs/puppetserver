@@ -76,7 +76,7 @@
 
 (deftest ^:integration static-file-content-endpoint-test
   (logging/with-test-logging
-    (testing "the /static_file_content endpoint behaves as expected when :code-content-command is set"
+   (testing "the /static_file_content endpoint behaves as expected when :code-content-command is set"
      (let [get-static-file-content (fn [url-end]
                                      (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
                                                       (assoc testutils/ssl-request-options
@@ -88,23 +88,49 @@
          :versioned-code
          {:code-content-command (script-path "echo")}}
         (testing "the /static_file_content endpoint successfully streams file content"
-          (let [response (get-static-file-content "foo/bar/?code_id=foobar&environment=test")]
+          (let [response (get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
             (is (= 200 (:status response)))
-            (is (= "test foobar foo/bar/\n" (slurp (:body response))))))
+            (is (= "test foobar modules/foo/files/bar.txt\n" (slurp (:body response))))))
 
         (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
           (testing "the /static_file_content endpoint returns an error if code_id is not provided"
-            (let [response (get-static-file-content "foo/bar/?environment=test")]
+            (let [response (get-static-file-content "modules/foo/files/bar.txt?environment=test")]
               (is (= 400 (:status response)))
               (is (= error-message (slurp (:body response))))))
           (testing "the /static_file_content endpoint returns an error if environment is not provided"
-            (let [response (get-static-file-content "foo/bar/?code_id=foobar")]
+            (let [response (get-static-file-content "modules/foo/files/bar.txt?code_id=foobar")]
               (is (= 400 (:status response)))
               (is (= error-message (slurp (:body response))))))
           (testing "the /static_file_content endpoint returns an error if file-path is not provided"
             (let [response (get-static-file-content "?code_id=foobar&environment=test")]
               (is (= 400 (:status response)))
-              (is (= error-message (slurp (:body response))))))))))
+              (is (= error-message (slurp (:body response)))))))
+        (let [error-message "Request Denied: A /static_file_content request must be a file within the files directory of a module or a module in an environment"
+              valid-paths ["modules/foo/files/bar.txt"
+                           "modules/foo/files/bar/"
+                           "modules/foo/files/bar/baz.txt"
+                           "environments/production/modules/foo/files/bar.txt"
+                           "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                           "environments/test/modules/foo/files/bar/baz.txt"
+                           "environments/dev/modules/foo/files/path/to/file/something.txt"]
+              invalid-paths ["modules/foo/manifests/bar.pp"
+                             "manifests/site.pp"
+                             "environments/foo/bar/files"
+                             "environments/../manifests/files/site.pp"
+                             "environments/production/files/~/.bash_profile"
+                             "environments/../modules/foo/files/site.pp"
+                             "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+                             "environments/production/modules/foo/files/../../../../../../site.pp"]]
+          (testing "valid requests return 200 and the file"
+            (doseq [path valid-paths]
+              (let [response (get-static-file-content (str path "?code_id=foobar&environment=production"))]
+                (is (= 200 (:status response)))
+                (is (= (str "production foobar " path "\n") (slurp (:body response)))))))
+          (testing "invalid requests return 403 and the error message"
+            (doseq [path invalid-paths]
+              (let [response (get-static-file-content (str path "?code_id=foobar&environment=production"))]
+                (is (= 403 (:status response)))
+                (is (= error-message (slurp (:body response)))))))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging

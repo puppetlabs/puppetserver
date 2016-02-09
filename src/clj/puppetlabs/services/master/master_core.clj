@@ -331,13 +331,17 @@
     (let [environment (get-in req [:params "environment"])
           code-id (get-in req [:params "code_id"])
           file-path (get-in req [:params :rest])]
-      (if (or (nil? environment)
-              (nil? code-id)
-              (or (nil? file-path) (= "" file-path)))
+      (cond
+        (some empty? [environment code-id file-path])
         {:status 400
          :body "Error: A /static_file_content request requires an environment, a code-id, and a file-path"}
+        (not (valid-static-file-path? file-path))
+        {:status 403
+         :body (str "Request Denied: A /static_file_content request must be a file within "
+         "the files directory of a module or a module in an environment")}
+        :else
         {:status 200
-         :body   (get-code-content environment code-id file-path)}))))
+         :body (get-code-content environment code-id (URIUtil/canonicalPath file-path))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
