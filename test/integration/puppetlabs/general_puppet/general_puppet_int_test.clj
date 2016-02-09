@@ -20,6 +20,12 @@
 
 (def num-jrubies 1)
 
+(defn get-static-file-content
+  [url-end]
+  (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
+                   (assoc testutils/ssl-request-options
+                     :as :stream)))
+
 (deftest ^:integration test-external-command-execution
   (testing "puppet functions can call external commands successfully"
     ; The generate puppet function runs a fully qualified command with arguments.
@@ -77,10 +83,6 @@
 (deftest ^:integration static-file-content-endpoint-test
   (logging/with-test-logging
    (testing "the /static_file_content endpoint behaves as expected when :code-content-command is set"
-     (let [get-static-file-content (fn [url-end]
-                                     (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
-                                                      (assoc testutils/ssl-request-options
-                                                        :as :stream)))]
        (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet
@@ -130,7 +132,7 @@
             (doseq [path invalid-paths]
               (let [response (get-static-file-content (str path "?code_id=foobar&environment=production"))]
                 (is (= 403 (:status response)))
-                (is (= error-message (slurp (:body response)))))))))))))
+                (is (= error-message (slurp (:body response))))))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging
@@ -141,9 +143,7 @@
        {:max-active-instances num-jrubies}
        :versioned-code
        {:code-content-command nil}}
-      (let [response (http-client/get "https://localhost:8140/puppet/v3/static_file_content/modules/foo/files/bar/?code_id=foobar&environment=test"
-                                      (assoc testutils/ssl-request-options
-                                        :as :stream))]
+      (let [response (get-static-file-content "modules/foo/files/bar/?code_id=foobar&environment=test")]
         (is (= 500 (:status response)))
         (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
                         (slurp (:body response)))))))))
