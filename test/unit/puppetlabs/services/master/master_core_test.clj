@@ -198,6 +198,29 @@
                         "supported"]
                        "bogus"}])})))))))
 
+(deftest valid-static-file-path-test
+    (let [valid-paths ["modules/foo/files/bar.txt"
+                       "modules/foo/files/bar/"
+                       "modules/foo/files/bar/baz.txt"
+                       "environments/production/modules/foo/files/bar.txt"
+                       "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                       "environments/test/modules/foo/files/bar/baz.txt"
+                       "environments/dev/modules/foo/files/path/to/file/something.txt"]
+          invalid-paths ["modules/foo/manifests/bar.pp"
+                         "manifests/site.pp"
+                         "environments/foo/bar/files"
+                         "environments/../manifests/files/site.pp"
+                         "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+                         "environments/production/files/~/.bash_profile"
+                         "environments/../modules/foo/files/site.pp"
+                         "environments/production/modules/foo/files/../../../../../../site.pp"]]
+      (testing "valid requests return true"
+      (doseq [path valid-paths]
+        (is (true? (valid-static-file-path? path)))))
+      (testing "invalid requests return false"
+        (doseq [path invalid-paths]
+          (is (false? (valid-static-file-path? path)))))))
+
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
                 "is not overwritten, and simply passed through unmodified.")

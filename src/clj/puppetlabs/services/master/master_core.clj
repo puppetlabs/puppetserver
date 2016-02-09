@@ -2,7 +2,9 @@
   (:import (java.io FileInputStream)
            (clojure.lang IFn)
            (java.util Map Map$Entry)
-           (org.jruby RubySymbol))
+           (org.jruby RubySymbol)
+           (java.util Map)
+           (org.eclipse.jetty.util URIUtil))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.comidi :as comidi]
@@ -308,6 +310,17 @@
    jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
+
+(schema/defn ^:always-validate valid-static-file-path? :- schema/Bool
+  "Helper function to decide if a static_file_content path is valid.
+  The access here is designed to mimic Puppet's file_content endpoint."
+  [path :- schema/Str]
+  (if-let [canonicalized-path (URIUtil/canonicalPath path)]
+    (not (nil?
+          (or
+           (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :helper] canonicalized-path)
+           (bidi.bidi/match-route [["environments/" :environment-name "/modules/" :module-name "/files/" [#".*" :rest]] :helper] canonicalized-path))))
+    false))
 
 (defn static-file-content-request-handler
   "Returns a function which is the main request handler for the
