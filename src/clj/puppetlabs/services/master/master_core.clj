@@ -185,7 +185,12 @@
   class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo
   "Convert a class info map received from the jruby service into an
   appropriate map for use in serializing an environment_classes response to
-  JSON."
+  JSON.  The map that this function returns should be 'sorted' by key - both
+  at the top-level and within any nested map - so that it will consistently
+  serialize to the exact same content.  For this reason, this function and
+  the functions that this function calls use the `sorted-map` and
+  `sort-nested-java-maps` helper functions when constructing / translating
+  maps."
   [info-from-jruby :- Map
    environment :- schema/Str]
   (->> info-from-jruby
@@ -214,8 +219,8 @@
       (rr/status 304)))
 
 (schema/defn ^:always-validate
-  process-environment-class-info! :- ringutils/RingResponse
-  "Process the environment class info, returing a ring response to be
+  environment-class-response! :- ringutils/RingResponse
+  "Process the environment class info, returning a ring response to be
   propagated back up to the caller of the environment_classes endpoint"
   [info-from-jruby :- Map
    environment :- schema/Str
@@ -247,14 +252,14 @@
                                                           (:jruby-instance
                                                            request)
                                                           environment)]
-        (process-environment-class-info! class-info
-                                         environment
-                                         jruby-service
-                                         (if-none-match-from-request request))
+        (environment-class-response! class-info
+                                     environment
+                                     jruby-service
+                                     (if-none-match-from-request request))
         (rr/not-found (str "Could not find environment '" environment "'"))))))
 
 (schema/defn ^:always-validate
-  check-for-matching-etag-fn :- IFn
+  wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
   header on an incoming environment_classes request matches the last Etag
   computed for the environment whose info is being requested.  If the two
@@ -281,8 +286,8 @@
   (->
    (environment-class-info-fn jruby-service)
    (jruby-request/wrap-with-jruby-instance jruby-service)
-   (check-for-matching-etag-fn jruby-service)
-   jruby-request/validate-environment-fn
+   (wrap-with-etag-check jruby-service)
+   jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
 

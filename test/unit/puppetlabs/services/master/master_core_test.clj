@@ -86,7 +86,7 @@
       (testing "calculates etag properly for response payload"
         (letfn [(etag [x]
                   (-> x
-                      (process-environment-class-info!
+                      (environment-class-response!
                        "production"
                        jruby-service
                        nil)

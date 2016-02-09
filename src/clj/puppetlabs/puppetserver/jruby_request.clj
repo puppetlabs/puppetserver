@@ -41,10 +41,10 @@
 (defn wrap-with-error-handling
   "Middleware that wraps a JRuby request with some error handling to return
   the appropriate http status codes, etc."
-  [f]
+  [handler]
   (fn [request]
     (sling/try+
-     (f request)
+     (handler request)
      (catch bad-request? e
        (output-error request e 400))
      (catch jruby-timeout? e
@@ -55,14 +55,14 @@
 (defn wrap-with-jruby-instance
   "Middleware fn that borrows a jruby instance from the `jruby-service` and makes
   it available in the request as `:jruby-instance`"
-  [f jruby-service]
+  [handler jruby-service]
   (fn [request]
     (jruby/with-jruby-puppet
      jruby-instance
      jruby-service
      {:request (dissoc request :ssl-client-cert)}
 
-     (f (assoc request :jruby-instance jruby-instance)))))
+     (handler (assoc request :jruby-instance jruby-instance)))))
 
 (defn get-environment-from-request
   "Gets the environment from a request."
@@ -70,12 +70,11 @@
   (-> req
       (get-in [:params "environment"])))
 
-(defn validate-environment-fn
+(defn wrap-with-environment-validation
   "Middleware function which validates the presence and syntactical content
   of an environment in a ring request.  If validation fails, a ::bad-request
-  slingshot exception is thrown.  If validation succeeds, the request is
-  threaded through to the supplied 'f' function."
-  [f]
+  slingshot exception is thrown."
+  [handler]
   (fn [request]
     (let [environment (get-environment-from-request request)]
       (cond
@@ -91,4 +90,4 @@
           "'"))
 
         :else
-        (f request)))))
+        (handler request)))))
