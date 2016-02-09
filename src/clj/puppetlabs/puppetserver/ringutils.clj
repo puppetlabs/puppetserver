@@ -21,6 +21,12 @@
    (schema/optional-key :ssl-client-cert) (schema/maybe X509Certificate)
    schema/Keyword schema/Any})
 
+(def RingResponse
+  {:status schema/Int
+   :headers {schema/Str schema/Any}
+   :body schema/Any
+   schema/Keyword schema/Any})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 

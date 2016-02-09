@@ -40,7 +40,8 @@
         (-> context
             (assoc :pool-context pool-context)
             (assoc :borrow-timeout (:borrow-timeout config))
-            (assoc :event-callbacks (atom []))))))
+            (assoc :event-callbacks (atom []))
+            (assoc :environment-class-info-tags (atom {}))))))
   (stop
    [this context]
    (let [{:keys [pool-context]} (tk-services/service-context this)
@@ -69,17 +70,33 @@
 
   (mark-environment-expired!
     [this env-name]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
+    (let [{:keys [environment-class-info-tags pool-context]}
+          (tk-services/service-context this)]
+      (swap! environment-class-info-tags dissoc env-name)
       (core/mark-environment-expired! pool-context env-name)))
 
   (mark-all-environments-expired!
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/mark-all-environments-expired! pool-context)))
+    (let [{:keys [environment-class-info-tags pool-context]}
+          (tk-services/service-context this)]
+     (reset! environment-class-info-tags {})
+     (core/mark-all-environments-expired! pool-context)))
 
   (get-environment-class-info
     [this jruby-instance env-name]
     (.getClassInfoForEnvironment jruby-instance env-name))
+
+  (get-environment-class-info-tag
+   [this env-name]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (get @environment-class-info env-name)))
+
+  (set-environment-class-info-tag!
+   [this env-name tag]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (swap! environment-class-info assoc env-name tag)))
 
   (flush-jruby-pool!
     [this]
