@@ -114,25 +114,32 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Interacting with puppet code and catalogs
 
-(schema/defn ^:always-validate write-foo-pp-file :- schema/Str
-  ([foo-pp-contents :- schema/Str]
-   (write-foo-pp-file foo-pp-contents "init"))
-  ([foo-pp-contents :- schema/Str
+(schema/defn ^:always-validate write-pp-file :- schema/Str
+  ([pp-contents :- schema/Str
+    module-name :- schema/Str]
+   (write-pp-file pp-contents module-name "init"))
+  ([pp-contents :- schema/Str
+    module-name :- schema/Str
     pp-name :- schema/Str]
-   (write-foo-pp-file foo-pp-contents pp-name "production"))
-  ([foo-pp-contents :- schema/Str
+   (write-pp-file pp-contents module-name pp-name "production"))
+  ([pp-contents :- schema/Str
+    module-name :- schema/Str
     pp-name :- schema/Str
     env-name :- schema/Str]
-   (let [foo-pp-file (fs/file conf-dir
-                              "environments"
-                              env-name
-                              "modules"
-                              "foo"
-                              "manifests"
-                              (str pp-name ".pp"))]
-     (fs/mkdirs (fs/parent foo-pp-file))
-     (spit foo-pp-file foo-pp-contents)
-     (.getCanonicalPath foo-pp-file))))
+   (let [pp-file (fs/file conf-dir
+                          "environments"
+                          env-name
+                          "modules"
+                          module-name
+                          "manifests"
+                          (str pp-name ".pp"))]
+     (fs/mkdirs (fs/parent pp-file))
+     (spit pp-file pp-contents)
+     (.getCanonicalPath pp-file))))
+
+(schema/defn ^:always-validate write-foo-pp-file :- schema/Str
+  [foo-pp-contents]
+  (write-pp-file foo-pp-contents "foo"))
 
 (schema/defn ^:always-validate get-catalog :- PuppetCatalog
   "Make an HTTP get request for a catalog."

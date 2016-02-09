@@ -60,10 +60,12 @@
   (bootstrap/with-puppetserver-running app
    {:jruby-puppet {:max-active-instances 1}}
    (let [response->class-info-map #(-> %1 :body cheshire/parse-string)
-         foo-file (testutils/write-foo-pp-file
-                   "class foo (String $foo_1 = \"is foo\"){}")
-         bar-file (testutils/write-foo-pp-file
-                   "class foo::bar (Integer $foo_2 = 3){}" "bar")
+         foo-file (testutils/write-pp-file
+                   "class foo (String $foo_1 = \"is foo\"){}"
+                   "foo")
+         bar-file (testutils/write-pp-file
+                   "class foo::bar (Integer $foo_2 = 3){}"
+                   "bar")
          expected-initial-response {
                                     "files"
                                     [
@@ -123,20 +125,21 @@
              "etag changed even though code did not")
          (is (empty? (:body response))
              "unexpected body for response")))
-    (testing (str "environment_classes fetch without if-none-match "
-                  "header includes latest info after code update")
-       (testutils/write-foo-pp-file
+     (testing (str "environment_classes fetch without if-none-match "
+                   "header includes latest info after code update")
+       (testutils/write-pp-file
         (str "class foo (Hash[String, Integer] $foo_hash = {"
-             " foo_1 => 1, foo_2 => 2 }){}"))
-       (testutils/write-foo-pp-file "" "bar")
-       (let [baz-file (testutils/write-foo-pp-file
+             " foo_1 => 1, foo_2 => 2 }){}")
+        "foo")
+       (testutils/write-pp-file "" "bar")
+       (let [baz-file (testutils/write-pp-file
                        (str "class foo::baz (String $baz_1 = 'the baz',\n"
                             " Array[String] $baz_arr = ['one', 'two', "
                             "'three']){}\n"
                             "class foo::morebaz ($baz) {}")
                        "baz")
-             borked-file (testutils/write-foo-pp-file
-                          (str "borked manifest") "borked")
+             borked-file (testutils/write-pp-file "borked manifest" "borked")
+             _ (purge-all-env-caches)
              response (get-env-classes "production")]
          (is (= 200 (:status response))
              (str
@@ -222,12 +225,14 @@
        ;;    the 'test' environment was not flushed.
        (purge-env-dir)
        (purge-all-env-caches)
-       (let [prod-file (testutils/write-foo-pp-file "class oneprod {}"
-                                                    "prod"
-                                                    "production")
-             test-file (testutils/write-foo-pp-file "class onetest {}"
-                                                    "test"
-                                                    "test")
+       (let [prod-file (testutils/write-pp-file "class oneprod {}"
+                                                "somemod"
+                                                "prod"
+                                                "production")
+             test-file (testutils/write-pp-file "class onetest {}"
+                                                "somemod"
+                                                "test"
+                                                "test")
              production-response-initial (get-env-classes "production")
              production-etag-initial (response-etag production-response-initial)
              test-response-initial (get-env-classes "test")
@@ -257,12 +262,14 @@
                 (response->class-info-map test-response-initial))
              "unexpected body for test response")
 
-         (testutils/write-foo-pp-file "class oneflushprod {}"
-                                      "prod"
-                                      "production")
-         (testutils/write-foo-pp-file "class oneflushtest {}"
-                                      "test"
-                                      "test")
+         (testutils/write-pp-file "class oneflushprod {}"
+                                  "somemod"
+                                  "prod"
+                                  "production")
+         (testutils/write-pp-file "class oneflushtest {}"
+                                  "somemod"
+                                  "test"
+                                  "test")
 
          (let [production-response-before-flush (get-env-classes
                                                  "production"
@@ -359,12 +366,14 @@
        ;;    reflects the latest data on disk for both environments.
        (purge-env-dir)
        (purge-all-env-caches)
-       (let [prod-file (testutils/write-foo-pp-file "class allprod {}"
-                                                    "prod"
-                                                    "production")
-             test-file (testutils/write-foo-pp-file "class alltest {}"
-                                                    "test"
-                                                    "test")
+       (let [prod-file (testutils/write-pp-file "class allprod {}"
+                                                "somemod"
+                                                "prod"
+                                                "production")
+             test-file (testutils/write-pp-file "class alltest {}"
+                                                "somemod"
+                                                "test"
+                                                "test")
              production-response-initial (get-env-classes "production")
              production-etag-initial (response-etag production-response-initial)
              test-response-initial (get-env-classes "test")
@@ -396,12 +405,14 @@
                 (response->class-info-map test-response-initial))
              "unexpected body for test response")
 
-         (testutils/write-foo-pp-file "class allflushprod {}"
-                                      "prod"
-                                      "production")
-         (testutils/write-foo-pp-file "class allflushtest {}"
-                                      "test"
-                                      "test")
+         (testutils/write-pp-file "class allflushprod {}"
+                                  "somemod"
+                                  "prod"
+                                  "production")
+         (testutils/write-pp-file "class allflushtest {}"
+                                  "somemod"
+                                  "test"
+                                  "test")
          (purge-all-env-caches)
 
          (let [production-response-after-all-flush (get-env-classes
