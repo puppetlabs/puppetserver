@@ -6,7 +6,8 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [ring.util.response :as rr])
+            [ring.util.response :as rr]
+            [puppetlabs.kitchensink.core :as ks])
   (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -199,47 +200,28 @@
                        "bogus"}])})))))))
 
 (deftest valid-static-file-path-test
-  (let [expected-path-results {:valid #{"modules/foo/files/bar.txt"
-                                        "modules/foo/files/bar/"
-                                        "modules/foo/files/bar/baz.txt"
-                                        "environments/production/modules/foo/files/bar.txt"
-                                        "environments/production/modules/foo/files/..conf..d../..bar..txt.."
-                                        "environments/test/modules/foo/files/bar/baz.txt"
-                                        "environments/dev/modules/foo/files/path/to/file/something.txt"}
-                               :invalid #{"modules/foo/manifests/bar.pp"
-                                          "manifests/site.pp"
-                                          "environments/foo/bar/files"
-                                          "environments/../manifests/files/site.pp"
-                                          "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
-                                          "environments/production/files/~/.bash_profile"
-                                          "environments/../modules/foo/files/site.pp"
-                                          "environments/production/modules/foo/files/../../../../../../site.pp"}}
-        paths ["modules/foo/files/bar.txt"
-               "modules/foo/files/bar/"
-               "modules/foo/files/bar/baz.txt"
-               "environments/production/modules/foo/files/bar.txt"
-               "environments/production/modules/foo/files/..conf..d../..bar..txt.."
-               "environments/test/modules/foo/files/bar/baz.txt"
-               "environments/dev/modules/foo/files/path/to/file/something.txt"
-               "modules/foo/manifests/bar.pp"
-               "manifests/site.pp"
-               "environments/foo/bar/files"
-               "environments/../manifests/files/site.pp"
-               "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
-               "environments/production/files/~/.bash_profile"
-               "environments/../modules/foo/files/site.pp"
-               "environments/production/modules/foo/files/../../../../../../site.pp"]
-        actual-results (loop
-         [results {:valid #{}
-                   :invalid #{}}
-          remaining-paths paths]
-          (if-let [cur-path (first remaining-paths)]
-            (if (valid-static-file-path? cur-path)
-              (recur (assoc results :valid (conj (:valid results) cur-path)) (rest remaining-paths))
-              (recur (assoc results :invalid (conj (:invalid results) cur-path)) (rest remaining-paths)))
-            results))]
+  (let [valid-paths ["modules/foo/files/bar.txt"
+                     "modules/foo/files/bar/"
+                     "modules/foo/files/bar/baz.txt"
+                     "environments/production/modules/foo/files/bar.txt"
+                     "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                     "environments/test/modules/foo/files/bar/baz.txt"
+                     "environments/dev/modules/foo/files/path/to/file/something.txt"]
+        invalid-paths ["modules/foo/manifests/bar.pp"
+                       "manifests/site.pp"
+                       "environments/foo/bar/files"
+                       "environments/../manifests/files/site.pp"
+                       "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+                       "environments/production/files/~/.bash_profile"
+                       "environments/../modules/foo/files/site.pp"
+                       "environments/production/modules/foo/files/../../../../../../site.pp"]
+        check-valid-path (fn [path] {:path path :valid? (valid-static-file-path? path)})
+        valid-path-results (map check-valid-path valid-paths)
+        invalid-path-results (map check-valid-path invalid-paths)
+        get-validity (fn [{:keys [valid?]}] valid?)]
     (testing "Only files in 'modules/*/files/**' or 'environments/*/modules/*/files/**' are valid"
-      (is (= actual-results expected-path-results)))))
+      (is (every? get-validity valid-path-results) (ks/pprint-to-string valid-path-results))
+      (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
