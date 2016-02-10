@@ -199,27 +199,47 @@
                        "bogus"}])})))))))
 
 (deftest valid-static-file-path-test
-    (let [valid-paths ["modules/foo/files/bar.txt"
-                       "modules/foo/files/bar/"
-                       "modules/foo/files/bar/baz.txt"
-                       "environments/production/modules/foo/files/bar.txt"
-                       "environments/production/modules/foo/files/..conf..d../..bar..txt.."
-                       "environments/test/modules/foo/files/bar/baz.txt"
-                       "environments/dev/modules/foo/files/path/to/file/something.txt"]
-          invalid-paths ["modules/foo/manifests/bar.pp"
-                         "manifests/site.pp"
-                         "environments/foo/bar/files"
-                         "environments/../manifests/files/site.pp"
-                         "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
-                         "environments/production/files/~/.bash_profile"
-                         "environments/../modules/foo/files/site.pp"
-                         "environments/production/modules/foo/files/../../../../../../site.pp"]]
-      (testing "valid requests return true"
-        (doseq [path valid-paths]
-          (is (not (nil? (valid-static-file-path? path))))))
-      (testing "invalid requests return false"
-        (doseq [path invalid-paths]
-          (is (nil? (valid-static-file-path? path)))))))
+  (let [expected-path-results {:valid #{"modules/foo/files/bar.txt"
+                                        "modules/foo/files/bar/"
+                                        "modules/foo/files/bar/baz.txt"
+                                        "environments/production/modules/foo/files/bar.txt"
+                                        "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                                        "environments/test/modules/foo/files/bar/baz.txt"
+                                        "environments/dev/modules/foo/files/path/to/file/something.txt"}
+                               :invalid #{"modules/foo/manifests/bar.pp"
+                                          "manifests/site.pp"
+                                          "environments/foo/bar/files"
+                                          "environments/../manifests/files/site.pp"
+                                          "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+                                          "environments/production/files/~/.bash_profile"
+                                          "environments/../modules/foo/files/site.pp"
+                                          "environments/production/modules/foo/files/../../../../../../site.pp"}}
+        paths ["modules/foo/files/bar.txt"
+               "modules/foo/files/bar/"
+               "modules/foo/files/bar/baz.txt"
+               "environments/production/modules/foo/files/bar.txt"
+               "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+               "environments/test/modules/foo/files/bar/baz.txt"
+               "environments/dev/modules/foo/files/path/to/file/something.txt"
+               "modules/foo/manifests/bar.pp"
+               "manifests/site.pp"
+               "environments/foo/bar/files"
+               "environments/../manifests/files/site.pp"
+               "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+               "environments/production/files/~/.bash_profile"
+               "environments/../modules/foo/files/site.pp"
+               "environments/production/modules/foo/files/../../../../../../site.pp"]
+        actual-results (loop
+         [results {:valid #{}
+                   :invalid #{}}
+          remaining-paths paths]
+          (if-let [cur-path (first remaining-paths)]
+            (if (valid-static-file-path? cur-path)
+              (recur (assoc results :valid (conj (:valid results) cur-path)) (rest remaining-paths))
+              (recur (assoc results :invalid (conj (:invalid results) cur-path)) (rest remaining-paths)))
+            results))]
+    (testing "Only files in 'modules/*/files/**' or 'environments/*/modules/*/files/**' are valid"
+      (is (= actual-results expected-path-results)))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
