@@ -203,10 +203,7 @@
   (let [valid-paths ["modules/foo/files/bar.txt"
                      "modules/foo/files/bar/"
                      "modules/foo/files/bar/baz.txt"
-                     "environments/production/modules/foo/files/bar.txt"
-                     "environments/production/modules/foo/files/..conf..d../..bar..txt.."
-                     "environments/test/modules/foo/files/bar/baz.txt"
-                     "environments/dev/modules/foo/files/path/to/file/something.txt"]
+                     "modules/foo/files/bar/more/path/elements/baz.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
                        "manifests/site.pp"
                        "environments/foo/bar/files"
@@ -214,12 +211,16 @@
                        "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
                        "environments/production/files/~/.bash_profile"
                        "environments/../modules/foo/files/site.pp"
-                       "environments/production/modules/foo/files/../../../../../../site.pp"]
+                       "environments/production/modules/foo/files/../../../../../../site.pp"
+                       "environments/production/modules/foo/files/bar.txt"
+                       "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                       "environments/test/modules/foo/files/bar/baz.txt"
+                       "environments/dev/modules/foo/files/path/to/file/something.txt"]
         check-valid-path (fn [path] {:path path :valid? (valid-static-file-path? path)})
         valid-path-results (map check-valid-path valid-paths)
         invalid-path-results (map check-valid-path invalid-paths)
         get-validity (fn [{:keys [valid?]}] valid?)]
-    (testing "Only files in 'modules/*/files/**' or 'environments/*/modules/*/files/**' are valid"
+    (testing "Only files in 'modules/*/files/**' are valid"
       (is (every? get-validity valid-path-results) (ks/pprint-to-string valid-path-results))
       (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 

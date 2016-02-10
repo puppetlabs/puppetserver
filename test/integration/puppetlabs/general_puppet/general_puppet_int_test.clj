@@ -111,8 +111,7 @@
         (let [response (get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
-                      "a file within the files directory of a module or a module "
-                      "in an environment") (:body response)))))))))
+                      "a file within the files directory of a module.") (:body response)))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging

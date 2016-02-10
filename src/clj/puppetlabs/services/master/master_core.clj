@@ -318,9 +318,8 @@
     (or
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
-     ;; In the first example, this corresponds to 'modules/*/files/**' in a filesystem glob.
-     (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_] canonicalized-path)
-     (bidi.bidi/match-route [["environments/" :environment-name "/modules/" :module-name "/files/" [#".*" :rest]] :_] canonicalized-path))))
+     ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
+     (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_] canonicalized-path))))
 
 (defn static-file-content-request-handler
   "Returns a function which is the main request handler for the
@@ -338,7 +337,7 @@
         (not (valid-static-file-path? file-path))
         {:status 403
          :body (str "Request Denied: A /static_file_content request must be a file within "
-         "the files directory of a module or a module in an environment")}
+         "the files directory of a module.")}
         :else
         {:status 200
          :body (get-code-content environment code-id (URIUtil/canonicalPath file-path))}))))
