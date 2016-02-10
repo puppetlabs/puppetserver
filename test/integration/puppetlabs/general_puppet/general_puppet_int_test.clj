@@ -106,33 +106,7 @@
         (testing "the /static_file_content endpoint returns an error if file-path is not provided"
           (let [response (get-static-file-content "?code_id=foobar&environment=test")]
             (is (= 400 (:status response)))
-            (is (= error-message (:body response))))))
-      (let [error-message "Request Denied: A /static_file_content request must be a file within the files directory of a module or a module in an environment"
-            valid-paths ["modules/foo/files/bar.txt"
-                         "modules/foo/files/bar/"
-                         "modules/foo/files/bar/baz.txt"
-                         "environments/production/modules/foo/files/bar.txt"
-                         "environments/production/modules/foo/files/..conf..d../..bar..txt.."
-                         "environments/test/modules/foo/files/bar/baz.txt"
-                         "environments/dev/modules/foo/files/path/to/file/something.txt"]
-            invalid-paths ["modules/foo/manifests/bar.pp"
-                           "manifests/site.pp"
-                           "environments/foo/bar/files"
-                           "environments/../manifests/files/site.pp"
-                           "environments/production/files/~/.bash_profile"
-                           "environments/../modules/foo/files/site.pp"
-                           "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
-                           "environments/production/modules/foo/files/../../../../../../site.pp"]]
-        (testing "valid requests return 200 and the file"
-          (doseq [path valid-paths]
-            (let [response (get-static-file-content (str path "?code_id=foobar&environment=production"))]
-              (is (= 200 (:status response)))
-              (is (= (str "production foobar " path "\n") (:body response))))))
-        (testing "invalid requests return 403 and the error message"
-          (doseq [path invalid-paths]
-            (let [response (get-static-file-content (str path "?code_id=foobar&environment=production"))]
-              (is (= 403 (:status response)))
-              (is (= error-message (:body response)))))))))))
+            (is (= error-message (:body response))))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging
