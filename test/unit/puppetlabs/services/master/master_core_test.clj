@@ -216,10 +216,10 @@
                          "environments/production/modules/foo/files/../../../../../../site.pp"]]
       (testing "valid requests return true"
       (doseq [path valid-paths]
-        (is (true? (valid-static-file-path? path)))))
+        (is (not (nil? (valid-static-file-path? path))))))
       (testing "invalid requests return false"
         (doseq [path invalid-paths]
-          (is (false? (valid-static-file-path? path)))))))
+          (is (nil? (valid-static-file-path? path)))))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "
