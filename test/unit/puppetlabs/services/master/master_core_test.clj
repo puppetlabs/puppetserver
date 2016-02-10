@@ -201,7 +201,7 @@
 
 (deftest valid-static-file-path-test
   (let [valid-paths ["modules/foo/files/bar.txt"
-                     "modules/foo/files/bar/"
+                     "modules/foo/files/bar"
                      "modules/foo/files/bar/baz.txt"
                      "modules/foo/files/bar/more/path/elements/baz.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
