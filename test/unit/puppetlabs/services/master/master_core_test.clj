@@ -205,6 +205,7 @@
                      "modules/foo/files/bar/baz.txt"
                      "modules/foo/files/bar/more/path/elements/baz.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
+                       "modules/foo/files/bar/\u002e\u002e/\u002e\u002e/\u002e\u002e/\u002e\u002e"
                        "manifests/site.pp"
                        "environments/foo/bar/files"
                        "environments/../manifests/files/site.pp"
