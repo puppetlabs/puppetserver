@@ -3,7 +3,6 @@
            (clojure.lang IFn)
            (java.util Map Map$Entry)
            (org.jruby RubySymbol)
-           (java.util Map)
            (org.eclipse.jetty.util URIUtil))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
