@@ -215,8 +215,8 @@
                          "environments/../modules/foo/files/site.pp"
                          "environments/production/modules/foo/files/../../../../../../site.pp"]]
       (testing "valid requests return true"
-      (doseq [path valid-paths]
-        (is (not (nil? (valid-static-file-path? path))))))
+        (doseq [path valid-paths]
+          (is (not (nil? (valid-static-file-path? path))))))
       (testing "invalid requests return false"
         (doseq [path invalid-paths]
           (is (nil? (valid-static-file-path? path)))))))
