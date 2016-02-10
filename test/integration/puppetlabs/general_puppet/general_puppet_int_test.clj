@@ -106,7 +106,13 @@
         (testing "the /static_file_content endpoint returns an error if file-path is not provided"
           (let [response (get-static-file-content "?code_id=foobar&environment=test")]
             (is (= 400 (:status response)))
-            (is (= error-message (:body response))))))))))
+            (is (= error-message (:body response))))))
+      (testing "the /static_file_content endpoint returns an error (403) for invalid file-paths"
+        (let [response (get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
+          (is (= 403 (:status response)))
+          (is (= (str "Request Denied: A /static_file_content request must be "
+                      "a file within the files directory of a module or a module "
+                      "in an environment") (:body response)))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging
