@@ -6,7 +6,8 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [ring.util.response :as rr]))
+            [ring.util.response :as rr])
+  (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -74,7 +75,9 @@
                     "production"
                     jruby-service
                     nil)
-                   (rr/get-header "Etag"))]
+                   (rr/get-header "Etag"))
+          map-with-classes #(doto (HashMap.)
+                             (.put "classes" %))]
       (testing "returns 200 for environment that exists"
         (is (= 200 (:status (request
                              "/v3/environment_classes?environment=production")))))
@@ -91,89 +94,94 @@
                               "/v3/environment_classes?environment=~"))))))
       (testing "calculates etag properly for response payload"
         (is (= (etag {"/one/file"
-                      [
-                       {"name" "oneclass",
-                        "params" [
-                                  {"name" "oneparam",
-                                   "type" "String",
-                                   "default_literal" "'literal'",
-                                   "default_source" "literal"},
-                                  {"name" "twoparam",
-                                   "type" "Integer",
-                                   "default_literal" "3",
-                                   "default_source" "3"}]
-                        },
-                       {"name" "twoclass"
-                        "params" []}],
-                      "/two/file" []})
+                      (map-with-classes
+                       [
+                        {"name" "oneclass",
+                         "params" [
+                                   {"name" "oneparam",
+                                    "type" "String",
+                                    "default_literal" "'literal'",
+                                    "default_source" "literal"},
+                                   {"name" "twoparam",
+                                    "type" "Integer",
+                                    "default_literal" "3",
+                                    "default_source" "3"}]
+                         },
+                        {"name" "twoclass"
+                         "params" []}]),
+                      "/two/file" (map-with-classes [])})
                (etag {"/one/file"
-                      [
-                       {"name" "oneclass",
-                        "params" [
-                                  {"default_source" "literal"
-                                   "type" "String",
-                                   "name" "oneparam",
-                                   "default_literal" "'literal'"},
-                                  {"name" "twoparam",
-                                   "type" "Integer",
-                                   "default_literal" "3",
-                                   "default_source" "3"}]
-                        },
-                       {"name" "twoclass"
-                        "params" []}],
-                      "/two/file" []}))
+                      (map-with-classes
+                       [
+                        {"name" "oneclass",
+                         "params" [
+                                   {"default_source" "literal"
+                                    "type" "String",
+                                    "name" "oneparam",
+                                    "default_literal" "'literal'"},
+                                   {"name" "twoparam",
+                                    "type" "Integer",
+                                    "default_literal" "3",
+                                    "default_source" "3"}]
+                         },
+                        {"name" "twoclass"
+                         "params" []}]),
+                      "/two/file" (map-with-classes [])}))
             "hashes unexpectedly not equal for equal maps")
         (is (= (etag {"/one/file"
-                      [
-                       {"name" "oneclass",
-                        "params" [
-                                  {"name" "oneparam",
-                                   "type" "String",
-                                   "default_literal" "'literal'",
-                                   "default_source" "literal"},
-                                  {"name" "twoparam",
-                                   "type" "Integer",
-                                   "default_literal" "3",
-                                   "default_source" "3"}]
-                        },
-                       {"name" "twoclass"
-                        "params" []}],
-                      "/two/file" []})
+                      (map-with-classes
+                       [
+                        {"name" "oneclass",
+                         "params" [
+                                   {"name" "oneparam",
+                                    "type" "String",
+                                    "default_literal" "'literal'",
+                                    "default_source" "literal"},
+                                   {"name" "twoparam",
+                                    "type" "Integer",
+                                    "default_literal" "3",
+                                    "default_source" "3"}]
+                         },
+                        {"name" "twoclass"
+                         "params" []}]),
+                      "/two/file" (map-with-classes [])})
                (etag {"/one/file"
-                      [
-                       {"name" "oneclass",
-                        "params" [
-                                  {"default_source" "literal"
-                                   "type" "String",
-                                   "name" "oneparam",
-                                   "default_literal" "'literal'"},
-                                  {"type" "Integer",
-                                   "name" "twoparam",
-                                   "default_literal" "3"
-                                   "default_source" "3"}]
-                        },
-                       {"params" []
-                        "name" "twoclass"}],
-                      "/two/file" []}))
+                      (map-with-classes
+                       [
+                        {"name" "oneclass",
+                         "params" [
+                                   {"default_source" "literal"
+                                    "type" "String",
+                                    "name" "oneparam",
+                                    "default_literal" "'literal'"},
+                                   {"type" "Integer",
+                                    "name" "twoparam",
+                                    "default_literal" "3"
+                                    "default_source" "3"}]
+                         },
+                        {"params" []
+                         "name" "twoclass"}]),
+                      "/two/file" (map-with-classes [])}))
             (str "hashes unexpectedly not equal for equal maps with out of "
                  "order keys"))
         (is (not= (etag {"/one/file"
-                         [
-                          {"name" "oneclass",
-                           "params" [
-                                     {"name" "oneparam",
-                                      "type" "String",
-                                      "default_literal" "'literal'",
-                                      "default_source" "literal"},
-                                     {"name" "twoparam",
-                                      "type" "Integer",
-                                      "default_literal" "3",
-                                      "default_source" "3"}]
-                           },
-                          {"name" "twoclass"
-                           "params" []}],
-                         "/two/file" []})
-                  (etag {"/two/file" []}))
+                         (map-with-classes
+                          [
+                           {"name" "oneclass",
+                            "params" [
+                                      {"name" "oneparam",
+                                       "type" "String",
+                                       "default_literal" "'literal'",
+                                       "default_source" "literal"},
+                                      {"name" "twoparam",
+                                       "type" "Integer",
+                                       "default_literal" "3",
+                                       "default_source" "3"}]
+                            },
+                           {"name" "twoclass"
+                            "params" []}]),
+                         "/two/file" (map-with-classes [])})
+                  (etag {"/two/file" (map-with-classes [])}))
             "hashes unexpectedly equal for different payloads"))
       (testing (str "throws IllegalArgumentException for response "
                     "which contains invalid map key for etagging")
@@ -181,13 +189,14 @@
              IllegalArgumentException
              #"Object cannot be coerced to a keyword"
              (etag {"/one/file"
-                    [ {["array"
+                    (map-with-classes
+                     [{["array"
                         "as"
                         "map"
                         "key"
                         "not"
                         "supported"]
-                       "bogus"}]})))))))
+                       "bogus"}])})))))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "

@@ -179,26 +179,24 @@
   (rr/get-header request "If-None-Match"))
 
 (schema/defn ^:always-validate
-  basic-manifest-info-from-jruby->basic-manifest-info-for-json
-    :- {schema/Any schema/Any}
+  add-path-to-file-entry :- Map
   "Convert the value for a manifest file entry into an appropriate map for
   use in serializing an environment_classes response to JSON."
-  [file-info :- Map$Entry]
-  (let [file-detail (val file-info)]
-    (if (instance? Map file-detail)
-      (into {} file-detail)
-      {:classes file-detail})))
+  [file-detail :- Map
+   file-name :- schema/Str]
+  (.put file-detail "path" file-name)
+  file-detail)
 
 (schema/defn ^:always-validate
-  full-manifest-info-from-jruby->full-manifest-info-for-json
+  manifest-info-from-jruby->manifest-info-for-json
     :- EnvironmentClassesFileEntry
   "Convert the per-manifest file information received from the jruby service
   into an appropriate map for use in serializing an environment_classes
   response to JSON."
   [file-info :- Map$Entry]
   (-> file-info
-      (basic-manifest-info-from-jruby->basic-manifest-info-for-json)
-      (assoc :path (key file-info))
+      val
+      (add-path-to-file-entry (key file-info))
       sort-nested-environment-class-info-maps))
 
 (schema/defn ^:always-validate
@@ -214,7 +212,7 @@
   [info-from-jruby :- Map
    environment :- schema/Str]
   (->> info-from-jruby
-       (map full-manifest-info-from-jruby->full-manifest-info-for-json)
+       (map manifest-info-from-jruby->manifest-info-for-json)
        (sort-by :path)
        (vec)
        (sorted-map :name environment :files)))
