@@ -112,13 +112,12 @@
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
                       "a file within the files directory of a module.") (:body response)))))
-      (testing "the /static_file_content endpoint does not decode alternate encodings of .."
-        ;; Currently the versions of ring and jetty that we depend upon do not decode the following URI.
-        ;; If that changes, this test will hopefully begin failing.
+      (testing "the /static_file_content decodes and rejects alternate encodings of .."
         (let [response (get-static-file-content
                         "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E?environment=test&code_id=foobar")]
-          (is (= 200 (:status response)))
-          (is (= "test foobar modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E\n" (:body response)))))))))
+          (is (= 403 (:status response)))
+          (is (= (str "Request Denied: A /static_file_content request must be "
+                      "a file within the files directory of a module.") (:body response)))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging

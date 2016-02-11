@@ -203,9 +203,11 @@
   (let [valid-paths ["modules/foo/files/bar.txt"
                      "modules/foo/files/bar"
                      "modules/foo/files/bar/baz.txt"
-                     "modules/foo/files/bar/more/path/elements/baz.txt"]
+                     "modules/foo/files/bar/more/path/elements/baz.txt"
+                     "modules/foo/files/bar/%2E%2E/baz.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
                        "modules/foo/files/bar/\u002e\u002e/\u002e\u002e/\u002e\u002e/\u002e\u002e"
+                       "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E"
                        "manifests/site.pp"
                        "environments/foo/bar/files"
                        "environments/../manifests/files/site.pp"

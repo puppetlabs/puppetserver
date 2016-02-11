@@ -314,7 +314,7 @@
   "Helper function to decide if a static_file_content path is valid.
   The access here is designed to mimic Puppet's file_content endpoint."
   [path :- schema/Str]
-  (when-let [canonicalized-path (URIUtil/canonicalPath path)]
+  (when-let [canonicalized-path (-> path URIUtil/decodePath URIUtil/canonicalPath)]
     (or
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
@@ -341,7 +341,7 @@
          "the files directory of a module.")}
         :else
         {:status 200
-         :body (get-code-content environment code-id (URIUtil/canonicalPath file-path))}))))
+         :body (get-code-content environment code-id (-> file-path URIUtil/decodePath URIUtil/canonicalPath))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
