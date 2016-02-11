@@ -51,11 +51,21 @@
 
 (deftest throws-exception-for-non-absolute-path
   (testing "Commands must be given using absolute paths"
-    (is (thrown? IllegalArgumentException (sh-utils/execute-command "echo")))))
+    (is (thrown? IllegalArgumentException
+                 (sh-utils/execute-command "echo")))))
 
 (deftest throws-exception-for-non-existent-file
   (testing "The given command must exist"
-    (is (thrown? IllegalArgumentException (sh-utils/execute-command "/usr/bin/footest")))))
+    (is (thrown-with-msg? IllegalArgumentException
+                          #"command '/usr/bin/footest' does not exist"
+                          (sh-utils/execute-command "/usr/bin/footest")))))
+
+(deftest throws-reasonable-error-for-arguments-in-command
+  (testing "A meaningful error is raised if arguments are added to the command"
+    (is (thrown-with-msg? IllegalArgumentException
+                          #"appears to use command-line arguments, but this is not allowed"
+                          (sh-utils/execute-command
+                           (str (script-path "echo") " foo"))))))
 
 (deftest can-read-more-than-the-pipe-buffer
   (testing "Doesn't deadlock when reading more than the pipe can hold"
