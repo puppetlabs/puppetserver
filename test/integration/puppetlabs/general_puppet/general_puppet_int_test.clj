@@ -51,7 +51,8 @@
      app {:jruby-puppet
           {:max-active-instances num-jrubies}
           :versioned-code
-          {:code-id-command (script-path "echo")}}
+          {:code-id-command (script-path "echo")
+           :code-content-command (script-path "echo")}}
      (let [catalog (testutils/get-catalog)]
        (is (= "production" (get catalog "code_id"))))))
   (testing "code id is added to the request body for catalog requests"
@@ -62,7 +63,8 @@
      app {:jruby-puppet
           {:max-active-instances num-jrubies}
           :versioned-code
-          {:code-id-command (script-path "echo")}}
+          {:code-id-command (script-path "echo")
+           :code-content-command (script-path "echo")}}
      (let [catalog (testutils/post-catalog)]
        (is (= "production" (get catalog "code_id"))))))
   (testing "code id is added to the request body for catalog requests"
@@ -74,7 +76,8 @@
       app {:jruby-puppet
            {:max-active-instances num-jrubies}
            :versioned-code
-           {:code-id-command (script-path "warn_echo_and_error")}}
+           {:code-id-command (script-path "warn_echo_and_error")
+            :code-content-command (script-path "echo")}}
       (let [catalog (testutils/get-catalog)]
         (is (nil? (get catalog "code_id")))
         (is (logged? #"Non-zero exit code returned while running" :error))
@@ -88,12 +91,12 @@
       {:jruby-puppet
        {:max-active-instances num-jrubies}
        :versioned-code
-       {:code-content-command (script-path "echo")}}
+       {:code-content-command (script-path "echo")
+        :code-id-command (script-path "echo")}}
       (testing "the /static_file_content endpoint successfully streams file content"
         (let [response (get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
           (is (= "test foobar modules/foo/files/bar.txt\n" (:body response)))))
-
       (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
         (testing "the /static_file_content endpoint returns an error if code_id is not provided"
           (let [response (get-static-file-content "modules/foo/files/bar.txt?environment=test")]
@@ -127,7 +130,7 @@
       {:jruby-puppet
        {:max-active-instances num-jrubies}
        :versioned-code
-       {:code-content-command nil}}
+       {}}
       (let [response (get-static-file-content "modules/foo/files/bar/?code_id=foobar&environment=test")]
         (is (= 500 (:status response)))
         (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"

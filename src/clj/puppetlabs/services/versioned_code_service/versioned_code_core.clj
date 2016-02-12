@@ -6,6 +6,11 @@
   (:import (java.io IOException InputStream)
            (org.apache.commons.io IOUtils)))
 
+(def VersionedCodeServiceConfig
+  "Schema describing the versioned-code-service config settings"
+  {(schema/optional-key :code-id-command) schema/Str
+   (schema/optional-key :code-content-command) schema/Str})
+
 (schema/defn ^:always-validate
   success-with-stderr-msg :- schema/Str
   [cmd :- schema/Str
@@ -115,3 +120,16 @@
         (throw-execution-error! e))
       (catch InterruptedException e
         (throw-execution-error! e)))))
+
+(schema/defn ^:always-validate validate-config!
+  [{:keys [code-id-command code-content-command]} :- (schema/maybe VersionedCodeServiceConfig)]
+  "Validates the versioned-code-service config. The config is considered valid
+  if it is either empty or fully populated."
+  (when (or
+    (and code-id-command (not code-content-command))
+    (and (not code-id-command) code-content-command))
+    (throw (IllegalStateException.
+            (str "Only one of \"versioned-code.code-id-command\" and "
+                 "\"versioned-code.code-content-command\" was set. Both or "
+                 "neither must be set for the versioned-code-service to "
+                 "function correctly.")))))
