@@ -315,12 +315,11 @@
   The access here is designed to mimic Puppet's file_content endpoint."
   [path :- schema/Str]
   (when-let [canonicalized-path (-> path URIUtil/decodePath URIUtil/canonicalPath)]
-    (or
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
      ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
      (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_]
-                            canonicalized-path))))
+                            canonicalized-path)))
 
 (defn static-file-content-request-handler
   "Returns a function which is the main request handler for the
