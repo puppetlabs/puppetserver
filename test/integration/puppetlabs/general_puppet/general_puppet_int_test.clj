@@ -81,7 +81,18 @@
       (let [catalog (testutils/get-catalog)]
         (is (nil? (get catalog "code_id")))
         (is (logged? #"Non-zero exit code returned while running" :error))
-        (is (logged? #"Executed an external process which logged to STDERR: production" :warn)))))))
+        (is (logged? #"Executed an external process which logged to STDERR: production" :warn))))))
+  (testing "code id is not added and 400 is returned if environment is not included in request"
+    (logging/with-test-logging
+     (bootstrap/with-puppetserver-running
+      app {:jruby-puppet
+           {:max-active-instances num-jrubies}
+           :versioned-code
+           {:code-content-command (script-path "echo")
+            :code-id-command (script-path "echo")}}
+      (let [response (testutils/http-get "puppet/v3/catalog/localhost")]
+        (is (= 400 (:status response)))
+        (is (logged? #"Error 400 on SERVER")))))))
 
 (deftest ^:integration static-file-content-endpoint-test
   (logging/with-test-logging

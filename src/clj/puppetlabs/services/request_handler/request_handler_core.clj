@@ -259,7 +259,7 @@
   (if (:include-code-id? request)
     (let [env (jruby-request/get-environment-from-request request)]
       (when-not env
-        (throw (IllegalStateException. "Environment is required in a catalog request.")))
+        (jruby-request/throw-bad-request! "Environment is required in a catalog request."))
       (assoc-in request [:params "code_id"] (current-code-id env)))
     request))
 
