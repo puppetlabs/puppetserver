@@ -62,3 +62,23 @@
                 result (-> (vc/get-code-content vcs "test" "foobar" "foo/bar/")
                            (IOUtils/toString "UTF-8"))]
             (is (= "test foobar foo/bar/\n" result))))))))
+
+(deftest ^:integration vcs-fails-startup-if-misconfigured
+  (testing "If only :code-id-command is set, it will not start up"
+    (logging/with-test-logging
+     (try
+       (tk-testutils/with-app-with-config
+        app
+        [vcs/versioned-code-service]
+        {:versioned-code {:code-id-command (script-path "echo")}})
+       (catch IllegalStateException e
+         (is (re-find #"Only one of .* was set." (.getMessage e)))))))
+  (testing "If only :code-content-command is set, it will not start up"
+    (logging/with-test-logging
+     (try
+       (tk-testutils/with-app-with-config
+        app
+        [vcs/versioned-code-service]
+        {:versioned-code {:code-content-command (script-path "echo")}})
+       (catch IllegalStateException e
+         (is (re-find #"Only one of .* was set." (.getMessage e))))))))

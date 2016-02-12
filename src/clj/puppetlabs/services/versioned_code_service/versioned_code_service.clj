@@ -17,6 +17,7 @@
      (log/info "No code-id-command set for versioned-code-service. Code-id will be nil."))
    (if (nil? (get-in-config [:versioned-code :code-content-command]))
      (log/info "No code-content-command set for versioned-code-service. Attempting to fetch code content will fail."))
+   (vc-core/validate-config! (get-in-config [:versioned-code]))
    context)
 
   (current-code-id
