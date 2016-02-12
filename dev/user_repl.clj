@@ -5,7 +5,6 @@
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
             [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]
@@ -20,7 +19,7 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
             [me.raynes.fs :as fs]
-            [clojure.string :as str]))
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
@@ -37,7 +36,7 @@
     (when-not (fs/exists? default-conf-file-dest)
       (println "Copying puppet-server.conf.sample to" conf-dir)
       (fs/copy "./dev/puppet-server.conf.sample" default-conf-file-dest))
-    (fs/absolute-path default-conf-file-dest)))
+    (ks/absolute-path default-conf-file-dest)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
@@ -119,7 +118,7 @@
 (defn jruby-pool
   "Returns a reference to the current pool of JRuby interpreters."
   []
-  (jruby-core/registered-instances (context [:JRubyPuppetService :pool-context])))
+  (jruby-core/registered-instances (context [:service-contexts :JRubyPuppetService :pool-context])))
 
 (defn- puppet-environment-state
   "Given a JRuby instance, return the state information about the environments

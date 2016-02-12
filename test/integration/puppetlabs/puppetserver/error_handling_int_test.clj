@@ -6,7 +6,8 @@
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [puppetlabs.services.request-handler.request-handler-core :as request-handler]
-    [me.raynes.fs :as fs]))
+    [me.raynes.fs :as fs]
+    [puppetlabs.kitchensink.core :as ks]))
 
 (def test-resources "./dev-resources/puppetlabs/puppetserver/error_handling_int_test")
 (def vcs-scripts "./dev-resources/puppetlabs/services/versioned_code_service/versioned_code_core_test")
@@ -57,7 +58,7 @@
                               (get-in response [:headers "content-type"]))))))))))
 
 (deftest ^:integration test-invalid-code-id-error
-  (let [vcs-script (fs/absolute-path (fs/file vcs-scripts "invalid_code_id"))]
+  (let [vcs-script (ks/absolute-path (fs/file vcs-scripts "invalid_code_id"))]
     (testing "Catalog request fails when user provided code-id-command returns invalid code-id"
       (bootstrap/with-puppetserver-running
         app

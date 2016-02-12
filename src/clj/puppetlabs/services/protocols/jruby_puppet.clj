@@ -40,6 +40,16 @@
     [this jruby-instance env-name]
     "Get class information for a specific environment")
 
+  (get-environment-class-info-tag
+    [this env-name]
+    "Get a tag for the latest class information parsed for a specific
+    environment")
+
+  (set-environment-class-info-tag!
+    [this env-name tag]
+    "Set the tag computed for the latest class information parsed for a
+    specific environment")
+
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")

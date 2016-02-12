@@ -17,7 +17,8 @@
     [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
     [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
     [puppetlabs.dujour.version-check :as version-check]
-    [me.raynes.fs :as fs]))
+    [me.raynes.fs :as fs]
+    [puppetlabs.kitchensink.core :as ks]))
 
 (deftest ca-files-test
   (testing "CA settings from puppet are honored and the CA
@@ -56,9 +57,9 @@
 
                 (letfn [(test-path!
                           [setting expected-path]
-                          (is (= (fs/absolute-path expected-path)
+                          (is (= (ks/absolute-path expected-path)
                                  (.getSetting jruby-puppet setting)))
-                          (is (fs/exists? (fs/absolute-path expected-path))))]
+                          (is (fs/exists? (ks/absolute-path expected-path))))]
 
                   (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
                   (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")

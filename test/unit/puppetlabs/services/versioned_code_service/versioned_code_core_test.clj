@@ -3,11 +3,11 @@
     [clojure.test :refer :all]
     [puppetlabs.services.versioned-code-service.versioned-code-core :as vc-core]
     [puppetlabs.trapperkeeper.testutils.logging :as logging]
-    [me.raynes.fs :as fs])
+    [puppetlabs.kitchensink.core :as ks])
   (:import (org.apache.commons.io IOUtils)))
 
 (def test-resources
-  (fs/absolute-path
+  (ks/absolute-path
    "./dev-resources/puppetlabs/services/versioned_code_service/versioned_code_core_test"))
 
 (defn script-path

@@ -26,7 +26,8 @@
             [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -285,7 +286,7 @@
 (defprotocol BonusService
   (bonus-service-fn [this]))
 
-#_(deftest ^:integration test-restart-comes-back
+(deftest ^:integration test-restart-comes-back
   (testing "After a TK restart puppetserver can still handle requests"
     (let [call-seq (atom [])
           lc-fn (fn [context action] (swap! call-seq conj action) context)
@@ -306,7 +307,7 @@
            (Thread/yield)))
        (is (= @call-seq [:init-bonus-service :start-bonus-service :stop-bonus-service :init-bonus-service :start-bonus-service]))
        (let [get-results (http-client/get "https://localhost:8140/puppet/v3/environments"
-                                          bootstrap/catalog-request-options)]
+                                          testutils/catalog-request-options)]
          (is (= 200 (:status get-results))))))))
 
 (deftest ^:integration test-503-when-app-shuts-down
@@ -365,6 +366,6 @@
          ;; otherwise the tk-app/stop that is included in the
          ;; with-puppetserver-running macro will fail, as the
          ;; JRubyPuppetService is already stopped.
-         (swap! app-context assoc :JRubyPuppetService {})
+         (swap! app-context assoc-in [:service-contexts :JRubyPuppetService] {})
          (tk-internal/run-lifecycle-fn! app-context tk-services/init "init" :JRubyPuppetService jruby-service)
          (tk-internal/run-lifecycle-fn! app-context tk-services/start "start" :JRubyPuppetService jruby-service))))))

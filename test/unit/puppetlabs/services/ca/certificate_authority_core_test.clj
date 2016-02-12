@@ -30,7 +30,7 @@
 
 (defn test-autosign-file
   [autosign-file-name]
-  (fs/absolute-path (str autosign-files-dir "/" autosign-file-name)))
+  (ks/absolute-path (str autosign-files-dir "/" autosign-file-name)))
 
 (def localhost-cert
   (utils/pem->cert (test-pem-file "localhost-cert.pem")))

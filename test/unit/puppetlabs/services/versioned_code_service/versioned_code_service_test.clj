@@ -6,12 +6,12 @@
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.logging :as logging]
-    [me.raynes.fs :as fs])
+    [puppetlabs.kitchensink.core :as ks])
   (:import
    (org.apache.commons.io IOUtils)))
 
 (def test-resources
-  (fs/absolute-path
+  (ks/absolute-path
    "./dev-resources/puppetlabs/services/versioned_code_service/versioned_code_service_test"))
 
 (defn script-path

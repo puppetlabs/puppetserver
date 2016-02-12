@@ -1,7 +1,7 @@
 (def clj-version "1.7.0")
-(def tk-version "1.1.3")
+(def tk-version "1.3.0")
 (def tk-jetty-version "1.3.1")
-(def ks-version "1.1.0")
+(def ks-version "1.3.0")
 (def ps-version "2.2.2-master-SNAPSHOT")
 
 (defn deploy-info
@@ -20,6 +20,7 @@
                  [puppetlabs/typesafe-config "0.1.4"]
                  [org.clojure/tools.macro "0.1.5"]
                  [com.fasterxml.jackson.core/jackson-core "2.5.4"]
+                 [org.clojure/tools.reader "1.0.0-alpha1"]
                  ;; end version conflict resolution dependencies
 
                  [cheshire "5.3.1"]
@@ -29,7 +30,7 @@
                  [commons-io "2.4"]
                  [clj-time "0.10.0"]
                  [prismatic/schema "1.0.4"]
-                 [me.raynes/fs "1.4.5"]
+                 [me.raynes/fs "1.4.6"]
                  [liberator "0.12.0"]
                  [org.apache.commons/commons-exec "1.3"]
 
@@ -58,7 +59,7 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
-                 [puppetlabs/http-client "0.4.4"]
+                 [puppetlabs/http-client "0.5.0"]
                  [puppetlabs/comidi "0.3.1"]]
 
   :main puppetlabs.trapperkeeper.main

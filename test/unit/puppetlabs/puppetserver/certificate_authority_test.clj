@@ -45,7 +45,7 @@
 
 (defn autosign-exe-file
   [autosign-exe-file-name]
-  (fs/absolute-path (str autosign-exes-dir "/" autosign-exe-file-name)))
+  (ks/absolute-path (str autosign-exes-dir "/" autosign-exe-file-name)))
 
 (defn csr-attributes-file
   [csr-attributes-file-name]

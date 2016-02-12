@@ -17,8 +17,7 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [me.raynes.fs :as fs]
-            [schema.test :as schema-test]
-            [puppetlabs.trapperkeeper.internal :as tk-internal]))
+            [schema.test :as schema-test]))
 
 (use-fixtures :each jruby-testutils/mock-pool-instance-fixture)
 (use-fixtures :once schema-test/validate-schemas)
@@ -46,17 +45,16 @@
      (with-redefs [jruby-internal/create-pool-instance!
                    (fn [& _] (throw (Exception. "42")))]
        (let [got-expected-exception (atom false)]
-         (logging/with-test-logging
-          (try
-            (bootstrap/with-app-with-config
-             app
-             default-services
-             (jruby-service-test-config 1)
-             (tk/run-app app))
-            (catch Exception e
-              (let [cause (stacktrace/root-cause e)]
-                (is (= (.getMessage cause) "42"))
-                (reset! got-expected-exception true)))))
+         (try
+           (bootstrap/with-app-with-config
+            app
+            default-services
+            (jruby-service-test-config 1)
+            (tk/run-app app))
+           (catch Exception e
+             (let [cause (stacktrace/root-cause e)]
+               (is (= (.getMessage cause) "42"))
+               (reset! got-expected-exception true))))
          (is (true? @got-expected-exception)
              "Did not get expected exception."))))))
 
@@ -272,14 +270,14 @@
     (let [temp-dir (ks/temp-dir)
           facter-jar (-> temp-dir
                        (fs/file jruby-core/facter-jar)
-                       (fs/absolute-path))]
+                       (ks/absolute-path))]
       (fs/touch facter-jar)
       (bootstrap/with-app-with-config
         app
         default-services
         (assoc-in (jruby-service-test-config 1)
           [:jruby-puppet :ruby-load-path]
-          (into [] (cons (fs/absolute-path temp-dir)
+          (into [] (cons (ks/absolute-path temp-dir)
                      jruby-testutils/ruby-load-path)))
         ;; This test doesn't technically need to wait for jruby pool
         ;; initialization to be done but if it doesn't, the pool initialization
