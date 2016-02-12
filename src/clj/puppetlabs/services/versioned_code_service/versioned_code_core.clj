@@ -36,10 +36,14 @@
                "Command executed: '%s', error generated: '%s'")
               cmd (.getMessage e)))
 
-(schema/defn ^:always-validate execute-code-id-script! :- (schema/maybe schema/Str)
+(schema/defn ^:always-validate execute-code-id-script! :- schema/Str
   [code-id-script :- schema/Str
    environment :- schema/Str]
-  (let [log-execution-error! #(log/error (execution-error-msg code-id-script %))]
+  (let [code-id-error-msg "code-id could not be retrieved"
+        log-execution-error! #(log/error (execution-error-msg code-id-script %))
+        throw-execution-error! (fn []
+                                 (throw (IllegalStateException.
+                                          code-id-error-msg)))]
     (try
       (let [{:keys [exit-code stderr stdout]} (shell-utils/execute-command
                                                code-id-script
@@ -60,15 +64,16 @@
             (string/trim-newline stdout))
           (do
             (log/error (nonzero-msg code-id-script exit-code stdout stderr))
-            (throw
-              (IllegalStateException.
-                "code-id could not be retrieved")))))
+            (throw-execution-error!))))
       (catch IllegalArgumentException e
-        (log-execution-error! e))
+        (log-execution-error! e)
+        (throw-execution-error!))
       (catch IOException e
-        (log-execution-error! e))
+        (log-execution-error! e)
+        (throw-execution-error!))
       (catch InterruptedException e
-        (log-execution-error! e)))))
+        (log-execution-error! e)
+        (throw-execution-error!)))))
 
 (schema/defn valid-code-id? :- schema/Bool
   "Returns false if code-id contains anything but alpha-numerics and
