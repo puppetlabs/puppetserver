@@ -60,7 +60,9 @@
             (string/trim-newline stdout))
           (do
             (log/error (nonzero-msg code-id-script exit-code stdout stderr))
-            nil)))
+            (throw
+              (IllegalStateException.
+                "code-id could not be retrieved")))))
       (catch IllegalArgumentException e
         (log-execution-error! e))
       (catch IOException e
