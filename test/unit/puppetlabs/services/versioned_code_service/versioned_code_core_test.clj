@@ -25,12 +25,13 @@
 
   (testing "exit-code, stdout and stderr are all logged for non-zero exit"
     (logging/with-test-logging
-     (is (nil? (vc-core/execute-code-id-script! (script-path "warn_echo_and_error") "foo")))
+     (is (thrown? IllegalStateException
+                  (vc-core/execute-code-id-script! (script-path "warn_echo_and_error") "foo")))
      (is (logged? (format "Non-zero exit code returned while running '%s'. exit-code: '%d', stdout: '%s', stderr: '%s'" (script-path "warn_echo_and_error") 1 "foo\n" "foo\n")))))
 
-  (testing "nil is returned and error logged for exception during execute-command"
+  (testing "exception thrown and error logged for exception during execute-command"
     (logging/with-test-logging
-     (is (nil? (vc-core/execute-code-id-script! "false" "foo")))
+     (is (thrown? IllegalStateException (vc-core/execute-code-id-script! "false" "foo")))
      (is (logged? "Running script generated an error. Command executed: 'false', error generated: 'An absolute path is required, but 'false' is not an absolute path'")))))
 
 (deftest test-code-content-execution
