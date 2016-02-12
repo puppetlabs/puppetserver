@@ -310,11 +310,16 @@
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
 
+(schema/defn ^:always-validate decode-and-canonicalize-path :- (schema/maybe schema/Str)
+  "Takes a URI path and returns a decoded and canonicalized version."
+  [path :- schema/Str]
+  (-> path URIUtil/decodePath URIUtil/canonicalPath))
+
 (schema/defn ^:always-validate valid-static-file-path?
   "Helper function to decide if a static_file_content path is valid.
   The access here is designed to mimic Puppet's file_content endpoint."
   [path :- schema/Str]
-  (when-let [canonicalized-path (-> path URIUtil/decodePath URIUtil/canonicalPath)]
+  (when-let [canonicalized-path (decode-and-canonicalize-path path)]
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
      ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
@@ -340,7 +345,8 @@
          "the files directory of a module.")}
         :else
         {:status 200
-         :body (get-code-content environment code-id (-> file-path URIUtil/decodePath URIUtil/canonicalPath))}))))
+         :body (get-code-content environment code-id
+                                 (decode-and-canonicalize-path file-path))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
