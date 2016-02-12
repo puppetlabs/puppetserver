@@ -1,7 +1,8 @@
 (ns puppetlabs.puppetserver.shell-utils
   (:require [schema.core :as schema]
             [clojure.java.io :as io]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [clojure.string :as string])
   (:import (com.puppetlabs.puppetserver ShellUtils)
            (java.io IOException InputStream OutputStream)
            (org.apache.commons.io IOUtils)))
@@ -42,8 +43,12 @@
       (throw (IllegalArgumentException.
               (format "An absolute path is required, but '%s' is not an absolute path" command)))
       (not (.exists command-file))
-      (throw (IllegalArgumentException.
-              (format "The referenced command '%s' does not exist" command)))
+      (let [cmds (string/split command #" ")]
+        (if (and (> (count cmds) 1) (.exists (io/as-file (first cmds))))
+          (throw (IllegalArgumentException.
+                  (format "Command '%s' appears to use command-line arguments, but this is not allowed." command)))
+          (throw (IllegalArgumentException.
+                  (format "The referenced command '%s' does not exist" command)))))
       (not (.canExecute command-file))
       (throw (IllegalArgumentException.
               (format "The referenced command '%s' is not executable" command))))))
