@@ -6,7 +6,8 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [ring.util.response :as rr])
+            [ring.util.response :as rr]
+            [puppetlabs.kitchensink.core :as ks])
   (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -197,6 +198,34 @@
                         "not"
                         "supported"]
                        "bogus"}])})))))))
+
+(deftest valid-static-file-path-test
+  (let [valid-paths ["modules/foo/files/bar.txt"
+                     "modules/foo/files/bar"
+                     "modules/foo/files/bar/baz.txt"
+                     "modules/foo/files/bar/more/path/elements/baz.txt"
+                     "modules/foo/files/bar/%2E%2E/baz.txt"]
+        invalid-paths ["modules/foo/manifests/bar.pp"
+                       "modules/foo/files/bar/\u002e\u002e/\u002e\u002e/\u002e\u002e/\u002e\u002e"
+                       "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E"
+                       "manifests/site.pp"
+                       "environments/foo/bar/files"
+                       "environments/../manifests/files/site.pp"
+                       "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
+                       "environments/production/files/~/.bash_profile"
+                       "environments/../modules/foo/files/site.pp"
+                       "environments/production/modules/foo/files/../../../../../../site.pp"
+                       "environments/production/modules/foo/files/bar.txt"
+                       "environments/production/modules/foo/files/..conf..d../..bar..txt.."
+                       "environments/test/modules/foo/files/bar/baz.txt"
+                       "environments/dev/modules/foo/files/path/to/file/something.txt"]
+        check-valid-path (fn [path] {:path path :valid? (valid-static-file-path? path)})
+        valid-path-results (map check-valid-path valid-paths)
+        invalid-path-results (map check-valid-path invalid-paths)
+        get-validity (fn [{:keys [valid?]}] valid?)]
+    (testing "Only files in 'modules/*/files/**' are valid"
+      (is (every? get-validity valid-path-results) (ks/pprint-to-string valid-path-results))
+      (is (every? (complement get-validity) invalid-path-results) (ks/pprint-to-string invalid-path-results)))))
 
 (deftest file-bucket-file-content-type-test
   (testing (str "The 'Content-Type' header on incoming /file_bucket_file requests "

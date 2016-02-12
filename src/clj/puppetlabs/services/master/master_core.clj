@@ -2,7 +2,8 @@
   (:import (java.io FileInputStream)
            (clojure.lang IFn)
            (java.util Map Map$Entry)
-           (org.jruby RubySymbol))
+           (org.jruby RubySymbol)
+           (org.eclipse.jetty.util URIUtil))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.comidi :as comidi]
@@ -309,6 +310,22 @@
    jruby-request/wrap-with-error-handling
    ring/wrap-params))
 
+(schema/defn ^:always-validate decode-and-canonicalize-path :- (schema/maybe schema/Str)
+  "Takes a URI path and returns a decoded and canonicalized version."
+  [path :- schema/Str]
+  (-> path URIUtil/decodePath URIUtil/canonicalPath))
+
+(schema/defn ^:always-validate valid-static-file-path?
+  "Helper function to decide if a static_file_content path is valid.
+  The access here is designed to mimic Puppet's file_content endpoint."
+  [path :- schema/Str]
+  (when-let [canonicalized-path (decode-and-canonicalize-path path)]
+     ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
+     ;; The second vector takes anything else that might be on the end of the path.
+     ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
+     (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_]
+                            canonicalized-path)))
+
 (defn static-file-content-request-handler
   "Returns a function which is the main request handler for the
   /static_file_content endpoint, utilizing the provided implementation of
@@ -318,13 +335,18 @@
     (let [environment (get-in req [:params "environment"])
           code-id (get-in req [:params "code_id"])
           file-path (get-in req [:params :rest])]
-      (if (or (nil? environment)
-              (nil? code-id)
-              (or (nil? file-path) (= "" file-path)))
+      (cond
+        (some empty? [environment code-id file-path])
         {:status 400
          :body "Error: A /static_file_content request requires an environment, a code-id, and a file-path"}
+        (not (valid-static-file-path? file-path))
+        {:status 403
+         :body (str "Request Denied: A /static_file_content request must be a file within "
+         "the files directory of a module.")}
+        :else
         {:status 200
-         :body   (get-code-content environment code-id file-path)}))))
+         :body (get-code-content environment code-id
+                                 (decode-and-canonicalize-path file-path))}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
