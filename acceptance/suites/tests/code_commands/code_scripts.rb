@@ -25,9 +25,11 @@ teardown do
   on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code_content_script.sh')
 end
 
+
 step 'SETUP: Generate a new ssh key for the root user account to use with the git server'
   on(master, 'ssh-keygen -t rsa -V +1d -f /root/.ssh/gittest_rsa -N ""')
   gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
+
 
 step 'SETUP: Install and configure git server'
   on(master, 'puppet module install puppetlabs-git') 
@@ -56,6 +58,7 @@ step 'SETUP: Install and configure git server'
   create_remote_file(master, '/tmp/git_setup.pp', git_config)
   on master, puppet_apply('/tmp/git_setup.pp')
 
+
 step 'SETUP: Write out ssh config...'
   ssh_config=<<-SSHCONFIG
   Host #{hostname} #{fqdn}
@@ -65,9 +68,11 @@ step 'SETUP: Write out ssh config...'
     StrictHostKeyChecking no
   SSHCONFIG
   create_remote_file(master, '/root/.ssh/config', ssh_config)
-  
+ 
+
 step 'SETUP: Initialize the git control repository'
   on master, "sudo -u git git init --bare #{git_repo}", :pty => true
+
 
 step 'SETUP: Initialize the local git repository'
   on master, "mkdir #{git_local_repo}"
@@ -78,7 +83,7 @@ step 'SETUP: Initialize the local git repository'
   on master, "cd #{git_local_repo} && git remote add origin git@#{fqdn}:#{git_repo}"
   on master, "cd #{git_local_repo} && git push origin master"
 
-################################################################################
+
 step 'SETUP: Install and configure r10k, and perform the initial commit'
   on master, "puppet config set server #{fqdn}"
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
@@ -131,39 +136,41 @@ PP
   on master, "cd #{git_local_repo} && git push origin production"  
   on master, "/opt/puppetlabs/puppet/bin/r10k deploy environment -p"
 
-################################################################################  
-  step 'SETUP: Install the code-id-command script'
-    code_id_command_script=<<-CIC
-    #!/usr/bin/env sh  
-    /opt/puppetlabs/puppet/bin/r10k deploy display -p --detail $1 | grep signature | grep -oE '[0-9a-f]{40}'
-    CIC
-    create_remote_file(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh', code_id_command_script)
-    on(master, 'chown puppet:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
-    on(master, 'chmod 770 /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
   
-  step 'SETUP: Configure the code-id script'
-    on master, 'puppet module install puppetlabs-hocon' 
-    cicsetting=<<-CICS
-      hocon_setting { 'code-id-command-script' :
-        ensure => present,
-        path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
-        setting => 'versioned-code.code-id-command',
-        value => '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh',
-        }
-      hocon_setting { 'code-content-command-script' :
-        ensure => present,
-        path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
-        setting => 'versioned-code.code-content-command',
-        value => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
-        }
-    CICS
-    create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
-    on master, 'puppet apply /tmp/config_code_id_command_script.pp'
-    on master, 'service puppetserver restart'
+step 'SETUP: Install the code-id-command script'
+  code_id_command_script=<<-CIC
+  #!/usr/bin/env sh  
+  /opt/puppetlabs/puppet/bin/r10k deploy display -p --detail $1 | grep signature | grep -oE '[0-9a-f]{40}'
+  CIC
+  create_remote_file(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh', code_id_command_script)
+  on(master, 'chown puppet:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
+  on(master, 'chmod 770 /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
+ 
 
-###############################################################################
+step 'SETUP: Configure the code-id script'
+  on master, 'puppet module install puppetlabs-hocon' 
+  cicsetting=<<-CICS
+    hocon_setting { 'code-id-command-script' :
+      ensure => present,
+      path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
+      setting => 'versioned-code.code-id-command',
+      value => '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh',
+      }
+    hocon_setting { 'code-content-command-script' :
+      ensure => present,
+      path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
+      setting => 'versioned-code.code-content-command',
+      value => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
+      }
+    CICS
+  create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
+  on master, 'puppet apply /tmp/config_code_id_command_script.pp'
+  on master, 'service puppetserver restart'
+
+
 step 'Get the current code-id'
   current_code_id=on(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh production').stdout.chomp
+
 
 step 'Pull the catalog, validate that it contains the current code-id'
   cacert    ='/etc/puppetlabs/puppet/ssl/certs/ca.pem'
