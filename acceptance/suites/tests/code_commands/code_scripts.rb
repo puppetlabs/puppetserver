@@ -76,6 +76,8 @@ step 'SETUP: Initialize the git control repository'
 
 step 'SETUP: Initialize the local git repository'
   on master, "mkdir #{git_local_repo}"
+  on master, "cd #{git_local_repo} && git config --global user.name 'TestUser'"
+  on master, "cd #{git_local_repo} && git config --global user.email 'you@example.com'"
   on master, "cd #{git_local_repo} && git init"
   on master, "cd #{git_local_repo} && touch .gitignore"
   on master, "cd #{git_local_repo} && git add ."
