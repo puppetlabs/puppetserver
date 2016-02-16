@@ -1,5 +1,7 @@
 require 'json'
 
+confine :except, :type => 'pe'
+
 test_name 'SERVER-1118/SERVER-1119: Validate code-id-command and code-content-command features in FOSS'
 
 git_repo='/git/puppetcode' #AKA "Control Repo" &| "Git Server" &| "origin"
