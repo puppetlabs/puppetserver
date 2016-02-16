@@ -4,30 +4,30 @@ confine :except, :type => 'pe'
 
 test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
 
-git_repo='/git/puppetcode' #AKA "Control Repo" &| "Git Server" &| "origin"
-git_local_repo='/tmp/git'
-hostname = on(master, 'facter hostname').stdout.strip
-fqdn = on(master, 'facter fqdn').stdout.strip
+git_repo        ='/git/puppetcode'
+git_local_repo  ='/tmp/git'
+hostname        =on(master, 'facter hostname').stdout.strip
+fqdn            =on(master, 'facter fqdn').stdout.strip
 
 teardown do
   on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
   on(master, 'puppet resource user git ensure=absent')
   on(master, "rm -rf #{git_repo}", :accept_all_exit_codes => true)
   on(master, "rm -rf #{git_local_repo}", :accept_all_exit_codes => true)
-  on(master, "rm -rf /home/git/.ssh/authorized_keys", :accept_all_exit_codes => true)
+  on(master, 'rm -rf /home/git/.ssh/authorized_keys' :accept_all_exit_codes => true)
   #uninstall r10k
-  on(master, "/opt/puppetlabs/puppet/bin/gem uninstall r10k")
+  on(master, '/opt/puppetlabs/puppet/bin/gem uninstall r10k')
   #return /etc/puppetlabs/code to original state
-  on(master, "rm -rf /etc/puppetlabs/code")
-  on(master, "puppet resource file /etc/puppetlabs/code ensure=directory")
+  on(master, 'rm -rf /etc/puppetlabs/code')
+  on(master, 'puppet resource file /etc/puppetlabs/code ensure=directory')
   #remove code_* scripts.
-  on(master, "rm -rf /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh")
-  on(master, "rm -rf /opt/puppetlabs/server/apps/puppetserver/code_content_script.sh")
+  on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
+  on(master, 'rm -rf /opt/puppetlabs/server/apps/puppetserver/code_content_script.sh')
 end
 
-step "SETUP: Generate a new ssh key for the root user account to use with the git server"
+step 'SETUP: Generate a new ssh key for the root user account to use with the git server'
   on(master, 'ssh-keygen -t rsa -V +1d -f /root/.ssh/gittest_rsa -N ""')
-  gittest_key = on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
+  gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server'
   on(master, 'puppet module install puppetlabs-git') # --modulepath /opt/puppetlabs/puppet/modules')
@@ -83,7 +83,6 @@ step 'SETUP: Install and configure r10k, and perform the initial commit'
   on master, "puppet config set server #{fqdn}"
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
   on master, "cd #{git_local_repo} && git checkout -b production"
-
   r10k_yaml=<<-R10K
 # The location to use for storing cached Git repos
 :cachedir: '/opt/puppetlabs/r10k/cache'
@@ -98,13 +97,11 @@ step 'SETUP: Install and configure r10k, and perform the initial commit'
 R10K
   on master, 'mkdir -p /etc/puppetlabs/r10k'
   create_remote_file(master, '/etc/puppetlabs/r10k/r10k.yaml', r10k_yaml)
-  on master, "chown puppet:root /etc/puppetlabs/r10k/r10k.yaml"
-  
+  on master, 'chown puppet:root /etc/puppetlabs/r10k/r10k.yaml'
   on master, "cd #{git_local_repo} && mkdir -p {modules,site/profile/manifests,hieradata}"
   on master, "cd #{git_local_repo} && touch site/profile/manifests/base.pp"
   on master, "cd #{git_local_repo} && echo 'manifest = site.pp\nmodulepath = modules:site' > environment.conf"
   on master, "cd #{git_local_repo} && echo 'hiera_include(\'classes\')' > site.pp"
-
   common_yaml=<<-YAML
 ---
 classes:
@@ -115,7 +112,6 @@ ntp::servers:
   - 1.us.pool.ntp.org
 YAML
   create_remote_file(master, "#{git_local_repo}/hieradata/common.yaml", common_yaml)
-
   puppetfile=<<-EOF
 forge 'forge.puppetlabs.com'
 
@@ -124,14 +120,12 @@ mod 'puppetlabs/ntp', '4.1.0'
 mod 'puppetlabs/stdlib'
 EOF
   create_remote_file(master, "#{git_local_repo}/Puppetfile", puppetfile)
-  
   base_pp=<<-PP
 class profile::base {
   class { '::ntp': }
 }
 PP
   create_remote_file(master, "#{git_local_repo}/site/profile/manifests/base.pp", base_pp)
-
   on master, "cd #{git_local_repo} && git add ."
   on master, "cd #{git_local_repo} && git commit -m 'commit to setup r10k example'"
   on master, "cd #{git_local_repo} && git push origin production"  
@@ -144,11 +138,11 @@ PP
     /opt/puppetlabs/puppet/bin/r10k deploy display -p --detail $1 | grep signature | grep -oE '[0-9a-f]{40}'
     CIC
     create_remote_file(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh', code_id_command_script)
-    on(master, "chown puppet:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh")
-    on(master, "chmod 770 /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh")
+    on(master, 'chown puppet:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
+    on(master, 'chmod 770 /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
   
   step 'SETUP: Configure the code-id script'
-    on master, "puppet module install puppetlabs-hocon" # --modulepath /opt/puppetlabs/puppet/modules"
+    on master, 'puppet module install puppetlabs-hocon' 
     cicsetting=<<-CICS
       hocon_setting { 'code-id-command-script' :
         ensure => present,
@@ -160,22 +154,22 @@ PP
         ensure => present,
         path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
         setting => 'versioned-code.code-content-command',
-	value => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
+        value => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
         }
     CICS
     create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
-    on master, "puppet apply /tmp/config_code_id_command_script.pp"
+    on master, 'puppet apply /tmp/config_code_id_command_script.pp'
     on master, 'service puppetserver restart'
 
 ###############################################################################
-step "Get the current code-id"
-  current_code_id=on(master, "/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh production").stdout.chomp
+step 'Get the current code-id'
+  current_code_id=on(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh production').stdout.chomp
 
-step "Pull the catalog, validate that it contains the current code-id"
-  cacert=   "/etc/puppetlabs/puppet/ssl/certs/ca.pem"
-  key=      "/etc/puppetlabs/puppet/ssl/private_keys/#{fqdn}.pem"
-  hostcert= "/etc/puppetlabs/puppet/ssl/certs/#{fqdn}.pem"
-  auth_str= "--cacert #{cacert} --key #{key} --cert #{hostcert}"
+step 'Pull the catalog, validate that it contains the current code-id'
+  cacert    ='/etc/puppetlabs/puppet/ssl/certs/ca.pem'
+  key       ="/etc/puppetlabs/puppet/ssl/private_keys/#{fqdn}.pem"
+  hostcert  ="/etc/puppetlabs/puppet/ssl/certs/#{fqdn}.pem"
+  auth_str  ="--cacert #{cacert} --key #{key} --cert #{hostcert}"
   result=on(master, "curl --silent #{auth_str} https://#{fqdn}:8140/puppet/v3/catalog/#{fqdn}?environment=production | python -m json.tool").stdout
   catalog=JSON.parse(result)
   assert_match(current_code_id, catalog['code_id'], "FAIL: Expected catalog to contain current_code_id #{current_code_id}.")
