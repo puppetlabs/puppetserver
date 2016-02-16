@@ -14,7 +14,7 @@ teardown do
   on(master, 'puppet resource user git ensure=absent')
   on(master, "rm -rf #{git_repo}", :accept_all_exit_codes => true)
   on(master, "rm -rf #{git_local_repo}", :accept_all_exit_codes => true)
-  on(master, 'rm -rf /home/git/.ssh/authorized_keys' :accept_all_exit_codes => true)
+  on(master, 'rm -rf /home/git/.ssh/authorized_keys', :accept_all_exit_codes => true)
   #uninstall r10k
   on(master, '/opt/puppetlabs/puppet/bin/gem uninstall r10k')
   #return /etc/puppetlabs/code to original state
@@ -30,7 +30,7 @@ step 'SETUP: Generate a new ssh key for the root user account to use with the gi
   gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server'
-  on(master, 'puppet module install puppetlabs-git') # --modulepath /opt/puppetlabs/puppet/modules')
+  on(master, 'puppet module install puppetlabs-git') 
   git_config=<<-GIT
     user { 'git':
       ensure => present,
