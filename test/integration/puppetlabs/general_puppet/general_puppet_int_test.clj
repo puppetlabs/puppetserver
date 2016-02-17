@@ -67,23 +67,23 @@
            :code-content-command (script-path "echo")}}
      (let [catalog (testutils/post-catalog)]
        (is (= "production" (get catalog "code_id"))))))
-  (testing "catalog request fails if code-id-command returns a non-zero exit code"
-    ; As we have set code-id-command to warn, the code id will
-    ; be the result of running `warn_echo_and_error $environment`, which will
-    ; exit non-zero and fail the catalog request.
-     (bootstrap/with-puppetserver-running
-      app {:jruby-puppet
-           {:max-active-instances num-jrubies}
-           :versioned-code
-           {:code-id-command (script-path "warn_echo_and_error")
-            :code-content-command (script-path "echo")}}
+    (testing "catalog request fails if code-id-command returns a non-zero exit code"
+      ; As we have set code-id-command to warn, the code id will
+      ; be the result of running `warn_echo_and_error $environment`, which will
+      ; exit non-zero and fail the catalog request.
+      (bootstrap/with-puppetserver-running
+       app {:jruby-puppet
+            {:max-active-instances num-jrubies}
+            :versioned-code
+            {:code-id-command (script-path "warn_echo_and_error")
+             :code-content-command (script-path "echo")}}
        (logging/with-test-logging
-      (let [catalog-response (http-client/get
-                               "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
-                               testutils/catalog-request-options)]
-        (is (= 500 (:status catalog-response)))
+        (let [catalog-response (http-client/get
+                                "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
+                                testutils/catalog-request-options)]
+          (is (= 500 (:status catalog-response)))
           (is (re-find #"Non-zero exit code returned while running" (:body catalog-response)))
-        (is (logged? #"Executed an external process which logged to STDERR: production" :warn))))))
+          (is (logged? #"Executed an external process which logged to STDERR: production" :warn))))))
   (testing "code id is not added and 400 is returned if environment is not included in request"
     (logging/with-test-logging
      (bootstrap/with-puppetserver-running
