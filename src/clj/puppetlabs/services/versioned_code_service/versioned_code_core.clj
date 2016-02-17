@@ -37,14 +37,10 @@
               cmd (.getMessage e)))
 
 (schema/defn ^:always-validate execute-code-id-script! :- schema/Str
+  "Executes code-id-script to determine the code-id for environment.
+  Non-zero return from code-id-script generates an IllegalStateException."
   [code-id-script :- schema/Str
    environment :- schema/Str]
-  (let [code-id-error-msg "code-id could not be retrieved"
-        log-execution-error! #(log/error (execution-error-msg code-id-script %))
-        throw-execution-error! (fn []
-                                 (throw (IllegalStateException.
-                                          code-id-error-msg)))]
-    (try
       (let [{:keys [exit-code stderr stdout]} (shell-utils/execute-command
                                                code-id-script
                                                {:args [environment]})]
@@ -55,25 +51,13 @@
         ;; - exit code is 0 and no stderr generated: groovy. return stdout
         ;; - exit code is 0 and stderr was generated: that's fine. log an error
         ;;   about the stderr and return stdout.
-        ;; - exit code is non-zero: oh no! log an error with all the details and
-        ;;   return nil
+    ;; - exit code is non-zero: oh no! throw an error with all the details
         (if (zero? exit-code)
           (do
             (when-not (string/blank? stderr)
               (log/error (success-with-stderr-msg code-id-script stderr)))
             (string/trim-newline stdout))
-          (do
-            (log/error (nonzero-msg code-id-script exit-code stdout stderr))
-            (throw-execution-error!))))
-      (catch IllegalArgumentException e
-        (log-execution-error! e)
-        (throw-execution-error!))
-      (catch IOException e
-        (log-execution-error! e)
-        (throw-execution-error!))
-      (catch InterruptedException e
-        (log-execution-error! e)
-        (throw-execution-error!)))))
+      (throw (IllegalStateException. (nonzero-msg code-id-script exit-code stdout stderr))))))
 
 (schema/defn valid-code-id? :- schema/Bool
   "Returns false if code-id contains anything but alpha-numerics and
