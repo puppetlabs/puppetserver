@@ -42,8 +42,8 @@
        (let [catalog (testutils/get-catalog)]
          (is (testutils/catalog-contains? catalog "Notify" "this command echoes a thing\n")))))))
 
-(deftest ^:integration code-id-request-test
-  (testing "code id is added to the request body for catalog requests"
+(deftest ^:integration code-id-request-test-get-catalog
+  (testing "code id is added to the request body for catalog requests via get"
     ; As we have set code-id-command to echo, the code id will
     ; be the result of running `echo $environment`, which will
     ; be production here.
@@ -54,8 +54,10 @@
           {:code-id-command (script-path "echo")
            :code-content-command (script-path "echo")}}
      (let [catalog (testutils/get-catalog)]
-       (is (= "production" (get catalog "code_id"))))))
-  (testing "code id is added to the request body for catalog requests"
+       (is (= "production" (get catalog "code_id")))))))
+
+(deftest ^:integration code-id-request-test-post-catalog
+  (testing "code id is added to the request body for catalog requests via post"
     ; As we have set code-id-command to echo, the code id will
     ; be the result of running `echo $environment`, which will
     ; be production here.
@@ -66,22 +68,28 @@
           {:code-id-command (script-path "echo")
            :code-content-command (script-path "echo")}}
      (let [catalog (testutils/post-catalog)]
-       (is (= "production" (get catalog "code_id"))))))
-  (testing "code id is added to the request body for catalog requests"
-    ; As we have set code-id-command to warn, the code id will
-    ; be the result of running `warn_echo_and_error $environment`, which will
-    ; exit non-zero and return nil.
-    (logging/with-test-logging
-     (bootstrap/with-puppetserver-running
-      app {:jruby-puppet
-           {:max-active-instances num-jrubies}
-           :versioned-code
-           {:code-id-command (script-path "warn_echo_and_error")
-            :code-content-command (script-path "echo")}}
-      (let [catalog (testutils/get-catalog)]
-        (is (nil? (get catalog "code_id")))
-        (is (logged? #"Non-zero exit code returned while running" :error))
-        (is (logged? #"Executed an external process which logged to STDERR: production" :warn))))))
+       (is (= "production" (get catalog "code_id")))))))
+
+(deftest ^:integration code-id-request-test-non-zero-exit
+    (testing "catalog request fails if code-id-command returns a non-zero exit code"
+      ; As we have set code-id-command to warn, the code id will
+      ; be the result of running `warn_echo_and_error $environment`, which will
+      ; exit non-zero and fail the catalog request.
+      (bootstrap/with-puppetserver-running
+       app {:jruby-puppet
+            {:max-active-instances num-jrubies}
+            :versioned-code
+            {:code-id-command (script-path "warn_echo_and_error")
+             :code-content-command (script-path "echo")}}
+       (logging/with-test-logging
+        (let [catalog-response (http-client/get
+                                "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
+                                testutils/catalog-request-options)]
+          (is (= 500 (:status catalog-response)))
+          (is (re-find #"Non-zero exit code returned while running" (:body catalog-response)))
+          (is (logged? #"Executed an external process which logged to STDERR: production" :warn)))))))
+
+(deftest ^:integration code-id-request-test-no-environment
   (testing "code id is not added and 400 is returned if environment is not included in request"
     (logging/with-test-logging
      (bootstrap/with-puppetserver-running

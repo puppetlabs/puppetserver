@@ -23,15 +23,15 @@
      (is (= "" (vc-core/execute-code-id-script! (script-path "warn") "foo")))
      (is (logged? (format "Error output generated while running '%s'. stderr: '%s'" (script-path "warn") "foo\n")))))
 
-  (testing "exit-code, stdout and stderr are all logged for non-zero exit"
+  (testing "an exception is thrown for non-zero exit of the code-id-script"
     (logging/with-test-logging
-     (is (nil? (vc-core/execute-code-id-script! (script-path "warn_echo_and_error") "foo")))
-     (is (logged? (format "Non-zero exit code returned while running '%s'. exit-code: '%d', stdout: '%s', stderr: '%s'" (script-path "warn_echo_and_error") 1 "foo\n" "foo\n")))))
+     (is (thrown? IllegalStateException
+                  (vc-core/execute-code-id-script! (script-path "warn_echo_and_error") "foo")))
+     (is (logged? "Executed an external process which logged to STDERR: foo\n"))))
 
-  (testing "nil is returned and error logged for exception during execute-command"
+  (testing "exception thrown and error logged for exception during execute-command"
     (logging/with-test-logging
-     (is (nil? (vc-core/execute-code-id-script! "false" "foo")))
-     (is (logged? "Running script generated an error. Command executed: 'false', error generated: 'An absolute path is required, but 'false' is not an absolute path'")))))
+     (is (thrown? IllegalArgumentException (vc-core/execute-code-id-script! "false" "foo"))))))
 
 (deftest test-code-content-execution
   (testing "when executing external code content command"
