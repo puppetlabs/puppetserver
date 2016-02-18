@@ -125,6 +125,22 @@
              "etag changed even though code did not")
          (is (empty? (:body response))
              "unexpected body for response")))
+     (testing (str "SERVER-1153 - HTTP 304 (not modified) returned when "
+                   "request roundtrips last etag with '--gzip' suffix and "
+                   "code has not changed")
+       (let [etag-with-gzip-suffix (if (.endsWith initial-etag "--gzip")
+                                     initial-etag
+                                     (str initial-etag "--gzip"))
+             response (get-env-classes "production"
+                                       etag-with-gzip-suffix)]
+         (is (= 304 (:status response))
+             (str
+              "unexpected status code for response for no code change and "
+              "etag with '--gzip' suffix roundtripped"))
+         (is (= initial-etag (response-etag response))
+             "etag changed even though code did not")
+         (is (empty? (:body response))
+             "unexpected body for response")))
      (testing (str "environment_classes fetch without if-none-match "
                    "header includes latest info after code update")
        (testutils/write-pp-file

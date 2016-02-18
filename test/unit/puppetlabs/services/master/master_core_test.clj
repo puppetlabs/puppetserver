@@ -7,6 +7,7 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [ring.util.response :as rr]
+            [ring.mock.request :as ring-mock]
             [puppetlabs.kitchensink.core :as ks])
   (:import (java.util HashMap)))
 
@@ -57,6 +58,25 @@
                  method
                  ", path: "
                  path))))))
+
+(deftest if-none-match-test
+  (testing "if-none-match returns expected value when"
+    (let [mock-request (ring-mock/request "get" "env_classes")]
+      (testing "header present without '--gzip' suffix"
+        (is (= "abc123"
+               (if-none-match-from-request
+                (ring-mock/header mock-request "If-None-Match" "abc123")))))
+      (testing "header present with '--gzip' suffix (SERVER-1153)"
+        (is (= "abc123"
+               (if-none-match-from-request
+                (ring-mock/header mock-request
+                                  "If-None-Match"
+                                  "abc123--gzip")))))
+      (testing "header present with empty value"
+        (is (empty? (if-none-match-from-request
+                     (ring-mock/header mock-request "If-None-Match" "")))))
+      (testing "header absent"
+        (is (nil? (if-none-match-from-request mock-request)))))))
 
 (deftest environment-classes-test
   (testing "environment_classes query"
