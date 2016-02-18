@@ -374,7 +374,7 @@
   [request-handler jruby-service get-code-content-fn]
   (let [environment-class-handler (environment-class-handler jruby-service)
         static-file-content-handler (static-file-content-request-handler get-code-content-fn)]
-    (comidi/routes
+    (let [ruby-routes (comidi/routes
      (comidi/GET ["/node/" [#".*" :rest]] request
                  (request-handler request))
      (comidi/GET ["/file_content/" [#".*" :rest]] request
@@ -405,12 +405,13 @@
      (comidi/GET "/environments" request
                  (request-handler request))
      (comidi/GET ["/status/" [#".*" :rest]] request
-                 (request-handler request))
-
+                       (request-handler request)))
+          clojure-routes (comidi/routes
      (comidi/GET ["/environment_classes" [#".*" :rest]] request
                  (environment-class-handler request))
      (comidi/GET ["/static_file_content/" [#".*" :rest]] request
-                 (static-file-content-handler request)))))
+                       (static-file-content-handler request)))]
+      (comidi/context "/v3" ruby-routes clojure-routes))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -463,10 +464,9 @@
   "Creates all of the web routes for the master."
   [request-handler jruby-service get-code-content-fn]
   (comidi/routes
-    (comidi/context "/v3"
                     (v3-routes request-handler
                                jruby-service
-                               get-code-content-fn))))
+              get-code-content-fn)))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
