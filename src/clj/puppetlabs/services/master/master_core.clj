@@ -367,51 +367,61 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
+(defn v3-ruby-routes
+  "v3 route tree for the ruby side of the master service."
+  [request-handler]
+  (comidi/routes
+   (comidi/GET ["/node/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_content/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_metadata/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
+                (request-handler request))
+
+   (comidi/GET ["/catalog/" [#".*" :rest]] request
+               (request-handler (assoc request :include-code-id? true)))
+   (comidi/POST ["/catalog/" [#".*" :rest]] request
+                (request-handler (assoc request :include-code-id? true)))
+   (comidi/PUT ["/report/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/resource_type/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/resource_types/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET ["/environment/" [#".*" :rest]] request
+               (request-handler request))
+   (comidi/GET "/environments" request
+               (request-handler request))
+   (comidi/GET ["/status/" [#".*" :rest]] request
+               (request-handler request))))
+
+(defn v3-clojure-routes
+  "v3 route tree for the clojure side of the master service."
+  [jruby-service get-code-content-fn]
+  (let [environment-class-handler (environment-class-handler jruby-service)
+        static-file-content-handler (static-file-content-request-handler get-code-content-fn)]
+    (comidi/routes
+     (comidi/GET ["/environment_classes" [#".*" :rest]] request
+                 (environment-class-handler request))
+     (comidi/GET ["/static_file_content/" [#".*" :rest]] request
+                 (static-file-content-handler request)))))
+
 (defn v3-routes
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
   [request-handler jruby-service get-code-content-fn]
-  (let [environment-class-handler (environment-class-handler jruby-service)
-        static-file-content-handler (static-file-content-request-handler get-code-content-fn)]
-    (let [ruby-routes (comidi/routes
-           (comidi/GET ["/node/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/file_content/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/file_metadata/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/PUT ["/file_bucket_file/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/HEAD ["/file_bucket_file/" [#".*" :rest]] request
-                        (request-handler request))
-
-           (comidi/GET ["/catalog/" [#".*" :rest]] request
-                       (request-handler (assoc request :include-code-id? true)))
-           (comidi/POST ["/catalog/" [#".*" :rest]] request
-                        (request-handler (assoc request :include-code-id? true)))
-           (comidi/PUT ["/report/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/resource_type/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/resource_types/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET ["/environment/" [#".*" :rest]] request
-                       (request-handler request))
-           (comidi/GET "/environments" request
-                       (request-handler request))
-           (comidi/GET ["/status/" [#".*" :rest]] request
-                       (request-handler request)))
-          clojure-routes (comidi/routes
-           (comidi/GET ["/environment_classes" [#".*" :rest]] request
-                       (environment-class-handler request))
-           (comidi/GET ["/static_file_content/" [#".*" :rest]] request
-                       (static-file-content-handler request)))]
-      (comidi/context "/v3" ruby-routes clojure-routes))))
+  (comidi/context "/v3"
+                  (v3-ruby-routes request-handler)
+                  (v3-clojure-routes jruby-service get-code-content-fn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
