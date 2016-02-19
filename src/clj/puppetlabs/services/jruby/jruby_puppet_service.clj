@@ -72,14 +72,22 @@
     [this env-name]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-      (swap! environment-class-info-tags dissoc env-name)
+      (swap! environment-class-info-tags
+             assoc
+             env-name
+             {:tag nil
+              :last-updated (System/currentTimeMillis)})
       (core/mark-environment-expired! pool-context env-name)))
 
   (mark-all-environments-expired!
     [this]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-     (reset! environment-class-info-tags {})
+      (swap! environment-class-info-tags
+             #(let [now (System/currentTimeMillis)]
+               (into {} (for [k (keys %)]
+                          [k {:tag nil
+                              :last-updated now}]))))
      (core/mark-all-environments-expired! pool-context)))
 
   (get-environment-class-info
@@ -90,13 +98,26 @@
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get @environment-class-info env-name)))
+     (get-in @environment-class-info [env-name :tag])))
 
-  (set-environment-class-info-tag!
-   [this env-name tag]
+  (get-environment-class-info-tag-last-updated
+   [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (swap! environment-class-info assoc env-name tag)))
+     (get-in @environment-class-info [env-name :last-updated])))
+
+  (set-environment-class-info-tag!
+   [this env-name tag last-update-before-tag-computed]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (swap! environment-class-info
+            #(let [cache-last-updated
+                   (get-in % [env-name :last-updated])]
+              (if (= cache-last-updated last-update-before-tag-computed)
+                (assoc % env-name
+                         {:tag tag
+                          :last-updated (System/currentTimeMillis)})
+                %)))))
 
   (flush-jruby-pool!
     [this]

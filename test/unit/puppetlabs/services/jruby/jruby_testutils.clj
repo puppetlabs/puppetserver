@@ -97,22 +97,35 @@
 
 (schema/defn ^:always-validate
   create-mock-pool-instance :- JRubyPuppetInstance
-  [pool :- jruby-schemas/pool-queue-type
-   id :- schema/Int
-   config :- jruby-schemas/JRubyPuppetConfig
-   flush-instance-fn :- IFn
-   _ :- (schema/maybe PuppetProfiler)]
-  (let [instance (jruby-schemas/map->JRubyPuppetInstance
-                  {:pool pool
-                   :id id
-                   :max-requests (:max-requests-per-instance config)
-                   :flush-instance-fn flush-instance-fn
-                   :state (atom {:borrow-count 0})
-                   :jruby-puppet (create-mock-jruby-instance)
-                   :scripting-container (ScriptingContainer. LocalContextScope/SINGLETHREAD)
-                   :environment-registry (puppet-env/environment-registry)})]
-    (.register pool instance)
-    instance))
+  ([pool :- jruby-schemas/pool-queue-type
+    id :- schema/Int
+    config :- jruby-schemas/JRubyPuppetConfig
+    flush-instance-fn :- IFn
+    profiler :- (schema/maybe PuppetProfiler)]
+   (create-mock-pool-instance create-mock-jruby-instance
+                              pool
+                              id
+                              config
+                              flush-instance-fn
+                              profiler))
+  ([mock-jruby-instance-creator-fn :- IFn
+    pool :- jruby-schemas/pool-queue-type
+    id :- schema/Int
+    config :- jruby-schemas/JRubyPuppetConfig
+    flush-instance-fn :- IFn
+    _ :- (schema/maybe PuppetProfiler)]
+   (let [instance (jruby-schemas/map->JRubyPuppetInstance
+                   {:pool pool
+                    :id id
+                    :max-requests (:max-requests-per-instance config)
+                    :flush-instance-fn flush-instance-fn
+                    :state (atom {:borrow-count 0})
+                    :jruby-puppet (mock-jruby-instance-creator-fn)
+                    :scripting-container (ScriptingContainer.
+                                          LocalContextScope/SINGLETHREAD)
+                    :environment-registry (puppet-env/environment-registry)})]
+     (.register pool instance)
+     instance)))
 
 (defn mock-pool-instance-fixture
   "Test fixture which changes the behavior of the JRubyPool to create
