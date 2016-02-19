@@ -1,6 +1,6 @@
 (def clj-version "1.7.0")
 (def tk-version "1.3.0")
-(def tk-jetty-version "1.3.1")
+(def tk-jetty-version "1.5.1")
 (def ks-version "1.3.0")
 (def ps-version "2.2.2-master-SNAPSHOT")
 
@@ -100,6 +100,7 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace "0.2.5"]
+                                   [org.clojure/java.jmx "0.2.0"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
