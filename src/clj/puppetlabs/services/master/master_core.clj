@@ -409,8 +409,10 @@
   [clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn]
-  (let [environment-class-handler (clojure-request-wrapper (environment-class-handler jruby-service))
-        static-file-content-handler (clojure-request-wrapper (static-file-content-request-handler get-code-content-fn))]
+  (let [environment-class-handler
+        (clojure-request-wrapper (environment-class-handler jruby-service))
+        static-file-content-handler
+        (clojure-request-wrapper (static-file-content-request-handler get-code-content-fn))]
     (comidi/routes
      (comidi/GET ["/environment_classes" [#".*" :rest]] request
                  (environment-class-handler request))
