@@ -7,7 +7,7 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.services.protocols.master :as master]
-            [puppetlabs.kitchensink.core :as ks]))
+            [ring.middleware.params :as ring]))
 
 (defservice master-service
   master/MasterService
@@ -44,16 +44,15 @@
      (log/info "Master Service adding ring handlers")
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
-           ring-handler (when path
-                          (core/get-wrapped-handler
-                            (-> (core/root-routes handle-request
+           ring-handler (let [ruby-request-handler (core/get-wrapped-handler handle-request wrap-with-authorization-check puppet-version use-legacy-auth-conf)
+                              clojure-request-wrapper (fn [handler] (core/get-wrapped-handler (ring/wrap-params handler) wrap-with-authorization-check puppet-version))]
+                          (when path
+                            (-> (core/root-routes ruby-request-handler
+                                                  clojure-request-wrapper
                                                   jruby-service
                                                   get-code-content)
                                 ((partial comidi/context path))
-                                comidi/routes->handler)
-                            wrap-with-authorization-check
-                            use-legacy-auth-conf
-                            puppet-version))]
+                                comidi/routes->handler)))]
        ;; if the webrouting config uses the old-style config where
        ;; there is a single key with a route-id, we need to deal with that
        ;; for backward compat.  We have a hard-coded assumption that this route-id

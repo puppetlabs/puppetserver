@@ -7,14 +7,14 @@
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.comidi :as comidi]
-            [ring.middleware.params :as ring]
             [ring.util.response :as rr]
             [schema.core :as schema]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.kitchensink.core :as ks]
             [cheshire.core :as cheshire]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [bidi.schema :as bidi-schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -323,8 +323,7 @@
    (jruby-request/wrap-with-jruby-instance jruby-service)
    (wrap-with-etag-check jruby-service)
    jruby-request/wrap-with-environment-validation
-   jruby-request/wrap-with-error-handling
-   ring/wrap-params))
+   jruby-request/wrap-with-error-handling))
 
 (schema/defn ^:always-validate decode-and-canonicalize-path :- (schema/maybe schema/Str)
   "Takes a URI path and returns a decoded and canonicalized version."
@@ -367,9 +366,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
-(defn v3-ruby-routes
+(schema/defn ^:always-validate
+  v3-ruby-routes :- bidi-schema/RoutePair
   "v3 route tree for the ruby side of the master service."
-  [request-handler]
+  [request-handler :- IFn]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
@@ -403,25 +403,32 @@
    (comidi/GET ["/status/" [#".*" :rest]] request
                (request-handler request))))
 
-(defn v3-clojure-routes
+(schema/defn ^:always-validate
+  v3-clojure-routes :- bidi-schema/RoutePair
   "v3 route tree for the clojure side of the master service."
-  [jruby-service get-code-content-fn]
-  (let [environment-class-handler (environment-class-handler jruby-service)
-        static-file-content-handler (static-file-content-request-handler get-code-content-fn)]
+  [clojure-request-wrapper :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn]
+  (let [environment-class-handler (clojure-request-wrapper (environment-class-handler jruby-service))
+        static-file-content-handler (clojure-request-wrapper (static-file-content-request-handler get-code-content-fn))]
     (comidi/routes
      (comidi/GET ["/environment_classes" [#".*" :rest]] request
                  (environment-class-handler request))
      (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                  (static-file-content-handler request)))))
 
-(defn v3-routes
+(schema/defn ^:always-validate
+  v3-routes :- bidi-schema/RoutePair
   "Creates the routes to handle the master's '/v3' routes, which
    includes '/environments' and the non-CA indirected routes. The CA-related
    endpoints are handled separately by the CA service."
-  [request-handler jruby-service get-code-content-fn]
+  [ruby-request-handler :- IFn
+   clojure-request-wrapper :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn]
   (comidi/context "/v3"
-                  (v3-ruby-routes request-handler)
-                  (v3-clojure-routes jruby-service get-code-content-fn)))
+                  (v3-ruby-routes ruby-request-handler)
+                  (v3-clojure-routes clojure-request-wrapper jruby-service get-code-content-fn)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
@@ -470,11 +477,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn root-routes
+(schema/defn ^:always-validate
+  root-routes :- bidi-schema/RoutePair
   "Creates all of the web routes for the master."
-  [request-handler jruby-service get-code-content-fn]
+  [ruby-request-handler :- IFn
+   clojure-request-wrapper :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn]
   (comidi/routes
-   (v3-routes request-handler
+   (v3-routes ruby-request-handler
+              clojure-request-wrapper
               jruby-service
               get-code-content-fn)))
 
@@ -520,11 +532,18 @@
 
 (schema/defn ^:always-validate
   get-wrapped-handler :- IFn
-  [route-handler :- IFn
-   authorization-fn :- IFn
-   use-legacy-auth-conf :- schema/Bool
-   puppet-version :- schema/Str]
-  (let [handler-maybe-with-authorization (if use-legacy-auth-conf
-                                           route-handler
-                                           (authorization-fn route-handler))]
-    (wrap-middleware handler-maybe-with-authorization puppet-version)))
+  "Conditionally wraps route-handler with authorization-fn before calling
+  wrap-middleware on the handler. If use-legacy-auth-conf is not specified,
+  defaults to wrapping route-handler with authorization-fn."
+  ([route-handler :- IFn
+    authorization-fn :- IFn
+    puppet-version :- schema/Str]
+   (get-wrapped-handler route-handler authorization-fn puppet-version false))
+  ([route-handler :- IFn
+    authorization-fn :- IFn
+    puppet-version :- schema/Str
+    use-legacy-auth-conf :- schema/Bool]
+   (let [handler-maybe-with-authorization (if use-legacy-auth-conf
+                                            route-handler
+                                            (authorization-fn route-handler))]
+     (wrap-middleware handler-maybe-with-authorization puppet-version))))
