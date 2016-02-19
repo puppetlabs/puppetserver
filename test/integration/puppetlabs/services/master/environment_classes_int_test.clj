@@ -4,6 +4,9 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.puppetserver.testutils :as testutils]
+            [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
+            [puppetlabs.services.master.master-core :as master-core]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]))
 
@@ -56,6 +59,10 @@
         env)
    testutils/ssl-request-options))
 
+(defn response-etag
+  [request]
+  (get-in request [:headers "etag"]))
+
 (deftest ^:integration environment-classes-integration-test
   (bootstrap/with-puppetserver-running app
    {:jruby-puppet {:max-active-instances 1}}
@@ -93,7 +100,6 @@
                                           "default_source" "\"is foo\""}]}]}]
                                     "name" "production"}
          initial-response (get-env-classes "production")
-         response-etag #(get-in % [:headers "etag"])
          initial-etag (response-etag initial-response)]
      (testing "initial fetch of environment_classes info is good"
        (is (= 200 (:status initial-response))
@@ -121,6 +127,22 @@
              (str
               "unexpected status code for response for no code change and "
               "original etag roundtripped"))
+         (is (= initial-etag (response-etag response))
+             "etag changed even though code did not")
+         (is (empty? (:body response))
+             "unexpected body for response")))
+     (testing (str "SERVER-1153 - HTTP 304 (not modified) returned when "
+                   "request roundtrips last etag with '--gzip' suffix and "
+                   "code has not changed")
+       (let [etag-with-gzip-suffix (if (.endsWith initial-etag "--gzip")
+                                     initial-etag
+                                     (str initial-etag "--gzip"))
+             response (get-env-classes "production"
+                                       etag-with-gzip-suffix)]
+         (is (= 304 (:status response))
+             (str
+              "unexpected status code for response for no code change and "
+              "etag with '--gzip' suffix roundtripped"))
          (is (= initial-etag (response-etag response))
              "etag changed even though code did not")
          (is (empty? (:body response))
@@ -458,3 +480,45 @@
                   (response->class-info-map
                    test-response-after-all-flush))
                "unexpected body for test response")))))))
+
+(deftest ^:integration
+         not-modified-returned-for-environment-class-info-request-with-gzip-tag
+  (testing (str "SERVER-1153 - when the webserver gzips the response "
+                "containing environment_classes etag, the next request "
+                "roundtripping that etag returns an HTTP 304 (Not Modified)")
+    (let [expected-etag "abcd1234"
+          body-length 200000
+          jruby-service (reify jruby/JRubyPuppetService
+                          (get-environment-class-info-tag [_ _]
+                            expected-etag))
+          app (->
+               (fn [_]
+                 (master-core/response-with-etag
+                  (apply str (repeat body-length "a"))
+                  expected-etag))
+               (master-core/wrap-with-etag-check jruby-service))]
+      (jetty9/with-test-webserver
+       app
+       port
+       (let [request-url (str "http://localhost:" port)
+             initial-response (http-client/get request-url {:as :text})
+             response-tag (response-etag initial-response)
+             response-with-tag (http-client/get
+                                request-url
+                                {:headers {"If-None-Match" response-tag}
+                                 :as :text})]
+         (is (= 200 (:status initial-response))
+             "response for initial request is not 'successful'")
+         (is (= (get-in initial-response [:headers "content-encoding"]) "gzip")
+             "response from initial request was not gzipped")
+         (is (= body-length (count (:body initial-response)))
+             "unexpected response body length for initial response")
+         (is (= (str expected-etag "--gzip") response-tag)
+             "unexpected etag returned for initial response")
+         (is (= 304 (:status response-with-tag))
+             (str "request with prior etag did not return http 304 (not "
+                  "modified) status code"))
+         (is (empty? (:body response-with-tag))
+             "unexpected body for request with prior etag")
+         (is (= expected-etag (response-etag response-with-tag))
+             "unexpected etag returned for request with prior etag"))))))

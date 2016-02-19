@@ -13,7 +13,8 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.kitchensink.core :as ks]
-            [cheshire.core :as cheshire]))
+            [cheshire.core :as cheshire]
+            [clojure.string :as str]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -177,7 +178,22 @@
   "Retrieve the value of an 'If-None-Match' HTTP header from the supplied Ring
   request.  If the header is not found, returns nil."
   [request :- {schema/Keyword schema/Any}]
-  (rr/get-header request "If-None-Match"))
+  ;; SERVER-1153 - For a non-nil value, the characters '--gzip' will be
+  ;; stripped from the end of the value which is returned.  The '--gzip'
+  ;; characters are added by the Jetty web server to an HTTP Etag response
+  ;; header for cases in which the corresponding response payload has been
+  ;; gzipped.  Newer versions of Jetty, 9.3.x series, have logic in the
+  ;; GzipHandler to strip these characters back off of the If-None-Match header
+  ;; value before the Ring request would see it.  The version of Jetty being
+  ;; used at the time this code was written (9.2.10), however, did not have this
+  ;; logic to strip the "--gzip" characters from the incoming header.  This
+  ;; function compensates for that by stripping the characters here - before
+  ;; other Puppet Server code would use it. When/if Puppet Server is upgraded to
+  ;; a version of trapperkeeper-webserver-jetty9 which is based on Jetty 9.3.x
+  ;; or newer, it may be safe to take out the line that removes the '--gzip'
+  ;; characters.
+  (some-> (rr/get-header request "If-None-Match")
+          (str/replace #"--gzip$" "")))
 
 (schema/defn ^:always-validate
   add-path-to-file-entry :- Map
