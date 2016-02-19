@@ -135,6 +135,16 @@ with_puppet_running_on(master, {}) do
     assert_allowed
   end
 
+  step 'static file content endpoint' do
+    # We'd actually need to perform a commit and use its code-id in order to
+    # get back a 200, but we know that a 400 means we got past authorization
+    curl_authenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
+    assert_allowed(400)
+
+    curl_unauthenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
+    assert_denied(/denied by rule 'puppetlabs static file content'/)
+  end
+
   step 'certificate_revocation_list endpoint' do
     curl_authenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production')
     assert_allowed
