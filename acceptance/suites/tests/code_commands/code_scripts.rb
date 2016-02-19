@@ -1,6 +1,6 @@
 require 'json'
 
-confine :except, :type => 'pe'
+skip_test 'SKIP: This test should only run in puppet-server FOSS.' if options[:type] = 'pe'
 
 test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
 
