@@ -52,9 +52,7 @@ of puppet-server to install and test against.
 1. Go to http://builds.delivery.puppetlabs.net/puppetserver/
 2. Scroll down to the most recent build at the bottom.  This will look like:
    `2.2.2.master.SNAPSHOT.2016.02.18T1627`
-3. Copy the text (not the link address) - this will be `PACKAGE_BUILD_VERSION`
-4. Define ```PUPPET_VERSION``` as the packaged version of the puppet-agent
-   package that we're depending upon, which is currently `1.3.5`
+3. Copy the text (not the link address) and set `PACKAGE_BUILD_VERSION` to this
 
 ##### Testing local changes
 1. run `lein with-profile ezbake ezbake build`. This will take a while, and
@@ -62,12 +60,14 @@ of puppet-server to install and test against.
 2. If successful, it will give you back a URL with the new puppetserver version
    at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.
    Set `PACKAGE_BUILD_VERSION` to this version.
-3. Define ```PUPPET_VERSION``` as the packaged version of the puppet-agent
-   package that your version of puppetserver depends upon
 
-If you are testing backwards compaitiblity against a specific release of
-puppet, the `PUPPET_LEGACY_VERSION` environment variable is also available for
-this purpose, but is not required.
+##### PUPPET_VERSION
+Define `PUPPET_VERSION` as the packaged version of the puppet-agent package
+that your version of puppetserver depends upon. E.g. 1.3.5
+
+If you are testing backwards compatibility against a specific release of
+puppet, the `PUPPET_LEGACY_VERSION` environment variable is available for this
+purpose, but is not required.
 
 #### Install dependencies
 
