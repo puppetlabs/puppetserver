@@ -406,13 +406,12 @@
 (schema/defn ^:always-validate
   v3-clojure-routes :- bidi-schema/RoutePair
   "v3 route tree for the clojure side of the master service."
-  [clojure-request-wrapper :- IFn
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn]
   (let [environment-class-handler
-        (clojure-request-wrapper (environment-class-handler jruby-service))
+        (environment-class-handler jruby-service)
         static-file-content-handler
-        (clojure-request-wrapper (static-file-content-request-handler get-code-content-fn))]
+        (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
      (comidi/GET ["/environment_classes" [#".*" :rest]] request
                  (environment-class-handler request))
@@ -430,7 +429,9 @@
    get-code-content-fn :- IFn]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
-                  (v3-clojure-routes clojure-request-wrapper jruby-service get-code-content-fn)))
+                  (comidi/wrap-routes
+                   (v3-clojure-routes jruby-service get-code-content-fn)
+                   clojure-request-wrapper )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions
