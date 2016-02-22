@@ -148,18 +148,3 @@
         (is (= 500 (:status response)))
         (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
                         (:body response))))))))
-
-(deftest ^:integration static-file-content-works-with-legacy-auth
-  (testing "The static_file_content endpoint works even if legacy-auth is enabled."
-    ;; with-test-logging is used here to supress a warning about running with legacy auth enabled.
-    (logging/with-test-logging
-     (bootstrap/with-puppetserver-running
-      app
-      {:jruby-puppet {:use-legacy-auth-conf true}
-       :versioned-code
-       {:code-content-command (script-path "echo")
-        :code-id-command (script-path "echo")}}
-      (testing "for legacy puppet routes"
-        (let [response (get-static-file-content "modules/foo/files/bar?code_id=foobar&environment=test")]
-          (is (= 200 (:status response)) (ks/pprint-to-string response))
-          (is (= "test foobar modules/foo/files/bar\n" (:body response)) (ks/pprint-to-string response))))))))
