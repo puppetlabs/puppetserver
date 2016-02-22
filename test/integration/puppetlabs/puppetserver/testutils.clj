@@ -141,6 +141,12 @@
   [foo-pp-contents]
   (write-pp-file foo-pp-contents "foo"))
 
+(defn get-static-file-content
+  [url-end]
+  (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
+                   (assoc ssl-request-options
+                     :as :text)))
+
 (schema/defn ^:always-validate get-catalog :- PuppetCatalog
   "Make an HTTP get request for a catalog."
   []

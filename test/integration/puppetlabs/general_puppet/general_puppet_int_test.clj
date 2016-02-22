@@ -20,12 +20,6 @@
 
 (def num-jrubies 1)
 
-(defn get-static-file-content
-  [url-end]
-  (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
-                   (assoc testutils/ssl-request-options
-                     :as :text)))
-
 (deftest ^:integration test-external-command-execution
   (testing "puppet functions can call external commands successfully"
     ; The generate puppet function runs a fully qualified command with arguments.
@@ -113,29 +107,29 @@
        {:code-content-command (script-path "echo")
         :code-id-command (script-path "echo")}}
       (testing "the /static_file_content endpoint successfully streams file content"
-        (let [response (get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
+        (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
           (is (= "test foobar modules/foo/files/bar.txt\n" (:body response)))))
       (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
         (testing "the /static_file_content endpoint returns an error if code_id is not provided"
-          (let [response (get-static-file-content "modules/foo/files/bar.txt?environment=test")]
+          (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?environment=test")]
             (is (= 400 (:status response)))
             (is (= error-message (:body response)))))
         (testing "the /static_file_content endpoint returns an error if environment is not provided"
-          (let [response (get-static-file-content "modules/foo/files/bar.txt?code_id=foobar")]
+          (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?code_id=foobar")]
             (is (= 400 (:status response)))
             (is (= error-message (:body response)))))
         (testing "the /static_file_content endpoint returns an error if file-path is not provided"
-          (let [response (get-static-file-content "?code_id=foobar&environment=test")]
+          (let [response (testutils/get-static-file-content "?code_id=foobar&environment=test")]
             (is (= 400 (:status response)))
             (is (= error-message (:body response))))))
       (testing "the /static_file_content endpoint returns an error (403) for invalid file-paths or attempted traversals"
-        (let [response (get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
+        (let [response (testutils/get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
                       "a file within the files directory of a module.") (:body response)))))
       (testing "the /static_file_content decodes and rejects alternate encodings of .."
-        (let [response (get-static-file-content
+        (let [response (testutils/get-static-file-content
                         "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E?environment=test&code_id=foobar")]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
@@ -150,7 +144,7 @@
        {:max-active-instances num-jrubies}
        :versioned-code
        {}}
-      (let [response (get-static-file-content "modules/foo/files/bar/?code_id=foobar&environment=test")]
+      (let [response (testutils/get-static-file-content "modules/foo/files/bar/?code_id=foobar&environment=test")]
         (is (= 500 (:status response)))
         (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
                         (:body response))))))))
