@@ -8,7 +8,8 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [ring.util.response :as rr]
             [ring.mock.request :as ring-mock]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [ring.middleware.params :as ring])
   (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -18,7 +19,7 @@
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
-  (-> (root-routes request-handler jruby-service (constantly nil))
+  (-> (root-routes request-handler ring/wrap-params jruby-service (constantly nil))
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 
