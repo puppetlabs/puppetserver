@@ -658,7 +658,7 @@
                          "during a previous class info request")
              (is (= 200 (:status response-after-update))
                  (str
-                  "unexpected status code for response after update"
+                  "unexpected status code for response after update, "
                   "response: "
                   (ks/pprint-to-string response-after-update)))
              (is (not= initial-response-etag

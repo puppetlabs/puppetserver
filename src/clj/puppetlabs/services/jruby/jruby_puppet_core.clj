@@ -342,3 +342,18 @@
       (cli-ruby! config
         (concat ["-e" (format "load '%s'" url) "--"] args))
       (log/errorf "command %s could not be found in %s" command bin-dir))))
+
+(def EnvironmentClassInfoCacheEntry
+  "Data structure that holds per-environment cache information for the
+  environment_classes info cache"
+  {:tag (schema/maybe schema/Str)
+   :last-updated schema/Int})
+
+(schema/defn ^:always-validate environment-class-info-entry
+  :- EnvironmentClassInfoCacheEntry
+  "Create an environment class info entry"
+  ([]
+   (environment-class-info-entry nil))
+  ([tag :- (schema/maybe schema/Str)]
+   {:tag tag
+    :last-updated (System/currentTimeMillis)}))

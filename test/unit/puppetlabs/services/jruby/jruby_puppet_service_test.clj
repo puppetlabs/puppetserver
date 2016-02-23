@@ -390,12 +390,12 @@
            (is (= test-first-updated
                   (jruby-protocol/get-environment-class-info-tag-last-updated
                    service
-                   "test")))
+                   "test"))))
+         (testing "when all environments are marked expired"
            (jruby-protocol/set-environment-class-info-tag! service
                                                            "production"
                                                            "8910prod"
-                                                           nil))
-         (testing "when all environments are marked expired"
+                                                           nil)
            (let [production-third-update
                  (jruby-protocol/get-environment-class-info-tag-last-updated
                   service

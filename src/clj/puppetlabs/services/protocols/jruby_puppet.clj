@@ -69,7 +69,10 @@
     last-updated-before-tag-computed equals the 'last-updated' value stored in
     the cache for the environment, the new 'tag' will be stored for the
     environment and the corresponding 'last-updated' value will be updated to
-    the number of milliseconds between now and midnight, January 1, 1970 UTC.")
+    the number of milliseconds between now and midnight, January 1, 1970 UTC.
+    If last-updated-before-tag-computed is different than the 'last-updated'
+    value stored in the cache for the environment, the cache will remain
+    unchanged as a result of this call.")
 
   (flush-jruby-pool!
     [this]

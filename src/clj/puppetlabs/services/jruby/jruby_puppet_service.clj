@@ -6,7 +6,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [slingshot.slingshot :as sling]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -75,8 +76,7 @@
       (swap! environment-class-info-tags
              assoc
              env-name
-             {:tag nil
-              :last-updated (System/currentTimeMillis)})
+             (core/environment-class-info-entry))
       (core/mark-environment-expired! pool-context env-name)))
 
   (mark-all-environments-expired!
@@ -84,10 +84,7 @@
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
       (swap! environment-class-info-tags
-             #(let [now (System/currentTimeMillis)]
-               (into {} (for [k (keys %)]
-                          [k {:tag nil
-                              :last-updated now}]))))
+             #(ks/mapvals (fn [_] (core/environment-class-info-entry)) %))
      (core/mark-all-environments-expired! pool-context)))
 
   (get-environment-class-info
@@ -115,8 +112,7 @@
                    (get-in % [env-name :last-updated])]
               (if (= cache-last-updated last-update-before-tag-computed)
                 (assoc % env-name
-                         {:tag tag
-                          :last-updated (System/currentTimeMillis)})
+                         (core/environment-class-info-entry tag))
                 %)))))
 
   (flush-jruby-pool!
