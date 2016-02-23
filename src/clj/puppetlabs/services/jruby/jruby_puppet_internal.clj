@@ -190,7 +190,8 @@
    id       :- schema/Int
    config   :- jruby-schemas/JRubyPuppetConfig
    flush-instance-fn :- IFn
-   profiler :- (schema/maybe PuppetProfiler)]
+   profiler :- (schema/maybe PuppetProfiler)
+   shared-terminus-state :- (schema/maybe java.util.Map)]
   (let [{:keys [ruby-load-path gem-home compile-mode
                 http-client-ssl-protocols http-client-cipher-suites
                 http-client-connect-timeout-milliseconds
@@ -219,6 +220,7 @@
       (.put puppet-server-config "http_idle_timeout_milliseconds"
         http-client-idle-timeout-milliseconds)
       (.put puppet-server-config "use_legacy_auth_conf" use-legacy-auth-conf)
+      (.put puppet-server-config "shared_terminus_state" shared-terminus-state)
       (let [instance (jruby-schemas/map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id

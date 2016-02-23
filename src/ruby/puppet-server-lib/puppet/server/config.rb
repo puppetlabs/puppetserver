@@ -25,6 +25,15 @@ class Puppet::Server::Config
       Puppet::Util::Profiler.add_profiler(@profiler)
     end
 
+    if puppet_server_config["shared_terminus_state"]
+      begin
+        require 'puppet/util/puppetdb/shared_terminus_state'
+        Puppet::Util::Puppetdb::SharedTerminusState.shared_terminus_state = puppet_server_config["shared_terminus_state"]
+      rescue LoadError => e
+        Puppet.warning "Could not inject shared state map into PuppetDB terminus: #{e.message}"
+      end
+    end
+
     Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 

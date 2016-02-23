@@ -39,7 +39,7 @@
   prime-pool!
   "Sequentially fill the pool with new JRubyPuppet instances.  NOTE: this
   function should never be called except by the pool-agent."
-  [{:keys [pool-state] :as pool-context} :- jruby-schemas/PoolContext
+  [{:keys [pool-state shared-terminus-state] :as pool-context} :- jruby-schemas/PoolContext
    config :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [pool (:pool @pool-state)]
@@ -52,7 +52,8 @@
             (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
             (jruby-internal/create-pool-instance! pool id config
                                                   (partial send-flush-instance! pool-context)
-                                                  profiler)
+                                                  profiler
+                                                  shared-terminus-state)
             (log/infof "Finished creating JRubyPuppet instance %d of %d"
                        id count))))
       (catch Exception e
@@ -64,7 +65,7 @@
   flush-instance!
   "Flush a single JRuby instance.  Create a new replacement instance
   and insert it into the specified pool."
-  [pool-context :- jruby-schemas/PoolContext
+  [{:keys [shared-terminus-state] :as pool-context} :- jruby-schemas/PoolContext
    instance :- JRubyPuppetInstance
    new-pool :- jruby-schemas/pool-queue-type
    new-id   :- schema/Int
@@ -73,7 +74,8 @@
   (jruby-internal/cleanup-pool-instance! instance)
   (jruby-internal/create-pool-instance! new-pool new-id config
                                         (partial send-flush-instance! pool-context)
-                                        profiler))
+                                        profiler
+                                        shared-terminus-state))
 
 (schema/defn ^:always-validate
   pool-initialized? :- schema/Bool
@@ -90,7 +92,7 @@
    old-pool-state :- jruby-schemas/PoolState
    new-pool-state :- jruby-schemas/PoolState
    refill? :- schema/Bool]
-  (let [{:keys [config profiler pool-state]} pool-context
+  (let [{:keys [config profiler pool-state shared-terminus-state]} pool-context
         new-pool (:pool new-pool-state)
         old-pool (:pool old-pool-state)
         old-pool-size (:size old-pool-state)]
@@ -108,7 +110,8 @@
             (when refill?
               (jruby-internal/create-pool-instance! new-pool id config
                                                     (partial send-flush-instance! pool-context)
-                                                    profiler)
+                                                    profiler
+                                                    shared-terminus-state)
               (log/infof "Finished creating JRubyPuppet instance %d of %d"
                          id old-pool-size))
             (finally

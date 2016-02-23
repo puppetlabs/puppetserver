@@ -5,7 +5,8 @@
            (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet EnvironmentRegistry)
            (com.puppetlabs.puppetserver.pool LockablePool)
            (org.jruby Main Main$Status RubyInstanceConfig)
-           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)
+           (java.util Map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -137,7 +138,8 @@
    :profiler              (schema/maybe PuppetProfiler)
    :pool-agent            JRubyPoolAgent
    :flush-instance-agent  JRubyPoolAgent
-   :pool-state            PoolStateContainer})
+   :pool-state            PoolStateContainer
+   :shared-terminus-state (schema/maybe Map)})
 
 (def JRubyInstanceState
   "State metadata for an individual JRubyPuppet instance"
