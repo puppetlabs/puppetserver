@@ -645,7 +645,7 @@
                   "unexpected status code for initial response"
                   "response: "
                   (ks/pprint-to-string initial-response)))
-             (is (not (nil? initial-response))
+             (is (not (nil? initial-response-etag))
                  "no etag returned for initial response")
              (is (= {"name" "production",
                      "files" [{"path" "/some/file"

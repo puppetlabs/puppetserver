@@ -325,69 +325,69 @@
          (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                             service
                             "test"))))
-       (let [production-first-updated
+       (let [production-first-update
              (jruby-protocol/get-environment-class-info-tag-last-updated
               service
               "production")
-             test-first-updated
+             test-first-update
              (jruby-protocol/get-environment-class-info-tag-last-updated
               service
               "test")]
          (testing "when environment info reset in the cache"
-           (is (not (nil? production-first-updated)))
-           (is (not (nil? test-first-updated)))
+           (is (not (nil? production-first-update)))
+           (is (not (nil? test-first-update)))
            (jruby-protocol/set-environment-class-info-tag!
             service
             "production"
             "5678prod"
-            production-first-updated)
+            production-first-update)
            (is (= "5678prod" (jruby-protocol/get-environment-class-info-tag
                               service
                               "production")))
            (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                               service
                               "test")))
-           (is (= test-first-updated
+           (is (= test-first-update
                   (jruby-protocol/get-environment-class-info-tag-last-updated
                    service
                    "test")))
-           (let [production-second-update
-                 (jruby-protocol/get-environment-class-info-tag-last-updated
-                  service
-                  "production")]
-             (is (not= production-first-updated production-second-update))
-             ;; Set a new tag with a different "last-updated" date than what
-             ;; should be in the cache right now - (dec
-             ;; production-first-updated) - in order to validate that what is
-             ;; already in the cache will just be retained.  This simulates
-             ;; what would happen if the tag had been updated again in
-             ;; between the prior 'get...last-updated' call and the
-             ;; next 'set...tag' call.
-             (jruby-protocol/set-environment-class-info-tag!
-              service
-              "production"
-              "89abprod"
-              (dec production-first-updated))
-             (is (= "5678prod" (jruby-protocol/get-environment-class-info-tag
-                                service
-                                "production")))
-             (is (= production-second-update
-                    (jruby-protocol/get-environment-class-info-tag-last-updated
-                     service
-                     "production")))))
+           (testing "and environment expired between get and corresponding set"
+             (let [production-second-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")
+                   _ (jruby-protocol/mark-environment-expired! service
+                                                               "production")
+                   production-third-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")]
+               (is (not= production-first-update production-second-update))
+               (jruby-protocol/set-environment-class-info-tag!
+                service
+                "production"
+                "89abprod"
+                production-second-update)
+               (is (= nil (jruby-protocol/get-environment-class-info-tag
+                           service
+                           "production")))
+               (is (= production-third-update
+                      (jruby-protocol/get-environment-class-info-tag-last-updated
+                       service
+                       "production"))))))
          (testing "when an individual environment is marked expired"
            (jruby-protocol/mark-environment-expired! service "production")
            (is (nil? (jruby-protocol/get-environment-class-info-tag
                       service
                       "production")))
-           (is (not= production-first-updated
+           (is (not= production-first-update
                      (jruby-protocol/get-environment-class-info-tag-last-updated
                       service
                       "production")))
            (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                               service
                               "test")))
-           (is (= test-first-updated
+           (is (= test-first-update
                   (jruby-protocol/get-environment-class-info-tag-last-updated
                    service
                    "test"))))
@@ -410,7 +410,7 @@
                         "production")))
              (is (nil? (jruby-protocol/get-environment-class-info-tag service
                                                                       "test")))
-             (is (not= test-first-updated
+             (is (not= test-first-update
                        (jruby-protocol/get-environment-class-info-tag-last-updated
                         service
                         "test"))))))))))
