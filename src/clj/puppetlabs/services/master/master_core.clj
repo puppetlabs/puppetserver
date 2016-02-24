@@ -261,7 +261,8 @@
   [info-from-jruby :- Map
    environment :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   request-tag :- (schema/maybe String)]
+   request-tag :- (schema/maybe String)
+   last-updated :- (schema/maybe schema/Int)]
   (let [info-for-json (class-info-from-jruby->class-info-for-json
                        info-from-jruby
                        environment)
@@ -270,7 +271,8 @@
     (jruby-protocol/set-environment-class-info-tag!
      jruby-service
      environment
-     parsed-tag)
+     parsed-tag
+     last-updated)
     (if (= parsed-tag request-tag)
       (not-modified-response parsed-tag)
       (-> (response-with-etag info-as-json parsed-tag)
@@ -282,7 +284,10 @@
   request for environment_classes information."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
-    (let [environment (jruby-request/get-environment-from-request request)]
+    (let [environment (jruby-request/get-environment-from-request request)
+          last-updated (jruby-protocol/get-environment-class-info-tag-last-updated
+                        jruby-service
+                        environment)]
       (if-let [class-info
                (jruby-protocol/get-environment-class-info jruby-service
                                                           (:jruby-instance
@@ -291,7 +296,8 @@
         (environment-class-response! class-info
                                      environment
                                      jruby-service
-                                     (if-none-match-from-request request))
+                                     (if-none-match-from-request request)
+                                     last-updated)
         (rr/not-found (str "Could not find environment '" environment "'"))))))
 
 (schema/defn ^:always-validate

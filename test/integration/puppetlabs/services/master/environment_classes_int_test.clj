@@ -6,9 +6,34 @@
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
             [puppetlabs.services.master.master-core :as master-core]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [cheshire.core :as cheshire]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [clojure.tools.logging :as log]
+            [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.services.protocols.puppet-server-config :as
+             ps-config-protocol]
+            [puppetlabs.services.ca.ca-testutils :as ca-testutils]
+            [puppetlabs.services.master.master-service :as master-service]
+            [puppetlabs.services.request-handler.request-handler-service :as
+             handler]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as
+             profiler]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as
+             webserver]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service
+             :as webrouting]
+            [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
+            [puppetlabs.services.ca.certificate-authority-service :as ca]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service
+             :as authorization]
+            [puppetlabs.services.versioned-code-service.versioned-code-service
+             :as vcs])
+  (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
+           (java.util HashMap)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/master/environment_classes_int_test")
@@ -63,11 +88,14 @@
   [request]
   (get-in request [:headers "etag"]))
 
+(defn response->class-info-map
+  [response]
+  (-> response :body cheshire/parse-string))
+
 (deftest ^:integration environment-classes-integration-test
   (bootstrap/with-puppetserver-running app
    {:jruby-puppet {:max-active-instances 1}}
-   (let [response->class-info-map #(-> %1 :body cheshire/parse-string)
-         foo-file (testutils/write-pp-file
+   (let [foo-file (testutils/write-pp-file
                    "class foo (String $foo_1 = \"is foo\"){}"
                    "foo")
          bar-file (testutils/write-pp-file
@@ -488,7 +516,7 @@
                 "roundtripping that etag returns an HTTP 304 (Not Modified)")
     (let [expected-etag "abcd1234"
           body-length 200000
-          jruby-service (reify jruby/JRubyPuppetService
+          jruby-service (reify jruby-protocol/JRubyPuppetService
                           (get-environment-class-info-tag [_ _]
                             expected-etag))
           app (->
@@ -522,3 +550,123 @@
              "unexpected body for request with prior etag")
          (is (= expected-etag (response-etag response-with-tag))
              "unexpected etag returned for request with prior etag"))))))
+
+(defn create-jruby-instance-with-mock-class-info
+  [wait-atom class-info-atom]
+  (reify JRubyPuppet
+    (getClassInfoForEnvironment [_ _]
+      (let [class-info
+            {"/some/file"
+             (doto (HashMap.)
+               (.put
+                "classes"
+                @class-info-atom))}]
+        (when-let [promises @wait-atom]
+          (deliver (:wait-promise promises) true)
+          @(:continue-promise promises))
+        class-info))
+    (handleRequest [_ _]
+      (JRubyPuppetResponse. 0 nil nil nil))
+    (terminate [_]
+      (log/info "Terminating Master"))))
+
+(tk/defservice mock-puppetserver-config-service
+               ps-config-protocol/PuppetServerConfigService
+               [[:ConfigService get-config get-in-config]]
+               (get-config [this] (get-config))
+               (get-in-config [this ks] (get-in-config ks)))
+
+(defn default-puppet-server-settings
+  []
+  (merge (ca-testutils/master-settings
+          bootstrap/master-conf-dir)
+         (ca-testutils/ca-settings
+          (fs/file bootstrap/master-conf-dir
+                   "ssl/ca"))
+         {:certname
+          "localhost"
+          :ssl-client-header
+          "X_ssl-client-header-FOO"
+          :ssl-client-verify-header
+          "X_ssl-client-verify-header-FOO"
+          :puppet-version
+          "1.2.3"}))
+
+(deftest ^:integration class-info-updated-after-cache-flush-during-prior-request
+  (let [puppet-server-settings (default-puppet-server-settings)
+        class-info-atom (atom [{"name" "someclass" "params" []}])
+        wait-atom (atom nil)]
+    ;; This test uses a mock jruby instance function which can provide mock
+    ;; data for an environment class info query and can suspend a request
+    ;; long enough for the cached environment data to be invalidated.
+    (with-redefs
+     [jruby-internal/create-pool-instance!
+      (partial jruby-testutils/create-mock-pool-instance
+               (partial create-jruby-instance-with-mock-class-info
+                        wait-atom
+                        class-info-atom))]
+      (bootstrap/with-puppetserver-running-with-services
+       app
+       [handler/request-handler-service
+        jruby-service/jruby-puppet-pooled-service
+        profiler/puppet-profiler-service
+        webserver/jetty9-service
+        webrouting/webrouting-service
+        mock-puppetserver-config-service
+        master-service/master-service
+        ca/certificate-authority-service
+        authorization/authorization-service
+        admin/puppet-admin-service
+        vcs/versioned-code-service]
+       {:jruby-puppet {:max-active-instances 1}
+        :webserver {:ssl-ca-cert (:localcacert puppet-server-settings)
+                    :ssl-cert (:hostcert puppet-server-settings)
+                    :ssl-key (:hostprivkey puppet-server-settings)}
+        :puppet-server puppet-server-settings}
+       (let [continue-promise (promise)
+             wait-promise (promise)
+             _ (reset! wait-atom {:continue-promise continue-promise
+                                  :wait-promise wait-promise})
+             initial-response-future (future (get-env-classes "production"))]
+         @wait-promise
+         (reset! class-info-atom [{"name" "updatedclass"
+                                   "params" []}])
+         (purge-env-cache "production")
+         (deliver continue-promise true)
+         (let [initial-response @initial-response-future
+               initial-response-etag (response-etag initial-response)
+               _ (reset! wait-atom nil)
+               response-after-update (get-env-classes "production"
+                                                      initial-response-etag)]
+           (testing (str "initial request in progress while environment "
+                         "cache is invalidated contains original class info")
+             (is (= 200 (:status initial-response))
+                 (str
+                  "unexpected status code for initial response"
+                  "response: "
+                  (ks/pprint-to-string initial-response)))
+             (is (not (nil? initial-response-etag))
+                 "no etag returned for initial response")
+             (is (= {"name" "production",
+                     "files" [{"path" "/some/file"
+                               "classes" [{"name" "someclass"
+                                           "params" []}]}]}
+                    (response->class-info-map initial-response))
+                 "unexpected body for initial response"))
+           (testing (str "SERVER-1130 - class info updated properly for "
+                         "request made after environment cache was purged "
+                         "during a previous class info request")
+             (is (= 200 (:status response-after-update))
+                 (str
+                  "unexpected status code for response after update, "
+                  "response: "
+                  (ks/pprint-to-string response-after-update)))
+             (is (not= initial-response-etag
+                       (response-etag response-after-update))
+                 "unexpected etag for response after update")
+             (is (= {"name" "production",
+                     "files" [{"path" "/some/file"
+                               "classes" [{"name" "updatedclass"
+                                           "params" []}]}]}
+                    (response->class-info-map response-after-update))
+                 "unexpected body for response after update"))))))))

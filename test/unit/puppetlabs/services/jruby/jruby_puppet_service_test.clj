@@ -289,3 +289,128 @@
         (jruby-testutils/wait-for-jrubies app)
         (is (true? (some #(= facter-jar (.getFile %))
                      (.getURLs (ClassLoader/getSystemClassLoader)))))))))
+
+(deftest environment-class-info-tags
+  (testing "environment-class-info-tags cache has proper data"
+    (bootstrap/with-app-with-config
+     app
+     default-services
+     (jruby-service-test-config 1)
+     (let [service (app/get-service app :JRubyPuppetService)]
+       (testing "when environment not previously loaded to cache"
+         (is (nil? (jruby-protocol/get-environment-class-info-tag
+                    service
+                    "production")))
+         (is (nil? (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production"))))
+       (testing "when environment info first set to cache"
+         (jruby-protocol/set-environment-class-info-tag! service
+                                                         "production"
+                                                         "1234prod"
+                                                         nil)
+         (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "production")))
+         (is (nil? (jruby-protocol/get-environment-class-info-tag
+                    service
+                    "test")))
+         (jruby-protocol/set-environment-class-info-tag! service
+                                                         "test"
+                                                         "1234test"
+                                                         nil)
+         (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "production")))
+         (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "test"))))
+       (let [production-first-update
+             (jruby-protocol/get-environment-class-info-tag-last-updated
+              service
+              "production")
+             test-first-update
+             (jruby-protocol/get-environment-class-info-tag-last-updated
+              service
+              "test")]
+         (testing "when environment info reset in the cache"
+           (is (not (nil? production-first-update)))
+           (is (not (nil? test-first-update)))
+           (jruby-protocol/set-environment-class-info-tag!
+            service
+            "production"
+            "5678prod"
+            production-first-update)
+           (is (= "5678prod" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "production")))
+           (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "test")))
+           (is (= test-first-update
+                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                   service
+                   "test")))
+           (testing "and environment expired between get and corresponding set"
+             (let [production-second-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")
+                   _ (jruby-protocol/mark-environment-expired! service
+                                                               "production")
+                   production-third-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")]
+               (is (not= production-first-update production-second-update))
+               (jruby-protocol/set-environment-class-info-tag!
+                service
+                "production"
+                "89abprod"
+                production-second-update)
+               (is (= nil (jruby-protocol/get-environment-class-info-tag
+                           service
+                           "production")))
+               (is (= production-third-update
+                      (jruby-protocol/get-environment-class-info-tag-last-updated
+                       service
+                       "production"))))))
+         (testing "when an individual environment is marked expired"
+           (jruby-protocol/mark-environment-expired! service "production")
+           (is (nil? (jruby-protocol/get-environment-class-info-tag
+                      service
+                      "production")))
+           (is (not= production-first-update
+                     (jruby-protocol/get-environment-class-info-tag-last-updated
+                      service
+                      "production")))
+           (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "test")))
+           (is (= test-first-update
+                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                   service
+                   "test"))))
+         (testing "when all environments are marked expired"
+           (jruby-protocol/set-environment-class-info-tag! service
+                                                           "production"
+                                                           "8910prod"
+                                                           nil)
+           (let [production-third-update
+                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                  service
+                  "production")]
+             (jruby-protocol/mark-all-environments-expired! service)
+             (is (nil? (jruby-protocol/get-environment-class-info-tag
+                        service
+                        "production")))
+             (is (not= production-third-update
+                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                        service
+                        "production")))
+             (is (nil? (jruby-protocol/get-environment-class-info-tag service
+                                                                      "test")))
+             (is (not= test-first-update
+                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                        service
+                        "test"))))))))))

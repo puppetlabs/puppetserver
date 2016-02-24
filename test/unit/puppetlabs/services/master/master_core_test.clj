@@ -88,7 +88,9 @@
                           (get-environment-class-info [_ _ env]
                             (if (= env "production")
                               {}))
-                          (set-environment-class-info-tag! [_ _ _]))
+                          (get-environment-class-info-tag-last-updated
+                           [_ _])
+                          (set-environment-class-info-tag! [_ _ _ _]))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)
           request (partial app-request app)
@@ -96,6 +98,7 @@
                    (environment-class-response!
                     "production"
                     jruby-service
+                    nil
                     nil)
                    (rr/get-header "Etag"))
           map-with-classes #(doto (HashMap.)
