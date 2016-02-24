@@ -108,12 +108,10 @@
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
      (swap! environment-class-info
-            #(let [cache-last-updated
-                   (get-in % [env-name :last-updated])]
-              (if (= cache-last-updated last-update-before-tag-computed)
-                (assoc % env-name
-                         (core/environment-class-info-entry tag))
-                %)))))
+            core/environment-class-info-cache-updated-with-tag
+            env-name
+            tag
+            last-update-before-tag-computed)))
 
   (flush-jruby-pool!
     [this]
