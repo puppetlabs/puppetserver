@@ -28,7 +28,7 @@
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
-                 [clj-time "0.10.0"]
+                 [clj-time "0.11.0"]
                  [prismatic/schema "1.0.4"]
                  [me.raynes/fs "1.4.6"]
                  [liberator "0.12.0"]
