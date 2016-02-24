@@ -14,7 +14,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [cheshire.core :as cheshire]
             [clojure.string :as str]
-            [bidi.schema :as bidi-schema]))
+            [bidi.schema :as bidi-schema]
+            [ring.middleware.params :as ring]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -550,3 +551,27 @@
                                             route-handler
                                             (authorization-fn route-handler))]
      (wrap-middleware handler-maybe-with-authorization puppet-version))))
+
+(schema/defn ^:always-validate
+  construct-root-routes :- bidi-schema/RoutePair
+  "Creates a wrapped ruby request handler and a clojure request handler,
+  then uses those to create all of the web routes for the master."
+  [puppet-version :- schema/Str
+   use-legacy-auth-conf :- schema/Bool
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content :- IFn
+   handle-request :- IFn
+   wrap-with-authorization-check :- IFn]
+  (let [ruby-request-handler (get-wrapped-handler handle-request
+                                                  wrap-with-authorization-check
+                                                  puppet-version
+                                                  use-legacy-auth-conf)
+        clojure-request-wrapper (fn [handler]
+                                  (get-wrapped-handler
+                                    (ring/wrap-params handler)
+                                    wrap-with-authorization-check
+                                    puppet-version))]
+    (root-routes ruby-request-handler
+                 clojure-request-wrapper
+                 jruby-service
+                 get-code-content)))
