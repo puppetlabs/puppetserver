@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.ringutils :refer :all]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [schema.test :as schema-test]))
+            [schema.test :as schema-test]
+            [cheshire.core :as cheshire]))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -40,6 +41,17 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
+
+(deftest json-response-test
+  (testing "json response"
+    (let [source {"key1" "val1", "key2" "val2"}
+          response (json-response source)]
+      (testing "has 200 status code"
+        (is (= 200 (:status response))))
+      (testing "has json content-type"
+        (is (= "application/json" (get-in response [:headers "Content-Type"]))))
+      (testing "is properly converted to a json string"
+        (is (= (cheshire/parse-string (:body response)) source))))))
 
 (deftest wrap-with-cert-whitelist-check-test
   (let [ring-handler (build-ring-handler

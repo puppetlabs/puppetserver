@@ -29,10 +29,6 @@
 (def master-log-dir
   "./target/master-var/log")
 
-(defn pem-file
-  [& args]
-  (str (apply fs/file master-conf-dir "ssl" args)))
-
 (defn load-dev-config-with-overrides
   [overrides]
   (let [tmp-conf (ks/temp-file "puppet-server" ".conf")]
@@ -55,6 +51,15 @@
        ~config
        ~@body)))
 
+(defmacro with-puppetserver-running-with-config
+  [app config & body]
+  `(let [services# (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file)]
+     (tk-testutils/with-app-with-config
+      ~app
+      services#
+      ~config
+      ~@body)))
+
 (defmacro with-puppetserver-running
   [app config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
@@ -64,23 +69,3 @@
          services#
          ~config
          ~@body))))
-
-(defn pem-file
-  [& args]
-  (str (apply fs/file master-conf-dir "ssl" args)))
-
-(def ca-cert
-  (pem-file "certs" "ca.pem"))
-
-(def localhost-cert
-  (pem-file "certs" "localhost.pem"))
-
-(def localhost-key
-  (pem-file "private_keys" "localhost.pem"))
-
-(def request-options
-  {:ssl-cert    localhost-cert
-   :ssl-key     localhost-key
-   :ssl-ca-cert ca-cert
-   :headers     {"Accept" "pson"}
-   :as          :text})

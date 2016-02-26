@@ -15,7 +15,6 @@ import java.util.Map;
  *
  */
 public interface JRubyPuppet {
-    Map<String, Map> getClassInfoForAllEnvironments();
     Map getClassInfoForEnvironment(String environment);
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);

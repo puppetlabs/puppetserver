@@ -9,22 +9,23 @@
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
-            [ring.util.codec :as ring-codec])
+            [ring.util.codec :as ring-codec]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging])
   (:import (java.io StringWriter)))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/puppetserver/auth_conf_test")
+  (ks/absolute-path "./dev-resources/puppetlabs/puppetserver/auth_conf_test"))
+
+(defn script-path
+  [script-name]
+  (str test-resources-dir "/" script-name))
 
 (use-fixtures
   :once
   schema-test/validate-schemas
-  (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
-
-(defn http-get [path]
-  (http-client/get
-    (str "https://localhost:8140/" path)
-    bootstrap/request-options))
+  (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 (deftest ^:integration legacy-auth-conf-used-when-legacy-auth-conf-true
   (testing "Authorization is done per legacy auth.conf when :use-legacy-auth-conf true"
@@ -178,3 +179,31 @@
                          "' in full response body: " (:body response))))
               (finally
                 (fs/delete-dir environment-dir))))))))))
+
+(deftest ^:integration static-file-content-works-with-legacy-auth
+  (testing "The static_file_content endpoint works even if legacy-auth is enabled."
+    ;; with-test-logging is used here to suppress a warning about running with legacy auth enabled.
+    (logging/with-test-logging
+     (bootstrap/with-puppetserver-running
+      app
+      {:jruby-puppet {:use-legacy-auth-conf true}
+       :authorization {:version 1
+                       :rules
+                       [{:match-request {:path "/puppet/v3/static_file_content"
+                                         :type "path"}
+                         :allow ["private" "localhost"]
+                         :sort-order 1
+                         :name "static file content"}]}
+       :versioned-code
+       {:code-content-command (script-path "echo")
+        :code-id-command (script-path "echo")}}
+      (testing "for legacy puppet routes with a valid cert"
+        (let [response (testutils/get-static-file-content
+                        "modules/foo/files/bar?code_id=foobar&environment=test")]
+          (is (= 200 (:status response)) (ks/pprint-to-string response))
+          (is (= "test foobar modules/foo/files/bar\n" (:body response)) (ks/pprint-to-string response))))
+      (testing "for legacy puppet routes without a valid cert"
+        (let [response (testutils/get-static-file-content
+                        "modules/foo/files/bar?code_id=foobar&environment=test" false)]
+          (is (= 403 (:status response)) (ks/pprint-to-string response))
+          (is (re-find #"Forbidden request" (:body response)) (ks/pprint-to-string response))))))))

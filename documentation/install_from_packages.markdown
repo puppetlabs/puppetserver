@@ -41,6 +41,10 @@ Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just
 
 4. Start the Puppet Server service:
 
+        systemctl start puppetserver
+
+    Or
+
         service puppetserver start
 
 ## Memory Allocation

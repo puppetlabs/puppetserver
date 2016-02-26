@@ -131,9 +131,9 @@
           (create-temp-facter-jar [] (-> (ks/temp-dir)
                                        (fs/file jruby-core/facter-jar)
                                        (fs/touch)
-                                       (fs/absolute-path)))
-          (temp-dir-as-string [] (-> (ks/temp-dir) (fs/absolute-path)))
-          (fs-parent-as-string [path] (-> path (fs/parent) (fs/absolute-path)))
+                                       (ks/absolute-path)))
+          (temp-dir-as-string [] (-> (ks/temp-dir) (ks/absolute-path)))
+          (fs-parent-as-string [path] (-> path (fs/parent) (ks/absolute-path)))
           (jar-in-class-loader-file-list? [jar]
             (some #(= jar %) (class-loader-files)))]
     (testing "facter jar loaded from first position"

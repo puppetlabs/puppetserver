@@ -5,6 +5,7 @@
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as services]
@@ -38,27 +39,24 @@
 
 (deftest test-error-during-init
   (testing
-      (str "If there as an exception while putting a JRubyPuppet instance in "
-           "the pool the application should shut down.")
+   (str "If there is an exception while putting a JRubyPuppet instance in "
+        "the pool the application should shut down.")
     (logging/with-test-logging
-      (with-redefs [jruby-internal/create-pool-instance!
-                    (fn [& _] (throw (Exception. "42")))]
-                   (let [got-expected-exception (atom false)]
-                     (try
-                       (bootstrap/with-app-with-config
-                         app
-                         default-services
-                         (jruby-service-test-config 1)
-                         (tk/run-app app))
-                       (catch Exception e
-                         (let [cause (stacktrace/root-cause e)]
-                           (is (= (.getMessage cause) "42"))
-                           (reset! got-expected-exception true))))
-                     (is (true? @got-expected-exception)
-                                "Did not get expected exception."))
-                   (is (logged?
-                         #"^shutdown-on-error triggered because of exception!"
-                                :error))))))
+     (with-redefs [jruby-internal/create-pool-instance!
+                   (fn [& _] (throw (Exception. "42")))]
+       (let [got-expected-exception (atom false)]
+         (try
+           (bootstrap/with-app-with-config
+            app
+            default-services
+            (jruby-service-test-config 1)
+            (tk/run-app app))
+           (catch Exception e
+             (let [cause (stacktrace/root-cause e)]
+               (is (= (.getMessage cause) "42"))
+               (reset! got-expected-exception true))))
+         (is (true? @got-expected-exception)
+             "Did not get expected exception."))))))
 
 (deftest test-pool-size
   (testing "The pool is created and the size is correctly reported"
@@ -89,13 +87,14 @@
                                  :test-pool-population)
                                context))]
 
-      ; Bootstrap TK, causing the 'init' function above to be executed.
-      (tk/boot-services-with-config
+      (ks-testutils/with-no-jvm-shutdown-hooks
+       ; Bootstrap TK, causing the 'init' function above to be executed.
+       (tk/boot-services-with-config
         (conj default-services test-service)
         (jruby-service-test-config 1))
 
-      ; If execution gets here, the test passed.
-      (is (true? true)))))
+       ; If execution gets here, the test passed.
+       (is (true? true))))))
 
 (deftest test-with-jruby-puppet
   (testing "the `with-jruby-puppet macro`"
@@ -197,17 +196,27 @@
               pool-context (:pool-context context)]
           (let [jrubies (jruby-testutils/drain-pool pool-context pool-size)]
             (is (= 1 (count jrubies)))
-            (is (every? jruby-schemas/jruby-puppet-instance? jrubies)))
-          (let [test-start-in-millis (System/currentTimeMillis)]
-            (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
-            (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
-            (is (= (:borrow-timeout context) timeout)))))))
+            (is (every? jruby-schemas/jruby-puppet-instance? jrubies))
+            (let [test-start-in-millis (System/currentTimeMillis)]
+              (is (nil? (jruby-protocol/borrow-instance service :test-borrow-timeout-configuration)))
+              (is (>= (- (System/currentTimeMillis) test-start-in-millis) timeout))
+              (is (= (:borrow-timeout context) timeout)))
+            ; Test cleanup. This instance needs to be returned so that the stop can complete.
+            (doseq [inst jrubies] (jruby-protocol/return-instance service inst :test)))))))
 
   (testing (str ":borrow-timeout defaults to " jruby-core/default-borrow-timeout " milliseconds")
     (bootstrap/with-app-with-config
       app
       default-services
       (jruby-service-test-config 1)
+      ;; This test doesn't technically need to wait for jruby pool
+      ;; initialization to be done but if it doesn't, the pool initialization
+      ;; may continue on during the execution of a subsequent test and
+      ;; interfere with the next test's results.  This wait ensures that the
+      ;; pool initialization agent will be dormant by the time this test
+      ;; finishes.  It should be possible to remove this when SERVER-1087 is
+      ;; resolved.
+      (jruby-testutils/wait-for-jrubies app)
       (let [service (app/get-service app :JRubyPuppetService)
             context (services/service-context service)]
         (is (= (:borrow-timeout context) jruby-core/default-borrow-timeout))))))
@@ -220,6 +229,14 @@
         app
         default-services
         (jruby-service-test-config-with-timeouts connect-timeout socket-timeout)
+        ;; This test doesn't technically need to wait for jruby pool
+        ;; initialization to be done but if it doesn't, the pool initialization
+        ;; may continue on during the execution of a subsequent test and
+        ;; interfere with the next test's results.  This wait ensures that the
+        ;; pool initialization agent will be dormant by the time this test
+        ;; finishes.  It should be possible to remove this when SERVER-1087 is
+        ;; resolved.
+        (jruby-testutils/wait-for-jrubies app)
         (let [service          (app/get-service app :JRubyPuppetService)
               context          (services/service-context service)
               pool-context-cfg (get-in context [:pool-context :config])]
@@ -231,6 +248,14 @@
       app
       default-services
       (jruby-service-test-config 1)
+      ;; This test doesn't technically need to wait for jruby pool
+      ;; initialization to be done but if it doesn't, the pool initialization
+      ;; may continue on during the execution of a subsequent test and
+      ;; interfere with the next test's results.  This wait ensures that the
+      ;; pool initialization agent will be dormant by the time this test
+      ;; finishes.  It should be possible to remove this when SERVER-1087 is
+      ;; resolved.
+      (jruby-testutils/wait-for-jrubies app)
       (let [service          (app/get-service app :JRubyPuppetService)
             context          (services/service-context service)
             pool-context-cfg (get-in context [:pool-context :config])]
@@ -245,14 +270,147 @@
     (let [temp-dir (ks/temp-dir)
           facter-jar (-> temp-dir
                        (fs/file jruby-core/facter-jar)
-                       (fs/absolute-path))]
+                       (ks/absolute-path))]
       (fs/touch facter-jar)
       (bootstrap/with-app-with-config
         app
-        [jruby-puppet-pooled-service profiler/puppet-profiler-service]
+        default-services
         (assoc-in (jruby-service-test-config 1)
           [:jruby-puppet :ruby-load-path]
-          (into [] (cons (fs/absolute-path temp-dir)
+          (into [] (cons (ks/absolute-path temp-dir)
                      jruby-testutils/ruby-load-path)))
+        ;; This test doesn't technically need to wait for jruby pool
+        ;; initialization to be done but if it doesn't, the pool initialization
+        ;; may continue on during the execution of a subsequent test and
+        ;; interfere with the next test's results.  This wait ensures that the
+        ;; pool initialization agent will be dormant by the time this test
+        ;; finishes.  It should be possible to remove this when SERVER-1087 is
+        ;; resolved.
+        (jruby-testutils/wait-for-jrubies app)
         (is (true? (some #(= facter-jar (.getFile %))
                      (.getURLs (ClassLoader/getSystemClassLoader)))))))))
+
+(deftest environment-class-info-tags
+  (testing "environment-class-info-tags cache has proper data"
+    (bootstrap/with-app-with-config
+     app
+     default-services
+     (jruby-service-test-config 1)
+     (let [service (app/get-service app :JRubyPuppetService)]
+       (testing "when environment not previously loaded to cache"
+         (is (nil? (jruby-protocol/get-environment-class-info-tag
+                    service
+                    "production")))
+         (is (nil? (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production"))))
+       (testing "when environment info first set to cache"
+         (jruby-protocol/set-environment-class-info-tag! service
+                                                         "production"
+                                                         "1234prod"
+                                                         nil)
+         (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "production")))
+         (is (nil? (jruby-protocol/get-environment-class-info-tag
+                    service
+                    "test")))
+         (jruby-protocol/set-environment-class-info-tag! service
+                                                         "test"
+                                                         "1234test"
+                                                         nil)
+         (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "production")))
+         (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                            service
+                            "test"))))
+       (let [production-first-update
+             (jruby-protocol/get-environment-class-info-tag-last-updated
+              service
+              "production")
+             test-first-update
+             (jruby-protocol/get-environment-class-info-tag-last-updated
+              service
+              "test")]
+         (testing "when environment info reset in the cache"
+           (is (not (nil? production-first-update)))
+           (is (not (nil? test-first-update)))
+           (jruby-protocol/set-environment-class-info-tag!
+            service
+            "production"
+            "5678prod"
+            production-first-update)
+           (is (= "5678prod" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "production")))
+           (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "test")))
+           (is (= test-first-update
+                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                   service
+                   "test")))
+           (testing "and environment expired between get and corresponding set"
+             (let [production-second-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")
+                   _ (jruby-protocol/mark-environment-expired! service
+                                                               "production")
+                   production-third-update
+                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                    service
+                    "production")]
+               (is (not= production-first-update production-second-update))
+               (jruby-protocol/set-environment-class-info-tag!
+                service
+                "production"
+                "89abprod"
+                production-second-update)
+               (is (= nil (jruby-protocol/get-environment-class-info-tag
+                           service
+                           "production")))
+               (is (= production-third-update
+                      (jruby-protocol/get-environment-class-info-tag-last-updated
+                       service
+                       "production"))))))
+         (testing "when an individual environment is marked expired"
+           (jruby-protocol/mark-environment-expired! service "production")
+           (is (nil? (jruby-protocol/get-environment-class-info-tag
+                      service
+                      "production")))
+           (is (not= production-first-update
+                     (jruby-protocol/get-environment-class-info-tag-last-updated
+                      service
+                      "production")))
+           (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
+                              service
+                              "test")))
+           (is (= test-first-update
+                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                   service
+                   "test"))))
+         (testing "when all environments are marked expired"
+           (jruby-protocol/set-environment-class-info-tag! service
+                                                           "production"
+                                                           "8910prod"
+                                                           nil)
+           (let [production-third-update
+                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                  service
+                  "production")]
+             (jruby-protocol/mark-all-environments-expired! service)
+             (is (nil? (jruby-protocol/get-environment-class-info-tag
+                        service
+                        "production")))
+             (is (not= production-third-update
+                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                        service
+                        "production")))
+             (is (nil? (jruby-protocol/get-environment-class-info-tag service
+                                                                      "test")))
+             (is (not= test-first-update
+                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                        service
+                        "test"))))))))))

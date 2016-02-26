@@ -1,11 +1,11 @@
 (ns puppetlabs.puppetserver.ruby.http-client-test
   (:import (org.jruby.embed LocalContextScope LocalVariableBehavior
-                            ScriptingContainer EvalFailedException)
+                            EvalFailedException)
            (org.apache.http ConnectionClosedException)
-           (com.puppetlabs.http.client HttpClientException)
            (javax.net.ssl SSLHandshakeException)
            (java.util HashMap)
-           (java.io IOException))
+           (java.io IOException)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
@@ -80,9 +80,10 @@
                                 (select-keys options [:ssl-protocols :cipher-suites]))
          sc                   (ScriptingContainer. LocalContextScope/SINGLETHREAD
                                                    LocalVariableBehavior/PERSISTENT)]
-     (jruby-internal/prep-scripting-container sc
-                                            jruby-testutils/ruby-load-path
-                                            jruby-testutils/gem-home)
+     (jruby-internal/init-jruby-config sc
+                                       jruby-testutils/ruby-load-path
+                                       jruby-testutils/gem-home
+                                       jruby-testutils/compile-mode)
      (.runScriptlet sc "require 'puppet/server/http_client'")
      (let [http-client-class (.runScriptlet sc "Puppet::Server::HttpClient")]
        (.callMethod sc http-client-class "initialize_settings" http-client-settings Object))

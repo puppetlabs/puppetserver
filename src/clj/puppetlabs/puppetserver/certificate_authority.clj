@@ -8,7 +8,6 @@
             [schema.core :as schema]
             [clojure.string :as str]
             [clojure.java.io :as io]
-            [clojure.java.shell :as shell]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
             [clj-time.format :as time-format]
@@ -17,7 +16,8 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
-            [clj-yaml.core :as yaml]))
+            [clj-yaml.core :as yaml]
+            [puppetlabs.puppetserver.shell-utils :as shell-utils]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -737,7 +737,7 @@
                              (line-seq r)))))))
 
 (schema/defn execute-autosign-command!
-  :- {:out (schema/maybe schema/Str) :err (schema/maybe schema/Str) :exit schema/Int}
+  :- shell-utils/ExecutionResult
   "Execute the autosign script and return a map containing the standard-out,
    standard-err, and exit code. The subject will be passed in as input, and
    the CSR stream will be provided on standard-in. The ruby-load-path will be
@@ -753,11 +753,13 @@
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
                        (cons lib ruby-load-path)
                        ruby-load-path)
-                     (map fs/absolute-path)
+                     (map ks/absolute-path)
                      (str/join (System/getProperty "path.separator")))
-        results (shell/sh executable subject
-                          :in csr-stream
-                          :env (merge env {:RUBYLIB rubylib}))]
+        results (shell-utils/execute-command
+                 executable
+                 {:args [subject]
+                  :in csr-stream
+                  :env (merge env {"RUBYLIB" rubylib})})]
     (log/debugf "Autosign command '%s %s' exit status: %d"
                 executable subject (:exit results))
     (log/debugf "Autosign command '%s %s' output: %s"
@@ -820,9 +822,11 @@
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (-> (execute-autosign-command! autosign subject csr-stream ruby-load-path)
-            :exit
-            zero?)
+        (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path)]
+          (log/debug (:stdout command-result))
+          (-> command-result
+              :exit-code
+              zero?))
         (whitelist-matches? autosign subject))
       false)))
 

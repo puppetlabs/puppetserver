@@ -5,7 +5,9 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.response :as ring]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [ring.util.response :as rr]
+            [cheshire.core :as cheshire]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -17,6 +19,12 @@
 (def RingRequest
   {:uri schema/Str
    (schema/optional-key :ssl-client-cert) (schema/maybe X509Certificate)
+   schema/Keyword schema/Any})
+
+(def RingResponse
+  {:status schema/Int
+   :headers {schema/Str schema/Any}
+   :body schema/Any
    schema/Keyword schema/Any})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -42,6 +50,15 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(defn json-response
+  "Create a ring response with a string body serialized to JSON from the
+  supplied obj"
+  [obj]
+  (-> obj
+      (cheshire/generate-string obj)
+      (rr/response)
+      (rr/content-type "application/json")))
 
 (defn wrap-request-logging
   "A ring middleware that logs the request."

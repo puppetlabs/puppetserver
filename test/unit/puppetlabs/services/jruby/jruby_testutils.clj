@@ -1,47 +1,30 @@
 (ns puppetlabs.services.jruby.jruby-testutils
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.services :as tk-service]
             [schema.core :as schema]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
-           (org.jruby.embed ScriptingContainer LocalContextScope)
+           (org.jruby.embed LocalContextScope)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
 
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
 (def gem-home "./target/jruby-gem-home")
+(def compile-mode :off)
 
 (def conf-dir "./target/master-conf")
 (def code-dir "./target/master-code")
 (def var-dir "./target/master-var")
 (def run-dir "./target/master-var/run")
 (def log-dir "./target/master-var/log")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; JRubyPuppet Test fixtures
-
-(defn with-puppet-conf
-  "This function returns a test fixture that will copy a specified puppet.conf
-  file into the provided location for testing, and then delete it after the
-  tests have completed. If no destination dir is provided then the puppet.conf
-  file is copied to the default location of './target/master-conf'."
-  ([puppet-conf-file]
-   (with-puppet-conf puppet-conf-file conf-dir))
-  ([puppet-conf-file dest-dir]
-   (let [target-path (fs/file dest-dir "puppet.conf")]
-     (fn [f]
-       (fs/copy+ puppet-conf-file target-path)
-       (try
-         (f)
-         (finally
-           (fs/delete target-path)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
@@ -114,22 +97,35 @@
 
 (schema/defn ^:always-validate
   create-mock-pool-instance :- JRubyPuppetInstance
-  [pool :- jruby-schemas/pool-queue-type
-   id :- schema/Int
-   config :- jruby-schemas/JRubyPuppetConfig
-   flush-instance-fn :- IFn
-   _ :- (schema/maybe PuppetProfiler)]
-  (let [instance (jruby-schemas/map->JRubyPuppetInstance
-                   {:pool                 pool
-                    :id                   id
-                    :max-requests         (:max-requests-per-instance config)
-                    :flush-instance-fn    flush-instance-fn
-                    :state                (atom {:borrow-count 0})
-                    :jruby-puppet         (create-mock-jruby-instance)
-                    :scripting-container  (ScriptingContainer. LocalContextScope/SINGLETHREAD)
+  ([pool :- jruby-schemas/pool-queue-type
+    id :- schema/Int
+    config :- jruby-schemas/JRubyPuppetConfig
+    flush-instance-fn :- IFn
+    profiler :- (schema/maybe PuppetProfiler)]
+   (create-mock-pool-instance create-mock-jruby-instance
+                              pool
+                              id
+                              config
+                              flush-instance-fn
+                              profiler))
+  ([mock-jruby-instance-creator-fn :- IFn
+    pool :- jruby-schemas/pool-queue-type
+    id :- schema/Int
+    config :- jruby-schemas/JRubyPuppetConfig
+    flush-instance-fn :- IFn
+    _ :- (schema/maybe PuppetProfiler)]
+   (let [instance (jruby-schemas/map->JRubyPuppetInstance
+                   {:pool pool
+                    :id id
+                    :max-requests (:max-requests-per-instance config)
+                    :flush-instance-fn flush-instance-fn
+                    :state (atom {:borrow-count 0})
+                    :jruby-puppet (mock-jruby-instance-creator-fn)
+                    :scripting-container (ScriptingContainer.
+                                          LocalContextScope/SINGLETHREAD)
                     :environment-registry (puppet-env/environment-registry)})]
-    (.register pool instance)
-    instance))
+     (.register pool instance)
+     instance)))
 
 (defn mock-pool-instance-fixture
   "Test fixture which changes the behavior of the JRubyPool to create
@@ -176,25 +172,17 @@
     (fill-drained-pool jrubies)
     result))
 
-(defn get-lock-from-pool
-  "Given a JRubyPool, returns its internal ReentrantReadWriteLock instance."
-  [jruby-pool]
-  (let [f (->> jruby-pool
-               .getClass
-               .getDeclaredFields
-               (filter #(= "lock" (.getName %)))
-               first)]
-    (.setAccessible f true)
-    (.get f jruby-pool)))
-
-(defn get-lock-from-app
-  "Given a trapperkeeper application with the JRubyPuppetService running,
-  returns the ReentrantReadWriteLock instance used by its JRubyPool."
+(defn wait-for-jrubies
+  "Wait for all jrubies to land in the JRubyPuppetService's pool"
   [app]
-  (let [jruby-pool (-> app
-                       tk-app/app-context
-                       deref
-                       :JRubyPuppetService
-                       :pool-context
-                       jruby-core/get-pool)]
-    (get-lock-from-pool jruby-pool)))
+  (let [pool-context (-> app
+                         (tk-app/get-service :JRubyPuppetService)
+                         tk-service/service-context
+                         :pool-context)
+        num-jrubies (-> pool-context
+                        :pool-state
+                        deref
+                        :size)]
+    (while (< (count (jruby-core/registered-instances pool-context))
+              num-jrubies)
+      (Thread/sleep 100))))

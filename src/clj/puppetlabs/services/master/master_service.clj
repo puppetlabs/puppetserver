@@ -15,7 +15,8 @@
    [:RequestHandlerService handle-request]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:VersionedCodeService get-code-content]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -31,7 +32,8 @@
          update-server-url (get-in config [:product :update-server-url])
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
-                                      true)]
+                                      true)
+         jruby-service (tk-services/get-service this :JRubyPuppetService)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -42,14 +44,24 @@
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
-                          (core/get-wrapped-handler
-                            (-> (core/root-routes handle-request)
-                                ((partial comidi/context path))
-                                comidi/routes->handler)
-                            wrap-with-authorization-check
-                            use-legacy-auth-conf
-                            puppet-version))]
-       (if (map? route-config)
+                          (-> (core/construct-root-routes puppet-version
+                                                          use-legacy-auth-conf
+                                                          jruby-service
+                                                          get-code-content
+                                                          handle-request
+                                                          wrap-with-authorization-check)
+                              ((partial comidi/context path))
+                              comidi/routes->handler))]
+       ;; if the webrouting config uses the old-style config where
+       ;; there is a single key with a route-id, we need to deal with that
+       ;; for backward compat.  We have a hard-coded assumption that this route-id
+       ;; must be `master-routes`.  In Puppet Server 2.0, we also supported a
+       ;; key called `invalid-in-puppet-4` in the same route config, even though
+       ;; that key is no longer used for Puppet Server 2.1 and later.  We
+       ;; should be able to remove this hack as soon as we are able to get rid
+       ;; of the legacy routes.
+       (if (and (map? route-config)
+                (contains? route-config :master-routes))
          (add-ring-handler this ring-handler
                            {:route-id :master-routes})
          (add-ring-handler this ring-handler))))
