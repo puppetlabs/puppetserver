@@ -320,6 +320,7 @@
 (deftest ^:integration test-restart-comes-back
   (testing "After a TK restart puppetserver can still handle requests"
     (let [call-seq (atom [])
+          debug-log "./target/test-restart-comes-back.log"
           lc-fn (fn [context action] (swap! call-seq conj action) context)
           bonus-service (tk-services/service BonusService
                           [[:MasterService]]
@@ -327,16 +328,27 @@
                           (start [this context] (lc-fn context :start-bonus-service))
                           (stop [this context] (lc-fn context :stop-bonus-service))
                           (bonus-service-fn [this] (lc-fn nil :bonus-service-fn)))]
+      (fs/delete debug-log)
       (bootstrap/with-puppetserver-running-with-services
        app
        (conj (tk-bootstrap/parse-bootstrap-config! bootstrap/dev-bootstrap-file) bonus-service)
-       {:jruby-puppet {:max-active-instances 1}}
+       {:global {:logging-config
+                 (str "./dev-resources/puppetlabs/services/"
+                      "jruby/jruby_pool_int_test/"
+                      "logback-test-restart-comes-back.xml")}
+        :jruby-puppet {:max-active-instances 1
+                       :borrow-timeout default-borrow-timeout}}
        (tk-internal/restart-tk-apps [app])
        (let [start (System/currentTimeMillis)]
          (while (and (not= (count @call-seq) 5)
                      (< (- (System/currentTimeMillis) start) 90000))
            (Thread/yield)))
-       (is (= @call-seq [:init-bonus-service :start-bonus-service :stop-bonus-service :init-bonus-service :start-bonus-service]))
+       (let [shutdown-service (tk-app/get-service app :ShutdownService)]
+         (is (nil? (tk-internal/get-shutdown-reason shutdown-service))
+             "shutdown reason was unexpectedly set after restart"))
+       (is (= @call-seq
+              [:init-bonus-service :start-bonus-service :stop-bonus-service :init-bonus-service :start-bonus-service])
+           (str "dumping puppetserver.log\n" (slurp debug-log)))
        (let [get-results (http-client/get "https://localhost:8140/puppet/v3/environments"
                                           testutils/catalog-request-options)]
          (is (= 200 (:status get-results))))))))
