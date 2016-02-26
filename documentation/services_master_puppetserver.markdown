@@ -45,9 +45,24 @@ Puppet Server uses a Jetty-based web server embedded in the service's JVM proces
 
 The web server's settings can be modified in [`webserver.conf`](./config_file_webserver.html). You might need to edit this file if you're [using an external CA][external_ca] or running Puppet on a non-standard port.
 
+### Puppet Master Service
+
+Puppet Server includes a "master" service that provides the basic functions as
+Rack and WEBrick masters, using the same input and output formats.  See
+[Puppet V3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api)
+for more information on the basic APIs.  Puppet Server's master service
+provides some additional APIs that the Rack and WEBrick Puppet masters do not.
+
+- For docs on the Puppet Server-specific APIs hosted by the master service, see:
+
+    - [The `environment_classes` endpoint](./puppet/v3/environment_classes.markdown)
+
 ### Certificate Authority Service
 
 Puppet Server includes a certificate authority (CA) service that accepts certificate signing requests (CSRs) from nodes, serves certificates and a certificate revocation list (CRL) to nodes, and optionally accepts commands to sign or revoke certificates. It provides these services at the same URLs used by Rack and WEBrick Puppet masters, using the same input and output formats. (The specific endpoints are `certificate`, `certificate_request`, `certificate_revocation_list`, and `certificate_status`.)
+
+See [CA V1 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#ca-v1-http-api)
+for more information on these APIs.
 
 Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file (or deprecated [`ca.conf`](./config_file_ca.html) file) to let specific certificate owners issue commands.
 
