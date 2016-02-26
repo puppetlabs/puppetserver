@@ -39,6 +39,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
+(def default-borrow-timeout 180000)
+
+(defn timed-deref
+  [ref]
+  (deref ref 120000 :timed-out))
+
 (def script-to-check-if-constant-is-defined
   "! $instance_id.nil?")
 
@@ -103,21 +109,35 @@
 
 (defn wait-for-new-pool
   [jruby-service]
-  ;; borrow until we get an instance that doesn't have a constant,
-  ;; so we'll know that the new pool is online
-  (loop [instance (jruby-protocol/borrow-instance jruby-service :wait-for-new-pool)]
-    (let [has-constant? (constant-defined? instance)]
-      (jruby-protocol/return-instance jruby-service instance :wait-for-new-pool)
-      (when has-constant?
-        (recur (jruby-protocol/borrow-instance jruby-service :wait-for-new-pool))))))
+  (let [max-new-pool-wait-count 100000]
+    ;; borrow until we get an instance that doesn't have a constant,
+    ;; so we'll know that the new pool is online
+    (loop [instance (jruby-protocol/borrow-instance jruby-service :wait-for-new-pool)
+           loop-count 0]
+      (let [has-constant? (constant-defined? instance)]
+        (jruby-protocol/return-instance jruby-service instance :wait-for-new-pool)
+        (cond
+          (not has-constant?) true
+          (= loop-count max-new-pool-wait-count) false
+          :else (recur (jruby-protocol/borrow-instance
+                        jruby-service
+                        :wait-for-new-pool)
+                       (inc loop-count)))))))
 
 (defn borrow-until-desired-borrow-count
   [jruby-service desired-borrow-count]
-  (loop [instance (jruby-protocol/borrow-instance jruby-service :borrow-until-desired-borrow-count)]
-    (let [borrow-count (:borrow-count @(:state instance))]
-      (jruby-protocol/return-instance jruby-service instance :borrow-until-desired-borrow-count)
-      (if (< (inc borrow-count) desired-borrow-count)
-        (recur (jruby-protocol/borrow-instance jruby-service :borrow-until-desired-borrow-count))))))
+  (let [max-borrow-wait-count 100000]
+    (loop [instance (jruby-protocol/borrow-instance jruby-service :borrow-until-desired-borrow-count)
+           loop-count 0]
+      (let [borrow-count (:borrow-count @(:state instance))]
+        (jruby-protocol/return-instance jruby-service instance :borrow-until-desired-borrow-count)
+        (cond
+          (= (inc borrow-count) desired-borrow-count) true
+          (= loop-count max-borrow-wait-count) false
+          :else (recur (jruby-protocol/borrow-instance
+                        jruby-service
+                        :borrow-until-desired-borrow-count)
+                       (inc loop-count)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -126,7 +146,8 @@
   (testing "Flushing the pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
-      {:jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4
+                      :borrow-timeout default-borrow-timeout}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -134,7 +155,8 @@
         (is (true? (set-constants-and-verify pool-context 4)))
         (let [flush-complete (add-watch-for-flush-complete pool-context)]
           (is (true? (trigger-flush ssl-request-options)))
-          @flush-complete)
+          (is (true? (timed-deref flush-complete))
+              "timed out waiting for the flush to complete"))
         ;; now the pool is flushed, so the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
@@ -142,7 +164,8 @@
   (testing "instance borrowed from old pool before pool flush begins and returned *after* new pool is available"
     (bootstrap/with-puppetserver-running
       app
-      {:jruby-puppet {:max-active-instances 4}}
+      {:jruby-puppet {:max-active-instances 4
+                      :borrow-timeout default-borrow-timeout}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -155,11 +178,12 @@
           ;; trigger a flush
           (is (true? (trigger-flush ssl-request-options)))
           ;; wait for the new pool to become available
-          (wait-for-new-pool jruby-service)
+          (is (true? (wait-for-new-pool jruby-service)))
           ;; return the instance
           (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
-          @flush-complete)
+          (is (true? (timed-deref flush-complete))
+              "timed out waiting for the flush to complete"))
         ;; now the pool is flushed, and the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
@@ -167,7 +191,8 @@
   (testing "file handle opened from old pool instance is held open across pool flush"
     (bootstrap/with-puppetserver-running
       app
-      {:jruby-puppet {:max-active-instances 2}}
+      {:jruby-puppet {:max-active-instances 2
+                      :borrow-timeout default-borrow-timeout}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
             pool-context (:pool-context context)]
@@ -186,7 +211,7 @@
             ;; trigger a flush
             (is (true? (trigger-flush ssl-request-options)))
             ;; wait for the new pool to become available
-            (wait-for-new-pool jruby-service)
+            (is (true? (wait-for-new-pool jruby-service)))
 
             (is (nil? (.runScriptlet sc "$unique_file.close"))
                 "Unexpected response on attempt to close unique file")
@@ -195,7 +220,8 @@
           ;; return the instance
           (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
-          @flush-complete)
+          (is (true? (timed-deref flush-complete))
+              "timed out waiting for the flush to complete"))
         ;; now the pool is flushed, and the constants should be cleared
         (is (true? (verify-no-constants pool-context 2)))))))
 
@@ -216,7 +242,9 @@
            authorization/authorization-service]
           (merge (jruby-testutils/jruby-puppet-tk-config
                    (jruby-testutils/jruby-puppet-config {:max-active-instances      4
-                                                         :max-requests-per-instance 10}))
+                                                         :max-requests-per-instance 10
+                                                         :borrow-timeout
+                                                         default-borrow-timeout}))
                  {:webserver    (merge {:ssl-port 8140
                                         :ssl-host "localhost"}
                                        ssl-options)
@@ -238,7 +266,7 @@
               ;; we are going to borrow and return a second instance until we get its
               ;; request count up to max-requests - 1, so that we can use it to test
               ;; flushing behavior the next time we return it.
-              (borrow-until-desired-borrow-count jruby-service 9)
+              (is (true? (borrow-until-desired-borrow-count jruby-service 9)))
               ;; now we grab a reference to that instance and hold onto it for later.
               (let [instance2 (jruby-protocol/borrow-instance jruby-service
                                 :max-requests-flush-while-pool-flush-in-progress-test)]
@@ -247,12 +275,14 @@
                 ;; trigger a flush
                 (is (true? (trigger-flush ssl-options)))
                 ;; wait for the new pool to become available
-                (wait-for-new-pool jruby-service)
+                (is (true? (wait-for-new-pool jruby-service)))
                 ;; there will only be two instances in the new pool, because we are holding
                 ;; references to two from the old pool.
                 (is (true? (set-constants-and-verify pool-context 2)))
                 ;; borrow and return instance from the new pool until an instance flush is triggered
-                (borrow-until-desired-borrow-count jruby-service 10)
+                (is (true? (borrow-until-desired-borrow-count
+                            jruby-service
+                            10)))
 
                 ;; at this point, we still have the main flush in progress, waiting for us
                 ;; to release the two instances from the old pool.  we should also have
@@ -278,7 +308,8 @@
               (jruby-protocol/return-instance jruby-service instance1 :max-requests-flush-while-pool-flush-in-progress-test)
 
               ;; wait until the flush is complete
-              @flush-complete)
+              (is (true? (timed-deref flush-complete))
+                  "timed out waiting for the flush to complete"))
 
             ;; we should have three instances with the constant and one without.
             (is (true? (check-jrubies-for-constant-counts pool-context 3 1)))))))))
@@ -318,7 +349,9 @@
                      jetty9/jetty9-service
                      vcs/versioned-code-service]
            config (-> (jruby-testutils/jruby-puppet-tk-config
-                       (jruby-testutils/jruby-puppet-config {:max-active-instances 2}))
+                       (jruby-testutils/jruby-puppet-config {:max-active-instances 2
+                                                             :borrow-timeout
+                                                             default-borrow-timeout}))
                       (assoc-in [:webserver :port] 8081))
            app (tk/boot-services-with-config services config)
            cert (ssl-utils/pem->cert
@@ -338,7 +371,8 @@
             (Thread/yield))
           (is (= 503 (:status (ping-environment)))))
          (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
-         @stop-complete?
+         (is (not= :timed-out (timed-deref stop-complete?))
+             "timed out waiting for the stop to complete")
          (logging/with-test-logging
           (is (= 503 (:status (ping-environment))))))))))
 
@@ -346,7 +380,8 @@
   (testing "During a shutdown requests result in 503 http responses"
     (bootstrap/with-puppetserver-running
      app
-     {:jruby-puppet {:max-active-instances 2}}
+     {:jruby-puppet {:max-active-instances 2
+                     :borrow-timeout default-borrow-timeout}}
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
            jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
@@ -360,7 +395,8 @@
             (Thread/yield)))
         (is (= 503 (:status (ping-environment)))))
        (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
-       @stop-complete?
+       (is (not= :timed-out (timed-deref stop-complete?))
+           "timed out waiting for the stop to complete")
        (let [app-context (tk-app/app-context app)]
          ;; We have to re-initialize the JRubyPuppetService here because
          ;; otherwise the tk-app/stop that is included in the
