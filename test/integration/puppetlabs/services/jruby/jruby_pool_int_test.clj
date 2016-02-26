@@ -43,7 +43,7 @@
 
 (defn timed-deref
   [ref]
-  (deref ref 120000 :timed-out))
+  (deref ref 240000 :timed-out))
 
 (def script-to-check-if-constant-is-defined
   "! $instance_id.nil?")
