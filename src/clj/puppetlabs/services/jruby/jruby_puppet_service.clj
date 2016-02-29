@@ -94,7 +94,7 @@
                                  (tk-services/service-context this))]
      (get-in @environment-class-info [env-name :tag])))
 
-  (get-environment-class-info-tag-last-updated
+  (get-environment-class-info-tag-last-updated!
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
