@@ -73,19 +73,16 @@
     [this env-name]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-      (swap! environment-class-info-tags
-             core/environment-class-info-cache-with-invalidated-entry
-             env-name)
-      (core/mark-environment-expired! pool-context env-name)))
+      (core/mark-environment-expired! pool-context
+                                      env-name
+                                      environment-class-info-tags)))
 
   (mark-all-environments-expired!
     [this]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-      (->> core/invalidated-environment-class-info-entry
-           (partial ks/mapvals)
-           (swap! environment-class-info-tags))
-      (core/mark-all-environments-expired! pool-context)))
+      (core/mark-all-environments-expired! pool-context
+                                           environment-class-info-tags)))
 
   (get-environment-class-info
     [this jruby-instance env-name]
