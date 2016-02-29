@@ -416,6 +416,21 @@
            (assoc % env-name (environment-class-info-entry)))))
 
 (schema/defn ^:always-validate
+  get-environment-class-info-tag-last-updated! :- schema/Int
+  "Get the 'time' that a tag was last set for a specific environment's
+  class info.   Return value will be a schema/Int representing the number of
+  milliseconds between the last time the tag was updated for an environment
+  and midnight, January 1, 1970 UTC.  If no entry for the environment had
+  existed at the point this function was called this function would, as a
+  side effect, populate a new entry for that environment into the cache."
+  [environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)
+   env-name :- schema/Str]
+  (-> (add-environment-class-info-cache-entry-if-not-present!
+       environment-class-info-cache
+       env-name)
+      (get-in [env-name :last-updated])))
+
+(schema/defn ^:always-validate
   mark-environment-expired!
   "Mark the environment-registry entry for each JRubyPuppet instance and the
   environment's entry in the environment class info cache as expired."
