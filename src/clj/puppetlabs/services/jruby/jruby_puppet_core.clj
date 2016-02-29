@@ -451,9 +451,8 @@
   all environment entries in the environment class info cache as expired."
   [context :- jruby-schemas/PoolContext
    environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
-  (->> invalidated-environment-class-info-entry
-       (partial ks/mapvals)
-       (swap! environment-class-info-cache))
+  (swap! environment-class-info-cache
+         (partial ks/mapvals invalidated-environment-class-info-entry))
   (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
         :environment-registry
