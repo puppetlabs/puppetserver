@@ -417,8 +417,14 @@
 
 (schema/defn ^:always-validate
   mark-environment-expired!
+  "Mark the environment-registry entry for each JRubyPuppet instance and the
+  environment's entry in the environment class info cache as expired."
   [context :- jruby-schemas/PoolContext
-   env-name :- schema/Str]
+   env-name :- schema/Str
+   environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
+  (swap! environment-class-info-cache
+         environment-class-info-cache-with-invalidated-entry
+         env-name)
   (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
         :environment-registry
@@ -426,7 +432,13 @@
 
 (schema/defn ^:always-validate
   mark-all-environments-expired!
-  [context :- jruby-schemas/PoolContext]
+  "Mark all environment-registry entries for each JRubyPuppet instance and
+  all environment entries in the environment class info cache as expired."
+  [context :- jruby-schemas/PoolContext
+   environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
+  (->> invalidated-environment-class-info-entry
+       (partial ks/mapvals)
+       (swap! environment-class-info-cache))
   (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
         :environment-registry
