@@ -289,7 +289,7 @@
    environment-class-cache-enabled :- schema/Bool]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
-          last-updated (jruby-protocol/get-environment-class-info-tag-last-updated
+          last-updated (jruby-protocol/get-environment-class-info-tag-last-updated!
                         jruby-service
                         environment)]
       (if-let [class-info

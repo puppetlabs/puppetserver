@@ -298,7 +298,7 @@
      (jruby-service-test-config 1)
      (let [service (app/get-service app :JRubyPuppetService)
            production-before-first-update
-           (jruby-protocol/get-environment-class-info-tag-last-updated
+           (jruby-protocol/get-environment-class-info-tag-last-updated!
             service
             "production")]
        (testing "when environment not previously loaded to cache"
@@ -329,11 +329,11 @@
                             service
                             "test"))))
        (let [production-first-update
-             (jruby-protocol/get-environment-class-info-tag-last-updated
+             (jruby-protocol/get-environment-class-info-tag-last-updated!
               service
               "production")
              test-first-update
-             (jruby-protocol/get-environment-class-info-tag-last-updated
+             (jruby-protocol/get-environment-class-info-tag-last-updated!
               service
               "test")]
          (testing "when environment info reset in the cache"
@@ -351,18 +351,18 @@
                               service
                               "test")))
            (is (= test-first-update
-                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                  (jruby-protocol/get-environment-class-info-tag-last-updated!
                    service
                    "test")))
            (testing "and environment expired between get and corresponding set"
              (let [production-second-update
-                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                   (jruby-protocol/get-environment-class-info-tag-last-updated!
                     service
                     "production")
                    _ (jruby-protocol/mark-environment-expired! service
                                                                "production")
                    production-third-update
-                   (jruby-protocol/get-environment-class-info-tag-last-updated
+                   (jruby-protocol/get-environment-class-info-tag-last-updated!
                     service
                     "production")]
                (is (not= production-first-update production-second-update))
@@ -375,7 +375,7 @@
                            service
                            "production")))
                (is (= production-third-update
-                      (jruby-protocol/get-environment-class-info-tag-last-updated
+                      (jruby-protocol/get-environment-class-info-tag-last-updated!
                        service
                        "production"))))))
          (testing "when an individual environment is marked expired"
@@ -384,19 +384,19 @@
                       service
                       "production")))
            (is (not= production-first-update
-                     (jruby-protocol/get-environment-class-info-tag-last-updated
+                     (jruby-protocol/get-environment-class-info-tag-last-updated!
                       service
                       "production")))
            (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                               service
                               "test")))
            (is (= test-first-update
-                  (jruby-protocol/get-environment-class-info-tag-last-updated
+                  (jruby-protocol/get-environment-class-info-tag-last-updated!
                    service
                    "test"))))
          (testing "when all environments are marked expired"
            (let [production-update
-                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                 (jruby-protocol/get-environment-class-info-tag-last-updated!
                   service
                   "production")]
              (jruby-protocol/set-environment-class-info-tag!
@@ -408,7 +408,7 @@
                                 service
                                 "production"))))
            (let [production-third-update
-                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                 (jruby-protocol/get-environment-class-info-tag-last-updated!
                   service
                   "production")]
              (jruby-protocol/mark-all-environments-expired! service)
@@ -416,24 +416,24 @@
                         service
                         "production")))
              (is (not= production-third-update
-                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                       (jruby-protocol/get-environment-class-info-tag-last-updated!
                         service
                         "production")))
              (is (nil? (jruby-protocol/get-environment-class-info-tag service
                                                                       "test")))
              (is (not= test-first-update
-                       (jruby-protocol/get-environment-class-info-tag-last-updated
+                       (jruby-protocol/get-environment-class-info-tag-last-updated!
                         service
                         "test")))))
          (testing (str "when all environments expired between get and set "
                        "for environment that did not previously exist")
            (let [staging-before-marked-expired
-                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                 (jruby-protocol/get-environment-class-info-tag-last-updated!
                   service
                   "staging")
                  _ (jruby-protocol/mark-all-environments-expired! service)
                  staging-after-marked-expired
-                 (jruby-protocol/get-environment-class-info-tag-last-updated
+                 (jruby-protocol/get-environment-class-info-tag-last-updated!
                   service
                   "staging")]
              (jruby-protocol/set-environment-class-info-tag!
@@ -445,6 +445,6 @@
                          service
                          "staging")))
              (is (= staging-after-marked-expired
-                    (jruby-protocol/get-environment-class-info-tag-last-updated
+                    (jruby-protocol/get-environment-class-info-tag-last-updated!
                      service
                      "staging"))))))))))

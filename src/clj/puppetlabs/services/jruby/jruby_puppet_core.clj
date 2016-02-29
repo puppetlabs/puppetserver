@@ -381,7 +381,7 @@
   environment-class-info-cache-updated-with-tag :- EnvironmentClassInfoCache
   "Return the supplied environment class info cache argument, updated per
   supplied arguments.  last-updated-before-tag-computed should represent what
-  the client received for a 'get-environment-class-info-tag-last-updated' call
+  the client received for a 'get-environment-class-info-tag-last-updated!' call
   for the environment, made before the client started doing the work to parse
   environment class info / compute the new tag.  If
   last-updated-before-tag-computed equals the 'last-updated' value stored in the
