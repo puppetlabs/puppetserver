@@ -244,23 +244,6 @@
   @(:state jruby-puppet))
 
 (schema/defn ^:always-validate
-  mark-environment-expired!
-  [context :- jruby-schemas/PoolContext
-   env-name :- schema/Str]
-  (doseq [jruby-instance (registered-instances context)]
-    (-> jruby-instance
-      :environment-registry
-      (puppet-env/mark-environment-expired! env-name))))
-
-(schema/defn ^:always-validate
-  mark-all-environments-expired!
-  [context :- jruby-schemas/PoolContext]
-  (doseq [jruby-instance (registered-instances context)]
-    (-> jruby-instance
-        :environment-registry
-        puppet-env/mark-all-environments-expired!)))
-
-(schema/defn ^:always-validate
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrPill
   "Borrows a JRubyPuppet interpreter from the pool. If there are no instances
   left in the pool then this function will block until there is one available."
@@ -431,3 +414,20 @@
          #(if (contains? % env-name)
            %
            (assoc % env-name (environment-class-info-entry)))))
+
+(schema/defn ^:always-validate
+  mark-environment-expired!
+  [context :- jruby-schemas/PoolContext
+   env-name :- schema/Str]
+  (doseq [jruby-instance (registered-instances context)]
+    (-> jruby-instance
+        :environment-registry
+        (puppet-env/mark-environment-expired! env-name))))
+
+(schema/defn ^:always-validate
+  mark-all-environments-expired!
+  [context :- jruby-schemas/PoolContext]
+  (doseq [jruby-instance (registered-instances context)]
+    (-> jruby-instance
+        :environment-registry
+        puppet-env/mark-all-environments-expired!)))
