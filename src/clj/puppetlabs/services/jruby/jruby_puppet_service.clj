@@ -98,10 +98,9 @@
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (-> (core/add-environment-class-info-cache-entry-if-not-present!
-          environment-class-info
-          env-name)
-         (get-in [env-name :last-updated]))))
+     (core/get-environment-class-info-tag-last-updated!
+      environment-class-info
+      env-name)))
 
   (set-environment-class-info-tag!
    [this env-name tag last-update-before-tag-computed]
