@@ -363,6 +363,37 @@
    {:tag tag
     :last-updated (System/currentTimeMillis)}))
 
+(schema/defn ^:always-validate invalidated-environment-class-info-entry
+  :- EnvironmentClassInfoCacheEntry
+  "Return an 'invalidated' class info entry, a entry with a nil tag and with
+  a last-updated value that is set to the current number of milliseconds
+  between now and midnight, January 1, 1970 UTC or 1 millisecond later than
+  the last-updated value in the supplied original-environment-class-info
+  entry, whichever is later."
+  [original-environment-class-info-entry :-
+   (schema/maybe EnvironmentClassInfoCacheEntry)]
+  (let [new-environment-class-info-entry (environment-class-info-entry)]
+    (if (= (:last-updated new-environment-class-info-entry)
+           (:last-updated original-environment-class-info-entry))
+      (update new-environment-class-info-entry :last-updated inc)
+      new-environment-class-info-entry)))
+
+(schema/defn ^:always-validate
+  environment-class-info-cache-with-invalidated-entry
+    :- EnvironmentClassInfoCache
+  "Return the supplied 'environment-class-info-cache', only updated with an
+  invalidated entry for the supplied 'env-name'.  The invalidated entry will
+  have nil tag and a last-updated value that is set to the current number of
+  milliseconds between now and midnight, January 1, 1970 UTC or 1 millisecond
+  later than the last-updated value in the original entry for the 'env-name'
+  in the cache (if available), whichever is later."
+  [environment-class-info-cache :- EnvironmentClassInfoCache
+   env-name :- schema/Str]
+  (->> env-name
+       (get environment-class-info-cache)
+       invalidated-environment-class-info-entry
+       (assoc environment-class-info-cache env-name)))
+
 (schema/defn ^:always-validate
   environment-class-info-cache-updated-with-tag :- EnvironmentClassInfoCache
   "Return the supplied environment class info cache argument, updated per
@@ -387,3 +418,16 @@
       (assoc environment-class-info-cache env-name
                                           (environment-class-info-entry tag))
       environment-class-info-cache)))
+
+(schema/defn ^:always-validate
+  add-environment-class-info-cache-entry-if-not-present!
+    :- EnvironmentClassInfoCache
+  "Update the 'environment-class-info-cache' atom with a new cache entry for
+  the supplied 'env-name' (if no entry is already present) and return back
+  the new value that the atom has been set to."
+  [environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)
+   env-name :- schema/Str]
+  (swap! environment-class-info-cache
+         #(if (contains? % env-name)
+           %
+           (assoc % env-name (environment-class-info-entry)))))
