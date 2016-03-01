@@ -341,7 +341,7 @@
        (tk-internal/restart-tk-apps [app])
        (let [start (System/currentTimeMillis)]
          (while (and (not= (count @call-seq) 5)
-                     (< (- (System/currentTimeMillis) start) 90000))
+                     (< (- (System/currentTimeMillis) start) 300000))
            (Thread/yield)))
        (let [shutdown-service (tk-app/get-service app :ShutdownService)]
          (is (nil? (tk-internal/get-shutdown-reason shutdown-service))
