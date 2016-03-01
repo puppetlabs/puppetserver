@@ -246,16 +246,6 @@
                             "default ] ],\n"
                             "  Array $another_nested_array = [ 1, [ 2, 3 ] ]\n"
                             "){}"))
-              ;; The values of "Hash[Scalar, Data, 0, default]" and
-              ;; "Array[Data, 0, default]" for "type" - as opposed to just
-              ;; "Hash" and "Array", respectively - for this example are
-              ;; expected per the current Ruby language implementation in
-              ;; Puppet.  However, the simpler types are probably what a user
-              ;; would expect to see instead.  PUP-5861 was filed to address
-              ;; this in the core Ruby Puppet implementation.  Whenever
-              ;; Puppet Server may be upgraded to referencing a Puppet Ruby
-              ;; version which includes these changes, these tests will need
-              ;; to be updated accordingly.
               (is (= {foo-manifest
                       {"classes"
                        [{"name" "foo",
@@ -267,12 +257,12 @@
                                     "type" "Default"}
                                    {"default_source" "{ 1 => 2, \"two\" => 3}"
                                     "name" "some_hash"
-                                    "type" "Hash[Scalar, Data, 0, default]"}
+                                    "type" "Hash"}
                                    {"default_source" (str
                                                       "{ \"one\" => 2, "
                                                       "\"two\" => { 3 => 4 }}")
                                     "name" "some_nested_hash"
-                                    "type" "Hash[Scalar, Data, 0, default]"}
+                                    "type" "Hash"}
                                    {"default_literal" {"one" 2
                                                        "two" {"three" 4}}
                                     "default_source" (str
@@ -280,17 +270,17 @@
                                                       "\"two\" => { \"three\""
                                                       " => 4 }}")
                                     "name" "another_nested_hash"
-                                    "type" "Hash[Scalar, Data, 0, default]"}
+                                    "type" "Hash"}
                                    {"default_source" "[ 1, /^*$/ ]"
                                     "name" "some_array"
-                                    "type" "Array[Data, 0, default]"}
+                                    "type" "Array"}
                                    {"default_source" "[ 1, [ 2, default ] ]"
                                     "name" "some_nested_array"
-                                    "type" "Array[Data, 0, default]"}
+                                    "type" "Array"}
                                    {"default_source" "[ 1, [ 2, 3 ] ]"
                                     "default_literal" [ 1 [ 2 3 ]]
                                     "name" "another_nested_array"
-                                    "type" "Array[Data, 0, default]"}]}]}}
+                                    "type" "Array"}]}]}}
                      (get-class-info-for-env "env5"))
                   "Unexpected info retrieved for 'env5'")))
           (testing (str "(PUP-5713) Default parameter value with expression "
