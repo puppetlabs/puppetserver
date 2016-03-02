@@ -19,7 +19,10 @@
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
-  (-> (root-routes request-handler ring/wrap-params jruby-service (constantly nil))
+  (-> (root-routes request-handler ring/wrap-params
+                   jruby-service
+                   (constantly nil)
+                   true)
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 
@@ -99,7 +102,8 @@
                     "production"
                     jruby-service
                     nil
-                    nil)
+                    nil
+                    true)
                    (rr/get-header "Etag"))
           map-with-classes #(doto (HashMap.)
                              (.put "classes" %))]

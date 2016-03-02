@@ -262,27 +262,31 @@
    environment :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    request-tag :- (schema/maybe String)
-   last-updated :- (schema/maybe schema/Int)]
+   last-updated :- (schema/maybe schema/Int)
+   environment-class-cache-enabled :- schema/Bool]
   (let [info-for-json (class-info-from-jruby->class-info-for-json
                        info-from-jruby
-                       environment)
-        info-as-json (cheshire/generate-string info-for-json)
-        parsed-tag (ks/utf8-string->sha1 info-as-json)]
-    (jruby-protocol/set-environment-class-info-tag!
-     jruby-service
-     environment
-     parsed-tag
-     last-updated)
-    (if (= parsed-tag request-tag)
-      (not-modified-response parsed-tag)
-      (-> (response-with-etag info-as-json parsed-tag)
-          (rr/content-type "application/json")))))
+                       environment)]
+    (if environment-class-cache-enabled
+      (let [info-as-json (cheshire/generate-string info-for-json)
+            parsed-tag (ks/utf8-string->sha1 info-as-json)]
+        (jruby-protocol/set-environment-class-info-tag!
+         jruby-service
+         environment
+         parsed-tag
+         last-updated)
+        (if (= parsed-tag request-tag)
+          (not-modified-response parsed-tag)
+          (-> (response-with-etag info-as-json parsed-tag)
+              (rr/content-type "application/json"))))
+      (ringutils/json-response info-for-json))))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
   request for environment_classes information."
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   environment-class-cache-enabled :- schema/Bool]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
           last-updated (jruby-protocol/get-environment-class-info-tag-last-updated
@@ -297,7 +301,8 @@
                                      environment
                                      jruby-service
                                      (if-none-match-from-request request)
-                                     last-updated)
+                                     last-updated
+                                     environment-class-cache-enabled)
         (rr/not-found (str "Could not find environment '" environment "'"))))))
 
 (schema/defn ^:always-validate
@@ -324,9 +329,11 @@
 (schema/defn ^:always-validate
   environment-class-handler :- IFn
   "Handler for processing an incoming environment_classes Ring request"
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   environment-class-cache-enabled :- schema/Bool]
   (->
-   (environment-class-info-fn jruby-service)
+   (environment-class-info-fn jruby-service
+                              environment-class-cache-enabled)
    (jruby-request/wrap-with-jruby-instance jruby-service)
    (wrap-with-etag-check jruby-service)
    jruby-request/wrap-with-environment-validation
@@ -414,9 +421,11 @@
   v3-clojure-routes :- bidi-schema/RoutePair
   "v3 route tree for the clojure side of the master service."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   get-code-content-fn :- IFn]
+   get-code-content-fn :- IFn
+   environment-class-cache-enabled :- schema/Bool]
   (let [environment-class-handler
-        (environment-class-handler jruby-service)
+        (environment-class-handler jruby-service
+                                   environment-class-cache-enabled)
         static-file-content-handler
         (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
@@ -433,11 +442,14 @@
   [ruby-request-handler :- IFn
    clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   get-code-content-fn :- IFn]
+   get-code-content-fn :- IFn
+   environment-class-cache-enabled :- schema/Bool]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
                   (comidi/wrap-routes
-                   (v3-clojure-routes jruby-service get-code-content-fn)
+                   (v3-clojure-routes jruby-service
+                                      get-code-content-fn
+                                      environment-class-cache-enabled)
                    clojure-request-wrapper )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -493,12 +505,14 @@
   [ruby-request-handler :- IFn
    clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   get-code-content-fn :- IFn]
+   get-code-content-fn :- IFn
+   environment-class-cache-enabled :- schema/Bool]
   (comidi/routes
    (v3-routes ruby-request-handler
               clojure-request-wrapper
               jruby-service
-              get-code-content-fn)))
+              get-code-content-fn
+              environment-class-cache-enabled)))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
@@ -567,7 +581,8 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content :- IFn
    handle-request :- IFn
-   wrap-with-authorization-check :- IFn]
+   wrap-with-authorization-check :- IFn
+   environment-class-cache-enabled :- schema/Bool]
   (let [ruby-request-handler (get-wrapped-handler handle-request
                                                   wrap-with-authorization-check
                                                   puppet-version
@@ -580,4 +595,5 @@
     (root-routes ruby-request-handler
                  clojure-request-wrapper
                  jruby-service
-                 get-code-content)))
+                 get-code-content
+                 environment-class-cache-enabled)))
