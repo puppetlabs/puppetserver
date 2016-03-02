@@ -6,11 +6,9 @@
             [clojure.string :as string]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.codec :as ring-codec]
-            [ring.util.response :as ring-response]
-            [slingshot.slingshot :as sling]
             [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -117,19 +115,13 @@
                     header-dn-val header-dn-name))
       unauthenticated-client-info)))
 
-(defn throw-bad-request!
-  "Throw a ::bad-request type slingshot error with the supplied message"
-  [message]
-  (sling/throw+ {:type ::bad-request
-                 :message message}))
-
 (defn header-cert->pem
   "Convert the header cert value into a PEM string"
   [header-cert]
   (try
     (ring-codec/url-decode header-cert)
     (catch Exception e
-      (throw-bad-request!
+      (jruby-request/throw-bad-request!
         (str "Unable to URL decode the "
              header-client-cert-name
              " header: "
@@ -142,7 +134,7 @@
     (try
       (ssl-utils/pem->certs reader)
       (catch Exception e
-        (throw-bad-request!
+        (jruby-request/throw-bad-request!
           (str "Unable to parse "
                header-client-cert-name
                " into certificate: "
@@ -157,10 +149,10 @@
           certs      (pem->certs pem)
           cert-count (count certs)]
       (condp = cert-count
-        0 (throw-bad-request!
+        0 (jruby-request/throw-bad-request!
             (str "No certs found in PEM read from " header-client-cert-name))
         1 (first certs)
-        (throw-bad-request!
+        (jruby-request/throw-bad-request!
           (str "Only 1 PEM should be supplied for "
                header-client-cert-name
                " but "
@@ -259,69 +251,37 @@
   "Make the request mutable.  This is required by the ruby layer."
   (HashMap. request))
 
-(defn bad-request?
-  [x]
-  "Determine if the supplied slingshot message is for a 'bad request'"
-  (when (map? x)
-    (= (:type x)
-       :puppetlabs.services.request-handler.request-handler-core/bad-request)))
-
-(defn jruby-timeout?
-  "Determine if the supplied slingshot message is for a JRuby borrow timeout."
-  [x]
-  (when (map? x)
-    (= (:type x)
-       :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
-
-(defn output-error
-  [{:keys [uri]} {:keys [message]} http-status]
-  (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
-  (-> (ring-response/response message)
-      (ring-response/status http-status)
-      (ring-response/content-type "text/plain")))
-
-(defn wrap-with-error-handling
-  "Middleware that wraps a JRuby request with some error handling to return
-  the appropriate http status codes, etc."
-  [f]
-  (fn [request]
-    (sling/try+
-      (f request)
-      (catch bad-request? e
-        (output-error request e 400))
-      (catch jruby-timeout? e
-        (output-error request e 503)))))
-
-(defn wrap-with-jruby-instance
-  "Middleware fn that borrows a jruby instance from the `jruby-service` and makes
-  it available in the request as `:jruby-instance`"
-  [f jruby-service]
-  (fn [request]
-    (jruby/with-jruby-puppet
-      jruby-instance
-      jruby-service
-      {:request (dissoc request :ssl-client-cert)}
-      
-      (f (assoc request :jruby-instance jruby-instance)))))
+(defn with-code-id
+  "Wraps the given request with the current-code-id, if it contains a
+  :include-code-id? key with a truthy value.  current-code-id is passed the
+  environment from the request from it is invoked."
+  [current-code-id request]
+  (if (:include-code-id? request)
+    (let [env (jruby-request/get-environment-from-request request)]
+      (when-not env
+        (jruby-request/throw-bad-request! "Environment is required in a catalog request."))
+      (assoc-in request [:params "code_id"] (current-code-id env)))
+    request))
 
 (defn jruby-request-handler
   "Build a request handler fn that processes a request using a JRubyPuppet instance"
-  [config]
+  [config current-code-id]
   (fn [request]
     (->> request
-      wrap-params-for-jruby
-      (as-jruby-request config)
-      clojure.walk/stringify-keys
-      make-request-mutable
-      (.handleRequest (:jruby-instance request))
-      response->map)))
+         wrap-params-for-jruby
+         (with-code-id current-code-id)
+         (as-jruby-request config)
+         clojure.walk/stringify-keys
+         make-request-mutable
+         (.handleRequest (:jruby-instance request))
+         response->map)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn build-request-handler
   "Build the main request handler fn for JRuby requests."
-  [jruby-service config]
-  (-> (jruby-request-handler config)
-    (wrap-with-jruby-instance jruby-service)
-    wrap-with-error-handling))
+  [jruby-service config current-code-id]
+  (-> (jruby-request-handler config current-code-id)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-error-handling))

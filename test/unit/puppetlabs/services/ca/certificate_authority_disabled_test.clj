@@ -3,6 +3,7 @@
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -16,7 +17,7 @@
 
 (use-fixtures
   :once
-  (jruby-testutils/with-puppet-conf
+  (testutils/with-puppet-conf
     "./dev-resources/puppetlabs/services/ca/certificate_authority_disabled_test/puppet.conf"
     puppet-conf-dir))
 

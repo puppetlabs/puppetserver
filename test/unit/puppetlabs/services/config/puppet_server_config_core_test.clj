@@ -2,10 +2,11 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.puppetserver.testutils :as testutils]
             [schema.core :as schema]))
 
 (use-fixtures :once
-              (jruby-testutils/with-puppet-conf
+              (testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
 
 (deftest test-puppet-config-values

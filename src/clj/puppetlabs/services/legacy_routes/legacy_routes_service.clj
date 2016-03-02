@@ -12,6 +12,7 @@
   [[:WebroutingService add-ring-handler get-route]
    [:RequestHandlerService handle-request]
    [:PuppetServerConfigService get-config]
+   [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]]
   (init
     [this context]
@@ -27,7 +28,11 @@
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
-          master-route-handler (-> (master-core/root-routes handle-request)
+          jruby-service (tk-services/get-service this :JRubyPuppetService)
+          master-route-handler (-> (master-core/root-routes handle-request
+                                                            (partial identity)
+                                                            jruby-service
+                                                            (constantly nil))
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount
@@ -36,8 +41,8 @@
                                :handler     (master-core/get-wrapped-handler
                                               master-route-handler
                                               wrap-with-authorization-check
-                                              use-legacy-auth-conf
-                                              puppet-version)
+                                              puppet-version
+                                              use-legacy-auth-conf)
                                :api-version master-core/puppet-API-version}
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")

@@ -1,10 +1,8 @@
 (ns puppetlabs.services.legacy-routes.legacy-routes-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.services.master.master-service :as master-service]
             [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.request-handler.request-handler-service :as handler]
@@ -16,7 +14,10 @@
             [puppetlabs.services.legacy-routes.legacy-routes-service :as legacy-routes]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]
-            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]))
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
+            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
@@ -24,12 +25,7 @@
 (use-fixtures
   :once
   schema-test/validate-schemas
-  (jruby-testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
-
-(defn http-get [path]
-  (http-client/get
-    (str "https://localhost:8140" path)
-    bootstrap/request-options))
+  (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."
@@ -42,8 +38,37 @@
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
     (bootstrap/with-puppetserver-running app
-      {:web-router-service {::master-service/master-service {:master-routes "/puppet"}}}
+      {:web-router-service
+       {:puppetlabs.services.master.master-service/master-service
+        {:master-routes "/puppet"
+         :invalid-in-puppet-4 "/"}}}
       (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
+
+  (testing "The new map-style multi-server route configuration map still works."
+    ;; For a multi-server config, we need to remove the existing webserver
+    ;; config from the sample config.  Since `with-puppetserver-running` just does
+    ;; a deep merge, there's no clean way to do this, so we just load the
+    ;; config ourselves to give us more control to modify it.
+    (let [default-config (bootstrap/load-dev-config-with-overrides {})
+          webserver-config (:webserver default-config)]
+      ;; use `-with-config` variant, so that we can pass in the entire config map
+      (bootstrap/with-puppetserver-running-with-config
+       app
+       (-> default-config
+           ;; remove the 'root' webserver config, which wouldn't exist in a
+           ;; multi-server config
+           (dissoc :webserver)
+           ;; add the webserver config back in with an id of `:puppet-server`
+           (assoc :webserver {:puppet-server
+                              (assoc webserver-config
+                                :default-server true)})
+           (ks/deep-merge
+            {:web-router-service
+             ;; set the master service to use the map-based multi-server-style config
+             {:puppetlabs.services.master.master-service/master-service
+              {:route "/puppet"
+               :server "puppet-server"}}}))
+       (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production")))))))
 
   (testing "An exception is thrown if an improper master service route is found."
     (logutils/with-test-logging
@@ -69,7 +94,8 @@
          legacy-routes/legacy-routes-service
          admin/puppet-admin-service
          disabled-ca/certificate-authority-disabled-service
-         authorization/authorization-service]
+         authorization/authorization-service
+         vcs/versioned-code-service]
         {}
 
         (is (= 404 (:status (http-get "/production/certificate_statuses/all")))

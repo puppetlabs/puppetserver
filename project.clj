@@ -1,7 +1,8 @@
-(def tk-version "1.1.1")
-(def tk-jetty-version "1.3.1")
-(def ks-version "1.1.0")
-(def ps-version "2.2.2-stable-SNAPSHOT")
+(def clj-version "1.7.0")
+(def tk-version "1.3.0")
+(def tk-jetty-version "1.5.2")
+(def ks-version "1.3.0")
+(def ps-version "2.3.0-stable-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -13,20 +14,26 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure ~clj-version]
 
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.4"]
-                 [org.clojure/tools.reader "0.9.1"]
-                 [ring/ring-core "1.4.0"]
+                 [org.clojure/tools.macro "0.1.5"]
+                 [com.fasterxml.jackson.core/jackson-core "2.5.4"]
+                 [org.clojure/tools.reader "1.0.0-alpha1"]
                  ;; end version conflict resolution dependencies
 
-                 [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.5.0"]
-                 [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
-                 [puppetlabs/http-client "0.4.4"]
+                 [cheshire "5.3.1"]
+                 [slingshot "0.10.3"]
+                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
+                 [commons-lang "2.6"]
+                 [commons-io "2.4"]
+                 [clj-time "0.11.0"]
+                 [prismatic/schema "1.0.4"]
+                 [me.raynes/fs "1.4.6"]
+                 [liberator "0.12.0"]
+                 [org.apache.commons/commons-exec "1.3"]
+
                  [org.jruby/jruby-core "1.7.20.1"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  ;; jffi and jnr-x86asm are explicit dependencies because,
@@ -39,21 +46,21 @@
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
                  [org.jruby/jruby-stdlib "1.7.20.1"]
-                 [org.clojure/data.json "0.2.3"]
-                 [org.clojure/tools.macro "0.1.5"]
-                 [joda-time "2.7"]
-                 [clj-time "0.10.0"]
-                 [liberator "0.12.0"]
-                 [puppetlabs/comidi "0.1.1"]
-                 [me.raynes/fs "1.4.5"]
-                 [prismatic/schema "0.4.0"]
-                 [commons-lang "2.6"]
-                 [commons-io "2.4"]
-                 [commons-codec "1.9"]
-                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
-                 [slingshot "0.10.3"]
-                 [cheshire "5.3.1"]
-                 [trptcolin/versioneer "0.1.0"]]
+
+                 ;; we do not currently use this dependency directly, but
+                 ;; we have documentation that shows how users can use it to
+                 ;; send their logs to logstash, so we include it in the jar.
+                 ;; we may use it directly in the future
+                 [net.logstash.logback/logstash-logback-encoder "4.5.1"]
+
+
+                 [puppetlabs/trapperkeeper ~tk-version]
+                 [puppetlabs/trapperkeeper-authorization "0.5.0"]
+                 [puppetlabs/kitchensink ~ks-version]
+                 [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
+                 [puppetlabs/http-client "0.5.0"]
+                 [puppetlabs/comidi "0.3.1"]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -100,14 +107,21 @@
                                    [ring-basic-authentication "1.0.5"]
                                    [ring-mock "0.1.5"]
                                    [spyscope "0.1.4" :exclusions [clj-time]]
-                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]]
+                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
+                                   [beckon "0.1.1"]]
                    :injections    [(require 'spyscope.core)]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
-             :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
+             :ezbake {:dependencies ^:replace [;; we need to explicitly specify the clojure version
+                                               ;; here, because without it, lein brings in its own
+                                               ;; version, and older versions of lein (such as version
+                                               ;; 2.5.1 that is used on our jenkins servers at the time
+                                               ;; of this writing) depend on clojure 1.6.
+                                               [org.clojure/clojure ~clj-version]
+                                               [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
                       :plugins [[puppetlabs/lein-ezbake "0.3.23"]]

@@ -1,13 +1,13 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
-            [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [slingshot.slingshot :as sling]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]))
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.kitchensink.core :as ks]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -41,7 +41,17 @@
         (-> context
             (assoc :pool-context pool-context)
             (assoc :borrow-timeout (:borrow-timeout config))
-            (assoc :event-callbacks (atom []))))))
+            (assoc :event-callbacks (atom []))
+            (assoc :environment-class-info-tags (atom {}))))))
+  (stop
+   [this context]
+   (let [{:keys [pool-context]} (tk-services/service-context this)
+         on-complete (promise)]
+     (log/debug "Beginning flush of JRuby pools for shutdown")
+     (jruby-agents/send-flush-pool-for-shutdown! pool-context on-complete)
+     @on-complete
+     (log/debug "Finished flush of JRuby pools for shutdown"))
+   context)
 
   (borrow-instance
     [this reason]
@@ -61,19 +71,53 @@
 
   (mark-environment-expired!
     [this env-name]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
+    (let [{:keys [environment-class-info-tags pool-context]}
+          (tk-services/service-context this)]
+      (swap! environment-class-info-tags
+             assoc
+             env-name
+             (core/environment-class-info-entry))
       (core/mark-environment-expired! pool-context env-name)))
 
   (mark-all-environments-expired!
     [this]
-    (let [pool-context (:pool-context (tk-services/service-context this))]
-      (core/mark-all-environments-expired! pool-context)))
+    (let [{:keys [environment-class-info-tags pool-context]}
+          (tk-services/service-context this)]
+      (swap! environment-class-info-tags
+             #(ks/mapvals (fn [_] (core/environment-class-info-entry)) %))
+     (core/mark-all-environments-expired! pool-context)))
+
+  (get-environment-class-info
+    [this jruby-instance env-name]
+    (.getClassInfoForEnvironment jruby-instance env-name))
+
+  (get-environment-class-info-tag
+   [this env-name]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (get-in @environment-class-info [env-name :tag])))
+
+  (get-environment-class-info-tag-last-updated
+   [this env-name]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (get-in @environment-class-info [env-name :last-updated])))
+
+  (set-environment-class-info-tag!
+   [this env-name tag last-update-before-tag-computed]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (swap! environment-class-info
+            core/environment-class-info-cache-updated-with-tag
+            env-name
+            tag
+            last-update-before-tag-computed)))
 
   (flush-jruby-pool!
     [this]
     (let [service-context (tk-services/service-context this)
           {:keys [pool-context]} service-context]
-      (jruby-agents/send-flush-pool! pool-context)))
+      (jruby-agents/send-flush-and-repopulate-pool! pool-context)))
 
   (register-event-handler
     [this callback-fn]
@@ -103,6 +147,12 @@
                         "misconfigured or trying to serve too many agent nodes. "
                         "Check Puppet Server settings: "
                         "jruby-puppet.max-active-instances.")}))
+     (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
+       (jruby/return-instance ~jruby-service pool-instance# ~reason)
+       (sling/throw+
+        {:type    ::service-unavailable
+         :message (str "Attempted to borrow a JRuby instance from the pool "
+                       "during a shutdown. Please try again.")}))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby/return-instance ~jruby-service pool-instance# ~reason)

@@ -3,14 +3,17 @@
     [clojure.test :refer :all]
     [puppetlabs.trapperkeeper.testutils.logging :refer :all]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
-    [puppetlabs.http.client.sync :as http-client]
+    [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.puppetserver.certificate-authority :as ca]
-    [puppetlabs.services.request-handler.request-handler-core :as request-handler]))
+    [puppetlabs.services.request-handler.request-handler-core :as request-handler]
+    [me.raynes.fs :as fs]
+    [puppetlabs.kitchensink.core :as ks]))
+
+(def test-resources "./dev-resources/puppetlabs/puppetserver/error_handling_int_test")
+(def vcs-scripts "./dev-resources/puppetlabs/services/versioned_code_service/versioned_code_core_test")
 
 (use-fixtures :once
-              (jruby-testutils/with-puppet-conf
-                "./dev-resources/puppetlabs/puppetserver/error_handling_int_test/puppet.conf"))
+              (testutils/with-puppet-conf (fs/file test-resources "puppet.conf")))
 
 ;; Used in the test below.
 (defn just-throw-it
@@ -38,9 +41,7 @@
           ;; between the ring handler and the JRuby layer, and called on every
           ;; request) to simply ignore any arguments and just throw an Exception.
           (with-redefs [request-handler/as-jruby-request just-throw-it]
-            (let [response (http-client/get
-                             "https://localhost:8140/puppet/v3/catalog/localhost?environment=production"
-                             bootstrap/request-options)]
+            (let [response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.Exception: barf"
                      (:body response)))
@@ -49,12 +50,23 @@
         (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
           (with-redefs [ca/get-certificate-status throw-npe]
-            (let [response (http-client/get
-                             "https://localhost:8140/puppet-ca/v1/certificate_status/localhost"
-                             bootstrap/request-options)]
+            (let [response (testutils/http-get "puppet-ca/v1/certificate_status/localhost")]
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.NullPointerException"
                      (:body response)))
               (is (re-matches #"text/plain; charset=.*"
                               (get-in response [:headers "content-type"]))))))))))
 
+(deftest ^:integration test-invalid-code-id-error
+  (let [vcs-script (ks/absolute-path (fs/file vcs-scripts "invalid_code_id"))]
+    (testing "Catalog request fails when user provided code-id-command returns invalid code-id"
+      (bootstrap/with-puppetserver-running
+        app
+        {:versioned-code {:code-id-command vcs-script
+                          :code-content-command vcs-script}}
+        (with-test-logging
+          (let [response (testutils/http-get "puppet/v3/catalog/localhost?environment=production")]
+            (is (= 500 (:status response)))
+            (is (re-matches
+                  #"Internal Server Error: java.lang.IllegalStateException: Invalid code-id.+"
+                  (:body response)))))))))

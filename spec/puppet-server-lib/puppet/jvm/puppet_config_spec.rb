@@ -17,7 +17,7 @@ describe 'Puppet::Server::PuppetConfig' do
     describe "the puppet log level (Puppet::Util::Log.level)" do
       subject { Puppet::Util::Log.level }
       it 'is set to debug (the highest) so messages make it to logback' do
-        expect(subject).to eq('debug')
+        expect(subject).to eq(:debug)
       end
     end
 

@@ -17,8 +17,8 @@ group :test do
   gem 'rspec'
   gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 2.24.0')
   gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.2")
-  gem 'httparty'
   gem 'uuidtools'
+  gem 'httparty'
 end
 
 if File.exists? "#{__FILE__}.local"
