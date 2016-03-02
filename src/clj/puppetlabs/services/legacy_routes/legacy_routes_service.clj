@@ -32,7 +32,8 @@
           master-route-handler (-> (master-core/root-routes handle-request
                                                             (partial identity)
                                                             jruby-service
-                                                            (constantly nil))
+                                                            (constantly nil)
+                                                            false)
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
           master-handler-info {:mount       (master-core/get-master-mount

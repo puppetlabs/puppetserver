@@ -115,3 +115,8 @@ authorization: {
         }
     ]
 }
+
+# general puppetserver settings
+puppetserver: {
+    environment-class-cache-enabled: true
+}

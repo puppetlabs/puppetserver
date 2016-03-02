@@ -29,7 +29,7 @@
 
 (def PuppetCatalog
   "Schema for a Puppet catalog. Based on
-  https://github.com/puppetlabs/puppet/blob/master/api/schemas/catalog.json"
+  https://github.com/puppetlabs/puppet/blob/stable/api/schemas/catalog.json"
   {(schema/required-key "name") schema/Str
    (schema/required-key "classes") [schema/Str]
    (schema/required-key "environment") schema/Str
@@ -39,6 +39,7 @@
    (schema/optional-key "code_id") (schema/maybe schema/Str)
    (schema/optional-key "tags") [schema/Str]
    (schema/optional-key "catalog_uuid") schema/Str
+   (schema/optional-key "catalog_format") schema/Int
    schema/Str schema/Str})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
