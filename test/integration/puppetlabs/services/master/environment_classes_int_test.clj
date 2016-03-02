@@ -100,7 +100,7 @@
      app
      (-> {:jruby-puppet {:max-active-instances 1}}
          (bootstrap/load-dev-config-with-overrides)
-         (ks/dissoc-in [:puppetserver
+         (ks/dissoc-in [:jruby-puppet
                         :environment-class-cache-enabled]))
      (let [foo-file (testutils/write-foo-pp-file
                      "class foo (String $foo_1 = \"is foo\"){}")
@@ -133,8 +133,8 @@
 
 (deftest ^:integration environment-classes-integration-cache-enabled-test
   (bootstrap/with-puppetserver-running app
-   {:jruby-puppet {:max-active-instances 1}
-    :puppetserver {:environment-class-cache-enabled true}}
+   {:jruby-puppet {:max-active-instances 1
+                   :environment-class-cache-enabled true}}
    (let [foo-file (testutils/write-pp-file
                    "class foo (String $foo_1 = \"is foo\"){}"
                    "foo")

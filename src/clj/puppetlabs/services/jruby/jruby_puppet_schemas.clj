@@ -92,7 +92,14 @@
 
     * :use-legacy-auth-conf - Whether to use the legacy core Puppet auth.conf
         (true) or trapperkeeper-authorization (false) to authorize requests
-        being made to core Puppet endpoints."
+        being made to core Puppet endpoints.
+
+    * environment-class-cache-enabled - Whether to use the environment class
+        cache. When disabled (set to 'false') an Etag is not computed/returned
+        with the payload for an environment_classes API GET request. When enabled
+        (set to 'true') the Etag will be computed and returned with the GET request
+        payload as was true in prior commits."
+
   {:ruby-load-path [schema/Str]
    :gem-home schema/Str
    :compile-mode SupportedJRubyCompileModes
@@ -108,7 +115,8 @@
    :borrow-timeout schema/Int
    :max-active-instances schema/Int
    :max-requests-per-instance schema/Int
-   :use-legacy-auth-conf schema/Bool})
+   :use-legacy-auth-conf schema/Bool
+   (schema/optional-key :environment-class-cache-enabled) schema/Bool})
 
 (def JRubyPoolAgent
   "An agent configured for use in managing JRuby pools"
