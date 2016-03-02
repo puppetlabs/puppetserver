@@ -35,7 +35,7 @@
                                       true)
          jruby-service (tk-services/get-service this :JRubyPuppetService)
          environment-class-cache-enabled (get-in config
-                                                 [:puppetserver
+                                                 [:jruby-puppet
                                                   :environment-class-cache-enabled]
                                                  false)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)

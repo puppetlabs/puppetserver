@@ -193,7 +193,8 @@
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
       (update-in [:max-requests-per-instance] #(or % 0))
-      (update-in [:use-legacy-auth-conf] #(or % (nil? %)))))
+      (update-in [:use-legacy-auth-conf] #(or % (nil? %)))
+      (dissoc :environment-class-cache-enabled)))
 
 (def facter-jar
   "Well-known name of the facter jar file"
