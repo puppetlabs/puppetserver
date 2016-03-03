@@ -9,6 +9,9 @@ canonical: "/puppetserver/latest/config_file_puppetserver.html"
 [cache directory]: /puppet/latest/reference/dirs_vardir.html
 [`auth.conf` documentation]: ./config_file_auth.html
 [deprecated]: ./deprecated_features.html
+[static catalogs]: /puppet/latest/reference/static_catalogs.html
+[file resource]: /puppet/latest/reference/type.html#file
+[`static_file_content`]: ./puppet-api/v3/static_file_content.html
 
 The `puppetserver.conf` file contains settings for Puppet Server software. For an overview, see [Puppet Server Configuration](./configuration.html).
 
@@ -27,24 +30,32 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
     * `max-active-instances`: Optional. The maximum number of JRuby instances allowed. The default is 'num-cpus - 1', with a minimum value of 1 and a maximum value of 4.
     * `max-requests-per-instance`: Optional. The number of HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. The default is 0, which disables automatic JRuby flushing.
 
-    JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
+        JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
 
-    If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
-    
-    For a value of `false`, Puppet uses the HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
+        If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
+
+        For a value of `false`, Puppet uses the HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
 * The `profiler` settings configure profiling:
     * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
 * The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.) The settings in this section are now deprecated. Remove these settings and replace them with the authorization method that was introduced in Puppet Server 2.2, using a HOCON format for `auth.conf`. See the [`auth.conf` documentation][] for more information.
     * `authorization-required` determines whether a client certificate is required to access the endpoints in this API. If set to `false`, all requests will be permitted to access this API. If set to `true`, only the clients whose certnames are included in the `client-whitelist` setting are allowed access to the admin API. If this setting is not specified but the `client-whitelist` setting is specified, the default value for this setting is `true`.
     * `client-whitelist` contains an array of client certificate names that are allowed to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
 
-    If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf` documentation][] formats to access the admin API endpoints.
+        If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf` documentation][] formats to access the admin API endpoints.
+
+* The `versioned-code` settings configure commands required to use [static catalogs][]:
+    * `code-id-command` contains the path to an executable script that Puppet Server invokes to generate a `code_id`. When compiling a static catalog, Puppet Server uses the output of this script as the catalog's `code_id`, which associates the catalog with that version of any [file resources][file resource] that has a `source` attribute with a `puppet:///` URI value.
+    * `code-content-command` contains the path to an executable script that Puppet Server invokes when an agent makes a [`static_file_content`][] API request for the contents of a [file resource][] that has a `source` attribute with a `puppet:///` URI value.
+
+> **Note:** The Puppet Server process must be able to execute the `code-id-command` and `code-content-command` scripts, and the scripts must return valid content to standard output and an error code of 0. For more information, see the [static catalogs][] and [`static_file_content` API][`static_file_content`] documentation.
+>
+> If you're using static catalogs, you **must** set and use **both** `code-id-command` and `code-content-command`. If only one of those settings are specified, Puppet Server fails to start. If neither setting is specified, Puppet Server defaults to generating catalogs without static features even when an agent requests a static catalog, which the agent will process as a normal catalog.
 
 ### Examples
 
-~~~
+``` hocon
 # Configuration for the JRuby interpreters.
 
 jruby-puppet: {
@@ -90,6 +101,14 @@ http-client: {
 profiler: {
     enabled: true
 }
-~~~
+
+# Settings related to static catalogs. These paths are examples; there are no default
+# scripts provided with Puppet Server, and no default path for the scripts. You must set
+# the paths and provide your own scripts.
+versioned-code: {
+    code-id-command: /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh
+    code-content-command: /opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh
+}
+```
 
 > **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of authorization methods introduced in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].
