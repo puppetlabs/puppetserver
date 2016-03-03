@@ -33,7 +33,11 @@
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
                                       true)
-         jruby-service (tk-services/get-service this :JRubyPuppetService)]
+         jruby-service (tk-services/get-service this :JRubyPuppetService)
+         environment-class-cache-enabled (get-in config
+                                                 [:jruby-puppet
+                                                  :environment-class-cache-enabled]
+                                                 false)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -49,7 +53,8 @@
                                                           jruby-service
                                                           get-code-content
                                                           handle-request
-                                                          wrap-with-authorization-check)
+                                                          wrap-with-authorization-check
+                                                          environment-class-cache-enabled)
                               ((partial comidi/context path))
                               comidi/routes->handler))]
        ;; if the webrouting config uses the old-style config where

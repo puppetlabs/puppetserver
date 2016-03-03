@@ -46,7 +46,9 @@
 
 (use-fixtures :once
               (testutils/with-puppet-conf
-               (fs/file test-resources-dir "puppet.conf"))
+               (fs/file test-resources-dir "puppet.conf")))
+
+(use-fixtures :each
               (fn [f]
                 (purge-env-dir)
                 (try
@@ -92,9 +94,47 @@
   [response]
   (-> response :body cheshire/parse-string))
 
-(deftest ^:integration environment-classes-integration-test
+(deftest ^:integration environment-classes-integration-cache-disabled-test
+  (testing "when environment classes cache is disabled for a class request"
+    (bootstrap/with-puppetserver-running-with-config
+     app
+     (-> {:jruby-puppet {:max-active-instances 1}}
+         (bootstrap/load-dev-config-with-overrides)
+         (ks/dissoc-in [:jruby-puppet
+                        :environment-class-cache-enabled]))
+     (let [foo-file (testutils/write-foo-pp-file
+                     "class foo (String $foo_1 = \"is foo\"){}")
+           expected-response {
+                              "files"
+                              [
+                               {"path" foo-file,
+                                "classes"
+                                [
+                                 {
+                                  "name" "foo"
+                                  "params"
+                                  [
+                                   {"name" "foo_1",
+                                    "type" "String",
+                                    "default_literal" "is foo",
+                                    "default_source" "\"is foo\""}]}]}]
+                              "name" "production"}
+           response (get-env-classes "production")]
+       (testing "a successful status code is returned"
+         (is (= 200 (:status response))
+             (str
+              "unexpected status code for response, response: "
+              (ks/pprint-to-string response))))
+       (testing "no etag is returned"
+         (is (false? (contains? (:headers response) "etag"))))
+       (testing "the expected response body is returned"
+         (is (= expected-response
+                (response->class-info-map response))))))))
+
+(deftest ^:integration environment-classes-integration-cache-enabled-test
   (bootstrap/with-puppetserver-running app
-   {:jruby-puppet {:max-active-instances 1}}
+   {:jruby-puppet {:max-active-instances 1
+                   :environment-class-cache-enabled true}}
    (let [foo-file (testutils/write-pp-file
                    "class foo (String $foo_1 = \"is foo\"){}"
                    "foo")
