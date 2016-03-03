@@ -432,7 +432,15 @@
                              :request-method :put
                              :body           (body-stream "{\"desired_state\":\"revoked\"}")}
                     response (test-app request)]
-                (is (= 204 (:status response))))))))
+                (is (= 204 (:status response)))))
+
+            (testing "failing to provide a desired_state returns 400"
+              (let [request {:uri            "/v1/certificate_status/revoked-agent"
+                             :request-method :put
+                             :body           (body-stream "{\"foo_state\":\"revoked\"}")}
+                    response (test-app request)]
+                (is (= 400 (:status response)))
+                (is (= (:body response) "Missing required parameter \"desired_state\"")))))))
 
       (testing "DELETE"
         (let [csr (ca/path-to-cert-request (:csrdir settings) "test-agent")]
