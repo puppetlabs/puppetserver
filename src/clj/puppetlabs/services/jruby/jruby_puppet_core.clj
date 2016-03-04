@@ -331,7 +331,7 @@
   "Data structure that holds per-environment cache information for the
   environment_classes info cache"
   {:tag (schema/maybe schema/Str)
-   :last-updated schema/Int})
+   :cache-generation-id schema/Int})
 
 (def EnvironmentClassInfoCache
   "Data structure for the environment_classes info cache"
@@ -344,21 +344,21 @@
    (environment-class-info-entry nil))
   ([tag :- (schema/maybe schema/Str)]
    {:tag tag
-    :last-updated (System/currentTimeMillis)}))
+    :cache-generation-id (System/currentTimeMillis)}))
 
 (schema/defn ^:always-validate invalidated-environment-class-info-entry
   :- EnvironmentClassInfoCacheEntry
   "Return an 'invalidated' class info entry, a entry with a nil tag and with
-  a last-updated value that is set to the current number of milliseconds
+  a cache-generation-id value that is set to the current number of milliseconds
   between now and midnight, January 1, 1970 UTC or 1 millisecond later than
-  the last-updated value in the supplied original-environment-class-info
+  the cache-generation-id value in the supplied original-environment-class-info
   entry, whichever is later."
   [original-environment-class-info-entry :-
    (schema/maybe EnvironmentClassInfoCacheEntry)]
   (let [new-environment-class-info-entry (environment-class-info-entry)]
-    (if (= (:last-updated new-environment-class-info-entry)
-           (:last-updated original-environment-class-info-entry))
-      (update new-environment-class-info-entry :last-updated inc)
+    (if (= (:cache-generation-id new-environment-class-info-entry)
+           (:cache-generation-id original-environment-class-info-entry))
+      (update new-environment-class-info-entry :cache-generation-id inc)
       new-environment-class-info-entry)))
 
 (schema/defn ^:always-validate
@@ -366,9 +366,9 @@
     :- EnvironmentClassInfoCache
   "Return the supplied 'environment-class-info-cache', only updated with an
   invalidated entry for the supplied 'env-name'.  The invalidated entry will
-  have nil tag and a last-updated value that is set to the current number of
+  have nil tag and a cache-generation-id value that is set to the current number of
   milliseconds between now and midnight, January 1, 1970 UTC or 1 millisecond
-  later than the last-updated value in the original entry for the 'env-name'
+  later than the cache-generation-id value in the original entry for the 'env-name'
   in the cache (if available), whichever is later."
   [environment-class-info-cache :- EnvironmentClassInfoCache
    env-name :- schema/Str]
@@ -380,24 +380,25 @@
 (schema/defn ^:always-validate
   environment-class-info-cache-updated-with-tag :- EnvironmentClassInfoCache
   "Return the supplied environment class info cache argument, updated per
-  supplied arguments.  last-updated-before-tag-computed should represent what
-  the client received for a 'get-environment-class-info-tag-last-updated!' call
-  for the environment, made before the client started doing the work to parse
-  environment class info / compute the new tag.  If
-  last-updated-before-tag-computed equals the 'last-updated' value stored in the
-  cache for the environment, the new 'tag' will be stored for the environment
-  and the corresponding 'last-updated' value will be updated to the number of
-  milliseconds between now and midnight, January 1, 1970 UTC.  If
-  last-updated-before-tag-computed is different than the 'last-updated' value
-  stored in the cache for the environment, the cache will remain unchanged as a
-  result of this call."
+  supplied arguments.  cache-generation-id-before-tag-computed should represent
+  what the client received for a
+  'get-environment-class-info-cache-generation-id!' call for the environment,
+  made before the client started doing the work to parse environment class info
+  / compute the new tag.  If cache-generation-id-before-tag-computed equals the
+  'cache-generation-id' value stored in the cache for the environment, the new
+  'tag' will be stored for the environment and the corresponding
+  'cache-generation-id' value will be updated to the number of milliseconds
+  between now and midnight, January 1, 1970 UTC.  If
+  cache-generation-id-before-tag-computed is different than the
+  'cache-generation-id' value stored in the cache for the environment, the cache
+  will remain unchanged as a result of this call."
   [environment-class-info-cache :- EnvironmentClassInfoCache
    env-name :- schema/Str
    tag :- (schema/maybe schema/Str)
-   last-updated-before-tag-computed :- (schema/maybe schema/Int)]
-  (let [cache-last-updated (get-in environment-class-info-cache
-                                   [env-name :last-updated])]
-    (if (= cache-last-updated last-updated-before-tag-computed)
+   cache-generation-id-before-tag-computed :- (schema/maybe schema/Int)]
+  (let [cache-generation-id (get-in environment-class-info-cache
+                                    [env-name :cache-generation-id])]
+    (if (= cache-generation-id cache-generation-id-before-tag-computed)
       (assoc environment-class-info-cache env-name
                                           (environment-class-info-entry tag))
       environment-class-info-cache)))
@@ -416,7 +417,7 @@
            (assoc % env-name (environment-class-info-entry)))))
 
 (schema/defn ^:always-validate
-  get-environment-class-info-tag-last-updated! :- schema/Int
+  get-environment-class-info-cache-generation-id! :- schema/Int
   "Get the 'time' that a tag was last set for a specific environment's
   class info.   Return value will be a schema/Int representing the number of
   milliseconds between the last time the tag was updated for an environment
@@ -428,7 +429,7 @@
   (-> (add-environment-class-info-cache-entry-if-not-present!
        environment-class-info-cache
        env-name)
-      (get-in [env-name :last-updated])))
+      (get-in [env-name :cache-generation-id])))
 
 (schema/defn ^:always-validate
   mark-environment-expired!
