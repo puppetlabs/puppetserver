@@ -55,7 +55,7 @@ provides some additional APIs that the Rack and WEBrick Puppet masters do not.
 
 - For docs on the Puppet Server-specific APIs hosted by the master service, see:
 
-    - [The `environment_classes` endpoint](./puppet/v3/environment_classes.markdown)
+    - [The `environment_classes` endpoint](./puppet-api/v3/environment_classes.md)
 
 ### Certificate Authority Service
 

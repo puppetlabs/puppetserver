@@ -35,7 +35,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
     * `environment-class-cache-enabled`:  Optional.  Used to control whether 
     or not a cache is maintained in conjunction with the use of the 
-    [`environment_classes` API](./puppet/v3/environment_classes.html).  If 
+    [`environment_classes` API](./puppet-api/v3/environment_classes.html).  If
     this setting is set to `true`, the cache will be maintained, enabling an 
     Etag header to be returned for each GET request to the API and for 
     subsequent GET requests using the prior Etag value in an If-None-Match 
