@@ -262,7 +262,7 @@
    environment :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    request-tag :- (schema/maybe String)
-   last-updated :- (schema/maybe schema/Int)
+   cache-generation-id :- (schema/maybe schema/Int)
    environment-class-cache-enabled :- schema/Bool]
   (let [info-for-json (class-info-from-jruby->class-info-for-json
                        info-from-jruby
@@ -274,7 +274,7 @@
          jruby-service
          environment
          parsed-tag
-         last-updated)
+         cache-generation-id)
         (if (= parsed-tag request-tag)
           (not-modified-response parsed-tag)
           (-> (response-with-etag info-as-json parsed-tag)
@@ -289,9 +289,10 @@
    environment-class-cache-enabled :- schema/Bool]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
-          last-updated (jruby-protocol/get-environment-class-info-tag-last-updated!
-                        jruby-service
-                        environment)]
+          cache-generation-id
+          (jruby-protocol/get-environment-class-info-cache-generation-id!
+           jruby-service
+           environment)]
       (if-let [class-info
                (jruby-protocol/get-environment-class-info jruby-service
                                                           (:jruby-instance
@@ -301,7 +302,7 @@
                                      environment
                                      jruby-service
                                      (if-none-match-from-request request)
-                                     last-updated
+                                     cache-generation-id
                                      environment-class-cache-enabled)
         (rr/not-found (str "Could not find environment '" environment "'"))))))
 

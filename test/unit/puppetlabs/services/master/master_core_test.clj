@@ -91,7 +91,7 @@
                           (get-environment-class-info [_ _ env]
                             (if (= env "production")
                               {}))
-                          (get-environment-class-info-tag-last-updated!
+                          (get-environment-class-info-cache-generation-id!
                            [_ _])
                           (set-environment-class-info-tag! [_ _ _ _]))
           handler (fn ([req] {:request req}))
