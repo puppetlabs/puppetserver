@@ -100,7 +100,7 @@ One parameter should be provided to the GET:
 
 #### Get With Results
 
-~~~~
+```
 GET /puppet/v3/environment_classes?environment=env
 
 HTTP/1.1 200 OK
@@ -134,11 +134,15 @@ Content-Type: text/json
           ]
         }
       ]
+    },
+    {
+      "error": "Syntax error at '=>' at /etc/puppetlabs/code/environments/env/modules/mymodule/manifests/other.pp:20:19",
+      "path": "/etc/puppetlabs/code/environments/env/modules/mymodule/manifests/other.pp"
     }
   ],
   "name": "env"
 }
-~~~~
+```
 
 #### Get With Etag Roundtripped from Previous Get
  
@@ -149,19 +153,19 @@ will be returned.  See the
 [Headers and Caching Behavior](#headers-and-caching-behavior) section for more
 information about caching and invalidation of entries.
 
-~~~~
+```
 GET /puppet/v3/environment_classes?environment=env
 If-None-Match: b02ede6ecc432b134217a1cc681c406288ef9224
 
 HTTP/1.1 304 Not Modified
 Etag: b02ede6ecc432b134217a1cc681c406288ef9224
-~~~~
+```
 
 If the environment cache has been updated from what was used to calculate the
 original Etag, the server will return a response with the full set of
 environment class information:
 
-~~~~
+```
 GET /puppet/v3/environment_classes?environment=env
 If-None-Match: b02ede6ecc432b134217a1cc681c406288ef9224
 
@@ -209,7 +213,58 @@ Content-Type: text/json
   ],
   "name": "env"
 }
-~~~~
+```
+
+#### Environment does not exist
+
+A request made with an environment parameter which does not correspond to the
+name of a directory environment on the server results in an HTTP 404 (Not
+Found) error:
+
+```
+GET /puppet/v3/environment_classes?environment=doesnotexist
+
+HTTP/1.1 404 Not Found
+
+Could not find environment 'doesnotexist'
+```
+
+#### No environment given
+
+```
+GET /puppet/v3/environment_classes
+
+HTTP/1.1 400 Bad Request
+
+An environment parameter must be specified.
+```
+
+Note that this endpoint may support the ability to provide a success response
+with valid data in a future release.
+
+#### Environment parameter specified with no value
+
+```
+GET /puppet/v3/environment_classes?environment=
+
+HTTP/1.1 400 Bad Request
+
+The environment must be purely alphanumeric, not ''
+```
+
+#### Environment does not include only alphanumeric characters
+
+A request made with an environment parameter which includes at least one
+character which is not among the following - A-Z, a-z, 0-9, or _ (underscore) -
+results in an HTTP 400 (Bad Request) error:
+
+```
+GET /puppet/v3/environment_classes?environment=bog|us
+
+HTTP/1.1 400 Bad Request
+
+The environment must be purely alphanumeric, not 'bog|us'
+```
 
 ### Schema
 
@@ -241,9 +296,9 @@ response to a query to the `environment_classes`  endpoint includes an HTTP
 for the Etag header is a hash which represents the state of the latest class
 information available for the requested environment.  For example:
 
-~~~
+```
 ETag: 31d64b8038258202b4f5eb508d7dab79c46327bb
-~~~
+```
 
 A client may (but is not required to) provide the Etag value back to the server
 in a subsequent `environment_classes` request.  The client would provide the
@@ -251,9 +306,9 @@ tag value as the value for an
 [If-None-Match](https://tools.ietf.org/html/rfc7232#section-3.2)
 HTTP header:
 
-~~~
+```
 If-None-Match: 31d64b8038258202b4f5eb508d7dab79c46327bb
-~~~
+```
 
 If the latest state of code available on the server matches that of the value
 in the `If-None-Match` header, the server will provide an HTTP 304 (Not 
@@ -262,6 +317,27 @@ code available than what is captured by the `If-None-Match` header value, the
 server will re-parse code from manifest files on disk.  Assuming the resulting
 payload were different than in a previous request, the server would provide a
 different Etag value along new class information in the response payload.
+
+Note that the server may, in cases where the client has sent an
+`Accept-Encoding: gzip` HTTP header for the request and the server has chosen
+to provide a gzip-encoded response body, append the characters "--gzip" to
+the end of the Etag.  For example, the HTTP response headers could include:
+
+```
+Content-Encoding: gzip
+ETag: e84bbce5482243b3eb3a190e5c90e535cf4f20de--gzip
+```
+
+The server will accept both forms of an Etag - with or without the trailing
+"--gzip" characters - as being the same when validating the value in a
+request's `If-None-Match` header against its cache.
+
+It is best, however, for clients to utilize the Etag in an opaque manner, not
+parsing its content.  A client wanting to get an HTTP 304 (Not Modified)
+response if the cache has not been updated since the prior request should
+take the exact value returned in the `Etag` header from one request and provide
+that back to the server in an `If-None-Match` header in a subsequent request
+for the class information for an environment.
 
 ---
 
