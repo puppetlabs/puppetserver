@@ -207,13 +207,16 @@
     (when (= :put (get-in context [:request :request-method]))
       (if-let [body (get-in context [:request :body])]
         (if-let [json-body (try-to-parse body)]
-          (let [desired-state (keyword (:desired_state json-body))]
+          (if-let [desired-state (keyword (:desired_state json-body))]
             (if (schema/check ca/DesiredCertificateState desired-state)
               (malformed
                 (format
                   "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
                   (name desired-state) subject))
-              [false {::json-body json-body}]))
+              ; this is the happy path. we have a body, it's parsable json,
+              ; and the desired_state field is one of (signed revoked)
+              [false {::json-body json-body}])
+            (malformed "Missing required parameter \"desired_state\""))
           (malformed "Request body is not JSON."))
         (malformed "Empty request body."))))
 
