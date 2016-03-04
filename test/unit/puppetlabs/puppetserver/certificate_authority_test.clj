@@ -105,6 +105,45 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
+(deftest validate-settings-test
+  (testing "invalid ca-ttl is rejected"
+    (let [settings (assoc
+                     (testutils/ca-settings cadir)
+                     :ca-ttl
+                     (+ max-ca-ttl 1))]
+      (is (thrown? IllegalStateException (validate-settings! settings)))))
+
+  (testing "warns if :client-whitelist is set in c-a.c-s section"
+    (let [settings (assoc-in
+                     (testutils/ca-settings cadir)
+                     [:access-control :certificate-status :client-whitelist]
+                     ["whitelist"])]
+      (logutils/with-test-logging
+        (validate-settings! settings)
+        (is (logutils/logged? #"Remove these settings and create" :warn)))))
+
+  (testing "warns if :authorization-required is overridden in c-a.c-s section"
+    (let [settings (assoc-in
+                     (testutils/ca-settings cadir)
+                     [:access-control
+                      :certificate-status
+                      :authorization-required]
+                     false)]
+      (logutils/with-test-logging
+        (validate-settings! settings)
+        (is (logutils/logged? #"Remove these settings and create" :warn)))))
+
+  (testing "warns if :client-whitelist is set incorrectly"
+    (let [settings (assoc-in
+                     (testutils/ca-settings cadir)
+                     [:access-control :certificate-status :client-whitelist]
+                     [])]
+      (logutils/with-test-logging
+        (validate-settings! settings)
+        (is (logutils/logged?
+              #"remove the 'certificate-authority' configuration"
+              :warn))))))
+
 (deftest get-certificate-test
   (testing "returns CA certificate when subject is 'ca'"
     (let [actual   (get-certificate "ca" cacert signeddir)
