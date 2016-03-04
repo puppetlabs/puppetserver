@@ -17,10 +17,14 @@ for classes.  Key differences between the two APIs include:
   [environment_timeout](/puppet/latest/reference/config_file_environment.html#environmenttimeout)
   setting for the corresponding environment.  The environment classes API
   does not utilize the "environment_timeout" with respect to the data that it 
-  caches.  Instead, the environment classes API uses HTTP Etags to represent
-  specific versions of the class information and the Puppet Server
-  [environment-cache API](latest/admin-api/v1/environment-cache.html) as an
-  explicit mechanism for marking an Etag as expired.
+  caches.  Instead, only when the `environment-class-cache-enabled` setting in
+  the `jruby-puppet` configuration section is set to `true`, the environment
+  classes API uses HTTP Etags to represent specific versions of the class
+  information and the Puppet Server
+  [environment-cache API](./admin-api/v1/environment-cache.html) as an
+  explicit mechanism for marking an Etag as expired.  See the
+  [Headers and Caching Behavior](#headers-and-caching-behavior) section for more
+  information about caching and invalidation of entries.
   
 * The environment classes API includes a "type", if defined for a class 
   parameter.  For example, if the class parameter were defined as
@@ -214,7 +218,25 @@ An environment classes response body conforms to
  
 ### Headers and Caching Behavior
 
-The response to a query to the `environment_classes` endpoint includes an HTTP
+If the `environment-class-cache-enabled` setting in the `jruby-puppet`
+configuration section is set to `true`, the `environment_classes` API can
+make use of caching for the response data.  This can provide a significant
+performance benefit and reduction in the amount of data that needs to be
+provided in a response when the underlying Puppet code on disk remains
+unchanged from one request to the next.  Use of the cache does, however,
+require that cache entries are invalidated after Puppet code has been
+updated.  To avoid having to invalidate cache entries, the
+`environment-class-cache-enabled` setting can be omitted from configuration 
+or explicitly set to `false`.  In this case, manifests will be re-discovered
+from disk and re-parsed for every incoming request.  This can involve
+significantly greater overhead in performance and bandwidth for repeated 
+requests where the underlying Puppet code does not change much.  This 
+approach does, however, ensure that the latest available data is returned 
+for every request made.  The rest of the content in this section pertains to the
+behaviors to keep in mind when the cache setting is enabled.
+
+When the `environment-class-cache-enabled` setting is set to `true`, the 
+response to a query to the `environment_classes`  endpoint includes an HTTP
 [Etag](https://tools.ietf.org/html/rfc7232#section-2.3) header.  The value 
 for the Etag header is a hash which represents the state of the latest class
 information available for the requested environment.  For example:
@@ -223,7 +245,7 @@ information available for the requested environment.  For example:
 ETag: 31d64b8038258202b4f5eb508d7dab79c46327bb
 ~~~
 
-A client may (but is not required to) provide this tag value back to the server
+A client may (but is not required to) provide the Etag value back to the server
 in a subsequent `environment_classes` request.  The client would provide the
 tag value as the value for an
 [If-None-Match](https://tools.ietf.org/html/rfc7232#section-3.2)
