@@ -348,13 +348,13 @@ reflect any changes to the class information in later queries to the
 environment_classes endpoint.  The following actions will clear cache entries on
 the server:
 
-1) Calling the
+1. Calling the
    [environment-cache API](latest/admin-api/v1/environment-cache.html) endpoint.
    
    For best performance, it is best to call this endpoint with a query 
    parameter for the specific `environment` whose cache should be flushed.
    
-2) Performing a `commit` through the
+2. Performing a `commit` through the
    [File Sync API](/pe/latest/cmgmt_filesync_api.html#post-file-syncv1commit)
    endpoint.
    
@@ -364,7 +364,7 @@ the server:
    cache.  The environment's cache is implicitly flushed as part of the sync 
    of new commits to a master using the File Sync feature.
 
-3) Restarting Puppet Server.
+3. Restarting Puppet Server.
 
    The cache for every environment is held in memory for the Puppet Server 
    process and so is effectively flushed whenever Puppet Server is restarted.
