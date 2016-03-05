@@ -339,37 +339,54 @@
 
 (schema/defn ^:always-validate environment-class-info-entry
   :- EnvironmentClassInfoCacheEntry
-  "Create an environment class info entry"
-  ([]
-   (environment-class-info-entry nil))
-  ([tag :- (schema/maybe schema/Str)]
-   {:tag tag
-    :cache-generation-id (System/currentTimeMillis)}))
+  "Create an environment class info entry.  The return value will have a nil
+  tag and cache-generation-id set to 1."
+  []
+  {:tag nil
+   :cache-generation-id 1})
 
-(schema/defn ^:always-validate invalidated-environment-class-info-entry
+(schema/defn ^:always-validate inc-cache-generation-id-for-class-info-entry
   :- EnvironmentClassInfoCacheEntry
-  "Return an 'invalidated' class info entry, a entry with a nil tag and with
-  a cache-generation-id value that is set to the current number of milliseconds
-  between now and midnight, January 1, 1970 UTC or 1 millisecond later than
-  the cache-generation-id value in the supplied original-environment-class-info
-  entry, whichever is later."
+  "Return the supplied 'original-environment-class-info-entry' class info entry,
+  only updated with a cache-generation-id value that has been incremented.
+  If the supplied parameter is nil, the return value will have a tag set to
+  nil and cache-generation-id set to 1."
   [original-environment-class-info-entry :-
    (schema/maybe EnvironmentClassInfoCacheEntry)]
-  (let [new-environment-class-info-entry (environment-class-info-entry)]
-    (if (= (:cache-generation-id new-environment-class-info-entry)
-           (:cache-generation-id original-environment-class-info-entry))
-      (update new-environment-class-info-entry :cache-generation-id inc)
-      new-environment-class-info-entry)))
+  (if original-environment-class-info-entry
+    (update original-environment-class-info-entry
+            :cache-generation-id
+            #(if (= % Long/MAX_VALUE) Long/MIN_VALUE (inc %)))
+    (environment-class-info-entry)))
+
+(schema/defn ^:always-validate updated-environment-class-info-entry
+  :- EnvironmentClassInfoCacheEntry
+  "Return the supplied 'original-environment-class-info-entry', only updated
+  with the supplied tag and a cache-generation-id value that has been
+  incremented."
+  [original-environment-class-info-entry :-
+   (schema/maybe EnvironmentClassInfoCacheEntry)
+   tag :- (schema/maybe schema/Str)]
+  (-> original-environment-class-info-entry
+      inc-cache-generation-id-for-class-info-entry
+      (assoc :tag tag)))
+
+(schema/defn ^:always-valid invalidated-environment-class-info-entry
+  :- EnvironmentClassInfoCacheEntry
+  "Return the supplied 'original-environment-class-info-entry', only updated
+  with a nil tag and a cache-generation-id value that has been incremented."
+  [original-environment-class-info-entry :-
+   (schema/maybe EnvironmentClassInfoCacheEntry)]
+  (updated-environment-class-info-entry
+   original-environment-class-info-entry
+   nil))
 
 (schema/defn ^:always-validate
   environment-class-info-cache-with-invalidated-entry
-    :- EnvironmentClassInfoCache
+  :- EnvironmentClassInfoCache
   "Return the supplied 'environment-class-info-cache', only updated with an
   invalidated entry for the supplied 'env-name'.  The invalidated entry will
-  have nil tag and a cache-generation-id value that is set to the current number of
-  milliseconds between now and midnight, January 1, 1970 UTC or 1 millisecond
-  later than the cache-generation-id value in the original entry for the 'env-name'
-  in the cache (if available), whichever is later."
+  have nil tag and a cache-generation-id value that has been incremented."
   [environment-class-info-cache :- EnvironmentClassInfoCache
    env-name :- schema/Str]
   (->> env-name
@@ -387,25 +404,25 @@
   / compute the new tag.  If cache-generation-id-before-tag-computed equals the
   'cache-generation-id' value stored in the cache for the environment, the new
   'tag' will be stored for the environment and the corresponding
-  'cache-generation-id' value will be updated to the number of milliseconds
-  between now and midnight, January 1, 1970 UTC.  If
+  'cache-generation-id' value will be incremented.  If
   cache-generation-id-before-tag-computed is different than the
   'cache-generation-id' value stored in the cache for the environment, the cache
   will remain unchanged as a result of this call."
   [environment-class-info-cache :- EnvironmentClassInfoCache
    env-name :- schema/Str
    tag :- (schema/maybe schema/Str)
-   cache-generation-id-before-tag-computed :- (schema/maybe schema/Int)]
-  (let [cache-generation-id (get-in environment-class-info-cache
-                                    [env-name :cache-generation-id])]
-    (if (= cache-generation-id cache-generation-id-before-tag-computed)
-      (assoc environment-class-info-cache env-name
-                                          (environment-class-info-entry tag))
+   cache-generation-id-before-tag-computed :- schema/Int]
+  (let [cache-entry (get environment-class-info-cache env-name)]
+    (if (= (:cache-generation-id cache-entry)
+           cache-generation-id-before-tag-computed)
+      (assoc environment-class-info-cache
+        env-name
+        (updated-environment-class-info-entry cache-entry tag))
       environment-class-info-cache)))
 
 (schema/defn ^:always-validate
   add-environment-class-info-cache-entry-if-not-present!
-    :- EnvironmentClassInfoCache
+  :- EnvironmentClassInfoCache
   "Update the 'environment-class-info-cache' atom with a new cache entry for
   the supplied 'env-name' (if no entry is already present) and return back
   the new value that the atom has been set to."
@@ -418,12 +435,10 @@
 
 (schema/defn ^:always-validate
   get-environment-class-info-cache-generation-id! :- schema/Int
-  "Get the 'time' that a tag was last set for a specific environment's
-  class info.   Return value will be a schema/Int representing the number of
-  milliseconds between the last time the tag was updated for an environment
-  and midnight, January 1, 1970 UTC.  If no entry for the environment had
-  existed at the point this function was called this function would, as a
-  side effect, populate a new entry for that environment into the cache."
+  "Get the current cache generation id for a specific environment's class info.
+  If no entry for the environment had existed at the point this function was
+  called this function would, as a side effect, populate a new entry for that
+  environment into the cache."
   [environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)
    env-name :- schema/Str]
   (-> (add-environment-class-info-cache-entry-if-not-present!
@@ -433,8 +448,9 @@
 
 (schema/defn ^:always-validate
   mark-environment-expired!
-  "Mark the environment-registry entry for each JRubyPuppet instance and the
-  environment's entry in the environment class info cache as expired."
+  "Mark the specified environment expired, in all JRuby instances.  Resets
+  the cached class info for the environment's 'tag' to nil and increments the
+  'cache-generation-id' value."
   [context :- jruby-schemas/PoolContext
    env-name :- schema/Str
    environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
@@ -448,8 +464,9 @@
 
 (schema/defn ^:always-validate
   mark-all-environments-expired!
-  "Mark all environment-registry entries for each JRubyPuppet instance and
-  all environment entries in the environment class info cache as expired."
+  "Mark all cached environments expired, in all JRuby instances.  Resets the
+  cached class info for all previously stored environment 'tags' to nil and
+  increments the 'cache-generation-id' value."
   [context :- jruby-schemas/PoolContext
    environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
   (swap! environment-class-info-cache
