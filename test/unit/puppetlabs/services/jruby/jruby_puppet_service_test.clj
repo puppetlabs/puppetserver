@@ -318,10 +318,13 @@
          (is (nil? (jruby-protocol/get-environment-class-info-tag
                     service
                     "test")))
-         (jruby-protocol/set-environment-class-info-tag! service
-                                                         "test"
-                                                         "1234test"
-                                                         nil)
+         (jruby-protocol/set-environment-class-info-tag!
+          service
+          "test"
+          "1234test"
+          (jruby-protocol/get-environment-class-info-cache-generation-id!
+           service
+           "test"))
          (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
                             service
                             "production")))
