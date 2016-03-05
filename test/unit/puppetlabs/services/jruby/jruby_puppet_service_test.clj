@@ -297,7 +297,7 @@
      default-services
      (jruby-service-test-config 1)
      (let [service (app/get-service app :JRubyPuppetService)
-           production-before-first-update
+           production-cache-id-before-first-update
            (jruby-protocol/get-environment-class-info-cache-generation-id!
             service
             "production")]
@@ -305,13 +305,13 @@
          (is (nil? (jruby-protocol/get-environment-class-info-tag
                     service
                     "production")))
-         (is (not (nil? production-before-first-update))))
+         (is (not (nil? production-cache-id-before-first-update))))
        (testing "when environment info first set to cache"
          (jruby-protocol/set-environment-class-info-tag!
           service
           "production"
           "1234prod"
-          production-before-first-update)
+          production-cache-id-before-first-update)
          (is (= "1234prod" (jruby-protocol/get-environment-class-info-tag
                             service
                             "production")))
@@ -331,74 +331,91 @@
          (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                             service
                             "test"))))
-       (let [production-first-update
+       (let [production-cache-id-after-first-update
              (jruby-protocol/get-environment-class-info-cache-generation-id!
               service
               "production")
-             test-first-update
+             test-cache-id-after-first-update
              (jruby-protocol/get-environment-class-info-cache-generation-id!
               service
               "test")]
          (testing "when environment info reset in the cache"
-           (is (not (nil? production-first-update)))
-           (is (not (nil? test-first-update)))
+           (is (not (nil? production-cache-id-after-first-update)))
+           (is (not (nil? test-cache-id-after-first-update)))
            (jruby-protocol/set-environment-class-info-tag!
             service
             "production"
             "5678prod"
-            production-first-update)
+            production-cache-id-after-first-update)
            (is (= "5678prod" (jruby-protocol/get-environment-class-info-tag
                               service
                               "production")))
            (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                               service
                               "test")))
-           (is (= test-first-update
+           (is (= test-cache-id-after-first-update
                   (jruby-protocol/get-environment-class-info-cache-generation-id!
                    service
                    "test")))
            (testing "and environment expired between get and corresponding set"
-             (let [production-second-update
+             (let [production-cache-id-after-second-update
                    (jruby-protocol/get-environment-class-info-cache-generation-id!
                     service
                     "production")
                    _ (jruby-protocol/mark-environment-expired! service
                                                                "production")
-                   production-third-update
+                   production-cache-id-after-third-update
                    (jruby-protocol/get-environment-class-info-cache-generation-id!
                     service
                     "production")]
-               (is (not= production-first-update production-second-update))
+               (is (not= production-cache-id-after-first-update
+                         production-cache-id-after-second-update))
+               (is (= nil (jruby-protocol/get-environment-class-info-tag
+                           service
+                           "production"))
+                   (str "Tag was unexpectedly non-nil, however, it should have "
+                        "been because of the prior call to "
+                        "`mark-environment-expired`"))
                (jruby-protocol/set-environment-class-info-tag!
                 service
                 "production"
                 "89abprod"
-                production-second-update)
+                production-cache-id-after-second-update)
                (is (= nil (jruby-protocol/get-environment-class-info-tag
                            service
-                           "production")))
-               (is (= production-third-update
+                           "production"))
+                   (str "Tag should not have been changed by the prior set "
+                        "since the environment was marked expired after the "
+                        "cache was read for `production-second-update`"))
+               (is (= production-cache-id-after-third-update
                       (jruby-protocol/get-environment-class-info-cache-generation-id!
                        service
-                       "production"))))))
+                       "production"))
+                   (str "Cache id should not have been changed by the prior "
+                        "set since the environment was marked expired after "
+                        "cache was read for `production-second-update`")))))
          (testing "when an individual environment is marked expired"
-           (jruby-protocol/mark-environment-expired! service "production")
-           (is (nil? (jruby-protocol/get-environment-class-info-tag
-                      service
-                      "production")))
-           (is (not= production-first-update
-                     (jruby-protocol/get-environment-class-info-cache-generation-id!
-                      service
-                      "production")))
+           (let [production-cache-id-before-marked-expired
+                 (jruby-protocol/get-environment-class-info-cache-generation-id!
+                  service
+                  "production")]
+             (jruby-protocol/mark-environment-expired! service "production")
+             (is (nil? (jruby-protocol/get-environment-class-info-tag
+                        service
+                        "production")))
+             (is (not= production-cache-id-before-marked-expired
+                       (jruby-protocol/get-environment-class-info-cache-generation-id!
+                        service
+                        "production"))))
            (is (= "1234test" (jruby-protocol/get-environment-class-info-tag
                               service
                               "test")))
-           (is (= test-first-update
+           (is (= test-cache-id-after-first-update
                   (jruby-protocol/get-environment-class-info-cache-generation-id!
                    service
                    "test"))))
          (testing "when all environments are marked expired"
-           (let [production-update
+           (let [production-cache-id-before-set-tag
                  (jruby-protocol/get-environment-class-info-cache-generation-id!
                   service
                   "production")]
@@ -406,11 +423,11 @@
               service
               "production"
               "8910prod"
-              production-update)
+              production-cache-id-before-set-tag)
              (is (= "8910prod" (jruby-protocol/get-environment-class-info-tag
                                 service
                                 "production"))))
-           (let [production-third-update
+           (let [production-cache-id-before-marked-expired
                  (jruby-protocol/get-environment-class-info-cache-generation-id!
                   service
                   "production")]
@@ -418,24 +435,24 @@
              (is (nil? (jruby-protocol/get-environment-class-info-tag
                         service
                         "production")))
-             (is (not= production-third-update
+             (is (not= production-cache-id-before-marked-expired
                        (jruby-protocol/get-environment-class-info-cache-generation-id!
                         service
                         "production")))
              (is (nil? (jruby-protocol/get-environment-class-info-tag service
                                                                       "test")))
-             (is (not= test-first-update
+             (is (not= test-cache-id-after-first-update
                        (jruby-protocol/get-environment-class-info-cache-generation-id!
                         service
                         "test")))))
          (testing (str "when all environments expired between get and set "
                        "for environment that did not previously exist")
-           (let [staging-before-marked-expired
+           (let [staging-cache-id-before-marked-expired
                  (jruby-protocol/get-environment-class-info-cache-generation-id!
                   service
                   "staging")
                  _ (jruby-protocol/mark-all-environments-expired! service)
-                 staging-after-marked-expired
+                 staging-cache-id-after-marked-expired
                  (jruby-protocol/get-environment-class-info-cache-generation-id!
                   service
                   "staging")]
@@ -443,11 +460,18 @@
               service
               "staging"
               "1234staging"
-              staging-before-marked-expired)
+              staging-cache-id-before-marked-expired)
              (is (= nil (jruby-protocol/get-environment-class-info-tag
                          service
-                         "staging")))
-             (is (= staging-after-marked-expired
+                         "staging"))
+                 (str "Tag should not have been changed by the prior set "
+                      "since the environment was marked expired after the "
+                      "`staging-cache-id-before-marked-expired` was read"))
+             (is (= staging-cache-id-after-marked-expired
                     (jruby-protocol/get-environment-class-info-cache-generation-id!
                      service
-                     "staging"))))))))))
+                     "staging"))
+                 (str "Cache id should not have been changed by the prior "
+                      "set since the environment was marked expired after the "
+                      "`staging-cache-id-before-marked-expired` was "
+                      "read")))))))))
