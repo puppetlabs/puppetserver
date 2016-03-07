@@ -2,7 +2,7 @@
 (def tk-version "1.3.0")
 (def tk-jetty-version "1.5.2")
 (def ks-version "1.3.0")
-(def ps-version "2.2.2-master-SNAPSHOT")
+(def ps-version "2.3.0-master-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -124,7 +124,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.3.21"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.3.23"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}

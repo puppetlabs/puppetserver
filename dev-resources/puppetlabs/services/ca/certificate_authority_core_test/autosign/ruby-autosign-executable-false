@@ -1,3 +1,4 @@
 #!/usr/bin/env ruby
 
+STDIN.read
 exit 1
