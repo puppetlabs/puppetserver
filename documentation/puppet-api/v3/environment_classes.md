@@ -4,6 +4,8 @@ title: "Puppet Server: Puppet API: Environment Classes"
 canonical: "/puppetserver/latest/puppet/v3/environment_classes.html"
 ---
 
+[auth.conf]: /puppetserver/latest/config_file_auth.html
+
 The environment classes API serves as a replacement for the functionality
 available in the Puppet
 [resource type API](/puppet/latest/reference/http_api/http_resource_type.html)
@@ -368,3 +370,16 @@ the server:
 
    The cache for every environment is held in memory for the Puppet Server 
    process and so is effectively flushed whenever Puppet Server is restarted.
+
+### Authorization
+
+URI authorization for requests made to the environment classes API, will always
+be performed by the "new" Trapperkeeper-based auth.conf feature in Puppet
+Server.  This is different than most other master service-based endpoints,
+for which the authorization mechanism used ("new" auth.conf vs. "legacy"
+auth.conf) is controlled by the `use-legacy-auth-conf` setting in the
+`jruby-puppet` configuration section.  The value of the `use-legacy-auth-conf`
+setting is ignored for the environment classes API and so the "legacy"
+auth.conf mechanism is never used when authorizing requests made to the
+environment classes API.  For more information about authorization, see
+the [`auth.conf` documentation][auth.conf].
