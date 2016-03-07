@@ -354,12 +354,10 @@
   [original-environment-class-info-entry :-
    (schema/maybe EnvironmentClassInfoCacheEntry)]
   (if original-environment-class-info-entry
-    (update original-environment-class-info-entry
-            :cache-generation-id
-            #(if (= % Long/MAX_VALUE) Long/MIN_VALUE (inc %)))
+    (update original-environment-class-info-entry :cache-generation-id inc)
     (environment-class-info-entry)))
 
-(schema/defn ^:always-validate updated-environment-class-info-entry
+(schema/defn ^:always-validate update-environment-class-info-entry
   :- EnvironmentClassInfoCacheEntry
   "Return the supplied 'original-environment-class-info-entry', only updated
   with the supplied tag and a cache-generation-id value that has been
@@ -377,7 +375,7 @@
   with a nil tag and a cache-generation-id value that has been incremented."
   [original-environment-class-info-entry :-
    (schema/maybe EnvironmentClassInfoCacheEntry)]
-  (updated-environment-class-info-entry
+  (update-environment-class-info-entry
    original-environment-class-info-entry
    nil))
 
@@ -417,7 +415,7 @@
            cache-generation-id-before-tag-computed)
       (assoc environment-class-info-cache
         env-name
-        (updated-environment-class-info-entry cache-entry tag))
+        (update-environment-class-info-entry cache-entry tag))
       environment-class-info-cache)))
 
 (schema/defn ^:always-validate
