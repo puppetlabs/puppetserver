@@ -9,6 +9,7 @@ canonical: "/puppetserver/latest/puppet-api/v3/static_file_content.html"
 [catalog]: https://docs.puppetlabs.com/puppet/latest/reference/subsystem_catalog_compilation.html
 [file resource]: https://docs.puppetlabs.com/puppet/latest/reference/type.html#file
 [environment]: https://docs.puppetlabs.com/puppet/latest/reference/environments.html
+[auth.conf]: https://docs.puppetlabs.com/puppetserver/latest/config_file_auth.html
 
 The `static_file_content` endpoint returns the standard output of a
 [`code-content-command`][] script, which should output the contents of a specific version
@@ -83,3 +84,14 @@ version of the file.
 
 This endpoint returns an error (status 500) if the [`code-content-command`][] setting
 is not configured on Puppet Server.
+
+#### Authorization
+
+Puppet Server **always** authorizes requests made to the `static_file_content` API endpoint
+with the [Trapperkeeper-based `auth.conf` feature][auth.conf] introduced in Puppet Server
+2.2. This is different than most other Puppet master service-based endpoints, for which
+the authorization mechanism is controlled by the `use-legacy-auth-conf` setting in the
+`jruby-puppet` configuration section. The value of the `use-legacy-auth-conf` setting is
+ignored for the `static_file_content` API endpoint, and Puppet Server **never** uses the
+legacy `auth.conf` mechanism when authorizing requests. For more information about
+authorization options, see the [`auth.conf` documentation][auth.conf].
