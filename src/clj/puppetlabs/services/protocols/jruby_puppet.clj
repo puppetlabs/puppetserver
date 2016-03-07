@@ -31,16 +31,14 @@
   (mark-environment-expired!
     [this env-name]
     "Mark the specified environment expired, in all JRuby instances.  Resets
-    the cached class info for the environment's 'tag' to nil and 'last-updated'
-    value to the number of milliseconds between now and midnight, January 1,
-    1970 UTC.")
+    the cached class info for the environment's 'tag' to nil and increments the
+    'cache-generation-id' value.")
 
   (mark-all-environments-expired!
     [this]
     "Mark all cached environments expired, in all JRuby instances.  Resets the
     cached class info for all previously stored environment 'tags' to nil and
-    'last-updated' value to the number of milliseconds between now and midnight,
-    January 1, 1970 UTC.")
+    increments the 'cache-generation-id' value.")
 
   (get-environment-class-info
     [this jruby-instance env-name]
@@ -51,28 +49,27 @@
     "Get a tag for the latest class information parsed for a specific
     environment")
 
-  (get-environment-class-info-tag-last-updated
+  (get-environment-class-info-cache-generation-id!
     [this env-name]
-    "Get the 'time' that a tag was last set for a specific environment's
-    class info.  Return value will be 'nil' if the tag has not previously
-    been set for the environment or a schema/Int representing the
-    number of milliseconds between the last time the tag was updated for an
-    environment and midnight, January 1, 1970 UTC.")
+    "Get the current cache generation id for a specific environment's class
+    info.  If no entry for the environment had existed at the point this
+    function was called this function would, as a side effect, populate a new
+    entry for that environment into the cache.")
 
   (set-environment-class-info-tag!
-    [this env-name tag last-updated-before-tag-computed]
+    [this env-name tag cache-generation-id-before-tag-computed]
     "Set the tag computed for the latest class information parsed for a
-    specific environment.  last-updated-before-tag-computed should represent
-    what the client received for a 'get-environment-class-info-tag-last-updated'
-    call for the environment made before it started doing the work to parse
-    environment class info / compute the new tag.  If
-    last-updated-before-tag-computed equals the 'last-updated' value stored in
-    the cache for the environment, the new 'tag' will be stored for the
-    environment and the corresponding 'last-updated' value will be updated to
-    the number of milliseconds between now and midnight, January 1, 1970 UTC.
-    If last-updated-before-tag-computed is different than the 'last-updated'
-    value stored in the cache for the environment, the cache will remain
-    unchanged as a result of this call.")
+    specific environment.  cache-generation-id-before-tag-computed should
+    represent what the client received for a
+    'get-environment-class-info-cache-generation-id!' call for the environment
+    made before it started doing the work to parse environment class info /
+    compute the new tag.  If cache-generation-id-before-tag-computed equals
+    the 'cache-generation-id' value stored in the cache for the environment, the
+    new 'tag' will be stored for the environment and the corresponding
+    'cache-generation-id' value will be incremented.  If
+    cache-generation-id-before-tag-computed is different than the
+    'cache-generation-id' value stored in the cache for the environment, the
+    cache will remain unchanged as a result of this call.")
 
   (flush-jruby-pool!
     [this]

@@ -658,7 +658,8 @@
         authorization/authorization-service
         admin/puppet-admin-service
         vcs/versioned-code-service]
-       {:jruby-puppet {:max-active-instances 1}
+       {:jruby-puppet {:max-active-instances 1
+                       :environment-class-cache-enabled true}
         :webserver {:ssl-ca-cert (:localcacert puppet-server-settings)
                     :ssl-cert (:hostcert puppet-server-settings)
                     :ssl-key (:hostprivkey puppet-server-settings)}
