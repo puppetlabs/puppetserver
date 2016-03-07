@@ -45,6 +45,42 @@
   [ref]
   (deref ref 240000 :timed-out))
 
+(defn get-stack-trace-for-thread-as-str
+  [stack-trace-elements]
+  (reduce
+   (fn [acc stack-trace-element]
+     (str acc
+          "  "
+          (.getClassName stack-trace-element)
+          "."
+          (.getMethodName stack-trace-element)
+          "("
+          (.getFileName stack-trace-element)
+          ":"
+          (.getLineNumber stack-trace-element)
+          ")"
+          "\n"))
+   ""
+   stack-trace-elements))
+
+(defn get-all-stack-traces-as-str
+  []
+  (reduce
+   (fn [acc thread-stack-element]
+     (let [thread (key thread-stack-element)]
+       (str acc
+            "\""
+            (.getName thread)
+            "\" id="
+            (.getId thread)
+            " state="
+            (.getState thread)
+            "\n"
+            (get-stack-trace-for-thread-as-str
+             (val thread-stack-element)))))
+   ""
+   (Thread/getAllStackTraces)))
+
 (def script-to-check-if-constant-is-defined
   "! $instance_id.nil?")
 
@@ -156,7 +192,8 @@
         (let [flush-complete (add-watch-for-flush-complete pool-context)]
           (is (true? (trigger-flush ssl-request-options)))
           (is (true? (timed-deref flush-complete))
-              "timed out waiting for the flush to complete"))
+              (str "timed out waiting for the flush to complete, stack:\n"
+                   (get-all-stack-traces-as-str))))
         ;; now the pool is flushed, so the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
@@ -183,7 +220,8 @@
           (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
           (is (true? (timed-deref flush-complete))
-              "timed out waiting for the flush to complete"))
+              (str "timed out waiting for the flush to complete, stack:\n"
+                   (get-all-stack-traces-as-str))))
         ;; now the pool is flushed, and the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
 
@@ -221,7 +259,8 @@
           (jruby-protocol/return-instance jruby-service instance :hold-instance-while-pool-flush-in-progress-test)
           ;; wait until the flush is complete
           (is (true? (timed-deref flush-complete))
-              "timed out waiting for the flush to complete"))
+              (str "timed out waiting for the flush to complete, stack:\n"
+                   (get-all-stack-traces-as-str))))
         ;; now the pool is flushed, and the constants should be cleared
         (is (true? (verify-no-constants pool-context 2)))))))
 
@@ -309,7 +348,8 @@
 
               ;; wait until the flush is complete
               (is (true? (timed-deref flush-complete))
-                  "timed out waiting for the flush to complete"))
+                  (str "timed out waiting for the flush to complete, stack:\n"
+                       (get-all-stack-traces-as-str))))
 
             ;; we should have three instances with the constant and one without.
             (is (true? (check-jrubies-for-constant-counts pool-context 3 1)))))))))
@@ -384,7 +424,8 @@
           (is (= 503 (:status (ping-environment)))))
          (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
          (is (not= :timed-out (timed-deref stop-complete?))
-             "timed out waiting for the stop to complete")
+             (str "timed out waiting for the stop to complete, stack:\n"
+                  (get-all-stack-traces-as-str)))
          (logging/with-test-logging
           (is (= 503 (:status (ping-environment))))))))))
 
@@ -408,7 +449,8 @@
         (is (= 503 (:status (ping-environment)))))
        (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
        (is (not= :timed-out (timed-deref stop-complete?))
-           "timed out waiting for the stop to complete")
+           (str "timed out waiting for the stop to complete, stack:\n"
+                (get-all-stack-traces-as-str)))
        (let [app-context (tk-app/app-context app)]
          ;; We have to re-initialize the JRubyPuppetService here because
          ;; otherwise the tk-app/stop that is included in the
