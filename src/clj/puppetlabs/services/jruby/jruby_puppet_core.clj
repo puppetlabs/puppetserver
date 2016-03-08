@@ -369,7 +369,7 @@
       inc-cache-generation-id-for-class-info-entry
       (assoc :tag tag)))
 
-(schema/defn ^:always-valid invalidated-environment-class-info-entry
+(schema/defn ^:always-valid invalidate-environment-class-info-entry
   :- EnvironmentClassInfoCacheEntry
   "Return the supplied 'original-environment-class-info-entry', only updated
   with a nil tag and a cache-generation-id value that has been incremented."
@@ -389,7 +389,7 @@
    env-name :- schema/Str]
   (->> env-name
        (get environment-class-info-cache)
-       invalidated-environment-class-info-entry
+       invalidate-environment-class-info-entry
        (assoc environment-class-info-cache env-name)))
 
 (schema/defn ^:always-validate
@@ -468,7 +468,7 @@
   [context :- jruby-schemas/PoolContext
    environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
   (swap! environment-class-info-cache
-         (partial ks/mapvals invalidated-environment-class-info-entry))
+         (partial ks/mapvals invalidate-environment-class-info-entry))
   (doseq [jruby-instance (registered-instances context)]
     (-> jruby-instance
         :environment-registry
