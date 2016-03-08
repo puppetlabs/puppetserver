@@ -33,6 +33,20 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
         JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
+    * `environment-class-cache-enabled`:  Optional.  Used to control whether 
+    or not a cache is maintained in conjunction with the use of the 
+    [`environment_classes` API](./puppet-api/v3/environment_classes.html).  If
+    this setting is set to `true`, the cache will be maintained, enabling an 
+    Etag header to be returned for each GET request to the API and for 
+    subsequent GET requests using the prior Etag value in an If-None-Match 
+    header to return an HTTP 304 (Not Modified) with no response body when 
+    the class information available for an environment has not changed.  If 
+    this setting is set to `false` or is not specified, no cache will be 
+    maintained.  In this case, an Etag header is not returned for GET 
+    requests and the If-None-Match header for an incoming request is ignored,
+    meaning that every incoming request will involve parsing the latest 
+    available code for an environment from disk.  For more information, see 
+    the `environment_classes` API documentation. 
     * `compile-mode`: Optional, experimental.  Used to control JRuby's "CompileMode", which may improve performance.  The default value is `off`, which is the most conservative value.  A value of `jit` will enable JRuby's "just in time" compilation of Ruby code.  A value of `force` will cause JRuby to attempt to pre-compile all Ruby code ahead of time.
 
         If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
