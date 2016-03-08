@@ -305,7 +305,7 @@
          (is (nil? (jruby-protocol/get-environment-class-info-tag
                     service
                     "production")))
-         (is (not (nil? production-cache-id-before-first-update))))
+         (is (= 1 production-cache-id-before-first-update)))
        (testing "when environment info first set to cache"
          (jruby-protocol/set-environment-class-info-tag!
           service
@@ -340,8 +340,8 @@
               service
               "test")]
          (testing "when environment info reset in the cache"
-           (is (not (nil? production-cache-id-after-first-update)))
-           (is (not (nil? test-cache-id-after-first-update)))
+           (is (= 2 production-cache-id-after-first-update))
+           (is (= 2 test-cache-id-after-first-update))
            (jruby-protocol/set-environment-class-info-tag!
             service
             "production"
@@ -358,18 +358,20 @@
                    service
                    "test")))
            (testing "and environment expired between get and corresponding set"
-             (let [production-cache-id-after-second-update
+             (let [production-cache-id-before-marked-expired
                    (jruby-protocol/get-environment-class-info-cache-generation-id!
                     service
                     "production")
                    _ (jruby-protocol/mark-environment-expired! service
                                                                "production")
-                   production-cache-id-after-third-update
+                   production-cache-id-after-marked-expired
                    (jruby-protocol/get-environment-class-info-cache-generation-id!
                     service
                     "production")]
                (is (not= production-cache-id-after-first-update
-                         production-cache-id-after-second-update))
+                         production-cache-id-before-marked-expired))
+               (is (not= production-cache-id-before-marked-expired
+                         production-cache-id-after-marked-expired))
                (is (= nil (jruby-protocol/get-environment-class-info-tag
                            service
                            "production"))
@@ -380,20 +382,22 @@
                 service
                 "production"
                 "89abprod"
-                production-cache-id-after-second-update)
+                production-cache-id-before-marked-expired)
                (is (= nil (jruby-protocol/get-environment-class-info-tag
                            service
                            "production"))
                    (str "Tag should not have been changed by the prior set "
                         "since the environment was marked expired after the "
-                        "cache was read for `production-second-update`"))
-               (is (= production-cache-id-after-third-update
+                        "cache was read for "
+                        "`production-cache-id-before-marked-expired`"))
+               (is (= production-cache-id-after-marked-expired
                       (jruby-protocol/get-environment-class-info-cache-generation-id!
                        service
                        "production"))
                    (str "Cache id should not have been changed by the prior "
                         "set since the environment was marked expired after "
-                        "cache was read for `production-second-update`")))))
+                        "cache was read for "
+                        "`production-cache-id-before-marked-expired`")))))
          (testing "when an individual environment is marked expired"
            (let [production-cache-id-before-marked-expired
                  (jruby-protocol/get-environment-class-info-cache-generation-id!
