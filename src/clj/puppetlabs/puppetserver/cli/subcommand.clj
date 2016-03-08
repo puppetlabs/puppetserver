@@ -30,16 +30,25 @@
    The given `run-fn` is then called with the configuration map and the command
    line arguments specific to the subcommand.
 
-   The `run-fn` must accept a configuration map and argument sequence."
+   The `run-fn` must accept a configuration map and argument sequence.
+   The configuration map will look like:
+    {
+      :config       {<the fully parsed & merged configuration map>}
+      :config-path  '/opt/puppetlabs/server/app/conf.d/'
+      :config-files [<File foo.conf>, <File bar.conf>, <File qux.conf>]
+    }
+  "
   [run-fn args]
   (try+
-    (let [[config extra-args help] (-> (or args '())
-                                       (parse-cli-args!))]
-      (run-fn (load-tk-config config) extra-args))
-    (catch map? m
-      (println (:message m))
-      (case (ks/without-ns (:type m))
-        :cli-error (System/exit 1)
-        :cli-help  (System/exit 0)))
-    (finally
-      (shutdown-agents))))
+   (let [[config extra-args help] (parse-cli-args! (or args '()))]
+     (run-fn {:config (load-tk-config config)
+              :config-path (:config config)
+              :config-files (tk-config/get-files-from-config (:config config))}
+             extra-args))
+   (catch map? m
+     (println (:message m))
+     (case (ks/without-ns (:type m))
+       :cli-error (System/exit 1)
+       :cli-help  (System/exit 0)))
+   (finally
+     (shutdown-agents))))
