@@ -313,12 +313,13 @@ If-None-Match: 31d64b8038258202b4f5eb508d7dab79c46327bb
 ```
 
 If the latest state of code available on the server matches that of the value
-in the `If-None-Match` header, the server will provide an HTTP 304 (Not 
+in the `If-None-Match` header, the server will provide an HTTP 304 (Not
 Modified) response and no corresponding response body.  If the server has later
-code available than what is captured by the `If-None-Match` header value, the
-server will re-parse code from manifest files on disk.  Assuming the resulting
-payload were different than in a previous request, the server would provide a
-different Etag value along new class information in the response payload.
+code available than what is captured by the `If-None-Match` header value or
+no `If-None-Match` header is provided in the request, the server will re-parse
+code from manifest files on disk.  Assuming the resulting payload were different
+than in a previous request, the server would provide a different Etag value
+along new class information in the response payload.
 
 Note that the server may, in cases where the client has sent an
 `Accept-Encoding: gzip` HTTP header for the request and the server has chosen
@@ -373,7 +374,7 @@ the server:
 
 ### Authorization
 
-URI authorization for requests made to the environment classes API, will always
+URI authorization for requests made to the environment classes API will always
 be performed by the "new" Trapperkeeper-based auth.conf feature in Puppet
 Server.  This is different than most other master service-based endpoints,
 for which the authorization mechanism used ("new" auth.conf vs. "legacy"

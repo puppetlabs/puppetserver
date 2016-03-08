@@ -47,8 +47,8 @@ The web server's settings can be modified in [`webserver.conf`](./config_file_we
 
 ### Puppet Master Service
 
-Puppet Server includes a "master" service that provides the basic functions as
-Rack and WEBrick masters, using the same input and output formats.  See
+Puppet Server includes a "master" service that provides the same basic functions
+as Rack and WEBrick masters, using the same input and output formats.  See
 [Puppet V3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api)
 for more information on the basic APIs.  Puppet Server's master service
 provides some additional APIs that the Rack and WEBrick Puppet masters do not.
