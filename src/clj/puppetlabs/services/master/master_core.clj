@@ -368,8 +368,8 @@
   (when-let [canonicalized-path (decode-and-canonicalize-path path)]
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
-     ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
-     (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_]
+     ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
+     (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".*" :rest]] :_]
                             canonicalized-path)))
 
 (defn static-file-content-request-handler
