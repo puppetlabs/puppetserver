@@ -7,7 +7,11 @@ class Puppet::Server::Execution
   def self.initialize_execution_stub
     Puppet::Util::ExecutionStub.set do |command, options, stdin, stdout, stderr|
       if command.is_a?(Array)
-        command = command.join(" ")
+        binary = command.first
+        args = command[1..-1]
+      else
+        binary = command
+        args = nil
       end
 
       # TODO - options is currently ignored - https://tickets.puppetlabs.com/browse/SERVER-74
@@ -17,12 +21,17 @@ class Puppet::Server::Execution
       # for us, so we have to do that now.
       [stdin, stdout, stderr].each { |io| io.close rescue nil }
 
-      execute command
+      execute(binary, args)
     end
   end
 
-  def self.execute(command)
-    result = ShellUtils.executeCommand(command)
+  def self.execute(command, args = nil)
+    if args
+      result = ShellUtils.executeCommand(command, args.to_java(:string))
+    else
+      result = ShellUtils.executeCommand(command)
+    end
+
     Puppet::Util::Execution::ProcessOutput.new(result.getOutput, result.getExitCode)
   end
 end
