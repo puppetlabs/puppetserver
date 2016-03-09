@@ -1,6 +1,7 @@
 (ns puppetlabs.services.versioned-code-service.versioned-code-core
   (:require [schema.core :as schema]
             [clojure.tools.logging :as log]
+            [puppetlabs.puppetserver.common :as ps-common]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [clojure.string :as string])
   (:import (java.io IOException InputStream)
@@ -40,7 +41,7 @@
   "Executes code-id-script to determine the code-id for environment.
   Non-zero return from code-id-script generates an IllegalStateException."
   [code-id-script :- schema/Str
-   environment :- schema/Str]
+   environment :- ps-common/Environment]
   (let [{:keys [exit-code stderr stdout]} (shell-utils/execute-command
                                            code-id-script
                                            {:args [environment]})]
@@ -59,27 +60,13 @@
         (string/trim-newline stdout))
       (throw (IllegalStateException. (nonzero-msg code-id-script exit-code stdout stderr))))))
 
-(schema/defn valid-code-id? :- schema/Bool
-  "Returns false if code-id contains anything but alpha-numerics and
-  '-', '_', or ':'. nil is a valid code-id"
-  [code-id :- (schema/maybe String)]
-  (or
-    (nil? code-id)
-    (not (re-find #"[^_\-:;a-zA-Z0-9]" code-id))))
-
-(schema/defn validation-error-msg :- String
-  [code-id :- String]
-  (format
-    "Invalid code-id '%s'. Must contain only alpha-numerics and '-', '_', or ':'"
-    code-id))
-
 (schema/defn get-current-code-id! :- (schema/maybe String)
   "Execute the code-id-script and validate its output before returning"
   [code-id-script :- schema/Str
    environment :- schema/Str]
   (let [code-id (execute-code-id-script! code-id-script environment)]
-    (when-not (valid-code-id? code-id)
-      (throw (IllegalStateException. (validation-error-msg code-id))))
+    (when-not (nil? (schema/check (schema/maybe ps-common/CodeId) code-id))
+      (throw (IllegalStateException. (ps-common/code-id-validation-error-msg code-id))))
     code-id))
 
 (schema/defn ^:always-validate
@@ -89,8 +76,8 @@
   no exception catching: Being unable to compute code content is considered a
   fatal error and should be handled by calling code appropriately."
   [code-content-script :- schema/Str
-   environment :- schema/Str
-   code-id :- schema/Str
+   environment :- ps-common/Environment
+   code-id :- ps-common/CodeId
    file-path :- schema/Str]
   (let [throw-execution-error! (fn [e]
                                  (throw (IllegalStateException.
