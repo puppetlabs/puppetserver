@@ -369,7 +369,7 @@
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
      ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
-     (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".*" :rest]] :_]
+     (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".+" :rest]] :_]
                             canonicalized-path)))
 
 (defn static-file-content-request-handler
