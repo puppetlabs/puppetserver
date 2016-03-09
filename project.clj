@@ -1,6 +1,6 @@
 (def clj-version "1.7.0")
 (def tk-version "1.3.0")
-(def tk-jetty-version "1.5.2")
+(def tk-jetty-version "1.5.3")
 (def ks-version "1.3.0")
 (def ps-version "2.3.0-stable-SNAPSHOT")
 
