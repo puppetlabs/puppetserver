@@ -20,6 +20,21 @@
 
 (def num-jrubies 1)
 
+(deftest ^:integration test-simple-external-command-execution
+  (testing "puppet functions can call external commands successfully that are just one argument"
+    ; The generate puppet function runs a fully qualified command with arguments.
+    ; This function calls into Puppet::Util::Execution.execute(), which calls into
+    ; our shell-utils code via Puppet::Util::ExecutionStub which we call in
+    ; Puppet::Server::Execution.
+    (testutils/write-site-pp-file
+     (format "$a = generate('%s'); notify {$a:}" (script-path "echo_foo")))
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}}
+     (testing "calling generate successfully executes shell command"
+       (let [catalog (testutils/get-catalog)]
+         (is (testutils/catalog-contains? catalog "Notify" "foo\n")))))))
+
 (deftest ^:integration test-external-command-execution
   (testing "puppet functions can call external commands successfully"
     ; The generate puppet function runs a fully qualified command with arguments.
@@ -35,6 +50,22 @@
      (testing "calling generate successfully executes shell command"
        (let [catalog (testutils/get-catalog)]
          (is (testutils/catalog-contains? catalog "Notify" "this command echoes a thing\n")))))))
+
+(deftest ^:integration test-complicated-external-command-execution
+  (testing "puppet functions can call more complicated external commands successfully"
+    ; The generate puppet function runs a fully qualified command with arguments.
+    ; This function calls into Puppet::Util::Execution.execute(), which calls into
+    ; our shell-utils code via Puppet::Util::ExecutionStub which we call in
+    ; Puppet::Server::Execution.
+    (testutils/write-site-pp-file
+     (format "$a = generate('%s', '-c', \"echo foo\"); notify {$a: }"
+             "/bin/sh"))
+    (bootstrap/with-puppetserver-running
+      app {:jruby-puppet
+           {:max-active-instances num-jrubies}}
+      (testing "calling generate successfully executes shell command"
+        (let [catalog (testutils/get-catalog)]
+          (is (testutils/catalog-contains? catalog "Notify" "foo\n")))))))
 
 (deftest ^:integration code-id-request-test-get-catalog
   (testing "code id is added to the request body for catalog requests via get"
