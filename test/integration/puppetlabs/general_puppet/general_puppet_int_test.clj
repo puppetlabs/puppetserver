@@ -141,6 +141,14 @@
         (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
           (is (= "test foobar modules/foo/files/bar.txt\n" (:body response)))))
+      (testing (str "the /static_file_content endpoint successfully streams file content "
+                    "from directories other than /modules")
+        (let [response (testutils/get-static-file-content "site/foo/files/bar.txt?code_id=foobar&environment=test")]
+          (is (= 200 (:status response)))
+          (is (= "test foobar site/foo/files/bar.txt\n" (:body response))))
+        (let [response (testutils/get-static-file-content "dist/foo/files/bar.txt?code_id=foobar&environment=test")]
+          (is (= 200 (:status response)))
+          (is (= "test foobar dist/foo/files/bar.txt\n" (:body response)))))
       (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
         (testing "the /static_file_content endpoint returns an error if code_id is not provided"
           (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?environment=test")]
