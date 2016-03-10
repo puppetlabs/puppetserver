@@ -682,7 +682,9 @@
              _ (reset! wait-atom {:continue-promise continue-promise
                                   :wait-promise wait-promise})
              initial-response-future (future (get-env-classes "production"))]
-         @wait-promise
+         (is (true? (deref wait-promise 10000 :timed-out))
+             (str "timed out waiting for get class info call to be reached "
+                  "in mock jrubypuppet instance"))
          (reset! class-info-atom [{"name" "updatedclass"
                                    "params" []}])
          (purge-env-cache "production")
