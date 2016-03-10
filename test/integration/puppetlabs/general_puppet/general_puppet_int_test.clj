@@ -5,7 +5,8 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.common :as ps-common]))
 
 (def test-resources-dir
   (ks/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
@@ -68,32 +69,54 @@
           (is (testutils/catalog-contains? catalog "Notify" "foo\n")))))))
 
 (deftest ^:integration code-id-request-test-get-catalog
-  (testing "code id is added to the request body for catalog requests via get"
-    ; As we have set code-id-command to echo, the code id will
-    ; be the result of running `echo $environment`, which will
-    ; be production here.
+  (testing "when making catalog requests with get"
     (bootstrap/with-puppetserver-running
-     app {:jruby-puppet
-          {:max-active-instances num-jrubies}
-          :versioned-code
-          {:code-id-command (script-path "echo")
-           :code-content-command (script-path "echo")}}
-     (let [catalog (testutils/get-catalog)]
-       (is (= "production" (get catalog "code_id")))))))
+      app {:jruby-puppet
+           {:max-active-instances num-jrubies}
+           :versioned-code
+           {:code-id-command (script-path "echo")
+            :code-content-command (script-path "echo")}}
+
+      (testing "and environment is valid code id is injected"
+        (let [catalog (testutils/get-catalog)]
+          ;; As we have set code-id-command to echo, the code id will
+          ;; be the result of running `echo $environment`, which will
+          ;; be production here.
+          (is (= "production" (get catalog "code_id")))))
+
+      (testing "and environment is invalid 400 is returned"
+        (logging/with-test-logging
+          (let [response (http-client/get
+                          "https://localhost:8140/puppet/v3/catalog/localhost?environment=production;cat"
+                          testutils/catalog-request-options)]
+            (is (= 400 (:status response)))
+            (is (= (ps-common/environment-validation-error-msg "production;cat")
+                   (:body response)))))))))
 
 (deftest ^:integration code-id-request-test-post-catalog
-  (testing "code id is added to the request body for catalog requests via post"
-    ; As we have set code-id-command to echo, the code id will
-    ; be the result of running `echo $environment`, which will
-    ; be production here.
+  (testing "when making catalog requests with post"
     (bootstrap/with-puppetserver-running
      app {:jruby-puppet
           {:max-active-instances num-jrubies}
           :versioned-code
           {:code-id-command (script-path "echo")
            :code-content-command (script-path "echo")}}
-     (let [catalog (testutils/post-catalog)]
-       (is (= "production" (get catalog "code_id")))))))
+      (testing "and environment is valid code id is injected"
+        (let [catalog (testutils/post-catalog)]
+          ;; As we have set code-id-command to echo, the code id will
+          ;; be the result of running `echo $environment`, which will
+          ;; be production here.
+          (is (= "production" (get catalog "code_id")))))
+      (testing "and environment is invalid the request fails"
+        (logging/with-test-logging
+          (let [response (http-client/post
+                          "https://localhost:8140/puppet/v3/catalog/localhost"
+                          (assoc-in (assoc testutils/catalog-request-options
+                                           :body "environment=production;cat")
+                                    [:headers "Content-Type"] "application/x-www-form-urlencoded"))]
+            (is (= 400 (:status response)))
+            (is (= (ps-common/environment-validation-error-msg "production;cat")
+                   (:body response)))))))))
 
 (deftest ^:integration code-id-request-test-non-zero-exit
     (testing "catalog request fails if code-id-command returns a non-zero exit code"
@@ -149,7 +172,37 @@
         (let [response (testutils/get-static-file-content "dist/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
           (is (= "test foobar dist/foo/files/bar.txt\n" (:body response)))))
-      (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
+       (testing "the /static_file_content endpoint validates environment"
+         (doseq [[env-encoded env-decoded]
+                 [["hi%23cat" "hi#cat"]
+                  ["hi%20cat" "hi cat"]
+                  ["%20hicat" " hicat"]
+                  ["hi%3Bcat" "hi;cat"]
+                  ["hicat%20" "hicat "]]]
+           (let [response (testutils/get-static-file-content
+                           (format "modules/foo/files/bar.txt?code_id=foobar&environment=%s"
+                                   env-encoded))]
+             (is (= 400 (:status response)))
+             (is (= (ps-common/environment-validation-error-msg env-decoded)
+                    (:body response))))))
+
+       (testing "the /static_file_content endpoint validates code-id"
+         (doseq [[code-id-encoded code-id-decoded]
+                 [["hi%23cat" "hi#cat"]
+                  ["hi%20cat" "hi cat"]
+                  ["%20hicat" " hicat"]
+                  ["hicat%20" "hicat "]
+                  ["hi%3B%2Fusr%2Fbin%2Fcat" "hi;/usr/bin/cat"]]]
+           (let [response (testutils/get-static-file-content
+                           (format "modules/foo/files/bar.txt?code_id=%s&environment=test"
+                                   code-id-encoded))]
+             (is (= 400 (:status response)))
+             (is (= (ps-common/code-id-validation-error-msg code-id-decoded)
+                    (:body response))))))
+
+
+
+       (let [error-message "Error: A /static_file_content request requires an environment, a code-id, and a file-path"]
         (testing "the /static_file_content endpoint returns an error if code_id is not provided"
           (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?environment=test")]
             (is (= 400 (:status response)))
