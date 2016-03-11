@@ -6,6 +6,7 @@
            (org.eclipse.jetty.util URIUtil))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.puppetserver.common :as ps-common]
             [puppetlabs.comidi :as comidi]
             [ring.util.response :as rr]
             [schema.core :as schema]
@@ -256,13 +257,29 @@
 
 (schema/defn ^:always-validate
   environment-class-response! :- ringutils/RingResponse
-  "Process the environment class info, returning a ring response to be
-  propagated back up to the caller of the environment_classes endpoint"
+  "Process the environment class info, returning a Ring response to be
+  propagated back up to the caller of the environment_classes endpoint.
+
+  If the specified `environment-class-cache-enabled` is 'true', a SHA-1 hash
+  of the class info will be generated.  If the hash is equal to the supplied
+  `request-tag`, the response will have an HTTP 304 (Not Modified) status code
+  and the response body will be empty.  If the hash is not equal to the supplied
+  `request-tag`, the response will have an HTTP 200 (OK) status code and
+  the class info, serialized to JSON, will appear in the response body.  The
+  newly generated hash code, along with the specified `cache-generation-id`,
+  will be passed to the `jruby-service`, to be stored in its environment class
+  cache, and will also be returned in the response as the value for an HTTP
+  Etag header.
+
+  If the specified `environment-class-cache-enabled` is 'false', no hash
+  will be generated for the class info.  The response will always have an
+  HTTP 200 (OK) status code and the class info, serialized to JSON, as the
+  response body.  An HTTP Etag header will not appear in the response."
   [info-from-jruby :- Map
    environment :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    request-tag :- (schema/maybe String)
-   last-updated :- (schema/maybe schema/Int)
+   cache-generation-id :- (schema/maybe schema/Int)
    environment-class-cache-enabled :- schema/Bool]
   (let [info-for-json (class-info-from-jruby->class-info-for-json
                        info-from-jruby
@@ -274,7 +291,7 @@
          jruby-service
          environment
          parsed-tag
-         last-updated)
+         cache-generation-id)
         (if (= parsed-tag request-tag)
           (not-modified-response parsed-tag)
           (-> (response-with-etag info-as-json parsed-tag)
@@ -289,9 +306,10 @@
    environment-class-cache-enabled :- schema/Bool]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
-          last-updated (jruby-protocol/get-environment-class-info-tag-last-updated
-                        jruby-service
-                        environment)]
+          cache-generation-id
+          (jruby-protocol/get-environment-class-info-cache-generation-id!
+           jruby-service
+           environment)]
       (if-let [class-info
                (jruby-protocol/get-environment-class-info jruby-service
                                                           (:jruby-instance
@@ -301,7 +319,7 @@
                                      environment
                                      jruby-service
                                      (if-none-match-from-request request)
-                                     last-updated
+                                     cache-generation-id
                                      environment-class-cache-enabled)
         (rr/not-found (str "Could not find environment '" environment "'"))))))
 
@@ -351,8 +369,8 @@
   (when-let [canonicalized-path (decode-and-canonicalize-path path)]
      ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
      ;; The second vector takes anything else that might be on the end of the path.
-     ;; Below, this corresponds to 'modules/*/files/**' in a filesystem glob.
-     (bidi.bidi/match-route [["modules/" :module-name "/files/" [#".*" :rest]] :_]
+     ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
+     (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".+" :rest]] :_]
                             canonicalized-path)))
 
 (defn static-file-content-request-handler
@@ -368,10 +386,19 @@
         (some empty? [environment code-id file-path])
         {:status 400
          :body "Error: A /static_file_content request requires an environment, a code-id, and a file-path"}
+        (not (nil? (schema/check ps-common/Environment environment)))
+        {:status 400
+         :body (ps-common/environment-validation-error-msg environment)}
+
+        (not (nil? (schema/check ps-common/CodeId code-id)))
+        {:status 400
+         :body (ps-common/code-id-validation-error-msg code-id)}
+
         (not (valid-static-file-path? file-path))
         {:status 403
          :body (str "Request Denied: A /static_file_content request must be a file within "
          "the files directory of a module.")}
+
         :else
         {:status 200
          :body (get-code-content environment code-id
