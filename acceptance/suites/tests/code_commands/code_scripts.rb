@@ -1,13 +1,33 @@
 require 'json'
+require 'scooter'
+require 'pry-byebug'
 
-skip_test 'SKIP: This test should only run in puppet-server FOSS.' if options[:type] = 'pe'
+test_name 'SERVER-1118/SERVER-1119: Validate code-command features'
 
-test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
+def disable_file_sync(master)
+  api = Scooter::HttpDispatchers::ConsoleDispatcher.new(dashboard)
+  pe_master_group = api.get_node_group_by_name('PE Master')
+  pe_master_group['classes']['puppet_enterprise::profile::master']['file_sync_enabled'] = true
+  api.replace_node_group(pe_master_group['id'], pe_master_group)
+  on(master, 'puppet agent -t', :acceptable_exit_codes => [0,2])
+end
 
-git_repo        ='/git/puppetcode'
-git_local_repo  ='/tmp/git'
-hostname        =on(master, 'facter hostname').stdout.strip
-fqdn            =on(master, 'facter fqdn').stdout.strip
+git_repo          = '/git/puppetcode'
+git_local_repo    = '/tmp/git'
+hostname          = on(master, 'facter hostname').stdout.strip
+fqdn              = on(master, 'facter fqdn').stdout.strip
+
+if (options[:type] == 'pe') 
+  then 
+    puppet_account          = 'pe-puppet'
+    puppet_server_conf      = '/etc/puppetlabs/puppetserver/conf.d/pe-puppet-server.conf'
+    puppet_server_service   = 'pe-puppetserver'
+    
+else 
+    puppet_account          = 'puppet'
+    puppet_server_conf      = '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf' 
+    puppet_server_service   = 'puppetserver'
+  end
 
 teardown do
   on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
@@ -104,7 +124,7 @@ step 'SETUP: Install and configure r10k, and perform the initial commit'
 R10K
   on master, 'mkdir -p /etc/puppetlabs/r10k'
   create_remote_file(master, '/etc/puppetlabs/r10k/r10k.yaml', r10k_yaml)
-  on master, 'chown puppet:root /etc/puppetlabs/r10k/r10k.yaml'
+  on master, "chown #{puppet_account}:root /etc/puppetlabs/r10k/r10k.yaml"
   on master, "cd #{git_local_repo} && mkdir -p {modules,site/profile/manifests,hieradata}"
   on master, "cd #{git_local_repo} && touch site/profile/manifests/base.pp"
   on master, "cd #{git_local_repo} && echo 'manifest = site.pp\nmodulepath = modules:site' > environment.conf"
@@ -145,7 +165,7 @@ step 'SETUP: Install the code-id-command script'
   /opt/puppetlabs/puppet/bin/r10k deploy display -p --detail $1 | grep signature | grep -oE '[0-9a-f]{40}'
   CIC
   create_remote_file(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh', code_id_command_script)
-  on(master, 'chown puppet:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
+  on(master, "chown #{puppet_account}:root /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh")
   on(master, 'chmod 770 /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh')
  
 
@@ -153,21 +173,21 @@ step 'SETUP: Configure the code-id script'
   on master, 'puppet module install puppetlabs-hocon' 
   cicsetting=<<-CICS
     hocon_setting { 'code-id-command-script' :
-      ensure => present,
-      path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
-      setting => 'versioned-code.code-id-command',
-      value => '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh',
+      ensure    => present,
+      path      => '#{puppet_server_conf}', 
+      setting   => 'versioned-code.code-id-command',
+      value     => '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh',
       }
     hocon_setting { 'code-content-command-script' :
-      ensure => present,
-      path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
-      setting => 'versioned-code.code-content-command',
-      value => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
+      ensure    => present,
+      path      => '#{puppet_server_conf}',
+      setting   => 'versioned-code.code-content-command',
+      value     => '/opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh',
       }
     CICS
   create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
   on master, 'puppet apply /tmp/config_code_id_command_script.pp'
-  on master, 'service puppetserver restart'
+  on master, "service #{puppet_server_service} restart"
 
 
 step 'Get the current code-id'
@@ -179,6 +199,7 @@ step 'Pull the catalog, validate that it contains the current code-id'
   key       ="/etc/puppetlabs/puppet/ssl/private_keys/#{fqdn}.pem"
   hostcert  ="/etc/puppetlabs/puppet/ssl/certs/#{fqdn}.pem"
   auth_str  ="--cacert #{cacert} --key #{key} --cert #{hostcert}"
+  binding.pry
   result=on(master, "curl --silent #{auth_str} https://#{fqdn}:8140/puppet/v3/catalog/#{fqdn}?environment=production | python -m json.tool").stdout
   catalog=JSON.parse(result)
   assert_match(current_code_id, catalog['code_id'], "FAIL: Expected catalog to contain current_code_id #{current_code_id}.")
