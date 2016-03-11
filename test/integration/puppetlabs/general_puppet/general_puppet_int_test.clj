@@ -10,6 +10,9 @@
 (def test-resources-dir
   (ks/absolute-path "./dev-resources/puppetlabs/general_puppet/general_puppet_int_test"))
 
+(def environment-dir
+  (ks/absolute-path (str testutils/conf-dir "/environments/production")))
+
 (defn script-path
   [script-name]
   (str test-resources-dir "/" script-name))
@@ -179,3 +182,14 @@
         (is (= 500 (:status response)))
         (is (re-matches #".*Cannot retrieve code content because the \"versioned-code\.code-content-command\" setting is not present in configuration.*"
                         (:body response))))))))
+
+(deftest ^:integration test-config-version-execution
+  (testing "config_version is executed correctly"
+    (testutils/create-env-conf
+     environment-dir
+     (format "config_version = \"%s $environment\"" (script-path "echo")))
+    (bootstrap/with-puppetserver-running
+     app {:jruby-puppet
+          {:max-active-instances num-jrubies}}
+     (let [catalog (testutils/get-catalog)]
+       (is (= "production" (get catalog "version")))))))
