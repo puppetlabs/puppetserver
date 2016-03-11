@@ -1,0 +1,15 @@
+<configuration scan="true">
+    <appender name="F1" class="ch.qos.logback.core.FileAppender">
+        <file>./target/environment-classes-integration-cache-enabled.log</file>
+        <append>true</append>
+        <encoder>
+            <pattern>%d %-5p [%t] [%c{2}] %m%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.eclipse.jetty" level="INFO"/>
+
+    <root level="debug">
+        <appender-ref ref="F1"/>
+    </root>
+</configuration>
