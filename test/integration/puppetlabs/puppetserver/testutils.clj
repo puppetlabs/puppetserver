@@ -34,7 +34,7 @@
   {(schema/required-key "name") schema/Str
    (schema/required-key "classes") [schema/Str]
    (schema/required-key "environment") schema/Str
-   (schema/required-key "version") schema/Int
+   (schema/required-key "version") schema/Any
    (schema/required-key "resources") [PuppetResource]
    (schema/required-key "edges") [{schema/Str schema/Str}]
    (schema/optional-key "code_id") (schema/maybe schema/Str)
