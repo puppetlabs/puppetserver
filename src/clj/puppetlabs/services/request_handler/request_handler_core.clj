@@ -5,10 +5,12 @@
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
             [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.puppetserver.common :as ps-common]
             [ring.util.codec :as ring-codec]
             [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
-            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]
+            [schema.core :as schema]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -258,6 +260,8 @@
   [current-code-id request]
   (if (:include-code-id? request)
     (let [env (jruby-request/get-environment-from-request request)]
+      (when-not (nil? (schema/check ps-common/Environment env))
+        (jruby-request/throw-bad-request! (ps-common/environment-validation-error-msg env)))
       (when-not env
         (jruby-request/throw-bad-request! "Environment is required in a catalog request."))
       (assoc-in request [:params "code_id"] (current-code-id env)))

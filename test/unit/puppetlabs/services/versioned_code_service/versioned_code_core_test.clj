@@ -1,9 +1,11 @@
 (ns puppetlabs.services.versioned-code-service.versioned-code-core-test
   (:require
     [clojure.test :refer :all]
+    [puppetlabs.puppetserver.common :refer [CodeId]]
     [puppetlabs.services.versioned-code-service.versioned-code-core :as vc-core]
     [puppetlabs.trapperkeeper.testutils.logging :as logging]
-    [puppetlabs.kitchensink.core :as ks])
+    [puppetlabs.kitchensink.core :as ks]
+    [schema.core :as schema])
   (:import (org.apache.commons.io IOUtils)))
 
 (def test-resources
@@ -59,22 +61,23 @@
           (let [result (vc-core/execute-code-content-script! (script-path "echo") environment code-id file-path)]
             (is (= (format "%s %s %s\n" environment code-id file-path) (IOUtils/toString result "UTF-8")))))))))
 
-(deftest valid-code-id?-test
-  (testing "valid-code-id? accepts valid code-ids"
-    (is (vc-core/valid-code-id? nil))
-    (is (vc-core/valid-code-id? "dcf16ec"))
-    (is (vc-core/valid-code-id? "whatMakesJavaBad;isPartlySemiColons;clojureIsRealNice"))
-    (is (vc-core/valid-code-id? "master-plan:stage_1:destroy-all-humans"))
-    (is (vc-core/valid-code-id? "combining:lots;of_valid-characters"))
-    (is (vc-core/valid-code-id? "urn:code-id:1:4dcf1fd;production")))
-
-  (testing "valid-code-id? rejects invalid code-ids"
-    (is (not (vc-core/valid-code-id? "bad code id")))
-    (is (not (vc-core/valid-code-id? "bad-code-id!")))
-    (is (not (vc-core/valid-code-id? "123'456")))
-    (is (not (vc-core/valid-code-id? "not-a-good-code-id?")))
-    (is (not (vc-core/valid-code-id? "Östersund")))
-    (is (not (vc-core/valid-code-id? "( ͡° ͜ʖ ͡°)")))))
+(deftest code-id-validation
+  (let [goods ["dcf16ec"
+              "whatMakesJavaBad;isPartlySemiColons;clojureIsRealNice"
+              "master-plan:stage_1:destroy-all-humans"
+              "combining:lots;of_valid-characters"
+               "urn:code-id:1:4dcf1fd;production"]
+        bads [nil
+              "bad code id"
+              "bad-code-id!"
+              "123'456"
+              "not-a-good-code-id?"
+              "Östersund"
+              "( ͡° ͜ʖ ͡°)"]]
+    (doseq [good goods]
+      (is (nil? (schema/check CodeId good))))
+    (doseq [bad bads]
+      (is (not (nil? (schema/check CodeId bad)))))))
 
 (deftest get-current-code-id!-error-test
   (testing "get-current-code-id! throws on invalid code-ids"

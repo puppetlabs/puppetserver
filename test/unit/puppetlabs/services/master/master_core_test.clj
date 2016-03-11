@@ -91,7 +91,7 @@
                           (get-environment-class-info [_ _ env]
                             (if (= env "production")
                               {}))
-                          (get-environment-class-info-tag-last-updated
+                          (get-environment-class-info-cache-generation-id!
                            [_ _])
                           (set-environment-class-info-tag! [_ _ _ _]))
           handler (fn ([req] {:request req}))
@@ -232,15 +232,19 @@
                      "modules/foo/files/bar"
                      "modules/foo/files/bar/baz.txt"
                      "modules/foo/files/bar/more/path/elements/baz.txt"
-                     "modules/foo/files/bar/%2E%2E/baz.txt"]
+                     "modules/foo/files/bar/%2E%2E/baz.txt"
+                     "environments/production/files/~/.bash_profile"
+                     "dist/foo/files/bar.txt"
+                     "site/foo/files/bar.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
+                       "modules/foo/files/"
                        "modules/foo/files/bar/\u002e\u002e/\u002e\u002e/\u002e\u002e/\u002e\u002e"
                        "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E"
                        "manifests/site.pp"
                        "environments/foo/bar/files"
                        "environments/../manifests/files/site.pp"
+                       "environments/files/site.pp"
                        "environments/../modules/foo/lib/puppet/parser/functions/site.rb"
-                       "environments/production/files/~/.bash_profile"
                        "environments/../modules/foo/files/site.pp"
                        "environments/production/modules/foo/files/../../../../../../site.pp"
                        "environments/production/modules/foo/files/bar.txt"

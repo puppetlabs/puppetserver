@@ -73,19 +73,16 @@
     [this env-name]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-      (swap! environment-class-info-tags
-             assoc
-             env-name
-             (core/environment-class-info-entry))
-      (core/mark-environment-expired! pool-context env-name)))
+      (core/mark-environment-expired! pool-context
+                                      env-name
+                                      environment-class-info-tags)))
 
   (mark-all-environments-expired!
     [this]
     (let [{:keys [environment-class-info-tags pool-context]}
           (tk-services/service-context this)]
-      (swap! environment-class-info-tags
-             #(ks/mapvals (fn [_] (core/environment-class-info-entry)) %))
-     (core/mark-all-environments-expired! pool-context)))
+      (core/mark-all-environments-expired! pool-context
+                                           environment-class-info-tags)))
 
   (get-environment-class-info
     [this jruby-instance env-name]
@@ -97,21 +94,23 @@
                                  (tk-services/service-context this))]
      (get-in @environment-class-info [env-name :tag])))
 
-  (get-environment-class-info-tag-last-updated
+  (get-environment-class-info-cache-generation-id!
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get-in @environment-class-info [env-name :last-updated])))
+     (core/get-environment-class-info-cache-generation-id!
+      environment-class-info
+      env-name)))
 
   (set-environment-class-info-tag!
-   [this env-name tag last-update-before-tag-computed]
+   [this env-name tag cache-generation-id-before-tag-computed]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
      (swap! environment-class-info
             core/environment-class-info-cache-updated-with-tag
             env-name
             tag
-            last-update-before-tag-computed)))
+            cache-generation-id-before-tag-computed)))
 
   (flush-jruby-pool!
     [this]

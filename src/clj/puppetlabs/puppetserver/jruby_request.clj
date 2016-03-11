@@ -2,7 +2,9 @@
   (:require [clojure.tools.logging :as log]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [schema.core :as schema]
+            [puppetlabs.puppetserver.common :as ps-common]))
 
 (defn throw-bad-request!
   "Throw a ::bad-request type slingshot error with the supplied message"
@@ -82,12 +84,9 @@
         (throw-bad-request!
          "An environment parameter must be specified")
 
-        (not (re-matches #"^\w+$" environment))
+        (not (nil? (schema/check ps-common/Environment environment)))
         (throw-bad-request!
-         (str
-          "The environment must be purely alphanumeric, not '"
-          environment
-          "'"))
+         (ps-common/environment-validation-error-msg environment))
 
         :else
         (handler request)))))
