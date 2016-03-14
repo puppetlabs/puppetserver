@@ -111,7 +111,8 @@
                      (testutils/ca-settings cadir)
                      :ca-ttl
                      (+ max-ca-ttl 1))]
-      (is (thrown? IllegalStateException (validate-settings! settings)))))
+      (is (thrown-with-msg? IllegalStateException #"ca_ttl must have a value below"
+                            (validate-settings! settings)))))
 
   (testing "warns if :client-whitelist is set in c-a.c-s section"
     (let [settings (assoc-in
