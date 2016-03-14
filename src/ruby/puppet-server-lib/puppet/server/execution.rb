@@ -26,7 +26,7 @@ class Puppet::Server::Execution
   end
 
   def self.execute(command, args = nil)
-    if args
+    if args && !args.empty?
       result = ShellUtils.executeCommand(command, args.to_java(:string))
     else
       result = ShellUtils.executeCommand(command)

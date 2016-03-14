@@ -5,13 +5,9 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [me.raynes.fs :as fs]
-            [cheshire.core :as cheshire])
+            [cheshire.core :as cheshire]
+            [puppetlabs.puppetserver.testutils :as testutils])
   (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
-
-(defn create-file
-  [file content]
-  (ks/mkdirs! (fs/parent file))
-  (spit file content))
 
 (defn gen-classes
   [[mod-dir manifests]]
@@ -27,15 +23,9 @@
               manifest "2_b, String $" manifest
               "2_c = 'c default value') { }\n")))))
 
-(defn create-env-conf
-  [env-dir content]
-  (create-file (fs/file env-dir "environment.conf")
-               (str "environment_timeout = unlimited\n"
-                    content)))
-
 (defn create-env
   [[env-dir manifests]]
-  (create-env-conf env-dir "")
+  (testutils/create-env-conf env-dir "")
   (gen-classes [env-dir manifests]))
 
 (defn roundtrip-via-json
@@ -85,7 +75,7 @@
           container (:scripting-container instance)
           env-registry (:environment-registry instance)
 
-          _ (create-file (fs/file conf-dir "puppet.conf")
+          _ (testutils/create-file (fs/file conf-dir "puppet.conf")
                          "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
 
           env-dir (fn [env-name]
@@ -142,7 +132,7 @@
                   "Unexpected info retrieved for 'env2'")))
 
           (testing "changes to module and manifest paths"
-            (create-env-conf env-1-dir (str "manifest="
+            (testutils/create-env-conf env-1-dir (str "manifest="
                                             (.getAbsolutePath (fs/file env-1-dir
                                                                        "manifests"
                                                                        "foo.pp"))
@@ -151,7 +141,7 @@
                                                                 env-2-dir
                                                                 "modules"))
                                             "\n"))
-            (create-env-conf env-2-dir (str "modulepath="
+            (testutils/create-env-conf env-2-dir (str "modulepath="
                                             (.getAbsolutePath env-1-mod-dir)
                                             "\n"))
             (let [foo-manifest (.getAbsolutePath (fs/file env-1-dir
@@ -179,7 +169,7 @@
             (let [foo-manifest (.getAbsolutePath (fs/file env-1-dir
                                                           "manifests"
                                                           "foo.pp"))
-                  _ (create-file foo-manifest "class foo () {} \n")
+                  _ (testutils/create-file foo-manifest "class foo () {} \n")
                   expected-envs-info {"env1" {foo-manifest
                                               {"classes"
                                                [{"name" "foo"
@@ -226,11 +216,11 @@
             (is (nil? (get-class-info-for-env "bogus-env"))))
           (testing "(PUP-5744) non-JSON safe default_literals omitted"
             (let [env-5-dir (env-dir "env5")
-                  _ (create-env-conf env-5-dir "modulepath=\n")
+                  _ (testutils/create-env-conf env-5-dir "modulepath=\n")
                   foo-manifest (.getAbsolutePath (fs/file env-5-dir
                                                           "manifests"
                                                           "foo.pp"))]
-              (create-file foo-manifest
+              (testutils/create-file foo-manifest
                            (str
                             "class foo (\n"
                             "  Regexp $some_regex = /^.*/,\n"
@@ -286,11 +276,11 @@
           (testing (str "(PUP-5713) Default parameter value with expression "
                         "parsed properly")
             (let [env-6-dir (env-dir "env6")
-                  _ (create-env-conf env-6-dir "modulepath=\n")
+                  _ (testutils/create-env-conf env-6-dir "modulepath=\n")
                   foo-manifest (.getAbsolutePath (fs/file env-6-dir
                                                           "manifests"
                                                           "foo.pp"))]
-              (create-file foo-manifest
+              (testutils/create-file foo-manifest
                            (str
                             "class foo (\n"
                             "  String $one_literal = 'literal string',\n"

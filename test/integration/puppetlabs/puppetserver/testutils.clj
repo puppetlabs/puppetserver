@@ -2,7 +2,8 @@
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [cheshire.core :as json]
-            [puppetlabs.http.client.sync :as http-client])
+            [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.kitchensink.core :as ks])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33,7 +34,7 @@
   {(schema/required-key "name") schema/Str
    (schema/required-key "classes") [schema/Str]
    (schema/required-key "environment") schema/Str
-   (schema/required-key "version") schema/Int
+   (schema/required-key "version") schema/Any
    (schema/required-key "resources") [PuppetResource]
    (schema/required-key "edges") [{schema/Str schema/Str}]
    (schema/optional-key "code_id") (schema/maybe schema/Str)
@@ -112,6 +113,11 @@
   (http-client/get
    (str "https://localhost:8140/" path) catalog-request-options))
 
+(defn create-file
+  [file content]
+  (ks/mkdirs! (fs/parent file))
+  (spit file content))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Interacting with puppet code and catalogs
 
@@ -141,6 +147,12 @@
 (schema/defn ^:always-validate write-foo-pp-file :- schema/Str
   [foo-pp-contents]
   (write-pp-file foo-pp-contents "foo"))
+
+(defn create-env-conf
+  [env-dir content]
+  (create-file (fs/file env-dir "environment.conf")
+               (str "environment_timeout = unlimited\n"
+                    content)))
 
 (schema/defn ^:always-validate get-static-file-content
   ([url-end :- schema/Str]
