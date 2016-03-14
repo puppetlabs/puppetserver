@@ -15,33 +15,8 @@
    [this context]
    (let [path           (get-route this)
          settings       (ca/config->ca-settings (get-config))
-         puppet-version (get-in-config [:puppet-server :puppet-version])
-         certificate-status-access-control (get-in settings
-                                                   [:access-control
-                                                    :certificate-status])
-         certificate-status-whitelist (:client-whitelist
-                                       certificate-status-access-control)]
-     (cond
-       (or (false? (:authorization-required certificate-status-access-control))
-           (not-empty certificate-status-whitelist))
-         (log/warn
-          "The 'client-whitelist' and 'authorization-required' settings in the"
-          "'certificate-authority.certificate-status' section are deprecated and"
-          "will be removed in a future release.  Remove these settings and create"
-          "an appropriate authorization rule in the"
-          "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
-       (not (nil? certificate-status-whitelist))
-         (log/warn
-          "The 'client-whitelist' and 'authorization-required' settings in the"
-          "'certificate-authority.certificate-status' section are deprecated"
-          "and will be removed in a future release.  Because the"
-          "'client-whitelist' is empty and 'authorization-required' is set to"
-          "'false', the 'certificate-authority.certificate-status' settings"
-          "will be ignored and authorization for the 'certificate_status'"
-          "endpoints will be done per the authorization rules in the"
-          "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.  To suppress"
-          "this warning, remove the 'certificate-authority' configuration"
-          "settings."))
+         puppet-version (get-in-config [:puppet-server :puppet-version])]
+     (ca/validate-settings! settings)
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
      (add-ring-handler

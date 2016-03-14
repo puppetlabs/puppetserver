@@ -155,6 +155,10 @@
   "The set of SSL related files that are required on the CA."
   #{:cacert :cacrl :cakey :cert-inventory :serial})
 
+(def max-ca-ttl
+  "The longest valid duration for CA certs, in seconds. 50 standard years."
+  1576800000)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
@@ -397,6 +401,40 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Initialization
+
+(schema/defn validate-settings!
+  "Ensure config values are valid for basic CA behaviors."
+  [settings :- CaSettings]
+  (let [ca-ttl (:ca-ttl settings)
+        certificate-status-access-control (get-in settings
+                                                  [:access-control
+                                                   :certificate-status])
+        certificate-status-whitelist (:client-whitelist
+                                       certificate-status-access-control)]
+    (when (> ca-ttl max-ca-ttl)
+      (throw (IllegalStateException.
+               (format "Config setting ca_ttl must have a value below %s" max-ca-ttl))))
+    (cond
+      (or (false? (:authorization-required certificate-status-access-control))
+          (not-empty certificate-status-whitelist))
+      (log/warn
+        "The 'client-whitelist' and 'authorization-required' settings in the"
+        "'certificate-authority.certificate-status' section are deprecated and"
+        "will be removed in a future release.  Remove these settings and create"
+        "an appropriate authorization rule in the"
+        "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
+      (not (nil? certificate-status-whitelist))
+      (log/warn
+        "The 'client-whitelist' and 'authorization-required' settings in the"
+        "'certificate-authority.certificate-status' section are deprecated"
+        "and will be removed in a future release.  Because the"
+        "'client-whitelist' is empty and 'authorization-required' is set to"
+        "'false', the 'certificate-authority.certificate-status' settings"
+        "will be ignored and authorization for the 'certificate_status'"
+        "endpoints will be done per the authorization rules in the"
+        "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.  To suppress"
+        "this warning, remove the 'certificate-authority' configuration"
+        "settings."))))
 
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
