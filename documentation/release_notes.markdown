@@ -52,7 +52,8 @@ Previous versions of Puppet Server could fail when the `config_version` setting 
 If you modified `bootstrap.cfg` (for instance, to [enable or disable the Certificate Authority service](./configuration.html#service-bootstrapping)), upgrading to Puppet Server 2.3.0 from earlier versions of Puppet Server might fail. For instance, on Red Hat-family distributions of Linux, you might see a warning during the package update:
 
 ```
-warning: /etc/puppetlabs/puppetserver/bootstrap.cfg created as /etc/puppetlabs/puppetserver/bootstrap.cfg.rpmnew
+2016-03-09 11:48:17,460 ERROR [main] [p.t.internal] Error during app buildup!
+java.lang.RuntimeException: Service ':VersionedCodeService' not found
 ```
 
 To resolve this, add this line to your `bootstrap.cfg`:
