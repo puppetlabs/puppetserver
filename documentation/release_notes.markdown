@@ -19,7 +19,7 @@ This is a feature release that adds functionality for static catalogs, a new env
 
 > ### New requirements
 >
-> Puppet Server 2.3 depends on [Puppet Agent 1.4.0](/puppet/4.4/reference/about_agent.html) or newer, which installs Puppet 4.4 and compatible versions of its related tools and dependencies. For versions of Puppet Server compatible with earlier versions of Puppet Agent, we recommend the latest versions of Puppet Server 2.2 or earlier.
+> Puppet Server 2.3 depends on [Puppet Agent 1.4.0](/puppet/4.4/reference/about_agent.html) or newer, which installs [Puppet 4.4](/puppet/4.4/) and compatible versions of its related tools and dependencies. For versions of Puppet Server compatible with Puppet Agent 1.3.x, we recommend the latest version of [Puppet Server 2.2](/puppetserver/2.2/).
 
 ### New feature: Static catalogs
 
@@ -44,6 +44,26 @@ Puppet Server 2.3.0 and newer support being restarted by sending a hangup signal
 Previous versions of Puppet Server could fail when the `config_version` setting is a single string that contains spaces, which is commonly true when that setting points to a script with space-delineated arguments. Puppet Server 2.3.0 resolves this issue.
 
 * [SERVER-1204](https://tickets.puppetlabs.com/browse/SERVER-1204)
+
+### Known issues
+
+#### Modifications to `bootstrap.cfg` might cause problems during upgrades to 2.3.0
+
+If you modified `bootstrap.cfg` (for instance, to [enable or disable the Certificate Authority service](./configuration.html#service-bootstrapping)), upgrading to Puppet Server 2.3.0 from earlier versions of Puppet Server might fail. For instance, on Red Hat-family distributions of Linux, you might see a warning during the package update:
+
+```
+warning: /etc/puppetlabs/puppetserver/bootstrap.cfg created as /etc/puppetlabs/puppetserver/bootstrap.cfg.rpmnew
+```
+
+To resolve this, add this line to your `bootstrap.cfg`:
+
+```
+puppetlabs.services.versioned-code-service.versioned-code-service/versioned-code-service
+```
+
+Alternatively, you can merge your changes into the new version of `bootstrap.cfg` (the `bootstrap.cfg.rpmnew` file in the above example) and replace `bootstrap.cfg` with the new file.
+
+* [SERVER-1058](https://tickets.puppetlabs.com/browse/SERVER-1058)
 
 ### All Changes
 
