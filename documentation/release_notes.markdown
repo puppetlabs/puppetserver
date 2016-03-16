@@ -43,7 +43,7 @@ Puppet Server 2.3.0 and newer support being restarted by sending a hangup signal
 
 Previous versions of Puppet Server could fail when the `config_version` setting is a single string that contains spaces, which is commonly true when that setting points to a script with space-delineated arguments. Puppet Server 2.3.0 resolves this issue.
 
-* [SERVER-1204](https://tickets.puppetlabs.com/browse/SERVER-1204)
+* [SERVER-1160](https://tickets.puppetlabs.com/browse/SERVER-1160)
 
 ### Known issues
 
