@@ -39,11 +39,11 @@ Puppet Server 2.3.0 and newer support being restarted by sending a hangup signal
 
 * [SERVER-96](https://tickets.puppetlabs.com/browse/SERVER-96)
 
-### Bug fix: Puppet Server correctly parses `config_version` script arguments
+### Bug fix: Puppet Server correctly parses complex script arguments
 
-Previous versions of Puppet Server could fail when the `config_version` setting is a single string that contains spaces, which is commonly true when that setting points to a script with space-delineated arguments. Puppet Server 2.3.0 resolves this issue.
+In versions 1.x and 2.2.x, Puppet Server would incorrectly parse commands executed by Puppet code that had complex string interpolation. For example, calls to the `generate()` function --- such as `generate('/bin/sh', '-c', "/usr/bin/python -c 'print \"foo\"'")` --- would spawn a Python REPL and consume a JRuby instance without returning anything. Puppet Server 2.3.0 fixes this issue.
 
-* [SERVER-1204](https://tickets.puppetlabs.com/browse/SERVER-1204)
+* [SERVER-1160](https://tickets.puppetlabs.com/browse/SERVER-1160)
 
 ### Known issues
 
