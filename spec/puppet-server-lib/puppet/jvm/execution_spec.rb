@@ -24,6 +24,12 @@ describe Puppet::Server::Execution do
       expect(result).to eq "hi\n"
     end
 
+    it "returns an instance of ProcessOutput for a command with an empty array of args" do
+      result = Puppet::Server::Execution.execute("echo hi", [])
+      expect(result).to be_a Puppet::Util::Execution::ProcessOutput
+      expect(result).to eq "hi\n"
+    end
+
     it "should return the exit code of the process" do
       result = Puppet::Server::Execution.execute("echo hi")
       expect(result.exitstatus).to eq 0
