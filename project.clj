@@ -23,6 +23,16 @@
                  [org.clojure/tools.reader "1.0.0-alpha1"]
                  ;; end version conflict resolution dependencies
 
+                 ;; This is a temporary hack to work around
+                 ;; https://tickets.puppetlabs.com/browse/SERVER-1215
+                 ;; these lines should be removed once we have
+                 ;; a better fix in place
+                 [ch.qos.logback/logback-classic "1.1.3"]
+                 [ch.qos.logback/logback-access "1.1.3"]
+                 [ch.qos.logback/logback-core "1.1.3"]
+                 [org.slf4j/slf4j-api "1.7.13"]
+                 ;; end SERVER-1215 hack
+
                  [cheshire "5.3.1"]
                  [slingshot "0.10.3"]
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
