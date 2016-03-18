@@ -11,7 +11,9 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> **Note:** Puppet Server 2.2 depends on [Puppet Agent 1.3.0](/puppet/latest/reference/about_agent.html) or newer. If you're also using PuppetDB, also check its [requirements](/puppetdb/latest/#system-requirements).
+> **Note:** Puppet masters running Puppet Server 2.3 depend on [Puppet Agent 1.4.0](/puppet/4.4/reference/about_agent.html) or newer, which installs [Puppet 4.4](/puppet/4.4/) and compatible versions of its related tools and dependencies on the server. For versions of Puppet Server compatible with Puppet Agent 1.3.x, we recommend the latest version of [Puppet Server 2.2](/puppetserver/2.2/). Puppet agents running older versions of Puppet Agent can connect to Puppet Server 2.3 --- this requirement applies to the Puppet Agent running on the Puppet Server node *only*.
+>
+> If you're also using PuppetDB, also check its [requirements](/puppetdb/latest/#system-requirements).
 
 ## Quick Start
 
