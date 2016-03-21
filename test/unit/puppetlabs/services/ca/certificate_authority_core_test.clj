@@ -305,6 +305,20 @@
           (is (= #{localhost-status test-agent-status revoked-agent-status}
                  (set (json/parse-string (:body response) true)))))
 
+        (testing "requires ignored path segment"
+          (let [response (test-app
+                          {:uri "/v1/certificate_statuses/"
+                           :request-method :get})]
+            (is (= 404 (:status response)))))
+
+        (testing "allows special characters in ignored path segment"
+          (let [response (test-app
+                          {:uri "/v1/certificate_statuses/*"
+                           :request-method :get})]
+            (is (= 200 (:status response)))
+            (is (= #{localhost-status test-agent-status revoked-agent-status}
+                 (set (json/parse-string (:body response) true))))))
+
         (testing "with 'Accept: pson'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"

@@ -262,7 +262,7 @@
     (comidi/context ["/v1"]
       (ANY ["/certificate_status/" :subject] [subject]
         (certificate-status subject ca-settings))
-      (ANY ["/certificate_statuses/" :ignored-but-required] []
+      (ANY ["/certificate_statuses/" [#"[^/]+" :ignored-but-required]] []
         (certificate-statuses ca-settings))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
