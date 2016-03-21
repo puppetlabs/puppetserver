@@ -16,9 +16,9 @@ The `static_file_content` endpoint returns the standard output of a
 of a [file resource][] that has a `source` attribute with a `puppet:///` URI value. That
 source must be a file from the `files` directory of a module in a specific [environment][].
 
-Puppet Agent uses this endpoint only when applying a [static catalog][], and this endpoint
-is available only when the Puppet master is running Puppet Server. This endpoint does not
-exist on Ruby Puppet masters, such as the
+Puppet Agent uses this endpoint only when applying a [static catalog][]. This endpoint
+is available only when the Puppet master is running Puppet Server{~~. This endpoint does not
+exist on~>not ~~} Ruby Puppet masters, such as the
 [deprecated WEBrick Puppet master](https://docs.puppetlabs.com/puppet/latest/reference/services_master_webrick.html).
 
 ## `GET /puppet/v3/static_file_content/<FILE-PATH>`
@@ -46,28 +46,28 @@ You must also pass two parameters in the GET request:
 ### Response
 
 A successful request to this endpoint returns an `HTTP 200` response code, and the
-contents of the specified file's requested version in the response body.
+contents of the specified file's requested version in the response body. An unsuccessful request returns one of the following error response codes:
 
--   400: Error; returned when any of the parameters are not provided.
--   403: Error; returned when requesting a file that is not within a module's `files`
+-   400: returned when any of the parameters are not provided.
+-   403: returned when requesting a file that is not within a module's `files`
 directory.
--   500: Error; returned when `code-content-command` is not configured on the server, or
+-   500: returned when `code-content-command` is not configured on the server, or
 when a requested file or version is not present in a repository.
 
 #### Example response
 
-On a server at `localhost`, assume a versioned file is located at
+Consider a server `localhost`, with a versioned file located at
 `/modules/example/files/data.txt` in the `production` environment. The version is
 identified by a `code_id` of
 `urn:puppet:code-id:1:67eb71417fbd736a619c8b5f9bfc0056ea8c53ca;production`, and that version of the file contains `Puppet test`.
 
-Given this command:
+If you run this command:
 
 ```
 curl -i -k 'https://localhost:8140/puppet/v3/static_file_content/modules/example/files/data.txt?code_id=urn:puppet:code-id:1:67eb71417fbd736a619c8b5f9bfc0056ea8c53ca;production&environment=production'
 ```
 
-Puppet Server should return:
+Puppet Server returns:
 
 ```
 HTTP/1.1 200 OK
@@ -89,6 +89,10 @@ version of the file.
 
 This endpoint returns an error (status 500) if the [`code-content-command`][] setting
 is not configured on Puppet Server.
+
+> **Note:** The `code-content-command` and `code-id-command` scripts are not provided in a
+> default installation or upgrade. For more information about these scripts, see the
+> [static catalog documentation](/puppet/latest/reference/static_catalogs.html).
 
 #### Authorization
 
