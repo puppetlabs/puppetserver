@@ -376,7 +376,7 @@ the class information in later queries to the environment classes endpoint. To c
 entries on the server, do one of the following:
 
 1.  Call the
-    [`environment-cache` API endpoint](/puppet-server/latest/admin-api/v1/environment-cache.html).
+    [`environment-cache` API endpoint][environment cache API].
 
     For best performance, call this endpoint with a query parameter that specifies the
     environment whose cache should be flushed.
