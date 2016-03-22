@@ -34,12 +34,20 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
         JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
-    * `environment-class-cache-enabled`: Optional. Used to control whether the master service maintains a cache in conjunction with the use of the [`environment_classes` API](./puppet-api/v3/environment_classes.html). If this setting is set to `true`, Puppet Server maintains the cache, enabling an Etag header to be returned for each GET request to the API and for subsequent GET requests using the prior Etag value in an If-None-Match header to return an HTTP 304 (Not Modified) response with no body when the class information available for an environment has not changed. If this setting is set to `false` or is not specified, Puppet Server doesn't maintain a cache, an Etag header is not returned for GET requests, and the If-None-Match header for an incoming request is ignored. Puppet Server therefore parses the latest available code for an environment from disk on every incoming request. For more information, see the [`environment_classes` API documentation][].
+    * `environment-class-cache-enabled`: Optional. Used to control whether the master service maintains a cache in conjunction with the use of the [`environment_classes` API](./puppet-api/v3/environment_classes.html).
+
+        If this setting is set to `true`, Puppet Server maintains the cache. It also returns an Etag header for each GET request to the API. For subsequent GET requests that use the prior Etag value in an If-None-Match header, when the class information available for an environment has not changed, Puppet Server returns an HTTP 304 (Not Modified) response with no body.
+
+        If this setting is set to `false` or is not specified, Puppet Server doesn't maintain a cache, an Etag header is not returned for GET requests, and the If-None-Match header for an incoming request is ignored. It therefore parses the latest available code for an environment from disk on every incoming request.
+
+        For more information, see the [`environment_classes` API documentation][].
     * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
         If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
 
-        For a value of `false`, Puppet uses the HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
+        For a value of `false`, Puppet uses the HOCON configuration file format and location.
+
+        For more information, see the [`auth.conf` documentation][].
 * The `profiler` settings configure profiling:
     * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
 * The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.)
