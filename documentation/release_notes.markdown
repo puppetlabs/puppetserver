@@ -11,6 +11,22 @@ canonical: "/puppetserver/latest/release_notes.html"
 [classes]: /puppet/latest/reference/lang_classes.html
 [resource type API]: /puppet/latest/reference/http_api/http_resource_type.html
 
+## Puppet Server 2.3.1
+
+Released March 21, 2016.
+
+This is a bug-fix release that resolves a disruptive logging configuration issue.
+
+### Bug fix: Puppet Server starts when configured to log to syslog
+
+If its Logback service is configured to log to syslog, Puppet Server 2.3.0 fails to start. Puppet Server 2.3.1 fixes this regression, which did not affect prior versions of Puppet Server.
+
+* [SERVER-1215](https://tickets.puppetlabs.com/browse/SERVER-1215)
+
+### All changes
+
+* [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.3.1%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
+
 ## Puppet Server 2.3.0
 
 Released March 16, 2016.
@@ -66,6 +82,12 @@ Alternatively, you can merge your changes into the new version of `bootstrap.cfg
 
 * [SERVER-1058](https://tickets.puppetlabs.com/browse/SERVER-1058)
 
-### All Changes
+#### Puppet Server fails to start when configured to log to syslog
+
+If its Logback service is configured to log to syslog, Puppet Server 2.3.0 fails to start. Puppet Server 2.3.1 fixes this regression, which did not affect prior versions of Puppet Server.
+
+* [SERVER-1215](https://tickets.puppetlabs.com/browse/SERVER-1215)
+
+### All changes
 
 * [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.3.0%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
