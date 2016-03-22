@@ -17,8 +17,7 @@ of a [file resource][] that has a `source` attribute with a `puppet:///` URI val
 source must be a file from the `files` directory of a module in a specific [environment][].
 
 Puppet Agent uses this endpoint only when applying a [static catalog][]. This endpoint
-is available only when the Puppet master is running Puppet Server{~~. This endpoint does not
-exist on~>not ~~} Ruby Puppet masters, such as the
+is available only when the Puppet master is running Puppet Server, not Ruby Puppet masters, such as the
 [deprecated WEBrick Puppet master](https://docs.puppetlabs.com/puppet/latest/reference/services_master_webrick.html).
 
 ## `GET /puppet/v3/static_file_content/<FILE-PATH>`

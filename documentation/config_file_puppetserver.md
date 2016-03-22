@@ -56,7 +56,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
     * `authorization-required` determines whether a client certificate is required to access the endpoints in this API. If set to `false`, all requests will be permitted to access this API. If set to `true`, only the clients whose certnames are included in the `client-whitelist` setting are allowed access to the admin API. If this setting is not specified but the `client-whitelist` setting is specified, the default value for this setting is `true`.
     * `client-whitelist` contains an array of client certificate names that are allowed to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
 
-        If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf` documentation][] formats to access the admin API endpoints.
+        If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf`][`auth.conf` documentation] formats to access the admin API endpoints.
 
 * The `versioned-code` settings configure commands required to use [static catalogs][]:
     * `code-id-command`: the path to an executable script that Puppet Server invokes to generate a `code_id`. When compiling a static catalog, Puppet Server uses the output of this script as the catalog's `code_id`. The `code_id` associates the catalog with the compile-time version of any [file resources][file resource] that has a `source` attribute with a `puppet:///` URI value.
