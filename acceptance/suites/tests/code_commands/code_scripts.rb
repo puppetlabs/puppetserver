@@ -1,16 +1,6 @@
 require 'json'
-require 'scooter'
-require 'pry-byebug'
 
 test_name 'SERVER-1118/SERVER-1119: Validate code-command features'
-
-def disable_file_sync(master)
-  api = Scooter::HttpDispatchers::ConsoleDispatcher.new(dashboard)
-  pe_master_group = api.get_node_group_by_name('PE Master')
-  pe_master_group['classes']['puppet_enterprise::profile::master']['file_sync_enabled'] = true
-  api.replace_node_group(pe_master_group['id'], pe_master_group)
-  on(master, 'puppet agent -t', :acceptable_exit_codes => [0,2])
-end
 
 git_repo                    = '/git/puppetcode'
 git_local_repo              = '/tmp/git'
@@ -24,7 +14,6 @@ if (options[:type] == 'pe')
     puppet_account          = 'pe-puppet'
     puppet_server_conf      = '/etc/puppetlabs/puppetserver/conf.d/pe-puppet-server.conf'
     puppet_server_service   = 'pe-puppetserver'
-    disable_file_sync(master)    
   else 
     puppet_account          = 'puppet'
     puppet_server_conf      = '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf' 
@@ -45,6 +34,23 @@ teardown do
   #remove code_* scripts.
   on(master, "rm -rf #{code_id_command_path}")
   on(master, "rm -rf #{code_content_command_path}")
+  cicsetting=<<-CICS
+    hocon_setting { 'code-id-command-script' :
+      ensure    => absent,
+      path      => '#{puppet_server_conf}', 
+      setting   => 'versioned-code.code-id-command',
+      }
+    hocon_setting { 'code-content-command-script' :
+      ensure    => absent,
+      path      => '#{puppet_server_conf}',
+      setting   => 'versioned-code.code-content-command',
+      }
+  CICS
+  create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
+  on master, 'puppet apply /tmp/config_code_id_command_script.pp'
+  on master, "kill -HUP $(cat /var/run/puppetlabs/puppetserver/puppetserver)"
+  sleep 5
+  on master, 'rm /tmp/config_code_id_command_script.pp'
 end
 
 step 'SETUP: Enable static_catalogs'
@@ -55,7 +61,8 @@ step 'SETUP: Generate a new ssh key for the root user account to use with the gi
   gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server'
-  on(master, 'puppet module install puppetlabs-git') 
+  on(master, 'puppet module install puppetlabs-git')
+
   git_config=<<-GIT
     user { 'git':
       ensure => present,
@@ -105,7 +112,7 @@ step 'SETUP: Initialize the local git repository'
   on master, "cd #{git_local_repo} && git remote add origin git@#{fqdn}:#{git_repo}"
   on master, "cd #{git_local_repo} && git push origin master"
 
-step 'SETUP: Install and configure r10k, and perform the initial commit'
+step 'SETUP: Install and configure r10k.'
   on master, "puppet config set server #{fqdn}"
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
   on master, "cd #{git_local_repo} && git checkout -b production"
@@ -138,8 +145,8 @@ mod 'puppetlabs/ntp', '4.1.0'
 mod 'puppetlabs/stdlib'
 EOF
   create_remote_file(master, "#{git_local_repo}/Puppetfile", puppetfile)
-  binding.pry
 
+step 'SETUP: Perform the initial commit'
   on master, "cd #{git_local_repo} && git add ."
   on master, "cd #{git_local_repo} && git commit -m 'commit to setup r10k example'"
   on master, "cd #{git_local_repo} && git push origin production"  
@@ -164,7 +171,7 @@ step 'SETUP: Install the code-content-command script'
   on(master, "chmod 770 #{code_content_command_path}")
 
 step 'SETUP: Configure the code-id script'
-  on master, 'puppet module install puppetlabs-hocon' 
+  on master, 'puppet module install puppetlabs-hocon --modulepath /opt/puppetlabs/puppet/modules'
   cicsetting=<<-CICS
     hocon_setting { 'code-id-command-script' :
       ensure    => present,
@@ -182,6 +189,7 @@ step 'SETUP: Configure the code-id script'
   create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting)
   on master, 'puppet apply /tmp/config_code_id_command_script.pp'
   on master, "kill -HUP $(cat /var/run/puppetlabs/puppetserver/puppetserver)"
+  sleep 5
 
 step 'Get the current code-id'
   current_code_id=on(master, "#{code_id_command_path} production").stdout.chomp
@@ -195,6 +203,4 @@ step 'Pull the catalog, validate that it contains the current code-id'
   url       = "https://#{fqdn}:8140#{endpoint}#{fqdn}?environment=production"
   result=on(master, "curl --silent #{auth_str} --url '#{url}' | python -m json.tool")
   catalog=JSON.parse(result.stdout)
-  
-  binding.pry
   assert_match(current_code_id, catalog['code_id'], "FAIL: Expected catalog to contain current_code_id #{current_code_id}")
