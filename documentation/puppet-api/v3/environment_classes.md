@@ -370,8 +370,7 @@ After updating an environment's manifests, you must clear the server's class inf
 the class information in queries to the environment classes endpoint. To clear cache
 entries on the server, do one of the following:
 
--   Call the
-    [`environment-cache` API endpoint](/puppet-server/latest/admin-api/v1/environment-cache.html).
+-   Call the [`environment-cache` API endpoint][environment cache API].
 
     For best performance, call this endpoint with a query parameter that specifies the
     environment whose cache should be flushed.
