@@ -991,6 +991,29 @@
         (autosign-certificate-request! subject csr settings)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
+(schema/defn ^:always-validate process-csr-deletion!
+  :- {:outcome (schema/enum :success :not-found :error) :message schema/Str}
+  "Delete pending certificate requests for subject"
+  [subject :- schema/Str
+   {:keys [csrdir] :as settings} :- CaSettings]
+  (let [csr-path (path-to-cert-request csrdir subject)]
+    (if (fs/exists? csr-path)
+      (if (fs/delete csr-path)
+        (let [msg (str "Deleted certificate request for " subject)]
+          (log/debug msg)
+          {:outcome :success
+           :message msg})
+        (let [msg (format "Path %s exists but could not be deleted" csr-path)]
+          (log/error msg)
+          {:outcome :error
+           :message msg}))
+      (let [msg (format
+                   "No certificate request for %s at expected path %s"
+                   subject csr-path)]
+        (log/info msg)
+        {:outcome :not-found
+         :message msg }))))
+
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,

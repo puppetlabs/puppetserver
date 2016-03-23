@@ -119,6 +119,44 @@
           response (ring-app request)]
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
+(deftest handle-delete-certificate-request!-test
+  (let [settings      (assoc (testutils/ca-sandbox! cadir)
+                             :allow-duplicate-certs true
+                             :autosign false)
+        subject       "foo-agent"
+        csr-stream    (io/input-stream (test-pem-file "foo-agent-csr.pem"))
+        expected-path (ca/path-to-cert-request (:csrdir settings) subject)
+        assert-proper
+          (fn
+            [response code matcher log-level]
+            (do
+             (is (= code (:status response)))
+             (is (re-matches matcher (:body response)))
+             (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+             (is (logged? matcher log-level))))]
+    (logutils/with-test-logging
+      (testing "Successful CSR deletion"
+        (try
+          (handle-put-certificate-request! subject csr-stream settings)
+          (is (true? (fs/exists? expected-path)))
+          (let [response (handle-delete-certificate-request! subject settings)
+                msg-matcher (re-pattern (str "Deleted .* for " subject ".*"))]
+            (is (false? (fs/exists? expected-path)))
+            (assert-proper response 204 msg-matcher :debug))
+          (finally
+            (fs/delete expected-path))))
+      (testing "Attempted deletion of a non-existant CSR"
+        (let [response (handle-delete-certificate-request! subject settings)
+              msg-matcher (re-pattern (str "No cert.* " subject " at .*"))]
+          (is (false? (fs/exists? expected-path)))
+          (assert-proper response 404 msg-matcher :info)))
+      (testing "Error during deletion of a CSR"
+        (let [response
+              (with-redefs [me.raynes.fs/exists? (constantly true)]
+                (handle-delete-certificate-request! subject settings))
+              msg-matcher (re-pattern (str "Path " expected-path " exists but.*"))]
+          (assert-proper response 500 msg-matcher :error))))))
+
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
                      :allow-duplicate-certs true)
