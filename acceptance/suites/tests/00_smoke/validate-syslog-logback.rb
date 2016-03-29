@@ -52,7 +52,7 @@ end
 
 
 step 'Backup logback'
-  on(master, "mv #{logback_path} #{logback_backup}", :acceptable_exit_codes => [0,1])
+  on(master, "mv #{logback_path} #{logback_backup}")
 
 step 'Modify logback configuration'
   create_remote_file(master, logback_path, logback_config)
