@@ -25,6 +25,7 @@ describe Puppet::Server::Certificate do
   end
 
   it 'should return Puppet white-listed extensions' do
+    Puppet::Server::PuppetConfig.initialize_puppet({})
     exts = agent_certificate.custom_extensions
 
     exts.find { |ext|
