@@ -238,8 +238,6 @@
                      "site/foo/files/bar.txt"]
         invalid-paths ["modules/foo/manifests/bar.pp"
                        "modules/foo/files/"
-                       "modules/foo/files/bar/\u002e\u002e/\u002e\u002e/\u002e\u002e/\u002e\u002e"
-                       "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E"
                        "manifests/site.pp"
                        "environments/foo/bar/files"
                        "environments/../manifests/files/site.pp"

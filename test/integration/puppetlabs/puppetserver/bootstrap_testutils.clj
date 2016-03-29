@@ -3,7 +3,14 @@
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.kitchensink.core :as ks]
-            [me.raynes.fs :as fs]))
+            [me.raynes.fs :as fs]
+            [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.ssl-utils.simple :as ssl-simple]
+            [puppetlabs.ssl-utils.core :as utils]
+            [schema.core :as schema]
+            [puppetlabs.puppetserver.certificate-authority :as ca])
+  (:import (java.io ByteArrayInputStream ByteArrayOutputStream)
+           (javax.net.ssl SSLContext)))
 
 (def dev-config-file
   "./dev/puppet-server.conf.sample")
@@ -69,3 +76,42 @@
          services#
          ~config
          ~@body))))
+
+(defn write-to-stream [o]
+  (let [s (ByteArrayOutputStream.)]
+    (utils/obj->pem! o s)
+    (-> s .toByteArray ByteArrayInputStream.)))
+
+(schema/defn get-ca-cert-for-running-server :- ca/Certificate
+  []
+  (ssl-utils/pem->cert
+   (str "./target/master-conf/ssl/ca/ca_crt.pem")))
+
+(schema/defn get-cert-signed-by-ca-for-running-server
+  :- (schema/pred ssl-simple/ssl-cert?)
+  [ca-cert :- ca/Certificate
+   certname :- schema/Str]
+  (let [ca-private-key (ssl-utils/pem->private-key
+                        (str "./target/master-conf/ssl/ca/ca_key.pem"))
+        ca-dn (-> ca-cert
+                  (.getSubjectX500Principal)
+                  (.getName))
+        ca-map {:cert ca-cert
+                :public-key (.getPublicKey ca-cert)
+                :private-key ca-private-key
+                :x500-name (-> (.getSubjectX500Principal ca-cert)
+                               (.getName))
+                :certname (ssl-utils/x500-name->CN ca-dn)}]
+    (ssl-simple/gen-cert
+     certname
+     ca-map
+     1000
+     {:keylength 512})))
+
+(schema/defn get-ssl-context-for-cert-map :- SSLContext
+  [ca-cert :- ca/Certificate
+   cert-map :- (schema/pred ssl-simple/ssl-cert?)]
+  (ssl-utils/generate-ssl-context
+   {:ssl-cert (write-to-stream (:cert cert-map))
+    :ssl-key (write-to-stream (:private-key cert-map))
+    :ssl-ca-cert (write-to-stream ca-cert)}))
