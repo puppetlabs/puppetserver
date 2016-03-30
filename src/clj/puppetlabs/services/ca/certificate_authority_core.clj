@@ -28,10 +28,10 @@
 ;;; 'handler' functions for HTTP endpoints
 
 (defn handle-server-error
-  ([message]
-    (-> (rr/response message)
-        (rr/status 400)
-        (rr/content-type "text/plain"))))
+  [message]
+  (-> (rr/response message)
+      (rr/status 400)
+      (rr/content-type "text/plain")))
 
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
