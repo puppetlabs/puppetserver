@@ -309,7 +309,7 @@
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/"
                            :request-method :get})]
-            (is (= 404 (:status response)))))
+            (is (= 400 (:status response)))))
 
         (testing "allows special characters in ignored path segment"
           (let [response (test-app
