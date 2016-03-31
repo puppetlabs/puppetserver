@@ -1,9 +1,9 @@
 test_name 'SERVER-1215: Validate that logback can be configured to work with syslog'
 
 if options[:type] == 'pe' then
-  servicename   = 'pe-puppetserver'
+  service_name   = 'pe-puppetserver'
 else
-  servicename   = 'puppetserver'
+  service_name   = 'puppetserver'
 end
 
 logback_path    = '/etc/puppetlabs/puppetserver/logback.xml'
@@ -50,15 +50,17 @@ teardown do
   on(master, "service #{service_name} status")
 end
 
-
 step 'Backup logback'
   on(master, "mv #{logback_path} #{logback_backup}")
 
-step 'Modify logback configuration'
+step 'Modify logback configuration' do
   create_remote_file(master, logback_path, logback_config)
+  on(master, "chmod +r #{logback_path}")
+end
 
 step 'Restart puppetserver'
   on(master, "service #{service_name} restart")
+  sleep 45
   # In some cases, service puppetserver restart returns a 0 even if the
   # service fails to restart and the init script throws an error message.
 
