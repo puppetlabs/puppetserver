@@ -27,6 +27,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
+(defn handle-server-error
+  [message]
+  (-> (rr/response message)
+      (rr/status 400)
+      (rr/content-type "text/plain")))
+
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
   (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
@@ -51,9 +57,7 @@
     (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
       ;; Respond to all CSR validation failures with a 400
-      (-> (rr/response message)
-          (rr/status 400)
-          (rr/content-type "text/plain")))))
+      (handle-server-error message))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
@@ -262,8 +266,10 @@
     (comidi/context ["/v1"]
       (ANY ["/certificate_status/" :subject] [subject]
         (certificate-status subject ca-settings))
-      (ANY ["/certificate_statuses/" [#"[^/]+" :ignored-but-required]] []
-        (certificate-statuses ca-settings))
+      (comidi/context ["/certificate_statuses/"]
+        (ANY [[#"[^/]+" :ignored-but-required]] []
+          (certificate-statuses ca-settings))
+        (ANY [""] [] (handle-server-error "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
       (comidi/context ["/certificate_request/" :subject]
