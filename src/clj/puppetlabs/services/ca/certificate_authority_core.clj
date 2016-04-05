@@ -64,7 +64,7 @@
 (schema/defn handle-delete-certificate-request!
   [subject :- String
    ca-settings :- ca/CaSettings]
-  (let [response (ca/process-csr-deletion! subject ca-settings)
+  (let [response (ca/delete-certificate-request! ca-settings subject)
         outcomes->codes {:success 204 :not-found 404 :error 500}]
     (-> (rr/response (:message response))
         (rr/status ((response :outcome) outcomes->codes))
@@ -176,7 +176,8 @@
 
   :delete!
   (fn [context]
-    (ca/delete-certificate! settings subject))
+    (ca/delete-certificate! settings subject)
+    (ca/delete-certificate-request! settings subject))
 
   :exists?
   (fn [context]

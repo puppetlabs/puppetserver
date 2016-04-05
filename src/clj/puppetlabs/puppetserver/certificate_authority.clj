@@ -991,11 +991,11 @@
         (autosign-certificate-request! subject csr settings)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
-(schema/defn ^:always-validate process-csr-deletion!
+(schema/defn ^:always-validate delete-certificate-request!
   :- {:outcome (schema/enum :success :not-found :error) :message schema/Str}
   "Delete pending certificate requests for subject"
-  [subject :- schema/Str
-   {:keys [csrdir]} :- CaSettings]
+  [{:keys [csrdir]} :- CaSettings
+   subject :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? csr-path)
       (if (fs/delete csr-path)
@@ -1008,8 +1008,8 @@
           {:outcome :error
            :message msg}))
       (let [msg (format
-                   "No certificate request for %s at expected path %s"
-                   subject csr-path)]
+                  "No certificate request for %s at expected path %s"
+                  subject csr-path)]
         (log/info msg)
         {:outcome :not-found
          :message msg }))))
@@ -1206,15 +1206,11 @@
         message))))
 
 (schema/defn ^:always-validate delete-certificate!
-  "Delete the certificate and/or CSR for the given subject.
+  "Delete the certificate for the given subject.
    Note this does not revoke the certificate."
   [{:keys [csrdir signeddir]} :- CaSettings
    subject :- schema/Str]
-  (let [cert (path-to-cert signeddir subject)
-        csr  (path-to-cert-request csrdir subject)]
+  (let [cert (path-to-cert signeddir subject)]
     (when (fs/exists? cert)
       (fs/delete cert)
-      (log/debug "Deleted certificate for" subject))
-    (when (fs/exists? csr)
-      (fs/delete csr)
-      (log/debug "Deleted certificate request for" subject))))
+      (log/debug "Deleted certificate for" subject))))
