@@ -309,7 +309,9 @@
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/"
                            :request-method :get})]
-            (is (= 400 (:status response)))))
+            (is (= 400 (:status response)))
+            (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+            (is (= "Missing URL Segment" (:body response)))))
 
         (testing "allows special characters in ignored path segment"
           (let [response (test-app
