@@ -995,7 +995,7 @@
   :- {:outcome (schema/enum :success :not-found :error) :message schema/Str}
   "Delete pending certificate requests for subject"
   [subject :- schema/Str
-   {:keys [csrdir] :as settings} :- CaSettings]
+   {:keys [csrdir]} :- CaSettings]
   (let [csr-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? csr-path)
       (if (fs/delete csr-path)
