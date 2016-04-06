@@ -25,6 +25,10 @@ class Puppet::Server::PuppetConfig
     # the cache is intended for agents to reload features mid-catalog-run.
     Puppet[:always_cache_features] = true
 
+    if Puppet.settings.setting('always_retry_plugins')
+      Puppet[:always_retry_plugins] = false
+    end
+
     # Crank Puppet's log level all the way up and just control it via logback.
     Puppet[:log_level] = "debug"
 
