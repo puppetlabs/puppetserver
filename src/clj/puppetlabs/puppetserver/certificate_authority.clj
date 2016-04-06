@@ -1212,7 +1212,7 @@
 (schema/defn ^:always-validate delete-certificate!
   "Delete the certificate for the given subject.
    Note this does not revoke the certificate."
-  [{:keys [csrdir signeddir]} :- CaSettings
+  [{signeddir :signeddir} :- CaSettings
    subject :- schema/Str]
   (let [cert (path-to-cert signeddir subject)]
     (when (fs/exists? cert)
