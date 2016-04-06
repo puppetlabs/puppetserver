@@ -3,11 +3,12 @@ layout: default
 title: "Puppet Server: Known Issues: SSL Server Certificate Change and Virtual IP Addresses"
 canonical: "/puppetserver/latest/ssl_server_certificate_change_and_virtual_ips.html"
 ---
-[pe_db_instructions]: https://docs.puppetlabs.com/pe/latest/release_notes_known_issues.html#puppetdb-behind-a-load-balancer-causes-puppet-server-errors
+
+[pe_db_instructions]: /pe/latest/release_notes_known_issues.html#puppetdb-behind-a-load-balancer-causes-puppet-server-errors
 
 Puppet Server can often encounter `server certificate change is restricted` errors when it makes HTTPS requests to a group of load-balanced servers behind a virtual IP address. This page describes the issue, workarounds for the issue, and our future plans for handling the issue.
 
-The behavior described in this page was identified in [SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207).
+The behavior described in this page was identified in [SERVER-207](https://tickets.puppet.com/browse/SERVER-207).
 
 ## Summary of the Problem
 
@@ -51,12 +52,12 @@ The use of the `allowUnsafeServerCertChange` property is documented in
 
 We're considering optional settings to turn off SSL session caching for Puppet Server's client requests or for the Jetty server when hosting Puppet Server or PuppetDB. Several JIRA tickets have been filed to cover this work:
 
-* [TK-124](https://tickets.puppetlabs.com/browse/TK-124): Disable SSL session
+* [TK-124](https://tickets.puppet.com/browse/TK-124): Disable SSL session
   caching in the Jetty server
-* [TK-125](https://tickets.puppetlabs.com/browse/TK-125): Disable SSL session
+* [TK-125](https://tickets.puppet.com/browse/TK-125): Disable SSL session
   caching in the clj-http-client library that Puppet Server uses to make its
   client requests
-* [SERVER-216](https://tickets.puppetlabs.com/browse/SERVER-216): Utilize work
+* [SERVER-216](https://tickets.puppet.com/browse/SERVER-216): Utilize work
   in TK-125 to allow SSL session caching to be disabled for Puppet Server client
   requests.
 

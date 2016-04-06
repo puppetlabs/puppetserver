@@ -4,12 +4,12 @@ title: "Puppet Server: Puppet API: Static File Content"
 canonical: "/puppetserver/latest/puppet-api/v3/static_file_content.html"
 ---
 
-[`code-content-command`]: https://docs.puppetlabs.com/puppetserver/latest/config_file_puppetserver.html
-[static catalog]: https://docs.puppetlabs.com/puppet/latest/reference/static_catalogs.html
-[catalog]: https://docs.puppetlabs.com/puppet/latest/reference/subsystem_catalog_compilation.html
-[file resource]: https://docs.puppetlabs.com/puppet/latest/reference/type.html#file
-[environment]: https://docs.puppetlabs.com/puppet/latest/reference/environments.html
-[auth.conf]: https://docs.puppetlabs.com/puppetserver/latest/config_file_auth.html
+[`code-content-command`]: https://docs.puppet.com/puppetserver/latest/config_file_puppetserver.html
+[static catalog]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
+[catalog]: https://docs.puppet.com/puppet/latest/reference/subsystem_catalog_compilation.html
+[file resource]: https://docs.puppet.com/puppet/latest/reference/type.html#file
+[environment]: https://docs.puppet.com/puppet/latest/reference/environments.html
+[auth.conf]: https://docs.puppet.com/puppetserver/latest/config_file_auth.html
 
 The `static_file_content` endpoint returns the standard output of a
 [`code-content-command`][] script, which should output the contents of a specific version
@@ -18,7 +18,7 @@ source must be a file from the `files` directory of a module in a specific [envi
 
 Puppet Agent uses this endpoint only when applying a [static catalog][]. This endpoint
 is available only when the Puppet master is running Puppet Server, not Ruby Puppet masters, such as the
-[deprecated WEBrick Puppet master](https://docs.puppetlabs.com/puppet/latest/reference/services_master_webrick.html).
+[deprecated WEBrick Puppet master](https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html).
 
 ## `GET /puppet/v3/static_file_content/<FILE-PATH>`
 
