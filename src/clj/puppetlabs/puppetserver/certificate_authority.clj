@@ -99,7 +99,8 @@
 
 (def OutcomeInfo
   "Generic map of outcome & message for API consumers"
-  {:outcome (schema/enum :success :not-found :error) :message schema/Str})
+  {:outcome (schema/enum :success :not-found :error)
+   :message schema/Str})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
