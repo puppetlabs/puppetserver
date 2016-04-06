@@ -1013,7 +1013,7 @@
       (let [msg (format
                   "No certificate request for %s at expected path %s"
                   subject csr-path)]
-        (log/info msg)
+        (log/warn msg)
         {:outcome :not-found
          :message msg }))))
 

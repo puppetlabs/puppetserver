@@ -147,7 +147,7 @@
           (is (= 404 (:status response)))
           (is (re-matches msg-matcher (:body response)))
           (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-          (is (logged? msg-matcher :info))))
+          (is (logged? msg-matcher :warn))))
       (testing "Error during deletion of a CSR"
         (let [response
               (with-redefs [me.raynes.fs/exists? (constantly true)]
