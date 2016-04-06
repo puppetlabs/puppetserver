@@ -120,11 +120,11 @@
       (is (= version-number (get-in response [:headers "X-Puppet-Version"]))))))
 
 (deftest handle-delete-certificate-request!-test
-  (let [settings      (assoc (testutils/ca-sandbox! cadir)
-                             :allow-duplicate-certs true
-                             :autosign false)
-        subject       "foo-agent"
-        csr-stream    (io/input-stream (test-pem-file "foo-agent-csr.pem"))
+  (let [settings (assoc (testutils/ca-sandbox! cadir)
+                        :allow-duplicate-certs true
+                        :autosign false)
+        subject "foo-agent"
+        csr-stream (io/input-stream (test-pem-file "foo-agent-csr.pem"))
         expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
     (logutils/with-test-logging
       (testing "successful csr deletion"
