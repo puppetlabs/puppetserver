@@ -97,6 +97,10 @@
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
 
+(def OutcomeInfo
+  "Generic map of outcome & message for API consumers"
+  {:outcome (schema/enum :success :not-found :error) :message schema/Str})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -991,8 +995,7 @@
         (autosign-certificate-request! subject csr settings)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
-(schema/defn ^:always-validate delete-certificate-request!
-  :- {:outcome (schema/enum :success :not-found :error) :message schema/Str}
+(schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
   "Delete pending certificate requests for subject"
   [{:keys [csrdir]} :- CaSettings
    subject :- schema/Str]
