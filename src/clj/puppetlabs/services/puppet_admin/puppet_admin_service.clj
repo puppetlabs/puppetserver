@@ -42,5 +42,6 @@
         (core/build-ring-handler route
                                  whitelist-settings
                                  jruby-service
-                                 wrap-with-authorization-check)))
+                                 wrap-with-authorization-check)
+        {:normalize-request-uri true}))
     context))

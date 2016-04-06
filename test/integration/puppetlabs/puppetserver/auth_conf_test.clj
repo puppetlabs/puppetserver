@@ -75,14 +75,21 @@
                                            :type "regex"}
                            :allow         ["private" "localhost"]
                            :sort-order 1
-                           :name "catalog"}
+                           :name "catalog unencoded"}
                           {:match-request {:path "^/puppet/v3/node/private$"
                                            :type "regex"}
                            :allow         ["private" "localhost"]
                            :sort-order 1
-                           :name "node"}]}}
+                           :name "node"}
+                          {:match-request {:path
+                                           "^/puppet/v3/catalog/%65ncoded$"
+                                           :type
+                                           "regex"}
+                           :allow         ["localhost"]
+                           :sort-order 1
+                           :name "catalog encoded"}]}}
         (logutils/with-test-logging
-          (testing "for puppet 4 routes"
+          (testing "for puppet 4 routes without url encoding"
             (let [response (http-get "puppet/v3/node/public?environment=production")]
               (is (= 403 (:status response))
                   (ks/pprint-to-string response)))
@@ -107,6 +114,62 @@
                   (ks/pprint-to-string response)))
             (let [response (http-get "production/catalog/private")]
               (is (= 200 (:status response))
+                  (ks/pprint-to-string response))))
+          (testing "for puppet 4 routes with url encoding"
+            (let [response
+                  (http-get
+                   "puppet/v3/%63atalog/%65ncoded?environment=production")]
+              ;; The web server should decode the above URI path component to
+              ;; "puppet/v3/catalog/encoded".  There is a rule allowing
+              ;; "localhost" for "%65ncoded" but no rule allowing "localhost"
+              ;; for "encoded", so this should request should fail with a
+              ;; 403 (Forbidden) error.
+              (is (= 403 (:status response))
+                  (ks/pprint-to-string response)))
+            (let [response
+                  (http-get
+                   "puppet/v3/%63atalog/%2565ncoded?environment=production")]
+              ;; The web server should decode the above URI path component to
+              ;; "puppet/v3/catalog/%65ncoded".  There is a rule allowing
+              ;; "localhost" for "%65ncoded", so this should request should
+              ;; succeed.
+              (is (= 200 (:status response))
+                  (ks/pprint-to-string response)))
+            (let [response
+                  (http-get
+                   (str "puppet/v3/%63atalog/private/%2E%2E/secret?"
+                        "environment=production"))]
+              ;; The web server should decode the above URI path component to
+              ;; "puppet/v3/catalog/private/../secret".  The relative
+              ;; path, "/../", inside of the path component is forbidden and
+              ;; so should cause the webserver to throw a 'Bad Request' error.
+              (is (= 400 (:status response))
+                  (ks/pprint-to-string response))))
+          (testing "for legacy puppet routes with url encoding"
+            (let [response
+                  (http-get "production/%63atalog/%65ncoded")]
+              ;; The web server should decode the above URI path component to
+              ;; "production/catalog/encoded".  There is a rule allowing
+              ;; "localhost" for "%65ncoded" but no rule allowing "localhost"
+              ;; for "encoded", so this should request should fail with a
+              ;; 403 (Forbidden) error.
+              (is (= 403 (:status response))
+                  (ks/pprint-to-string response)))
+            (let [response
+                  (http-get "production/%63atalog/%2565ncoded")]
+              ;; The web server should decode the above URI path component to
+              ;; "production/catalog/%65ncoded".  There is a rule allowing
+              ;; "localhost" for "%65ncoded", so this should request should
+              ;; succeed.
+              (is (= 200 (:status response))
+                  (ks/pprint-to-string response)))
+            (let [response
+                  (http-get "production/%63atalog/private/%2E%2E/secret?")]
+              ;; The web server should decode the above URI path component to
+              ;; "production/catalog/private/../secret".  The relative
+              ;; path, "/../", inside of the path component is forbidden and
+              ;; so should cause the webserver to throw a 'Bad Request' error.
+              (is (= 400 (:status response))
                   (ks/pprint-to-string response)))))))))
 
 (deftest ^:integration request-with-x-client-headers-handled-via-tk-auth
