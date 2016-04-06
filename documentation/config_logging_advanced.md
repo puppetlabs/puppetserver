@@ -38,23 +38,23 @@ Logback writes logs using components called [appenders](http://logback.qos.ch/ma
 
     ``` xml
     <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>/var/log/puppetlabs/puppetserver/puppetserver.log.json</file>
+        <file>/var/log/puppetlabs/puppetserver/puppetserver.log.json</file>
 
-            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-                <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver.log.json.%d{yyyy-MM-dd}</fileNamePattern>
-                <maxHistory>5</maxHistory>
-            </rollingPolicy>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver.log.json.%d{yyyy-MM-dd}</fileNamePattern>
+            <maxHistory>5</maxHistory>
+        </rollingPolicy>
 
-            <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-        </appender>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+    </appender>
     ```
 
 2. Activate the appended by adding an `appender-ref` entry to the `<root>` section of `logback.xml`:
 
     ``` xml
     <root level="info">
-            <appender-ref ref="FILE"/>
-            <appender-ref ref="JSON"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="JSON"/>
     </root>
     ```
 
@@ -66,58 +66,58 @@ Logback writes logs using components called [appenders](http://logback.qos.ch/ma
 
 To add JSON logging for HTTP requests:
 
-1. Add the following Logback appender section to the `request-logging.xml` file:
+1.  Add the following Logback appender section to the `request-logging.xml` file:
 
     ``` xml
     {% raw %}
-       <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-            <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log.json</file>
+    <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log.json</file>
 
-            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-                <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver-access.log.json.%d{yyyy-MM-dd}</fileNamePattern>
-                <maxHistory>30</maxHistory>
-            </rollingPolicy>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver-access.log.json.%d{yyyy-MM-dd}</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
 
-          <encoder class="net.logstash.logback.encoder.AccessEventCompositeJsonEncoder">
-              <providers>
-                  <version/>
-                  <pattern>
-                      {
-                        "@timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
-                        "clientip":"%remoteIP",
-                        "auth":"%user",
-                        "verb":"%requestMethod",
-                        "requestprotocol":"%protocol",
-                        "rawrequest":"%requestURL",
-                        "response":"#asLong{%statusCode}",
-                        "bytes":"#asLong{%bytesSent}",
-                        "total_service_time":"#asLong{%elapsedTime}",
-                        "request":"http://%header{Host}%requestURI",
-                        "referrer":"%header{Referer}",
-                        "agent":"%header{User-agent}",
+        <encoder class="net.logstash.logback.encoder.AccessEventCompositeJsonEncoder">
+            <providers>
+                <version/>
+                <pattern>
+                    {
+                      "@timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
+                      "clientip":"%remoteIP",
+                      "auth":"%user",
+                      "verb":"%requestMethod",
+                      "requestprotocol":"%protocol",
+                      "rawrequest":"%requestURL",
+                      "response":"#asLong{%statusCode}",
+                      "bytes":"#asLong{%bytesSent}",
+                      "total_service_time":"#asLong{%elapsedTime}",
+                      "request":"http://%header{Host}%requestURI",
+                      "referrer":"%header{Referer}",
+                      "agent":"%header{User-agent}",
 
-                        "request.host":"%header{Host}",
-                        "request.accept":"%header{Accept}",
-                        "request.accept-encoding":"%header{Accept-Encoding}",
-                        "request.connection":"%header{Connection}",
+                      "request.host":"%header{Host}",
+                      "request.accept":"%header{Accept}",
+                      "request.accept-encoding":"%header{Accept-Encoding}",
+                      "request.connection":"%header{Connection}",
 
-                        "puppet.client-verify":"%header{X-Client-Verify}",
-                        "puppet.client-dn":"%header{X-Client-DN}",
-                        "puppet.client-cert":"%header{X-Client-Cert}",
+                      "puppet.client-verify":"%header{X-Client-Verify}",
+                      "puppet.client-dn":"%header{X-Client-DN}",
+                      "puppet.client-cert":"%header{X-Client-Cert}",
 
-                        "response.content-type":"%responseHeader{Content-Type}",
-                        "response.content-length":"%responseHeader{Content-Length}",
-                        "response.server":"%responseHeader{Server}",
-                        "response.connection":"%responseHeader{Connection}"
-                      }
-                  </pattern>
-                </providers>
-            </encoder>
-        </appender>
+                      "response.content-type":"%responseHeader{Content-Type}",
+                      "response.content-length":"%responseHeader{Content-Length}",
+                      "response.server":"%responseHeader{Server}",
+                      "response.connection":"%responseHeader{Connection}"
+                    }
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
     {% endraw %}
     ```
 
-2. Add a corresponding `appender-ref` in the `configuration` section:
+2.  Add a corresponding `appender-ref` in the `configuration` section:
 
     ``` xml
     <appender-ref ref="JSON"/>
