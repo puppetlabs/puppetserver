@@ -126,8 +126,8 @@
         subject "foo-agent"
         csr-stream (io/input-stream (test-pem-file "foo-agent-csr.pem"))
         expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
-    (logutils/with-test-logging
-      (testing "successful csr deletion"
+    (testing "successful csr deletion"
+      (logutils/with-test-logging
         (try
           (handle-put-certificate-request! subject csr-stream settings)
           (is (true? (fs/exists? expected-path)))
@@ -141,23 +141,25 @@
           (finally
             (fs/delete expected-path))))
       (testing "Attempted deletion of a non-existant CSR"
-        (let [response (handle-delete-certificate-request! subject settings)
-              msg-matcher (re-pattern
-                            (str "No cert.*request for " subject " at.*" expected-path))]
-          (is (false? (fs/exists? expected-path)))
-          (is (= 404 (:status response)))
-          (is (re-matches msg-matcher (:body response)))
-          (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-          (is (logged? msg-matcher :warn))))
+        (logutils/with-test-logging
+          (let [response (handle-delete-certificate-request! subject settings)
+                msg-matcher (re-pattern
+                              (str "No cert.*request for " subject " at.*" expected-path))]
+            (is (false? (fs/exists? expected-path)))
+            (is (= 404 (:status response)))
+            (is (re-matches msg-matcher (:body response)))
+            (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+            (is (logged? msg-matcher :warn)))))
       (testing "Error during deletion of a CSR"
-        (let [response
-              (with-redefs [me.raynes.fs/exists? (constantly true)]
-                (handle-delete-certificate-request! subject settings))
-              msg-matcher (re-pattern (str "Path " expected-path " exists but.*"))]
-          (is (= 500 (:status response)))
-          (is (re-matches msg-matcher (:body response)))
-          (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-          (is (logged? msg-matcher :error)))))))
+        (logutils/with-test-logging
+          (let [response
+                (with-redefs [me.raynes.fs/exists? (constantly true)]
+                  (handle-delete-certificate-request! subject settings))
+                msg-matcher (re-pattern (str "Path " expected-path " exists but.*"))]
+            (is (= 500 (:status response)))
+            (is (re-matches msg-matcher (:body response)))
+            (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+            (is (logged? msg-matcher :error))))))))
 
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
