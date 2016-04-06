@@ -142,7 +142,8 @@
             (fs/delete expected-path))))
       (testing "Attempted deletion of a non-existant CSR"
         (let [response (handle-delete-certificate-request! subject settings)
-              msg-matcher (re-pattern (str "No cert.* " subject " at .*"))]
+              msg-matcher (re-pattern
+                            (str "No cert.*request for " subject " at.*" expected-path))]
           (is (false? (fs/exists? expected-path)))
           (is (= 404 (:status response)))
           (is (re-matches msg-matcher (:body response)))
