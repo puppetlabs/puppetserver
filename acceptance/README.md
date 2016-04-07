@@ -6,96 +6,121 @@ This directory is intended to manage acceptance testing for the Puppet Server.
 
 The workflow described here is intended for developers who have access to the
 [vmpooler](http://vmpooler.delivery.puppetlabs.net), which currently requires
-[VPN Access](https://confluence.puppetlabs.com/display/HELP/VPN+access) and as
-such is only applicable to Puppet Labs employees.  This workflow is intended to
+[VPN access](https://confluence.puppetlabs.com/display/HELP/VPN+access) and as
+such is only applicable to Puppet Labs employees. This workflow is intended to
 help developers new to the puppet-server project.
 
 The two primary goals of this workflow are to enable the developer to modify
-the behavior of acceptance tests in as little time as possible while operating
+the behavior of acceptance tests in as little time as possible and to operate
 in a manner as similar to the production CI system as possible.
 
-If you would like to setup local VM's to develop and exercise acceptance tests,
+If you would like to setup local VMs to develop and exercise acceptance tests,
 or would like to learn about additional options beyond the vmpooler
 configuration, please see the [README_LOCAL_VM.md](README_LOCAL_VM.md)
 document.
 
-#### Prepare the VM
+-------------------------------------------------------------------------------
 
-No action is required here, VM's are already prepared and available in the vm
-pool.  For a list of all platforms prepared by the pool, please see the output
-of:
+**Important:** The commands described in this document assume you are
+  working at the root of the puppet-server repo, that is, in the
+  directory that contains the acceptance directory.
+
+-------------------------------------------------------------------------------
+
+## Select VM(s)
+
+VMs are already prepared and available in the vmpooler. For a list of all
+platforms available in the pool, please see the output of:
 
     curl --url vmpooler.delivery.puppetlabs.net/vm
 
-#### Define a hosts config file for your new VM
+## Define PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
 
-Copy/modify the local RHEL-7 host config at
-`acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg`  This file configures a
-basic 2-node configuration.
+You'll need to provide a couple of environment variables that specify against
+which builds of puppet-server and puppet-agent to install and
+test. You can test an existing build or test a new build with local
+changes.
 
-Please note, the most recent host configurations can be generated with the
-`beaker-hostgenerator` command available from the `beaker-hostgenerator` gem.
-Generating a new host configuration takes the form of `bundle exec beaker-hostgenerator redhat7-64ma`
+### PACKAGE_BUILD_VERSION when testing an existing build
 
-The host expression is a bit strange and is parsed as per the documentation at
-`bundle exec beaker-hostgenerator --help`.  See also [the
-source][beaker-hostgenerator].
+1. Go to http://builds.delivery.puppetlabs.net/puppetserver/?C=M;O=D
+2. This puts the most recent build at the top of the screen. It should
+   look something like: `2.2.2.master.SNAPSHOT.2016.02.18T1627`
+3. Copy the text (not the link address) and set `PACKAGE_BUILD_VERSION` to
+   to this value.
 
-[beaker-hostgenerator]: https://github.com/puppetlabs/beaker-hostgenerator
+### PACKAGE_BUILD_VERSION when testing a new build with local changes
 
-#### Define the PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
+1. Run `lein with-profile ezbake ezbake build`. This will take a while, and
+   will result in a build appearing on http://builds.delivery.puppetlabs.net/puppetserver.
+2. If successful, it will give you back a URL with the new puppet-server
+   version at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.
+   Set `PACKAGE_BUILD_VERSION` to this value.
 
-You'll need to provide a couple environment variables that specify which build
-of puppet-server to install and test against.
+### PUPPET_VERSION
 
-##### Testing an existing build
-1. Go to http://builds.delivery.puppetlabs.net/puppetserver/
-2. Scroll down to the most recent build at the bottom.  This will look like:
-   `2.2.2.master.SNAPSHOT.2016.02.18T1627`
-3. Copy the text (not the link address) and set `PACKAGE_BUILD_VERSION` to this
-
-##### Testing local changes
-1. run `lein with-profile ezbake ezbake build`. This will take a while, and
-   will result in a build appearing on http://builds.delivery.puppetlabs.net/puppetserver/
-2. If successful, it will give you back a URL with the new puppetserver version
-   at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.
-   Set `PACKAGE_BUILD_VERSION` to this version.
-
-##### PUPPET_VERSION
 Define `PUPPET_VERSION` as the packaged version of the puppet-agent package
-that your version of puppetserver depends upon. E.g. 1.3.5
+upon which your version of puppet-server depends, such as 1.3.5. You can pick
+a puppet-agent version from http://builds.delivery.puppetlabs.net/puppet-agent/?C=M;O=D.
 
 If you are testing backwards compatibility against a specific release of
-puppet, the `PUPPET_LEGACY_VERSION` environment variable is available for this
+Puppet, the `PUPPET_LEGACY_VERSION` environment variable is available for this
 purpose, but is not required.
 
-#### Install dependencies
+### Install dependencies
 
-Beaker needs to be installed and is expressed as a Gemfile dependency.  To
-install beaker, simply run `bundle install --path .bundle/gems` from the top
-level directory of the project.
+Beaker needs to be installed and is expressed as a Gemfile
+dependency. To install beaker, simply run `bundle install --path
+.bundle/gems` from the repo's root directory. Running beaker will then
+be a matter of saying `bundle exec beaker ...` as described later or
+using the handy shell script created for your testing convenience. 
 
-Running beaker will then be a matter of `bundle exec beaker ...`
+## Running beaker directly
 
-#### Run Beaker
+To run beaker, you need a host configuration file. Configurations we
+actively test reside in `acceptance/config/beaker/jenkins`. You can use
+one of the existing config files or you can create your own config
+file using `beaker-hostgenerator`. Unless stated otherwise,
+discussion in this document assumes the content of
+`acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg`.
 
-In general, the best way to run beaker is to look at one of the existing
-Jenkins CI jobs that are running in the pipeline you care about and adapting
-the beaker invocation to run locally from your workstation.
+### Using an existing config file
 
-You may also need to obtain the `~/.ssh/id\_rsa-acceptance` file from a
-colleague so that beaker can SSH into the target VM's located in the pooler.
+To use one of the pre-defined config files, specify the path to it
+using `beaker`'s `--config` option. For example:
 
-[VPN access](https://confluence.puppetlabs.com/display/HELP/VPN+access) is
-required when executing tests against the VM pooler.
+    beaker --config acceptance/beaker/jenkins/redhat7-64m-64a.cfg ...
 
-There is an example script that runs only a subset of tests in
-`dev/scripts/server545_puppet3_compatibility.sh`
+### Using beaker-hostgenerator
 
-    #!/bin/bash
+Beaker config files can be generated with the `beaker-hostgenerator`
+command available in the `beaker-hostgenerator` gem maintained by
+QE. Generating a new config file takes the form
+
+    beaker-hostgenerator LAYOUT_STRING > snowflake.cfg
+
+For example, to duplicate the config in `redhat7-64m-64a.cfg`, use the
+following command:
+
+    beaker-hostgenerator redhat7-64m-64a > redhat7-64m-64.cfg
+
+The syntax for `LAYOUT_STRING` is a bit strange and irregular. Start
+with the output of `bundle exec beaker-hostgenerator --help`.
+[beaker-hostgenerator source](https://github.com/puppetlabs/beaker-hostgenerator)
+might also be helpful.
+
+### Executing beaker
+
+After choosing or creating the host configuration file, you can invoke
+beaker. The best way to run beaker is to look at one of the existing
+Jenkins CI jobs that are running in the pipeline you care about and
+adapting the beaker invocation for local execution on your
+workstation. Working with Jenkins remains an exercise for the reader.
+
+Here is an example beaker command line that runs a single test:
+
     export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
     export PUPPET_VERSION='1.0.0'
-    export PUPPET_LEGACY_VERSION='3.7.5'
     bundle exec beaker \
       --debug \
       --root-keys \
@@ -103,48 +128,101 @@ There is an example script that runs only a subset of tests in
       --repo-proxy \
       --preserve-hosts never \
       --type aio \
-      --config acceptance/config/beaker/jenkins/redhat7-64m-64a.yaml \
-      --pre-suite acceptance/suites/pre_suite/foss \
-      --tests acceptance/suites/tests/00_smoke/testtest.rb \
-      --keyfile ~/.ssh/id_rsa-acceptance \
       --helper acceptance/lib/helper.rb \
       --options-file acceptance/config/beaker/options.rb \
-      --load-path acceptance/lib
+      --load-path acceptance/lib \
+      --config acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg \
+      --keyfile ~/.ssh/id_rsa-acceptance \
+      --pre-suite acceptance/suites/pre_suite/foss \
+      --tests acceptance/suites/tests/00_smoke/testtest.rb
 
-This command will kick off a beaker run against a VM running in the pooler that
-will run all the pre_suite steps and then the simple "no op" testtest.rb that
-we have in puppet-server/acceptance.
+This command will kick off a beaker run using vmpooler against the
+hosts defined in the copy of the config file
+`acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg`. It will run
+all the pre-suite steps and then the simple "no op" `testtest.rb` in
+puppet-server/acceptance.
 
-If the run fails during a pre-suite step, you may want to re-run the command
-with `--preserve-hosts onfail` so that beaker doesn't return the VM to the pool
-for recycling.  This will allow you to SSH into the target VM and troubleshoot
-the issue.
+If the run fails during a pre-suite step, you might want to re-run the
+command with `--preserve-hosts onfail` so that beaker doesn't return
+the VMs to the pool for recycling. This will allow you to SSH into the
+target VMs and troubleshoot the issue.
 
-## Iterative Development
+-------------------------------------------------------------------------------
 
-In general, the overhead of running the pre-suite is worth the price of
-admission to the VM pooler system.  In previous iterations of this workflow
-local VM snapshots were utilized to avoid the overhead of the pre-suite step.
-With the introduction of the pooler it's generally the case that the pre-suite
-time is worth the savings gained from not having to maintain local VM's.
+**Note:** You may also need to obtain the `~/.ssh/id_rsa-acceptance`
+file from a colleague so that beaker can SSH into the target VM's
+located in the pooler.
 
-A handy trick if you want to operate against the same VM over and over again is
-to run through the above workflow with `--preserve-hosts always`, then iterate
-against the same host borrowed from the pool in a slightly modified host
-configuration.
+**Note:** [VPN access](https://confluence.puppetlabs.com/display/HELP/VPN+access)
+is required when executing tests against vmpooler.
 
-For example, to run beaker multiple times againast the same borrowed VM:
+-------------------------------------------------------------------------------
 
-    HOSTS:
-      jafi7etcwfzovhd.delivery.puppetlabs.net:
-        roles:
-          - master
-          - agent
-        platform: el-7-x86_64
-        pe_dir:
-        pe_ver:
-        pe_upgrade_dir:
-        pe_upgrade_ver:
-    CONFIG:
-      nfs_server: none
-      consoleport: 443
+### Iterative Development
+
+In general, the overhead of running the pre-suite is worth the price
+of admission to the VM pooler system. For the one-time cost of the
+time spent running the pre-suite to configure a test environment, you
+don't have to maintain your own local VMs, you can reuse the
+configured VMs with minimal effort, and then just throw them away when
+you're done or need a fresh environment.
+
+To operate against the same set of VMs over and over again, run
+through the above workflow the _first_ time, using `--preserve-hosts
+always` instead of `--preserve-hosts never`. This will keep the hosts
+from being handed back to vmpooler when the test completes.
+
+Next, make a copy of the `log/latest/hosts_preserved.yml` file:
+
+    cp log/latest/hosts_preserved.yml .
+
+This file is a fully populated beaker configuration file based on the
+barebones configuration you provided. Then, when you want to run
+another round of tests against those hosts, use this slightly modified
+beaker call:
+
+    export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
+    export PUPPET_VERSION='1.0.0'
+    bundle exec beaker \
+      --debug \
+      --root-keys \
+      --no-color \
+      --repo-proxy \
+      --preserve-hosts always \
+      --type aio \
+      --helper acceptance/lib/helper.rb \
+      --options-file acceptance/config/beaker/options.rb \
+      --load-path acceptance/lib \
+      --config hosts_preserved.yml \
+      --keyfile ~/.ssh/id_rsa-acceptance \
+      --no-provision \
+      --tests acceptance/suites/tests/00_smoke/testtest.rb
+
+The differences here are that instead of specifying a pre-suite to
+execute, the command instead uses `--no-provision` to prevent Beaker
+from trying to (re)configure the already configured hosts. It also
+specifies the copied hosts file, `hosts_preserved.yml` so that beaker
+knows which hosts to use. 
+
+## Using the handy shell script
+If all that seems like too much work, we have a script that should
+make things much simpler for you.
+
+1. Set the environment variables `PUPPET_VERSION` and
+   `PACKAGE_BUILD_VERSION` as described previously.
+2. Set the environment variable `GENCONFIG_LAYOUT` to a layout string
+   that `beaker-hostgenerator` understands.
+3. Execute `acceptance/scripts/generic/testrun.sh -p` to start a
+   complete run of the tests and preserve the hosts. When the tests
+   complete, the script makes a copy of the (modified) config file as
+   `hosts_preserved.yml` at the top level of the repo.
+
+```
+   export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
+   export PUPPET_VERSION='1.0.0'
+   export GENCONFIG_LAYOUT=redhat7-64m-64a
+   acceptance/scripts/generic/testrun.sh -p
+```
+   
+4. To reuse the hosts saved from a previous run, specify `-r` instead
+   of `-p`, that is, `acceptance/scripts/generic/testrun.sh -r`.
