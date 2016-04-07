@@ -21,6 +21,9 @@ class Puppet::Server::PuppetConfig
     )
     Puppet[:trace] = true
 
+    # This conditional can be replaced with just setting always_retry_plugins
+    # once puppetserver depends on a version of puppet that has that setting
+    # available.
     if Puppet.settings.setting('always_retry_plugins')
       Puppet[:always_retry_plugins] = false
     else
