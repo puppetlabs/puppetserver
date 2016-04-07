@@ -274,3 +274,17 @@
           {:max-active-instances num-jrubies}}
      (let [catalog (testutils/get-catalog)]
        (is (= "production" (get catalog "version")))))))
+
+(deftest ^:integration custom-trusted-oid-mapping-test
+  (testing "custom_trusted_oid_mapping works properly"
+    (testutils/write-site-pp-file
+      "notify { 'trusted_hash':\n\tmessage => \"${trusted['extensions']}\",\n}")
+    (fs/delete-dir (fs/file testutils/conf-dir "ssl"))
+    (bootstrap/with-puppetserver-running
+      app
+      {}
+      (let [catalog (testutils/get-catalog)]
+        (is (= "{sf => Burning Finger, short => 22}"
+               (get-in (first (filter #(= (get % "title") "trusted_hash")
+                                      (get catalog "resources")))
+                       ["parameters" "message"])))))))

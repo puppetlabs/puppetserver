@@ -53,5 +53,15 @@ class Puppet::Server::PuppetConfig
 
     Puppet::ApplicationSupport.configure_indirector_routes("master")
 
+    oid_defns = Puppet::SSL::Oids.parse_custom_oid_file(Puppet[:trusted_oid_mapping_file])
+    if oid_defns
+      @@oid_defns = Puppet::SSL::Oids::PUPPET_OIDS + oid_defns
+    else
+      @@oid_defns = Puppet::SSL::Oids::PUPPET_OIDS
+    end
+  end
+
+  def self.oid_defns
+    @@oid_defns
   end
 end
