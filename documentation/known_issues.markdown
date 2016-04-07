@@ -5,7 +5,7 @@ canonical: "/puppetserver/latest/known_issues.html"
 ---
 
 
-For a list of all known issues, visit our [Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER).
+For a list of all known issues, visit our [Issue Tracker](https://tickets.puppet.com/browse/SERVER).
 
 Here are a few specific issues that we're aware of that might affect certain users:
 
@@ -17,7 +17,7 @@ Puppet Server on an existing system with Ruby 1.8, the behavior of some extensio
 
 ## Config Reload
 
-[SERVER-15](https://tickets.puppetlabs.com/browse/SERVER-15): In the current
+[SERVER-15](https://tickets.puppet.com/browse/SERVER-15): In the current
 builds of Puppet Server, there is no signal handling mechanism
 that allows you to request a config reload/service refresh. In order to
 clear out the Ruby environments and reload all config, you must restart the
@@ -26,8 +26,8 @@ for reloading rather than restarting.
 
 ## `tmp` directory mounted `noexec`
 
-In some cases (especially for RHEL 7 installations) if the `/tmp` directory is 
-mounted as `noexec`, Puppet Server may fail to run correctly, and you may see an 
+In some cases (especially for RHEL 7 installations) if the `/tmp` directory is
+mounted as `noexec`, Puppet Server may fail to run correctly, and you may see an
 error in the Puppet Server logs similar to the following:
 
 ```
@@ -38,10 +38,10 @@ Nov 12 17:46:12 fqdn.com java[56495]: Puppet::Error: Cannot determine basic syst
 
 This is caused by the fact that JRuby contains some embedded files which need to be
 copied somewhere on the filesystem before they can be executed
-([see this JRuby issue](https://github.com/jruby/jruby/issues/2186)). To work 
-around this  issue, you can either mount the `/tmp` directory without 
-`noexec`, or you can choose a different directory to use as the temporary 
-directory for the Puppet Server process. 
+([see this JRuby issue](https://github.com/jruby/jruby/issues/2186)). To work
+around this  issue, you can either mount the `/tmp` directory without
+`noexec`, or you can choose a different directory to use as the temporary
+directory for the Puppet Server process.
 
 Either way, you'll need to set the permissions of the directory to `1777`. This allows the Puppet Server JRuby process to write a file to `/tmp` and then execute it. If permissions are set incorrectly, you'll get a massive stack trace without much useful information in it.
 
@@ -53,13 +53,13 @@ To use a different temporary directory, you can set the following JVM property:
 
 When Puppet Server is installed from packages, this property should be added
 to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
-or `/etc/default/puppetserver`, depending on upon your distribution. Note that 
+or `/etc/default/puppetserver`, depending on upon your distribution. Note that
 the service will need to be restarted in order for this change to take effect.
 
 
 ## Diffie-Helman HTTPS Client Issues
 
-[SERVER-17](https://tickets.puppetlabs.com/browse/SERVER-17): When configuring
+[SERVER-17](https://tickets.puppet.com/browse/SERVER-17): When configuring
 Puppet Server to use a report processor that involves HTTPS requests (e.g., to
 Foreman), there can be compatibility issues between the JVM HTTPS client and
 certain server HTTPS implementations (e.g., very recent versions of Apache mod_ssl).
@@ -74,7 +74,7 @@ dependencies in the uberjar, which can cause failures that say
 
 ## OpenBSD JRuby Compatibility Issues
 
-[SERVER-14](https://tickets.puppetlabs.com/browse/SERVER-14): While we don't ship
+[SERVER-14](https://tickets.puppet.com/browse/SERVER-14): While we don't ship
 official packages or provide official support for OpenBSD, we would very much
 like for users to be able to run Puppet Server on it. Current versions of JRuby
 have a bug in their POSIX support on OpenBSD that prevents Puppet Server from
@@ -84,7 +84,7 @@ also be possible to patch the Puppet Ruby code to work around this issue.
 
 ## Puppet Server Master Fails to Connect to Load-Balanced Servers with Different SSL Certificates
 
-[SERVER-207](https://tickets.puppetlabs.com/browse/SERVER-207): Intermittent
+[SERVER-207](https://tickets.puppet.com/browse/SERVER-207): Intermittent
 SSL connection failures have been seen when the Puppet Server master tries to
 make SSL requests to servers via the same virtual ip address.  This has been
 seen when the servers present different certificates during the SSL handshake.
