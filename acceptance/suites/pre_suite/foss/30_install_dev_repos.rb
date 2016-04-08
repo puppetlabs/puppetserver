@@ -26,7 +26,7 @@ if puppet_build_version
   end
 end
 
-confine_block(:to, {:platform => puppetdb_supported_platforms}, master) do
+if puppetdb_supported_platforms.include?(master.platform) then
   step "Install PuppetDB repository" do
     install_puppetlabs_dev_repo(
       master, 'puppetdb', test_config[:puppetdb_build_version],
