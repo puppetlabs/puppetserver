@@ -148,35 +148,35 @@
               (is (logged? msg-matcher :debug)))
             (finally
               (fs/delete expected-path))))))
-      (testing "Attempted deletion of a non-existant CSR"
-        (logutils/with-test-logging
-          (let [subject "not-found-agent"
-                response (handle-delete-certificate-request! subject settings)
-                expected-path (ca/path-to-cert-request (:csrdir settings) subject)
-                msg-matcher (re-pattern
-                              (str "No cert.*request for " subject " at.*" expected-path))]
-            (is (false? (fs/exists? expected-path)))
-            (is (= 404 (:status response)))
-            (is (re-matches msg-matcher (:body response)))
-            (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-            (is (logged? msg-matcher :warn)))))
-      (testing "Error during deletion of a CSR"
-        (logutils/with-test-logging
-          (let [subject "err-agent"
-                csr-stream (gen-csr-input-stream! subject)
-                expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
-            (try
-              (handle-put-certificate-request! subject csr-stream settings)
-              (is (true? (fs/exists? expected-path)))
-              (fs/chmod "-w" (fs/parent expected-path))
-              (let [response (handle-delete-certificate-request! subject settings)
-                     msg-matcher (re-pattern (str "Path " expected-path " exists but.*"))]
-                 (is (= 500 (:status response)))
-                 (is (re-matches msg-matcher (:body response)))
-                 (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-                 (is (logged? msg-matcher :error)))
-              (finally
-                (fs/chmod "+w" (fs/parent expected-path)))))))))
+    (testing "Attempted deletion of a non-existant CSR"
+      (logutils/with-test-logging
+        (let [subject "not-found-agent"
+              response (handle-delete-certificate-request! subject settings)
+              expected-path (ca/path-to-cert-request (:csrdir settings) subject)
+              msg-matcher (re-pattern
+                            (str "No cert.*request for " subject " at.*" expected-path))]
+          (is (false? (fs/exists? expected-path)))
+          (is (= 404 (:status response)))
+          (is (re-matches msg-matcher (:body response)))
+          (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+          (is (logged? msg-matcher :warn)))))
+    (testing "Error during deletion of a CSR"
+      (logutils/with-test-logging
+        (let [subject "err-agent"
+              csr-stream (gen-csr-input-stream! subject)
+              expected-path (ca/path-to-cert-request (:csrdir settings) subject)]
+          (try
+            (handle-put-certificate-request! subject csr-stream settings)
+            (is (true? (fs/exists? expected-path)))
+            (fs/chmod "-w" (fs/parent expected-path))
+            (let [response (handle-delete-certificate-request! subject settings)
+                   msg-matcher (re-pattern (str "Path " expected-path " exists but.*"))]
+               (is (= 500 (:status response)))
+               (is (re-matches msg-matcher (:body response)))
+               (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+               (is (logged? msg-matcher :error)))
+            (finally
+              (fs/chmod "+w" (fs/parent expected-path)))))))))
 
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
