@@ -128,6 +128,10 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
+             :cljfmt {:plugins [[lein-cljfmt "0.5.0"]
+                                [lein-parent "0.2.1"]]
+                      :parent-project {:path "ext/pl-clojure-style/project.clj"
+                                       :inherit [:cljfmt]}}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 
   :test-selectors {:integration :integration
@@ -135,7 +139,8 @@
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby"]
-            "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
+            "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]
+            "cljfmt" ["with-profile" "+cljfmt" "cljfmt"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m" "-Xmx2g"]
