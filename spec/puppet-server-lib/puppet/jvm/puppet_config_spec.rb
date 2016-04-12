@@ -21,13 +21,6 @@ describe 'Puppet::Server::PuppetConfig' do
       end
     end
 
-    describe '(SERVER-410) Puppet[:always_cache_features]' do
-      subject { Puppet[:always_cache_features] }
-      it 'is true for increased performance in puppet-server' do
-        expect(subject).to eq(true)
-      end
-    end
-
     describe '(PUP-5482) Puppet[:always_retry_plugins]' do
       subject { Puppet[:always_retry_plugins] }
       it 'is false for increased performance in puppet-server' do
