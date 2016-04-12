@@ -21,12 +21,15 @@ class Puppet::Server::PuppetConfig
     )
     Puppet[:trace] = true
 
-    # (SERVER-410) Cache features in puppetserver for performance.  Avoiding
-    # the cache is intended for agents to reload features mid-catalog-run.
-    Puppet[:always_cache_features] = true
-
+    # This conditional can be replaced with just setting always_retry_plugins
+    # once puppetserver depends on a version of puppet that has that setting
+    # available.
     if Puppet.settings.setting('always_retry_plugins')
       Puppet[:always_retry_plugins] = false
+    else
+      # (SERVER-410) Cache features in puppetserver for performance.  Avoiding
+      # the cache is intended for agents to reload features mid-catalog-run.
+      Puppet[:always_cache_features] = true
     end
 
     # Crank Puppet's log level all the way up and just control it via logback.
