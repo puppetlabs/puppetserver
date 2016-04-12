@@ -19,4 +19,8 @@
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (log/info "CA disabled; ignoring retrieval of CA CRL")))
+    (log/info "CA disabled; ignoring retrieval of CA CRL"))
+
+  (get-oid-mappings
+    [this]
+    {}))

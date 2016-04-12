@@ -43,7 +43,8 @@
     :serial
     :signeddir
     :ssl-client-header
-    :ssl-client-verify-header})
+    :ssl-client-verify-header
+    :trusted-oid-mapping-file})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers

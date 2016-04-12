@@ -8,7 +8,8 @@
   [[:ConfigService get-config]
    [:WebroutingService add-ring-handler get-route]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:CaService get-oid-mappings]]
   (init
     [this context]
     (log/info "Starting Puppet Admin web app")
@@ -17,7 +18,8 @@
           jruby-service (services/get-service this :JRubyPuppetService)
           whitelist-settings (core/puppet-admin-settings->whitelist-settings
                                settings)
-          client-whitelist (:client-whitelist whitelist-settings)]
+          client-whitelist (:client-whitelist whitelist-settings)
+          oid-map (get-oid-mappings)]
       (cond
         (or (false? (:authorization-required whitelist-settings))
             (not-empty client-whitelist))
@@ -42,5 +44,5 @@
         (core/build-ring-handler route
                                  whitelist-settings
                                  jruby-service
-                                 wrap-with-authorization-check)))
+                                 (fn [request] (wrap-with-authorization-check request {:oid-map oid-map})))))
     context))

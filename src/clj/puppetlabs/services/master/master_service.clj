@@ -13,7 +13,7 @@
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
+   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-oid-mappings]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
    [:VersionedCodeService get-code-content]]
@@ -37,7 +37,8 @@
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
-                                                 false)]
+                                                 false)
+         oid-map (get-oid-mappings)]
      (version-check/check-for-updates! {:product-name product-name} update-server-url)
 
      (retrieve-ca-cert! localcacert)
@@ -53,7 +54,7 @@
                                                           jruby-service
                                                           get-code-content
                                                           handle-request
-                                                          wrap-with-authorization-check
+                                                          (fn [request] (wrap-with-authorization-check request {:oid-map oid-map}))
                                                           environment-class-cache-enabled)
                               ((partial comidi/context path))
                               comidi/routes->handler))]

@@ -13,7 +13,8 @@
    [:RequestHandlerService handle-request]
    [:PuppetServerConfigService get-config]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:CaService get-oid-mappings]]
   (init
     [this context]
     (let [ca-service (tk-services/get-service this :CaService)
@@ -36,12 +37,13 @@
                                                             false)
                                    ((partial comidi/context path))
                                    comidi/routes->handler)
+          oid-map (get-oid-mappings)
           master-handler-info {:mount       (master-core/get-master-mount
                                               master-ns
                                               master-route-config)
                                :handler     (master-core/get-wrapped-handler
                                               master-route-handler
-                                              wrap-with-authorization-check
+                                              (fn [request] (wrap-with-authorization-check request {:oid-map oid-map}))
                                               puppet-version
                                               use-legacy-auth-conf)
                                :api-version master-core/puppet-API-version}
@@ -60,7 +62,7 @@
                                               ca-route-handler
                                               ca-settings
                                               ca-mount
-                                              wrap-with-authorization-check
+                                              (fn [request] (wrap-with-authorization-check request {:oid-map oid-map}))
                                               puppet-version)
                                :api-version ca-core/puppet-ca-API-version}))
           ring-handler (legacy-routes-core/build-ring-handler

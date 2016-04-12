@@ -102,6 +102,9 @@
   {:outcome (schema/enum :success :not-found :error)
    :message schema/Str})
 
+(def OIDMappings
+  {schema/Str schema/Keyword})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -1218,3 +1221,20 @@
     (when (fs/exists? cert)
       (fs/delete cert)
       (log/debug "Deleted certificate for" subject))))
+
+(schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
+  "Given a path to a custom OID mappings file, return a map of all oids to
+  shortnames"
+  [custom-oid-mapping-file :- (schema/maybe schema/Str)]
+  (when (fs/file? custom-oid-mapping-file)
+    (try
+      (let [oid-mappings (:oid_mapping (yaml/parse-string (slurp custom-oid-mapping-file)))]
+        (into {} (for [[oid names] oid-mappings] [(name oid) (keyword (:shortname names))])))
+      (catch Exception e
+        (throw (Exception.
+                 (str "There was a problem parsing " custom-oid-mapping-file) e))))))
+
+(schema/defn ^:always-validate get-oid-mappings :- OIDMappings
+  [custom-oid-mapping-file :- (schema/maybe schema/Str)]
+  (merge (get-custom-oid-mappings custom-oid-mapping-file)
+         (clojure.set/map-invert puppet-short-names)))
