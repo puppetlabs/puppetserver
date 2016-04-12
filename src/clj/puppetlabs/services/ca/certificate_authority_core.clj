@@ -4,7 +4,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
-            [puppetlabs.comidi :as comidi :refer [GET ANY PUT]]
+            [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
             [bidi.schema :as bidi-schema]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
@@ -64,6 +64,15 @@
   (-> (ca/get-certificate-revocation-list cacrl)
       (rr/response)
       (rr/content-type "text/plain")))
+
+(schema/defn handle-delete-certificate-request!
+  [subject :- String
+   ca-settings :- ca/CaSettings]
+  (let [response (ca/delete-certificate-request! ca-settings subject)
+        outcomes->codes {:success 204 :not-found 404 :error 500}]
+    (-> (rr/response (:message response))
+        (rr/status ((response :outcome) outcomes->codes))
+        (rr/content-type "text/plain"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
@@ -171,7 +180,8 @@
 
   :delete!
   (fn [context]
-    (ca/delete-certificate! settings subject))
+    (ca/delete-certificate! settings subject)
+    (ca/delete-certificate-request! settings subject))
 
   :exists?
   (fn [context]
@@ -277,6 +287,8 @@
           (handle-get-certificate-request subject ca-settings))
         (PUT [""] [subject :as {body :body}]
           (handle-put-certificate-request! subject body ca-settings)))
+        (DELETE [""] [subject]
+          (handle-delete-certificate-request! subject ca-settings))
       (GET ["/certificate_revocation_list/" :ignored-node-name] []
         (handle-get-certificate-revocation-list ca-settings)))
     (comidi/not-found "Not Found")))

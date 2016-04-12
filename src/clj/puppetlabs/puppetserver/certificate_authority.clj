@@ -97,6 +97,11 @@
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
 
+(def OutcomeInfo
+  "Generic map of outcome & message for API consumers"
+  {:outcome (schema/enum :success :not-found :error)
+   :message schema/Str})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -991,6 +996,28 @@
         (autosign-certificate-request! subject csr settings)
         (fs/delete (path-to-cert-request csrdir subject))))))
 
+(schema/defn ^:always-validate delete-certificate-request! :- OutcomeInfo
+  "Delete pending certificate requests for subject"
+  [{:keys [csrdir]} :- CaSettings
+   subject :- schema/Str]
+  (let [csr-path (path-to-cert-request csrdir subject)]
+    (if (fs/exists? csr-path)
+      (if (fs/delete csr-path)
+        (let [msg (str "Deleted certificate request for " subject)]
+          (log/debug msg)
+          {:outcome :success
+           :message msg})
+        (let [msg (format "Path %s exists but could not be deleted" csr-path)]
+          (log/error msg)
+          {:outcome :error
+           :message msg}))
+      (let [msg (format
+                  "No certificate request for %s at expected path %s"
+                  subject csr-path)]
+        (log/warn msg)
+        {:outcome :not-found
+         :message msg }))))
+
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
@@ -1183,15 +1210,11 @@
         message))))
 
 (schema/defn ^:always-validate delete-certificate!
-  "Delete the certificate and/or CSR for the given subject.
+  "Delete the certificate for the given subject.
    Note this does not revoke the certificate."
-  [{:keys [csrdir signeddir]} :- CaSettings
+  [{signeddir :signeddir} :- CaSettings
    subject :- schema/Str]
-  (let [cert (path-to-cert signeddir subject)
-        csr  (path-to-cert-request csrdir subject)]
+  (let [cert (path-to-cert signeddir subject)]
     (when (fs/exists? cert)
       (fs/delete cert)
-      (log/debug "Deleted certificate for" subject))
-    (when (fs/exists? csr)
-      (fs/delete csr)
-      (log/debug "Deleted certificate request for" subject))))
+      (log/debug "Deleted certificate for" subject))))
