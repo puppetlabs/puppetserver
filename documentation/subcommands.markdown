@@ -26,7 +26,7 @@ puppetserver <subcommand> [<args>]
 When running from source, the format is:
 
 ~~~sh
-lein <subcommand> -c /path/to/puppet-server.conf [--] [<args>]
+lein <subcommand> -c /path/to/puppetserver.conf [--] [<args>]
 ~~~
 
 Note that if you are running from source, you need to separate flag arguments (such as `--version` or `-e`) with `--`, as shown above. Otherwise, those arguments will be applied to Leiningen instead of to Puppet Server. This isn't necessary when running from
@@ -44,7 +44,7 @@ $ puppetserver gem install pry --no-ri --no-rdoc
 ~~~
 
 ~~~sh
-$ lein gem -c /path/to/puppet-server.conf -- install pry --no-ri --no-rdoc
+$ lein gem -c /path/to/puppetserver.conf -- install pry --no-ri --no-rdoc
 ~~~
 
 For more information, see [Puppet Server and Gems](./gems.markdown).
@@ -65,7 +65,7 @@ $ puppetserver ruby -e "require 'puppet'; puts Puppet[:certname]"
 ~~~
 
 ~~~sh
-$ lein ruby -c /path/to/puppet-server.conf -- -e "require 'puppet'; puts Puppet[:certname]"
+$ lein ruby -c /path/to/puppetserver.conf -- -e "require 'puppet'; puts Puppet[:certname]"
 ~~~
 
 ## irb
@@ -90,7 +90,7 @@ centos6-64.localdomain
 ~~~
 
 ~~~sh
-$ lein irb -c /path/to/puppet-server.conf -- --version
+$ lein irb -c /path/to/puppetserver.conf -- --version
 irb 0.9.6(09/06/30)
 ~~~
 

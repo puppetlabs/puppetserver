@@ -826,8 +826,8 @@
   config->ca-settings :- CaSettings
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings."
-  [{:keys [puppet-server jruby-puppet certificate-authority]}]
-  (-> (select-keys puppet-server (keys CaSettings))
+  [{:keys [puppetserver jruby-puppet certificate-authority]}]
+  (-> (select-keys puppetserver (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
       (assoc :access-control (select-keys certificate-authority
                                           [:certificate-status]))))
@@ -836,8 +836,8 @@
   config->master-settings :- MasterSettings
   "Given the configuration map from the Puppet Server config
   service return a map with of all the master settings."
-  [{:keys [puppet-server]}]
-  (select-keys puppet-server (keys MasterSettings)))
+  [{:keys [puppetserver]}]
+  (select-keys puppetserver (keys MasterSettings)))
 
 (schema/defn ^:always-validate
   get-certificate :- (schema/maybe schema/Str)

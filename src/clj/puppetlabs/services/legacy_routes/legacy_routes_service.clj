@@ -20,7 +20,7 @@
     (let [ca-service (tk-services/get-service this :CaService)
           path (get-route this)
           config (get-config)
-          puppet-version (get-in config [:puppet-server :puppet-version])
+          puppet-version (get-in config [:puppetserver :puppet-version])
           use-legacy-auth-conf (get-in config
                                        [:jruby-puppet :use-legacy-auth-conf]
                                        true)

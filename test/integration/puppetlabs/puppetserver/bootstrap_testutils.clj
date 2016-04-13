@@ -6,7 +6,7 @@
             [me.raynes.fs :as fs]))
 
 (def dev-config-file
-  "./dev/puppet-server.conf.sample")
+  "./dev/puppetserver.conf.sample")
 
 (def dev-bootstrap-file
   "./dev/bootstrap.cfg")
@@ -31,7 +31,7 @@
 
 (defn load-dev-config-with-overrides
   [overrides]
-  (let [tmp-conf (ks/temp-file "puppet-server" ".conf")]
+  (let [tmp-conf (ks/temp-file "puppetserver" ".conf")]
     (fs/copy dev-config-file tmp-conf)
     (-> (tk-config/load-config (.getPath tmp-conf))
         (assoc-in [:global :logging-config] logging-test-conf-file)

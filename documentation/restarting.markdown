@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/restarting.html"
 [logback.xml]: ./config_file_logbackxml.html
 [Hiera]: /hiera/latest/configuring.html
 [gems]: /puppetserver/latest/gems.html
-[core dependencies]: /puppet/latest/reference/about_agent.html#what-are-puppet-agent-and-puppet-server
+[core dependencies]: /puppet/latest/reference/about_agent.html#what-are-puppet-agent-and-puppetserver
 [environment]: /puppet/latest/reference/environments.html
 [environment caching]: /puppet/latest/reference/configuration.html#environmenttimeout
 
@@ -15,7 +15,7 @@ Starting in version 2.3.0, you can restart Puppet Server by sending a hangup sig
 
 There are several ways to send a HUP signal to the Puppet Server process, but the most straightforward is to run the following [`kill`](http://linux.die.net/man/1/kill) command:
 
-    kill -HUP `pgrep -f puppet-server`
+    kill -HUP `pgrep -f puppetserver`
 
 ## Restarting Puppet Server to pick up changes
 
