@@ -8,7 +8,7 @@
    This is required to maintain service loading order on installations
    which are not running a CA service."
   CaService
-  []
+  [[:AuthorizationService wrap-with-authorization-check]]
   (initialize-master-ssl!
     [this master-settings certname]
     (log/info "CA disabled; ignoring SSL initialization for Master"))
@@ -21,6 +21,6 @@
     [this localcacrl]
     (log/info "CA disabled; ignoring retrieval of CA CRL"))
 
-  (get-oid-mappings
+  (get-auth-handler
     [this]
-    {}))
+    wrap-with-authorization-check))

@@ -5,4 +5,4 @@
   (initialize-master-ssl! [this master-settings certname])
   (retrieve-ca-cert! [this localcacert])
   (retrieve-ca-crl! [this localcacrl])
-  (get-oid-mappings [this]))
+  (get-auth-handler [this]))

@@ -18,7 +18,8 @@
          settings (ca/config->ca-settings (get-config))
          puppet-version (get-in-config [:puppet-server :puppet-version])
          custom-oid-file (get-in-config [:puppet-server :trusted-oid-mapping-file])
-         oid-mappings (ca/get-oid-mappings custom-oid-file)]
+         oid-mappings (ca/get-oid-mappings custom-oid-file)
+         auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))]
      (ca/validate-settings! settings)
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
@@ -30,9 +31,9 @@
              comidi/routes->handler)
          settings
          path
-         (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))
+         auth-handler
          puppet-version))
-     (assoc context :oid-mappings oid-mappings)))
+     (assoc context :auth-handler auth-handler)))
 
   (initialize-master-ssl!
    [this master-settings certname]
@@ -49,6 +50,6 @@
     (ca/retrieve-ca-crl! (get-in-config [:puppet-server :cacrl])
                          localcacrl))
 
-  (get-oid-mappings
+  (get-auth-handler
     [this]
-    (:oid-mappings (tk-services/service-context this))))
+    (:auth-handler (tk-services/service-context this))))
