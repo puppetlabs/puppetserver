@@ -270,8 +270,7 @@
     (testing "stdout and stderr are copied to master's log at debug level"
       (logutils/with-test-logging
         (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
-        (is (logged? #"print to stdout" :debug))
-        (is (logged? #"print to stderr" :debug))))
+        (is (logged? #"(?s)print to stderr.*print to stdout" :debug))))
 
     (testing "Ruby load path is configured and contains Puppet"
       (logutils/with-test-logging
@@ -296,8 +295,7 @@
     (testing "stdout and stderr are copied to master's log at debug level"
       (logutils/with-test-logging
         (autosign-csr? executable "test-agent" (csr-fn) [])
-        (is (logged? #"print to stdout" :debug))
-        (is (logged? #"print to stderr" :debug))))
+        (is (logged? #"(?s)print to stderr.*print to stdout" :debug))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging

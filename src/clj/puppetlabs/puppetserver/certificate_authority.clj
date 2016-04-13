@@ -866,7 +866,6 @@
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path)]
-          (log/debug (:stdout command-result))
           (-> command-result
               :exit-code
               zero?))
