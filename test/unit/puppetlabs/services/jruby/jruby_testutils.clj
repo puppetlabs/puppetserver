@@ -36,7 +36,7 @@
   as opposed to a version that has been processed and transformed to comply
   with the JRubyPuppetConfig schema)."
   [pool-config]
-  {:product       {:name              "puppet-server"
+  {:product       {:name              "puppetserver"
                    :update-server-url "http://localhost:11111"}
    :jruby-puppet  pool-config
    :authorization {:version 1

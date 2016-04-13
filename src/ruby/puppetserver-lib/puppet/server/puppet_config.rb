@@ -23,11 +23,7 @@ class Puppet::Server::PuppetConfig
 
     # (SERVER-410) Cache features in puppetserver for performance.  Avoiding
     # the cache is intended for agents to reload features mid-catalog-run.
-    # As of (PUP-5482) setting always_retry_plugins to false implies that
-    # features will always be cached.
-    if Puppet.settings.setting('always_retry_plugins')
-      Puppet[:always_retry_plugins] = false
-    end
+    Puppet[:always_cache_features] = true
 
     # Crank Puppet's log level all the way up and just control it via logback.
     Puppet[:log_level] = "debug"
@@ -53,15 +49,5 @@ class Puppet::Server::PuppetConfig
 
     Puppet::ApplicationSupport.configure_indirector_routes("master")
 
-    oid_defns = Puppet::SSL::Oids.parse_custom_oid_file(Puppet[:trusted_oid_mapping_file])
-    if oid_defns
-      @@oid_defns = Puppet::SSL::Oids::PUPPET_OIDS + oid_defns
-    else
-      @@oid_defns = Puppet::SSL::Oids::PUPPET_OIDS
-    end
-  end
-
-  def self.oid_defns
-    @@oid_defns
   end
 end

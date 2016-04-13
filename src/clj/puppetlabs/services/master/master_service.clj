@@ -21,10 +21,10 @@
    [this context]
    (core/validate-memory-requirements!)
    (let [config (get-config)
-         certname (get-in config [:puppet-server :certname])
-         localcacert (get-in config [:puppet-server :localcacert])
-         puppet-version (get-in config [:puppet-server :puppet-version])
-         hostcrl (get-in config [:puppet-server :hostcrl])
+         certname (get-in config [:puppetserver :certname])
+         localcacert (get-in config [:puppetserver :localcacert])
+         puppet-version (get-in config [:puppetserver :puppet-version])
+         hostcrl (get-in config [:puppetserver :hostcrl])
          settings (ca/config->master-settings config)
          product-name (or (get-in config [:product :name])
                           {:group-id    "puppetlabs"

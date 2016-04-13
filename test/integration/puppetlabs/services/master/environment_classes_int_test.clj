@@ -623,13 +623,13 @@
     (terminate [_]
       (log/info "Terminating Master"))))
 
-(tk/defservice mock-puppetserver-config-service
+(tk/defservice mock-puppet-server-config-service
                ps-config-protocol/PuppetServerConfigService
                [[:ConfigService get-config get-in-config]]
                (get-config [this] (get-config))
                (get-in-config [this ks] (get-in-config ks)))
 
-(defn default-puppet-server-settings
+(defn default-puppetserver-settings
   []
   (merge (ca-testutils/master-settings
           bootstrap/master-conf-dir)
@@ -646,7 +646,7 @@
           "1.2.3"}))
 
 (deftest ^:integration class-info-updated-after-cache-flush-during-prior-request
-  (let [puppet-server-settings (default-puppet-server-settings)
+  (let [puppetserver-settings (default-puppetserver-settings)
         class-info-atom (atom [{"name" "someclass" "params" []}])
         wait-atom (atom nil)]
     ;; This test uses a mock jruby instance function which can provide mock
@@ -665,7 +665,7 @@
         profiler/puppet-profiler-service
         webserver/jetty9-service
         webrouting/webrouting-service
-        mock-puppetserver-config-service
+        mock-puppet-server-config-service
         master-service/master-service
         ca/certificate-authority-service
         authorization/authorization-service
@@ -673,10 +673,10 @@
         vcs/versioned-code-service]
        {:jruby-puppet {:max-active-instances 1
                        :environment-class-cache-enabled true}
-        :webserver {:ssl-ca-cert (:localcacert puppet-server-settings)
-                    :ssl-cert (:hostcert puppet-server-settings)
-                    :ssl-key (:hostprivkey puppet-server-settings)}
-        :puppet-server puppet-server-settings}
+        :webserver {:ssl-ca-cert (:localcacert puppetserver-settings)
+                    :ssl-cert (:hostcert puppetserver-settings)
+                    :ssl-key (:hostprivkey puppetserver-settings)}
+        :puppetserver puppetserver-settings}
        (let [continue-promise (promise)
              wait-promise (promise)
              _ (reset! wait-atom {:continue-promise continue-promise

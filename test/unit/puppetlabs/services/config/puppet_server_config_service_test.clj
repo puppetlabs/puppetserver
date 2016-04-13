@@ -39,7 +39,7 @@
     service-and-deps
     (-> required-config
         (assoc :my-config {:foo "bar"}))
-    (testing "Basic puppet-server config service function usage"
+    (testing "Basic puppetserver config service function usage"
 
       (let [service (tk-app/get-service app :PuppetServerConfigService)
             service-config (get-config service)]
@@ -51,13 +51,13 @@
                    (dissoc :master-conf-dir))))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
-        (is (= (set (keys (:puppet-server service-config)))
+        (is (= (set (keys (:puppetserver service-config)))
                (conj core/puppet-config-keys :puppet-version))
             (str "config not as expected: " service-config))
 
         (testing "The config service has puppet's version available."
           (is (semver/valid-format?
-                (get-in-config service [:puppet-server :puppet-version]))))
+                (get-in-config service [:puppetserver :puppet-version]))))
 
         (testing "`get-in-config` functions"
 
@@ -65,7 +65,7 @@
             (is (= "bar" (get-in-config service [:my-config :foo]))))
 
           (testing "get a value from JRuby's config"
-            (is (= "localhost" (get-in-config service [:puppet-server :certname])))))
+            (is (= "localhost" (get-in-config service [:puppetserver :certname])))))
 
         (testing "Default values passed to `get-in-config` are handled correctly"
           (is (= "default" (get-in-config service [:bogus] "default")))
@@ -77,7 +77,7 @@
 
           (testing "get a value from JRuby's config (w/ default specified"
             (is (= "localhost"
-                   (get-in-config service [:puppet-server :certname]
+                   (get-in-config service [:puppetserver :certname]
                                   "default value, should not be returned")))))))))
 
 (deftest config-key-conflicts
@@ -130,7 +130,7 @@
         (tk-testutils/with-app-with-config
           app
           service-and-deps
-          (assoc required-config :webserver {:puppet-server webserver-config})
+          (assoc required-config :webserver {:puppetserver webserver-config})
           (is (logged? #"Not overriding webserver settings with values from core Puppet")))))
 
     (testing (str "webserver settings not overridden when single webserver is provided"

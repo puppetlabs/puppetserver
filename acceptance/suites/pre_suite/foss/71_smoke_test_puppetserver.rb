@@ -8,7 +8,7 @@
 # This side-effect masks legitimate issues we need to test, such as "the
 # puppetserver fails to start out of the package"
 
-step "(SERVER-414) Make sure puppet-server can start without puppet resource, "\
+step "(SERVER-414) Make sure puppetserver can start without puppet resource, "\
   "apply, or agent affecting the known good state of the SUT in a way that "\
   "causes the tests to pass with false positive successful results."
 

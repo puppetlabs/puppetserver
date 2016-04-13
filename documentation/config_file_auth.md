@@ -23,7 +23,7 @@ However, Puppet Server now has its own `auth.conf` file that uses a new HOCON fo
 >
 > Puppet Server follows the following logic when determining whether to use the new or old authorization methods:
 >
-> * Requests to Puppet master service endpoints already manageable through the deprecated authorization methods and [Puppet `auth.conf`][] file --- such as `catalog`, `node`, and `report` --- use Puppet Server's new `auth.conf` rules **only** if the `use-legacy-auth-conf` setting in `puppet-server.conf` is set to `false`. If `use-legacy-auth-conf` is set to true (which is its default), Puppet Server warns you that the legacy authentication method is deprecated.
+> * Requests to Puppet master service endpoints already manageable through the deprecated authorization methods and [Puppet `auth.conf`][] file --- such as `catalog`, `node`, and `report` --- use Puppet Server's new `auth.conf` rules **only** if the `use-legacy-auth-conf` setting in `puppetserver.conf` is set to `false`. If `use-legacy-auth-conf` is set to true (which is its default), Puppet Server warns you that the legacy authentication method is deprecated.
 > * Requests to certificate status and administration endpoints use the new `auth.conf` rules **only** if the corresponding `client-whitelists` setting is empty or unspecified **and** the `authorization-required` flag is set to `true` (which is its default).
 > * Requests to other certificate administration endpoints --- such as `certificate`, `certificate_request`, and `certificate_revocation_list` --- **always** use the new HOCON `auth.conf` rules in Puppet Server's `auth.conf` file. This happens regardless of the `client-whitelist`, `authorization-required`, or `use-legacy-auth-conf` settings, as versions of Puppet Server before 2.2.0 can't manage those endpoints.
 >
@@ -54,7 +54,7 @@ If this setting is `true`, Puppet Server ignores any presented certificate and r
 
 You cannot rename any of the `X-Client` headers when this setting is enabled, and you must specify identity through the `X-Client-Verify`, `X-Client-DN`, and `X-Client-Cert` headers.
 
-For more information, see [External SSL Termination](./external_ssl_termination.html#disable-https-for-puppet-server) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
+For more information, see [External SSL Termination](./external_ssl_termination.html#disable-https-for-puppetserver) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
 
 ### `rules`
 
