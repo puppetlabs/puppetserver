@@ -133,11 +133,19 @@ After each rule's `match-request` section, it must also have an `allow`, `allow-
 If a request matches the rule, Puppet Server checks the request's authenticated "name" (see [`allow-header-cert-info`](#allow-header-cert-info)) against these parameters to determine what to do with the request.
 
 * **`allow-unauthenticated`**: If this Boolean parameter is set to `true`, Puppet Server allows the request --- even if it can't determine an authenticated name. **This is a potentially insecure configuration** --- be careful when enabling it. A rule with this parameter set to `true` can't also contain the `allow` or `deny` parameters.
-* **`allow`**: This parameter can take a single string value or an array of them. The values can be:
+* **`allow`**: This parameter can take a single string value, an array of string values, a single map value with either an `extensions` or `certname` key, or an array of string and map values.
+
+    The string values can be:
+
     * An exact domain name, such as `www.example.com`.
     * A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`.
     * A regular expression surrounded by `/` characters, such as `/example/`.
     * A backreference to a regular expression's capture group in the `path` value, if the rule also contains a `type` value of `regex`. For example, if the path for the rule were `"^/example/([^/]+)$"`, you can make a backreference to the first capture group using a value like `$1.domain.org`.
+
+    The map values can be:
+
+    * An `extensions` key that specifies a set of matching X.509 extensions. Puppet Server authenticates the request only if each key in the map appears in the request, and each key's value exactly matches.
+    * A `certname` key equivalent to a bare string.
 
     If the request's authenticated name matches the parameter's value, Puppet Server allows it.
 * **`deny`**: This parameter can take the same types of values as the `allow` parameter, but refuses the request if the authenticated name matches --- even if the rule contains an `allow` value that also matches.
