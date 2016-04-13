@@ -804,9 +804,9 @@
                   :in csr-stream
                   :env (merge env {"RUBYLIB" rubylib})})]
     (log/debugf "Autosign command '%s %s' exit status: %d"
-                executable subject (:exit results))
+                executable subject (:exit-code results))
     (log/debugf "Autosign command '%s %s' output: %s"
-                executable subject (str (:err results) (:out results)))
+                executable subject (str (:stderr results) (:stdout results)))
     results))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
