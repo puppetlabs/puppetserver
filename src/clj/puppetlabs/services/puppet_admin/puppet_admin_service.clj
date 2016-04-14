@@ -8,7 +8,8 @@
   [[:ConfigService get-config]
    [:WebroutingService add-ring-handler get-route]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:CaService get-auth-handler]]
   (init
     [this context]
     (log/info "Starting Puppet Admin web app")
@@ -42,5 +43,5 @@
         (core/build-ring-handler route
                                  whitelist-settings
                                  jruby-service
-                                 wrap-with-authorization-check)))
+                                 (get-auth-handler))))
     context))

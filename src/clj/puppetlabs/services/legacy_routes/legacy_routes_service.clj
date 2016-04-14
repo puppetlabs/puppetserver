@@ -13,7 +13,8 @@
    [:RequestHandlerService handle-request]
    [:PuppetServerConfigService get-config]
    [:JRubyPuppetService]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:CaService get-auth-handler]]
   (init
     [this context]
     (let [ca-service (tk-services/get-service this :CaService)
@@ -41,7 +42,7 @@
                                               master-route-config)
                                :handler     (master-core/get-wrapped-handler
                                               master-route-handler
-                                              wrap-with-authorization-check
+                                              (get-auth-handler)
                                               puppet-version
                                               use-legacy-auth-conf)
                                :api-version master-core/puppet-API-version}
@@ -60,7 +61,7 @@
                                               ca-route-handler
                                               ca-settings
                                               ca-mount
-                                              wrap-with-authorization-check
+                                              (get-auth-handler)
                                               puppet-version)
                                :api-version ca-core/puppet-ca-API-version}))
           ring-handler (legacy-routes-core/build-ring-handler

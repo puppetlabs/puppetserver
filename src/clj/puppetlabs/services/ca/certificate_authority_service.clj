@@ -1,6 +1,7 @@
 (ns puppetlabs.services.ca.certificate-authority-service
   (:require [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
@@ -13,9 +14,12 @@
    [:AuthorizationService wrap-with-authorization-check]]
   (init
    [this context]
-   (let [path           (get-route this)
-         settings       (ca/config->ca-settings (get-config))
-         puppet-version (get-in-config [:puppet-server :puppet-version])]
+   (let [path (get-route this)
+         settings (ca/config->ca-settings (get-config))
+         puppet-version (get-in-config [:puppet-server :puppet-version])
+         custom-oid-file (get-in-config [:puppet-server :trusted-oid-mapping-file])
+         oid-mappings (ca/get-oid-mappings custom-oid-file)
+         auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))]
      (ca/validate-settings! settings)
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
@@ -27,9 +31,9 @@
              comidi/routes->handler)
          settings
          path
-         wrap-with-authorization-check
-         puppet-version)))
-   context)
+         auth-handler
+         puppet-version))
+     (assoc context :auth-handler auth-handler)))
 
   (initialize-master-ssl!
    [this master-settings certname]
@@ -44,4 +48,8 @@
   (retrieve-ca-crl!
     [this localcacrl]
     (ca/retrieve-ca-crl! (get-in-config [:puppet-server :cacrl])
-                         localcacrl)))
+                         localcacrl))
+
+  (get-auth-handler
+    [this]
+    (:auth-handler (tk-services/service-context this))))

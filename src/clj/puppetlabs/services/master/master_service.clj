@@ -13,7 +13,7 @@
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
+   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
    [:VersionedCodeService get-code-content]]
@@ -53,7 +53,7 @@
                                                           jruby-service
                                                           get-code-content
                                                           handle-request
-                                                          wrap-with-authorization-check
+                                                          (get-auth-handler)
                                                           environment-class-cache-enabled)
                               ((partial comidi/context path))
                               comidi/routes->handler))]

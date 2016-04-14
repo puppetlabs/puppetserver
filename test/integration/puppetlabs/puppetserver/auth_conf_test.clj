@@ -207,3 +207,86 @@
                         "modules/foo/files/bar?code_id=foobar&environment=test" false)]
           (is (= 403 (:status response)) (ks/pprint-to-string response))
           (is (re-find #"Forbidden request" (:body response)) (ks/pprint-to-string response))))))))
+
+(deftest ^:integration custom-oids-passed-to-tk-auth
+  (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"
+    (logging/with-test-logging
+      (bootstrap/with-puppetserver-running
+        app
+        {:authorization {:version 1
+                         :allow-header-cert-info true
+                         :rules
+                         [{:match-request {:path "/"
+                                           :type "path"}
+                           :allow {:extensions {:shiningfinger "Burning Finger"}}
+                           :deny {:extensions {:pp_uuid "not a uuid"}}
+                           :sort-order 1
+                           :name "all endpoints"}]}
+         :webserver {:host "localhost"
+                     :port 8080}}
+        (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
+                          :critical false
+                          :value "12345"}
+                         {:oid "1.3.6.1.4.1.34380.1.2.2"
+                          :critical false
+                          :value "Burning Finger"}]
+              bad-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
+                         :critical false
+                         :value "not a uuid"}
+                        {:oid "1.3.6.1.4.1.34380.1.2.2"
+                         :critical false
+                         :value "Burning Finger"}]
+              create-cert (fn [extensions]
+                            (:cert (ssl-simple/gen-self-signed-cert
+                                     "ssl-client"
+                                     1
+                                     {:keylength 512
+                                      :extensions extensions})))
+              allowable-cert (create-cert good-exts)
+              deniable-cert (create-cert bad-exts)
+              url-encode-cert (fn [cert]
+                                (let [cert-writer (StringWriter.)
+                                      _ (ssl-utils/cert->pem! cert cert-writer)]
+                                  (ring-codec/url-encode cert-writer)))
+              url-encoded-allowable-cert (url-encode-cert allowable-cert)
+              url-encoded-deniable-cert (url-encode-cert deniable-cert)
+              http-get-no-ssl (fn [path cert]
+                                (http-client/get
+                                  (str "http://localhost:8080/" path)
+                                  {:headers {"Accept" "pson"
+                                             "X-Client-Cert" cert
+                                             "X-Client-DN" "CN=private"
+                                             "X-Client-Verify" "SUCCESS"}
+                                   :as :text}))]
+          (testing "ca endpoints use oid shortnames"
+            (let [path "/puppet-ca/v1/certificate_status/localhost"]
+              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+
+          (testing "master endpoints use oid shortnames"
+            (let [path "puppet/v3/catalog/private?environment=production"]
+              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+
+          (testing "legacy endpoints support oid shortnames"
+            (let [path "/v2.0/environments"]
+              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+
+          (testing "legacy CA endpoints support oid shortnames"
+            (let [path "/production/certificate_statuses/all"]
+              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+
+          (testing "puppet-admin endpoints support oid shortnames"
+            (let [path "/puppet-admin-api/v1/environment-cache?environment=production"
+                  http-delete (fn [cert]
+                                (http-client/delete
+                                  (str "http://localhost:8080/" path)
+                                  {:headers {"Accept" "pson"
+                                             "X-Client-Cert" cert
+                                             "X-Client-DN" "CN=private"
+                                             "X-Client-Verify" "SUCCESS"}
+                                   :as :text}))]
+              (is (= 204 (:status (http-delete url-encoded-allowable-cert))))
+              (is (= 403 (:status (http-delete url-encoded-deniable-cert)))))))))))

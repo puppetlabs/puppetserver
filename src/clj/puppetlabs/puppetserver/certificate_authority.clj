@@ -102,6 +102,9 @@
   {:outcome (schema/enum :success :not-found :error)
    :message schema/Str})
 
+(def OIDMappings
+  {schema/Str schema/Keyword})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -593,19 +596,18 @@
   "Parse the CSR attributes yaml file at the given path and create a list of
   certificate extensions from the `extensions_requests` section."
   [csr-attributes-file :- schema/Str]
-  (when (fs/file? csr-attributes-file)
-    (try
+  (when csr-attributes-file
+    (if (fs/file? csr-attributes-file)
       (let [csr-attrs (yaml/parse-string (slurp csr-attributes-file))
-            ext-req   (:extension_requests csr-attrs)]
+            ext-req (:extension_requests csr-attrs)]
         (map (fn [[oid value]]
                {:oid      (or (get puppet-short-names oid)
                               (name oid))
                 :critical false
                 :value    (str value)})
              ext-req))
-      (catch Exception e
-        (throw (Exception.
-                 (str "There was a problem parsing " csr-attributes-file) e))))))
+      (log/error (format "%s is not a valid file path. CSR Attributes will not be loaded."
+                         csr-attributes-file)))))
 
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
@@ -1218,3 +1220,19 @@
     (when (fs/exists? cert)
       (fs/delete cert)
       (log/debug "Deleted certificate for" subject))))
+
+(schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
+  "Given a path to a custom OID mappings file, return a map of all oids to
+  shortnames"
+  [custom-oid-mapping-file :- (schema/maybe schema/Str)]
+  (when custom-oid-mapping-file
+    (if (fs/file? custom-oid-mapping-file)
+      (let [oid-mappings (:oid_mapping (yaml/parse-string (slurp custom-oid-mapping-file)))]
+        (into {} (for [[oid names] oid-mappings] [(name oid) (keyword (:shortname names))])))
+      (log/error (format "%s is not a valid file path. Custom OID Mappings will not be loaded."
+                         custom-oid-mapping-file)))))
+
+(schema/defn ^:always-validate get-oid-mappings :- OIDMappings
+  [custom-oid-mapping-file :- (schema/maybe schema/Str)]
+  (merge (get-custom-oid-mappings custom-oid-mapping-file)
+         (clojure.set/map-invert puppet-short-names)))
