@@ -807,8 +807,8 @@
                   :env (merge env {"RUBYLIB" rubylib})})]
     (log/debugf "Autosign command '%s %s' exit status: %d"
                 executable subject (:exit-code results))
-    (log/debugf "Autosign command '%s %s' output: %s"
-                executable subject (str (:stderr results) (:stdout results)))
+    (log/debugf "Autosign command '%s %s' output on stdout: %s"
+                executable subject (:stdout results))
     (when-not (empty? (:stderr results))
       (log/warnf "Autosign command '%s %s' generated output to stderr: %s"
                  executable subject (:stderr results)))

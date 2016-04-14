@@ -267,10 +267,10 @@
         csr-fn #(csr-stream "test-agent")
         ruby-load-path ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]]
 
-    (testing "stdout and stderr are copied to master's log at debug level"
+    (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
         (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
-        (is (logged? #"(?s)print to stderr.*print to stdout" :debug))))
+        (is (logged? #"print to stdout" :debug))))
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
@@ -302,10 +302,20 @@
   (let [executable (autosign-exe-file "bash-autosign-executable")
         csr-fn #(csr-stream "test-agent")]
 
-    (testing "stdout and stderr are copied to master's log at debug level"
+    (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
         (autosign-csr? executable "test-agent" (csr-fn) [])
-        (is (logged? #"(?s)print to stderr.*print to stdout" :debug))))
+        (is (logged? #"print to stdout" :debug))))
+
+    (testing "stderr is added to master's log at warn level"
+      (logutils/with-test-logging
+       (autosign-csr? executable "test-agent" (csr-fn) [])
+       (is (logged? #"generated output to stderr: print to stderr" :warn))))
+
+    (testing "non-zero exit-code generates a log entry at warn level"
+      (logutils/with-test-logging
+       (autosign-csr? executable "foo" (csr-fn) [])
+       (is (logged? #"rejected certificate 'foo'" :warn))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging
