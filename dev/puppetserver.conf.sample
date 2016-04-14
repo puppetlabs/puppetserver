@@ -5,7 +5,7 @@ global: {
 product: {
     update-server-url: "http://localhost/"
     name: {group-id: puppetlabs.dev
-           artifact-id: puppet-server}
+           artifact-id: puppetserver}
 }
 
 webserver: {

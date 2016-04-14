@@ -5,7 +5,8 @@
         </encoder>
     </appender>
 
-    <!--<logger name="log4j.logger.org.eclipse.jetty.server" level="warn"/>-->
+    <logger name="org.eclipse.jetty" level="warn"/>
+    <logger name="org.apache.http" level="warn"/>
 
     <root level="warn">
         <appender-ref ref="STDOUT" />

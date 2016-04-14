@@ -5,7 +5,7 @@ import java.util.Map;
 /**
  *
  * This interface is a bridge between the clojure/Java code and the ruby class
- * `JRubyPuppet`.  (defined in `src/ruby/puppet-server-lib/jruby_puppet.rb`.)
+ * `JRubyPuppet`.  (defined in `src/ruby/puppetserver-lib/jruby_puppet.rb`.)
  * The ruby class uses some JRuby magic that causes it to "implement" the Java
  * interface.
  *

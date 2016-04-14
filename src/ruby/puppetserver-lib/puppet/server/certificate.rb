@@ -57,7 +57,7 @@ class Puppet::Server::Certificate < Puppet::SSL::Certificate
   private
 
   def get_oid_name(oid)
-    found_oid_desc = Puppet::Server::PuppetConfig.oid_defns.select { |oid_desc|
+    found_oid_desc = Puppet::SSL::Oids::PUPPET_OIDS.select { |oid_desc|
       oid_desc[0] == oid
     }[0]
 
@@ -69,7 +69,7 @@ class Puppet::Server::Certificate < Puppet::SSL::Certificate
   end
 
   def get_name_from_oid(short_name)
-    found_oid_desc = Puppet::Server::PuppetConfig.oid_defns.select { |oid_desc|
+    found_oid_desc = Puppet::SSL::Oids::PUPPET_OIDS.select { |oid_desc|
       oid_desc[1] == short_name
     }[0]
 
@@ -85,4 +85,5 @@ class Puppet::Server::Certificate < Puppet::SSL::Certificate
       second.start_with? first
     end
   end
+
 end

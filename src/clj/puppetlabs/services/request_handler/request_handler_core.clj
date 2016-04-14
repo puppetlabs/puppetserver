@@ -32,12 +32,12 @@
 (defn config->request-handler-settings
   "Given an entire Puppet Server configuration map, return only those keys
   which are required by the request handler service."
-  [{:keys [puppet-server master]}]
+  [{:keys [puppetserver master]}]
   {:allow-header-cert-info   (true? (:allow-header-cert-info master))
    :ssl-client-verify-header (unmunge-http-header-name
-                               (:ssl-client-verify-header puppet-server))
+                               (:ssl-client-verify-header puppetserver))
    :ssl-client-header        (unmunge-http-header-name
-                               (:ssl-client-header puppet-server))})
+                               (:ssl-client-header puppetserver))})
 
 (defn response->map
   "Converts a JRubyPuppetResponse instance to a map."

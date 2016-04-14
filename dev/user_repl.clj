@@ -25,17 +25,17 @@
 ;;; Configuration
 
 (defn initialize-default-config-file
-  "Checks to see if ~/.puppet-server/puppetserver.conf exists; if it does not,
-  copies ./dev/puppet-server.conf.sample to that location."
+  "Checks to see if ~/.puppetserver/puppetserver.conf exists; if it does not,
+  copies ./dev/puppetserver.conf.sample to that location."
   []
-  (let [conf-dir (fs/expand-home "~/.puppet-server")
-        default-conf-file-dest (fs/file conf-dir "puppet-server.conf")]
+  (let [conf-dir (fs/expand-home "~/.puppetserver")
+        default-conf-file-dest (fs/file conf-dir "puppetserver.conf")]
     (when-not (fs/exists? conf-dir)
-      (println "Creating .puppet-server dir")
+      (println "Creating .puppetserver dir")
       (fs/mkdirs conf-dir))
     (when-not (fs/exists? default-conf-file-dest)
-      (println "Copying puppet-server.conf.sample to" conf-dir)
-      (fs/copy "./dev/puppet-server.conf.sample" default-conf-file-dest))
+      (println "Copying puppetserver.conf.sample to" conf-dir)
+      (fs/copy "./dev/puppetserver.conf.sample" default-conf-file-dest))
     (ks/absolute-path default-conf-file-dest)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,7 +58,7 @@
                legacy-routes-service
                authorization-service
                versioned-code-service]
-              ((resolve 'user/puppet-server-conf)))))
+              ((resolve 'user/puppetserver-conf)))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 

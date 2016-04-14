@@ -168,7 +168,7 @@ module PuppetServerExtensions
     when :package
       install_package host, 'puppetserver'
     when :git
-      project_version = 'puppet-server-version='
+      project_version = 'puppetserver-version='
       project_version += test_config[:puppetserver_version] ||
         `lein with-profile ci pprint :version | tail -n 1 | cut -d\\" -f2`
       install_from_ezbake host, 'puppetserver', project_version, make_env

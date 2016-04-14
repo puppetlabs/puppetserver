@@ -15,7 +15,7 @@
    [this context]
    (let [path           (get-route this)
          settings       (ca/config->ca-settings (get-config))
-         puppet-version (get-in-config [:puppet-server :puppet-version])]
+         puppet-version (get-in-config [:puppetserver :puppet-version])]
      (ca/validate-settings! settings)
      (ca/initialize! settings)
      (log/info "CA Service adding a ring handler")
@@ -38,10 +38,10 @@
 
   (retrieve-ca-cert!
     [this localcacert]
-    (ca/retrieve-ca-cert! (get-in-config [:puppet-server :cacert])
+    (ca/retrieve-ca-cert! (get-in-config [:puppetserver :cacert])
                           localcacert))
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (ca/retrieve-ca-crl! (get-in-config [:puppet-server :cacrl])
+    (ca/retrieve-ca-crl! (get-in-config [:puppetserver :cacrl])
                          localcacrl)))

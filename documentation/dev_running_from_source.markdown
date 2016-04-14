@@ -31,12 +31,12 @@ Step 0: Quick Start for Developers
 -----
 
     # clone git repository and initialize submodules
-    $ git clone --recursive git://github.com/puppetlabs/puppet-server
-    $ cd puppet-server
+    $ git clone --recursive git://github.com/puppetlabs/puppetserver
+    $ cd puppetserver
 
     # Remove any old config if you want to make sure you're using the latest
     # defaults
-    $ rm -rf ~/.puppet-server
+    $ rm -rf ~/.puppetserver
     # Copy the sample repl utilities namespace
     $ cp dev/user.clj.sample dev/user.clj
 
@@ -47,12 +47,12 @@ Step 0: Quick Start for Developers
     user=> (help)
 
 You should now have a running server.  Your confdir is set to `./target/master-conf`;
-see ~/.puppet-server/puppet-server.conf to examine this and other default paths.
+see ~/.puppetserver/puppetserver.conf to examine this and other default paths.
 
 In another shell, you can run the agent:
 
-    # Go to the directory where you checked out puppet-server
-    $ cd puppet-server
+    # Go to the directory where you checked out puppetserver
+    $ cd puppetserver
     # Set ruby and bin paths
     $ export RUBYLIB=./ruby/puppet/lib:./ruby/facter/lib
     $ export PATH=./ruby/puppet/bin:./ruby/facter/bin:$PATH
@@ -70,7 +70,7 @@ because it sets codedir, confdir, and many other things to live inside of
 `./target`.  This directory *WILL BE COMPLETELY REMOVED* any time you run
 a `lein clean`, so if you've been setting up any modules / manifests in there,
 you'll lose your work.  It's much better to create a longer-lived home for
-these files.  To do that, you just need to edit the settings in your `puppet-server.conf`
+these files.  To do that, you just need to edit the settings in your `puppetserver.conf`
 file.  More details below.
 
 Also, I generally prefer to use separate confdir and vardir settings for my master
@@ -78,7 +78,7 @@ and agent, because otherwise it's super confusing to try to guess which one of t
 touches which files otherwise.  To use separate conf/vardirs between master and
 agent on Puppet Server, you just need to:
 
-* Choose one set of directories for the master via `puppet-server.conf`
+* Choose one set of directories for the master via `puppetserver.conf`
 * Choose a different set of directories for the agent via CLI args or
     `puppet.conf`'s `[agent]` section
 * Use a different certname for the master than for the agent.  (I usually put
@@ -103,8 +103,8 @@ Use your system's package tools to ensure that the following prerequisites are i
 Step 2: Clone Git Repo and Set Up Working Tree
 -----
 
-    $ git clone git://github.com/puppetlabs/puppet-server
-    $ cd puppet-server
+    $ git clone git://github.com/puppetlabs/puppetserver
+    $ cd puppetserver
     # initialize git submodules (which are located in ./ruby, and contain the
     #   puppet/facter ruby source code)
     $ git submodule init
@@ -113,12 +113,12 @@ Step 2: Clone Git Repo and Set Up Working Tree
 Step 3: Set up Config Files
 -----
 
-Choose a directory outside of the git working copy, e.g. `~/.puppet-server`, where you'd
+Choose a directory outside of the git working copy, e.g. `~/.puppetserver`, where you'd
 like to maintain local config files for development.  Then, copy the file
-`dev/puppet-server.conf.sample` to that directory, and name it `puppet-server.conf`.
+`dev/puppetserver.conf.sample` to that directory, and name it `puppetserver.conf`.
 Edit it to suit your needs.  A few notes:
 
-* Relative paths in the config file refer to the root directory of the puppet-server
+* Relative paths in the config file refer to the root directory of the puppetserver
   git working copy.
 * Puppet Server reads much of its configuration data from `puppet.conf` and Puppet's
   usual `confdir`.  The setting `master-conf-dir` may be used to modify the location
@@ -140,7 +140,7 @@ but the settings that I edit the most frequently are:
    pool.  This can usually be set to 1 for dev purposes, unless you're working on
    something that involves concurrency.
 
-If you prefer, you may break the individual configuration sections from `puppet-server.conf`
+If you prefer, you may break the individual configuration sections from `puppetserver.conf`
 into multiple `.conf` files, and place them in a `conf.d`-style directory.
 
 Step 4a: Run the server from the clojure REPL
@@ -162,8 +162,8 @@ their user namespace to their liking.
 
 Once you've made a copy of the `user.clj` file you'll want to edit it.  It contains
 some comments explaining the contents of the file.  The main change you'll want to
-make is to edit the `puppet-server-conf` function to your liking; you'll probably just
-want to change it so that it points to the path of the `puppet-server.conf` file that
+make is to edit the `puppetserver-conf` function to your liking; you'll probably just
+want to change it so that it points to the path of the `puppetserver.conf` file that
 you created in step 3.
 
 Running the server inside of the clojure REPL allows you to make changes to the
@@ -209,7 +209,7 @@ If you prefer not to run the server interactively in the REPL, you can launch it
 as a normal process.  To start the Puppet Server when running from source, simply
 run the following:
 
-    $ lein run -c /path/to/puppet-server.conf
+    $ lein run -c /path/to/puppetserver.conf
 
 Other useful commands for developers:
 -----
