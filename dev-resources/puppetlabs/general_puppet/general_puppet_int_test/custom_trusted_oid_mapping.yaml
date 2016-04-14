@@ -1,0 +1,8 @@
+---
+oid_mapping:
+  1.3.6.1.4.1.34380.1.2.2:
+    shortname: 'sf'
+    longname: 'Shining Finger'
+  1.3.6.1.4.1.34380.1.2.3:
+    shortname: 'short'
+    longname: 'A Very Long Name'
