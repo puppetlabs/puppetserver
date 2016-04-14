@@ -15,13 +15,13 @@ Puppet Server is an application that runs on the Java Virtual Machine (JVM) and 
 
 Puppet Server is one of two recommended ways to run the Puppet master service; the other is [a Rack server][rack]. Today they're mostly equivalent --- Puppet Server is easier to set up and performs better under heavy loads, but they provide the same services. In the future, Puppet Server's features will further surpass the Rack Puppet master, and we plan to eventually disable Rack support.
 
-> Puppet Enterprise 3.7 and later uses Puppet Server by default. You do not need to manually install or configure it.
+> **Note:** Puppet Enterprise 3.7 and later use Puppet Server by default. You do not need to manually install or configure it.
 
 This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.html) and [configuring](./configuration.html) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](/references/latest/man/master.html).
 
 ## Supported Platforms
 
-Puppet Labs provides Puppet Server packages for Red Hat Enterprise Linux, RHEL-derived distros, Fedora, Debian, and Ubuntu.
+Puppet provides Puppet Server packages for Red Hat Enterprise Linux, RHEL-derived distros, Fedora, Debian, and Ubuntu.
 
 If we don't provide a package for your system, you can run Puppet Server from source on any POSIX server with JDK 1.7 or later. See [Running from Source](./dev_running_from_source.html) for more details.
 
@@ -91,7 +91,7 @@ Additionally, if you need to test or debug code that will be used by Puppet Serv
 
 To handle parallel requests from agent nodes, Puppet Server maintains several separate JRuby interpreters, all independently running Puppet's application code, and distributes agent requests among them. Today, agent requests are distributed more or less randomly, without regard to their environment; this may change in the future.
 
-You can configure the JRuby interpreters in the `jruby-puppet` section of [the `puppetserver.conf` file.](./config_file_puppetserver.html) 
+You can configure the JRuby interpreters in the `jruby-puppet` section of [the `puppetserver.conf` file.](./config_file_puppetserver.html)
 
 #### Tuning Guide
 

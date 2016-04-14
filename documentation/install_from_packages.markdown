@@ -17,7 +17,7 @@ Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just
 
 ## Quick Start
 
-1. [Enable the Puppet Labs package repositories][repodocs], if you haven't already done so.
+1. [Enable the Puppet package repositories][repodocs], if you haven't already done so.
 2. Stop the existing Puppet master service. The method for doing this varies depending on how your system is set up.
 
     If you're running a WEBrick Puppet master, use: `service puppetmaster stop`.
@@ -71,4 +71,4 @@ By default, Puppet Server will be configured to use 2GB of RAM. However, if you 
 
 ## Reporting Issues
 
-Submit issues to our [bug tracker](https://tickets.puppetlabs.com/browse/SERVER).
+Submit issues to our [bug tracker](https://tickets.puppet.com/browse/SERVER).
