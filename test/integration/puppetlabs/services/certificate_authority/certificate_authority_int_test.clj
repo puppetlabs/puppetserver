@@ -206,15 +206,15 @@
      (let [ca-cert (bootstrap/get-ca-cert-for-running-server)
            client-cert (bootstrap/get-cert-signed-by-ca-for-running-server
                         ca-cert
-                        "%6cocalhost")]
+                        "%6cocalhost")
+           ssl-context (bootstrap/get-ssl-context-for-cert-map
+                        ca-cert
+                        client-cert)]
        (testing "for a puppet v4 style CA request"
          (let [response (http-client/get
                          (str "https://localhost:8140/puppet-ca/v1/"
                               "certificate_status/%256cocalhost")
-                         {:ssl-context
-                          (bootstrap/get-ssl-context-for-cert-map
-                           ca-cert
-                           client-cert)
+                         {:ssl-context ssl-context
                           :as :text})]
            (is (= 404 (:status response))
                (ks/pprint-to-string response))
@@ -223,10 +223,7 @@
          (let [response (http-client/get
                          (str "https://localhost:8140/production/"
                               "certificate_status/%256cocalhost")
-                         {:ssl-context
-                          (bootstrap/get-ssl-context-for-cert-map
-                           ca-cert
-                           client-cert)
+                         {:ssl-context ssl-context
                           :as :text})]
            (is (= 404 (:status response))
                (ks/pprint-to-string response))

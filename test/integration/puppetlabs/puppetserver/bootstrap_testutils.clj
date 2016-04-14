@@ -84,8 +84,7 @@
 
 (schema/defn get-ca-cert-for-running-server :- ca/Certificate
   []
-  (ssl-utils/pem->cert
-   (str "./target/master-conf/ssl/ca/ca_crt.pem")))
+  (ssl-utils/pem->cert "./target/master-conf/ssl/ca/ca_crt.pem"))
 
 (schema/defn get-cert-signed-by-ca-for-running-server
   :- (schema/pred ssl-simple/ssl-cert?)
@@ -106,7 +105,10 @@
      certname
      ca-map
      1000
-     {:keylength 512})))
+     ;; Set this artificially lower than default 4K that Puppet Server uses
+     ;; just to make it a bit faster.  Key size is presumed not to matter
+     ;; for the core functionality in any tests that use this.
+     {:keylength 1024})))
 
 (schema/defn get-ssl-context-for-cert-map :- SSLContext
   [ca-cert :- ca/Certificate
