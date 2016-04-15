@@ -59,7 +59,7 @@ step 'Restart puppetserver' do
 end
 
 step 'Validate that the puppetserver service is running' do
-  result=on(master, 'service puppetserver status', :acceptable_exit_codes => [0,1])
+  result=on(master, "service #{service} status", :acceptable_exit_codes => [0,1])
   assert_equal(0, result.exit_code, 'FAIL: The puppetserver service does not appear to be running')
 end
 
