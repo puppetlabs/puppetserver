@@ -643,7 +643,9 @@
           :ssl-client-verify-header
           "X_ssl-client-verify-header-FOO"
           :puppet-version
-          "1.2.3"}))
+          "1.2.3"
+          :trusted-oid-mapping-file
+          (str bootstrap/master-conf-dir "/custom_trusted_oid_mapping.yaml")}))
 
 (deftest ^:integration class-info-updated-after-cache-flush-during-prior-request
   (let [puppet-server-settings (default-puppet-server-settings)
