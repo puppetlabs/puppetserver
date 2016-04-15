@@ -4,6 +4,7 @@
             [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
             [ring.util.codec :as ring-codec]
+            [puppetlabs.ring-middleware.core :as mw]
             [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
@@ -254,23 +255,23 @@
   "A cert provided in the x-client-cert header that cannot be decoded into
   an X509Certificate object throws the expected failure"
   (testing "Improperly URL encoded content"
-    (is (thrown+? [:type    :puppetlabs.puppetserver.jruby-request/bad-request
+    (is (thrown+? [:type    :bad-request
                    :message (str "Unable to URL decode the x-client-cert header: "
                                  "For input string: \"1%\"")]
                   (jruby-request-with-client-cert-header "%1%2"))))
   (testing "Bad certificate content"
-    (is (thrown+? [:type    :puppetlabs.puppetserver.jruby-request/bad-request
+    (is (thrown+? [:type    :bad-request
                    :message (str "Unable to parse x-client-cert into "
                                  "certificate: -----END CERTIFICATE not found")]
                   (jruby-request-with-client-cert-header
                     "-----BEGIN%20CERTIFICATE-----%0AM"))))
   (testing "No certificate in content"
-    (is (thrown+? [:type    :puppetlabs.puppetserver.jruby-request/bad-request
+    (is (thrown+? [:type    :bad-request
                    :message "No certs found in PEM read from x-client-cert"]
                   (jruby-request-with-client-cert-header
                     "NOCERTSHERE"))))
   (testing "More than 1 certificate in content"
-    (is (thrown+? [:type    :puppetlabs.puppetserver.jruby-request/bad-request
+    (is (thrown+? [:type    :bad-request
                    :message "Only 1 PEM should be supplied for x-client-cert but 3 found"]
                   (jruby-request-with-client-cert-header
                     (-> (str test-resources-dir "/master-with-all-cas.pem")
@@ -342,7 +343,7 @@
         (let [bad-message "it's real bad"
               request-handler (core/build-request-handler dummy-service {} (constantly nil))]
           (with-redefs [core/as-jruby-request (fn [_ _]
-                                                (jruby-request/throw-bad-request!
+                                                (mw/throw-bad-request!
                                                   bad-message))]
             (let [response (request-handler {:body (StringReader. "blah")})]
               (is (= 400 (:status response)) "Unexpected response status")

@@ -21,6 +21,7 @@
                  [org.clojure/tools.macro "0.1.5"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
                  [org.clojure/tools.logging "0.3.1"]
+                 [ring/ring-servlet "1.4.0"]
                  [hiccup "1.0.5"]
                  ;; end version conflict resolution dependencies
 
@@ -59,6 +60,7 @@
                  [puppetlabs/trapperkeeper-authorization "0.6.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/ring-middleware "0.3.0"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.5.0"]
                  [puppetlabs/comidi "0.3.1"]]
