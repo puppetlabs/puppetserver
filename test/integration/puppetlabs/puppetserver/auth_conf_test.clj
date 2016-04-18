@@ -101,7 +101,10 @@
                   (ks/pprint-to-string response)))
             (let [response (http-get "puppet/v3/catalog/private?environment=production")]
               (is (= 200 (:status response))
-                  (ks/pprint-to-string response))))
+                  (ks/pprint-to-string response))
+              (is (testutils/catalog-name-matches?
+                   (testutils/catalog-ring-response->catalog response)
+                   "private"))))
           (testing "for legacy puppet routes"
             (let [response (http-get "production/node/public")]
               (is (= 403 (:status response))
@@ -114,7 +117,10 @@
                   (ks/pprint-to-string response)))
             (let [response (http-get "production/catalog/private")]
               (is (= 200 (:status response))
-                  (ks/pprint-to-string response))))
+                  (ks/pprint-to-string response))
+              (is (testutils/catalog-name-matches?
+                   (testutils/catalog-ring-response->catalog response)
+                   "private"))))
           (testing "for puppet 4 routes with url encoding"
             (let [response
                   (http-get
@@ -134,7 +140,13 @@
               ;; "localhost" for "%65ncoded", so this should request should
               ;; succeed.
               (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
+                  (ks/pprint-to-string response))
+              ;; The catalog which is returned should have a name of "%65ncoded"
+              ;; since this should be the name derived from the web server
+              ;; request after a single percent-decode.
+              (is (testutils/catalog-name-matches?
+                   (testutils/catalog-ring-response->catalog response)
+                   "%65ncoded")))
             (let [response
                   (http-get
                    (str "puppet/v3/%63atalog/private/%2E%2E/secret?"
@@ -162,7 +174,13 @@
               ;; "localhost" for "%65ncoded", so this should request should
               ;; succeed.
               (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
+                  (ks/pprint-to-string response))
+              ;; The catalog which is returned should have a name of "%65ncoded"
+              ;; since this should be the name derived from the web server
+              ;; request after a single percent-decode.
+              (is (testutils/catalog-name-matches?
+                   (testutils/catalog-ring-response->catalog response)
+                   "%65ncoded")))
             (let [response
                   (http-get "production/%63atalog/private/%2E%2E/secret?")]
               ;; The web server should decode the above URI path component to
