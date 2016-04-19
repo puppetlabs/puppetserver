@@ -195,6 +195,50 @@ module PuppetServerExtensions
     on(host, "source #{defaults_file}; echo -n $#{varname}")
     stdout
   end
+
+  # Issue an HTTP request and return the Net::HTTPResponse object. Lifted from
+  # https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.3.x/lib/http_calls.rb
+  # and slightly modified.
+  # url: (String) URL to poke
+  # method: (Symbol) :post, :get
+  # cert: (OpenSSL::X509::Certificate, String) The certificate to
+  #       use for authentication.
+  # key: (OpenSSL::PKey::RSA, String) The private key to use for
+  #      authentication
+  # body: (String) Request body (default empty)
+  require 'net/http'
+  require 'uri'
+  def https_request(url, request_method, cert, key, body = nil)
+    # Make insecure https request
+    uri = URI.parse(url)
+    http = Net::HTTP.new(uri.host, uri.port)
+
+    if cert.is_a?(OpenSSL::X509::Certificate)
+      http.cert = cert
+    else
+      raise TypeError, "cert must be an OpenSSL::X509::Certificate object, not #{cert.class}"
+    end
+
+    if key.is_a?(OpenSSL::PKey::RSA)
+      http.key = key
+    else
+      raise TypeError, "key must be an OpenSSL::PKey:RSA object, not #{key.class}"
+    end
+
+    http.use_ssl = true
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+
+    if request_method == :post
+      request = Net::HTTP::Post.new(uri.request_uri)
+      # Needs the content type even though no data is being sent
+      request.content_type = 'application/json'
+      request.body = body
+    else
+      request = Net::HTTP::Get.new(uri.request_uri)
+    end
+    response = http.request(request)
+  end
+
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)
