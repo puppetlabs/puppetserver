@@ -58,3 +58,14 @@ more details.
 
 See [External SSL termination](external_ssl_termination.markdown) for details on
 how to get this working in Puppet Server.
+
+## Loglevels
+
+The Passenger Puppet master used Puppet's logging, which has 8 levels and
+defaults to the 'notice' loglevel. Puppet Server uses logback, which has 5
+levels and defaults to 'info'. Puppet Server also combines the 'notice' and
+'info' levels from Puppet and logs them at the 'info' level to logback.
+Because of this mismatch in levels, log events that would not be emitted by
+default in Passenger will be emitted in Puppet Server. In particular, anything
+logged using `Puppet.info` will be logged in Puppet Server and would not have
+been under Passenger.
