@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/restarting.html"
 [logback.xml]: ./config_file_logbackxml.html
 [Hiera]: /hiera/latest/configuring.html
 [gems]: /puppetserver/latest/gems.html
-[core dependencies]: /puppet/latest/reference/about_agent.html#what-are-puppet-agent-and-puppetserver
+[core dependencies]: /puppet/latest/reference/about_agent.html#what-are-puppet-agent-and-puppet-server
 [environment]: /puppet/latest/reference/environments.html
 [environment caching]: /puppet/latest/reference/configuration.html#environmenttimeout
 

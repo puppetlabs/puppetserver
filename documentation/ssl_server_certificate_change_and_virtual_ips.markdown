@@ -3,7 +3,7 @@ layout: default
 title: "Puppet Server: Known Issues: SSL Server Certificate Change and Virtual IP Addresses"
 canonical: "/puppetserver/latest/ssl_server_certificate_change_and_virtual_ips.html"
 ---
-[pe_db_instructions]: https://docs.puppetlabs.com/pe/latest/release_notes_known_issues.html#puppetdb-behind-a-load-balancer-causes-puppetserver-errors
+[pe_db_instructions]: https://docs.puppet.com/pe/latest/release_notes_known_issues_puppetdb.html#puppetdb-behind-a-load-balancer-causes-puppet-server-errors
 
 Puppet Server can often encounter `server certificate change is restricted` errors when it makes HTTPS requests to a group of load-balanced servers behind a virtual IP address. This page describes the issue, workarounds for the issue, and our future plans for handling the issue.
 
