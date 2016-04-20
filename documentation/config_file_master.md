@@ -12,7 +12,7 @@ canonical: "/puppetserver/latest/config_file_master.html"
 
 The `master.conf` file configures how Puppet Server handles [deprecated][] authorization methods for master endpoints. For an overview, see [Puppet Server Configuration](./configuration.html).
 
-> **Deprecation Note:** This file contains only the `allow-header-cert-info` parameter, and is deprecated as of Puppet Server 2.2 in favor of authorization settings that are configured in the [`auth.conf`][] file. Because this setting is deprecated, a default `master.conf` file is no longer included in the Puppet Server package.
+> **Deprecation Note:** This file contains only the `allow-header-cert-info` parameter, and is deprecated as of Puppet Server 2.2 in favor of authorization settings that are configured in the [new `auth.conf`][] file. Because this setting is deprecated, a default `master.conf` file is no longer included in the Puppet Server package.
 
 In `master.conf`, the `allow-header-cert-info` setting determines whether Puppet Server should use authorization info from the `X-Client-Verify`, `X-Client-DN`, and `X-Client-Cert` HTTP headers. Its default value is `false`.
 
