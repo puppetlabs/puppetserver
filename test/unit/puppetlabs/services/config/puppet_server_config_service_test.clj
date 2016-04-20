@@ -130,7 +130,7 @@
         (tk-testutils/with-app-with-config
           app
           service-and-deps
-          (assoc required-config :webserver {:puppetserver webserver-config})
+          (assoc required-config :webserver {:puppet-server webserver-config})
           (is (logged? #"Not overriding webserver settings with values from core Puppet")))))
 
     (testing (str "webserver settings not overridden when single webserver is provided"
