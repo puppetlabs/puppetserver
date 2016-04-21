@@ -10,7 +10,14 @@
 ## PuppetDB successfully received the agent's report sent from Puppet Server.
 ## We can just run the agent that's on the master for this.
 
-confine :to, {:platform => puppetdb_supported_platforms}, master
+# This confine was originally
+# confine :to, {:platform => puppetdb_supported_platforms}, master
+# With , master present, execution unexpectedly enters the body of the
+# test when we expect the test to be skipped.  BKR-650 maybe relavent.
+# Be aware that future modifications to this test might, especially
+# if there are test operations added that run against agents instead of just
+# masters.
+confine :to, {:platform => puppetdb_supported_platforms}
 
 require 'json'
 
