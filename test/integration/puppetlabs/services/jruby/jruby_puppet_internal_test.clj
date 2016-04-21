@@ -36,7 +36,7 @@
                                                "TLS_RSA_WITH_AES_256_CBC_SHA"]
                    :http-client-ssl-protocols ["TLSv1" "TLSv1.2"]
                    :compile-mode :jit})
-          instance (jruby-internal/create-pool-instance! pool 0 config #() nil)
+          instance (jruby-internal/create-pool-instance! pool 0 config #() nil nil)
           container (:scripting-container instance)]
       (= RubyInstanceConfig$CompileMode/JIT
          (.getCompileMode container))

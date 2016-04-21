@@ -70,7 +70,7 @@
                    {:master-code-dir (.getAbsolutePath code-dir)
                     :master-conf-dir (.getAbsolutePath conf-dir)})
           instance (jruby-internal/create-pool-instance!
-                     pool 0 config #() nil)
+                     pool 0 config #() nil nil)
           jruby-puppet (:jruby-puppet instance)
           container (:scripting-container instance)
           env-registry (:environment-registry instance)

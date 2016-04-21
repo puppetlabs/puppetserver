@@ -12,7 +12,8 @@
             [clojure.tools.logging :as log])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)
-           (clojure.lang IFn)))
+           (clojure.lang IFn)
+           (java.util.concurrent ConcurrentHashMap)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -228,7 +229,8 @@
    ;; For an explanation of why we need a separate agent for the `flush-instance`,
    ;; see the comments in jruby-puppet-agents/send-flush-instance
    :flush-instance-agent  (jruby-agents/pool-agent agent-shutdown-fn)
-   :pool-state            (atom (jruby-internal/create-pool-from-config config))})
+   :pool-state            (atom (jruby-internal/create-pool-from-config config))
+   :shared-terminus-state (ConcurrentHashMap.)})
 
 (schema/defn ^:always-validate
   free-instance-count
