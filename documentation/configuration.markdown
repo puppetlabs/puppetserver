@@ -19,13 +19,13 @@ Puppet Server's configuration files and settings (with the exception of the [log
 
 At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory. You must restart Puppet Server for any changes to those files to take effect. The `conf.d` directory contains the following files and settings:
 
-* [`global.conf`](./config_file_global.html)
-* [`webserver.conf`](./config_file_webserver.html)
-* [`web-routes.conf`](./config_file_web-routes.html)
-* [`puppetserver.conf`](./config_file_puppetserver.html)
-* [`auth.conf`](./config_file_auth.html)
-* [`master.conf`](./config_file_master.html) ([deprecated][])
-* [`ca.conf`](./config_file_ca.html) ([deprecated][])
+* [`global.conf`](./config_file_global.md)
+* [`webserver.conf`](./config_file_webserver.md)
+* [`web-routes.conf`](./config_file_web-routes.md)
+* [`puppetserver.conf`](./config_file_puppetserver.md)
+* [`auth.conf`](./config_file_auth.md)
+* [`master.conf`](./config_file_master.md) ([deprecated][])
+* [`ca.conf`](./config_file_ca.md) ([deprecated][])
 
 ## Logging
 
