@@ -4,7 +4,7 @@ title: "Puppet Server: Advanced Logging Configuration"
 canonical: "/puppetserver/latest/config_logging_advanced.html"
 ---
 
-Puppet Server uses the [Logback](http://logback.qos.ch/) library to handle all of its logging. Logback configuration settings are stored in the [`logback.xml`](./config_file_logbackxml.html) file, which is located at `/etc/puppetlabs/puppetserver/logback.xml` by default.
+Puppet Server uses the [Logback](http://logback.qos.ch/) library to handle all of its logging. Logback configuration settings are stored in the [`logback.xml`](./config_file_logbackxml.markdown) file, which is located at `/etc/puppetlabs/puppetserver/logback.xml` by default.
 
 You can configure Logback to log messages in JSON format, which makes it easy to send them to other logging backends, such as Logstash.
 
