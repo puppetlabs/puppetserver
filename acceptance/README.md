@@ -206,13 +206,13 @@ knows which hosts to use.
 
 ## Using the handy shell script
 If all that seems like too much work, we have a script that should
-make things much simpler for you.
+make things much simpler for you. It relies on the built-in defaults
+for all arguments. All you provide is the two environment variables
+`PACKAGE_BUILD_VERSION` and `PUPPET_VERSION`. Thus:
 
 1. Set the environment variables `PUPPET_VERSION` and
    `PACKAGE_BUILD_VERSION` as described previously.
-2. Set the environment variable `GENCONFIG_LAYOUT` to a layout string
-   that `beaker-hostgenerator` understands.
-3. Execute `acceptance/scripts/generic/testrun.sh -p` to start a
+2. Execute `acceptance/scripts/generic/testrun.sh -p` to start a
    complete run of the tests and preserve the hosts. When the tests
    complete, the script makes a copy of the (modified) config file as
    `hosts_preserved.yml` at the top level of the repo.
@@ -220,9 +220,8 @@ make things much simpler for you.
 ```
    export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
    export PUPPET_VERSION='1.0.0'
-   export GENCONFIG_LAYOUT=redhat7-64m-64a
    acceptance/scripts/generic/testrun.sh -p
 ```
    
-4. To reuse the hosts saved from a previous run, specify `-r` instead
+3. To reuse the hosts saved from a previous run, specify `-r` instead
    of `-p`, that is, `acceptance/scripts/generic/testrun.sh -r`.

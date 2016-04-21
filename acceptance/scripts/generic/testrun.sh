@@ -3,13 +3,13 @@ set -x
 
 export GEM_SOURCE=http://rubygems.delivery.puppetlabs.net
 export GENCONFIG_LAYOUT="${GENCONFIG_LAYOUT:-redhat6-64ma-ubuntu1404-64a-windows2008r2-64a}"
-export BEAKER_TESTSUITE="${BEAKER_TESTSUITE:-acceptance/suites/tests/}"
+export BEAKER_TESTSUITE="${BEAKER_TESTSUITE:-acceptance/suites/tests}"
 export BEAKER_PRESUITE="${BEAKER_PRESUITE:-acceptance/suites/pre_suite/foss}"
-export BEAKER_POSTSUITE="acceptance/suites/post_suite/"
-export BEAKER_OPTIONS="acceptance/config/beaker/options.rb"
-export BEAKER_CONFIG="acceptance/scripts/hosts.cfg"
-export BEAKER_KEYFILE="~/.ssh/id_rsa-acceptance"
-export BEAKER_HELPER="acceptance/lib/helper.rb"
+export BEAKER_POSTSUITE="${BEAKER_POSTSUITE:-acceptance/suites/post_suite}"
+export BEAKER_OPTIONS="${BEAKER_OPTIONS:-acceptance/config/beaker/options.rb}"
+export BEAKER_CONFIG="${BEAKER_CONFIG:-acceptance/scripts/hosts.cfg}"
+export BEAKER_KEYFILE="${BEAKER_KEYFILE:-~/.ssh/id_rsa-acceptance}"
+export BEAKER_HELPER="${BEAKER_HELPER:-acceptance/lib/helper.rb}"
 
 bundle install --path vendor/bundle
 
