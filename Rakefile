@@ -5,7 +5,7 @@ PUPPET_SRC = File.join(PROJECT_ROOT, 'ruby', 'puppet')
 PUPPET_LIB = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'lib')
 PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
-PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppet-server-lib')
+PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
 
 TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
 TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')

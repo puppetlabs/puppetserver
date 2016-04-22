@@ -11,7 +11,7 @@
 
 (def min-config
   {:product
-   {:name "puppet-server", :update-server-url "http://localhost:11111"},
+   {:name "puppetserver", :update-server-url "http://localhost:11111"},
    :jruby-puppet
    {:gem-home "./target/jruby-gem-home",
     :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]}})

@@ -16,8 +16,8 @@
    [this context]
    (let [path (get-route this)
          settings (ca/config->ca-settings (get-config))
-         puppet-version (get-in-config [:puppet-server :puppet-version])
-         custom-oid-file (get-in-config [:puppet-server :trusted-oid-mapping-file])
+         puppet-version (get-in-config [:puppetserver :puppet-version])
+         custom-oid-file (get-in-config [:puppetserver :trusted-oid-mapping-file])
          oid-mappings (ca/get-oid-mappings custom-oid-file)
          auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))]
      (ca/validate-settings! settings)
@@ -42,12 +42,12 @@
 
   (retrieve-ca-cert!
     [this localcacert]
-    (ca/retrieve-ca-cert! (get-in-config [:puppet-server :cacert])
+    (ca/retrieve-ca-cert! (get-in-config [:puppetserver :cacert])
                           localcacert))
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (ca/retrieve-ca-crl! (get-in-config [:puppet-server :cacrl])
+    (ca/retrieve-ca-crl! (get-in-config [:puppetserver :cacrl])
                          localcacrl))
 
   (get-auth-handler

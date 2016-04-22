@@ -8,7 +8,7 @@ The workflow described here is intended for developers who have access to the
 [vmpooler](http://vmpooler.delivery.puppetlabs.net), which currently requires
 [VPN access](https://confluence.puppetlabs.com/display/HELP/VPN+access) and as
 such is only applicable to Puppet Labs employees. This workflow is intended to
-help developers new to the puppet-server project.
+help developers new to the puppetserver project.
 
 The two primary goals of this workflow are to enable the developer to modify
 the behavior of acceptance tests in as little time as possible and to operate
@@ -22,7 +22,7 @@ document.
 -------------------------------------------------------------------------------
 
 **Important:** The commands described in this document assume you are
-  working at the root of the puppet-server repo, that is, in the
+  working at the root of the puppetserver repo, that is, in the
   directory that contains the acceptance directory.
 
 -------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ platforms available in the pool, please see the output of:
 ## Define PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
 
 You'll need to provide a couple of environment variables that specify against
-which builds of puppet-server and puppet-agent to install and
+which builds of puppetserver and puppet-agent to install and
 test. You can test an existing build or test a new build with local
 changes.
 
@@ -53,14 +53,14 @@ changes.
 
 1. Run `lein with-profile ezbake ezbake build`. This will take a while, and
    will result in a build appearing on http://builds.delivery.puppetlabs.net/puppetserver.
-2. If successful, it will give you back a URL with the new puppet-server
+2. If successful, it will give you back a URL with the new puppetserver
    version at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.
    Set `PACKAGE_BUILD_VERSION` to this value.
 
 ### PUPPET_VERSION
 
 Define `PUPPET_VERSION` as the packaged version of the puppet-agent package
-upon which your version of puppet-server depends, such as 1.3.5. You can pick
+upon which your version of puppetserver depends, such as 1.3.5. You can pick
 a puppet-agent version from http://builds.delivery.puppetlabs.net/puppet-agent/?C=M;O=D.
 
 If you are testing backwards compatibility against a specific release of
@@ -140,7 +140,7 @@ This command will kick off a beaker run using vmpooler against the
 hosts defined in the copy of the config file
 `acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg`. It will run
 all the pre-suite steps and then the simple "no op" `testtest.rb` in
-puppet-server/acceptance.
+puppetserver/acceptance.
 
 If the run fails during a pre-suite step, you might want to re-run the
 command with `--preserve-hosts onfail` so that beaker doesn't return
