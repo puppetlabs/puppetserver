@@ -89,7 +89,7 @@ discussion in this document assumes the content of
 To use one of the pre-defined config files, specify the path to it
 using `beaker`'s `--config` option. For example:
 
-    beaker --config acceptance/beaker/jenkins/redhat7-64m-64a.cfg ...
+    bundle exec beaker --config acceptance/beaker/jenkins/redhat7-64m-64a.cfg ...
 
 ### Using beaker-hostgenerator
 
@@ -97,12 +97,12 @@ Beaker config files can be generated with the `beaker-hostgenerator`
 command available in the `beaker-hostgenerator` gem maintained by
 QE. Generating a new config file takes the form
 
-    beaker-hostgenerator LAYOUT_STRING > snowflake.cfg
+    bundle exec beaker-hostgenerator LAYOUT_STRING > snowflake.cfg
 
 For example, to duplicate the config in `redhat7-64m-64a.cfg`, use the
 following command:
 
-    beaker-hostgenerator redhat7-64m-64a > redhat7-64m-64.cfg
+    bundle exec beaker-hostgenerator redhat7-64m-64a > redhat7-64m-64.cfg
 
 The syntax for `LAYOUT_STRING` is a bit strange and irregular. Start
 with the output of `bundle exec beaker-hostgenerator --help`.
@@ -225,3 +225,4 @@ for all arguments. All you provide is the two environment variables
    
 3. To reuse the hosts saved from a previous run, specify `-r` instead
    of `-p`, that is, `acceptance/scripts/generic/testrun.sh -r`.
+
