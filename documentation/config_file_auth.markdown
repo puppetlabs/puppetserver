@@ -27,6 +27,8 @@ However, Puppet Server now has its own `auth.conf` file that uses a new HOCON fo
 > * Requests to certificate status and administration endpoints use the new `auth.conf` rules **only** if the corresponding `client-whitelists` setting is empty or unspecified **and** the `authorization-required` flag is set to `true` (which is its default).
 > * Requests to other certificate administration endpoints --- such as `certificate`, `certificate_request`, and `certificate_revocation_list` --- **always** use the new HOCON `auth.conf` rules in Puppet Server's `auth.conf` file. This happens regardless of the `client-whitelist`, `authorization-required`, or `use-legacy-auth-conf` settings, as versions of Puppet Server before 2.2.0 can't manage those endpoints.
 >
+> For detailed conversion examples for authorization rules, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown). For help configuring authorization rules that serve both Puppet 3 and Puppet 4 agents, see [Backward Compatibility with Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
+
 > **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppet.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppet.com/puppetlabs/hocon) module to use Puppet to manage HOCON-formatted settings in general.
 
 You have two options when configuring how Puppet Server authenticates requests:

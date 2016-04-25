@@ -115,6 +115,8 @@ method find
 allow $1
 ~~~
 
+> **Note:** For more detailed `auth.conf` conversion examples, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown)
+
 ## Details About Backward Compatibility
 
 The `legacy-routes-service` intercepts Puppet 3 HTTPS API requests, transforms the URLs and request headers into Puppet 4 compatible requests, and passes them to the Puppet master service.
