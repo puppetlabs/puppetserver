@@ -10,9 +10,9 @@ canonical: "/puppetserver/latest/config_file_auth_migration.html"
 
 Puppet Server 2.2.0 introduced a significant change in how it manages authentication to API endpoints. The older [Puppet `auth.conf`][] file and whitelist-based authorization method are [deprecated][]. Puppet Server's new `auth.conf` file, illustrated below in examples, also uses a different format for authorization rules.
 
-Use the following examples and methods to convert your authorization rules when upgrading from Puppet Server 2.2.0 and newer. For detailed information about using the new or deprecated `auth.conf` rules with Puppet Server, see the [Puppet Server `auth.conf` documentation](./config_file_auth.markdown).
+Use the following examples and methods to convert your authorization rules when upgrading to Puppet Server 2.2.0 and newer. For detailed information about using the new or deprecated `auth.conf` rules with Puppet Server, see the [Puppet Server `auth.conf` documentation](./config_file_auth.markdown).
 
-> **Note:** To continue using the deprecated Ruby [Puppet `auth.conf`][] file and authorization methods, see the [Deprecated Ruby Parameters](/puppet/latest/reference/config_file_auth.markdown#deprecated-ruby-parameters) section of the `auth.conf` documentation. To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
+> **Note:** To continue using the deprecated [Puppet `auth.conf`][] file and authorization rule format, see the [Deprecated Ruby Parameters](/puppet/latest/reference/config_file_auth.markdown#deprecated-ruby-parameters) section of the `auth.conf` documentation. To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
 
 ## Managing rules with Puppet modules
 
@@ -22,15 +22,15 @@ You can reimplement and manage your authorization rules in the new HOCON format 
 
 Most of the deprecated authorization rules and settings are available in the new format.
 
-> ### Unavailable rules, settings, or values
->
-> The following rules, settings, and values have no direct equivalent in the new HOCON format. If you require them, you must reimplement them differently in the new format.
->
-> * **on value of `auth`:** The deprecated `auth` parameter's on value results in a match only when a request provides a client certificate. There is no equivalent behavior in the HOCON format.
-> * **`allow_ip` or `deny_ip` parameters**
-> * **`method` parameter's search indirector:** While there is no direct equivalent to the deprecated search indirector, you can create an equivalent HOCON rule. See [below](#search-indirector-for-method) for an example.
+### Unavailable rules, settings, or values
 
-> **Note:** Puppet Server considers the state of a request's authentication differently depending on whether the authorization rules use the deprecated Ruby or supported HOCON formats. A deprecated Ruby authorization rule evaluates the `auth` parameter as part of rule-matching process. A HOCON authorization rule first determines whether the request matches other parameters of the rule, and then considers the request's authentication state (using the rule's `allow`, `deny`, or `allow-authenticated` values) after a successful match only.
+The following rules, settings, and values have no direct equivalent in the new HOCON format. If you require them, you must reimplement them differently in the new format.
+
+* **on value of `auth`:** The deprecated `auth` parameter's on value results in a match only when a request provides a client certificate. There is no equivalent behavior in the HOCON format.
+* **`allow_ip` or `deny_ip` parameters**
+* **`method` parameter's search indirector:** While there is no direct equivalent to the deprecated search indirector, you can create an equivalent HOCON rule. See [below](#search-indirector-for-method) for an example.
+
+> **Note:** Puppet Server considers the state of a request's authentication differently depending on whether the authorization rules use the older Puppet `auth.conf` or newer HOCON formats. An authorization rule that uses the deprecated format evaluates the `auth` parameter as part of rule-matching process. A HOCON authorization rule first determines whether the request matches other parameters of the rule, and then considers the request's authentication state (using the rule's `allow`, `deny`, or `allow-authenticated` values) after a successful match only.
 
 ### Basic HOCON structure
 
@@ -190,7 +190,7 @@ authorization: {
 
 To convert a regular expression path, enclose it in double quotation marks and solidus characters (`/`), and set the `type` to regex.
 
-> **Note:** You must escape regular expressions to conform to HOCON standards, which are the same as JSON's and differ from the deprecated Ruby format's regular expressions. For instance, the digit-matching regular expression `\d` must be escaped with a second backslash, as `\\d`.
+> **Note:** You must escape regular expressions to conform to HOCON standards, which are the same as JSON's and differ from the deprecated format's regular expressions. For instance, the digit-matching regular expression `\d` must be escaped with a second backslash, as `\\d`.
 
 Deprecated:
 
@@ -289,7 +289,7 @@ authorization: {
 
 #### Environment URL parameters
 
-In deprecated rules, the `environment` parameter adds a comma-separated list of query parameters as a suffix to the base URL. HOCON rules allow you to pass them as an array `environment` value inside the `query-params` setting. Both the deprecated Ruby and supported HOCON rules match *any* `environment` value.
+In deprecated rules, the `environment` parameter adds a comma-separated list of query parameters as a suffix to the base URL. HOCON rules allow you to pass them as an array `environment` value inside the `query-params` setting. Rules in both the deprecated and HOCON formats match *any* `environment` value.
 
 Deprecated:
 

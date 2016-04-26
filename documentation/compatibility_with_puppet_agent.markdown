@@ -115,7 +115,7 @@ method find
 allow $1
 ~~~
 
-> **Note:** For more detailed `auth.conf` conversion examples, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown)
+> **Note:** For more detailed `auth.conf` conversion examples, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown).
 
 ## Details About Backward Compatibility
 
