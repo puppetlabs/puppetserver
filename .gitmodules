@@ -1,6 +1,6 @@
 [submodule "ruby/puppet"]
 	path = ruby/puppet
-	url = git@github.com:puppetlabs/puppet-cve-test.git
+	url = https://github.com/puppetlabs/puppet.git
 [submodule "ruby/facter"]
 	path = ruby/facter
 	url = https://github.com/puppetlabs/facter.git
