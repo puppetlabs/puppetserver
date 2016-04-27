@@ -34,7 +34,40 @@ You have two options when configuring how Puppet Server authenticates requests:
 * If you opt into using Puppet Server's new, supported HOCON `auth.conf` file and authorization methods, use the parameters and rule definitions in the [HOCON Parameters](#hocon-parameters) section.
 * If you continue using the deprecated Ruby [Puppet `auth.conf`][] file and authorization methods, see the [Deprecated Ruby Parameters](#deprecated-ruby-parameters) section.
 
-## HOCON Parameters
+## HOCON example
+
+Here is an example authorization section using the HOCON configuration format:
+
+``` hocon
+authorization: {
+    version: 1
+    rules: [
+        {
+            match-request: {
+                path: "^/my_path/([^/]+)$"
+                type: regex
+                method: get
+            }
+            allow: [ node1, node2, node3, {extensions:{ext_shortname1: value1, ext_shortname2: value2}} ]
+            sort-order: 1
+            name: "user-specific my_path"
+        },
+        {
+            match-request: {
+                path: "/my_other_path"
+                type: path
+            }
+            allow-unauthenticated: true
+            sort-order: 2
+            name: "my_other_path"
+        },
+    ]
+}
+```
+
+For descriptions of each setting, see the following sections.
+
+## HOCON parameters
 
 Use the following parameters when writing or migrating custom authorization rules using the new HOCON format.
 
@@ -75,56 +108,43 @@ If no rule matches, Puppet Server denies the request by default and returns an H
 
 #### `match-request`
 
-A `match-request` takes the following parameters:
+A `match-request` can take the following parameters, some of which are required:
 
-* [`path`](#path-and-type) (required)
-* [`type`](#path-and-type) (required)
-* [`method`](#method)
-* [`query-params`](#query-params-environment)
+* **`path` and `type` (required):** A `match-request` rule must have a `path` parameter, which returns a match when a request's endpoint URL starts with or contains the `path` parameter's value. The parameter can be a literal string or regular expression as defined in the required `type` parameter.
 
-##### `path` and `type`
+    ``` hocon
+    # Regular expression to match a path in a URL.
+    path: "^/puppet/v3/report/([^/]+)$"
+    type: regex
 
-A `match-request` rule must have a `path` parameter, which returns a match when a request's endpoint URL starts with or contains the `path` parameter's value. The parameter can be a literal string or regular expression as defined in the required `type` parameter.
+    # Literal string to match the start of a URL's path.
+    path: "/puppet/v3/report/"
+    type: path
+    ```
 
-~~~ hocon
-# Regular expression to match a path in a URL.
-path: "^/puppet/v3/report/([^/]+)$"
-type: regex
+    > **Note:** While the HOCON format doesn't require you to wrap all string values with double quotation marks, some special characters commonly used in regular expressions --- such as `*` --- break HOCON parsing unless the entire value is enclosed in double quotes.
+* **`method`:** If a rule contains the optional `method` parameter, Puppet Server applies that rule only to requests that use its value's listed HTTP methods. This parameter's valid values are `get`, `post`, `put`, `delete`, and `head`, provided either as a single value or array of values.
 
-# Literal string to match the start of a URL's path.
-path: "/puppet/v3/report/"
-type: path
-~~~
+    ``` hocon
+    # Use GET and POST.
+    method: [get, post]
 
-> **Note:** While the HOCON format doesn't require you to wrap all string values with double quotation marks, some special characters commonly used in regular expressions --- such as `*` --- break HOCON parsing unless the entire value is enclosed in double quotes.
+    # Use PUT.
+    method: put
+    ```
 
-##### `method`
+    > **Note:** While the new HOCON format does not provide a direct equivalent to the [deprecated][] `method` parameter's `search` indirector, you can create the equivalent rule by passing GET and POST to `method` and specifying endpoint paths using the `path` parameter.
+* **`query-params` and `environment`:** For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter suffix on the request's base URL. Use the optional `query-params` setting and provide the list of query parameters as an array to the setting's `environment` parameter.
 
-If a rule contains the optional `method` parameter, Puppet Server applies that rule only to requests that use its value's listed HTTP methods. This parameter's valid values are `get`, `post`, `put`, `delete`, and `head`, provided either as a single value or array of values.
+    For example, this rule would match a request URL containing the `environment=production` or `environment=test` query parameters:
 
-~~~ hocon
-# Use GET and POST.
-method: [get, post]
+    ``` hocon
+    query-params: {
+        environment: [ production, test ]
+    }
+    ```
 
-# Use PUT.
-method: put
-~~~
-
-> **Note:** While the new HOCON format does not provide a direct equivalent to the [deprecated][] `method` parameter's `search` indirector, you can create the equivalent rule by passing GET and POST to `method` and specifying endpoint paths using the `path` parameter.
-
-##### `query-params` (`environment`)
-
-For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter suffix on the request's base URL. Use the optional `query-params` setting and provide the list of query parameters as an array to the setting's `environment` parameter.
-
-For example, this rule would match a request URL containing the `environment=production` or `environment=test` query parameters:
-
-~~~ hocon
-query-params: {
-    environment: [ production, test ]
-}
-~~~
-
-> **Note:** For Puppet 3 master endpoints, the `environment` was represented as the first subpath in the URL instead of as a query parameter. As noted in the [Puppet 3 agent compatibility section](#puppet-3-agent-compatibility), Puppet Server translates incoming Puppet 3-style URLs to Puppet 4-style URLs before evaluating them against the new HOCON `auth.conf` rules, so the `query-params` approach above replaces environment-specific rules for both Puppet 3 and Puppet 4.
+    > **Note:** For Puppet 3 master endpoints, the `environment` was represented as the first subpath in the URL instead of as a query parameter. As noted in the [Puppet 3 agent compatibility section](#puppet-3-agent-compatibility), Puppet Server translates incoming Puppet 3-style URLs to Puppet 4-style URLs before evaluating them against the new HOCON `auth.conf` rules, so the `query-params` approach above replaces environment-specific rules for both Puppet 3 and Puppet 4.
 
 #### `allow`, `allow-unauthenticated`, and `deny`
 
@@ -133,11 +153,19 @@ After each rule's `match-request` section, it must also have an `allow`, `allow-
 If a request matches the rule, Puppet Server checks the request's authenticated "name" (see [`allow-header-cert-info`](#allow-header-cert-info)) against these parameters to determine what to do with the request.
 
 * **`allow-unauthenticated`**: If this Boolean parameter is set to `true`, Puppet Server allows the request --- even if it can't determine an authenticated name. **This is a potentially insecure configuration** --- be careful when enabling it. A rule with this parameter set to `true` can't also contain the `allow` or `deny` parameters.
-* **`allow`**: This parameter can take a single string value or an array of them. The values can be:
+* **`allow`**: This parameter can take a single string value, an array of string values, a single map value with either an `extensions` or `certname` key, or an array of string and map values.
+
+    The string values can contain:
+
     * An exact domain name, such as `www.example.com`.
     * A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`. 
     * A regular expression surrounded by `/` characters, such as `/example/`.
     * A backreference to a regular expression's capture group in the `path` value, if the rule also contains a `type` value of `regex`. For example, if the path for the rule were `"^/example/([^/]+)$"`, you can make a backreference to the first capture group using a value like `$1.domain.org`.
+
+    The map values can contain:
+
+    * An `extensions` key that specifies an array of matching X.509 extensions. Puppet Server authenticates the request only if each key in the map appears in the request, and each key's value exactly matches.
+    * A `certname` key equivalent to a bare string.
 
     If the request's authenticated name matches the parameter's value, Puppet Server allows it.
 * **`deny`**: This parameter can take the same types of values as the `allow` parameter, but refuses the request if the authenticated name matches --- even if the rule contains an `allow` value that also matches.
@@ -150,17 +178,17 @@ If a request matches the rule, Puppet Server checks the request's authenticated 
 
 After each rule's `match-request` section, the required `sort-order` parameter sets the order in which Puppet Server evaluates the rule by prioritizing it on a numeric value between 1 and 399 (to be evaluated before default Puppet rules) or 601 to 998 (to be evaluated after Puppet), with lower-numbered values evaluated first. Puppet Server secondarily sorts rules lexicographically by the `name` string value's Unicode code points.
 
-~~~ hocon
+``` hocon
 sort-order: 1
-~~~
+```
 
 #### `name`
 
 After each rule's `match-request` section, this required parameter's unique string value identifies the rule to Puppet Server. The `name` value is also written to server logs and error responses returned to unauthorized clients.
 
-~~~ hocon
+``` hocon
 name: "my path"
-~~~
+```
 
 > **Note:** If multiple rules have the same `name` value, Puppet Server will fail to launch.
 
@@ -185,19 +213,19 @@ For backward compatibility, settings in [`puppetserver.conf`][] also control whe
 
 ## Deprecated Ruby Parameters
 
-> **Deprecation Note:** The legacy [Puppet `auth.conf`][] rules for the master endpoints, and client whitelists for the Puppet admin and certificate status endpoints, are [deprecated][]. Convert your configuration files to the HOCON formats using the equivalent [HOCON parameters](#hocon-parameters).
+> **Deprecation note:** The legacy [Puppet `auth.conf`][] rules for the master endpoints, and client whitelists for the Puppet admin and certificate status endpoints, are [deprecated][]. Convert your configuration files to the HOCON formats using the equivalent [HOCON parameters](#hocon-parameters).
 
 ### `path`
 
 Rules with a `path` parameter apply only to endpoints with URLs that start with the parameter's value. In the [deprecated][] [Puppet `auth.conf`][] rule format, start the `path` value with a tilde (`~`) character to indicate that it contains a regular expression.
 
-~~~
+```
 # Regular expression to match a path in a URL.
 path ~ ^/puppet/v3/report/([^/]+)$
 
 # Literal string to match at the start of a URL's path.
 path /puppet/v3/report/
-~~~
+```
 
 ### `method`
 
@@ -212,21 +240,21 @@ destroy    | DELETE
 
 For more details, see the [Puppet `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html#method).
 
-~~~
+```
 # Use GET and POST.
 method: find
 
 # Use PUT.
 method: save
-~~~
+```
 
 ### `environment`
 
 For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter suffix on the request's base URL. In a [deprecated][] [Puppet `auth.conf`][] rule, the `environment` parameter adds a comma-separated list of query parameters as a suffix to the base URL.
 
-~~~
+```
 environment: production,test
-~~~
+```
 
 > **Note:** For Puppet 3 master endpoints, the `environment` was represented as the first subpath in the URL instead of as a query parameter. As noted in the [Puppet 3 agent compatibility section](#puppet-3-agent-compatibility), Puppet Server translates incoming Puppet 3-style URLs to Puppet 4-style URLs before evaluating them.
 
@@ -236,9 +264,9 @@ In a [deprecated][] [Puppet `auth.conf`][] rule, the `auth` parameter specifies 
 
 For example, the following deprecated Puppet `auth.conf` rule matches all clients, including those that do not have to be authenticated:
 
-~~~
+```
 auth: any
-~~~
+```
 
 > **Note:** In the new HOCON `auth.conf` file, there is no directly equivalent behavior to the deprecated `auth` parameter's `on` value.
 
