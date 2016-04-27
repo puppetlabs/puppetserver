@@ -11,6 +11,32 @@ canonical: "/puppetserver/latest/release_notes.html"
 [classes]: https://docs.puppet.com/puppet/latest/reference/lang_classes.html
 [resource type API]: https://docs.puppet.com/puppet/latest/reference/http_api/http_resource_type.html
 
+## Puppet Server 2.3.2
+
+Released April 27, 2016.
+
+This is a bug-fix release that also resolves a security issue in endpoint URL decoding.
+
+### **Security fix:** CVE-2016-2785 - Correctly decode endpoint URLs
+
+Previous versions of Puppet Server 2.x did not correctly decode specific character combinations that could potentially allow for a host to access endpoints restricted by [`auth.conf`](./config_file_auth.markdown) rules. Puppet Server 2.3.2 resolves this issue.
+
+* [CVE-2016-2785](https://puppet.com/security/cve/cve-2016-2785)
+
+### Bug fix: Support Ruby master's custom trusted OID mappings
+
+Puppet's Ruby master supports [custom trusted certificate extension object identifier (OID) mappings](https://docs.puppet.com/puppet/latest/reference/config_file_oid_map.html), but previous versions of Puppet Server 2.x did not. This could result in Puppet Server storing trusted extensions with their default numeric OIDs as their keys, instead of the expected custom-mapped short names.
+
+Puppet Server 2.3.2 resolves this issue by supporting the `trusted_oid_mapping_file` and `csr_attributes` settings in [`puppet.conf`](https://docs.puppet.com/puppet/4.4/reference/config_file_main.html), which define paths to YAML files containing the custom mappings and certificate extension request (CSR) attributes, respectively.
+
+For more information about mapping custom trusted OID names, see the Puppet documentation for the  [`custom_trusted_oid_mapping.yaml` file](https://docs.puppet.com/puppet/latest/reference/config_file_oid_map.html).
+
+* [SERVER-1150](https://tickets.puppet.com/browse/SERVER-1150)
+
+### All changes
+
+* [All Puppet Server issues targeted at this release](https://tickets.puppet.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.3.2%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
+
 ## Puppet Server 2.3.1
 
 Released March 21, 2016.
