@@ -53,7 +53,8 @@
          settings
          path
          wrap-with-authorization-check
-         puppet-version)))
+         puppet-version)
+       {:normalize-request-uri true}))
    context)
 
   (initialize-master-ssl!

@@ -357,21 +357,15 @@
    jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling))
 
-(schema/defn ^:always-validate decode-and-canonicalize-path :- (schema/maybe schema/Str)
-  "Takes a URI path and returns a decoded and canonicalized version."
-  [path :- schema/Str]
-  (-> path URIUtil/decodePath URIUtil/canonicalPath))
-
 (schema/defn ^:always-validate valid-static-file-path?
   "Helper function to decide if a static_file_content path is valid.
   The access here is designed to mimic Puppet's file_content endpoint."
   [path :- schema/Str]
-  (when-let [canonicalized-path (decode-and-canonicalize-path path)]
-     ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
-     ;; The second vector takes anything else that might be on the end of the path.
-     ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
-     (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".+" :rest]] :_]
-                            canonicalized-path)))
+  ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
+  ;; The second vector takes anything else that might be on the end of the path.
+  ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
+  (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".+" :rest]] :_]
+                         path))
 
 (defn static-file-content-request-handler
   "Returns a function which is the main request handler for the
@@ -401,8 +395,7 @@
 
         :else
         {:status 200
-         :body (get-code-content environment code-id
-                                 (decode-and-canonicalize-path file-path))}))))
+         :body (get-code-content environment code-id file-path)}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
