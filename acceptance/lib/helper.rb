@@ -239,6 +239,74 @@ module PuppetServerExtensions
     response = http.request(request)
   end
 
+  # appends match-requests to TK auth.conf
+  #   Provides many defaults so that users of this method can simply 
+  #   and easily allow a host in TK auth.conf
+  #
+  #   TK Auth is documented here:
+  #   https://github.com/puppetlabs/puppetserver/blob/master
+  #   /documentation/config_file_auth.md
+  #
+  #   Arguments:
+  #   cn:     The cannonical name, usually put in an "allow" or "deny"
+  #   name:   The friendly name of the match-request
+  #   host:   The system under test.  Typcially master.
+  #   allow:  hostname, glob, or regex lookback to allow.
+  #   allow_unauthenticated:
+  #           Boolean value.  Only adds the allow-unauthenticated behavior if
+  #           true.
+  #   deny:   hostname, glob or regex lookback to deny
+  #   sort_order:
+  #   path:   
+  #   type:   Valid values are 'path' or 'regex'
+  #   method: Should accept string or array or strings.
+  #           Valid strings include 'head', 'get', 'put', 'post', 'delete' 
+  #
+  require 'hocon/config_factory'
+  def append_match_request(args)
+    cn            = args[:cn]                   #The cannonical name to allow.
+    name          = args[:name] || args[:cn]    #The friendly name of the match_request.
+    host          = args[:host] || master
+    allow         = args[:allow]|| args[:cn]
+    allow_unauthenticated = 
+                  args[:allow_unauthenticated] || false
+    deny          = args[:deny] || false
+    sort_order    = args[:sort_order] || 77
+    path          = args[:path] || '/'
+    type          = args[:type] || 'path'
+    method        = args[:method] || ['head', 'get', 'put', 'post', 'delete']
+    query_params  = args[:query_params] || {}
+    #TODO: handle TK-293 X509 extensions.
+    authconf_file = args[:authconf_file] || options[:'puppetserver-confdir']+'/auth.conf'
+
+    match_request = { 'match-request' =>   
+       {  'path'        => path,
+          'type'        => type,
+          'method'      => method,
+       },
+       'sort-order'  => sort_order,
+       'name'        => name
+       }
+
+    #Note: If you set 'allow', 'allow-unauthenticated', and 'deny' you will 
+    #have an invalid match-request.
+    match_request.merge!('allow' => allow) if allow
+    match_request.merge!('allow-unauthenticated' => true) if allow_unauthenticated
+    match_request.merge!('deny' => deny) if deny
+
+    authconf_text = on(master, "cat #{authconf_file}").stdout
+    authconf_hash = Hocon.parse(authconf_text)
+    authconf_hash['authorization']['rules'] << match_request
+ 
+    # now write the modified hocon back to the file on the server.
+    # we can do it the beaker way or do it ourselves.  This is the beaker way...
+    modify_tk_config(host, authconf_file, authconf_hash, true)
+ 
+    #TODO: restart puppetserver?  hup?
+  end
+
+      
+
 end
 
 Beaker::TestCase.send(:include, PuppetServerExtensions)
