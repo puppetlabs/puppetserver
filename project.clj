@@ -84,9 +84,11 @@
                        :group "puppet"
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
-                       :repo-target "PC1"}
+                       :repo-target "PC1"
+                       :split-bootstraps true}
                 :resources {:dir "tmp/ezbake-resources"}
-                :config-dir "ezbake/config"}
+                :config-dir "ezbake/config/public"
+                :private-config-dir "ezbake/config/private"}
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
@@ -126,7 +128,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.3.25"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.3.24-SNAPSHOT"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
