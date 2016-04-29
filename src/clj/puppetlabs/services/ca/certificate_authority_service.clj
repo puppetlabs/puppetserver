@@ -32,7 +32,8 @@
          settings
          path
          auth-handler
-         puppet-version))
+         puppet-version)
+       {:normalize-request-uri true})
      (assoc context :auth-handler auth-handler)))
 
   (initialize-master-ssl!

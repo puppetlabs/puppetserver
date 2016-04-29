@@ -42,7 +42,7 @@ Puppet Server.
 ### Number of JRubies
 
 The most important setting that you can use to improve the throughput of your
-Puppet Server installation is the [`max-active-instances`](./configuration.html#puppetserver_conf)
+Puppet Server installation is the [`max-active-instances`](./configuration.markdown#puppetserver_conf)
 setting.  The value of this setting is used by Puppet Server to determine how
 many JRuby instances to create when the server starts up.
 
@@ -91,9 +91,9 @@ If your application's memory usage approaches this value, the JVM will try to
 get more aggressive with garbage collection to free up memory. In certain
 situations, you may see increased CPU activity related to this garbage collection. If the JVM is unable to recover enough memory to keep the application running
 smoothly, you will eventually encounter an `OutOfMemoryError`, and the process
-will shut down. 
+will shut down.
 
-For Puppet Server, we also use a JVM argument, 
+For Puppet Server, we also use a JVM argument,
 `-XX:HeapDumpOnOutOfMemoryError`, to cause the JVM to dump an `.hprof` file to
 disk. This is basically a memory snapshot at the point in time where the
 error occurred; it can be loaded into various profiling tools to get a better

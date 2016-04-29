@@ -67,7 +67,9 @@
           ring-handler (legacy-routes-core/build-ring-handler
                          master-handler-info
                          ca-handler-info)]
-      (add-ring-handler this ring-handler))
+      (add-ring-handler this
+                        ring-handler
+                        {:normalize-request-uri true}))
     context)
   (start
     [this context]

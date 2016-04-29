@@ -67,9 +67,13 @@
        ;; of the legacy routes.
        (if (and (map? route-config)
                 (contains? route-config :master-routes))
-         (add-ring-handler this ring-handler
-                           {:route-id :master-routes})
-         (add-ring-handler this ring-handler))))
+         (add-ring-handler this
+                           ring-handler
+                           {:route-id :master-routes
+                            :normalize-request-uri true})
+         (add-ring-handler this
+                           ring-handler
+                           {:normalize-request-uri true}))))
    context)
   (start
     [this context]

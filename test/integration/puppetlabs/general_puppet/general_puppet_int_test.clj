@@ -238,17 +238,23 @@
           (let [response (testutils/get-static-file-content "?code_id=foobar&environment=test")]
             (is (= 400 (:status response)))
             (is (= error-message (:body response))))))
-      (testing "the /static_file_content endpoint returns an error (403) for invalid file-paths or attempted traversals"
-        (let [response (testutils/get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
+      (testing "the /static_file_content endpoint returns an error (403) for invalid file-paths"
+        (let [response (testutils/get-static-file-content
+                        (str "modules/foo/secretstuff/bar?"
+                             "environment=test&code_id=foobar"))]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
-                      "a file within the files directory of a module.") (:body response)))))
+                      "a file within the files directory of a module.")
+                 (:body response)))))
+      (testing "the /static_file_content endpoint returns an error (400) for attempted traversals"
+        (let [response (testutils/get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
+          (is (= 400 (:status response)))
+          (is (re-find #"Invalid relative path" (:body response)))))
       (testing "the /static_file_content decodes and rejects alternate encodings of .."
         (let [response (testutils/get-static-file-content
                         "modules/foo/files/bar/%2E%2E/%2E%2E/%2E%2E/%2E%2E?environment=test&code_id=foobar")]
-          (is (= 403 (:status response)))
-          (is (= (str "Request Denied: A /static_file_content request must be "
-                      "a file within the files directory of a module.") (:body response)))))))))
+          (is (= 400 (:status response)))
+          (is (re-find #"Invalid relative path" (:body response)))))))))
 
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging

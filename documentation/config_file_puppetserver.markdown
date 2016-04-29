@@ -4,64 +4,82 @@ title: "Puppet Server Configuration Files: puppetserver.conf"
 canonical: "/puppetserver/latest/config_file_puppetserver.html"
 ---
 
-[configuration directory]: /puppet/latest/reference/dirs_confdir.html
-[code directory]: /puppet/latest/reference/dirs_codedir.html
-[cache directory]: /puppet/latest/reference/dirs_vardir.html
-[`auth.conf` documentation]: ./config_file_auth.html
-[deprecated]: ./deprecated_features.html
-[static catalogs]: /puppet/latest/reference/static_catalogs.html
-[file resource]: /puppet/latest/reference/type.html#file
-[`static_file_content`]: ./puppet-api/v3/static_file_content.html
+[configuration directory]: https://docs.puppet.com/puppet/latest/reference/dirs_confdir.html
+[code directory]: https://docs.puppet.com/puppet/latest/reference/dirs_codedir.html
+[cache directory]: https://docs.puppet.com/puppet/latest/reference/dirs_vardir.html
+[`auth.conf` documentation]: ./config_file_auth.markdown
+[`environment_classes` API documentation]: ./puppet-api/v3/environment_classes.markdown
+[deprecated]: ./deprecated_features.markdown
+[static catalogs]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
+[file resource]: https://docs.puppet.com/puppet/latest/reference/type.html#file
+[`static_file_content`]: ./puppet-api/v3/static_file_content.markdown
 
-The `puppetserver.conf` file contains settings for Puppet Server software. For an overview, see [Puppet Server Configuration](./configuration.html).
+The `puppetserver.conf` file contains settings for Puppet Server software. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
 ## Settings
 
 > **Note:** Under most conditions, you won't change the default settings for `master-conf-dir` or `master-code-dir`. However, if you do, also change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module` use the same directories as Puppet Server. You must also specify the non-default `confdir` when running commands, since that setting must be set before Puppet tries to find its config file.
 
 * The `jruby-puppet` settings configure the interpreter:
+
     * `ruby-load-path`: The location where Puppet Server expects to find Puppet, Facter, and other components.
+
     * `gem-home`: The location where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If nothing is specified, JRuby uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
+
     * `master-conf-dir`: Optional. The path to the Puppet [configuration directory][]. The default is `/etc/puppetlabs/puppet`.
+
     * `master-code-dir`: Optional. The path to the Puppet [code directory][]. The default is `/etc/puppetlabs/code`.
+
     * `master-var-dir`: Optional. The path to the Puppet [cache directory][]. The default is `/opt/puppetlabs/server/data/puppetserver`.
+
     * `master-run-dir`: Optional. The path to the run directory, where the service's PID file is stored. The default is `/var/run/puppetlabs/puppetserver`.
+
     * `master-log-dir`: Optional. The path to the log directory. If nothing is specified, it uses the Puppet default `/var/log/puppetlabs/puppetserver`.
+
     * `max-active-instances`: Optional. The maximum number of JRuby instances allowed. The default is 'num-cpus - 1', with a minimum value of 1 and a maximum value of 4.
+
     * `max-requests-per-instance`: Optional. The number of HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. The default is 0, which disables automatic JRuby flushing.
 
         JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
+
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
-    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the "master" service. The applicable endpoints are listed in [Puppet v3 HTTP API](/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
-    * `environment-class-cache-enabled`:  Optional.  Used to control whether 
-    or not a cache is maintained in conjunction with the use of the 
-    [`environment_classes` API](./puppet-api/v3/environment_classes.html).  If
-    this setting is set to `true`, the cache will be maintained, enabling an 
-    Etag header to be returned for each GET request to the API and for 
-    subsequent GET requests using the prior Etag value in an If-None-Match 
-    header to return an HTTP 304 (Not Modified) with no response body when 
-    the class information available for an environment has not changed.  If 
-    this setting is set to `false` or is not specified, no cache will be 
-    maintained.  In this case, an Etag header is not returned for GET 
-    requests and the If-None-Match header for an incoming request is ignored,
-    meaning that every incoming request will involve parsing the latest 
-    available code for an environment from disk.  For more information, see 
-    the `environment_classes` API documentation. 
-    * `compile-mode`: Optional, experimental.  Used to control JRuby's "CompileMode", which may improve performance.  The default value is `off`, which is the most conservative value.  A value of `jit` will enable JRuby's "just in time" compilation of Ruby code.  A value of `force` will cause JRuby to attempt to pre-compile all Ruby code ahead of time.
+
+    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
+
+    * `environment-class-cache-enabled`: Optional. Used to control whether the master service maintains a cache in conjunction with the use of the [`environment_classes` API](./puppet-api/v3/environment_classes.markdown).
+
+        If this setting is set to `true`, Puppet Server maintains the cache. It also returns an Etag header for each GET request to the API. For subsequent GET requests that use the prior Etag value in an If-None-Match header, when the class information available for an environment has not changed, Puppet Server returns an HTTP 304 (Not Modified) response with no body.
+
+        If this setting is set to `false` or is not specified, Puppet Server doesn't maintain a cache, an Etag header is not returned for GET requests, and the If-None-Match header for an incoming request is ignored. It therefore parses the latest available code for an environment from disk on every incoming request.
+
+        For more information, see the [`environment_classes` API documentation][].
+
+    * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
         If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
 
-        For a value of `false`, Puppet uses the HOCON configuration file format and location. See the [`auth.conf` documentation](./config_file_auth.html) for more information.
+        For a value of `false`, Puppet uses the HOCON configuration file format and location.
+
+        For more information, see the [`auth.conf` documentation][].
+
 * The `profiler` settings configure profiling:
+
     * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
-* The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.) The settings in this section are now deprecated. Remove these settings and replace them with the authorization method that was introduced in Puppet Server 2.2, using a HOCON format for `auth.conf`. See the [`auth.conf` documentation][] for more information.
+
+* The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.)
+
+    > **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of authorization methods introduced in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].
+
     * `authorization-required` determines whether a client certificate is required to access the endpoints in this API. If set to `false`, all requests will be permitted to access this API. If set to `true`, only the clients whose certnames are included in the `client-whitelist` setting are allowed access to the admin API. If this setting is not specified but the `client-whitelist` setting is specified, the default value for this setting is `true`.
+
     * `client-whitelist` contains an array of client certificate names that are allowed to access the admin API. Puppet Server denies any requests made to this endpoint that do not present a valid client certificate mentioned in this array.
 
-        If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf` documentation][] formats to access the admin API endpoints.
+    If neither the `authorization-required` nor the `client-whitelist` settings are specified, Puppet Server uses the new authorization methods and [`auth.conf`][`auth.conf` documentation] formats to access the admin API endpoints.
 
 * The `versioned-code` settings configure commands required to use [static catalogs][]:
-    * `code-id-command` contains the path to an executable script that Puppet Server invokes to generate a `code_id`. When compiling a static catalog, Puppet Server uses the output of this script as the catalog's `code_id`, which associates the catalog with that version of any [file resources][file resource] that has a `source` attribute with a `puppet:///` URI value.
+
+    * `code-id-command`: the path to an executable script that Puppet Server invokes to generate a `code_id`. When compiling a static catalog, Puppet Server uses the output of this script as the catalog's `code_id`. The `code_id` associates the catalog with the compile-time version of any [file resources][file resource] that has a `source` attribute with a `puppet:///` URI value.
+
     * `code-content-command` contains the path to an executable script that Puppet Server invokes when an agent makes a [`static_file_content`][] API request for the contents of a [file resource][] that has a `source` attribute with a `puppet:///` URI value.
 
 > **Note:** The Puppet Server process must be able to execute the `code-id-command` and `code-content-command` scripts, and the scripts must return valid content to standard output and an error code of 0. For more information, see the [static catalogs][] and [`static_file_content` API][`static_file_content`] documentation.
@@ -117,13 +135,11 @@ profiler: {
     enabled: true
 }
 
-# Settings related to static catalogs. These paths are examples; there are no default
-# scripts provided with Puppet Server, and no default path for the scripts. You must set
+# Settings related to static catalogs. These paths are examples. There are no default
+# scripts provided with Puppet Server, and no default path for the scripts. To use static catalog features, you must set
 # the paths and provide your own scripts.
 versioned-code: {
     code-id-command: /opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh
     code-content-command: /opt/puppetlabs/server/apps/puppetserver/code-content-command_script.sh
 }
 ```
-
-> **Note:** The `puppet-admin` setting and `client-whitelist` parameter are deprecated in favor of authorization methods introduced in Puppet Server 2.2. For details, see the [`auth.conf` documentation][].
