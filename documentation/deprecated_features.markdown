@@ -4,7 +4,7 @@ title: "Puppet Server: Deprecated Features"
 canonical: "/puppetserver/latest/deprecated_features.html"
 ---
 
-[auth.conf]: /puppet/latest/reference/config_file_auth.html
+[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
 
 The following features / configuration settings are deprecated and will be
 removed in a future major release of Puppet Server.
@@ -18,7 +18,7 @@ The value of the `jruby-puppet.use-legacy-auth-conf` setting in the
 which mechanism Puppet Server uses to authorize requests to the following
 endpoints:
 
-* [Puppet's HTTPS API (current)](/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet's HTTPS API (current)](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
 * [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
 
 For a value of `true` (also the default if not specified), the core
@@ -29,7 +29,7 @@ For a value of `false`, Puppet Server uses the `authorization` settings in
 its own "auth.conf" file, evaluated by the `trapperkeeper-authorization`
 service.  This "auth.conf" file is installed at
 `/etc/puppetlabs/puppetserver/conf.d/auth.conf`.  See the
-[puppetserver "auth.conf"](./config_file_auth.html) page for more
+[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
 information.
 
 #### In a Future Major Release
@@ -54,7 +54,7 @@ to start using the `trapperkeeper-authorization` "auth.conf" file.
 If you have customized rules in the core Puppet "auth.conf" file, you will need
 to migrate your Puppet rule settings over to the `trapperkeeper-authorization`
 "auth.conf" file.  See the
-[puppetserver "auth.conf"](./config_file_auth.html) page for more
+[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
 information.  You would then also need to set the `use-legacy-auth-conf`
 setting to `false` and restart the puppetserver service.
 
@@ -90,7 +90,7 @@ permitted to use the certificate status HTTP API endpoints.
 For any other configuration, requests are only permitted to access the
 certificate status HTTP API endpoints if allowed per the rule definitions in
 the `trapperkeeper-authorization` "auth.conf" file.  See the
-[puppetserver "auth.conf"](./config_file_auth.html) page for more
+[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
 information.
 
 #### In a Future Major Release
@@ -228,7 +228,7 @@ the `puppet-admin` HTTP API endpoints.
 For any other configuration, requests are only permitted to access the
 `puppet-admin` HTTP API endpoints if allowed per the rule definitions in the
 `trapperkeeper-authorization` "auth.conf" file.  See the
-[puppetserver "auth.conf"](./config_file_auth.html) page for more
+[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
 information.
 
 #### In a Future Major Release

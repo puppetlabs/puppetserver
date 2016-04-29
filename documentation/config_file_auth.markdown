@@ -5,18 +5,18 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 ---
 
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
-[Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.html
-[deprecated]: ./deprecated_features.html
-[`puppetserver.conf`]: ./config_file_puppetserver.html
+[Puppet `auth.conf`]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
+[deprecated]: ./deprecated_features.markdown
+[`puppetserver.conf`]: ./config_file_puppetserver.markdown
 
-Puppet Server's `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For an overview, see [Puppet Server Configuration](./configuration.html).
+Puppet Server's `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
-The new Puppet Server authentication configuration and functionality is similar to the legacy method in that you define rules in a file named `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule. 
+The new Puppet Server authentication configuration and functionality is similar to the legacy method in that you define rules in a file named `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule.
 
 However, Puppet Server now has its own `auth.conf` file that uses a new HOCON format with different parameters, syntax, and functionality.
 
 > ### Aside: Changes to Authorization in Puppet Server 2.2.0
-> 
+>
 > Puppet Server 2.2.0 introduces a significant change in how it manages authentication to API endpoints. It uses [`trapperkeeper-authorization`][] for authentication, which is configured by rules and settings in Puppet Server's own `auth.conf`, with a HOCON configuration file format in a different location than the [Puppet `auth.conf`][] file.
 >
 > The older Puppet `auth.conf` file and whitelist-based authorization method are [deprecated][]. Puppet Server's new `auth.conf` file, documented below, also uses a different format for authorization rules.
@@ -27,7 +27,9 @@ However, Puppet Server now has its own `auth.conf` file that uses a new HOCON fo
 > * Requests to certificate status and administration endpoints use the new `auth.conf` rules **only** if the corresponding `client-whitelists` setting is empty or unspecified **and** the `authorization-required` flag is set to `true` (which is its default).
 > * Requests to other certificate administration endpoints --- such as `certificate`, `certificate_request`, and `certificate_revocation_list` --- **always** use the new HOCON `auth.conf` rules in Puppet Server's `auth.conf` file. This happens regardless of the `client-whitelist`, `authorization-required`, or `use-legacy-auth-conf` settings, as versions of Puppet Server before 2.2.0 can't manage those endpoints.
 >
-> **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppetlabs.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppetlabs.com/puppetlabs/hocon) module to use Puppet to manage HOCON-formatted settings in general.
+> For detailed conversion examples for authorization rules, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown). For help configuring authorization rules that serve both Puppet 3 and Puppet 4 agents, see [Backward Compatibility with Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
+
+> **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppet.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppet.com/puppetlabs/hocon) module to use Puppet to manage HOCON-formatted settings in general.
 
 You have two options when configuring how Puppet Server authenticates requests:
 
@@ -77,17 +79,17 @@ The `version` parameter is required. In this initial release, the only supported
 
 ### `allow-header-cert-info`
 
-> **Note:** Puppet Server ignores the setting of the same name in [`master.conf`](./config_file_master.html) in favor of this setting in the new `auth.conf` file. If you use the [deprecated][] authentication method and [Puppet `auth.conf`][] rules, you must instead configure this setting in `master.conf`.
+> **Note:** Puppet Server ignores the setting of the same name in [`master.conf`](./config_file_master.markdown) in favor of this setting in the new `auth.conf` file. If you use the [deprecated][] authentication method and [Puppet `auth.conf`][] rules, you must instead configure this setting in `master.conf`.
 
-This optional `authorization` section parameter determines whether to enable [external SSL termination](./external_ssl_termination.html) on all HTTP endpoints that Puppet Server handles, including those served by the "master" service, the certificate authority API, and the Puppet Admin API. It also controls how Puppet Server derives the user's identity for authorization purposes. The default value is `false`.
+This optional `authorization` section parameter determines whether to enable [external SSL termination](./external_ssl_termination.markdown) on all HTTP endpoints that Puppet Server handles, including those served by the "master" service, the certificate authority API, and the Puppet Admin API. It also controls how Puppet Server derives the user's identity for authorization purposes. The default value is `false`.
 
-If this setting is `true`, Puppet Server ignores any presented certificate and relies completely on header data to authorize requests. 
+If this setting is `true`, Puppet Server ignores any presented certificate and relies completely on header data to authorize requests.
 
 > **Warning!** This is very insecure; **do not enable this parameter** unless you've secured your network to prevent **any** untrusted access to Puppet Server.
 
 You cannot rename any of the `X-Client` headers when this setting is enabled, and you must specify identity through the `X-Client-Verify`, `X-Client-DN`, and `X-Client-Cert` headers.
 
-For more information, see [External SSL Termination](./external_ssl_termination.html#disable-https-for-puppet-server) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
+For more information, see [External SSL Termination](./external_ssl_termination.markdown#disable-https-for-puppet-server) in the Puppet Server documentation and [Configuring the Authorization Service](https://github.com/puppetlabs/trapperkeeper-authorization/blob/master/doc/authorization-config.md#allow-header-cert-info) in the `trapperkeeper-authorization` documentation.
 
 ### `rules`
 
@@ -148,7 +150,7 @@ A `match-request` can take the following parameters, some of which are required:
 
 #### `allow`, `allow-unauthenticated`, and `deny`
 
-After each rule's `match-request` section, it must also have an `allow`, `allow-unauthenticated`, or `deny` parameter. (You can set both `allow` and `deny` parameters for a rule, though Puppet Server always prioritizes `deny` over `allow` when a request matches both.) 
+After each rule's `match-request` section, it must also have an `allow`, `allow-unauthenticated`, or `deny` parameter. (You can set both `allow` and `deny` parameters for a rule, though Puppet Server always prioritizes `deny` over `allow` when a request matches both.)
 
 If a request matches the rule, Puppet Server checks the request's authenticated "name" (see [`allow-header-cert-info`](#allow-header-cert-info)) against these parameters to determine what to do with the request.
 
@@ -158,7 +160,7 @@ If a request matches the rule, Puppet Server checks the request's authenticated 
     The string values can contain:
 
     * An exact domain name, such as `www.example.com`.
-    * A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`. 
+    * A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`.
     * A regular expression surrounded by `/` characters, such as `/example/`.
     * A backreference to a regular expression's capture group in the `path` value, if the rule also contains a `type` value of `regex`. For example, if the path for the rule were `"^/example/([^/]+)$"`, you can make a backreference to the first capture group using a value like `$1.domain.org`.
 
@@ -196,10 +198,10 @@ name: "my path"
 
 Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
 
-* [Puppet 4 HTTPS API documentation](/puppet/latest/reference/http_api/http_api_index.html)
-* [Puppet 3 HTTPS API documentation](/references/3.8.0/developer/file.http_api_index.html)
-* [Puppet 4 `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html)
-* [Puppet 3 `auth.conf` documentation](/puppet/3.8/reference/config_file_auth.html)
+* [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
+* [Puppet 4 `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html)
+* [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
 
 Puppet Server allows agents to make requests at the old URLs and internally translates them as requests to the new endpoints. However, rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._ For more information, see [Backward Compatibility With Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
 
@@ -209,7 +211,7 @@ For backward compatibility, settings in [`puppetserver.conf`][] also control whe
 
 * `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `true`.
 * `authorization-required` and `client-whitelist` in the `puppet-admin` section: If `authorization-required` is set to `false` or `client-whitelist` has at least one entry, Puppet Server authorizes requests to Puppet Server's administrative API according to the parameters' values. See the [`puppetserver.conf` documentation][`puppetserver.conf`] for more information on these settings. If `authorization-required` is set to `true` or not set and `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests to Puppet Server's administrative API using the authorization method introduced in Puppet Server 2.2.0.
-* `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.html) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
+* `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
 
 ## Deprecated Ruby Parameters
 
@@ -238,7 +240,7 @@ search     | GET and POST, for endpoints with names that end in "s" or "_search"
 save       | PUT
 destroy    | DELETE
 
-For more details, see the [Puppet `auth.conf` documentation](/puppet/latest/reference/config_file_auth.html#method).
+For more details, see the [Puppet `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html#method).
 
 ```
 # Use GET and POST.
@@ -272,4 +274,4 @@ auth: any
 
 ### `allow-header-cert-info`
 
-If you've enabled the new authentication method introduced in Puppet Server 2.2.0, Puppet Server ignores the setting of the same name in the [deprecated][] [`master.conf`](./config_file_master.html) in favor of this setting in Puppet Server's new HOCON `auth.conf` file. If you use the deprecated authentication method and [Puppet `auth.conf`][] rules and want to configure this setting, you **must** do so in `master.conf`.
+If you've enabled the new authentication method introduced in Puppet Server 2.2.0, Puppet Server ignores the setting of the same name in the [deprecated][] [`master.conf`](./config_file_master.markdown) in favor of this setting in Puppet Server's new HOCON `auth.conf` file. If you use the deprecated authentication method and [Puppet `auth.conf`][] rules and want to configure this setting, you **must** do so in `master.conf`.

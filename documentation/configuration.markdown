@@ -4,10 +4,10 @@ title: "Puppet Server Configuration"
 canonical: "/puppetserver/latest/configuration.html"
 ---
 
-[auth.conf]: /puppet/latest/reference/config_file_auth.html
+[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
-[`puppetserver.conf`]: ./config_file_puppetserver.html
-[deprecated]: ./deprecated_features.html
+[`puppetserver.conf`]: ./config_file_puppetserver.markdown
+[deprecated]: ./deprecated_features.markdown
 
 Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings.
 
@@ -19,21 +19,21 @@ Puppet Server's configuration files and settings (with the exception of the [log
 
 At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory. You must restart Puppet Server for any changes to those files to take effect. The `conf.d` directory contains the following files and settings:
 
-* [`global.conf`](./config_file_global.md)
-* [`webserver.conf`](./config_file_webserver.md)
-* [`web-routes.conf`](./config_file_web-routes.md)
-* [`puppetserver.conf`](./config_file_puppetserver.md)
-* [`auth.conf`](./config_file_auth.md)
-* [`master.conf`](./config_file_master.md) ([deprecated][])
-* [`ca.conf`](./config_file_ca.md) ([deprecated][])
+* [`global.conf`](./config_file_global.markdown)
+* [`webserver.conf`](./config_file_webserver.markdown)
+* [`web-routes.conf`](./config_file_web-routes.markdown)
+* [`puppetserver.conf`](./config_file_puppetserver.markdown)
+* [`auth.conf`](./config_file_auth.markdown)
+* [`master.conf`](./config_file_master.markdown) ([deprecated][])
+* [`ca.conf`](./config_file_ca.markdown) ([deprecated][])
 
 ## Logging
 
 Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, or specify a different Logback config file in [`global.conf`](#globalconf).
 
-For more information on the `logback.xml` file, see [its documentation](./config_file_logbackxml.html) and the [Logback documentation](http://logback.qos.ch/manual/configuration.html). For advanced logging configuration tips, such as configuring Logstash or outputting logs in JSON format, see [the Advanced Logging Configuration guide](./config_logging_advanced.html).
+For more information on the `logback.xml` file, see [its documentation](./config_file_logbackxml.markdown) and the [Logback documentation](http://logback.qos.ch/manual/configuration.html). For advanced logging configuration tips, such as configuring Logstash or outputting logs in JSON format, see [the Advanced Logging Configuration guide](./config_logging_advanced.markdown).
 
-For some tips on advanced logging configuration, including information about configuring your system to write logs in a JSON format suitable for sending to logstash or other external logging systems, see the [Advanced Logging Configuration](./config_logging_advanced.html) documentation.
+For some tips on advanced logging configuration, including information about configuring your system to write logs in a JSON format suitable for sending to logstash or other external logging systems, see the [Advanced Logging Configuration](./config_logging_advanced.markdown) documentation.
 
 ### HTTP Traffic
 

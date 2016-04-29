@@ -43,5 +43,6 @@
         (core/build-ring-handler route
                                  whitelist-settings
                                  jruby-service
-                                 (get-auth-handler))))
+                                 (get-auth-handler))
+        {:normalize-request-uri true}))
     context))
