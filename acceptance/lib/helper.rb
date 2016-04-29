@@ -196,6 +196,22 @@ module PuppetServerExtensions
     stdout
   end
 
+  def hup(host = master, timeout = 30)
+    pid = on(host, "cat /var/run/puppetlabs/puppetserver/puppetserver").stdout
+    on(host, "kill -HUP #{pid}")
+    url = "https://#{host}:8140/puppet/v3/status"
+    curlcmd = "curl -s -k -X GET #{url}"
+    response = 7
+    sleeptime = 1
+    while response == 7 && timeout >0
+      response = on(host, curlcmd, :acceptable_exit_codes=>[0,7]).exit_code
+      sleep sleeptime
+      timeout = timeout - sleeptime
+      sleeptime *= 2
+    end
+    response
+  end
+
   # Issue an HTTP request and return the Net::HTTPResponse object. Lifted from
   # https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.3.x/lib/http_calls.rb
   # and slightly modified.
@@ -212,7 +228,7 @@ module PuppetServerExtensions
     # Make insecure https request
     uri = URI.parse(url)
     http = Net::HTTP.new(uri.host, uri.port)
-
+    
     if cert.is_a?(OpenSSL::X509::Certificate)
       http.cert = cert
     else
