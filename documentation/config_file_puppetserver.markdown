@@ -46,6 +46,12 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
 
+        If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
+
+        For a value of `false`, Puppet uses the HOCON configuration file format and location.
+
+        For more information, see the [`auth.conf` documentation][].
+
     * `environment-class-cache-enabled`: Optional. Used to control whether the master service maintains a cache in conjunction with the use of the [`environment_classes` API](./puppet-api/v3/environment_classes.markdown).
 
         If this setting is set to `true`, Puppet Server maintains the cache. It also returns an Etag header for each GET request to the API. For subsequent GET requests that use the prior Etag value in an If-None-Match header, when the class information available for an environment has not changed, Puppet Server returns an HTTP 304 (Not Modified) response with no body.
@@ -55,12 +61,6 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
         For more information, see the [`environment_classes` API documentation][].
 
     * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
-
-        If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
-
-        For a value of `false`, Puppet uses the HOCON configuration file format and location.
-
-        For more information, see the [`auth.conf` documentation][].
 
 * The `profiler` settings configure profiling:
 
