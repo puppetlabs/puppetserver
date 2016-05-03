@@ -85,10 +85,10 @@
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
                        :repo-target "PC1"
-                       :split-bootstraps true}
+                       :bootstrap-source :directory}
                 :resources {:dir "tmp/ezbake-resources"}
-                :config-dir "ezbake/config/public"
-                :private-config-dir "ezbake/config/private"}
+                :config-dir "ezbake/config/user"
+                :system-config-dir "ezbake/config/system"}
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
