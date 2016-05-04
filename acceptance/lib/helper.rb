@@ -243,6 +243,9 @@ module PuppetServerExtensions
   #   Provides many defaults so that users of this method can simply 
   #   and easily allow a host in TK auth.conf
   #
+  # NOTE: This method allows the caller to define invalid TK auth rules
+  # by design.  
+  #
   #   TK Auth is documented here:
   #   https://github.com/puppetlabs/puppetserver/blob/master
   #   /documentation/config_file_auth.md
@@ -299,11 +302,7 @@ module PuppetServerExtensions
     authconf_hash = Hocon.parse(authconf_text)
     authconf_hash['authorization']['rules'] << match_request
  
-    # now write the modified hocon back to the file on the server.
-    # we can do it the beaker way or do it ourselves.  This is the beaker way...
     modify_tk_config(host, authconf_file, authconf_hash, true)
- 
-    #TODO: restart puppetserver?  hup?
   end
 
       
