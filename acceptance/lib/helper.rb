@@ -208,9 +208,9 @@ module PuppetServerExtensions
 
   # Convert the contents of the private key file in key_file on the host
   # specified by key_host into an RSA private key and return it
-  # cert_host: The host whose cert you want
-  # cert_file: The specific cert file you want
-  # silent   : Suppress Beaker's output; set to false to see it
+  # key_host: The host whose key you want
+  # key_file: The specific key file you want
+  # silent  : Suppress Beaker's output; set to false to see it
   def encode_key(key_host, key_file, silent = true)
     rawkey = on(key_host, "cat #{key_file}", {:silent => silent}).stdout.strip
     OpenSSL::PKey::RSA.new(rawkey)
