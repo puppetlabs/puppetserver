@@ -1,15 +1,15 @@
 ---
 layout: default
 title: "Puppet Server: Backward Compatibility with Puppet 3 Agents"
-canonical: "/puppetserver/latest/compatibility_with_puppet_agent.markdown"
+canonical: "/puppetserver/latest/compatibility_with_puppet_agent.html"
 ---
 
-[ca.conf]: ./config_file_ca.html
-[auth.conf]: /puppet/latest/reference/config_file_auth.html
-[future parser]: /puppet/3.8/reference/experiments_future.html
-[upgrade puppet]: /puppet/latest/reference/upgrade_major_pre.html
-[deprecated]: /puppetserver/2.2/deprecated_features.html
-[Puppet Server `auth.conf` documentation]: ./config_file_auth.html
+[ca.conf]: ./config_file_ca.markdown
+[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
+[future parser]: https://docs.puppet.com/puppet/3.8/reference/experiments_future.html
+[upgrade puppet]: https://docs.puppet.com/puppet/latest/reference/upgrade_major_pre.html
+[deprecated]: https://docs.puppet.com/puppetserver/2.2/deprecated_features.html
+[Puppet Server `auth.conf` documentation]: ./config_file_auth.markdown
 
 Since version 2.1, Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agents. Once your Puppet 3 nodes work with a newer Puppet Server, start upgrading them to Puppet 4.
 
@@ -26,7 +26,7 @@ Before migrating Puppet 3 nodes to Puppet Server 2, do all of the following:
 
 ### Update Puppet 3
 
-Follow the steps in [the Puppet documentation][upgrade Puppet] to prepare your Puppet 3 deployment for a major version upgrade. This is especially important on your Puppet master, where you'll want the newest version of the [future parser][]. 
+Follow the steps in [the Puppet documentation][upgrade Puppet] to prepare your Puppet 3 deployment for a major version upgrade. This is especially important on your Puppet master, where you'll want the newest version of the [future parser][].
 
 ### Transfer and Update `auth.conf`
 
@@ -46,10 +46,10 @@ This means you must:
 
 For more information, see:
 
-* [Puppet 4 HTTPS API documentation](/puppet/latest/reference/http_api/http_api_index.html)
-* [Puppet 3 HTTPS API documentation](/references/3.8.0/developer/file.http_api_index.html)
+* [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
 * [Puppet 4 `auth.conf` documentation][auth.conf]
-* [Puppet 3 `auth.conf` documentation](/puppet/3.8/reference/config_file_auth.html)
+* [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
 
 #### Example `auth.conf` Rules for Puppet 3 and 4 Agents
 
@@ -114,6 +114,8 @@ path ~ ^/puppet/v3/catalog/([^/]+)$
 method find
 allow $1
 ~~~
+
+> **Note:** For more detailed `auth.conf` conversion examples, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown).
 
 ## Details About Backward Compatibility
 

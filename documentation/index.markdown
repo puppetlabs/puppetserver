@@ -13,6 +13,13 @@ Puppet Server is the next-generation application for managing Puppet agents.
 * [Notable Differences vs. the Apache/Passenger Stack](./puppetserver_vs_passenger.markdown)
 * [Installation](./install_from_packages.markdown)
 * [Configuring Puppet Server](./configuration.markdown)
+    * [global.conf](./config_file_global.markdown)
+    * [webserver.conf](./config_file_webserver.markdown)
+    * [web-routes.conf](./config_file_web-routes.markdown)
+    * [puppetserver.conf](./config_file_puppetserver.markdown)
+    * [auth.conf](./config_file_auth.markdown)
+    * [master.conf](./config_file_master.markdown) (deprecated)
+    * [ca.conf](./config_file_ca.markdown) (deprecated)
 * [Compatibility with Puppet Agent](./compatibility_with_puppet_agent.markdown)
 * [Differing Behavior in puppet.conf](./puppet_conf_setting_diffs.markdown)
 * [Subcommands](./subcommands.markdown)
@@ -28,7 +35,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [Environment Cache](./admin-api/v1/environment-cache.markdown)
     * [JRuby Pool](./admin-api/v1/jruby-pool.markdown)
 * **Puppet API**
-    * [Environment Classes](./puppet-api/v3/environment_classes.md)
+    * [Environment Classes](./puppet-api/v3/environment_classes.markdown)
 * **Developer Info**
     * [Debugging](./dev_debugging.markdown)
     * [Running From Source](./dev_running_from_source.markdown)

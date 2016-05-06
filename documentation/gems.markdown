@@ -111,6 +111,6 @@ page discusses this issue further.
 
 If you're using a gem that won't run on JRuby and you can't find a suitable
 replacement, please open a ticket on our
-[Issue Tracker](https://tickets.puppetlabs.com/browse/SERVER); we're definitely
+[Issue Tracker](https://tickets.puppet.com/browse/SERVER); we're definitely
 interested in helping provide solutions if there are common gems that are
 causing trouble for users!

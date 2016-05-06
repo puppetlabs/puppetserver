@@ -119,7 +119,7 @@ We are aware that some favorite gems/tools/features for ruby debugging don't cur
 work with JRuby/Puppet Server.  (For example, some things like color syntax highlighting
 in Pry.)  It's important to us to make sure that the Ruby developer experience is not
 degraded for developers working via Puppet Server rather than webrick, so, if you run
-into issues like this, please file an issue on  our [Bug Tracker](https://tickets.puppetlabs.com/browse/SERVER),
+into issues like this, please file an issue on  our [Bug Tracker](https://tickets.puppet.com/browse/SERVER),
 and we will see if it's possible to add support for things that we're missing.  In many
 cases it might be a matter of simply submitting a patch to JRuby, or submitting a
 JRuby-compatibility patch for an existing gem, and we're interested in trying to help

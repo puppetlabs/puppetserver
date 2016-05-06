@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/external_ca_configuration.html"
 
 Puppet Server supports the ability to configure certificates from an existing
 external CA. This is similar to Ruby Puppet master functionality under a Rack-enabled web server like Apache with Passenger. Much of the existing
-documentation on [External CA Support for the Ruby Puppet Master](https://docs.puppetlabs.com/puppet/latest/reference/config_ssl_external_ca.html)
+documentation on [External CA Support for the Ruby Puppet Master](https://docs.puppet.com/puppet/latest/reference/config_ssl_external_ca.html)
 still applies to using an external CA with Puppet Server. However, there are some configuration differences with Puppet Server, which we've detailed on this page.
 
 ## Client DN Authentication
@@ -35,7 +35,7 @@ For more information on the `bootstrap.cfg` file, see [Service Bootstrapping](./
 
 ## Web Server Configuration
 
-The [webserver.conf](./config_file_webserver.html) file for Puppet Server performs a function similar to that of VirtualHost configuration for
+The [webserver.conf](./config_file_webserver.markdown) file for Puppet Server performs a function similar to that of VirtualHost configuration for
 a Ruby Puppet master running on an Apache server. Several `ssl-` settings
 should be added to the `webserver.conf` file to enable the web server to
 use the correct SSL configuration:

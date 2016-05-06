@@ -3,7 +3,8 @@
             [schema.core :as schema]
             [cheshire.core :as json]
             [puppetlabs.http.client.sync :as http-client]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.puppetserver.ringutils :as ringutils])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -167,6 +168,11 @@
                       (assoc request-options
                         :as :text)))))
 
+(schema/defn ^:always-validate catalog-ring-response->catalog :- PuppetCatalog
+  "Convert a response from a catalog request into a catalog map"
+  [response :- ringutils/RingResponse]
+  (-> response :body json/parse-string))
+
 (schema/defn ^:always-validate get-catalog :- PuppetCatalog
   "Make an HTTP get request for a catalog."
   []
@@ -192,6 +198,13 @@
   (let [site-pp-file (fs/file conf-dir "environments" "production" "manifests" "site.pp")]
     (fs/mkdirs (fs/parent site-pp-file))
     (spit site-pp-file site-pp-contents)))
+
+(schema/defn ^:always-validate catalog-name-matches? :- schema/Bool
+  "Return whether the name (host) found in the catalog matches the supplied
+  name parameter."
+  [catalog :- PuppetCatalog
+   name :- schema/Str]
+  (= name (get catalog "name")))
 
 (schema/defn ^:always-validate resource-matches? :- schema/Bool
   [resource-type :- schema/Str
