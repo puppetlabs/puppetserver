@@ -105,6 +105,7 @@ step "Confirm agent can connect with the new cert" do
               puppet("agent --test --server #{server}--detailed-exitcodes"),
               {:acceptable_exit_codes => [0,2]})
     end
+
     # Can we poke an HTTP API endpoint?
     nodename = fact_on(a, 'fqdn')
     cert = encode_cert(a, a.puppet['hostcert'])
@@ -114,3 +115,4 @@ step "Confirm agent can connect with the new cert" do
 end
 
 end
+
