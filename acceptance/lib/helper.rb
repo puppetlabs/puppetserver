@@ -196,6 +196,26 @@ module PuppetServerExtensions
     stdout
   end
 
+  # Convert the contents of the certificate file in cert_file on the host
+  # specified by cert_host into an X.509 certificate and return it
+  # cert_host: The host whose cert you want
+  # cert_file: The specific cert file you want
+  # silent   : Suppress Beaker's output; set to false to see it
+  def encode_cert(cert_host, cert_file, silent = true)
+    rawcert = on(cert_host, "cat #{cert_file}", {:silent => silent}).stdout.strip
+    OpenSSL::X509::Certificate.new(rawcert)
+  end
+
+  # Convert the contents of the private key file in key_file on the host
+  # specified by key_host into an RSA private key and return it
+  # cert_host: The host whose cert you want
+  # cert_file: The specific cert file you want
+  # silent   : Suppress Beaker's output; set to false to see it
+  def encode_key(key_host, key_file, silent = true)
+    rawkey = on(key_host, "cat #{key_file}", {:silent => silent}).stdout.strip
+    OpenSSL::PKey::RSA.new(rawkey)
+  end
+
   # Issue an HTTP request and return the Net::HTTPResponse object. Lifted from
   # https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.3.x/lib/http_calls.rb
   # and slightly modified.
