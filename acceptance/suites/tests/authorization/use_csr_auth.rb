@@ -69,8 +69,16 @@ step "Copy the CSR attributes file into place" do
   end
 end
 
-# FIXME
+# # FIXME
 # step "Update tkauth config file to use CSR attribute to control access" do
+#   agents.each do |a|
+#     if (not_controller(a))
+#       cn = fact_on(a, 'fqdn')
+#       path = '/puppet/v3/catalogs/#{fqdn}?environment=production'
+#       method = 'git'
+#       append_match_request()
+#     end
+#   end
 # end
 
 step "Generate a new cert with a cert extension" do
@@ -102,7 +110,7 @@ step "Confirm agent can connect with the new cert" do
   agents.each do |a|
     if (not_controller(a))
       rc = on(a,
-              puppet("agent --test --server #{server}--detailed-exitcodes"),
+              puppet("agent --test --server #{server} --detailed-exitcodes"),
               {:acceptable_exit_codes => [0,2]})
     end
 
@@ -110,7 +118,13 @@ step "Confirm agent can connect with the new cert" do
     nodename = fact_on(a, 'fqdn')
     cert = encode_cert(a, a.puppet['hostcert'])
     key = encode_key(a, a.puppet['hostprivkey'])
-    rc = https_request("https://#{server}:8140/puppet/v3/catalog/#{nodename}?environment=production", :get, cert, key)
+    rc = https_request("https://#{server}:8140/puppet/v3/catalog/#{nodename}?environment=production",
+                       :get,
+                       cert,
+                       key)
+    if (rc.code != '200')
+      fail_test "Unexpected HTTP status code: #{rc.code}"
+    end
   end
 end
 
