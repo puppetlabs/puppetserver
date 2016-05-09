@@ -4,17 +4,17 @@ title: "Puppet Server: Puppet API: Environment Classes"
 canonical: "/puppetserver/latest/puppet/v3/environment_classes.html"
 ---
 
-[classes]: /puppet/latest/reference/lang_classes.html
-[deprecated WEBrick Puppet master]: /puppet/latest/reference/services_master_webrick.html
-[node definitions]: /puppet/latest/reference/lang_node_definitions.html
-[defined types]: /puppet/latest/reference/lang_defined_types.html
-[`environment_timeout`]: /puppet/latest/reference/config_file_environment.html#environmenttimeout
-[resource type API]: /puppet/latest/reference/http_api/http_resource_type.html
-[`manifest` setting]: /puppet/latest/reference/config_file_environment.html#manifest
+[classes]: https://docs.puppet.com/puppet/latest/reference/lang_classes.html
+[deprecated WEBrick Puppet master]: https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html
+[node definitions]: https://docs.puppet.com/puppet/latest/reference/lang_node_definitions.html
+[defined types]: https://docs.puppet.com/puppet/latest/reference/lang_defined_types.html
+[`environment_timeout`]: https://docs.puppet.com/puppet/latest/reference/config_file_environment.html#environmenttimeout
+[resource type API]: https://docs.puppet.com/puppet/latest/reference/http_api/http_resource_type.html
+[`manifest` setting]: https://docs.puppet.com/puppet/latest/reference/config_file_environment.html#manifest
 
-[`auth.conf`]: /puppetserver/latest/config_file_auth.html
-[`puppetserver.conf`]: /puppetserver/latest/config_file_puppetserver.html
-[environment cache API]: /puppetserver/latest/admin-api/v1/environment-cache.html
+[`auth.conf`]: ../../config_file_auth.markdown
+[`puppetserver.conf`]: ../../config_file_puppetserver.markdown
+[environment cache API]: ../../admin-api/v1/environment-cache.markdown
 
 [Etag]: https://tools.ietf.org/html/rfc7232#section-2.3
 
@@ -376,7 +376,7 @@ entries on the server, do one of the following:
     environment whose cache should be flushed.
 
 -   **PE only:** Perform a `commit` through the
-    [File Sync API endpoint](/pe/latest/cmgmt_filesync_api.html#post-file-syncv1commit).
+    [File Sync API endpoint](https://docs.puppet.com/pe/latest/cmgmt_filesync_api.html#post-file-syncv1commit).
 
     When committing code through the file sync API, you don't need to invoke the
     `environment-cache` API endpoint to flush the environment's cache. The environment's
@@ -387,7 +387,7 @@ entries on the server, do one of the following:
 
     Each environment's cache is held in memory for the Puppet Server process and is
     effectively flushed whenever Puppet Server is restarted, whether with a
-    [HUP signal](./restarting.html) or a full JVM restart.
+    [HUP signal](../../restarting.markdown) or a full JVM restart.
 
 ### Authorization
 
