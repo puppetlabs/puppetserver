@@ -47,7 +47,7 @@ Puppet Server from a package install, stdout should be routed to the
 Lines of output from `set_trace_func` look like the following:
 
 ~~~
- c-call /usr/share/puppetserver/puppet-server-release.jar!/META-INF/jruby.home/lib/ruby/shared/jopenssl19/openssl/ssl-internal.rb:30 initialize OpenSSL::X509::Store
+ c-call /usr/share/puppetserver/puppetserver-release.jar!/META-INF/jruby.home/lib/ruby/shared/jopenssl19/openssl/ssl-internal.rb:30 initialize OpenSSL::X509::Store
 ~~~
 
 You could use this technique to locate any references made to specific class
