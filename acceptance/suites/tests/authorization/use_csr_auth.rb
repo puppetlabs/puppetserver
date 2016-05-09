@@ -30,8 +30,13 @@ end
 # FIXME: Should actually HUP the server instead of stopping/restarting
 step "HUP the server" do
   rc = on(master,
-          "systemctl restart puppetserver",
+          "pgrep -f puppetserver",
           {:acceptable_exit_codes => [0]})
+  pid = rc.stdout
+  rc = on(master,
+          "kill -HUP #{pid}",
+          {:acceptable_exit_codes => [0]})
+  sleep 5
 end
 
 # After a server HUP, the agent cert should be rejected
@@ -98,11 +103,15 @@ step "Sign the certs" do
 end
 
 # FIXME: Should actually HUP the server instead of stopping/restarting
-# HUP the server
 step "HUP the server" do
   rc = on(master,
-          "systemctl restart puppetserver",
+          "pgrep -f puppetserver",
           {:acceptable_exit_codes => [0]})
+  pid = rc.stdout
+  rc = on(master,
+          "kill -HUP #{pid}",
+          {:acceptable_exit_codes => [0]})
+  sleep 5
 end
 
 # Confirm agents can connect with new cert
