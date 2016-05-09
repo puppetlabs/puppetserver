@@ -2,10 +2,10 @@
 
 [Puppet Server](./documentation/services_master_puppetserver.markdown) is the
 next-generation application for managing
-[Puppet](https://github.com/puppetlabs/puppet) agents. This platform implements
+[Puppet](https://docs.puppet.com/puppet/) agents. This platform implements
 Puppet's server-side components in a more distributed, service-oriented
 architecture. We've built Puppet Server on top of the same technologies that
-make [PuppetDB](https://github.com/puppetlabs/puppetdb) successful, and which
+make [PuppetDB](https://docs.puppet.com/puppetdb/) successful, and which
 allow us to greatly improve performance, scalability, advanced metrics
 collection, and fine-grained control over the Ruby runtime.
 
