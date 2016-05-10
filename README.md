@@ -44,7 +44,7 @@ In network configurations that require external SSL termination, you need to do 
 ## CLI Commands
 
 Puppet Server provides several command-line utilities useful for development
-and debugging purposes. These commands are all aware of `puppet-server.conf`
+and debugging purposes. These commands are all aware of `puppetserver.conf`
 and the gems and Ruby code specific to Puppet Server and Puppet, while keeping
 them isolated from your system Ruby.
 
@@ -63,7 +63,7 @@ If you are a developer who wants to play with our code, these documents should p
 
 ## Branching Strategy
 
-The Branching Strategy for Puppet Server is documented on the wiki [here](https://github.com/puppetlabs/puppet-server/wiki/Branching-Strategy).
+The Branching Strategy for Puppet Server is documented on the wiki [here](https://github.com/puppetlabs/puppetserver/wiki/Branching-Strategy).
 
 ## Issue Tracker
 

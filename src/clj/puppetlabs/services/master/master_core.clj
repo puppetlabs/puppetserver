@@ -430,8 +430,8 @@
                (request-handler request))
    (comidi/GET ["/resource_types/" [#".*" :rest]] request
                (request-handler request))
-   (comidi/GET ["/environment/" [#".*" :rest]] request
-               (request-handler request))
+   (comidi/GET ["/environment/" [#".*" :environment]] request
+               (request-handler (assoc request :include-code-id? true)))
    (comidi/GET "/environments" request
                (request-handler request))
    (comidi/GET ["/status/" [#".*" :rest]] request

@@ -31,7 +31,7 @@
                                       (get-in tk-config [:webserver]))
                               puppet-config)
         (assoc context :puppet-config
-                       {:puppet-server puppet-config}))))
+                       {:puppetserver puppet-config}))))
 
   (get-config
     [this]

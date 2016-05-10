@@ -285,7 +285,6 @@
           request (partial app-request app)]
       (doseq [[method paths]
               {:get ["node"
-                     "environment"
                      "file_content"
                      "file_metadatas"
                      "file_metadata"

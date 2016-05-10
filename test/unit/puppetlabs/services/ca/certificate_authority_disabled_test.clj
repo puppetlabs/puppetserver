@@ -8,7 +8,8 @@
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]))
 
 
 
@@ -29,7 +30,8 @@
 
         [profiler/puppet-profiler-service
          jruby/jruby-puppet-pooled-service
-         disabled/certificate-authority-disabled-service]
+         disabled/certificate-authority-disabled-service
+         tk-auth/authorization-service]
 
         (-> (jruby-testutils/jruby-puppet-tk-config
               (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))

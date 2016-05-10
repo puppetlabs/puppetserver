@@ -13,7 +13,7 @@
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl!]
+   [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
    [:VersionedCodeService get-code-content]]
@@ -21,10 +21,10 @@
    [this context]
    (core/validate-memory-requirements!)
    (let [config (get-config)
-         certname (get-in config [:puppet-server :certname])
-         localcacert (get-in config [:puppet-server :localcacert])
-         puppet-version (get-in config [:puppet-server :puppet-version])
-         hostcrl (get-in config [:puppet-server :hostcrl])
+         certname (get-in config [:puppetserver :certname])
+         localcacert (get-in config [:puppetserver :localcacert])
+         puppet-version (get-in config [:puppetserver :puppet-version])
+         hostcrl (get-in config [:puppetserver :hostcrl])
          settings (ca/config->master-settings config)
          product-name (or (get-in config [:product :name])
                           {:group-id    "puppetlabs"
@@ -53,7 +53,7 @@
                                                           jruby-service
                                                           get-code-content
                                                           handle-request
-                                                          wrap-with-authorization-check
+                                                          (get-auth-handler)
                                                           environment-class-cache-enabled)
                               ((partial comidi/context path))
                               comidi/routes->handler))]

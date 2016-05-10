@@ -4,7 +4,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
-            [puppetlabs.comidi :as comidi :refer [GET ANY PUT]]
+            [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
             [bidi.schema :as bidi-schema]
             [slingshot.slingshot :as sling]
             [clojure.tools.logging :as log]
@@ -26,6 +26,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
+
+(defn handle-server-error
+  [message]
+  (-> (rr/response message)
+      (rr/status 400)
+      (rr/content-type "text/plain")))
 
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
@@ -51,15 +57,22 @@
     (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
       ;; Respond to all CSR validation failures with a 400
-      (-> (rr/response message)
-          (rr/status 400)
-          (rr/content-type "text/plain")))))
+      (handle-server-error message))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
   (-> (ca/get-certificate-revocation-list cacrl)
       (rr/response)
       (rr/content-type "text/plain")))
+
+(schema/defn handle-delete-certificate-request!
+  [subject :- String
+   ca-settings :- ca/CaSettings]
+  (let [response (ca/delete-certificate-request! ca-settings subject)
+        outcomes->codes {:success 204 :not-found 404 :error 500}]
+    (-> (rr/response (:message response))
+        (rr/status ((response :outcome) outcomes->codes))
+        (rr/content-type "text/plain"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
@@ -167,7 +180,8 @@
 
   :delete!
   (fn [context]
-    (ca/delete-certificate! settings subject))
+    (ca/delete-certificate! settings subject)
+    (ca/delete-certificate-request! settings subject))
 
   :exists?
   (fn [context]
@@ -207,13 +221,16 @@
     (when (= :put (get-in context [:request :request-method]))
       (if-let [body (get-in context [:request :body])]
         (if-let [json-body (try-to-parse body)]
-          (let [desired-state (keyword (:desired_state json-body))]
+          (if-let [desired-state (keyword (:desired_state json-body))]
             (if (schema/check ca/DesiredCertificateState desired-state)
               (malformed
                 (format
                   "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
                   (name desired-state) subject))
-              [false {::json-body json-body}]))
+              ; this is the happy path. we have a body, it's parsable json,
+              ; and the desired_state field is one of (signed revoked)
+              [false {::json-body json-body}])
+            (malformed "Missing required parameter \"desired_state\""))
           (malformed "Request body is not JSON."))
         (malformed "Empty request body."))))
 
@@ -259,8 +276,10 @@
     (comidi/context ["/v1"]
       (ANY ["/certificate_status/" :subject] [subject]
         (certificate-status subject ca-settings))
-      (ANY ["/certificate_statuses/" :ignored-but-required] []
-        (certificate-statuses ca-settings))
+      (comidi/context ["/certificate_statuses/"]
+        (ANY [[#"[^/]+" :ignored-but-required]] []
+          (certificate-statuses ca-settings))
+        (ANY [""] [] (handle-server-error "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
       (comidi/context ["/certificate_request/" :subject]
@@ -268,6 +287,8 @@
           (handle-get-certificate-request subject ca-settings))
         (PUT [""] [subject :as {body :body}]
           (handle-put-certificate-request! subject body ca-settings)))
+        (DELETE [""] [subject]
+          (handle-delete-certificate-request! subject ca-settings))
       (GET ["/certificate_revocation_list/" :ignored-node-name] []
         (handle-get-certificate-revocation-list ca-settings)))
     (comidi/not-found "Not Found")))

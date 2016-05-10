@@ -47,7 +47,7 @@ because JRuby will not receive data from standard input when running inside
 of `lein repl`.  To use a ruby REPL during development run `puppetserver` from
 source with `lein run` rather than `lein repl`:
 
-    $ lein run --config ~/.puppet-server/puppet-server.conf
+    $ lein run --config ~/.puppetserver/puppetserver.conf
 
 The `lein run` command will start the server in the foreground as normal.
 `pry` or `ruby-debug` will display an input prompt once the relevant statement
@@ -69,7 +69,7 @@ version available.  To install it for use in Puppet Server, run:
 
 Or, if you're running puppetserver from source:
 
-    $ lein gem -c /path/to/puppet-server.conf install ruby-debug
+    $ lein gem -c /path/to/puppetserver.conf install ruby-debug
 
 ### Usage
 
@@ -90,7 +90,7 @@ JRuby.  Install `pry` when running a packaged version of puppetserver using:
 
 Or, if you're running puppetserver from source:
 
-    $ lein gem -c ~/puppet-server/puppet-server.conf -- install pry \
+    $ lein gem -c ~/puppetserver/puppetserver.conf -- install pry \
       --no-ri --no-rdoc
 
 ### Usage

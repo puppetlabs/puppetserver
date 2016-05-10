@@ -10,7 +10,7 @@ Puppet::Util::Log.newdesttype :logback do
       output = "#{msg.source} #{output}"
     end
 
-    logger = LoggerFactory.getLogger("puppet-server")
+    logger = LoggerFactory.getLogger("puppetserver")
     case msg.level
       when :debug
         logger.debug(output)
