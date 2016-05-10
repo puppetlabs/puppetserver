@@ -96,3 +96,9 @@ grateful to the developers for building such a great product and for helping us
 work through a few bugs that we've discovered along the way.
 
 [leiningen]: https://github.com/technomancy/leiningen
+
+## Maintainence
+
+Maintainers: Chris Price <chris@puppet.com>, Jeremy Barlow <jeremy.barlow@puppet.com>, Kevin Corcoran <kevin.corcoran@puppet.com>
+
+Tickets: For issues in o/s only: https://tickets.puppetlabs.com/browse/SERVER. For issues in o/s or PE: https://tickets.puppetlabs.com/browse/PE. Set component = Puppet Server
