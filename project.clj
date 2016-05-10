@@ -1,5 +1,5 @@
 (def clj-version "1.7.0")
-(def tk-version "1.3.1")
+(def tk-version "1.4.0")
 (def tk-jetty-version "1.5.6")
 (def ks-version "1.3.0")
 (def ps-version "2.4.0-master-SNAPSHOT")
@@ -19,17 +19,18 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.5"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [com.fasterxml.jackson.core/jackson-core "2.5.4"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [hiccup "1.0.5"]
                  ;; end version conflict resolution dependencies
 
-                 [cheshire "5.3.1"]
-                 [slingshot "0.10.3"]
+                 [cheshire "5.6.1"]
+                 [slingshot "0.12.2"]
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [clj-time "0.11.0"]
-                 [prismatic/schema "1.0.4"]
+                 [prismatic/schema "1.1.1"]
                  [me.raynes/fs "1.4.6"]
                  [liberator "0.12.0"]
                  [org.apache.commons/commons-exec "1.3"]
@@ -55,7 +56,7 @@
 
 
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.6.0"]
+                 [puppetlabs/trapperkeeper-authorization "0.6.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
@@ -98,7 +99,7 @@
   :classifiers [["test" :testutils]]
 
   :profiles {:dev {:source-paths  ["dev"]
-                   :dependencies  [[org.clojure/tools.namespace "0.2.5"]
+                   :dependencies  [[org.clojure/tools.namespace "0.2.10"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
