@@ -196,6 +196,19 @@ module PuppetServerExtensions
     stdout
   end
 
+  # If we are getting the certificate for the first time, store it in the
+  # beaker host options hash.  Else, return the stored certificate from the
+  # beaker host options hash
+  def get_cert(host)
+    if host.host_hash[:cert].class == OpenSSL::X509::Certificate then
+      return host.host_hash[:cert]
+    else
+      cert = encode_cert(host, host.puppet['hostcert'])
+      host.host_hash[:cert] = cert
+      return cert
+    end
+  end
+
   # Convert the contents of the certificate file in cert_file on the host
   # specified by cert_host into an X.509 certificate and return it
   # cert_host: The host whose cert you want
@@ -204,6 +217,19 @@ module PuppetServerExtensions
   def encode_cert(cert_host, cert_file, silent = true)
     rawcert = on(cert_host, "cat #{cert_file}", {:silent => silent}).stdout.strip
     OpenSSL::X509::Certificate.new(rawcert)
+  end
+
+  # Gets the key from the host hash if it is present, other wise uses 
+  # the encode_key method to get the key from the host, and stores it in the 
+  # host hash
+  def get_key(host)
+    if host.host_hash[:key].class == OpenSSL::PKey::RSA then
+      return host.host_hash[:key]
+    else
+      key = encode_key(host, host.puppet['hostprivkey'])
+      host.host_hash[:key] = key
+      return key
+    end
   end
 
   # Convert the contents of the private key file in key_file on the host
@@ -259,7 +285,35 @@ module PuppetServerExtensions
     response = http.request(request)
   end
 
-
+  def hup_server(host = master, timeout = 30)
+    pidfile = on(host, 'puppet master --configprint rundir').stdout + '/puppetserver' 
+    pid = on(host, "cat #{pidfile}").stdout.chomp
+    on(host, "kill -HUP #{pid}")
+    url = "https://#{host}:8140/puppet/v3/status"
+    cert = get_cert(master)
+    key = get_key(master)
+    response_code = "0"
+    sleeptime = 1
+    while response_code != "404" && timeout > 0
+      sleep sleeptime
+      begin
+        response = https_request(url, 'GET', cert, key)
+      rescue StandardError => e
+        expected_errors = [ Errno::ECONNREFUSED, Errno::ECONNRESET, 
+                            OpenSSL::SSL::SSLError ]
+        if !expected_errors.include?e.class 
+          raise e
+        else
+          # Does this message violate the Wolfe Principle?
+          #puts "Caught and buried #{e}: this is expected because the server is restarting"
+        end
+      end
+      response_code = response.code unless response == nil
+      timeout = timeout - sleeptime
+      sleeptime *= 2
+    end
+  end
+  
   # appends match-requests to TK auth.conf
   #   Provides many defaults so that users of this method can simply 
   #   and easily allow a host in TK auth.conf
