@@ -1,6 +1,6 @@
 (def clj-version "1.7.0")
 (def tk-version "1.4.0")
-(def tk-jetty-version "1.5.6")
+(def tk-jetty-version "1.5.9")
 (def ks-version "1.3.0")
 (def ps-version "2.4.0-master-SNAPSHOT")
 
@@ -19,7 +19,7 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.5"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [org.clojure/tools.reader "1.0.0-alpha1"]
+                 [org.clojure/tools.reader "1.0.0-beta1"]
                  [org.clojure/tools.logging "0.3.1"]
                  [hiccup "1.0.5"]
                  ;; end version conflict resolution dependencies
