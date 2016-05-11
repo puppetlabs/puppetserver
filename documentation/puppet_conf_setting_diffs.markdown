@@ -25,7 +25,11 @@ Puppet Server does not use this setting. Instead, Puppet Server acts as a
 certificate authority based on the certificate authority service configuration
 in the `bootstrap.cfg` file. See [Service Bootstrapping](./configuration.markdown#service-bootstrapping) for more details.
 
-### [`cacert`](https://docs.puppet.com/puppet/latest/reference/configuration.html#cacert)
+### [`ca_ttl`](https://docs.puppetlabs.com/references/latest/configuration.html#cattl)
+
+Puppet Server enforces a max ttl of 50 standard years (up to 1576800000 seconds).
+
+### [`cacert`](https://docs.puppetlabs.com/references/latest/configuration.html#cacert)
 
 If you enable Puppet Server's certificate authority service, it uses the `cacert`
 setting in puppet.conf to determine the location of the CA certificate for such

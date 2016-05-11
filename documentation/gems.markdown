@@ -59,7 +59,7 @@ For example, to show your locally installed gems, run:
 
 Or, if you're running from source:
 
-    $ lein gem -c ~/.puppet-server/puppet-server.conf list
+    $ lein gem -c ~/.puppetserver/puppetserver.conf list
 
 ## Installing Gems for use with development:
 
@@ -76,7 +76,7 @@ As an example, the following command installs `pry` locally in the project.
 Note the use of `--` to pass the following command line arguments to the gem
 script.
 
-    $ lein gem --config ~/.puppet-server/puppet-server.conf -- install pry \
+    $ lein gem --config ~/.puppetserver/puppetserver.conf -- install pry \
       --no-ri --no-rdoc
     Fetching: coderay-1.1.0.gem (100%)
     Successfully installed coderay-1.1.0

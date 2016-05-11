@@ -67,10 +67,13 @@
      (handler (assoc request :jruby-instance jruby-instance)))))
 
 (defn get-environment-from-request
-  "Gets the environment from a request."
+  "Gets the environment from the URL or query string of a request."
   [req]
-  (-> req
-      (get-in [:params "environment"])))
+  ;; If environment is derived from the path, favor that over a query/form
+  ;; param named environment, since it doesn't make sense to ask about
+  ;; environment production in environment development.
+  (or (get-in req [:route-params :environment])
+      (get-in req [:params "environment"])))
 
 (defn wrap-with-environment-validation
   "Middleware function which validates the presence and syntactical content

@@ -28,7 +28,7 @@
   classpath.
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
-  "puppet-server-lib")
+  "puppetserver-lib")
 
 (def compat-version
   "The JRuby compatibility version to use for all ruby components, e.g. the
@@ -207,18 +207,18 @@
           env-registry          (puppet-env/environment-registry)
           ruby-puppet-class     (.runScriptlet scripting-container "Puppet::Server::Master")
           puppet-config         (config->puppet-config config)
-          puppet-server-config  (HashMap.)]
+          puppetserver-config  (HashMap.)]
       (when http-client-ssl-protocols
-        (.put puppet-server-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
+        (.put puppetserver-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
       (when http-client-cipher-suites
-        (.put puppet-server-config "cipher_suites" (into-array String http-client-cipher-suites)))
-      (.put puppet-server-config "profiler" profiler)
-      (.put puppet-server-config "environment_registry" env-registry)
-      (.put puppet-server-config "http_connect_timeout_milliseconds"
+        (.put puppetserver-config "cipher_suites" (into-array String http-client-cipher-suites)))
+      (.put puppetserver-config "profiler" profiler)
+      (.put puppetserver-config "environment_registry" env-registry)
+      (.put puppetserver-config "http_connect_timeout_milliseconds"
         http-client-connect-timeout-milliseconds)
-      (.put puppet-server-config "http_idle_timeout_milliseconds"
+      (.put puppetserver-config "http_idle_timeout_milliseconds"
         http-client-idle-timeout-milliseconds)
-      (.put puppet-server-config "use_legacy_auth_conf" use-legacy-auth-conf)
+      (.put puppetserver-config "use_legacy_auth_conf" use-legacy-auth-conf)
       (let [instance (jruby-schemas/map->JRubyPuppetInstance
                        {:pool                 pool
                         :id                   id
@@ -230,7 +230,7 @@
                                                ruby-puppet-class
                                                "new"
                                                (into-array Object
-                                                           [puppet-config puppet-server-config])
+                                                           [puppet-config puppetserver-config])
                                                JRubyPuppet)
                         :scripting-container  scripting-container
                         :environment-registry env-registry})]

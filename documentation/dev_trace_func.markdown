@@ -31,7 +31,7 @@ JAVA_ARGS="-Xms2g -Xmx2g -XX:MaxPermSize=256m -Djruby.debug.fullTrace=true"
 A call to the `set_trace_func` function can be done in one of the Ruby files in
 the Puppet Server code.  For the trace to be in effect for the full execution
 of Ruby code, one common place to put this call would be at the top of the
-`../src/ruby/puppet-server-lib/puppet/server/master.rb` file, the Puppet Server
+`../src/ruby/puppetserver-lib/puppet/server/master.rb` file, the Puppet Server
 master class.  A basic implementation might look like this:
 
 ~~~ruby

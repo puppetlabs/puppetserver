@@ -7,28 +7,28 @@
 
 ;; The `user_repl.clj` file has utility functions for starting, stopping, and
 ;; loading Puppet Server from the REPL.  It will call back into this namespace
-;; (a no-arg function called 'puppet-server-conf') to get the config for the
+;; (a no-arg function called 'puppetserver-conf') to get the config for the
 ;; server.
 ;;
 ;; You could just supply a map literal here, but we generally use `config/load-config`
 ;; to parse the config from a file.
 ;;
 ;; The default implementation of this function just copies the sample config file
-;; from dev/puppet-server.conf.sample to ~/.puppet-server and loads it from there.
+;; from dev/puppetserver.conf.sample to ~/.puppetserver and loads it from there.
 ;; This is suitable for just getting a server up and running as quickly as possible,
 ;; but is not advised for long-term dev environments.  (The main reason being
 ;; that the sample config file uses "./target" as a location for a lot of files
 ;; such as puppet's confdir and codedir, and if you run "lein clean" you'll lose
 ;; any customizations you've made therein.)
-(defn puppet-server-conf
+(defn puppetserver-conf
   []
   (let [conf-file ((-> 'user-repl/initialize-default-config-file resolve deref))]
     (config/load-config conf-file))
   ;; a better way to handle config for a long-term dev environment is to comment
   ;; out the two previous lines, create
-  ;; your own copy of the dev/puppet-server.conf.sample file somewhere, edit it
+  ;; your own copy of the dev/puppetserver.conf.sample file somewhere, edit it
   ;; carefully to reflect your needs, and then load it directly, like this:
-  ;(config/load-config "/Users/cprice/work/puppet-server/conf/puppet-server.conf")
+  ;(config/load-config "/Users/cprice/work/puppetserver/conf/puppetserver.conf")
   )
 
 ;; The `go` function in the `user-repl` namespace  will start up an instance of
