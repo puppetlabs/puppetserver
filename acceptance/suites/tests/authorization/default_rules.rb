@@ -62,7 +62,7 @@ with_puppet_running_on(master, {}) do
     assert_allowed
 
     curl_unauthenticated('/puppet/v3/environments')
-    assert_denied(/denied by rule 'puppetlabs environments'/)
+    assert_denied(/\/puppet\/v3\/environments \(method :get\)/)
   end
 
   step 'catalog endpoint' do
@@ -70,10 +70,10 @@ with_puppet_running_on(master, {}) do
     assert_allowed
 
     curl_authenticated('/puppet/v3/catalog/notme?environment=production')
-    assert_denied(/denied by rule 'puppetlabs catalog'/)
+    assert_denied(/\/puppet\/v3\/catalog\/notme \(method :get\)/)
 
     curl_unauthenticated("/puppet/v3/catalog/#{master}?environment=production")
-    assert_denied(/denied by rule 'puppetlabs catalog'/)
+    assert_denied(/\/puppet\/v3\/catalog\/#{master} \(method :get\)/)
   end
 
   step 'node endpoint' do
@@ -81,10 +81,10 @@ with_puppet_running_on(master, {}) do
     assert_allowed
 
     curl_authenticated('/puppet/v3/node/notme?environment=production')
-    assert_denied(/denied by rule 'puppetlabs node'/)
+    assert_denied(/\/puppet\/v3\/node\/notme \(method :get\)/)
 
     curl_unauthenticated("/puppet/v3/node/#{master}?environment=production")
-    assert_denied(/denied by rule 'puppetlabs node'/)
+    assert_denied(/\/puppet\/v3\/node\/#{master} \(method :get\)/)
   end
 
   step 'report endpoint' do
@@ -92,10 +92,10 @@ with_puppet_running_on(master, {}) do
     assert_allowed
 
     curl_authenticated(report_query('notme'))
-    assert_denied(/denied by rule 'puppetlabs report'/)
+    assert_denied(/\/puppet\/v3\/report\/notme \(method :put\)/)
 
     curl_unauthenticated(report_query(master))
-    assert_denied(/denied by rule 'puppetlabs report'/)
+    assert_denied(/\/puppet\/v3\/report\/#{master} \(method :put\)/)
   end
 
   step 'file_metadata endpoint' do
@@ -105,7 +105,7 @@ with_puppet_running_on(master, {}) do
     assert_allowed(404)
 
     curl_unauthenticated('/puppet/v3/file_metadata/modules/foo?environment=production')
-    assert_denied(/denied by rule 'puppetlabs file'/)
+    assert_denied(/\/puppet\/v3\/file_metadata\/modules\/foo \(method :get\)/)
   end
 
   step 'file_content endpoint' do
@@ -115,7 +115,7 @@ with_puppet_running_on(master, {}) do
     assert_allowed(404)
 
     curl_unauthenticated('/puppet/v3/file_content/modules/foo?environment=production')
-    assert_denied(/denied by rule 'puppetlabs file'/)
+    assert_denied(/\/puppet\/v3\/file_content\/modules\/foo \(method :get\)/)
   end
 
   step 'file_bucket_file endpoint' do
@@ -125,7 +125,7 @@ with_puppet_running_on(master, {}) do
     assert_allowed(400)
 
     curl_unauthenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
-    assert_denied(/denied by rule 'puppetlabs file'/)
+    assert_denied(/\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
   end
 
   step 'status endpoint' do
