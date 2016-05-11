@@ -15,7 +15,7 @@ Starting in version 2.3.0, you can restart Puppet Server by sending a hangup sig
 
 There are several ways to send a HUP signal to the Puppet Server process, but the most straightforward is to run the following [`kill`](http://linux.die.net/man/1/kill) command:
 
-    kill -HUP `pgrep -f puppetserver`
+    kill -HUP `pgrep -f puppet-server`
 
 ## Restarting Puppet Server to pick up changes
 

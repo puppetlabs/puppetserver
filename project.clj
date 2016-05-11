@@ -77,7 +77,7 @@
 
   :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
 
-  :uberjar-name "puppetserver-release.jar"
+  :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
                        :build-type "foss"

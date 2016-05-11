@@ -1,10 +1,10 @@
 
 test_name "Validate excluded BC jars are not in packaged uberjar."
 
-package_name = options['puppetserver-package'] 
+package_name = options['puppetserver-package']
 install_dir = get_defaults_var(master, "INSTALL_DIR")
 
-jarfile = File.join(install_dir, "puppetserver-release.jar")
+jarfile = File.join(install_dir, "puppet-server-release.jar")
 
 on(master, "test -e \"#{jarfile}\"")
 install_package(master, "unzip")
