@@ -138,7 +138,7 @@ with_puppet_running_on(master, {}) do
     assert_allowed
 
     curl_unauthenticated('/puppet-ca/v1/certificate_revocation_list/ca?environment=production')
-    assert_denied(/denied by rule 'puppetlabs crl'/)
+    assert_denied(/\/puppet-ca\/v1\/certificate_revocation_list\/ca \(method :get\)/)
   end
 
   step 'certificate endpoint' do
