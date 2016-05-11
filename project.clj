@@ -123,6 +123,7 @@
                                                [org.clojure/clojure ~clj-version]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
+                                               [ring/ring-servlet "1.4.0"]
                                                [org.clojure/tools.nrepl "0.2.3"]]
                       :plugins [[puppetlabs/lein-ezbake "0.3.25"]]
                       :name "puppetserver"}
