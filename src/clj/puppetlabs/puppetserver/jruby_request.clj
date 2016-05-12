@@ -57,7 +57,7 @@
 
 (defn wrap-with-environment-validation
   "Middleware function which validates the presence and syntactical content
-  of an environment in a ring request.  If validation fails, a ::bad-request
+  of an environment in a ring request.  If validation fails, a :bad-request
   slingshot exception is thrown."
   [handler]
   (fn [request]
