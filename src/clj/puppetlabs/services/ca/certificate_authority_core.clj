@@ -3,6 +3,7 @@
            (clojure.lang IFn))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
+            [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
             [bidi.schema :as bidi-schema]
@@ -26,12 +27,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
-
-(defn handle-server-error
-  [message]
-  (-> (rr/response message)
-      (rr/status 400)
-      (rr/content-type "text/plain")))
 
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
@@ -57,7 +52,7 @@
     (catch ca/csr-validation-failure? {:keys [message]}
       (log/error message)
       ;; Respond to all CSR validation failures with a 400
-      (handle-server-error message))))
+      (middleware/plain-response 400 message))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
@@ -279,7 +274,7 @@
       (comidi/context ["/certificate_statuses/"]
         (ANY [[#"[^/]+" :ignored-but-required]] []
           (certificate-statuses ca-settings))
-        (ANY [""] [] (handle-server-error "Missing URL Segment")))
+        (ANY [""] [] (middleware/plain-response 400 "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
       (comidi/context ["/certificate_request/" :subject]
@@ -299,9 +294,9 @@
    puppet-version :- schema/Str]
   (-> handler
     ;(liberator-dev/wrap-trace :header)           ; very useful for debugging!
-      (ringutils/wrap-exception-handling)
+      (middleware/wrap-uncaught-errors :plain)
       (ringutils/wrap-with-puppet-version-header puppet-version)
-      (ringutils/wrap-response-logging)))
+      (middleware/wrap-response-logging)))
 
 (schema/defn ^:always-validate
   get-wrapped-handler :- IFn

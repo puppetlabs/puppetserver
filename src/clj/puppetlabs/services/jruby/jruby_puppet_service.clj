@@ -1,5 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
+            [puppetlabs.ring-middleware.core :as mw]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
@@ -148,10 +149,9 @@
                         "jruby-puppet.max-active-instances.")}))
      (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
        (jruby/return-instance ~jruby-service pool-instance# ~reason)
-       (sling/throw+
-        {:type    ::service-unavailable
-         :message (str "Attempted to borrow a JRuby instance from the pool "
-                       "during a shutdown. Please try again.")}))
+       (mw/throw-service-unavailable!
+         (str "Attempted to borrow a JRuby instance from the pool "
+              "during a shutdown. Please try again.")))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby/return-instance ~jruby-service pool-instance# ~reason)
