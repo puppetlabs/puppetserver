@@ -150,7 +150,7 @@ module PuppetServerExtensions
         use_journalctl = true
       end
     when /^ubuntu$/
-      if version.to_i >= 16
+      if version.to_i >= 15
         use_journalctl = true
       end
     end
