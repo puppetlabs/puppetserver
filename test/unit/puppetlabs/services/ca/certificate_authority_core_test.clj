@@ -369,7 +369,7 @@
                           {:uri "/v1/certificate_statuses/"
                            :request-method :get})]
             (is (= 400 (:status response)))
-            (is (re-matches #"text/plain.*" (get-in response [:headers "Content-Type"])))
+            (is (= "text/plain; charset=utf-8" (get-in response [:headers "Content-Type"])))
             (is (= "Missing URL Segment" (:body response)))))
 
         (testing "allows special characters in ignored path segment"
