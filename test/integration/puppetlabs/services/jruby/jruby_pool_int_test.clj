@@ -40,7 +40,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(def default-borrow-timeout 180000)
+(def default-borrow-timeout 300000)
 
 (defn timed-deref
   [ref]
