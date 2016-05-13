@@ -7,3 +7,6 @@
 [submodule "ruby/hiera"]
 	path = ruby/hiera
 	url = https://github.com/puppetlabs/hiera.git
+[submodule "ext/pl-clojure-style"]
+	path = ext/pl-clojure-style
+	url = git://github.com/puppetlabs/pl-clojure-style.git
