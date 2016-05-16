@@ -1,8 +1,8 @@
 (def clj-version "1.7.0")
-(def tk-version "1.3.1")
-(def tk-jetty-version "1.5.6")
+(def tk-version "1.4.0")
+(def tk-jetty-version "1.5.9")
 (def ks-version "1.3.0")
-(def ps-version "2.3.3-stable-SNAPSHOT")
+(def ps-version "2.4.0-master-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -19,17 +19,19 @@
                  ;; begin version conflict resolution dependencies
                  [puppetlabs/typesafe-config "0.1.5"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [com.fasterxml.jackson.core/jackson-core "2.5.4"]
-                 [org.clojure/tools.reader "1.0.0-alpha1"]
+                 [org.clojure/tools.reader "1.0.0-beta1"]
+                 [org.clojure/tools.logging "0.3.1"]
+                 [ring/ring-servlet "1.4.0"]
+                 [hiccup "1.0.5"]
                  ;; end version conflict resolution dependencies
 
-                 [cheshire "5.3.1"]
-                 [slingshot "0.10.3"]
+                 [cheshire "5.6.1"]
+                 [slingshot "0.12.2"]
                  [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
                  [commons-lang "2.6"]
                  [commons-io "2.4"]
                  [clj-time "0.11.0"]
-                 [prismatic/schema "1.0.4"]
+                 [prismatic/schema "1.1.1"]
                  [me.raynes/fs "1.4.6"]
                  [liberator "0.12.0"]
                  [org.apache.commons/commons-exec "1.3"]
@@ -55,9 +57,10 @@
 
 
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.5.1"]
+                 [puppetlabs/trapperkeeper-authorization "0.6.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
+                 [puppetlabs/ring-middleware "0.3.1"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.5.0"]
                  [puppetlabs/comidi "0.3.1"]]
@@ -79,7 +82,6 @@
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
-                       :start-timeout "120"
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
                        :repo-target "PC1"}
@@ -99,7 +101,7 @@
   :classifiers [["test" :testutils]]
 
   :profiles {:dev {:source-paths  ["dev"]
-                   :dependencies  [[org.clojure/tools.namespace "0.2.5"]
+                   :dependencies  [[org.clojure/tools.namespace "0.2.10"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
@@ -124,7 +126,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.3.23"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.4.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}

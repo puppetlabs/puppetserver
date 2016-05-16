@@ -10,7 +10,8 @@
 ## PuppetDB successfully received the agent's report sent from Puppet Server.
 ## We can just run the agent that's on the master for this.
 
-confine :to, {:platform => puppetdb_supported_platforms}, master
+matching_puppetdb_platform = puppetdb_supported_platforms.select { |r| r =~ master.platform }
+skip_test unless matching_puppetdb_platform.length > 0
 
 require 'json'
 

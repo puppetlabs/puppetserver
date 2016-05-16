@@ -51,33 +51,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn json-response
-  "Create a ring response with a string body serialized to JSON from the
-  supplied obj"
-  [obj]
-  (-> obj
-      (cheshire/generate-string obj)
-      (rr/response)
-      (rr/content-type "application/json")))
-
-(defn wrap-request-logging
-  "A ring middleware that logs the request."
-  [handler]
-  (fn [{:keys [request-method uri] :as req}]
-    (log/debug "Processing" request-method uri)
-    (log/trace "---------------------------------------------------")
-    (log/trace (ks/pprint-to-string (dissoc req :ssl-client-cert)))
-    (log/trace "---------------------------------------------------")
-    (handler req)))
-
-(defn wrap-response-logging
-  "A ring middleware that logs the response."
-  [handler]
-  (fn [req]
-    (let [resp (handler req)]
-      (log/trace "Computed response:" resp)
-      resp)))
-
 (schema/defn client-allowed-access? :- schema/Bool
   "Determines if the client in the request is allowed to access the
    endpoint based on the client whitelist and
@@ -104,20 +77,6 @@
     (if (client-allowed-access? settings req)
       (handler req)
       {:status 403 :body "Forbidden."})))
-
-(defn wrap-exception-handling
-  "Wraps a ring handler with try/catch that will catch all Exceptions, log them,
-  and return an HTTP 500 response which includes the Exception type and message,
-  if any, in the body."
-  [handler]
-  (fn [req]
-    (try
-      (handler req)
-      (catch Exception e
-        (log/error e "Exception while handling HTTP request")
-        (-> (ring/response (format "Internal Server Error: %s" e))
-            (ring/status 500)
-            (ring/content-type "text/plain"))))))
 
 (defn wrap-with-puppet-version-header
   "Function that returns a middleware that adds an

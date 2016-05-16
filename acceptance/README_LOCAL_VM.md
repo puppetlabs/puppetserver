@@ -26,7 +26,7 @@ This will not use Vagrant or a Rakefile, but instead a local pre-installed VM an
 
 #### Define the PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
 
-You'll need to provide a couple environment variables that specify which build of puppet-server to install and test against.
+You'll need to provide a couple environment variables that specify which build of puppetserver to install and test against.
 
 1. Go to http://builds.delivery.puppetlabs.net/puppetserver/
 2. Scroll down to the most recent build at the bottom
@@ -41,7 +41,7 @@ You'll need to provide a couple environment variables that specify which build o
     bundle install --path vendor/bundle
     bundle exec beaker --config <PATH TO YOUR HOSTS CONFIG FILE> --type foss --debug --fail-mode slow --helper ./acceptance/lib/helper.rb --load-path <PATH TO PUPPET REPO ON YOUR MACHINE>/acceptance/lib --options ./acceptance/config/beaker/options.rb --pre-suite ./acceptance/suites/pre_suite --tests ./acceptance/suites/tests
 
-This should kick off a beaker run against your new VM that will run all the pre_suite steps and then the simple "no op" testtest.rb that we have in puppet-server/acceptance.
+This should kick off a beaker run against your new VM that will run all the pre_suite steps and then the simple "no op" testtest.rb that we have in puppetserver/acceptance.
 
 If the run fails during a pre-suite step, you'll need to revert your VM back to the previous state, resolve the error, and try again.
 Otherwise, the next run will fail as the pre-suite steps assume a fresh machine and are not tolerant of existing installations.
@@ -152,21 +152,21 @@ following events will occur when using this install type:
 1. Run `lein install`
 1. Clone ezbake to `./tmp/ezbake` or pull from origin if it's already there.
 1. Use `PUPPETSERVER_VERSION` or `lein with-profile acceptance pprint version` to get
-the current puppet-server development version. If `PUPPETSERVER_VERSION` is set in the
+the current puppetserver development version. If `PUPPETSERVER_VERSION` is set in the
 environment when Beaker is run, then this will be preferred and must refer to a
-valid puppet-server version stored either in the local Maven repository or Nexus.
-1. Change working directory to `./tmp/ezbake` and run `lein run stage puppet-server
-puppet-server-version=VERSION` where VERSION is the version obtained in the
+valid puppetserver version stored either in the local Maven repository or Nexus.
+1. Change working directory to `./tmp/ezbake` and run `lein run stage puppetserver
+puppetserver-version=VERSION` where VERSION is the version obtained in the
 previous step.
 1. Change working directory to `./tmp/ezbake/target/staging` and run `rake
 package:bootstrap`. **Note** This step uses the locally installed version of
-puppet-server installed in the first step.
+puppetserver installed in the first step.
 1. Run `rake pl:print_build_param[ref]` to obtain the staging version number.
 1. Run `rake package:tar` to build tarball with all necessary installation files.
 1. Create user:group `puppet:puppet` on SUT.
-1. Run `env prefix=/usr confdir=/etc rundir=/var/run/puppet-server
-initdir=/etc/init.d make -e install-puppet-server`
-1. Run `env prefix=/usr confdir=/etc rundir=/var/run/puppet-server
+1. Run `env prefix=/usr confdir=/etc rundir=/var/run/puppetserver
+initdir=/etc/init.d make -e install-puppetserver`
+1. Run `env prefix=/usr confdir=/etc rundir=/var/run/puppetserver
 initdir=/etc/init.d make -e install-{rpm,deb}-sysv-init`
 
 This is just an overview to give an idea of what is going on and how/why it
@@ -188,7 +188,7 @@ through the command line:
 
 ### #2: Rakefile
 
-The Rakefile in puppet-server top-level directory is used during acceptance testing
+The Rakefile in puppetserver top-level directory is used during acceptance testing
 in the Jenkins CI pipeline to run various types of acceptance test in a
 consistent and reliable fashion. There are at least two expected workflows, one
 where BEAKER_CONFIG and PACKAGE_BUILD_VERSION are set manually prior to running the
@@ -221,7 +221,7 @@ in a ruby function. It is primarily intended for use in Jenkins
 acceptance/integration test jobs.
 
     bundle install --path vendor/bundle
-    export PACKAGE_BUILD_NAME=puppet-server
+    export PACKAGE_BUILD_NAME=puppetserver
     export PACKAGE_BUILD_VERSION=0.1.2.SNAPSHOT.2014.05.12T1408
     export PLATFORM=debian-7
     export LAYOUT=i386
@@ -261,12 +261,12 @@ test:acceptance:beaker Rake task and descriptions of the effect each has.
 
 * $PUPPETSERVER_VERSION 
   * Default: None 
-  * Valid: Any released/snapshotted `project.clj` puppet-server version.
-  * Description: Determines the VALUE for `puppet-server-version=VALUE` when
+  * Valid: Any released/snapshotted `project.clj` puppetserver version.
+  * Description: Determines the VALUE for `puppetserver-version=VALUE` when
   running Beaker with `PUPPETSERVER_INSTALL_TYPE=git`. For example if
   `PUPPETSERVER_VERSION=0.1.4-SNAPSHOT` and `PUPPETSERVER_INSTALL_TYPE=git` then the
   ezbake staging command run by the default pre_suite will look like `lein run
-  stage puppet-server puppet-server-version=0.1.4-SNAPSHOT`
+  stage puppetserver puppetserver-version=0.1.4-SNAPSHOT`
 
 * $PUPPETSERVER_INSTALL_TYPE 
   * Default: package 

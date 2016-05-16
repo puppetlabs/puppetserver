@@ -4,6 +4,7 @@
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
+            [puppetlabs.ring-middleware.core :as mw]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.puppetserver.common :as ps-common]
             [ring.util.codec :as ring-codec]
@@ -32,12 +33,12 @@
 (defn config->request-handler-settings
   "Given an entire Puppet Server configuration map, return only those keys
   which are required by the request handler service."
-  [{:keys [puppet-server master]}]
+  [{:keys [puppetserver master]}]
   {:allow-header-cert-info   (true? (:allow-header-cert-info master))
    :ssl-client-verify-header (unmunge-http-header-name
-                               (:ssl-client-verify-header puppet-server))
+                               (:ssl-client-verify-header puppetserver))
    :ssl-client-header        (unmunge-http-header-name
-                               (:ssl-client-header puppet-server))})
+                               (:ssl-client-header puppetserver))})
 
 (defn response->map
   "Converts a JRubyPuppetResponse instance to a map."
@@ -123,7 +124,7 @@
   (try
     (ring-codec/url-decode header-cert)
     (catch Exception e
-      (jruby-request/throw-bad-request!
+      (mw/throw-bad-request!
         (str "Unable to URL decode the "
              header-client-cert-name
              " header: "
@@ -136,7 +137,7 @@
     (try
       (ssl-utils/pem->certs reader)
       (catch Exception e
-        (jruby-request/throw-bad-request!
+        (mw/throw-bad-request!
           (str "Unable to parse "
                header-client-cert-name
                " into certificate: "
@@ -151,10 +152,10 @@
           certs      (pem->certs pem)
           cert-count (count certs)]
       (condp = cert-count
-        0 (jruby-request/throw-bad-request!
+        0 (mw/throw-bad-request!
             (str "No certs found in PEM read from " header-client-cert-name))
         1 (first certs)
-        (jruby-request/throw-bad-request!
+        (mw/throw-bad-request!
           (str "Only 1 PEM should be supplied for "
                header-client-cert-name
                " but "
@@ -261,9 +262,9 @@
   (if (:include-code-id? request)
     (let [env (jruby-request/get-environment-from-request request)]
       (when-not (nil? (schema/check ps-common/Environment env))
-        (jruby-request/throw-bad-request! (ps-common/environment-validation-error-msg env)))
+        (mw/throw-bad-request! (ps-common/environment-validation-error-msg env)))
       (when-not env
-        (jruby-request/throw-bad-request! "Environment is required in a catalog request."))
+        (mw/throw-bad-request! "Environment is required in a catalog request."))
       (assoc-in request [:params "code_id"] (current-code-id env)))
     request))
 

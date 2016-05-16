@@ -58,8 +58,8 @@
            ;; remove the 'root' webserver config, which wouldn't exist in a
            ;; multi-server config
            (dissoc :webserver)
-           ;; add the webserver config back in with an id of `:puppet-server`
-           (assoc :webserver {:puppet-server
+           ;; add the webserver config back in with an id of `:puppetserver`
+           (assoc :webserver {:puppetserver
                               (assoc webserver-config
                                 :default-server true)})
            (ks/deep-merge
@@ -67,7 +67,7 @@
              ;; set the master service to use the map-based multi-server-style config
              {:puppetlabs.services.master.master-service/master-service
               {:route "/puppet"
-               :server "puppet-server"}}}))
+               :server "puppetserver"}}}))
        (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production")))))))
 
   (testing "An exception is thrown if an improper master service route is found."

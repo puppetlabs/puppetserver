@@ -43,7 +43,8 @@
     :serial
     :signeddir
     :ssl-client-header
-    :ssl-client-verify-header})
+    :ssl-client-verify-header
+    :trusted-oid-mapping-file})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; internal helpers
@@ -100,7 +101,7 @@
 
 (schema/defn ^:always-validate
   get-puppet-config :- Config
-  "Returns all of the configuration values for puppet-server from JRubyPuppet."
+  "Returns all of the configuration values for puppetserver from JRubyPuppet."
   [jruby-service]
   {:post [(map? %)]}
   (jruby/with-jruby-puppet

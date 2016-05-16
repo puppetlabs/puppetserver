@@ -12,6 +12,7 @@
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as puppet-admin]
+            [puppetlabs.services.ca.certificate-authority-disabled-service :as ca]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.http.client.sync :as http-client]
             [me.raynes.fs :as fs]
@@ -39,7 +40,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
-(def default-borrow-timeout 180000)
+(def default-borrow-timeout 300000)
 
 (defn timed-deref
   [ref]
@@ -278,7 +279,8 @@
            jetty9/jetty9-service
            webrouting/webrouting-service
            puppet-admin/puppet-admin-service
-           authorization/authorization-service]
+           authorization/authorization-service
+           ca/certificate-authority-disabled-service]
           (merge (jruby-testutils/jruby-puppet-tk-config
                    (jruby-testutils/jruby-puppet-config {:max-active-instances      4
                                                          :max-requests-per-instance 10

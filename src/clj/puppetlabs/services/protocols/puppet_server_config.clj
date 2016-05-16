@@ -1,7 +1,7 @@
 (ns puppetlabs.services.protocols.puppet-server-config)
 
 (defprotocol PuppetServerConfigService
-  "The configuration service for puppet-server.  This is built on top of
+  "The configuration service for puppetserver.  This is built on top of
   Trapperkeeper's normal configuration service.  It adds a few features -
   most importantly, it merges in settings from the Puppet's 'settings' in ruby.
 

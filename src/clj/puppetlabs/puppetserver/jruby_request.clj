@@ -2,29 +2,11 @@
   (:require [clojure.tools.logging :as log]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
+            [puppetlabs.ring-middleware.core :as mw]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [puppetlabs.puppetserver.common :as ps-common]))
 
-(defn throw-bad-request!
-  "Throw a ::bad-request type slingshot error with the supplied message"
-  [message]
-  (sling/throw+ {:type ::bad-request
-                 :message message}))
-
-(defn bad-request?
-  [x]
-  "Determine if the supplied slingshot message is for a 'bad request'"
-  (when (map? x)
-    (= (:type x)
-       :puppetlabs.puppetserver.jruby-request/bad-request)))
-
-(defn service-unavailable?
-  [x]
-  "Determine if the supplied slingshot message is for a 'service unavailable'"
-  (when (map? x)
-    (= (:type x)
-       :puppetlabs.services.jruby.jruby-puppet-service/service-unavailable)))
 
 (defn jruby-timeout?
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
@@ -36,9 +18,7 @@
 (defn output-error
   [{:keys [uri]} {:keys [message]} http-status]
   (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
-  (-> (ring-response/response message)
-      (ring-response/status http-status)
-      (ring-response/content-type "text/plain")))
+  (mw/plain-response http-status message))
 
 (defn wrap-with-error-handling
   "Middleware that wraps a JRuby request with some error handling to return
@@ -47,11 +27,11 @@
   (fn [request]
     (sling/try+
      (handler request)
-     (catch bad-request? e
+     (catch mw/bad-request? e
        (output-error request e 400))
      (catch jruby-timeout? e
        (output-error request e 503))
-     (catch service-unavailable? e
+     (catch mw/service-unavailable? e
        (output-error request e 503)))))
 
 (defn wrap-with-jruby-instance
@@ -67,25 +47,28 @@
      (handler (assoc request :jruby-instance jruby-instance)))))
 
 (defn get-environment-from-request
-  "Gets the environment from a request."
+  "Gets the environment from the URL or query string of a request."
   [req]
-  (-> req
-      (get-in [:params "environment"])))
+  ;; If environment is derived from the path, favor that over a query/form
+  ;; param named environment, since it doesn't make sense to ask about
+  ;; environment production in environment development.
+  (or (get-in req [:route-params :environment])
+      (get-in req [:params "environment"])))
 
 (defn wrap-with-environment-validation
   "Middleware function which validates the presence and syntactical content
-  of an environment in a ring request.  If validation fails, a ::bad-request
+  of an environment in a ring request.  If validation fails, a :bad-request
   slingshot exception is thrown."
   [handler]
   (fn [request]
     (let [environment (get-environment-from-request request)]
       (cond
         (nil? environment)
-        (throw-bad-request!
+        (mw/throw-bad-request!
          "An environment parameter must be specified")
 
         (not (nil? (schema/check ps-common/Environment environment)))
-        (throw-bad-request!
+        (mw/throw-bad-request!
          (ps-common/environment-validation-error-msg environment))
 
         :else

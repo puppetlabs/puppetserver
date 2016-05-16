@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [me.raynes.fs :as fs]
+            [cheshire.core :as json]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
@@ -120,6 +121,25 @@
             (is (= 400 (:status response)))
             (is (= (ps-common/environment-validation-error-msg "production;cat")
                    (:body response)))))))))
+
+(deftest ^:integration code-id-request-test-get-environment
+  (bootstrap/with-puppetserver-running
+    app {:jruby-puppet
+         {:max-active-instances num-jrubies}
+         :versioned-code
+         {:code-id-command (script-path "echo")
+          :code-content-command (script-path "echo")}}
+    (testutils/write-site-pp-file "site { }")
+    (testing "code id is added to the request body for environment requests"
+      (let [env-catalog (-> (http-client/get "https://localhost:8140/puppet/v3/environment/production" (assoc testutils/ssl-request-options :as :text))
+                            :body
+                            json/parse-string)]
+        (is (= "production" (get env-catalog "code_id")))))
+    (testing "code id is set based on the environment in the URL, not a query param"
+      (let [env-catalog (-> (http-client/get "https://localhost:8140/puppet/v3/environment/production?environment=development" (assoc testutils/ssl-request-options :as :text))
+                            :body
+                            json/parse-string)]
+        (is (= "production" (get env-catalog "code_id")))))))
 
 (deftest ^:integration code-id-request-test-non-zero-exit
     (testing "catalog request fails if code-id-command returns a non-zero exit code"

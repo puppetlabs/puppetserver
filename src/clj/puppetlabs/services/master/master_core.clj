@@ -13,6 +13,7 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.ring-middleware.core :as middleware]
             [cheshire.core :as cheshire]
             [clojure.string :as str]
             [bidi.schema :as bidi-schema]
@@ -296,7 +297,7 @@
           (not-modified-response parsed-tag)
           (-> (response-with-etag info-as-json parsed-tag)
               (rr/content-type "application/json"))))
-      (ringutils/json-response info-for-json))))
+      (middleware/json-response 200 info-for-json))))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn
@@ -430,8 +431,8 @@
                (request-handler request))
    (comidi/GET ["/resource_types/" [#".*" :rest]] request
                (request-handler request))
-   (comidi/GET ["/environment/" [#".*" :rest]] request
-               (request-handler request))
+   (comidi/GET ["/environment/" [#".*" :environment]] request
+               (request-handler (assoc request :include-code-id? true)))
    (comidi/GET "/environments" request
                (request-handler request))
    (comidi/GET ["/status/" [#".*" :rest]] request
@@ -539,9 +540,9 @@
   [handler :- IFn
    puppet-version :- schema/Str]
   (-> handler
-      ringutils/wrap-exception-handling
-      ringutils/wrap-request-logging
-      ringutils/wrap-response-logging
+      (middleware/wrap-uncaught-errors :plain)
+      middleware/wrap-request-logging
+      middleware/wrap-response-logging
       (ringutils/wrap-with-puppet-version-header puppet-version)))
 
 (schema/defn ^:always-validate get-master-route-config
