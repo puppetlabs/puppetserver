@@ -30,7 +30,7 @@ module PuppetServerExtensions
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Agent Development Build Version",
                          "PUPPET_BUILD_VERSION",
-                         "ab9e395ef55565a8e896bd847e90a1c3dfb225f5", :string)
+                         "1.5.0", :string)
 
     # puppetdb version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppetdb/
@@ -290,8 +290,7 @@ module PuppetServerExtensions
   end
 
   def hup_server(host = master, timeout = 30)
-    pidfile = on(host, 'puppet master --configprint rundir').stdout.chomp + '/puppetserver' 
-    pid = on(host, "cat #{pidfile}").stdout.chomp
+    pid = on(host, 'pgrep -f puppetserver').stdout.chomp
     on(host, "kill -HUP #{pid}")
     url = "https://#{host}:8140/puppet/v3/status"
     cert = get_cert(master)
