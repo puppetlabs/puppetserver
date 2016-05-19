@@ -84,9 +84,11 @@
                        :group "puppet"
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
-                       :repo-target "PC1"}
+                       :repo-target "PC1"
+                       :bootstrap-source :services-d}
                 :resources {:dir "tmp/ezbake-resources"}
-                :config-dir "ezbake/config"}
+                :config-dir "ezbake/config"
+                :system-config-dir "ezbake/system-config"}
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
