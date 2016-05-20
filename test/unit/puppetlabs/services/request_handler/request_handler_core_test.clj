@@ -255,24 +255,24 @@
   "A cert provided in the x-client-cert header that cannot be decoded into
   an X509Certificate object throws the expected failure"
   (testing "Improperly URL encoded content"
-    (is (thrown+? [:type    :bad-request
-                   :message (str "Unable to URL decode the x-client-cert header: "
-                                 "For input string: \"1%\"")]
+    (is (thrown+? [:kind :bad-request
+                   :msg (str "Unable to URL decode the x-client-cert header: "
+                             "For input string: \"1%\"")]
                   (jruby-request-with-client-cert-header "%1%2"))))
   (testing "Bad certificate content"
-    (is (thrown+? [:type    :bad-request
-                   :message (str "Unable to parse x-client-cert into "
-                                 "certificate: -----END CERTIFICATE not found")]
+    (is (thrown+? [:kind :bad-request
+                   :msg (str "Unable to parse x-client-cert into "
+                             "certificate: -----END CERTIFICATE not found")]
                   (jruby-request-with-client-cert-header
                     "-----BEGIN%20CERTIFICATE-----%0AM"))))
   (testing "No certificate in content"
-    (is (thrown+? [:type    :bad-request
-                   :message "No certs found in PEM read from x-client-cert"]
+    (is (thrown+? [:kind :bad-request
+                   :msg "No certs found in PEM read from x-client-cert"]
                   (jruby-request-with-client-cert-header
                     "NOCERTSHERE"))))
   (testing "More than 1 certificate in content"
-    (is (thrown+? [:type    :bad-request
-                   :message "Only 1 PEM should be supplied for x-client-cert but 3 found"]
+    (is (thrown+? [:kind :bad-request
+                   :msg "Only 1 PEM should be supplied for x-client-cert but 3 found"]
                   (jruby-request-with-client-cert-header
                     (-> (str test-resources-dir "/master-with-all-cas.pem")
                         slurp

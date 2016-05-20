@@ -12,13 +12,13 @@
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
   [x]
   (when (map? x)
-    (= (:type x)
+    (= (:kind x)
        :puppetlabs.services.jruby.jruby-puppet-service/jruby-timeout)))
 
 (defn output-error
-  [{:keys [uri]} {:keys [message]} http-status]
-  (log/errorf "Error %d on SERVER at %s: %s" http-status uri message)
-  (mw/plain-response http-status message))
+  [{:keys [uri]} {:keys [msg]} http-status]
+  (log/errorf "Error %d on SERVER at %s: %s" http-status uri msg)
+  (mw/plain-response http-status msg))
 
 (defn wrap-with-error-handling
   "Middleware that wraps a JRuby request with some error handling to return

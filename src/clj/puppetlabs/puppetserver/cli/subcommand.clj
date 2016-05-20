@@ -37,8 +37,8 @@
                                        (parse-cli-args!))]
       (run-fn (load-tk-config config) extra-args))
     (catch map? m
-      (println (:message m))
-      (case (ks/without-ns (:type m))
+      (println (:msg m))
+      (case (ks/without-ns (:kind m))
         :cli-error (System/exit 1)
         :cli-help  (System/exit 0)))
     (finally

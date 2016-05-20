@@ -49,10 +49,10 @@
   (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch ca/csr-validation-failure? {:keys [message]}
-      (log/error message)
+    (catch ca/csr-validation-failure? {:keys [msg]}
+      (log/error msg)
       ;; Respond to all CSR validation failures with a 400
-      (middleware/plain-response 400 message))))
+      (middleware/plain-response 400 msg))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
