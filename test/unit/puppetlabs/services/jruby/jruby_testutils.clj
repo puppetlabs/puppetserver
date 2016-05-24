@@ -1,17 +1,16 @@
 (ns puppetlabs.services.jruby.jruby-testutils
-  (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+  (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-service]
             [schema.core :as schema]
-            [clojure.tools.logging :as log])
-  (:import (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse PuppetProfiler)
+            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env])
+  (:import (clojure.lang IFn)
            (org.jruby.embed LocalContextScope)
-           (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
-           (clojure.lang IFn)
-           (com.puppetlabs.puppetserver.jruby ScriptingContainer)))
+           (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
+           (puppetlabs.services.jruby.jruby_schemas JRubyInstance)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -28,6 +27,26 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
+
+(schema/defn ^:always-validate
+create-mock-pool-instance :- JRubyInstance
+  [mock-jruby-instance-creator-fn :- IFn
+   pool :- jruby-schemas/pool-queue-type
+   id :- schema/Int
+   config :- jruby-schemas/JRubyConfig
+   flush-instance-fn :- IFn]
+  (let [instance (jruby-schemas/map->JRubyInstance
+                  {:id id
+                   :internal {:pool pool
+                              :max-borrows (:max-borrows-per-instance config)
+                              :flush-instance-fn flush-instance-fn
+                              :state (atom {:borrow-count 0})}
+                   :scripting-container (ScriptingContainer.
+                                         LocalContextScope/SINGLETHREAD)})
+        modified-instance (merge instance {:jruby-puppet (mock-jruby-instance-creator-fn)
+                                           :environment-registry (puppet-env/environment-registry)})]
+    (.register pool modified-instance)
+    modified-instance))
 
 (defn jruby-puppet-tk-config
   "Create a JRubyPuppet pool config with the given pool config.  Suitable for use
@@ -46,7 +65,7 @@
                             :name "allow all"}]}})
 
 (schema/defn ^:always-validate
-  jruby-puppet-config :- jruby-schemas/JRubyPuppetConfig
+  jruby-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
   "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
   contain a map, which, if present, will be merged into the final JRubyPuppetConfig
   map.  (This function differs from `jruby-puppet-tk-config` in
@@ -54,91 +73,22 @@
   differs slightly from the raw format that would be read from config files
   on disk.)"
   ([]
-    (jruby-core/initialize-config
-      {:jruby-puppet
-       {:ruby-load-path  ruby-load-path
-        :gem-home        gem-home
-        :master-conf-dir conf-dir
-        :master-code-dir code-dir
-        :master-var-dir  var-dir
-        :master-run-dir  run-dir
-        :master-log-dir  log-dir
-        :use-legacy-auth-conf false}}))
+   (let [combined-configs
+         (merge (jruby-puppet-core/initialize-puppet-config
+                 {:jruby-puppet
+                  {:ruby-load-path ruby-load-path
+                   :gem-home gem-home
+                   :master-conf-dir conf-dir
+                   :master-code-dir code-dir
+                   :master-var-dir var-dir
+                   :master-run-dir run-dir
+                   :master-log-dir log-dir
+                   :use-legacy-auth-conf false}})
+                (jruby-core/initialize-config {:ruby-load-path ruby-load-path
+                                               :gem-home gem-home}))]
+     (dissoc combined-configs :lifecycle)))
   ([options]
    (merge (jruby-puppet-config) options)))
-
-(def default-profiler
-  nil)
-
-(defn default-shutdown-fn
-  [f]
-  (f))
-
-(def default-flush-fn
-  identity)
-
-(defn create-pool-instance
-  ([]
-   (create-pool-instance (jruby-puppet-config {:max-active-instances 1})))
-  ([config]
-   (let [pool (jruby-internal/instantiate-free-pool 1)]
-     (jruby-internal/create-pool-instance! pool 1 config default-flush-fn default-profiler))))
-
-(defn create-mock-jruby-instance
-  "Creates a mock implementation of the JRubyPuppet interface."
-  []
-  (reify JRubyPuppet
-    (handleRequest [_ _]
-      (JRubyPuppetResponse. 0 nil nil nil))
-    (getSetting [_ _]
-      (Object.))
-    (terminate [_]
-      (log/info "Terminating Master"))))
-
-(schema/defn ^:always-validate
-  create-mock-pool-instance :- JRubyPuppetInstance
-  ([pool :- jruby-schemas/pool-queue-type
-    id :- schema/Int
-    config :- jruby-schemas/JRubyPuppetConfig
-    flush-instance-fn :- IFn
-    profiler :- (schema/maybe PuppetProfiler)]
-   (create-mock-pool-instance create-mock-jruby-instance
-                              pool
-                              id
-                              config
-                              flush-instance-fn
-                              profiler))
-  ([mock-jruby-instance-creator-fn :- IFn
-    pool :- jruby-schemas/pool-queue-type
-    id :- schema/Int
-    config :- jruby-schemas/JRubyPuppetConfig
-    flush-instance-fn :- IFn
-    _ :- (schema/maybe PuppetProfiler)]
-   (let [instance (jruby-schemas/map->JRubyPuppetInstance
-                   {:pool pool
-                    :id id
-                    :max-requests (:max-requests-per-instance config)
-                    :flush-instance-fn flush-instance-fn
-                    :state (atom {:borrow-count 0})
-                    :jruby-puppet (mock-jruby-instance-creator-fn)
-                    :scripting-container (ScriptingContainer.
-                                          LocalContextScope/SINGLETHREAD)
-                    :environment-registry (puppet-env/environment-registry)})]
-     (.register pool instance)
-     instance)))
-
-(defn mock-pool-instance-fixture
-  "Test fixture which changes the behavior of the JRubyPool to create
-  mock JRubyPuppet instances."
-  [f]
-  (with-redefs
-    [jruby-internal/create-pool-instance! create-mock-pool-instance]
-    (f)))
-
-(defmacro with-mock-pool-instance-fixture
-  [& body]
-  `(let [f# (fn [] (do ~@body))]
-     (mock-pool-instance-fixture f#)))
 
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."
@@ -180,6 +130,7 @@
                          tk-service/service-context
                          :pool-context)
         num-jrubies (-> pool-context
+                        :internal
                         :pool-state
                         deref
                         :size)]

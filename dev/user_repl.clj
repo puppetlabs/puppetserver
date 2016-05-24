@@ -17,7 +17,7 @@
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-core :as jruby-core]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]))
 

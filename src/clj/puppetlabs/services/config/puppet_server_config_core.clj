@@ -2,13 +2,14 @@
        "Core logic for the implementation of the PuppetServerConfigService in
         puppetlabs.services.config.puppet-server-config-service."}
     puppetlabs.services.config.puppet-server-config-core
-  (:import (com.puppetlabs.puppetserver JRubyPuppet))
   (:require [clojure.set :as set]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [keyset]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config
@@ -65,9 +66,8 @@
   (->> (keyword->setting k)
        (.getSetting jruby-puppet)))
 
-(defn get-puppet-config*
+(schema/defn get-puppet-config*
   [jruby-puppet]
-  {:pre [(instance? JRubyPuppet jruby-puppet)]}
   (into {}
         (for [k puppet-config-keys]
           {k (get-puppet-config-value jruby-puppet k)})))
@@ -104,10 +104,14 @@
   "Returns all of the configuration values for puppetserver from JRubyPuppet."
   [jruby-service]
   {:post [(map? %)]}
-  (jruby/with-jruby-puppet
-    jruby-puppet jruby-service :get-puppet-config
-    (let [config (get-puppet-config* jruby-puppet)]
-      (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
+  (let [pool-context (jruby-puppet/get-pool-context jruby-service)]
+    (jruby/with-jruby-instance
+     jruby-instance
+     pool-context
+     :get-puppet-config
+     (let [jruby-puppet (:jruby-puppet jruby-instance)
+           config (get-puppet-config* jruby-puppet)]
+       (assoc config :puppet-version (.puppetVersion jruby-puppet))))))
 
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."

@@ -4,12 +4,15 @@
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
+            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]))
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet-protocol]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]))
 
 
 
@@ -29,7 +32,8 @@
         app
 
         [profiler/puppet-profiler-service
-         jruby/jruby-puppet-pooled-service
+         jruby-puppet/jruby-puppet-pooled-service
+         jruby-utils/jruby-pool-manager-service
          disabled/certificate-authority-disabled-service
          tk-auth/authorization-service]
 
@@ -38,8 +42,11 @@
             (assoc-in [:jruby-puppet :master-conf-dir]
                       puppet-conf-dir))
 
-        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-          (jruby/with-jruby-puppet
-            jruby-puppet jruby-service :ca-disabled-files-test
-            (is (not (nil? (fs/list-dir ssl-dir))))
-            (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+              pool-context (jruby-puppet-protocol/get-pool-context jruby-service)]
+          (jruby/with-jruby-instance
+           jruby-puppet
+           pool-context
+           :ca-disabled-files-test
+           (is (not (nil? (fs/list-dir ssl-dir))))
+           (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))

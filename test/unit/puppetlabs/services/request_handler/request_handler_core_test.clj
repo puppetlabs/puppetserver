@@ -14,6 +14,7 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :refer [defservice service]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.puppetserver.bootstrap-testutils :as jruby-bootstrap]
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -26,7 +27,8 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.puppetserver.jruby-request :as jruby-request]))
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]
+            [puppetlabs.services.jruby.jruby-core :as jruby-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -301,6 +303,7 @@
                                                nil))
             services [master-service/master-service
                       jruby-service/jruby-puppet-pooled-service
+                      jruby-utils/jruby-pool-manager-service
                       profiler/puppet-profiler-service
                       handler-service/request-handler-service
                       ps-config/puppet-server-config-service
@@ -326,31 +329,28 @@
            (deliver second-promise true)))))))
 
 (deftest request-handler-test
-  (let [dummy-service (reify jruby-protocol/JRubyPuppetService
-                        (borrow-instance [_ _] {})
-                        (return-instance [_ _ _])
-                        (free-instance-count [_])
-                        (mark-all-environments-expired! [_])
-                        (flush-jruby-pool! [_]))
-        dummy-service-with-timeout (reify jruby-protocol/JRubyPuppetService
-                                     (borrow-instance [_ _] nil)
-                                     (return-instance [_ _ _])
-                                     (free-instance-count [_])
-                                     (mark-all-environments-expired! [_])
-                                     (flush-jruby-pool! [_]))]
-    (logutils/with-test-logging
-      (testing "slingshot bad requests translated to ring response"
-        (let [bad-message "it's real bad"
-              request-handler (core/build-request-handler dummy-service {} (constantly nil))]
-          (with-redefs [core/as-jruby-request (fn [_ _]
-                                                (ringutils/throw-bad-request!
-                                                  bad-message))]
-            (let [response (request-handler {:body (StringReader. "blah")})]
-              (is (= 400 (:status response)) "Unexpected response status")
-              (is (= bad-message (:body response)) "Unexpected response body")))
-          (let [request-handler (core/build-request-handler dummy-service-with-timeout {} (constantly nil))
-                response (request-handler {:body (StringReader. "")})]
-            (is (= 503 (:status response)) "Unexpected response status")
-            (is (.startsWith
-                  (:body response)
-                  "Attempt to borrow a JRuby instance from the pool"))))))))
+    (let [dummy-service (reify jruby-protocol/JRubyPuppetService
+                          (get-pool-context [_]
+                            (jruby-core/create-pool-context
+                             (jruby-core/initialize-config {:gem-home "foo"
+                                                            :ruby-load-path ["bar"]}))))]
+      (logutils/with-test-logging
+       (testing "slingshot bad requests translated to ring response"
+         (let [bad-message "it's real bad"]
+
+           (with-redefs [core/as-jruby-request (fn [_ _]
+                                                 (ringutils/throw-bad-request!
+                                                  bad-message))
+                         jruby-core/return-to-pool (fn [_ _ _] #())]
+             (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {})]
+               (let [request-handler (core/build-request-handler dummy-service {} (constantly nil))
+                     response (request-handler {:body (StringReader. "blah")})]
+                 (is (= 400 (:status response)) "Unexpected response status")
+                 (is (= bad-message (:body response)) "Unexpected response body")))
+             (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] nil)]
+               (let [request-handler (core/build-request-handler dummy-service {} (constantly nil))
+                     response (request-handler {:body (StringReader. "")})]
+                 (is (= 503 (:status response)) "Unexpected response status")
+                 (is (.startsWith
+                      (:body response)
+                      "Attempt to borrow a JRubyInstance from the pool"))))))))))

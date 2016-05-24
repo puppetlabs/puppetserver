@@ -38,7 +38,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `max-active-instances`: Optional. The maximum number of JRuby instances allowed. The default is 'num-cpus - 1', with a minimum value of 1 and a maximum value of 4.
 
-    * `max-requests-per-instance`: Optional. The number of HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. The default is 0, which disables automatic JRuby flushing.
+    * `max-borrows-per-instance`: Optional. The number of HTTP requests a given JRuby instance will handle in its lifetime. When a JRuby instance reaches this limit, it is flushed from memory and replaced with a fresh one. The default is 0, which disables automatic JRuby flushing.
 
         JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
 
@@ -100,7 +100,7 @@ jruby-puppet: {
     master-run-dir: /var/run/puppetlabs/puppetserver
     master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
-    max-requests-per-instance: 0
+    max-borrows-per-instance: 0
     use-legacy-auth-conf: false
 }
 

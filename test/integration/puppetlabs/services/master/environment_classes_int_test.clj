@@ -9,8 +9,9 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.protocols.puppet-server-config :as
@@ -31,7 +32,9 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service
              :as authorization]
             [puppetlabs.services.versioned-code-service.versioned-code-service
-             :as vcs])
+             :as vcs]
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
 
@@ -664,6 +667,7 @@
        app
        [handler/request-handler-service
         jruby-service/jruby-puppet-pooled-service
+        jruby-utils/jruby-pool-manager-service
         profiler/puppet-profiler-service
         webserver/jetty9-service
         webrouting/webrouting-service
