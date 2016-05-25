@@ -36,7 +36,7 @@ module PuppetServerExtensions
     # http://builds.delivery.puppetlabs.net/puppetdb/
     puppetdb_build_version =
       get_option_value(options[:puppetdb_build_version], nil,
-                       "PuppetDB Version", "PUPPETDB_BUILD_VERSION", "3.2.1", :string)
+                       "PuppetDB Version", "PUPPETDB_BUILD_VERSION", "4.1.0", :string)
 
     @config = {
       :base_dir => base_dir,
@@ -65,6 +65,7 @@ module PuppetServerExtensions
       /el/, # includes cent6,7 and redhat6,7
       /ubuntu-12/,
       /ubuntu-14/,
+      /ubuntu-16/,
     ]
   end
 
