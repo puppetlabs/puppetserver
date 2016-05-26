@@ -598,7 +598,7 @@
                       "Cert subjectAltName contains a wildcard, which is not allowed: %s"
                       name)})))))
 
-(schema/defn create-csr-attrs-exts
+(schema/defn create-csr-attrs-exts :- (schema/maybe (schema/pred utils/extension-list?))
   "Parse the CSR attributes yaml file at the given path and create a list of
   certificate extensions from the `extensions_requests` section."
   [csr-attributes-file :- schema/Str]
