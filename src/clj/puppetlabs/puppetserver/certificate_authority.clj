@@ -130,6 +130,10 @@
   "The OID for the extension with shortname 'ppPrivCertExt'."
   "1.3.6.1.4.1.34380.1.2")
 
+(def ppAuthCertExt
+  "The OID for the extension with shortname 'ppPrivCertExt'."
+  "1.3.6.1.4.1.34380.1.3")
+
 (def puppet-short-names
   "A mapping of Puppet extension short names to their OIDs. These appear in
   csr_attributes.yaml."
@@ -149,7 +153,9 @@
    :pp_software_version "1.3.6.1.4.1.34380.1.1.14"
    :pp_department       "1.3.6.1.4.1.34380.1.1.15"
    :pp_cluster          "1.3.6.1.4.1.34380.1.1.16"
-   :pp_provisioner      "1.3.6.1.4.1.34380.1.1.17"})
+   :pp_provisioner      "1.3.6.1.4.1.34380.1.1.17"
+   :pp_authorization    "1.3.6.1.4.1.34380.1.3.1"
+   :pp_auth_role        "1.3.6.1.4.1.34380.1.3.13"})
 
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
@@ -592,7 +598,7 @@
                       "Cert subjectAltName contains a wildcard, which is not allowed: %s"
                       name)})))))
 
-(schema/defn create-csr-attrs-exts
+(schema/defn create-csr-attrs-exts :- (schema/maybe (schema/pred utils/extension-list?))
   "Parse the CSR attributes yaml file at the given path and create a list of
   certificate extensions from the `extensions_requests` section."
   [csr-attributes-file :- schema/Str]

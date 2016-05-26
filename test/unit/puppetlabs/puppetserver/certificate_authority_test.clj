@@ -57,6 +57,63 @@
         x "x-"]
     (str r w x)))
 
+(def attribute-file-extensions
+  "These are the extensions defined in the test fixture csr_attributes.yaml,
+  used in this test namespace."
+  [{:oid "1.3.6.1.4.1.34380.1.1.1"
+    :critical false
+    :value "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
+   {:oid "1.3.6.1.4.1.34380.1.1.1.4"
+    :critical false
+    :value "I am undefined but still work"}
+   {:oid "1.3.6.1.4.1.34380.1.1.2"
+    :critical false
+    :value "thisisanid"}
+   {:oid "1.3.6.1.4.1.34380.1.1.3"
+    :critical false
+    :value "my_ami_image"}
+   {:oid "1.3.6.1.4.1.34380.1.1.4"
+    :critical false
+    :value "342thbjkt82094y0uthhor289jnqthpc2290"}
+   {:oid "1.3.6.1.4.1.34380.1.1.5"
+    :critical false
+    :value "center"}
+   {:oid "1.3.6.1.4.1.34380.1.1.6"
+    :critical false
+    :value "product"}
+   {:oid "1.3.6.1.4.1.34380.1.1.7"
+    :critical false
+    :value "project"}
+   {:oid "1.3.6.1.4.1.34380.1.1.8"
+    :critical false
+    :value "application"}
+   {:oid "1.3.6.1.4.1.34380.1.1.9"
+    :critical false
+    :value "service"}
+   {:oid "1.3.6.1.4.1.34380.1.1.10"
+    :critical false
+    :value "employee"}
+   {:oid "1.3.6.1.4.1.34380.1.1.11"
+    :critical false
+    :value "created"}
+   {:oid "1.3.6.1.4.1.34380.1.1.12"
+    :critical false
+    :value "environment"}
+   {:oid "1.3.6.1.4.1.34380.1.1.13"
+    :critical false
+    :value "role"}
+   {:oid "1.3.6.1.4.1.34380.1.1.14"
+    :critical false
+    :value "version"}
+   {:oid "1.3.6.1.4.1.34380.1.1.15"
+    :critical false
+    :value "deparment"}
+   {:oid "1.3.6.1.4.1.34380.1.1.16"
+    :critical false
+    :value "cluster"}
+   {:oid "1.3.6.1.4.1.34380.1.1.17"
+    :critical false
+    :value "provisioner"}])
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
@@ -1015,74 +1072,32 @@
                                                     subject-pub
                                                     issuer-pub
                                                     settings)
-            exts-expected [
-                           {:oid      "2.16.840.1.113730.1.13"
-                            :critical false
-                            :value    netscape-comment-value}
-                           {:oid      "2.5.29.35"
-                            :critical false
-                            :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
-                                       :serial-number nil}}
-                           {:oid      "2.5.29.19"
-                            :critical true
-                            :value    {:is-ca false}}
-                           {:oid      "2.5.29.37"
-                            :critical true
-                            :value    [ssl-server-cert ssl-client-cert]}
-                           {:oid      "2.5.29.15"
-                            :critical true
-                            :value    #{:digital-signature :key-encipherment}}
-                           {:oid      "2.5.29.14"
-                            :critical false
-                            :value    subject-pub}
-                           {:oid      "2.5.29.17"
-                            :critical false
-                            :value    {:dns-name ["subject"
-                                                  "onefish"
-                                                  "twofish"]}}
-                           ;; These extensions come form csr_attributes.yaml
-                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
-                            :critical false
-                            :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.1.4"
-                            :critical false
-                            :value    "I am undefined but still work"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.2"
-                            :critical false
-                            :value    "thisisanid"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.3"
-                            :critical false
-                            :value    "my_ami_image"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.4"
-                            :critical false
-                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.5" :critical false
-                            :value    "center"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.6" :critical false
-                            :value    "product"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.7" :critical false
-                            :value    "project"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.8" :critical false
-                            :value    "application"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.9" :critical false
-                            :value    "service"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.10" :critical false
-                            :value    "employee"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.11" :critical false
-                            :value    "created"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.12" :critical false
-                            :value    "environment"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.13" :critical false
-                            :value    "role"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.14" :critical false
-                            :value    "version"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.15" :critical false
-                            :value    "deparment"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.16" :critical false
-                            :value    "cluster"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.17" :critical false
-                            :value    "provisioner"}]]
+            exts-expected (concat attribute-file-extensions
+                                  [{:oid      "2.16.840.1.113730.1.13"
+                                    :critical false
+                                    :value    netscape-comment-value}
+                                   {:oid      "2.5.29.35"
+                                    :critical false
+                                    :value    {:issuer-dn     nil
+                                               :public-key    issuer-pub
+                                               :serial-number nil}}
+                                   {:oid      "2.5.29.19"
+                                    :critical true
+                                    :value    {:is-ca false}}
+                                   {:oid      "2.5.29.37"
+                                    :critical true
+                                    :value    [ssl-server-cert ssl-client-cert]}
+                                   {:oid      "2.5.29.15"
+                                    :critical true
+                                    :value    #{:digital-signature :key-encipherment}}
+                                   {:oid      "2.5.29.14"
+                                    :critical false
+                                    :value    subject-pub}
+                                   {:oid      "2.5.29.17"
+                                    :critical false
+                                    :value    {:dns-name ["subject"
+                                                          "onefish"
+                                                          "twofish"]}}])]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
@@ -1244,3 +1259,23 @@
             (is (= change-perm (get-file-perms tmp-file)))
             (fs/delete tmp-file)
             (recur (nthnext perms 2))))))))
+
+(deftest create-csr-attrs-exts-test
+  (testing "when parsing a csr_attributes file using short names"
+    (testing "and the file exists"
+      (testing "and it has non-whitelisted OIDs we properly translate the short names."
+        (let [extensions (create-csr-attrs-exts (csr-attributes-file "csr_attributes_with_auth.yaml"))
+              expected (concat attribute-file-extensions
+                               [{:oid "1.3.6.1.4.1.34380.1.3.1" ;; :pp_authorization
+                                 :critical false
+                                 :value "true"}
+                                {:oid "1.3.6.1.4.1.34380.1.3.13" ;; :pp_auth_role
+                                 :critical false
+                                 :value "com"}])]
+          (is (= (set extensions) (set expected)))))
+      (testing "and it has whitelisted OIDs we properly translate the short names."
+        (let [extensions (create-csr-attrs-exts (csr-attributes-file "csr_attributes.yaml"))]
+          (is (= (set extensions) (set attribute-file-extensions))))))
+    (testing "and the file doesn't exist"
+      (testing "the result is nil"
+        (is (nil? (create-csr-attrs-exts "does/not/exist.yaml")))))))
