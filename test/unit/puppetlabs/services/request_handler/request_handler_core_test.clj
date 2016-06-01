@@ -4,7 +4,7 @@
             [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
             [ring.util.codec :as ring-codec]
-            [puppetlabs.ring-middleware.core :as mw]
+            [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
@@ -343,7 +343,7 @@
         (let [bad-message "it's real bad"
               request-handler (core/build-request-handler dummy-service {} (constantly nil))]
           (with-redefs [core/as-jruby-request (fn [_ _]
-                                                (mw/throw-bad-request!
+                                                (ringutils/throw-bad-request!
                                                   bad-message))]
             (let [response (request-handler {:body (StringReader. "blah")})]
               (is (= 400 (:status response)) "Unexpected response status")

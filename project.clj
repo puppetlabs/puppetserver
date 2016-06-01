@@ -60,7 +60,7 @@
                  [puppetlabs/trapperkeeper-authorization "0.6.1"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/ring-middleware "0.3.1"]
+                 [puppetlabs/ring-middleware "1.0.0"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.5.0"]
                  [puppetlabs/comidi "0.3.1"]]
