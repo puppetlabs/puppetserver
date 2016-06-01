@@ -57,7 +57,7 @@
 
 
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.6.1"]
+                 [puppetlabs/trapperkeeper-authorization "0.7.0"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/ring-middleware "1.0.0"]
