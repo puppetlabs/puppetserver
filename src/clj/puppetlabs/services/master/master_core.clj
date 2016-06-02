@@ -14,6 +14,7 @@
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.ring-middleware.core :as middleware]
+            [puppetlabs.ring-middleware.utils :as middleware-utils]
             [cheshire.core :as cheshire]
             [clojure.string :as str]
             [bidi.schema :as bidi-schema]
@@ -297,7 +298,7 @@
           (not-modified-response parsed-tag)
           (-> (response-with-etag info-as-json parsed-tag)
               (rr/content-type "application/json"))))
-      (middleware/json-response 200 info-for-json))))
+      (middleware-utils/json-response 200 info-for-json))))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn

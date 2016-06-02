@@ -1,6 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.ring-middleware.core :as mw]
+            [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
@@ -140,16 +140,16 @@
   `(loop [pool-instance# (jruby/borrow-instance ~jruby-service ~reason)]
      (if (nil? pool-instance#)
        (sling/throw+
-         {:type    ::jruby-timeout
-          :message (str "Attempt to borrow a JRuby instance from the pool "
-                        "timed out; Puppet Server is temporarily overloaded. If "
-                        "you get this error repeatedly, your server might be "
-                        "misconfigured or trying to serve too many agent nodes. "
-                        "Check Puppet Server settings: "
-                        "jruby-puppet.max-active-instances.")}))
+         {:kind ::jruby-timeout
+          :msg (str "Attempt to borrow a JRuby instance from the pool "
+                    "timed out; Puppet Server is temporarily overloaded. If "
+                    "you get this error repeatedly, your server might be "
+                    "misconfigured or trying to serve too many agent nodes. "
+                    "Check Puppet Server settings: "
+                    "jruby-puppet.max-active-instances.")}))
      (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
        (jruby/return-instance ~jruby-service pool-instance# ~reason)
-       (mw/throw-service-unavailable!
+       (ringutils/throw-service-unavailable!
          (str "Attempted to borrow a JRuby instance from the pool "
               "during a shutdown. Please try again.")))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)

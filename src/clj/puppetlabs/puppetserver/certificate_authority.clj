@@ -535,26 +535,26 @@
    subject :- schema/Str]
   (when-not (= hostname subject)
     (sling/throw+
-      {:type    :hostname-mismatch
-       :message (str "Instance name \"" subject
-                     "\" does not match requested key \"" hostname "\"")}))
+      {:kind :hostname-mismatch
+       :msg (str "Instance name \"" subject
+                 "\" does not match requested key \"" hostname "\"")}))
 
   (when (contains-uppercase? hostname)
     (sling/throw+
-      {:type    :invalid-subject-name
-       :message "Certificate names must be lower case."}))
+      {:kind :invalid-subject-name
+       :msg "Certificate names must be lower case."}))
 
   (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
     (sling/throw+
-      {:type    :invalid-subject-name
-       :message "Subject contains unprintable or non-ASCII characters"}))
+      {:kind :invalid-subject-name
+       :msg "Subject contains unprintable or non-ASCII characters"}))
 
   (when (.contains subject "*")
     (sling/throw+
-      {:type    :invalid-subject-name
-       :message (format
-                  "Subject contains a wildcard, which is not allowed: %s"
-                  subject)})))
+      {:kind :invalid-subject-name
+       :msg (format
+             "Subject contains a wildcard, which is not allowed: %s"
+             subject)})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -572,9 +572,9 @@
   (let [bad-extensions (remove allowed-extension? extensions)]
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
-        (sling/throw+ {:type    :disallowed-extension
-                       :message (str "Found extensions that are not permitted: "
-                                     (str/join ", " bad-extension-oids))})))))
+        (sling/throw+ {:kind :disallowed-extension
+                       :msg (str "Found extensions that are not permitted: "
+                                 (str/join ", " bad-extension-oids))})))))
 
 (schema/defn validate-dns-alt-names!
   "Validate that the provided Subject Alternative Names extension is valid for
@@ -587,16 +587,16 @@
     (when-not (and (= (count name-types) 1)
                    (= (first name-types) :dns-name))
       (sling/throw+
-        {:type    :invalid-alt-name
-         :message "Only DNS names are allowed in the Subject Alternative Names extension"}))
+        {:kind :invalid-alt-name
+         :msg "Only DNS names are allowed in the Subject Alternative Names extension"}))
 
     (doseq [name names]
       (when (.contains name "*")
         (sling/throw+
-          {:type    :invalid-alt-name
-           :message (format
-                      "Cert subjectAltName contains a wildcard, which is not allowed: %s"
-                      name)})))))
+          {:kind :invalid-alt-name
+           :msg (format
+                 "Cert subjectAltName contains a wildcard, which is not allowed: %s"
+                 name)})))))
 
 (schema/defn create-csr-attrs-exts :- (schema/maybe (schema/pred utils/extension-list?))
   "Parse the CSR attributes yaml file at the given path and create a list of
@@ -947,8 +947,8 @@
   "Throw a slingshot exception if allow-duplicate-certs is false
    and we already have a certificate or CSR for the subject.
    The exception map will look like:
-   {:type    :duplicate-cert
-    :message <specific error message>}"
+   {:kind :duplicate-cert
+    :msg  <specific error message>}"
   [csr :- CertificateRequest
    {:keys [allow-duplicate-certs cacrl csrdir signeddir]} :- CaSettings]
   (let [subject (get-csr-subject csr)
@@ -965,8 +965,8 @@
         (if allow-duplicate-certs
           (log/infof "%s already has a %s certificate; new certificate will overwrite it" subject status)
           (sling/throw+
-            {:type    :duplicate-cert
-             :message (format "%s already has a %s certificate; ignoring certificate request" subject status)}))))))
+            {:kind :duplicate-cert
+             :msg (format "%s already has a %s certificate; ignoring certificate request" subject status)}))))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
@@ -974,8 +974,8 @@
   [certificate-request :- CertificateRequest]
   (when-not (utils/signature-valid? certificate-request)
     (sling/throw+
-      {:type    :invalid-signature
-       :message "CSR contains a public key that does not correspond to the signing key"})))
+      {:kind :invalid-signature
+       :msg "CSR contains a public key that does not correspond to the signing key"})))
 
 (schema/defn ensure-no-dns-alt-names!
   "Throws an exception if the CSR contains DNS alt-names."
@@ -983,10 +983,10 @@
   (when-let [dns-alt-names (not-empty (dns-alt-names csr))]
     (let [subject (get-csr-subject csr)]
       (sling/throw+
-       {:type    :disallowed-extension
-        :message (format (str "CSR '%s' contains subject alternative names (%s), which are disallowed. "
-                              "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
-                         subject (str/join ", " dns-alt-names) subject)}))))
+       {:kind :disallowed-extension
+        :msg (format (str "CSR '%s' contains subject alternative names (%s), which are disallowed. "
+                          "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
+                     subject (str/join ", " dns-alt-names) subject)}))))
 
 
 (schema/defn ^:always-validate process-csr-submission!
@@ -1193,13 +1193,13 @@
   (thrown from one of the CSR validate-* function, using slingshot)"
   [x]
   (when (map? x)
-    (let [type (:type x)
+    (let [kind (:kind x)
           expected-types #{:disallowed-extension
                            :duplicate-cert
                            :hostname-mismatch
                            :invalid-signature
                            :invalid-subject-name}]
-      (contains? expected-types type))))
+      (contains? expected-types kind))))
 
 (schema/defn validate-csr
   "Validates the CSR (on disk) for the specified subject.
@@ -1221,8 +1221,8 @@
       (validate-extensions! extensions)
       (validate-csr-signature! csr)
 
-      (catch csr-validation-failure? {:keys [message]}
-        message))))
+      (catch csr-validation-failure? {:keys [msg]}
+        msg))))
 
 (schema/defn ^:always-validate delete-certificate!
   "Delete the certificate for the given subject.

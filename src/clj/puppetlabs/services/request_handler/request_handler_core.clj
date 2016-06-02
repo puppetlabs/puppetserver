@@ -4,7 +4,7 @@
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [puppetlabs.ring-middleware.core :as mw]
+            [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.puppetserver.common :as ps-common]
             [ring.util.codec :as ring-codec]
@@ -124,7 +124,7 @@
   (try
     (ring-codec/url-decode header-cert)
     (catch Exception e
-      (mw/throw-bad-request!
+      (ringutils/throw-bad-request!
         (str "Unable to URL decode the "
              header-client-cert-name
              " header: "
@@ -137,7 +137,7 @@
     (try
       (ssl-utils/pem->certs reader)
       (catch Exception e
-        (mw/throw-bad-request!
+        (ringutils/throw-bad-request!
           (str "Unable to parse "
                header-client-cert-name
                " into certificate: "
@@ -152,10 +152,10 @@
           certs      (pem->certs pem)
           cert-count (count certs)]
       (condp = cert-count
-        0 (mw/throw-bad-request!
+        0 (ringutils/throw-bad-request!
             (str "No certs found in PEM read from " header-client-cert-name))
         1 (first certs)
-        (mw/throw-bad-request!
+        (ringutils/throw-bad-request!
           (str "Only 1 PEM should be supplied for "
                header-client-cert-name
                " but "
@@ -262,9 +262,9 @@
   (if (:include-code-id? request)
     (let [env (jruby-request/get-environment-from-request request)]
       (when-not (nil? (schema/check ps-common/Environment env))
-        (mw/throw-bad-request! (ps-common/environment-validation-error-msg env)))
+        (ringutils/throw-bad-request! (ps-common/environment-validation-error-msg env)))
       (when-not env
-        (mw/throw-bad-request! "Environment is required in a catalog request."))
+        (ringutils/throw-bad-request! "Environment is required in a catalog request."))
       (assoc-in request [:params "code_id"] (current-code-id env)))
     request))
 

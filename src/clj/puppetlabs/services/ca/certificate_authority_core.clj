@@ -4,6 +4,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
+            [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
             [bidi.schema :as bidi-schema]
@@ -49,10 +50,10 @@
   (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch ca/csr-validation-failure? {:keys [message]}
-      (log/error message)
+    (catch ca/csr-validation-failure? {:keys [msg]}
+      (log/error msg)
       ;; Respond to all CSR validation failures with a 400
-      (middleware/plain-response 400 message))))
+      (middleware-utils/plain-response 400 msg))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
@@ -274,7 +275,7 @@
       (comidi/context ["/certificate_statuses/"]
         (ANY [[#"[^/]+" :ignored-but-required]] []
           (certificate-statuses ca-settings))
-        (ANY [""] [] (middleware/plain-response 400 "Missing URL Segment")))
+        (ANY [""] [] (middleware-utils/plain-response 400 "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
       (comidi/context ["/certificate_request/" :subject]

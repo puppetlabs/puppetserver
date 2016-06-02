@@ -867,20 +867,20 @@
       (let [settings (assoc settings :allow-duplicate-certs false)]
         (testing "throws exception if CSR already exists"
           (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "test-agent already has a requested certificate; ignoring certificate request"}
+               {:kind :duplicate-cert
+                :msg "test-agent already has a requested certificate; ignoring certificate request"}
                (process-csr-submission! "test-agent" (csr-stream "test-agent") settings))))
 
         (testing "throws exception if certificate already exists"
           (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "localhost already has a signed certificate; ignoring certificate request"}
+               {:kind :duplicate-cert
+                :msg "localhost already has a signed certificate; ignoring certificate request"}
                (process-csr-submission! "localhost"
                                         (io/input-stream (test-pem-file "localhost-csr.pem"))
                                         settings)))
           (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
+               {:kind :duplicate-cert
+                :msg "revoked-agent already has a revoked certificate; ignoring certificate request"}
                (process-csr-submission! "revoked-agent"
                                         (io/input-stream (test-pem-file "revoked-agent-csr.pem"))
                                         settings))))))
@@ -915,14 +915,14 @@
           (testing "subject policies are checked"
             (doseq [[policy subject csr-file exception]
                     [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
-                      {:type :hostname-mismatch
-                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                      {:kind :hostname-mismatch
+                       :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
                      ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains unprintable or non-ASCII characters"}]
+                      {:kind :invalid-subject-name
+                       :msg "Subject contains unprintable or non-ASCII characters"}]
                      ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+                      {:kind :invalid-subject-name
+                       :msg "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
@@ -948,14 +948,14 @@
           (testing "CSR will not be saved when"
             (doseq [[policy subject csr-file expected]
                     [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
-                      {:type :hostname-mismatch
-                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                      {:kind :hostname-mismatch
+                       :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
                      ["subject contains invalid characters" "super/bad" "bad-subject-name-1.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains unprintable or non-ASCII characters"}]
+                      {:kind :invalid-subject-name
+                       :msg "Subject contains unprintable or non-ASCII characters"}]
                      ["subject contains wildcard character" "foo*bar" "bad-subject-name-wildcard.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+                      {:kind :invalid-subject-name
+                       :msg "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
@@ -966,16 +966,16 @@
           (testing "CSR will be saved when"
             (doseq [[policy subject csr-file expected]
                     [["subject alt name extension exists" "hostwithaltnames" "hostwithaltnames.pem"
-                      {:type :disallowed-extension
-                       :message (str "CSR 'hostwithaltnames' contains subject alternative names "
+                      {:kind :disallowed-extension
+                       :msg (str "CSR 'hostwithaltnames' contains subject alternative names "
                                      "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
                                      "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request.")}]
                      ["unknown extension exists" "meow" "meow-bad-extension.pem"
-                      {:type :disallowed-extension
-                       :message "Found extensions that are not permitted: 1.9.9.9.9.9.9"}]
+                      {:kind :disallowed-extension
+                       :msg "Found extensions that are not permitted: 1.9.9.9.9.9.9"}]
                      ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"
-                      {:type :invalid-signature
-                       :message "CSR contains a public key that does not correspond to the signing key"}]]]
+                      {:kind :invalid-signature
+                       :msg "CSR contains a public key that does not correspond to the signing key"}]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
@@ -989,14 +989,14 @@
           (let [settings (assoc settings :allow-duplicate-certs false)
                 csr-with-mismatched-name (csr-stream "test-agent")]
             (is (thrown-with-slingshot?
-                 {:type :duplicate-cert
-                  :message "test-agent already has a requested certificate; ignoring certificate request"}
+                 {:kind :duplicate-cert
+                  :msg "test-agent already has a requested certificate; ignoring certificate request"}
                  (process-csr-submission! "not-test-agent" csr-with-mismatched-name settings)))))
         (testing "subject policies checked before extension & key policies"
           (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
             (is (thrown-with-slingshot?
-                 {:type :hostname-mismatch
-                  :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+                 {:kind :hostname-mismatch
+                  :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
                  (process-csr-submission! "foo" csr-with-disallowed-alt-names settings)))))))))
 
 (deftest cert-signing-extension-test
@@ -1105,15 +1105,15 @@
                           :csr-attributes
                           (csr-attributes-file "insecure_csr_attributes.yaml"))]
         (is (thrown-with-slingshot?
-              {:type    :disallowed-extension
-               :message "Found extensions that are not permitted: 1.2.3.4"}
+              {:kind :disallowed-extension
+               :msg "Found extensions that are not permitted: 1.2.3.4"}
               (create-master-extensions subject subject-pub issuer-pub config)))))
 
     (testing "invalid DNS alt names are rejected"
       (let [dns-alt-names "*.wildcard"]
         (is (thrown-with-slingshot?
-              {:type    :invalid-alt-name
-               :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
+              {:kind :invalid-alt-name
+               :msg "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
               (create-master-extensions subject subject-pub issuer-pub
                                         (assoc (testutils/master-settings confdir)
                                                :dns-alt-names dns-alt-names))))))
@@ -1192,31 +1192,31 @@
 (deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
     (is (thrown-with-slingshot?
-          {:type    :hostname-mismatch
-           :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
+          {:kind :hostname-mismatch
+           :msg "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
           (validate-subject!
             "not-test-agent" "test-agent"))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
     (is (thrown-with-slingshot?
-          {:type    :invalid-subject-name
-           :message "Certificate names must be lower case."}
+          {:kind :invalid-subject-name
+           :msg "Certificate names must be lower case."}
           (validate-subject! "Host-With-Capital-Letters"
                              "Host-With-Capital-Letters")))))
 
 (deftest validate-dns-alt-names!-test
   (testing "Only DNS alt names are allowed"
     (is (thrown-with-slingshot?
-          {:type    :invalid-alt-name
-           :message "Only DNS names are allowed in the Subject Alternative Names extension"}
+          {:kind :invalid-alt-name
+           :msg "Only DNS names are allowed in the Subject Alternative Names extension"}
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:ip-address ["12.34.5.6"]}}))))
 
   (testing "No DNS wildcards are allowed"
     (is (thrown-with-slingshot?
-          {:type    :invalid-alt-name
-           :message "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"}
+          {:kind :invalid-alt-name
+           :msg "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"}
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:dns-name ["ahostname" "foo*bar"]}})))))
