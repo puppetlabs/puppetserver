@@ -235,6 +235,11 @@
       @blocked-borrow-thread-started?
       @lock-thread-started?
       (is (not (realized? blocked-borrow-thread-borrowed?)))
+      (let [start (System/currentTimeMillis)]
+        (while (and (not (.isLocked pool))
+                    (< (- (System/currentTimeMillis) start) 10000))
+          (Thread/yield)))
+      (is (.isLocked pool))
       (is (not (realized? lock-acquired?)))
 
       (return-instances pool instances)
