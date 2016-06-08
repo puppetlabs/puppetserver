@@ -35,6 +35,7 @@ There are three ways to trigger your Puppet Server environment to refresh and pi
 ### Changes applied after a HUP signal or full Server restart
 
 * Changes to Puppet Server [configuration files](./configuration.html) in its `conf.d` directory.
+* Changes to the CA CRL file.  For example, a `puppet cert clean`
 
 ### Changes that require a full Server restart
 
