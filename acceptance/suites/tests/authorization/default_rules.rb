@@ -38,15 +38,19 @@ def curl_unauthenticated(path)
   on(master, curl)
 end
 
-def assert_allowed(expected_statuscode = 200)
+def assert_allowed(expected_statuscode = nil)
   assert_no_match(/Forbidden request/, stdout)
-  assert_match(/^STATUSCODE=#{expected_statuscode}$/, stdout)
+  if expected_statuscode
+    assert_match(/STATUSCODE=#{expected_statuscode}/, stdout)
+  else
+    assert_no_match(/STATUSCODE=403/, stdout)
+  end
 end
 
 def assert_denied(expected_stdout)
   assert_match(/Forbidden request/, stdout)
   assert_match(expected_stdout, stdout)
-  assert_match(/^STATUSCODE=403$/, stdout)
+  assert_match(/STATUSCODE=403/, stdout)
 end
 
 def report_query(node)
@@ -122,9 +126,9 @@ with_puppet_running_on(master, {}) do
 
   step 'file_bucket_file endpoint' do
     # We'd actually need to store a file in the filebucket in order to get
-    # back a 200, but we know that a 400 means we got past authorization
+    # back a 200, but we know that not a 403 means we got past authorization
     curl_authenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
-    assert_allowed(400)
+    assert_allowed
 
     curl_unauthenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
     assert_denied(/\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
@@ -137,9 +141,9 @@ with_puppet_running_on(master, {}) do
 
   step 'static file content endpoint' do
     # We'd actually need to perform a commit and use its code-id in order to
-    # get back a 200, but we know that a 400 means we got past authorization
+    # get back a 200, but we know that not a 403 means we got past authorization
     curl_authenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
-    assert_allowed(400)
+    assert_allowed
 
     curl_unauthenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
     assert_denied(/\/puppet\/v3\/static_file_content\/foo\/bar \(method :get\)/)
