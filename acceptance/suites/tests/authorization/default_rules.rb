@@ -137,9 +137,9 @@ with_puppet_running_on(master, {}) do
 
   step 'static file content endpoint' do
     # We'd actually need to perform a commit and use its code-id in order to
-    # get back a 200, but we know that a 500 means we got past authorization
+    # get back a 200, but we know that a 400 means we got past authorization
     curl_authenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
-    assert_allowed(500)
+    assert_allowed(400)
 
     curl_unauthenticated('/puppet/v3/static_file_content/foo/bar?environment=production')
     assert_denied(/\/puppet\/v3\/static_file_content\/foo\/bar \(method :get\)/)
