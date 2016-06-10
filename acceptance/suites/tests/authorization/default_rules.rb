@@ -40,13 +40,13 @@ end
 
 def assert_allowed(expected_statuscode = 200)
   assert_no_match(/Forbidden request/, stdout)
-  assert_match(/^STATUSCODE=#{expected_statuscode}$/, stdout)
+  assert_match(/STATUSCODE=#{expected_statuscode}/, stdout)
 end
 
 def assert_denied(expected_stdout)
   assert_match(/Forbidden request/, stdout)
   assert_match(expected_stdout, stdout)
-  assert_match(/^STATUSCODE=403$/, stdout)
+  assert_match(/STATUSCODE=403/, stdout)
 end
 
 def report_query(node)
