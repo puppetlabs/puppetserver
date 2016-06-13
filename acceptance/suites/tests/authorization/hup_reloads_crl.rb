@@ -61,7 +61,6 @@ step 'Demonstrate that the certs are rejected' do
               {:acceptable_exit_codes => [1]})
       fail_test('Missing expected output') unless \
         rc.stderr.include?('SSL_connect SYSCALL returned=5')
-
     end
   end
 end
