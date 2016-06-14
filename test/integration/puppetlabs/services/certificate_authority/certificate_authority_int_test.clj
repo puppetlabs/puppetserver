@@ -170,10 +170,8 @@
 (deftest ^:integration certificate-with-ca-true-extension-refused
   (testing (str "Validates that the server rejects a csr for signing"
                 " that has the v3 CA:TRUE extension")
-    (let [master-conf-dir (str "./dev-resources/puppetlabs/services/"
-                               "certificate_authority/"
-                               "certificate_authority_int_test/"
-                               "ca_true_test/master/conf")]
+    (let [master-conf-dir (str test-resources-dir 
+                               "/ca_true_test/master/conf")]
       (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
