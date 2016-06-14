@@ -170,26 +170,25 @@
 (deftest ^:integration certificate-with-ca-true-extension-refused
   (testing (str "Validates that the server rejects a csr for signing"
                 " that has the v3 CA:TRUE extension")
-    (bootstrap/with-puppetserver-running
-      app
-      {:jruby-puppet
-       {:master-conf-dir (str "./dev-resources/puppetlabs/ca_true_test/master/"
-                              "conf")}}
-       (let
-         [master-conf-dir (str "./dev-resources/puppetlabs/ca_true_test/"
-                               "master/conf")
-          response (http-client/put
-                     (str "https://localhost:8140"
-                          "puppet-ca/v1/certificate_status/test_cert_ca_true")
-                     { :ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                       :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
-                       :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                       :as :text
-                       :body "{\"desired_state\": \"signed\"}"
-                       :headers {"content-type" "application/json"}})]
-         (is (= 409 (:status response)))
-         (is (.startsWith (:body response) "Found extensions"))
-         (is (.contains (:body response) "2.5.29.19"))))))
+    (let [master-conf-dir (str "./dev-resources/puppetlabs/services/"
+                               "certificate_authority/"
+                               "certificate_authority_int_test/"
+                               "ca_true_test/master/conf")]
+      (bootstrap/with-puppetserver-running
+        app
+        {:jruby-puppet {:master-conf-dir master-conf-dir}}
+        (let [response (http-client/put
+                       (str "https://localhost:8140"
+                            "puppet-ca/v1/certificate_status/test_cert_ca_true")
+                       {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                        :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
+                        :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                        :as :text
+                        :body "{\"desired_state\": \"signed\"}"
+                        :headers {"content-type" "application/json"}})]
+        (is (= 409 (:status response)))
+        (is (.startsWith (:body response) "Found extensions"))
+        (is (.contains (:body response) "2.5.29.19")))))))
 
 (deftest ^:integration double-encoded-request-not-allowed
   (testing (str "client not able to unintentionally get access to CA endpoint "
