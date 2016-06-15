@@ -54,7 +54,7 @@ step 'Revoke the agent certs' do
   end
 end
 
-step 'Demonstrate that the certs work before HUPping the server' do
+step 'Demonstrate that the certs work before HUPing the server' do
   agents.each do |a| 
     if not_controller(a)
       rc = on(a, puppet('agent', '--test', '--server', "#{server}"),
