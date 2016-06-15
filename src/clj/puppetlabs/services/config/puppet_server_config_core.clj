@@ -8,7 +8,8 @@
             [puppetlabs.kitchensink.core :refer [keyset]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config
@@ -94,9 +95,7 @@
   (let [key-conflicts (set/intersection (keyset tk-config) puppet-config-keys)]
     (when-not (empty? key-conflicts)
       (throw (Exception.
-               (str "The following configuration keys "
-                    "conflict with the values to be "
-                    "read from puppet: "
+               (trs "The following configuration keys conflict with the values to be read from puppet: {0}"
                     (str/join ", " (sort key-conflicts))))))))
 
 (schema/defn ^:always-validate
@@ -118,8 +117,7 @@
                    :ssl-ca-cert  localcacert
                    :ssl-crl-path cacrl}]
     (if (some #((key %) webserver-settings) overrides)
-      (log/info
-        "Not overriding webserver settings with values from core Puppet")
+      (log/info (trs "Not overriding webserver settings with values from core Puppet"))
       (do
-        (log/info "Initializing webserver settings from core Puppet")
+        (log/info (trs "Initializing webserver settings from core Puppet"))
         (override-webserver-settings! overrides)))))

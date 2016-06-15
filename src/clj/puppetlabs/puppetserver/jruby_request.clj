@@ -6,7 +6,8 @@
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
-            [puppetlabs.puppetserver.common :as ps-common]))
+            [puppetlabs.puppetserver.common :as ps-common]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
 
 
 (defn jruby-timeout?
@@ -18,7 +19,7 @@
 
 (defn output-error
   [{:keys [uri]} {:keys [msg]} http-status]
-  (log/errorf "Error %d on SERVER at %s: %s" http-status uri msg)
+  (log/error (trs "Error {0} on SERVER at {1}: {2}" http-status uri msg))
   (ringutils/plain-response http-status msg))
 
 (defn wrap-with-error-handling
@@ -66,7 +67,7 @@
       (cond
         (nil? environment)
         (ringutils/throw-bad-request!
-         "An environment parameter must be specified")
+         (tru "An environment parameter must be specified"))
 
         (not (nil? (schema/check ps-common/Environment environment)))
         (ringutils/throw-bad-request!

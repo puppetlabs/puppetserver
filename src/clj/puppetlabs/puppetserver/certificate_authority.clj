@@ -17,7 +17,8 @@
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
             [clj-yaml.core :as yaml]
-            [puppetlabs.puppetserver.shell-utils :as shell-utils]))
+            [puppetlabs.puppetserver.shell-utils :as shell-utils]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -289,15 +290,12 @@
    found-files :- [schema/Str]
    missing-files :- [schema/Str]]
   (IllegalStateException.
-   (format
-    (str "Cannot initialize %s with partial state; need all files or none.\n"
-         "Found:\n"
-         "%s\n"
-         "Missing:\n"
-         "%s\n")
-    master-or-ca
-    (str/join "\n" found-files)
-    (str/join "\n" missing-files))))
+   (format "%s\n%s\n%s\n%s\n%s\n"
+           (trs "Cannot initialize {0} with partial state; need all files or none." master-or-ca)
+           (trs "Found:")
+           (str/join "\n" found-files)
+           (trs "Missing:")
+           (str/join "\n" missing-files))))
 
 ; TODO - PE-5529 - these should be moved to jvm-c-a.
 (schema/defn get-subject :- schema/Str
@@ -387,9 +385,7 @@
   The location of this file is defined by Puppet's 'cert_inventory' setting.
   The inventory is a text file where each line represents a certificate in the
   following format:
-
   $SN $NB $NA /$S
-
   where:
     * $SN = The serial number of the cert.  The serial number is formatted as a
             hexadecimal number, with a leading 0x, and zero-padded up to four
@@ -427,28 +423,18 @@
                                        certificate-status-access-control)]
     (when (> ca-ttl max-ca-ttl)
       (throw (IllegalStateException.
-               (format "Config setting ca_ttl must have a value below %s" max-ca-ttl))))
+               (trs "Config setting ca_ttl must have a value below {0}" max-ca-ttl))))
     (cond
       (or (false? (:authorization-required certificate-status-access-control))
           (not-empty certificate-status-whitelist))
-      (log/warn
-        "The 'client-whitelist' and 'authorization-required' settings in the"
-        "'certificate-authority.certificate-status' section are deprecated and"
-        "will be removed in a future release.  Remove these settings and create"
-        "an appropriate authorization rule in the"
-        "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
+      (log/warn (format "%s  %s"
+               (trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+               (trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
       (not (nil? certificate-status-whitelist))
-      (log/warn
-        "The 'client-whitelist' and 'authorization-required' settings in the"
-        "'certificate-authority.certificate-status' section are deprecated"
-        "and will be removed in a future release.  Because the"
-        "'client-whitelist' is empty and 'authorization-required' is set to"
-        "'false', the 'certificate-authority.certificate-status' settings"
-        "will be ignored and authorization for the 'certificate_status'"
-        "endpoints will be done per the authorization rules in the"
-        "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.  To suppress"
-        "this warning, remove the 'certificate-authority' configuration"
-        "settings."))))
+      (log/warn (format "%s  %s  %s"
+                        (trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+                        (trs "Because the ''client-whitelist'' is empty and ''authorization-required'' is set to ''false'', the ''certificate-authority.certificate-status'' settings will be ignored and authorization for the ''certificate_status'' endpoints will be done per the authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
+                        (trs "To suppress this warning, remove the ''certificate-authority'' configuration settings."))))))
 
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
@@ -470,7 +456,8 @@
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
   [ca-settings :- CaSettings]
-  (log/debug (str "Initializing SSL for the CA; settings:\n"
+  (log/debug (str (trs "Initializing SSL for the CA; settings:")
+                  "\n"
                   (ks/pprint-to-string ca-settings)))
   (create-parent-directories! (vals (settings->cadir-paths ca-settings)))
   (-> ca-settings :csrdir fs/file ks/mkdirs!)
@@ -536,25 +523,22 @@
   (when-not (= hostname subject)
     (sling/throw+
       {:kind :hostname-mismatch
-       :msg (str "Instance name \"" subject
-                 "\" does not match requested key \"" hostname "\"")}))
+       :msg (tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg "Certificate names must be lower case."}))
+       :msg (tru "Certificate names must be lower case.")}))
 
   (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg "Subject contains unprintable or non-ASCII characters"}))
+       :msg (tru "Subject contains unprintable or non-ASCII characters")}))
 
   (when (.contains subject "*")
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (format
-             "Subject contains a wildcard, which is not allowed: %s"
-             subject)})))
+       :msg (tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -573,7 +557,7 @@
     (when-not (empty? bad-extensions)
       (let [bad-extension-oids (map :oid bad-extensions)]
         (sling/throw+ {:kind :disallowed-extension
-                       :msg (str "Found extensions that are not permitted: "
+                       :msg (tru "Found extensions that are not permitted: {0}"
                                  (str/join ", " bad-extension-oids))})))))
 
 (schema/defn validate-dns-alt-names!
@@ -588,14 +572,13 @@
                    (= (first name-types) :dns-name))
       (sling/throw+
         {:kind :invalid-alt-name
-         :msg "Only DNS names are allowed in the Subject Alternative Names extension"}))
+         :msg (tru "Only DNS names are allowed in the Subject Alternative Names extension")}))
 
     (doseq [name names]
       (when (.contains name "*")
         (sling/throw+
           {:kind :invalid-alt-name
-           :msg (format
-                 "Cert subjectAltName contains a wildcard, which is not allowed: %s"
+           :msg (tru "Cert subjectAltName contains a wildcard, which is not allowed: {0}"
                  name)})))))
 
 (schema/defn create-csr-attrs-exts :- (schema/maybe (schema/pred utils/extension-list?))
@@ -611,8 +594,8 @@
               :critical false
               :value (str value)})
            ext-req))
-    (log/debugf "No CSR Attributes configuration file found at %s, CSR Attributes will not be loaded"
-                csr-attributes-file)))
+    (log/debug (trs "No CSR Attributes configuration file found at {0}, CSR Attributes will not be loaded"
+                csr-attributes-file))))
 
 (schema/defn create-master-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the master certificate."
@@ -646,8 +629,9 @@
   [settings :- MasterSettings
    certname :- schema/Str
    ca-settings :- CaSettings]
-  (log/debug (str "Initializing SSL for the Master; settings:\n"
-                  (ks/pprint-to-string settings)))
+  (log/debug (format "%s\n%s"
+                     (trs "Initializing SSL for the Master; settings:")
+                     (ks/pprint-to-string settings)))
   (create-parent-directories! (vals (settings->ssldir-paths settings)))
   (set-file-perms (:privatekeydir settings) private-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
@@ -692,7 +676,7 @@
                               (select-keys required-master-files)
                               (vals))]
        (if (every? fs/exists? required-files)
-         (log/info "Master already initialized for SSL")
+         (log/info (trs "Master already initialized for SSL"))
          (let [{found   true
                 missing false} (group-by fs/exists? required-files)]
            (if (= required-files missing)
@@ -711,12 +695,8 @@
        (fs/copy cacert localcacert))
      (if-not (fs/exists? localcacert)
        (throw (IllegalStateException.
-                (str ":localcacert ("
-                     localcacert
-                     ") could not "
-                     "be found and no file at :cacert ("
-                     cacert
-                     ") to copy it from")))))))
+               (trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
+                    localcacert cacert)))))))
 
 (schema/defn ^:always-validate retrieve-ca-crl!
   "Ensure a local copy of the CA CRL, if one exists, is available on disk.
@@ -733,11 +713,9 @@
 
 (schema/defn glob-matches? :- schema/Bool
   "Test if a subject matches the domain-name glob from the autosign whitelist.
-
    The glob is expected to start with a '*' and be in a form like `*.foo.bar`.
    The subject is expected to contain only lowercase characters and be in a
    form like `agent.foo.bar`. Capitalization in the glob will be ignored.
-
    Examples:
      (glob-matches? *.foo.bar agent.foo.bar) => true
      (glob-matches? *.baz baz) => true
@@ -764,7 +742,7 @@
    subject :- schema/Str
    line :- schema/Str]
   (if (or (.contains line "#") (.contains line " "))
-    (do (log/errorf "Invalid pattern '%s' found in %s" line whitelist)
+    (do (log/error (trs "Invalid pattern ''{0}'' found in {1}" line whitelist))
         false)
     (if (= line "*")
       true
@@ -800,7 +778,7 @@
    subject :- schema/Str
    csr-stream :- InputStream
    ruby-load-path :- [schema/Str]]
-  (log/debugf "Executing '%s %s'" executable subject)
+  (log/debug (trs "Executing ''{0} {1}''" executable subject))
   (let [env     (into {} (System/getenv))
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
                        (cons lib ruby-load-path)
@@ -812,17 +790,16 @@
                  {:args [subject]
                   :in csr-stream
                   :env (merge env {"RUBYLIB" rubylib})})]
-    (log/debugf "Autosign command '%s %s' exit status: %d"
-                executable subject (:exit-code results))
-    (log/debugf "Autosign command '%s %s' output on stdout: %s"
-                executable subject (:stdout results))
+    (log/debug (trs "Autosign command ''{0} {1}'' exit status: {2}"
+                executable subject (:exit-code results)))
+    (log/debug (trs "Autosign command ''{0} {1}'' output on stdout: {2}"
+                executable subject (:stdout results)))
     (when-not (empty? (:stderr results))
-      (log/warnf "Autosign command '%s %s' generated output to stderr: %s"
-                 executable subject (:stderr results)))
+      (log/warn (trs "Autosign command ''{0} {1}'' generated output to stderr: {2}"
+                 executable subject (:stderr results))))
     (when-not (zero? (:exit-code results))
-      (log/warnf (str "Autosign command '%s' rejected certificate '%s' because "
-                      "the exit code was %s, not zero")
-                 executable subject (:exit-code results)))
+      (log/warn (trs "Autosign command ''{0}'' rejected certificate ''{1}'' because the exit code was {2}, not zero"
+                 executable subject (:exit-code results))))
     results))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -929,7 +906,7 @@
                                             (create-agent-extensions
                                              csr
                                              (.getPublicKey cacert)))]
-    (log/info "Signed certificate request for" subject)
+    (log/info (trs "Signed certificate request for {0}" subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
     (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
 
@@ -940,7 +917,7 @@
    csr :- CertificateRequest
    csrdir :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
-    (log/debugf "Saving CSR to '%s'" csr-path)
+    (log/debug (trs "Saving CSR to ''{0}''" csr-path))
     (utils/obj->pem! csr csr-path)))
 
 (schema/defn validate-duplicate-cert-policy!
@@ -963,10 +940,10 @@
                        "signed")
                      "requested")]
         (if allow-duplicate-certs
-          (log/infof "%s already has a %s certificate; new certificate will overwrite it" subject status)
+          (log/info (trs "{0} already has a {1} certificate; new certificate will overwrite it" subject status))
           (sling/throw+
             {:kind :duplicate-cert
-             :msg (format "%s already has a %s certificate; ignoring certificate request" subject status)}))))))
+             :msg (tru "{0} already has a {1} certificate; ignoring certificate request" subject status)}))))))
 
 (schema/defn validate-csr-signature!
   "Throws an exception when the CSR's signature is invalid.
@@ -975,7 +952,7 @@
   (when-not (utils/signature-valid? certificate-request)
     (sling/throw+
       {:kind :invalid-signature
-       :msg "CSR contains a public key that does not correspond to the signing key"})))
+       :msg (tru "CSR contains a public key that does not correspond to the signing key")})))
 
 (schema/defn ensure-no-dns-alt-names!
   "Throws an exception if the CSR contains DNS alt-names."
@@ -984,9 +961,9 @@
     (let [subject (get-csr-subject csr)]
       (sling/throw+
        {:kind :disallowed-extension
-        :msg (format (str "CSR '%s' contains subject alternative names (%s), which are disallowed. "
-                          "Use `puppet cert --allow-dns-alt-names sign %s` to sign this request.")
-                     subject (str/join ", " dns-alt-names) subject)}))))
+        :msg (format "%s %s"
+                     (tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
+                     (tru "Use `puppet cert --allow-dns-alt-names sign {0}` to sign this request." subject))}))))
 
 
 (schema/defn ^:always-validate process-csr-submission!
@@ -1018,16 +995,15 @@
   (let [csr-path (path-to-cert-request csrdir subject)]
     (if (fs/exists? csr-path)
       (if (fs/delete csr-path)
-        (let [msg (str "Deleted certificate request for " subject)]
+        (let [msg (trs "Deleted certificate request for {0}" subject)]
           (log/debug msg)
           {:outcome :success
            :message msg})
-        (let [msg (format "Path %s exists but could not be deleted" csr-path)]
+        (let [msg (trs "Path {0} exists but could not be deleted" csr-path)]
           (log/error msg)
           {:outcome :error
            :message msg}))
-      (let [msg (format
-                  "No certificate request for %s at expected path %s"
+      (let [msg (trs "No certificate request for {0} at expected path {1}"
                   subject csr-path)]
         (log/warn msg)
         {:outcome :not-found
@@ -1056,9 +1032,11 @@
         cur-perms (get-file-perms ca-p-key)]
     (when-not (= private-key-perms cur-perms)
       (set-file-perms ca-p-key private-key-perms)
-      (log/warnf (str "The private CA key at '%s' was found to have the wrong "
-                      "permissions set as '%s'. This has been corrected to '%s'.")
-                 ca-p-key cur-perms private-key-perms))))
+      (log/warn (format "%s %s"
+                        (trs "The private CA key at ''{0}'' was found to have the wrong permissions set as ''{1}''."
+                             ca-p-key cur-perms)
+                        (trs "This has been corrected to ''{0}''."
+                             private-key-perms))))))
 
 (schema/defn ^:always-validate
   initialize!
@@ -1073,7 +1051,7 @@
                             (vals))]
      (if (every? fs/exists? required-files)
        (do
-         (log/info "CA already initialized for SSL")
+         (log/info (trs "CA already initialized for SSL"))
          (when (:manage-internal-file-permissions settings)
            (ensure-ca-file-perms! settings)))
        (let [{found   true
@@ -1150,7 +1128,7 @@
   (let [csr-path (path-to-cert-request csrdir subject)]
     (autosign-certificate-request! subject (utils/pem->csr csr-path) settings)
     (fs/delete csr-path)
-    (log/debugf "Removed certificate request for %s at '%s'" subject csr-path)))
+    (log/debug (trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
@@ -1165,7 +1143,7 @@
                               (.getPublicKey (utils/pem->cert cacert))
                               serial)]
     (utils/crl->pem! new-crl cacrl)
-    (log/debugf "Revoked %s certificate with serial %d" subject serial)))
+    (log/debug (trs "Revoked {0} certificate with serial {1}" subject serial))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
@@ -1205,7 +1183,6 @@
   "Validates the CSR (on disk) for the specified subject.
    Assumes existence of the CSR on disk; duplicate CSR or
    certificate policy will not be checked.
-
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
   [{:keys [csrdir] :as settings} :- CaSettings
@@ -1232,7 +1209,7 @@
   (let [cert (path-to-cert signeddir subject)]
     (when (fs/exists? cert)
       (fs/delete cert)
-      (log/debug "Deleted certificate for" subject))))
+      (log/debug (trs "Deleted certificate for {0}" subject)))))
 
 (schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
   "Given a path to a custom OID mappings file, return a map of all oids to
@@ -1241,10 +1218,10 @@
   (if (fs/file? custom-oid-mapping-file)
     (let [oid-mappings (:oid_mapping (yaml/parse-string (slurp custom-oid-mapping-file)))]
       (into {} (for [[oid names] oid-mappings] [(name oid) (keyword (:shortname names))])))
-    (log/debugf "No custom OID mapping configuration file found at %s, custom OID mappings will not be loaded"
-                custom-oid-mapping-file)))
+    (log/debug (trs "No custom OID mapping configuration file found at {0}, custom OID mappings will not be loaded"
+                custom-oid-mapping-file))))
 
 (schema/defn ^:always-validate get-oid-mappings :- OIDMappings
   [custom-oid-mapping-file :- (schema/maybe schema/Str)]
   (merge (get-custom-oid-mappings custom-oid-mapping-file)
-         (clojure.set/map-invert puppet-short-names)))
+(clojure.set/map-invert puppet-short-names)))

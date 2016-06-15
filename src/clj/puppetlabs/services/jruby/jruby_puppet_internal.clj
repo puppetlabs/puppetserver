@@ -3,7 +3,8 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (com.puppetlabs.puppetserver.pool JRubyPool)
            (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance PoisonPill ShutdownPoisonPill)
@@ -181,7 +182,7 @@
   (.unregister pool instance)
   (.terminate jruby-puppet)
   (.terminate scripting-container)
-  (log/infof "Cleaned up old JRuby instance with id %s." (:id instance)))
+  (log/info (trs "Cleaned up old JRuby instance with id {0}." (:id instance))))
 
 (schema/defn ^:always-validate
   create-pool-instance! :- JRubyPuppetInstance
@@ -198,8 +199,8 @@
                 use-legacy-auth-conf]} config]
     (when-not ruby-load-path
       (throw (Exception.
-               "JRuby service missing config value 'ruby-load-path'")))
-    (log/infof "Creating JRuby instance with id %s." id)
+              (trs "JRuby service missing config value ''ruby-load-path''"))))
+    (log/info (trs "Creating JRuby instance with id {0}." id))
     (let [scripting-container   (create-scripting-container
                                  ruby-load-path
                                  gem-home
@@ -271,7 +272,7 @@
           (do
             (.releaseItem pool instance)
             (throw (IllegalStateException.
-                     "Unable to borrow JRuby instance from pool"
+                    (trs "Unable to borrow JRuby instance from pool")
                      (:err instance))))
 
           (jruby-schemas/jruby-puppet-instance? instance)
@@ -285,7 +286,7 @@
 
           :else
           (throw (IllegalStateException.
-                   (str "Borrowed unrecognized object from pool!: " instance))))))
+                   (trs "Borrowed unrecognized object from pool!: {0}" instance))))))
 
 (schema/defn ^:always-validate
   borrow-from-pool :- jruby-schemas/JRubyPuppetInstanceOrPill
@@ -320,10 +321,9 @@
       (if (and (pos? max-requests)
                (>= (:borrow-count new-state) max-requests))
         (do
-          (log/infof (str "Flushing JRuby instance %s because it has exceeded the "
-                          "maximum number of requests (%s)")
+          (log/info (trs "Flushing JRuby instance {0} because it has exceeded the maximum number of requests ({1})"
                      (:id instance)
-                     max-requests)
+                     max-requests))
           (try
             (flush-instance-fn pool instance)
             (finally

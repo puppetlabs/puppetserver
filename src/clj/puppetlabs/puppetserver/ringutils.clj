@@ -7,7 +7,8 @@
             [ring.util.response :as ring]
             [schema.core :as schema]
             [ring.util.response :as rr]
-            [cheshire.core :as cheshire]))
+            [cheshire.core :as cheshire]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -36,8 +37,7 @@
    access control whitelist."
   (let [subject (ssl-utils/get-cn-from-x509-certificate certificate)]
     (log/info
-      (str "Client '" subject "' access to " uri " rejected;\n"
-           "client not found in whitelist configuration."))))
+     (format "%s\n%s" (trs "Client ''{0}'' access to {1} rejected;" subject uri) (trs "client not found in whitelist configuration.")))))
 
 (defn client-on-whitelist?
   "Test if the certificate subject is on the client whitelist."
@@ -63,7 +63,7 @@
         true
         (do (log-access-denied (:uri req) client-cert) false))
       (do
-        (log/info "Access to " (:uri req) " rejected; no client certificate found")
+        (log/info (trs "Access to {0} rejected; no client certificate found" (:uri req)))
         false))
     true))
 

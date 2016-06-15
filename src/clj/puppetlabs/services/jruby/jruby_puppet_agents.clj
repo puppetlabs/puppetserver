@@ -3,7 +3,8 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas])
+            [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
+            [puppetlabs.i18n.core :as i18n :refer [trs]])
   (:import (clojure.lang IFn IDeref)
            (com.puppetlabs.puppetserver PuppetProfiler)
            (puppetlabs.services.jruby.jruby_puppet_schemas PoisonPill RetryPoisonPill JRubyPuppetInstance ShutdownPoisonPill)))
@@ -43,22 +44,22 @@
    config :- jruby-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (let [pool (:pool @pool-state)]
-    (log/debug (str "Initializing JRubyPuppet instances with the following settings:\n"
+    (log/debug (format "%s\n%s" (trs "Initializing JRubyPuppet instances with the following settings:")
                     (ks/pprint-to-string config)))
     (try
       (let [count (.remainingCapacity pool)]
         (dotimes [i count]
           (let [id (inc i)]
-            (log/debugf "Priming JRubyPuppet instance %d of %d" id count)
+            (log/debug (trs "Priming JRubyPuppet instance {0} of {1}" id count))
             (jruby-internal/create-pool-instance! pool id config
                                                   (partial send-flush-instance! pool-context)
                                                   profiler)
-            (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                       id count))))
+            (log/info (trs "Finished creating JRubyPuppet instance {0} of {1}"
+                       id count)))))
       (catch Exception e
         (.clear pool)
         (.insertPill pool (PoisonPill. e))
-        (throw (IllegalStateException. "There was a problem adding a JRubyPuppet instance to the pool." e))))))
+        (throw (IllegalStateException. (trs "There was a problem adding a JRubyPuppet instance to the pool.") e))))))
 
 (schema/defn ^:always-validate
   flush-instance!
@@ -94,9 +95,9 @@
         new-pool (:pool new-pool-state)
         old-pool (:pool old-pool-state)
         old-pool-size (:size old-pool-state)]
-    (log/info "Replacing old JRuby pool with new instance.")
+    (log/info (trs "Replacing old JRuby pool with new instance."))
     (reset! pool-state new-pool-state)
-    (log/info "Swapped JRuby pools, beginning cleanup of old pool.")
+    (log/info (trs "Swapped JRuby pools, beginning cleanup of old pool."))
     (doseq [i (range old-pool-size)]
       (try
         (let [id (inc i)
@@ -109,15 +110,15 @@
               (jruby-internal/create-pool-instance! new-pool id config
                                                     (partial send-flush-instance! pool-context)
                                                     profiler)
-              (log/infof "Finished creating JRubyPuppet instance %d of %d"
-                         id old-pool-size))
+              (log/info (trs "Finished creating JRubyPuppet instance {0} of {1}"
+                         id old-pool-size)))
             (finally
               (.releaseItem old-pool instance false))))
         (catch Exception e
           (.clear new-pool)
           (.insertPill new-pool (PoisonPill. e))
           (throw (IllegalStateException.
-                  "There was a problem adding a JRubyPuppet instance to the pool."
+                  (trs "There was a problem adding a JRubyPuppet instance to the pool.")
                   e)))))
     ;; Add a "RetryPoisonPill" to the pool in case something else is in the
     ;; process of borrowing from the old pool.
@@ -134,7 +135,7 @@
   [pool-context :- jruby-schemas/PoolContext
    on-complete :- IDeref]
   (try
-    (log/info "Flush request received; creating new JRuby pool.")
+    (log/info (trs "Flush request received; creating new JRuby pool."))
     (let [{:keys [config pool-state]} pool-context
           new-pool-state (jruby-internal/create-pool-from-config config)
           new-pool (:pool new-pool-state)
@@ -142,7 +143,9 @@
           old-pool (:pool old-pool-state)
           old-pool-size (:size old-pool-state)]
       (when-not (pool-initialized? old-pool-size old-pool)
-        (throw (IllegalStateException. "Attempting to flush a pool that does not appear to have successfully initialized. Aborting.")))
+        (throw (IllegalStateException. (format "%s %s"
+                                               (trs "Attempting to flush a pool that does not appear to have successfully initialized.")
+                                               (trs "Aborting.")))))
       (.insertPill new-pool (ShutdownPoisonPill. new-pool))
       (swap-and-drain-pool! pool-context old-pool-state new-pool-state false))
     (finally
@@ -157,7 +160,7 @@
   ;; receive multiple flush requests before the first one finishes, they will
   ;; be queued up and we don't need to worry about race conditions between the
   ;; steps we perform here in the body.
-  (log/info "Flush request received; creating new JRuby pool.")
+  (log/info (trs "Flush request received; creating new JRuby pool."))
   (let [{:keys [config pool-state]} pool-context
         new-pool-state (jruby-internal/create-pool-from-config config)
         old-pool @pool-state]

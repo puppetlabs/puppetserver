@@ -8,7 +8,8 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
             [slingshot.slingshot :as sling]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-schemas]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -30,12 +31,10 @@
       (core/verify-config-found! config)
       (log/info "Initializing the JRuby service")
       (if (:use-legacy-auth-conf config)
-        (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
-                  "'true'.  Support for the legacy Puppet auth.conf file is"
-                  "deprecated and will be removed in a future release.  Change"
-                  "this setting to 'false' and migrate your authorization rule"
-                  "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
-                  "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
+        (log/warn (format "%s %s %s"
+                          (trs "The ''jruby-puppet.use-legacy-auth-conf'' setting is set to ''true''.")
+                          (trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
+                          (trs "Change this setting to ''false'' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))))
       (core/add-facter-jar-to-system-classloader (:ruby-load-path config))
       (let [pool-context (core/create-pool-context config profiler agent-shutdown-fn)]
         (jruby-agents/send-prime-pool! pool-context)
@@ -48,10 +47,10 @@
    [this context]
    (let [{:keys [pool-context]} (tk-services/service-context this)
          on-complete (promise)]
-     (log/debug "Beginning flush of JRuby pools for shutdown")
+     (log/debug (trs "Beginning flush of JRuby pools for shutdown"))
      (jruby-agents/send-flush-pool-for-shutdown! pool-context on-complete)
      @on-complete
-     (log/debug "Finished flush of JRuby pools for shutdown"))
+     (log/debug (trs "Finished flush of JRuby pools for shutdown")))
    context)
 
   (borrow-instance
@@ -141,17 +140,14 @@
      (if (nil? pool-instance#)
        (sling/throw+
          {:kind ::jruby-timeout
-          :msg (str "Attempt to borrow a JRuby instance from the pool "
-                    "timed out; Puppet Server is temporarily overloaded. If "
-                    "you get this error repeatedly, your server might be "
-                    "misconfigured or trying to serve too many agent nodes. "
-                    "Check Puppet Server settings: "
-                    "jruby-puppet.max-active-instances.")}))
+          :msg (format "%s %s %s"
+                       (tru "Attempt to borrow a JRuby instance from the pool timed out; Puppet Server is temporarily overloaded.")
+                       (tru "If you get this error repeatedly, your server might be misconfigured or trying to serve too many agent nodes.")
+                       (tru "Check Puppet Server settings: jruby-puppet.max-active-instances."))}))
      (when (jruby-schemas/shutdown-poison-pill? pool-instance#)
        (jruby/return-instance ~jruby-service pool-instance# ~reason)
        (ringutils/throw-service-unavailable!
-         (str "Attempted to borrow a JRuby instance from the pool "
-              "during a shutdown. Please try again.")))
+         (tru "Attempted to borrow a JRuby instance from the pool during a shutdown. Please try again.")))
      (if (jruby-schemas/retry-poison-pill? pool-instance#)
        (do
          (jruby/return-instance ~jruby-service pool-instance# ~reason)

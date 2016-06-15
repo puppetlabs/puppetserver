@@ -9,7 +9,8 @@
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-agents :as jruby-agents]
             [clojure.java.io :as io]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [puppetlabs.i18n.core :as i18n :refer [trs]])
   (:import (puppetlabs.services.jruby.jruby_puppet_schemas JRubyPuppetInstance)
            (com.puppetlabs.puppetserver PuppetProfiler)
            (clojure.lang IFn)))
@@ -86,8 +87,9 @@
   [config]
   (if (or (not (map? config))
           (empty? config))
-    (throw (IllegalArgumentException. (str "No configuration data found.  Perhaps "
-                                           "you did not specify the --config option?")))))
+    (throw (IllegalArgumentException. (format "%s %s"
+                                              (trs "No configuration data found.")
+                                              (trs "Perhaps you did not specify the --config option?"))))))
 
 (schema/defn create-requested-event :- jruby-schemas/JRubyRequestedEvent
   [reason :- jruby-schemas/JRubyEventReason]
@@ -211,9 +213,9 @@
                         (filter fs/exists?
                           (map #(fs/file % facter-jar) ruby-load-path)))]
     (do
-      (log/debugf "Adding facter jar to classpath from: %s" facter-jar)
+      (log/debug (trs "Adding facter jar to classpath from: {0}" facter-jar))
       (ks-classpath/add-classpath facter-jar))
-    (log/info "Facter jar not found in ruby load path")))
+    (log/info (trs "Facter jar not found in ruby load path"))))
 
 (schema/defn ^:always-validate
   create-pool-context :- jruby-schemas/PoolContext
@@ -304,7 +306,7 @@
    event-callbacks :- [IFn]]
   (.unlock pool)
   (lock-released event-callbacks reason)
-  (log/debug "Lock on JRubyPool released"))
+  (log/debug (trs "Lock on JRubyPool released")))
 
 (schema/defn ^:always-validate cli-ruby! :- jruby-schemas/JRubyMainStatus
   "Run JRuby as though native `ruby` were invoked with args on the CLI"
@@ -325,7 +327,7 @@
     (if url
       (cli-ruby! config
         (concat ["-e" (format "load '%s'" url) "--"] args))
-      (log/errorf "command %s could not be found in %s" command bin-dir))))
+      (log/error (trs "command {0} could not be found in {1}" command bin-dir)))))
 
 (def EnvironmentClassInfoCacheEntry
   "Data structure that holds per-environment cache information for the
