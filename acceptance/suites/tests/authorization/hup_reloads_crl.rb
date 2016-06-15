@@ -1,4 +1,9 @@
-test_name '(SERVER-1380) CRL should reload after a server HUP' do
+test_name '(SERVER-1380) Server reloads the CRL after being HUPped' do
+# Note the skip_test statement. This test requires at least one agent that is
+# not also a master.
+
+skip_test 'This test requires a non-master agent' unless \
+  hosts_as('agent').count > hosts_as('master').count
 
 server = master.puppet['certname']
 
@@ -13,7 +18,6 @@ teardown do
       nodefqdn = a.hostname
       request_file = File.join(reqdir, nodefqdn + ".pem")
 
-      # FIXME: this is a dirty nasty hack that Beaker should handle seamlessly
       on(master, puppet('cert', 'destroy', "#{nodefqdn}"),
          {:accept_all_exit_codes => true})
       on(a, "rm -fv #{hostcert_file} #{request_file}",
@@ -46,6 +50,17 @@ step 'Revoke the agent certs' do
               {:acceptable_exit_codes => [0,2]})
       fail_test('Missing expected output') unless \
         rc.stdout.include?('Revoked certificate')
+    end
+  end
+end
+
+step 'Demonstrate that the certs work before HUPping the server' do
+  agents.each do |a| 
+    if not_controller(a)
+      rc = on(a, puppet('agent', '--test', '--server', "#{server}"),
+              {:acceptable_exit_codes => [0,2]})
+      fail_test('Missing expected output') unless \
+        rc.stdout.include?('Applied catalog')
     end
   end
 end
