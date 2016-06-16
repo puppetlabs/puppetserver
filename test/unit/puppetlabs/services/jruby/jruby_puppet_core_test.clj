@@ -3,7 +3,8 @@
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby.jruby-core :as jruby-core]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (java.io ByteArrayOutputStream PrintStream ByteArrayInputStream)))
 
@@ -59,7 +60,7 @@
                                    (.getURLs
                                      (ClassLoader/getSystemClassLoader))))
           (create-temp-facter-jar [] (-> (ks/temp-dir)
-                                       (fs/file jruby-core/facter-jar)
+                                       (fs/file jruby-puppet-core/facter-jar)
                                        (fs/touch)
                                        (ks/absolute-path)))
           (temp-dir-as-string [] (-> (ks/temp-dir) (ks/absolute-path)))
@@ -68,17 +69,17 @@
             (some #(= jar %) (class-loader-files)))]
     (testing "facter jar loaded from first position"
       (let [temp-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(fs-parent-as-string temp-jar)])
+        (jruby-puppet-core/add-facter-jar-to-system-classloader [(fs-parent-as-string temp-jar)])
         (is (true? (jar-in-class-loader-file-list? temp-jar)))))
     (testing "facter jar loaded from last position"
       (let [temp-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
+        (jruby-puppet-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
                                                           (fs-parent-as-string temp-jar)])
         (is (true? (jar-in-class-loader-file-list? temp-jar)))))
     (testing "only first jar loaded when two present"
       (let [first-jar (create-temp-facter-jar)
             last-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(fs-parent-as-string first-jar)
+        (jruby-puppet-core/add-facter-jar-to-system-classloader [(fs-parent-as-string first-jar)
                                                           (temp-dir-as-string)
                                                           (fs-parent-as-string last-jar)])
         (is (true? (jar-in-class-loader-file-list? first-jar))
@@ -87,7 +88,7 @@
           "last jar in the list was unexpectedly not found")))
     (testing "class loader files unchanged when no jar found"
       (let [class-loader-files-before-load (class-loader-files)
-            _ (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
+            _ (jruby-puppet-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
                                                                 (temp-dir-as-string)])
             class-loader-files-after-load (class-loader-files)]
         (is (= class-loader-files-before-load class-loader-files-after-load))))))

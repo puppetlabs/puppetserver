@@ -11,7 +11,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [ring.middleware.params :as ring]
             [puppetlabs.services.jruby.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
   (:import (java.util HashMap)))
 
@@ -90,9 +90,6 @@
     (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
                   jruby-core/return-to-pool (fn [_ _ _] #())]
       (let [jruby-service (reify jruby/JRubyPuppetService
-                            #_(borrow-instance [_ _]
-                              {:jruby-puppet (Object.)})
-                            #_(return-instance [_ _ _])
                             (get-pool-context [_] (jruby-core/create-pool-context
                                                    (jruby-core/initialize-config {:gem-home "bar"
                                                                                   :ruby-load-path ["foo"]})))

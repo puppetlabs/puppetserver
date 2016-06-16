@@ -10,7 +10,7 @@
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-    [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [puppetlabs.services.ca.certificate-authority-service :refer [certificate-authority-service]]

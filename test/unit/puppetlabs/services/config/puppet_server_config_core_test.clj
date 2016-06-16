@@ -1,7 +1,7 @@
 (ns puppetlabs.services.config.puppet-server-config-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]

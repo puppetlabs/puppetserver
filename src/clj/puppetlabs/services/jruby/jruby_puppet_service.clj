@@ -21,21 +21,29 @@
                            [:PoolManagerService create-pool]]
   (init
     [this context]
-    (let [config            (core/initialize-puppet-config (get-config))
-          service-id        (tk-services/service-id this)
+    (let [raw-config (:jruby-puppet (get-config))
+          jruby-puppet-config (core/initialize-puppet-config {:jruby-puppet (core/extract-puppet-config raw-config)})
+          service-id (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
-          profiler          (get-profiler)]
+          profiler (get-profiler)
+          uninitialized-jruby-config (-> (core/extract-jruby-config raw-config)
+                                         (assoc :max-borrows-per-instance
+                                                (:max-requests-per-instance jruby-puppet-config)))
+          jruby-config (core/create-jruby-config
+                        jruby-puppet-config
+                        uninitialized-jruby-config
+                        agent-shutdown-fn
+                        profiler)]
       (log/info "Initializing the JRuby service")
-      (if (:use-legacy-auth-conf config)
+      (if (:use-legacy-auth-conf jruby-puppet-config)
         (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
                   "'true'.  Support for the legacy Puppet auth.conf file is"
                   "deprecated and will be removed in a future release.  Change"
                   "this setting to 'false' and migrate your authorization rule"
                   "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
                   "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
-      (core/add-facter-jar-to-system-classloader (:ruby-load-path config))
-      (let [jruby-config (core/create-jruby-config config agent-shutdown-fn profiler)
-            pool-context (create-pool jruby-config)]
+      (core/add-facter-jar-to-system-classloader (:ruby-load-path jruby-config))
+      (let [pool-context (create-pool jruby-config)]
         (-> context
             (assoc :pool-context pool-context)
             (assoc :environment-class-info-tags (atom {}))))))

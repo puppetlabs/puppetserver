@@ -2,7 +2,7 @@
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
             [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]

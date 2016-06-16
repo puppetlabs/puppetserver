@@ -1,7 +1,7 @@
 (ns puppetlabs.services.jruby.jruby-puppet-pool-int-test
   (:require [clojure.test :refer :all]
             [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]

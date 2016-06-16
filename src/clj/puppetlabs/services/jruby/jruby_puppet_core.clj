@@ -8,7 +8,8 @@
             [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
+            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-puppet-internal]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
@@ -53,16 +54,6 @@
   "/opt/puppetlabs/server/data/puppetserver")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Private
-
-(defn default-pool-size
-  "Calculate the default size of the JRuby pool, based on the number of cpus."
-  [num-cpus]
-  (->> (- num-cpus 1)
-       (max 1)
-       (min 4)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (def facter-jar
@@ -70,12 +61,12 @@
   "facter.jar")
 
 (schema/defn ^:always-validate
-add-facter-jar-to-system-classloader
+  add-facter-jar-to-system-classloader
   "Searches the ruby load path for a file whose name matches that of the
   facter jar file.  The first one found is added to the system classloader's
   classpath.  If no match is found, an info message is written to the log
   but no failure is returned"
-  [ruby-load-path :- (schema/both (schema/pred vector?) [schema/Str]) ]
+  [ruby-load-path :- [schema/Str] ]
   (if-let [facter-jar (first
                        (filter fs/exists?
                                (map #(fs/file % facter-jar) ruby-load-path)))]
@@ -85,7 +76,7 @@ add-facter-jar-to-system-classloader
     (log/info "Facter jar not found in ruby load path")))
 
 (schema/defn get-initialize-pool-instance-fn :- IFn
-  [config
+  [config :- jruby-puppet-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (fn [jruby-instance]
     (let [{:keys [ruby-load-path http-client-ssl-protocols
@@ -98,7 +89,7 @@ add-facter-jar-to-system-classloader
                 "JRuby service missing config value 'ruby-load-path'")))
       (let [scripting-container (:scripting-container jruby-instance)
             ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
-            puppet-config (jruby-internal/config->puppet-config config)
+            puppet-config (jruby-puppet-internal/config->puppet-config config)
             puppetserver-config (HashMap.)
             env-registry (puppet-env/environment-registry)]
         (when http-client-ssl-protocols
@@ -123,7 +114,7 @@ add-facter-jar-to-system-classloader
               (assoc :environment-registry env-registry)))))))
 
 (schema/defn initialize-scripting-container-fn
-  [scripting-container
+  [scripting-container :- jruby-schemas/ConfigurableJRuby
    config :- jruby-schemas/JRubyConfig]
   (doto scripting-container
     (.setEnvironment (jruby-internal/managed-environment (jruby-internal/get-system-env) (:gem-home config)))
@@ -159,20 +150,18 @@ add-facter-jar-to-system-classloader
       (assoc :http-client-idle-timeout-milliseconds
              (get-in config [:http-client :idle-timeout-milliseconds]
                      default-http-socket-timeout))
-      (update-in [:compile-mode] #(keyword (or % default-jruby-compile-mode)))
-      (update-in [:borrow-timeout] #(or % default-borrow-timeout))
       (update-in [:master-conf-dir] #(or % default-master-conf-dir))
       (update-in [:master-var-dir] #(or % default-master-var-dir))
       (update-in [:master-code-dir] #(or % default-master-code-dir))
       (update-in [:master-run-dir] #(or % default-master-run-dir))
       (update-in [:master-log-dir] #(or % default-master-log-dir))
-      (update-in [:max-active-instances] #(or % (default-pool-size (ks/num-cpus))))
-      (update-in [:max-borrows-per-instance] #(or % 0))
+      (update-in [:max-requests-per-instance] #(or % 0))
       (update-in [:use-legacy-auth-conf] #(or % (nil? %)))
       (dissoc :environment-class-cache-enabled)))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
   [jruby-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
+   jruby-config :- {schema/Keyword schema/Any}
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
   (let [puppet-only-config (extract-puppet-config jruby-puppet-config)
@@ -181,9 +170,8 @@ add-facter-jar-to-system-classloader
                        :initialize-pool-instance initialize-pool-instance-fn
                        :initialize-scripting-container initialize-scripting-container-fn
                        :cleanup cleanup-fn}
-        jruby-specific-config (extract-jruby-config jruby-puppet-config)
-        modified-jruby-config (assoc jruby-specific-config :ruby-load-path (jruby-internal/managed-load-path
-                                                                            (:ruby-load-path jruby-specific-config)))]
+        modified-jruby-config (assoc jruby-config :ruby-load-path (jruby-puppet-internal/managed-load-path
+                                                                            (:ruby-load-path jruby-config)))]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
 

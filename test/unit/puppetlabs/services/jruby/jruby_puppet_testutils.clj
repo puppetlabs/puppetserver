@@ -1,4 +1,4 @@
-(ns puppetlabs.services.jruby.jruby-testutils
+(ns puppetlabs.services.jruby.jruby-puppet-testutils
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
@@ -65,7 +65,7 @@ create-mock-pool-instance :- JRubyInstance
                             :name "allow all"}]}})
 
 (schema/defn ^:always-validate
-  jruby-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
+  jruby-puppet-config :- jruby-puppet-schemas/CombinedJRubyPuppetConfig
   "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
   contain a map, which, if present, will be merged into the final JRubyPuppetConfig
   map.  (This function differs from `jruby-puppet-tk-config` in
@@ -85,8 +85,12 @@ create-mock-pool-instance :- JRubyInstance
                    :master-log-dir log-dir
                    :use-legacy-auth-conf false}})
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
-                                               :gem-home gem-home}))]
-     (dissoc combined-configs :lifecycle)))
+                                               :gem-home gem-home}))
+         max-requests-per-instance (:max-borrows-per-instance combined-configs)
+         updated-config (-> combined-configs
+                            (assoc :max-requests-per-instance max-requests-per-instance)
+                            (dissoc :max-borrows-per-instance))]
+     (dissoc updated-config :lifecycle)))
   ([options]
    (merge (jruby-puppet-config) options)))
 
@@ -130,9 +134,7 @@ create-mock-pool-instance :- JRubyInstance
                          tk-service/service-context
                          :pool-context)
         num-jrubies (-> pool-context
-                        :internal
-                        :pool-state
-                        deref
+                        jruby-core/get-pool-state
                         :size)]
     (while (< (count (jruby-core/registered-instances pool-context))
               num-jrubies)

@@ -10,7 +10,7 @@
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.core :as tk]

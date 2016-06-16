@@ -2,7 +2,7 @@
   (:import (com.puppetlabs.puppetserver JRubyPuppet))
   (:require [clojure.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.services.jruby.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.kitchensink.core :as ks]

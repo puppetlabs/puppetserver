@@ -1,7 +1,7 @@
 (ns puppetlabs.services.jruby.class-info-test
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
@@ -76,7 +76,6 @@
                   (jruby-testutils/jruby-puppet-config
                    {:master-code-dir (.getAbsolutePath code-dir)
                     :master-conf-dir (.getAbsolutePath conf-dir)}))]
-      ;(clojure.pprint/pprint config)
 
       (tk-bootstrap/with-app-with-config
        app

@@ -9,7 +9,8 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [clojure.string :as str]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]))
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet])
+  (:import (com.puppetlabs.puppetserver JRubyPuppet)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; config
@@ -67,7 +68,7 @@
        (.getSetting jruby-puppet)))
 
 (schema/defn get-puppet-config*
-  [jruby-puppet]
+  [jruby-puppet :- JRubyPuppet]
   (into {}
         (for [k puppet-config-keys]
           {k (get-puppet-config-value jruby-puppet k)})))
