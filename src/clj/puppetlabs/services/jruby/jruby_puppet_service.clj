@@ -2,7 +2,7 @@
   (:require [clojure.tools.logging :as log]
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]))

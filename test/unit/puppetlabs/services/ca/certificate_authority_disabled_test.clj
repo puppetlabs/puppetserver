@@ -5,7 +5,7 @@
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]

@@ -1,6 +1,6 @@
 (ns puppetlabs.puppetserver.cli.ruby
   (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]))
 
 (defn ruby-run!

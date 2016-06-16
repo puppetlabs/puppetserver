@@ -9,9 +9,9 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.protocols.puppet-server-config :as
@@ -32,9 +32,7 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service
              :as authorization]
             [puppetlabs.services.versioned-code-service.versioned-code-service
-             :as vcs]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
+             :as vcs])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
 

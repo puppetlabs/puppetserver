@@ -14,7 +14,7 @@
   [x]
   (when (map? x)
     (= (:kind x)
-       :puppetlabs.services.jruby.jruby-core/jruby-timeout)))
+       :puppetlabs.services.jruby-pool-manager.jruby-core/jruby-timeout)))
 
 (defn output-error
   [{:keys [uri]} {:keys [msg]} http-status]

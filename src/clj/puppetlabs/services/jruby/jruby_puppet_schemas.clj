@@ -1,6 +1,6 @@
 (ns puppetlabs.services.jruby.jruby-puppet-schemas
   (:require [schema.core :as schema]
-            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]))
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas

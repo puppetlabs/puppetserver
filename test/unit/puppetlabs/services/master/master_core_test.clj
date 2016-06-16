@@ -10,9 +10,8 @@
             [ring.mock.request :as ring-mock]
             [puppetlabs.kitchensink.core :as ks]
             [ring.middleware.params :as ring]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core])
   (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -90,7 +89,7 @@
     (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
                   jruby-core/return-to-pool (fn [_ _ _] #())]
       (let [jruby-service (reify jruby/JRubyPuppetService
-                            (get-pool-context [_] (jruby-core/create-pool-context
+                            (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                    (jruby-core/initialize-config {:gem-home "bar"
                                                                                   :ruby-load-path ["foo"]})))
                             (get-environment-class-info [_ _ env]

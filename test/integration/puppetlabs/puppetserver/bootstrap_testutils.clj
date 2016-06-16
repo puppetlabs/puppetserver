@@ -8,8 +8,7 @@
             [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.ssl-utils.core :as utils]
             [schema.core :as schema]
-            [puppetlabs.puppetserver.certificate-authority :as ca]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core])
+            [puppetlabs.puppetserver.certificate-authority :as ca])
   (:import (java.io ByteArrayInputStream ByteArrayOutputStream)
            (javax.net.ssl SSLContext)))
 

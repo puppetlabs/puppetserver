@@ -12,13 +12,13 @@
             [puppetlabs.services.legacy-routes.legacy-routes-service :refer [legacy-routes-service]]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
             [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]))
 

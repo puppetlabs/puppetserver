@@ -4,9 +4,8 @@
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
-            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (java.io ByteArrayOutputStream PrintStream ByteArrayInputStream)))
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core])
+  (:import (java.io ByteArrayOutputStream PrintStream)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
