@@ -7,9 +7,9 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
             [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-puppet-internal]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
@@ -19,14 +19,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
 
-(def default-jruby-compile-mode
-  "Default value for JRuby's 'CompileMode' setting."
-  :off)
+(def ruby-code-dir
+  "The name of the directory containing the ruby code in this project.
 
-(def default-borrow-timeout
-  "Default timeout when borrowing instances from the JRuby pool in
-   milliseconds. Current value is 1200000ms, or 20 minutes."
-  1200000)
+  This directory is relative to `src/ruby` and works from source because the
+  `src/ruby` directory is defined as a resource in `project.clj` which places
+  the directory on the classpath which in turn makes the directory available on
+  the JRuby load path.  Similarly, this works from the uberjar because this
+  directory is placed into the root of the jar structure which is on the
+  classpath.
+
+  See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
+  "puppetserver-lib")
 
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection
@@ -52,6 +56,29 @@
 
 (def default-master-var-dir
   "/opt/puppetlabs/server/data/puppetserver")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Private
+
+(schema/defn ^:always-validate managed-load-path :- [schema/Str]
+  "Return a list of ruby LOAD_PATH directories built from the
+  user-configurable ruby-load-path setting of the jruby-puppet configuration."
+  [ruby-load-path :- [schema/Str]]
+  (cons ruby-code-dir ruby-load-path))
+
+(schema/defn ^:always-validate config->puppet-config :- HashMap
+  "Given the raw jruby-puppet configuration section, return a
+  HashMap with the configuration necessary for ruby Puppet."
+  [config :- jruby-puppet-schemas/JRubyPuppetConfig]
+  (let [puppet-config (new HashMap)]
+    (doseq [[setting dir] [[:master-conf-dir "confdir"]
+                           [:master-code-dir "codedir"]
+                           [:master-var-dir "vardir"]
+                           [:master-run-dir "rundir"]
+                           [:master-log-dir "logdir"]]]
+      (if-let [value (get config setting)]
+        (.put puppet-config dir (ks/absolute-path value))))
+    puppet-config))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -89,7 +116,7 @@
                 "JRuby service missing config value 'ruby-load-path'")))
       (let [scripting-container (:scripting-container jruby-instance)
             ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
-            puppet-config (jruby-puppet-internal/config->puppet-config config)
+            puppet-config (config->puppet-config config)
             puppetserver-config (HashMap.)
             env-registry (puppet-env/environment-registry)]
         (when http-client-ssl-protocols
@@ -170,7 +197,7 @@
                        :initialize-pool-instance initialize-pool-instance-fn
                        :initialize-scripting-container initialize-scripting-container-fn
                        :cleanup cleanup-fn}
-        modified-jruby-config (assoc jruby-config :ruby-load-path (jruby-puppet-internal/managed-load-path
+        modified-jruby-config (assoc jruby-config :ruby-load-path (jruby-puppet-core/managed-load-path
                                                                             (:ruby-load-path jruby-config)))]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 

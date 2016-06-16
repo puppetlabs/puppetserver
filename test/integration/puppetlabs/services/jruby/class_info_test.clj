@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]
             [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.jruby.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
@@ -10,11 +9,9 @@
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap])
-  (:import (com.puppetlabs.puppetserver.pool JRubyPool)))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
 
 (defn gen-classes
   [[mod-dir manifests]]

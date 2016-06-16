@@ -11,11 +11,11 @@
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils]
             [ring.middleware.basic-authentication :as auth]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-puppet-internal]
             [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
             [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]))
+            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]))
 
 ;; NOTE: this namespace is pretty disgusting.  It'd be much nicer to test this
 ;; ruby code via ruby spec tests, but since we need to stand up a webserver to
@@ -79,11 +79,11 @@ jruby-config :- jruby-schemas/JRubyConfig
   format that would be read from config files on disk.)"
   ([]
    (jruby-core/initialize-config
-    {:ruby-load-path (jruby-puppet-internal/managed-load-path jruby-puppet-testutils/ruby-load-path)
+    {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
      :gem-home jruby-puppet-testutils/gem-home}))
   ([options]
    (jruby-core/initialize-config
-    (merge {:ruby-load-path (jruby-puppet-internal/managed-load-path jruby-puppet-testutils/ruby-load-path)
+    (merge {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
             :gem-home jruby-puppet-testutils/gem-home}
            options))))
 
@@ -104,7 +104,7 @@ jruby-config :- jruby-schemas/JRubyConfig
                                  (jruby-internal/init-jruby jruby-config))]
      (doto scripting-container
        (.setEnvironment (jruby-internal/managed-environment (jruby-internal/get-system-env) (:gem-home jruby-config)))
-       (.setLoadPaths (jruby-puppet-internal/managed-load-path jruby-puppet-testutils/ruby-load-path))
+       (.setLoadPaths (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path))
        (.runScriptlet "require 'jar-dependencies'")
        (.runScriptlet "require 'puppet/server/http_client'"))
 
