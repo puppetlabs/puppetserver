@@ -24,7 +24,13 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]))
+            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
+            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
+            [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
+            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
+            [puppetlabs.kitchensink.core :as ks])
+  (:import (org.jruby RubyInstanceConfig$CompileMode)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -259,3 +265,95 @@
          (swap! app-context assoc-in [:service-contexts :JRubyPuppetService] {})
          (tk-internal/run-lifecycle-fn! app-context tk-services/init "init" :JRubyPuppetService jruby-service)
          (tk-internal/run-lifecycle-fn! app-context tk-services/start "start" :JRubyPuppetService jruby-service))))))
+
+(deftest ^:integration settings-plumbed-into-jruby-container
+  (testing "setting plumbed into jruby container for"
+    (let [jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compile-mode :off})
+          config (assoc
+                  (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
+                   :http-client {:connect-timeout-milliseconds 2
+                                 :idle-timeout-milliseconds 5
+                                 :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+                                                             "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                                 :ssl-protocols ["TLSv1" "TLSv1.2"]})]
+      (tk-testutils/with-app-with-config
+       app
+       [jruby/jruby-puppet-pooled-service
+        profiler/puppet-profiler-service
+        jruby-utils/jruby-pool-manager-service]
+        config
+       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+             jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+             container (:scripting-container jruby-instance)]
+         (try
+           (= RubyInstanceConfig$CompileMode/JIT
+              (.getCompileMode container))
+           (let [settings (into {} (.runScriptlet container
+                                                  "java.util.HashMap.new
+                                                     (Puppet::Server::HttpClient.settings)"))]
+             (testing "http_connect_timeout_milliseconds"
+               (is (= 2 (settings "http_connect_timeout_milliseconds"))))
+             (testing "http_idle_timeout_milliseconds"
+               (is (= 5 (settings "http_idle_timeout_milliseconds"))))
+             (testing "cipher_suites"
+               (is (= ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+                       "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                      (into [] (settings "cipher_suites")))))
+             (testing "ssl_protocols"
+               (is (= ["TLSv1" "TLSv1.2"]
+                      (into [] (settings "ssl_protocols"))))))
+           (finally
+             (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
+
+(deftest create-jruby-instance-test
+  (testing "Directories can be configured programatically
+            (and take precedence over puppet.conf)"
+    (tk-testutils/with-app-with-config
+     app
+     [jruby/jruby-puppet-pooled-service
+      profiler/puppet-profiler-service
+      jruby-utils/jruby-pool-manager-service]
+     (jruby-testutils/jruby-puppet-tk-config
+      (jruby-testutils/jruby-puppet-config
+       {:ruby-load-path  jruby-testutils/ruby-load-path
+        :gem-home        jruby-testutils/gem-home
+        :master-conf-dir jruby-testutils/conf-dir
+        :master-code-dir jruby-testutils/code-dir
+        :master-var-dir  jruby-testutils/var-dir
+        :master-run-dir  jruby-testutils/run-dir
+        :master-log-dir  jruby-testutils/log-dir}))
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+           jruby-puppet (:jruby-puppet jruby-instance)]
+       (try
+         (are [setting expected]
+           (= (-> expected
+                  (ks/normalized-path)
+                  (ks/absolute-path))
+              (.getSetting jruby-puppet setting))
+           "confdir" jruby-testutils/conf-dir
+           "codedir" jruby-testutils/code-dir
+           "vardir" jruby-testutils/var-dir
+           "rundir" jruby-testutils/run-dir
+           "logdir" jruby-testutils/log-dir)
+         (finally
+           (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test))))))
+
+  (testing "Settings from Ruby Puppet are available"
+    (tk-testutils/with-app-with-config
+     app
+     [jruby/jruby-puppet-pooled-service
+      profiler/puppet-profiler-service
+      jruby-utils/jruby-pool-manager-service]
+     (jruby-testutils/jruby-puppet-tk-config
+      (jruby-testutils/jruby-puppet-config))
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+           jruby-puppet (:jruby-puppet jruby-instance)]
+       (try
+         (testing "Various data types"
+           (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
+           (is (= 8140 (.getSetting jruby-puppet "masterport")))
+           (is (= false (.getSetting jruby-puppet "onetime"))))
+         (finally
+           (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))

@@ -58,6 +58,7 @@ create-mock-pool-instance :- JRubyInstance
   {:product       {:name              "puppetserver"
                    :update-server-url "http://localhost:11111"}
    :jruby-puppet  pool-config
+   :http-client {}
    :authorization {:version 1
                    :rules [{:match-request {:path "/" :type "path"}
                             :allow "*"
@@ -75,15 +76,15 @@ create-mock-pool-instance :- JRubyInstance
   ([]
    (let [combined-configs
          (merge (jruby-puppet-core/initialize-puppet-config
-                 {:jruby-puppet
-                  {:ruby-load-path ruby-load-path
-                   :gem-home gem-home
-                   :master-conf-dir conf-dir
-                   :master-code-dir code-dir
-                   :master-var-dir var-dir
-                   :master-run-dir run-dir
-                   :master-log-dir log-dir
-                   :use-legacy-auth-conf false}})
+                 {}
+                 {:ruby-load-path ruby-load-path
+                  :gem-home gem-home
+                  :master-conf-dir conf-dir
+                  :master-code-dir code-dir
+                  :master-var-dir var-dir
+                  :master-run-dir run-dir
+                  :master-log-dir log-dir
+                  :use-legacy-auth-conf false})
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
                                                :gem-home gem-home}))
          max-requests-per-instance (:max-borrows-per-instance combined-configs)

@@ -21,12 +21,14 @@
                            [:PoolManagerService create-pool]]
   (init
     [this context]
-    (let [raw-config (:jruby-puppet (get-config))
-          jruby-puppet-config (core/initialize-puppet-config {:jruby-puppet (core/extract-puppet-config raw-config)})
+    (let [raw-config (get-config)
+          jruby-puppet-config (core/initialize-puppet-config
+                               (core/extract-http-config (:http-client raw-config))
+                               (core/extract-puppet-config (:jruby-puppet raw-config)))
           service-id (tk-services/service-id this)
           agent-shutdown-fn (partial shutdown-on-error service-id)
           profiler (get-profiler)
-          uninitialized-jruby-config (-> (core/extract-jruby-config raw-config)
+          uninitialized-jruby-config (-> (core/extract-jruby-config (:jruby-puppet raw-config))
                                          (assoc :max-borrows-per-instance
                                                 (:max-requests-per-instance jruby-puppet-config)))
           jruby-config (core/create-jruby-config

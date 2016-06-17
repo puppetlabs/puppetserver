@@ -155,28 +155,32 @@
 
 (schema/defn extract-jruby-config
   [config :- {schema/Keyword schema/Any}]
-  (into {} (for [[key _] jruby-schemas/JRubyConfig]
-             {key (get config key)})))
+  (select-keys config (keys jruby-schemas/JRubyConfig)))
 
 (schema/defn extract-puppet-config
   [config :- {schema/Keyword schema/Any}]
-  (into {} (for [[key _] jruby-puppet-schemas/JRubyPuppetConfig]
-             {key (get config key)})))
+  (select-keys config (keys jruby-puppet-schemas/JRubyPuppetConfig)))
+
+(schema/defn extract-http-config
+  [config :- {schema/Keyword schema/Any}]
+  (select-keys config [:ssl-protocols
+                       :cipher-suites
+                       :connect-timeout-milliseconds
+                       :idle-timeout-milliseconds]))
 
 (schema/defn ^:always-validate
   initialize-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
-  [config :- {schema/Keyword schema/Any}]
-  (-> (get-in config [:jruby-puppet])
-      (assoc :http-client-ssl-protocols
-             (get-in config [:http-client :ssl-protocols]))
-      (assoc :http-client-cipher-suites
-             (get-in config [:http-client :cipher-suites]))
+  [http-config :- {schema/Keyword schema/Any}
+   jruby-puppet-config :- {schema/Keyword schema/Any}]
+  (-> jruby-puppet-config
+      (assoc :http-client-ssl-protocols (:ssl-protocols http-config))
+      (assoc :http-client-cipher-suites (:cipher-suites http-config))
       (assoc :http-client-connect-timeout-milliseconds
-             (get-in config [:http-client :connect-timeout-milliseconds]
-                     default-http-connect-timeout))
+             (get http-config :connect-timeout-milliseconds
+                  default-http-connect-timeout))
       (assoc :http-client-idle-timeout-milliseconds
-             (get-in config [:http-client :idle-timeout-milliseconds]
-                     default-http-socket-timeout))
+             (get http-config :idle-timeout-milliseconds
+                  default-http-socket-timeout))
       (update-in [:master-conf-dir] #(or % default-master-conf-dir))
       (update-in [:master-var-dir] #(or % default-master-var-dir))
       (update-in [:master-code-dir] #(or % default-master-code-dir))
@@ -187,12 +191,16 @@
       (dissoc :environment-class-cache-enabled)))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
+  "Handles creating a valid JRubyConfig map for use in the jruby-puppet-service.
+  This method:
+  * Creates the appropriate lifecycle functions
+  * overrides the default ruby-load-path to include the ruby code directory from
+    this project"
   [jruby-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
    jruby-config :- {schema/Keyword schema/Any}
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)]
-  (let [puppet-only-config (extract-puppet-config jruby-puppet-config)
-        initialize-pool-instance-fn (get-initialize-pool-instance-fn puppet-only-config profiler)
+  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :initialize-scripting-container initialize-scripting-container-fn
