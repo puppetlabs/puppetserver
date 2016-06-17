@@ -185,9 +185,8 @@
           csr (ssl-utils/generate-certificate-request key-pair
                                                       subjectDN
                                                       ca-ext)]
-          (fs/mkdir req-dir)
-          (ssl-utils/obj->pem! csr (str req-dir
-                                        "/test_cert_ca_true.pem"))
+      (fs/mkdir req-dir)
+      (ssl-utils/obj->pem! csr (str req-dir "/test_cert_ca_true.pem"))
       (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
