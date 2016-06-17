@@ -206,6 +206,39 @@
                                                                             (:ruby-load-path jruby-config)))]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
+(schema/defn initialize-configs-and-create-pool-context
+  "Handles initializing the jruby and jruby-puppet configs, and then uses them
+  to create a pool-context"
+  ([raw-config :- {schema/Keyword schema/Any}
+    profiler :- (schema/maybe PuppetProfiler)
+    shutdown-on-error-fn :- IFn]
+   (initialize-configs-and-create-pool-context raw-config profiler shutdown-on-error-fn true))
+  ([raw-config :- {schema/Keyword schema/Any}
+    profiler :- (schema/maybe PuppetProfiler)
+    agent-shutdown-fn :- IFn
+    warn-legacy-auth-conf? :- schema/Bool]
+   (let [jruby-puppet-config (initialize-puppet-config
+                              (extract-http-config (:http-client raw-config))
+                              (extract-puppet-config (:jruby-puppet raw-config)))
+         uninitialized-jruby-config (-> (extract-jruby-config (:jruby-puppet raw-config))
+                                        (assoc :max-borrows-per-instance
+                                               (:max-requests-per-instance jruby-puppet-config)))
+         jruby-config (create-jruby-config
+                       jruby-puppet-config
+                       uninitialized-jruby-config
+                       agent-shutdown-fn
+                       profiler)]
+     (log/info "Initializing the JRuby service")
+     (when (and warn-legacy-auth-conf? (:use-legacy-auth-conf jruby-puppet-config))
+       (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
+                 "'true'.  Support for the legacy Puppet auth.conf file is"
+                 "deprecated and will be removed in a future release.  Change"
+                 "this setting to 'false' and migrate your authorization rule"
+                 "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
+                 "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
+     (add-facter-jar-to-system-classloader (:ruby-load-path jruby-config))
+     jruby-config)))
+
 
 (def EnvironmentClassInfoCacheEntry
   "Data structure that holds per-environment cache information for the
