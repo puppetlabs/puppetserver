@@ -77,9 +77,7 @@ create-mock-pool-instance :- JRubyInstance
    (let [combined-configs
          (merge (jruby-puppet-core/initialize-puppet-config
                  {}
-                 {:ruby-load-path ruby-load-path
-                  :gem-home gem-home
-                  :master-conf-dir conf-dir
+                 {:master-conf-dir conf-dir
                   :master-code-dir code-dir
                   :master-var-dir var-dir
                   :master-run-dir run-dir

@@ -106,14 +106,11 @@
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)]
   (fn [jruby-instance]
-    (let [{:keys [ruby-load-path http-client-ssl-protocols
+    (let [{:keys [http-client-ssl-protocols
                   http-client-cipher-suites
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
                   use-legacy-auth-conf]} config]
-      (when-not ruby-load-path
-        (throw (Exception.
-                "JRuby service missing config value 'ruby-load-path'")))
       (let [scripting-container (:scripting-container jruby-instance)
             ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
             puppet-config (config->puppet-config config)
