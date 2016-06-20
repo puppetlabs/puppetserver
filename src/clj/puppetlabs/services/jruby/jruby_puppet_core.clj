@@ -110,9 +110,11 @@
                   http-client-cipher-suites
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
-                  use-legacy-auth-conf]} config]
-      (let [scripting-container (:scripting-container jruby-instance)
-            ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
+                  use-legacy-auth-conf]} config
+          scripting-container (:scripting-container jruby-instance)]
+
+      (.runScriptlet scripting-container "require 'puppet/server/master'")
+      (let [ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
             puppet-config (config->puppet-config config)
             puppetserver-config (HashMap.)
             env-registry (puppet-env/environment-registry)]
@@ -136,15 +138,6 @@
           (-> jruby-instance
               (assoc :jruby-puppet jruby-puppet)
               (assoc :environment-registry env-registry)))))))
-
-(schema/defn initialize-scripting-container-fn
-  [scripting-container :- jruby-schemas/ConfigurableJRuby
-   config :- jruby-schemas/JRubyConfig]
-  (doto scripting-container
-    (.setEnvironment (jruby-internal/managed-environment (jruby-internal/get-system-env) (:gem-home config)))
-    (.runScriptlet "require 'jar-dependencies'")
-    (.runScriptlet "require 'puppet/server/master'"))
-  scripting-container)
 
 (schema/defn cleanup-fn
   [instance]
@@ -200,7 +193,6 @@
   (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
-                       :initialize-scripting-container initialize-scripting-container-fn
                        :cleanup cleanup-fn}
         modified-jruby-config (assoc jruby-config :ruby-load-path (jruby-puppet-core/managed-load-path
                                                                             (:ruby-load-path jruby-config)))]
@@ -209,6 +201,8 @@
 (schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
   "Handles the initialization of the jruby-puppet config for the purpose of returning a
   jruby config"
+  ([raw-config :- {schema/Keyword schema/Any}]
+   (initialize-and-create-jruby-config raw-config nil (fn [])))
   ([raw-config :- {schema/Keyword schema/Any}
     profiler :- (schema/maybe PuppetProfiler)
     agent-shutdown-fn :- IFn]
