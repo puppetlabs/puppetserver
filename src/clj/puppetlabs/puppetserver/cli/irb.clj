@@ -5,7 +5,7 @@
 
 (defn irb-run!
   [config args]
-  (let [jruby-config (jruby-core/initialize-config (jruby-puppet-core/extract-jruby-config (:jruby-puppet config)))]
+  (let [jruby-config (jruby-puppet-core/initialize-and-create-jruby-config config)]
     (jruby-core/cli-run! jruby-config "irb" args)))
 
 (defn -main

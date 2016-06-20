@@ -5,8 +5,8 @@
 
 (defn ruby-run!
   [config args]
-  (let [jruby-config (jruby-core/initialize-config (jruby-puppet-core/extract-jruby-config (:jruby-puppet config)))]
-    (jruby-core/cli-ruby! (jruby-core/initialize-config jruby-config) args)))
+  (let [jruby-config (jruby-puppet-core/initialize-and-create-jruby-config config)]
+    (jruby-core/cli-ruby! jruby-config args)))
 
 (defn -main
   [& args]
