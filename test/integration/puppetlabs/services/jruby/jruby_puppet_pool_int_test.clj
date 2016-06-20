@@ -24,12 +24,15 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.jruby.jruby-agents :as jruby-agents]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
   (:import (org.jruby RubyInstanceConfig$CompileMode)))
 
 (def test-resources-dir
@@ -357,3 +360,25 @@
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
            (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
+
+(deftest master-termination-test
+  (testing "Flushing the pool causes masters to be terminated"
+    (with-redefs [jruby-puppet-core/cleanup-fn
+                  (fn [instance]
+                    (log/info "In cleanup fn")
+                    (.terminate (:jruby-puppet instance)))]
+      (logging/with-test-logging
+        (tk-testutils/with-app-with-config
+         app
+         [jruby/jruby-puppet-pooled-service
+          profiler/puppet-profiler-service
+          jruby-utils/jruby-pool-manager-service]
+         (jruby-testutils/jruby-puppet-tk-config
+          (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+               pool-context (jruby-protocol/get-pool-context jruby-service)
+               pool-agent (jruby-agents/get-pool-agent pool-context)]
+           (jruby-protocol/flush-jruby-pool! jruby-service)
+           ; wait until the flush is complete
+           (await pool-agent)
+           (is (logged? #"In cleanup fn"))))))))
