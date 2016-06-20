@@ -21,7 +21,7 @@
                            [:PoolManagerService create-pool]]
   (init
     [this context]
-    (let [jruby-config (core/initialize-configs-and-create-pool-context
+    (let [jruby-config (core/initialize-and-create-jruby-config
                         (get-config)
                         (get-profiler)
                         (partial shutdown-on-error (tk-services/service-id this)))

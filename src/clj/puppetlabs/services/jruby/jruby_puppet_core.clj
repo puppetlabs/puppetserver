@@ -206,13 +206,13 @@
                                                                             (:ruby-load-path jruby-config)))]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
-(schema/defn initialize-configs-and-create-pool-context
-  "Handles initializing the jruby and jruby-puppet configs, and then uses them
-  to create a pool-context"
+(schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
+  "Handles the initialization of the jruby-puppet config for the purpose of returning a
+  jruby config"
   ([raw-config :- {schema/Keyword schema/Any}
     profiler :- (schema/maybe PuppetProfiler)
-    shutdown-on-error-fn :- IFn]
-   (initialize-configs-and-create-pool-context raw-config profiler shutdown-on-error-fn true))
+    agent-shutdown-fn :- IFn]
+   (initialize-and-create-jruby-config raw-config profiler agent-shutdown-fn true))
   ([raw-config :- {schema/Keyword schema/Any}
     profiler :- (schema/maybe PuppetProfiler)
     agent-shutdown-fn :- IFn
