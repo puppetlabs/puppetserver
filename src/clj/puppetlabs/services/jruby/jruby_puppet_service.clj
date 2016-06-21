@@ -24,7 +24,8 @@
     (let [jruby-config (core/initialize-and-create-jruby-config
                         (get-config)
                         (get-profiler)
-                        (partial shutdown-on-error (tk-services/service-id this)))
+                        (partial shutdown-on-error (tk-services/service-id this))
+                        true)
           pool-context (create-pool jruby-config)]
       (-> context
           (assoc :pool-context pool-context)
