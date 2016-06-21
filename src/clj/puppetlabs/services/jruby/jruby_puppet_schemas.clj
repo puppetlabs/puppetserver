@@ -58,13 +58,3 @@
    :max-requests-per-instance schema/Int
    :use-legacy-auth-conf schema/Bool})
 
-(def CombinedJRubyPuppetConfig
-  "Schema combining JRubyPuppetConfig and JRubyConfig.
-  This represents what would be in a real TK configuration's jruby-puppet section,
-  so we remove some things from the JRubyConfig:
-  - remove :max-borrows-per-instance (keep :max-requests-per-instance)
-  - remove :lifecycle"
-  (-> JRubyPuppetConfig
-      (merge jruby-schemas/JRubyConfig)
-      (dissoc :max-borrows-per-instance
-              :lifecycle)))

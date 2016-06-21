@@ -26,6 +26,20 @@
 (def log-dir "./target/master-var/log")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Schemas
+
+(def JRubyPuppetTKConfig
+  "Schema combining JRubyPuppetConfig and JRubyConfig.
+  This represents what would be in a real TK configuration's jruby-puppet section,
+  so we remove some things from the JRubyConfig:
+  - remove :max-borrows-per-instance (keep :max-requests-per-instance)
+  - remove :lifecycle"
+  (-> jruby-puppet-schemas/JRubyPuppetConfig
+      (merge jruby-schemas/JRubyConfig)
+      (dissoc :max-borrows-per-instance
+              :lifecycle)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
 
 (schema/defn ^:always-validate
@@ -66,7 +80,7 @@ create-mock-pool-instance :- JRubyInstance
                             :name "allow all"}]}})
 
 (schema/defn ^:always-validate
-  jruby-puppet-config :- jruby-puppet-schemas/CombinedJRubyPuppetConfig
+  jruby-puppet-config :- JRubyPuppetTKConfig
   "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
   contain a map, which, if present, will be merged into the final JRubyPuppetConfig
   map.  (This function differs from `jruby-puppet-tk-config` in

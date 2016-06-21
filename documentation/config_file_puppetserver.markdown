@@ -100,7 +100,7 @@ jruby-puppet: {
     master-run-dir: /var/run/puppetlabs/puppetserver
     master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
-    max-request-per-instance: 0
+    max-requests-per-instance: 0
     use-legacy-auth-conf: false
 }
 
