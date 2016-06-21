@@ -4,7 +4,7 @@
     [puppetlabs.services.master.master-service :refer :all]
     [puppetlabs.services.config.puppet-server-config-service :refer [puppet-server-config-service]]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-    [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
+    [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]

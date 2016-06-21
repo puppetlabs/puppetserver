@@ -5,7 +5,6 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -27,12 +26,10 @@
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
-            [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
-            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-agents :as jruby-agents]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core])
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents])
   (:import (org.jruby RubyInstanceConfig$CompileMode)))
 
 (def test-resources-dir
@@ -208,7 +205,8 @@
     (ks-testutils/with-no-jvm-shutdown-hooks
      (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
                      handler-service/request-handler-service ps-config/puppet-server-config-service
-                     jetty9/jetty9-service vcs/versioned-code-service jruby-pool-manager-service]
+                     jetty9/jetty9-service vcs/versioned-code-service
+                     jruby-utils/jruby-pool-manager-service]
            config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config {:max-active-instances 2
                                                              :borrow-timeout

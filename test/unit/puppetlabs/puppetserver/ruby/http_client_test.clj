@@ -11,11 +11,11 @@
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils]
             [ring.middleware.basic-authentication :as auth]
-            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
             [schema.core :as schema]
-            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]))
 
 ;; NOTE: this namespace is pretty disgusting.  It'd be much nicer to test this
 ;; ruby code via ruby spec tests, but since we need to stand up a webserver to
@@ -103,7 +103,7 @@ jruby-config :- jruby-schemas/JRubyConfig
                                                       LocalVariableBehavior/PERSISTENT)
                                  (jruby-internal/init-jruby jruby-config))]
      (doto scripting-container
-       (.setEnvironment (jruby-internal/managed-environment (jruby-internal/get-system-env) (:gem-home jruby-config)))
+       (.setEnvironment (jruby-core/managed-environment (jruby-core/get-system-env) (:gem-home jruby-config)))
        (.setLoadPaths (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path))
        (.runScriptlet "require 'jar-dependencies'")
        (.runScriptlet "require 'puppet/server/http_client'"))

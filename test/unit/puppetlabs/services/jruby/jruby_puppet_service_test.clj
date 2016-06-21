@@ -1,23 +1,16 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service-test
-  (:import (com.puppetlabs.puppetserver JRubyPuppet))
   (:require [clojure.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.trapperkeeper.services :as services]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [clojure.stacktrace :as stacktrace]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
-            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]))
 

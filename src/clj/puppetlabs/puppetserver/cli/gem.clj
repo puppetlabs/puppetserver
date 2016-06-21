@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.cli.gem
   (:require [puppetlabs.puppetserver.cli.subcommand :as cli]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]))
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]))
 
 (defn gem-run!
   [config args]

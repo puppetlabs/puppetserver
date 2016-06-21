@@ -5,12 +5,10 @@
             [puppetlabs.kitchensink.classpath :as ks-classpath]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
-            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.services.jruby.jruby-internal :as jruby-internal]
-            [clojure.java.io :as io]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)

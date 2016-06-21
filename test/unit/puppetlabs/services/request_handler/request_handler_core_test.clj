@@ -14,7 +14,7 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :refer [defservice service]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.jruby.jruby-pool-manager-service :as jruby-utils]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.puppetserver.bootstrap-testutils :as jruby-bootstrap]
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -27,8 +27,8 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.puppetserver.jruby-request :as jruby-request]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]))
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -331,7 +331,7 @@
 (deftest request-handler-test
     (let [dummy-service (reify jruby-protocol/JRubyPuppetService
                           (get-pool-context [_]
-                            (jruby-core/create-pool-context
+                            (jruby-pool-manager-core/create-pool-context
                              (jruby-core/initialize-config {:gem-home "foo"
                                                             :ruby-load-path ["bar"]}))))]
       (logutils/with-test-logging

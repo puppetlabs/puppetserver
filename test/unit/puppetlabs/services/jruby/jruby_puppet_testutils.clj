@@ -1,16 +1,16 @@
 (ns puppetlabs.services.jruby.jruby-puppet-testutils
   (:require [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-service]
             [schema.core :as schema]
-            [puppetlabs.services.jruby.jruby-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env])
   (:import (clojure.lang IFn)
            (org.jruby.embed LocalContextScope)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
-           (puppetlabs.services.jruby.jruby_schemas JRubyInstance)))
+           (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
