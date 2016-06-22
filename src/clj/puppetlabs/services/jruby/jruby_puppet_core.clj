@@ -7,7 +7,6 @@
             [puppetlabs.services.jruby.jruby-puppet-schemas :as jruby-puppet-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
@@ -150,7 +149,9 @@
   (select-keys config (keys jruby-puppet-schemas/JRubyPuppetConfig)))
 
 (schema/defn extract-http-config
-  [config :- {schema/Keyword schema/Any}]
+  "The config is allowed to be nil because the http-client section isn't
+  required in puppetserver's tk config"
+  [config :- (schema/maybe {schema/Keyword schema/Any})]
   (select-keys config [:ssl-protocols
                        :cipher-suites
                        :connect-timeout-milliseconds
@@ -192,8 +193,8 @@
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
-        modified-jruby-config (assoc jruby-config :ruby-load-path (jruby-puppet-core/managed-load-path
-                                                                            (:ruby-load-path jruby-config)))]
+        modified-jruby-config (assoc jruby-config :ruby-load-path (managed-load-path
+                                                                   (:ruby-load-path jruby-config)))]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
 (schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
@@ -205,13 +206,13 @@
 
   The 1-arity function takes only a config and supplies a default of nil for the profiler,
   an empty fn for the agent-shutdown-fn, and suppresses warnings about legacy auth.conf.
-  This arity is indended for uses where a jruby-config is required but will not be used
-  to to create a pool, such as the cli ruby subcommands
+  This arity is intended for uses where a jruby-config is required but will not be used
+  to create a pool, such as the cli ruby subcommands
 
   The 4-arity function takes a profiler object which will be placed into the puppetserver
   config through the :initialize-pool-instance lifecycle function. The agent-shutdown-fn
   is run when a jruby-instance is terminated. When warn-legacy-auth-conf? is passed in as
-  true, it will log a warning that the use-legacy-auth-conf setting is depreciated if the
+  true, it will log a warning that the use-legacy-auth-conf setting is deprecated if the
   config setting is set to true as well."
   ([raw-config :- {:jruby-puppet {schema/Keyword schema/Any}
                    (schema/optional-key :http-client) {schema/Keyword schema/Any}

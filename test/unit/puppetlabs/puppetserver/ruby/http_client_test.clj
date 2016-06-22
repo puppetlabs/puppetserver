@@ -78,9 +78,7 @@ jruby-config :- jruby-schemas/JRubyConfig
   that complies with the JRubyConfig schema, which differs slightly from the raw
   format that would be read from config files on disk.)"
   ([]
-   (jruby-core/initialize-config
-    {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
-     :gem-home jruby-puppet-testutils/gem-home}))
+   (jruby-config {}))
   ([options]
    (jruby-core/initialize-config
     (merge {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
