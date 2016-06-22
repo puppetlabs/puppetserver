@@ -25,7 +25,7 @@
    (jruby-testutils/jruby-puppet-tk-config
     (jruby-testutils/jruby-puppet-config))
    (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-         pool-instance (jruby-protocol/borrow-instance jruby-service :test)
+         pool-instance (jruby-testutils/borrow-instance jruby-service :test)
          jruby-puppet (:jruby-puppet pool-instance)]
      (try
        (testing "usage of get-puppet-config-value"
@@ -43,7 +43,7 @@
              (is (contains? puppet-config k))
              (is (not (nil? (get puppet-config k)))))))
        (finally
-         (jruby-protocol/return-instance jruby-service pool-instance :test))))))
+         (jruby-testutils/return-instance jruby-service pool-instance :test))))))
 
 (deftest test-schema-validation
   (testing "validating a data structure with a missing key"

@@ -42,11 +42,8 @@
             (assoc-in [:jruby-puppet :master-conf-dir]
                       puppet-conf-dir))
 
-        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-              pool-context (jruby-puppet-protocol/get-pool-context jruby-service)]
-          (jruby/with-jruby-instance
-           jruby-puppet
-           pool-context
-           :ca-disabled-files-test
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+          (jruby/with-jruby-puppet
+           jruby-puppet jruby-service :ca-disabled-files-test
            (is (not (nil? (fs/list-dir ssl-dir))))
            (is (empty? (fs/list-dir (str ssl-dir "/ca"))))))))))

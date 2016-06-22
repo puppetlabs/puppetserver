@@ -105,14 +105,10 @@
   "Returns all of the configuration values for puppetserver from JRubyPuppet."
   [jruby-service]
   {:post [(map? %)]}
-  (let [pool-context (jruby-puppet/get-pool-context jruby-service)]
-    (jruby/with-jruby-instance
-     jruby-instance
-     pool-context
-     :get-puppet-config
-     (let [jruby-puppet (:jruby-puppet jruby-instance)
-           config (get-puppet-config* jruby-puppet)]
-       (assoc config :puppet-version (.puppetVersion jruby-puppet))))))
+  (jruby/with-jruby-puppet
+   jruby-puppet jruby-service :get-puppet-config
+   (let [config (get-puppet-config* jruby-puppet)]
+     (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
 
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."

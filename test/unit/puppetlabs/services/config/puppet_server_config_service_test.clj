@@ -109,8 +109,8 @@
          ;; initialization has completed and it's safe for us to allow the
          ;; test to exit.
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-               jruby-instance (jruby/borrow-instance jruby-service :config-key-conflicts-test)]
-           (jruby/return-instance jruby-service jruby-instance :config-key-conflicts-test))
+               jruby-instance (jruby-testutils/borrow-instance jruby-service :config-key-conflicts-test)]
+           (jruby-testutils/return-instance jruby-service jruby-instance :config-key-conflicts-test))
 
          (tk-app/stop app))))))
 

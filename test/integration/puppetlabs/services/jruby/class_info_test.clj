@@ -81,7 +81,7 @@
         jruby-pool-manager-service]
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-             instance (jruby-protocol/borrow-instance jruby-service :test)
+             instance (jruby-testutils/borrow-instance jruby-service :test)
              jruby-puppet (:jruby-puppet instance)
              container (:scripting-container instance)
              env-registry (:environment-registry instance)
@@ -315,4 +315,4 @@
                       (get-class-info-for-env "env6"))
                    "Unexpected info retrieved for 'env6'")))
            (finally
-             (jruby-protocol/return-instance jruby-service instance :test))))))))
+             (jruby-testutils/return-instance jruby-service instance :test))))))))

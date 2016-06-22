@@ -37,18 +37,6 @@
      (jruby-core/flush-pool-for-shutdown! pool-context))
    context)
 
-  (borrow-instance
-    [this reason]
-    (let [{:keys [pool-context]} (tk-services/service-context this)
-          event-callbacks (jruby-core/get-event-callbacks pool-context)]
-      (jruby-core/borrow-from-pool-with-timeout pool-context reason event-callbacks)))
-
-  (return-instance
-    [this jruby-instance reason]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          event-callbacks (jruby-core/get-event-callbacks pool-context)]
-      (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
-
   (free-instance-count
     [this]
     (let [pool-context (:pool-context (tk-services/service-context this))
@@ -124,3 +112,15 @@
              that it is accessible from the service namespace along with the
              rest of the API."}
   with-lock #'jruby-core/with-lock)
+
+(defmacro with-jruby-puppet
+  "A convenience macro that wraps with-jruby-instance. jruby-puppet is bound
+  to the jruby-puppet object found in the borrowed jruby-instance"
+  [jruby-puppet jruby-service reason & body]
+  `(let [pool-context# (jruby/get-pool-context ~jruby-service)]
+     (with-jruby-instance
+      jruby-instance#
+      pool-context#
+      ~reason
+      (let [~jruby-puppet (:jruby-puppet jruby-instance#)]
+        ~@body))))

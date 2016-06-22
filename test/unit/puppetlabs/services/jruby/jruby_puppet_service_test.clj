@@ -5,9 +5,7 @@
             [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.trapperkeeper.app :as app]
-            [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -26,24 +24,6 @@
    jruby-pool-manager-service
    profiler/puppet-profiler-service])
 
-(deftest test-pool-population-during-init
-  (testing "A JRuby instance can be borrowed from the 'init' phase of a service"
-    (let [test-service (tk/service
-                         [[:JRubyPuppetService borrow-instance return-instance]]
-                         (init [this context]
-                               (return-instance
-                                 (borrow-instance :test-pool-population)
-                                 :test-pool-population)
-                               context))]
-
-      (ks-testutils/with-no-jvm-shutdown-hooks
-       ; Bootstrap TK, causing the 'init' function above to be executed.
-       (tk/boot-services-with-config
-        (conj default-services test-service)
-        (jruby-service-test-config 1))
-
-       ; If execution gets here, the test passed.
-       (is (true? true))))))
 
 (deftest facter-jar-loaded-during-init
   (testing (str "facter jar found from the ruby load path is properly "

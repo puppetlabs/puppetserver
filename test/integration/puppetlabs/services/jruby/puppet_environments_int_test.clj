@@ -80,9 +80,9 @@
     (bootstrap/with-puppetserver-running app {:jruby-puppet
                                               {:max-active-instances num-jrubies}}
       (let [jruby-service   (tk-app/get-service app :JRubyPuppetService)
-            borrow-jruby-fn (partial jruby-protocol/borrow-instance jruby-service
+            borrow-jruby-fn (partial jruby-testutils/borrow-instance jruby-service
                               :environment-flush-integration-test)
-            return-jruby-fn (fn [instance] (jruby-protocol/return-instance
+            return-jruby-fn (fn [instance] (jruby-testutils/return-instance
                                              jruby-service
                                              instance
                                              :environment-flush-integration-test))]

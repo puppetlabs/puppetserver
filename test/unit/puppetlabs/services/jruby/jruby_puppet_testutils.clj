@@ -42,6 +42,34 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
 
+(defn borrow-instance
+  "Borrows an instance from the JRubyPuppet interpreter pool. If there are no
+  interpreters left in the pool then the operation blocks until there is one
+  available. A timeout (integer measured in milliseconds) can be configured
+  which will either return an interpreter if one is available within the
+  timeout length, or will return nil after the timeout expires if no
+  interpreters are available. This timeout defaults to 1200000 milliseconds.
+
+  `reason` is an identifier (usually a map) describing the reason for borrowing the
+  JRuby instance.  It may be used for metrics and logging purposes."
+ [jruby-puppet-service reason]
+ (let [{:keys [pool-context]} (tk-service/service-context jruby-puppet-service)
+       event-callbacks (jruby-core/get-event-callbacks pool-context)]
+   (jruby-core/borrow-from-pool-with-timeout pool-context reason event-callbacks)))
+
+(defn return-instance
+  "Returns the JRubyPuppet interpreter back to the pool.
+
+  `reason` is an identifier (usually a map) describing the reason for borrowing the
+  JRuby instance.  It may be used for metrics and logging purposes, so for
+  best results it should be set to the same value as it was set during the
+  `borrow-instance` call."
+ [jruby-puppet-service jruby-instance reason]
+ (let [pool-context (:pool-context (tk-service/service-context jruby-puppet-service))
+       event-callbacks (jruby-core/get-event-callbacks pool-context)]
+   (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
+
+
 (schema/defn ^:always-validate
 create-mock-pool-instance :- JRubyInstance
   [mock-jruby-instance-creator-fn :- IFn

@@ -52,30 +52,26 @@
                        {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
                         :puppetlabs.services.master.master-service/master-service "/puppet"}))
 
-            (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-                  pool-context (jruby-puppet/get-pool-context jruby-service)]
-                (jruby/with-jruby-instance
-                 jruby-instance
-                 pool-context
-                 :ca-files-test
-                 (let [jruby-puppet (:jruby-puppet jruby-instance)]
-                  (letfn [(test-path!
-                            [setting expected-path]
-                            (is (= (ks/absolute-path expected-path)
-                                   (.getSetting jruby-puppet setting)))
-                            (is (fs/exists? (ks/absolute-path expected-path))))]
+            (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+              (jruby/with-jruby-puppet
+               jruby-puppet jruby-service :ca-files-test
+               (letfn [(test-path!
+                         [setting expected-path]
+                         (is (= (ks/absolute-path expected-path)
+                                (.getSetting jruby-puppet setting)))
+                         (is (fs/exists? (ks/absolute-path expected-path))))]
 
-                    (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
-                    (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
-                    (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
-                    (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
-                    (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
-                    (test-path! "hostcrl" "target/master-service-test/ca/crl.pem")
-                    (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
-                    (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
-                    (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
-                    (test-path! "serial" "target/master-service-test/certs/serial")
-                    (test-path! "cert_inventory" "target/master-service-test/inventory.txt")))))))
+                 (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
+                 (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
+                 (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
+                 (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
+                 (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
+                 (test-path! "hostcrl" "target/master-service-test/ca/crl.pem")
+                 (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
+                 (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
+                 (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
+                 (test-path! "serial" "target/master-service-test/certs/serial")
+                 (test-path! "cert_inventory" "target/master-service-test/inventory.txt"))))))
         (finally
           (fs/delete-dir test-dir))))))
 

@@ -216,7 +216,7 @@
            cert (ssl-utils/pem->cert
                  (str test-resources-dir "/localhost-cert.pem"))
            jruby-service (tk-app/get-service app :JRubyPuppetService)
-           jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
            handler-service (tk-app/get-service app :RequestHandlerService)
            request {:uri "/puppet/v3/environments", :params {}, :headers {},
                     :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
@@ -229,7 +229,7 @@
                   (not= 503 (:status (ping-environment))))
             (Thread/yield))
           (is (= 503 (:status (ping-environment)))))
-         (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
+         (jruby-testutils/return-instance jruby-service jruby-instance :i-want-this-instance)
          (is (not= :timed-out (timed-deref stop-complete?))
              (str "timed out waiting for the stop to complete, stack:\n"
                   (get-all-stack-traces-as-str)))
@@ -244,7 +244,7 @@
                      :borrow-timeout default-borrow-timeout}}
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
-           jruby-instance (jruby-protocol/borrow-instance jruby-service :i-want-this-instance)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
            stop-complete? (future (tk-services/stop jruby-service context))
            ping-environment #(testutils/http-get "puppet/v3/environments")]
        (logging/with-test-logging
@@ -254,7 +254,7 @@
                   (not= 503 (:status (ping-environment))))
             (Thread/yield)))
         (is (= 503 (:status (ping-environment)))))
-       (jruby-protocol/return-instance jruby-service jruby-instance :i-want-this-instance)
+       (jruby-testutils/return-instance jruby-service jruby-instance :i-want-this-instance)
        (is (not= :timed-out (timed-deref stop-complete?))
            (str "timed out waiting for the stop to complete, stack:\n"
                 (get-all-stack-traces-as-str)))
@@ -284,7 +284,7 @@
         jruby-utils/jruby-pool-manager-service]
         config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-             jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+             jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
              container (:scripting-container jruby-instance)]
          (try
            (= RubyInstanceConfig$CompileMode/JIT
@@ -304,7 +304,7 @@
                (is (= ["TLSv1" "TLSv1.2"]
                       (into [] (settings "ssl_protocols"))))))
            (finally
-             (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
+             (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
 
 (deftest create-jruby-instance-test
   (testing "Directories can be configured programatically
@@ -324,7 +324,7 @@
         :master-run-dir  jruby-testutils/run-dir
         :master-log-dir  jruby-testutils/log-dir}))
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-           jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
            jruby-puppet (:jruby-puppet jruby-instance)]
        (try
          (are [setting expected]
@@ -338,7 +338,7 @@
            "rundir" jruby-testutils/run-dir
            "logdir" jruby-testutils/log-dir)
          (finally
-           (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test))))))
+           (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test))))))
 
   (testing "Settings from Ruby Puppet are available"
     (tk-testutils/with-app-with-config
@@ -349,7 +349,7 @@
      (jruby-testutils/jruby-puppet-tk-config
       (jruby-testutils/jruby-puppet-config))
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-           jruby-instance (jruby-protocol/borrow-instance jruby-service :test)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
            jruby-puppet (:jruby-puppet jruby-instance)]
        (try
          (testing "Various data types"
@@ -357,7 +357,7 @@
            (is (= 8140 (.getSetting jruby-puppet "masterport")))
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
-           (jruby-protocol/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
+           (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
 
 (deftest master-termination-test
   (testing "Flushing the pool causes masters to be terminated"

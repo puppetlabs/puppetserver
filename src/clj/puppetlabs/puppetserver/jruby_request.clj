@@ -40,13 +40,9 @@
   it available in the request as `:jruby-instance`"
   [handler jruby-service]
   (fn [request]
-    (let [pool-context (jruby-puppet/get-pool-context jruby-service)]
-     (jruby/with-jruby-instance
-      jruby-instance
-      pool-context
-      {:request (dissoc request :ssl-client-cert)}
-      (let [jruby-puppet (:jruby-puppet jruby-instance)]
-        (handler (assoc request :jruby-instance jruby-puppet)))))))
+    (jruby/with-jruby-puppet
+     jruby-puppet jruby-service {:request (dissoc request :ssl-client-cert)}
+     (handler (assoc request :jruby-instance jruby-puppet)))))
 
 (defn get-environment-from-request
   "Gets the environment from the URL or query string of a request."
