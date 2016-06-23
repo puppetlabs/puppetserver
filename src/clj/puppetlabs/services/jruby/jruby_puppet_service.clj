@@ -101,26 +101,24 @@
     (let [pool-context (:pool-context (tk-services/service-context this))]
       (jruby-core/register-event-handler pool-context callback-fn))))
 
-(def #^{:macro true
-        :doc "An alias for the jruby-utils' `with-jruby-instance` macro so
-             that it is accessible from the service namespace along with the
-             rest of the API."}
-  with-jruby-instance #'jruby-core/with-jruby-instance)
-
-(def #^{:macro true
-        :doc "An alias for the jruby-utils' `with-lock` macro so
-             that it is accessible from the service namespace along with the
-             rest of the API."}
-  with-lock #'jruby-core/with-lock)
-
 (defmacro with-jruby-puppet
-  "A convenience macro that wraps with-jruby-instance. jruby-puppet is bound
+  "A convenience macro that wraps jruby/with-jruby-instance. jruby-puppet is bound
   to the jruby-puppet object found in the borrowed jruby-instance"
   [jruby-puppet jruby-service reason & body]
   `(let [pool-context# (jruby/get-pool-context ~jruby-service)]
-     (with-jruby-instance
+     (jruby-core/with-jruby-instance
       jruby-instance#
       pool-context#
       ~reason
       (let [~jruby-puppet (:jruby-puppet jruby-instance#)]
         ~@body))))
+
+(defmacro with-lock
+  "A convenience macro that wraps jruby/with-lock. Does the work of extracting the
+  pool-context from the service and passes it to with-lock"
+  [jruby-service reason & body]
+  `(let [pool-context# (jruby/get-pool-context ~jruby-service)]
+     (jruby-core/with-lock
+      pool-context#
+      ~reason
+      ~@body)))
