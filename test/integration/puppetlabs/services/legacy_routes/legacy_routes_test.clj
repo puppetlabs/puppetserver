@@ -7,6 +7,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.request-handler.request-handler-service :as handler]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as webserver]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
@@ -86,6 +87,7 @@
         app
         [handler/request-handler-service
          jruby/jruby-puppet-pooled-service
+         jruby-utils/jruby-pool-manager-service
          profiler/puppet-profiler-service
          webserver/jetty9-service
          webrouting/webrouting-service
