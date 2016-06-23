@@ -8,7 +8,7 @@
             [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
             [ring.util.codec :as ring-codec]

@@ -1,18 +1,21 @@
 (ns puppetlabs.puppetserver.ruby.http-client-test
-  (:import (org.jruby.embed LocalContextScope LocalVariableBehavior
-                            EvalFailedException)
+  (:import (org.jruby.embed EvalFailedException LocalContextScope LocalVariableBehavior)
            (org.apache.http ConnectionClosedException)
            (javax.net.ssl SSLHandshakeException)
            (java.util HashMap)
            (java.io IOException)
-           (com.puppetlabs.puppetserver.jruby ScriptingContainer))
+           (com.puppetlabs.jruby_utils.jruby ScriptingContainer))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
             [puppetlabs.trapperkeeper.testutils.webserver.common :refer [http-get]]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils]
             [ring.middleware.basic-authentication :as auth]
-            [puppetlabs.services.jruby.jruby-puppet-internal :as jruby-internal]))
+            [schema.core :as schema]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]))
 
 ;; NOTE: this namespace is pretty disgusting.  It'd be much nicer to test this
 ;; ruby code via ruby spec tests, but since we need to stand up a webserver to
@@ -67,6 +70,21 @@
 (def cert-pem (test-resource "localhost_cert.pem"))
 (def privkey-pem (test-resource "localhost_key.pem"))
 
+(schema/defn ^:always-validate
+jruby-config :- jruby-schemas/JRubyConfig
+  "Create a JRubyConfig for testing. The optional map argument `options` may
+  contain a map, which, if present, will be merged into the final JRubyConfig
+  map.  (This function differs from `jruby-tk-config` in that it returns a map
+  that complies with the JRubyConfig schema, which differs slightly from the raw
+  format that would be read from config files on disk.)"
+  ([]
+   (jruby-config {}))
+  ([options]
+   (jruby-core/initialize-config
+    (merge {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
+            :gem-home jruby-puppet-testutils/gem-home}
+           options))))
+
 (defn create-scripting-container
   "A JRuby ScriptingContainer with an instance of 'Puppet::Server::HttpClient'
   assigned to a variable 'c'.  The ScriptingContainer was created
@@ -75,26 +93,29 @@
   ([port]
    (create-scripting-container port {:use-ssl false}))
   ([port options]
-   (let [use-ssl?             (true? (:use-ssl options))
+   (let [jruby-config (jruby-config)
+         use-ssl?             (true? (:use-ssl options))
          http-client-settings (get-http-client-settings
-                                (select-keys options [:ssl-protocols :cipher-suites]))
-         sc                   (ScriptingContainer. LocalContextScope/SINGLETHREAD
-                                                   LocalVariableBehavior/PERSISTENT)]
-     (jruby-internal/init-jruby-config sc
-                                       jruby-testutils/ruby-load-path
-                                       jruby-testutils/gem-home
-                                       jruby-testutils/compile-mode)
-     (.runScriptlet sc "require 'puppet/server/http_client'")
-     (let [http-client-class (.runScriptlet sc "Puppet::Server::HttpClient")]
-       (.callMethod sc http-client-class "initialize_settings" http-client-settings Object))
-     (.runScriptlet sc (str "require 'puppet/server/http_client';"
-                            (format "c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                    port use-ssl?)))
-     (doto sc
+                               (select-keys options [:ssl-protocols :cipher-suites]))
+         scripting-container (-> (ScriptingContainer. LocalContextScope/SINGLETHREAD
+                                                      LocalVariableBehavior/PERSISTENT)
+                                 (jruby-internal/init-jruby jruby-config))]
+     (doto scripting-container
+       (.setEnvironment (jruby-core/managed-environment (jruby-core/get-system-env) (:gem-home jruby-config)))
+       (.setLoadPaths (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path))
+       (.runScriptlet "require 'jar-dependencies'")
+       (.runScriptlet "require 'puppet/server/http_client'"))
+
+     (let [http-client-class (.runScriptlet scripting-container "Puppet::Server::HttpClient")]
+       (.callMethod scripting-container http-client-class "initialize_settings" http-client-settings Object))
+     (.runScriptlet scripting-container (str "require 'puppet/server/http_client';"
+                                             (format "c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                                                     port use-ssl?)))
+     (doto scripting-container
        (.runScriptlet (format "Puppet[:hostcert] = '%s'" cert-pem))
        (.runScriptlet (format "Puppet[:hostprivkey] = '%s'" privkey-pem))
        (.runScriptlet (format "Puppet[:localcacert] = '%s'" ca-pem)))
-     sc)))
+     scripting-container)))
 
 (defn terminate-scripting-container
   [scripting-container]
