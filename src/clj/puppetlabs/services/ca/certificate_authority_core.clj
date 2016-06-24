@@ -320,5 +320,5 @@
           authorization-fn
           whitelist-path
           (get-in ca-settings [:access-control :certificate-status]))
-        (i18n/locale-negotiator)
+        i18n/locale-negotiator
         (wrap-middleware puppet-version))))
