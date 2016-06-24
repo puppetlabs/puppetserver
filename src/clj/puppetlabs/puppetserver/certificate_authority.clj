@@ -1224,4 +1224,4 @@
 (schema/defn ^:always-validate get-oid-mappings :- OIDMappings
   [custom-oid-mapping-file :- (schema/maybe schema/Str)]
   (merge (get-custom-oid-mappings custom-oid-mapping-file)
-(clojure.set/map-invert puppet-short-names)))
+         (clojure.set/map-invert puppet-short-names)))
