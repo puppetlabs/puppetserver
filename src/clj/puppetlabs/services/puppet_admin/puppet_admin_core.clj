@@ -132,7 +132,7 @@
       ;; of the 'wrap-with-trapperkeeper-or-client-whitelist-authorization'
       ;; function and replace with a line chaining the handler into a call to
       ;; 'authorization-fn'.
-      (i18n/locale-negotiator)
+      i18n/locale-negotiator
       (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
         authorization-fn
         path
