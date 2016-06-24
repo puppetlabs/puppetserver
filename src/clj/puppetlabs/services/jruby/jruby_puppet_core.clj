@@ -85,7 +85,7 @@
   "facter.jar")
 
 (schema/defn ^:always-validate
-  add-facter-jar-to-system-classloader
+  add-facter-jar-to-system-classloader!
   "Searches the ruby load path for a file whose name matches that of the
   facter jar file.  The first one found is added to the system classloader's
   classpath.  If no match is found, an info message is written to the log
@@ -227,13 +227,7 @@
                               (extract-puppet-config (:jruby-puppet raw-config)))
          uninitialized-jruby-config (-> (extract-jruby-config (:jruby-puppet raw-config))
                                         (assoc :max-borrows-per-instance
-                                               (:max-requests-per-instance jruby-puppet-config)))
-         jruby-config (create-jruby-config
-                       jruby-puppet-config
-                       uninitialized-jruby-config
-                       agent-shutdown-fn
-                       profiler)]
-     (log/info "Initializing the JRuby service")
+                                               (:max-requests-per-instance jruby-puppet-config)))]
      (when (and warn-legacy-auth-conf? (:use-legacy-auth-conf jruby-puppet-config))
        (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
                  "'true'.  Support for the legacy Puppet auth.conf file is"
@@ -241,8 +235,7 @@
                  "this setting to 'false' and migrate your authorization rule"
                  "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
                  "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
-     (add-facter-jar-to-system-classloader (:ruby-load-path jruby-config))
-     jruby-config)))
+     (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler))))
 
 
 (def EnvironmentClassInfoCacheEntry

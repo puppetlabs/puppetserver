@@ -21,11 +21,13 @@
                            [:PoolManagerService create-pool]]
   (init
     [this context]
+    (log/info "Initializing the JRuby service")
     (let [jruby-config (core/initialize-and-create-jruby-config
                         (get-config)
                         (get-profiler)
                         (partial shutdown-on-error (tk-services/service-id this))
                         true)
+          _ (core/add-facter-jar-to-system-classloader! (:ruby-load-path jruby-config))
           pool-context (create-pool jruby-config)]
       (-> context
           (assoc :pool-context pool-context)
