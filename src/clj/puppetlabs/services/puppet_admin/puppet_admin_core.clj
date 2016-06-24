@@ -8,7 +8,8 @@
             [liberator.core :refer [defresource]]
     ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]))
+            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
+            [puppetlabs.i18n.core :as i18n]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -131,6 +132,7 @@
       ;; of the 'wrap-with-trapperkeeper-or-client-whitelist-authorization'
       ;; function and replace with a line chaining the handler into a call to
       ;; 'authorization-fn'.
+      i18n/locale-negotiator
       (ringutils/wrap-with-trapperkeeper-or-client-whitelist-authorization
         authorization-fn
         path

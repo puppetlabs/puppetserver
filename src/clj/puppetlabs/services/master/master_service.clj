@@ -6,7 +6,8 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
-            [puppetlabs.services.protocols.master :as master]))
+            [puppetlabs.services.protocols.master :as master]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (defservice master-service
   master/MasterService
@@ -44,7 +45,7 @@
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
 
-     (log/info "Master Service adding ring handlers")
+     (log/info (trs "Master Service adding ring handlers"))
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
@@ -77,5 +78,5 @@
    context)
   (start
     [this context]
-    (log/info "Puppet Server has successfully started and is now ready to handle requests")
+    (log/info (trs "Puppet Server has successfully started and is now ready to handle requests"))
     context))

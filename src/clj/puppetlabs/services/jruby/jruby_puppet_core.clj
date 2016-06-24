@@ -8,6 +8,7 @@
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.i18n.core ::as i18n :refer [trs]]
             [clojure.tools.logging :as log])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
@@ -95,9 +96,9 @@
                        (filter fs/exists?
                                (map #(fs/file % facter-jar) ruby-load-path)))]
     (do
-      (log/debugf "Adding facter jar to classpath from: %s" facter-jar)
+      (log/debug (trs "Adding facter jar to classpath from: {0}" facter-jar))
       (ks-classpath/add-classpath facter-jar))
-    (log/info "Facter jar not found in ruby load path")))
+    (log/info (trs "Facter jar not found in ruby load path"))))
 
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
@@ -236,7 +237,6 @@
                  "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
                  "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
      (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler))))
-
 
 (def EnvironmentClassInfoCacheEntry
   "Data structure that holds per-environment cache information for the

@@ -1,7 +1,8 @@
 (ns puppetlabs.services.ca.certificate-authority-disabled-service
   (:require [puppetlabs.services.protocols.ca :refer [CaService]]
             [puppetlabs.trapperkeeper.core :as tk]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (tk/defservice certificate-authority-disabled-service
   "Contains a NOOP version of the certificate authority service.
@@ -11,15 +12,15 @@
   [[:AuthorizationService wrap-with-authorization-check]]
   (initialize-master-ssl!
     [this master-settings certname]
-    (log/info "CA disabled; ignoring SSL initialization for Master"))
+    (log/info (trs "CA disabled; ignoring SSL initialization for Master")))
 
   (retrieve-ca-cert!
     [this localcacert]
-    (log/info "CA disabled; ignoring retrieval of CA cert"))
+    (log/info (trs "CA disabled; ignoring retrieval of CA cert")))
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (log/info "CA disabled; ignoring retrieval of CA CRL"))
+    (log/info (trs "CA disabled; ignoring retrieval of CA CRL")))
 
   (get-auth-handler
     [this]

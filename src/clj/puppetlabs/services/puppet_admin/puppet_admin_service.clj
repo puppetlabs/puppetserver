@@ -2,7 +2,8 @@
   (:require [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.trapperkeeper.services :as services]
             [puppetlabs.services.puppet-admin.puppet-admin-core :as core]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (defservice puppet-admin-service
   [[:ConfigService get-config]
@@ -22,22 +23,14 @@
       (cond
         (or (false? (:authorization-required whitelist-settings))
             (not-empty client-whitelist))
-          (log/warn
-           "The 'client-whitelist' and 'authorization-required' settings in"
-           "the 'puppet-admin' section are deprecated and will be removed"
-           "in a future release.  Remove these settings and create an"
-           "appropriate authorization rule in the"
-           "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
+        (log/warn (format "%s  %s"
+                          (trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''puppet-admin'' section are deprecated and will be removed in a future release.")
+                          (trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
         (not (nil? client-whitelist))
-          (log/warn
-           "The 'client-whitelist' and 'authorization-required' settings in"
-           "the 'puppet-admin' section are deprecated and will be removed"
-           "in a future release.  Because the 'client-whitelist' is empty"
-           "and 'authorization-required' is set to 'false', the 'puppet-admin'"
-           "settings will be ignored and authorization for the 'puppet-admin'"
-           "endpoints will be done per the authorization rules in the"
-           "/etc/puppetlabs/puppetserver/conf.d/auth.conf file.  To suppress"
-           "this warning, remove the 'puppet-admin' configuration settings."))
+        (log/warn (format "%s  %s  %s"
+                          (trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''puppet-admin'' section are deprecated and will be removed in a future release.")
+                          (trs "Because the ''client-whitelist'' is empty and ''authorization-required'' is set to ''false'', the ''puppet-admin'' settings will be ignored and authorization for the ''puppet-admin'' endpoints will be done per the authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
+                          (trs "To suppress this warning, remove the ''puppet-admin'' configuration settings."))))
       (add-ring-handler
         this
         (core/build-ring-handler route

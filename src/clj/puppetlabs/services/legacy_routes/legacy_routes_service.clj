@@ -6,7 +6,8 @@
             [puppetlabs.services.ca.certificate-authority-core :as ca-core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.master.master-core :as master-core]
-            [puppetlabs.trapperkeeper.services :as tk-services]))
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
@@ -73,6 +74,5 @@
     context)
   (start
     [this context]
-    (log/info (str "The legacy routing service has successfully "
-                "started and is now ready to handle requests"))
+    (log/info (trs "The legacy routing service has successfully started and is now ready to handle requests"))
     context))
