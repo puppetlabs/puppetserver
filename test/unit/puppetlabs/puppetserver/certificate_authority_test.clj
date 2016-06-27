@@ -7,6 +7,7 @@
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :as sling]
+            [slingshot.test :as slingtest]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -152,26 +153,6 @@
                     :message ~msg
                     :expected ~expected
                     :actual actual#})
-        actual#))))
-
-;; This additional slingshot helper assumes our :kind/:msg maps and is probably
-;; brittle.
-(defmethod assert-expr 'thrown-with-slingshot-msg? [msg form]
-  (let [expected (nth form 1)
-        body     (nthnext form 2)]
-    `(sling/try+
-      ~@body
-      (do-report {:type :fail :message ~msg :expected ~expected :actual nil})
-      (catch map? actual#
-        (let [result# (if (or (= actual# ~expected)
-                              (and (= (:kind actual#) (:kind ~expected))
-                                   (re-matches (:msg ~expected) (:msg actual#))))
-                        :pass
-                        :fail)]
-          (do-report {:type result#
-                      :message ~msg
-                      :expected ~expected
-                      :actual actual#}))
         actual#))))
 
 (defn contains-ext?
@@ -1208,6 +1189,33 @@
 (deftest netscape-comment-value-test
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
+
+(deftest ensure-no-authorization-extensions!-test
+  (testing "when checking a csr for authorization extensions"
+    (let [subject-keys (utils/generate-key-pair 512)
+          subject-pub  (utils/get-public-key subject-keys)
+          subject      "borges"
+          subject-dn   (utils/cn subject)
+
+          pp-auth-ext {:oid (:pp_authorization puppet-short-names)
+                       :value "true"
+                       :critical false}
+          pp-auth-role {:oid (:pp_auth_role puppet-short-names)
+                        :value "com"
+                        :critical false}
+          auth-csr (utils/generate-certificate-request subject-keys subject-dn [pp-auth-ext])
+          auth-role-csr (utils/generate-certificate-request subject-keys subject-dn [pp-auth-role])]
+
+      (testing "pp_authorization is caught"
+        (is (thrown+-with-msg?
+             [:kind :disallowed-extension]
+              #".*contains an authorization extension.*borges.*"
+             (ensure-no-authorization-extensions! auth-csr))))
+      (testing "pp_auth_role is caught"
+        (is (thrown+-with-msg?
+             [:kind :disallowed-extension]
+              #".*contains an authorization extension.*borges.*"
+             (ensure-no-authorization-extensions! auth-role-csr)))))))
 
 (deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
