@@ -154,6 +154,26 @@
                     :actual actual#})
         actual#))))
 
+;; This additional slingshot helper assumes our :kind/:msg maps and is probably
+;; brittle.
+(defmethod assert-expr 'thrown-with-slingshot-msg? [msg form]
+  (let [expected (nth form 1)
+        body     (nthnext form 2)]
+    `(sling/try+
+      ~@body
+      (do-report {:type :fail :message ~msg :expected ~expected :actual nil})
+      (catch map? actual#
+        (let [result# (if (or (= actual# ~expected)
+                              (and (= (:kind actual#) (:kind ~expected))
+                                   (re-matches (:msg ~expected) (:msg actual#))))
+                        :pass
+                        :fail)]
+          (do-report {:type result#
+                      :message ~msg
+                      :expected ~expected
+                      :actual actual#}))
+        actual#))))
+
 (defn contains-ext?
   "Does the provided extension list contain an extensions with the given OID."
   [ext-list oid]
