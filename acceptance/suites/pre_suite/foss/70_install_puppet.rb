@@ -36,7 +36,7 @@ step "Install MRI Puppet Agents."
   hosts.each do |host|
     platform = host.platform
 
-    puppet_version = test_config[:puppet_version]
+    puppet_version = test_config[:puppet_build_version]
 
     if /windows/.match(platform)
       arch = host[:ruby_arch] || 'x86'
@@ -46,7 +46,7 @@ step "Install MRI Puppet Agents."
     elsif puppet_version
       install_package host, 'puppet-agent'
     else
-      puppet_version = test_config[:puppet_version]
+      puppet_version = test_config[:puppet_build_version]
 
       variant, _, _, _ = host['platform'].to_array
 
