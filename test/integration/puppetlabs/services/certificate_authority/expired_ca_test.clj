@@ -27,27 +27,27 @@
 
 (deftest expired-ca-test
   (testing "an expired CA cert cannot sign certs"
-    (let [csr-keypair (utils/generate-key-pair 512)
-          public-key (utils/get-public-key csr-keypair)
-          private-key (utils/get-private-key csr-keypair)
-          x500-name (utils/cn "expired_ca")
+    (let [keypair (utils/generate-key-pair 512)
+          ca-public-key (utils/get-public-key keypair)
+          ca-private-key (utils/get-private-key keypair)
+          ca-x500-name (utils/cn "expired_ca")
           serial 100
-          ca-exts (ca/create-ca-extensions x500-name
+          ca-exts (ca/create-ca-extensions ca-x500-name
                                            serial
-                                           public-key)
+                                           ca-public-key)
           ;; Make a 1-year CA cert that expired yesterday
           not-before (time/minus (time/now) (time/days 365))
           not-after (time/minus (time/now) (time/days 1))
           validity {:not-before (.toDate not-before)
                     :not-after (.toDate not-after)}
           ca-cert (utils/sign-certificate
-                    x500-name
-                    private-key
+                    ca-x500-name
+                    ca-private-key
                     serial
                     (:not-before validity)
                     (:not-after validity)
-                    x500-name
-                    public-key
+                    ca-x500-name
+                    ca-public-key
                     ca-exts)
           ssl-ca-cert (str test-resources-dir "/expired_ca_cert.pem")
           ssl-cert (str test-resources-dir "/expired_ssl_cert.pem")
@@ -71,14 +71,13 @@
         app
         {:ssl-ca-cert ssl-ca-cert
          :ssl-cert    ssl-cert
-         :ssl-key     private-key}
+         :ssl-key     ca-private-key}
         (let [signed-cert (utils/sign-certificate
-                            x500-name
-                            private-key
+                            ca-x500-name
+                            ca-private-key
                             (inc serial)
                             (:not-before csr-validity)
                             (:not-after csr-validity)
                             csr-DN
                             csr-public-key)]
-          (is (= (utils/certificate? signed-cert) false))
-          (utils/certificate? signed-cert))))))
+          (is (= (utils/certificate? signed-cert) false)))))))
