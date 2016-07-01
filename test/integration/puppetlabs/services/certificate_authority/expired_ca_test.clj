@@ -49,35 +49,34 @@
                     ca-x500-name
                     ca-public-key
                     ca-exts)
-          ssl-ca-cert (str test-resources-dir "/expired_ca_cert.pem")
-          ssl-cert (str test-resources-dir "/expired_ssl_cert.pem")
+          ssl-ca-cert (str test-resources-dir "/ssl/ca/ca_crt.pem")
+          ssl-cert (str test-resources-dir "/ssl/ca/ca_crt.pem")
+          ssl-key (str test-resources-dir "/ssl/ca/ca_key.pem")
 
           ;; Gen up a new CSR
           csr-keypair (utils/generate-key-pair 512)
-          csr-public-key (utils/get-public-key csr-keypair)
-          csr-not-before (time/now)
-          csr-not-after (time/plus (time/now) (time/days 365))
-          csr-validity {:not-before (.toDate csr-not-before)
-                        :not-after (.toDate csr-not-after)}
-          csr-file (str test-resources-dir "/new_csr.pem")
           csr-DN (utils/cn "cant_sign_me")
-          csr (ssl-utils/generate-certificate-request csr-keypair csr-DN)]
+          csr (ssl-utils/generate-certificate-request csr-keypair csr-DN)
+          csr-file (str test-resources-dir "/ssl/certificate_requests/cant_sign_me.pem")]
 
       (ssl-utils/cert->pem! ca-cert ssl-ca-cert)
       (ssl-utils/cert->pem! ca-cert ssl-cert)
+      (ssl-utils/key->pem! ca-private-key ssl-key)
       (ssl-utils/obj->pem! csr csr-file)
 
       (bootstrap/with-puppetserver-running
         app
-        {:ssl-ca-cert ssl-ca-cert
-         :ssl-cert    ssl-cert
-         :ssl-key     ca-private-key}
-        (let [signed-cert (utils/sign-certificate
-                            ca-x500-name
-                            ca-private-key
-                            (inc serial)
-                            (:not-before csr-validity)
-                            (:not-after csr-validity)
-                            csr-DN
-                            csr-public-key)]
-          (is (= (utils/certificate? signed-cert) false)))))))
+        {:jruby-puppet {:master-conf-dir test-resources-dir}
+         :ssl-cert ssl-cert
+         :ssl-ca-cert ssl-ca-cert
+         :ssl-key ssl-key}
+        (let [response (http-client/put
+                         (str "https://localhost:8140"
+                              "/puppet-ca/v1/certificate_request/cant_sign_me")
+                         {:ssl-cert ssl-cert
+                          :ssl-key ssl-key
+                          :ssl-ca-cert ssl-ca-cert
+                          :as :text
+                          :body "{\"desired_state\": \"signed\"}"
+                          :headers {"content-type" "text/plain"}})]
+          (is (= 200 (:status response))))))))
