@@ -37,7 +37,7 @@ For some tips on advanced logging configuration, including information about con
 
 ### HTTP Traffic
 
-Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate file than the main log file. By default, this is located at `/var/log/puppetlabs/puppetserver/puppetserver-access.log` (open source releases) and `/var/log/pe-puppetserver/puppetserver-access.log` (Puppet Enterprise).
+Puppet Server logs HTTP traffic in a format similar to Apache, and to a separate file than the main log file. By default, this is located at `/var/log/puppetlabs/puppetserver/puppetserver-access.log`.
 
 By default, the following information is logged for each HTTP request:
 
