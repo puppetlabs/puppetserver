@@ -123,7 +123,7 @@ Puppet Server relies on `logrotate` to manage the log file, and installs a confi
 
 Logback is heavily configurable; if you need something more specialized than a unified log file, you can probably get it. [See the configuration docs for info on configuring logging.](./configuration.markdown#logging)
 
-Finally, there's a special "daemon" log file used only for errors that happen before logging is set up or which cause the logging system to die. This file can be found at `/var/log/puppetlabs/puppetserver/puppetserver-daemon.log`.
+Finally, there's a special "daemon" log file used only for errors that happen before logging is set up or which cause the logging system to die. This file can be found at `/var/log/puppetlabs/puppetserver/puppetserver-daemon.log` on platforms using SysV-style init, and in journalctl on platforms using systemd.
 
 ### SSL Termination
 
