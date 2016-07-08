@@ -39,7 +39,7 @@ web-router-service: {
 jruby-puppet: {
     # Where the puppet-agent dependency places puppet, facter, etc...
     # Puppet server expects to load Puppet from this location
-    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib, ./ruby/hiera/lib]
+    ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib, ./ruby/hiera/lib, ./ruby/semantic_puppet/lib]
 
     # This setting determines where JRuby will look for gems.  It is also
     # used by the `puppetserver gem` command line tool.

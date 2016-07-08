@@ -310,7 +310,7 @@
 (deftest autosign-csr?-ruby-exe-test
   (let [executable (autosign-exe-file "ruby-autosign-executable")
         csr-fn #(csr-stream "test-agent")
-        ruby-load-path ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]]
+        ruby-load-path ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib" "ruby/semantic_puppet/lib"]]
 
     (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
