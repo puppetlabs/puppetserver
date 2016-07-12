@@ -954,6 +954,23 @@
       {:kind :invalid-signature
        :msg (tru "CSR contains a public key that does not correspond to the signing key")})))
 
+(schema/defn ensure-no-authorization-extensions!
+  "Throws an exception if the CSR contains authorization exceptions. These
+  extensions need to be signed using the puppet cert tool. This may change in
+  the future, but for now, it's too risky that certificates with authentication
+  extensions could be signed unintentionally."
+  [csr :- CertificateRequest]
+  (let [extensions (utils/get-extensions csr)]
+    (doseq [extension extensions]
+      (when (utils/subtree-of? ppAuthCertExt (:oid extension))
+        (sling/throw+
+         {:kind :disallowed-extension
+          :msg (format "%s %s"
+                (trs "CSR ''{0}'' contains an authorization extension, which is disallowed." csr)
+                (trs "Use {0} to sign this request."
+                     (format "`puppet cert --allow-authorization-extensions sign %s`"
+                             (get-csr-subject csr))))})))))
+
 (schema/defn ensure-no-dns-alt-names!
   "Throws an exception if the CSR contains DNS alt-names."
   [csr :- CertificateRequest]
@@ -983,6 +1000,7 @@
       (save-certificate-request! subject csr csrdir)
       (when (autosign-csr? autosign subject csr-stream ruby-load-path)
         (ensure-no-dns-alt-names! csr)
+        (ensure-no-authorization-extensions! csr)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
         (autosign-certificate-request! subject csr settings)
@@ -1195,6 +1213,7 @@
       ;; 'process-csr-submission!' when autosigning
       (validate-subject! subject csr-subject)
       (ensure-no-dns-alt-names! csr)
+      (ensure-no-authorization-extensions! csr)
       (validate-extensions! extensions)
       (validate-csr-signature! csr)
 
