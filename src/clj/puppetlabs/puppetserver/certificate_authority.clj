@@ -119,6 +119,9 @@
   certificate."
   "1.3.6.1.5.5.7.3.2")
 
+;; Note: When updating the following OIDs make sure to also update the OIDs here:
+;; https://github.com/puppetlabs/puppet/blob/master/lib/puppet/ssl/oids.rb#L29-L67
+
 (def puppet-oid-arc
   "The parent OID for all Puppet Labs specific X.509 certificate extensions."
   "1.3.6.1.4.1.34380.1")
