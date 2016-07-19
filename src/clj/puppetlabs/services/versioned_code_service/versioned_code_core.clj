@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [puppetlabs.puppetserver.common :as ps-common]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
-            [clojure.string :as string])
+            [clojure.string :as string]
+            [puppetlabs.i18n.core :as i18n :refer [trs]])
   (:import (java.io IOException InputStream)
            (org.apache.commons.io IOUtils)))
 
@@ -16,8 +17,9 @@
   success-with-stderr-msg :- schema/Str
   [cmd :- schema/Str
    stderr :- schema/Str]
-  (format "Error output generated while running '%s'. stderr: '%s'"
-          cmd stderr))
+  (format "%s %s"
+          (trs "Error output generated while running ''{0}''." cmd)
+          (trs "stderr: ''{0}''" stderr)))
 
 (schema/defn ^:always-validate
   nonzero-msg :- schema/Str
@@ -25,16 +27,15 @@
    exit-code :- schema/Int
    stdout :- schema/Str
    stderr :- schema/Str]
-  (format (str "Non-zero exit code returned while running '%s'. "
-               "exit-code: '%d', stdout: '%s', stderr: '%s'")
-          cmd exit-code stdout stderr))
+  (format "%s %s"
+          (trs "Non-zero exit code returned while running ''{0}''." cmd)
+          (trs "exit-code: ''{0}'', stdout: ''{1}'', stderr: ''{2}''" exit-code stdout stderr)))
 
 (schema/defn ^:always-validate
   execution-error-msg :- schema/Str
   [cmd :- schema/Str
    e :- Exception]
-  (format (str "Running script generated an error. "
-               "Command executed: '%s', error generated: '%s'")
+  (trs "Running script generated an error. Command executed: ''{0}'', error generated: ''{1}''"
               cmd (.getMessage e)))
 
 (schema/defn ^:always-validate execute-code-id-script! :- schema/Str
@@ -107,7 +108,6 @@
     (and code-id-command (not code-content-command))
     (and (not code-id-command) code-content-command))
     (throw (IllegalStateException.
-            (str "Only one of \"versioned-code.code-id-command\" and "
-                 "\"versioned-code.code-content-command\" was set. Both or "
-                 "neither must be set for the versioned-code-service to "
-                 "function correctly.")))))
+            (format "%s %s"
+                    (trs "Only one of \"versioned-code.code-id-command\" and \"versioned-code.code-content-command\" was set.")
+                    (trs "Both or neither must be set for the versioned-code-service to function correctly."))))))

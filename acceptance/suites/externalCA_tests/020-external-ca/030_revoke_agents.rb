@@ -16,11 +16,11 @@ step 'Revoke certificate of Non-Master Agents' do
   end
 end
 
-step 'Push CRL to master & restart puppetserver' do
+step 'Push CRL to master & HUP puppetserver' do
   pm_fqdn = fact_on(master, "fqdn").chomp
   on(ca, "cd /root/rakeca/intermediate;scp -o stricthostkeychecking=no ca_crl.pem root@#{pm_fqdn}:/etc/puppetlabs/puppet/ssl/ca/ca_crl.pem")
   on(master, puppet('agent','--test', "--server #{master}"), :acceptable_exit_codes => [0,2])
-  on(master, "service puppetserver restart")
+  hup_server(master)
   on(master, puppet('agent','--test', "--server #{master}"), :acceptable_exit_codes => [0,2])
 end
 

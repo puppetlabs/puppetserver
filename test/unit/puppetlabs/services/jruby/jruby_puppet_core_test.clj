@@ -3,9 +3,9 @@
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-core]
-            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (java.io ByteArrayOutputStream PrintStream ByteArrayInputStream)))
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core])
+  (:import (java.io ByteArrayOutputStream PrintStream)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -15,18 +15,6 @@
    :jruby-puppet
    {:gem-home "./target/jruby-gem-home",
     :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]}})
-
-(defmacro with-stdin-str
-  "Evaluates body in a context in which System/in is bound to a fresh
-  input stream initialized with the string s.  The return value of evaluating
-  body is returned."
-  [s & body]
-  `(let [system-input# (System/in)
-         string-input# (new ByteArrayInputStream (.getBytes ~s))]
-     (try
-       (System/setIn string-input#)
-       ~@body
-       (finally (System/setIn system-input#)))))
 
 (defmacro capture-out
   "capture System.out and return it as the value of :out in the return map.
@@ -65,71 +53,13 @@
     (is (= 4 (jruby-core/default-pool-size 32)))
     (is (= 4 (jruby-core/default-pool-size 64)))))
 
-(deftest cli-run!-error-handling-test
-  (testing "when command is not found as a resource"
-    (logutils/with-test-logging
-      (is (nil? (jruby-core/cli-run! min-config "DNE" [])))
-      (is (logged? #"DNE could not be found" :error)))))
-
-(deftest ^:integration cli-run!-test
-  (testing "jruby cli command output"
-    (testing "gem env (SERVER-262)"
-      (let [m (capture-out (jruby-core/cli-run! min-config "gem" ["env"]))
-            {:keys [return out]} m
-            exit-code (.getStatus return)]
-        (is (= 0 exit-code))
-        ; The choice of SHELL PATH is arbitrary, just need something to scan for
-        (is (re-find #"SHELL PATH:" out))))
-    (testing "gem list"
-      (let [m (capture-out (jruby-core/cli-run! min-config "gem" ["list"]))
-            {:keys [return out]} m
-            exit-code (.getStatus return)]
-        (is (= 0 exit-code))
-        ; The choice of json is arbitrary, just need something to scan for
-        (is (re-find #"\bjson\b" out))))
-    (testing "irb"
-      (let [m (capture-out
-                (with-stdin-str "puts %{HELLO}"
-                  (jruby-core/cli-run! min-config "irb" ["-f"])))
-            {:keys [return out]} m
-            exit-code (.getStatus return)]
-        (is (= 0 exit-code))
-        (is (re-find #"\nHELLO\n" out)))
-      (let [m (capture-out
-                (with-stdin-str "Kernel.exit(42)"
-                  (jruby-core/cli-run! min-config "irb" ["-f"])))
-            {:keys [return _]} m
-            exit-code (.getStatus return)]
-        (is (= 42 exit-code))))
-    (testing "irb with -r puppet"
-      (let [m (capture-out
-                (with-stdin-str "puts %{VERSION: #{Puppet.version}}"
-                  (jruby-core/cli-run! min-config "irb" ["-r" "puppet" "-f"])))
-            {:keys [return out]} m
-            exit-code (.getStatus return)]
-        (is (= 0 exit-code))
-        (is (re-find #"VERSION: \d+\.\d+\.\d+" out))))
-    (testing "non existing subcommand returns nil"
-      (logutils/with-test-logging
-        (is (nil? (jruby-core/cli-run! min-config "doesnotexist" [])))))))
-
-(deftest ^:integration cli-ruby!-test
-  (testing "jruby cli command output"
-    (testing "ruby -r puppet"
-      (let [m (capture-out
-                (with-stdin-str "puts %{VERSION: #{Puppet.version}}"
-                  (jruby-core/cli-ruby! min-config ["-r" "puppet"])))
-            {:keys [return out]} m
-            exit-code (.getStatus return)]
-        (is (= 0 exit-code))
-        (is (re-find #"VERSION: \d+\.\d+\.\d+" out))))))
 
 (deftest add-facter-to-classpath-test
   (letfn [(class-loader-files [] (map #(.getFile %)
                                    (.getURLs
                                      (ClassLoader/getSystemClassLoader))))
           (create-temp-facter-jar [] (-> (ks/temp-dir)
-                                       (fs/file jruby-core/facter-jar)
+                                       (fs/file jruby-puppet-core/facter-jar)
                                        (fs/touch)
                                        (ks/absolute-path)))
           (temp-dir-as-string [] (-> (ks/temp-dir) (ks/absolute-path)))
@@ -138,17 +68,17 @@
             (some #(= jar %) (class-loader-files)))]
     (testing "facter jar loaded from first position"
       (let [temp-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(fs-parent-as-string temp-jar)])
+        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(fs-parent-as-string temp-jar)])
         (is (true? (jar-in-class-loader-file-list? temp-jar)))))
     (testing "facter jar loaded from last position"
       (let [temp-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
+        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(temp-dir-as-string)
                                                           (fs-parent-as-string temp-jar)])
         (is (true? (jar-in-class-loader-file-list? temp-jar)))))
     (testing "only first jar loaded when two present"
       (let [first-jar (create-temp-facter-jar)
             last-jar (create-temp-facter-jar)]
-        (jruby-core/add-facter-jar-to-system-classloader [(fs-parent-as-string first-jar)
+        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(fs-parent-as-string first-jar)
                                                           (temp-dir-as-string)
                                                           (fs-parent-as-string last-jar)])
         (is (true? (jar-in-class-loader-file-list? first-jar))
@@ -157,7 +87,83 @@
           "last jar in the list was unexpectedly not found")))
     (testing "class loader files unchanged when no jar found"
       (let [class-loader-files-before-load (class-loader-files)
-            _ (jruby-core/add-facter-jar-to-system-classloader [(temp-dir-as-string)
+            _ (jruby-puppet-core/add-facter-jar-to-system-classloader! [(temp-dir-as-string)
                                                                 (temp-dir-as-string)])
             class-loader-files-after-load (class-loader-files)]
         (is (= class-loader-files-before-load class-loader-files-after-load))))))
+
+(deftest initialize-puppet-config-test
+  (testing "http-client values are used if present"
+    (let [http-config {:ssl-protocols ["some-protocol"]
+                       :cipher-suites ["some-suite"]
+                       :connect-timeout-milliseconds 31415
+                       :idle-timeout-milliseconds 42}
+          initialized-config (jruby-puppet-core/initialize-puppet-config http-config {})]
+      (is (= ["some-suite"] (:http-client-cipher-suites initialized-config)))
+      (is (= ["some-protocol"] (:http-client-ssl-protocols initialized-config)))
+      (is (= 42 (:http-client-idle-timeout-milliseconds initialized-config)))
+      (is (= 31415 (:http-client-connect-timeout-milliseconds initialized-config)))))
+
+  (testing "jruby-puppet values are not overridden by defaults"
+    (let [jruby-puppet-config {:master-run-dir "one"
+                               :master-var-dir "two"
+                               :master-conf-dir "three"
+                               :master-log-dir "four"
+                               :master-code-dir "five"
+                               :use-legacy-auth-conf false}
+          initialized-config (jruby-puppet-core/initialize-puppet-config {} jruby-puppet-config)]
+      (is (= "one" (:master-run-dir initialized-config)))
+      (is (= "two" (:master-var-dir initialized-config)))
+      (is (= "three" (:master-conf-dir initialized-config)))
+      (is (= "four" (:master-log-dir initialized-config)))
+      (is (= "five" (:master-code-dir initialized-config)))
+      (is (= false (:use-legacy-auth-conf initialized-config)))))
+
+  (testing "jruby-puppet values are set to defaults if not provided"
+    (let [initialized-config (jruby-puppet-core/initialize-puppet-config {} {})]
+      (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir initialized-config)))
+      (is (= "/opt/puppetlabs/server/data/puppetserver" (:master-var-dir initialized-config)))
+      (is (= "/etc/puppetlabs/puppet" (:master-conf-dir initialized-config)))
+      (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir initialized-config)))
+      (is (= "/etc/puppetlabs/code" (:master-code-dir initialized-config)))
+      (is (= true (:use-legacy-auth-conf initialized-config))))))
+
+(deftest create-jruby-config-test
+  (testing "provided values are not overriden"
+    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
+          unitialized-jruby-config {:gem-home "/foo"
+                                    :compile-mode :jit
+                                    :borrow-timeout 1234
+                                    :max-active-instances 4321
+                                    :max-borrows-per-instance 31415}
+          shutdown-fn (fn [] 42)
+          initialized-jruby-config (jruby-puppet-core/create-jruby-config
+                                    jruby-puppet-config
+                                    unitialized-jruby-config
+                                    shutdown-fn
+                                    nil)]
+      (testing "lifecycle functions are not overridden"
+        (is (= 42 ((get-in initialized-jruby-config [:lifecycle :shutdown-on-error])))))
+
+      (testing "jruby-config values are not overridden if provided"
+        (is (= "/foo" (:gem-home initialized-jruby-config)))
+        (is (= :jit (:compile-mode initialized-jruby-config)))
+        (is (= 1234 (:borrow-timeout initialized-jruby-config)))
+        (is (= 4321 (:max-active-instances initialized-jruby-config)))
+        (is (= 31415 (:max-borrows-per-instance initialized-jruby-config))))))
+
+  (testing "defaults are used if no values provided"
+    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
+          unitialized-jruby-config {:gem-home "/foo"}
+          shutdown-fn (fn [] 42)
+          initialized-jruby-config (jruby-puppet-core/create-jruby-config
+                                    jruby-puppet-config
+                                    unitialized-jruby-config
+                                    shutdown-fn
+                                    nil)]
+
+      (testing "jruby-config default values are used if not provided"
+        (is (= :off (:compile-mode initialized-jruby-config)))
+        (is (= jruby-core/default-borrow-timeout (:borrow-timeout initialized-jruby-config)))
+        (is (= (jruby-core/default-pool-size (ks/num-cpus)) (:max-active-instances initialized-jruby-config)))
+        (is (= 0 (:max-borrows-per-instance initialized-jruby-config)))))))

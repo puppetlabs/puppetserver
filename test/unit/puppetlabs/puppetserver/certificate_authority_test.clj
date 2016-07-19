@@ -7,6 +7,7 @@
             [puppetlabs.services.ca.ca-testutils :as testutils]
             [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :as sling]
+            [slingshot.test :as slingtest]
             [schema.test :as schema-test]
             [clojure.test :refer :all]
             [clojure.java.io :as io]
@@ -57,6 +58,63 @@
         x "x-"]
     (str r w x)))
 
+(def attribute-file-extensions
+  "These are the extensions defined in the test fixture csr_attributes.yaml,
+  used in this test namespace."
+  [{:oid "1.3.6.1.4.1.34380.1.1.1"
+    :critical false
+    :value "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
+   {:oid "1.3.6.1.4.1.34380.1.1.1.4"
+    :critical false
+    :value "I am undefined but still work"}
+   {:oid "1.3.6.1.4.1.34380.1.1.2"
+    :critical false
+    :value "thisisanid"}
+   {:oid "1.3.6.1.4.1.34380.1.1.3"
+    :critical false
+    :value "my_ami_image"}
+   {:oid "1.3.6.1.4.1.34380.1.1.4"
+    :critical false
+    :value "342thbjkt82094y0uthhor289jnqthpc2290"}
+   {:oid "1.3.6.1.4.1.34380.1.1.5"
+    :critical false
+    :value "center"}
+   {:oid "1.3.6.1.4.1.34380.1.1.6"
+    :critical false
+    :value "product"}
+   {:oid "1.3.6.1.4.1.34380.1.1.7"
+    :critical false
+    :value "project"}
+   {:oid "1.3.6.1.4.1.34380.1.1.8"
+    :critical false
+    :value "application"}
+   {:oid "1.3.6.1.4.1.34380.1.1.9"
+    :critical false
+    :value "service"}
+   {:oid "1.3.6.1.4.1.34380.1.1.10"
+    :critical false
+    :value "employee"}
+   {:oid "1.3.6.1.4.1.34380.1.1.11"
+    :critical false
+    :value "created"}
+   {:oid "1.3.6.1.4.1.34380.1.1.12"
+    :critical false
+    :value "environment"}
+   {:oid "1.3.6.1.4.1.34380.1.1.13"
+    :critical false
+    :value "role"}
+   {:oid "1.3.6.1.4.1.34380.1.1.14"
+    :critical false
+    :value "version"}
+   {:oid "1.3.6.1.4.1.34380.1.1.15"
+    :critical false
+    :value "deparment"}
+   {:oid "1.3.6.1.4.1.34380.1.1.16"
+    :critical false
+    :value "cluster"}
+   {:oid "1.3.6.1.4.1.34380.1.1.17"
+    :critical false
+    :value "provisioner"}])
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
@@ -83,19 +141,6 @@
 (defn assert-no-autosign [whitelist subject]
   (testing subject
     (is (false? (autosign-csr? whitelist subject empty-stream [])))))
-
-(defmethod assert-expr 'thrown-with-slingshot? [msg form]
-  (let [expected (nth form 1)
-        body     (nthnext form 2)]
-    `(sling/try+
-      ~@body
-      (do-report {:type :fail :message ~msg :expected ~expected :actual nil})
-      (catch map? actual#
-        (do-report {:type (if (= actual# ~expected) :pass :fail)
-                    :message ~msg
-                    :expected ~expected
-                    :actual actual#})
-        actual#))))
 
 (defn contains-ext?
   "Does the provided extension list contain an extensions with the given OID."
@@ -809,21 +854,21 @@
     (testing "when false"
       (let [settings (assoc settings :allow-duplicate-certs false)]
         (testing "throws exception if CSR already exists"
-          (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "test-agent already has a requested certificate; ignoring certificate request"}
+          (is (thrown+?
+               [:kind :duplicate-cert
+                :msg "test-agent already has a requested certificate; ignoring certificate request"]
                (process-csr-submission! "test-agent" (csr-stream "test-agent") settings))))
 
         (testing "throws exception if certificate already exists"
-          (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "localhost already has a signed certificate; ignoring certificate request"}
+          (is (thrown+?
+               [:kind :duplicate-cert
+                :msg "localhost already has a signed certificate; ignoring certificate request"]
                (process-csr-submission! "localhost"
                                         (io/input-stream (test-pem-file "localhost-csr.pem"))
                                         settings)))
-          (is (thrown-with-slingshot?
-               {:type :duplicate-cert
-                :message "revoked-agent already has a revoked certificate; ignoring certificate request"}
+          (is (thrown+?
+               [:kind :duplicate-cert
+                :msg "revoked-agent already has a revoked certificate; ignoring certificate request"]
                (process-csr-submission! "revoked-agent"
                                         (io/input-stream (test-pem-file "revoked-agent-csr.pem"))
                                         settings))))))
@@ -858,19 +903,22 @@
           (testing "subject policies are checked"
             (doseq [[policy subject csr-file exception]
                     [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
-                      {:type :hostname-mismatch
-                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                      #(= {:kind :hostname-mismatch
+                           :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+                          (select-keys % [:kind :msg]))]
                      ["invalid characters in name" "super/bad" "bad-subject-name-1.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains unprintable or non-ASCII characters"}]
+                      #(= {:kind :invalid-subject-name
+                           :msg "Subject contains unprintable or non-ASCII characters"}
+                          (select-keys % [:kind :msg]))]
                      ["wildcard in name" "foo*bar" "bad-subject-name-wildcard.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+                      #(= {:kind :invalid-subject-name
+                           :msg "Subject contains a wildcard, which is not allowed: foo*bar"}
+                          (select-keys % [:kind :msg]))]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown-with-slingshot? exception (process-csr-submission! subject csr settings)))
+                  (is (thrown+? exception (process-csr-submission! subject csr settings)))
                   (is (false? (fs/exists? path)))))))
 
           (testing "extension & key policies are not checked"
@@ -891,39 +939,45 @@
           (testing "CSR will not be saved when"
             (doseq [[policy subject csr-file expected]
                     [["subject-hostname mismatch" "foo" "hostwithaltnames.pem"
-                      {:type :hostname-mismatch
-                       :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}]
+                      #(= {:kind :hostname-mismatch
+                           :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+                          (select-keys % [:kind :msg]))]
                      ["subject contains invalid characters" "super/bad" "bad-subject-name-1.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains unprintable or non-ASCII characters"}]
+                      #(= {:kind :invalid-subject-name
+                           :msg "Subject contains unprintable or non-ASCII characters"}
+                          (select-keys % [:kind :msg]))]
                      ["subject contains wildcard character" "foo*bar" "bad-subject-name-wildcard.pem"
-                      {:type :invalid-subject-name
-                       :message "Subject contains a wildcard, which is not allowed: foo*bar"}]]]
+                      #(=  {:kind :invalid-subject-name
+                            :msg "Subject contains a wildcard, which is not allowed: foo*bar"}
+                           (select-keys % [:kind :msg]))]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
+                  (is (thrown+? expected (process-csr-submission! subject csr settings)))
                   (is (false? (fs/exists? path)))))))
 
           (testing "CSR will be saved when"
             (doseq [[policy subject csr-file expected]
                     [["subject alt name extension exists" "hostwithaltnames" "hostwithaltnames.pem"
-                      {:type :disallowed-extension
-                       :message (str "CSR 'hostwithaltnames' contains subject alternative names "
-                                     "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
-                                     "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request.")}]
+                      #(= {:kind :disallowed-extension
+                           :msg (str "CSR 'hostwithaltnames' contains subject alternative names "
+                                   "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
+                                   "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request.")}
+                          (select-keys % [:kind :msg]))]
                      ["unknown extension exists" "meow" "meow-bad-extension.pem"
-                      {:type :disallowed-extension
-                       :message "Found extensions that are not permitted: 1.9.9.9.9.9.9"}]
+                      #(= {:kind :disallowed-extension
+                           :msg "Found extensions that are not permitted: 1.9.9.9.9.9.9"}
+                          (select-keys % [:kind :msg]))]
                      ["public-private key mismatch" "luke.madstop.com" "luke.madstop.com-bad-public-key.pem"
-                      {:type :invalid-signature
-                       :message "CSR contains a public key that does not correspond to the signing key"}]]]
+                      #(= {:kind :invalid-signature
+                           :msg "CSR contains a public key that does not correspond to the signing key"}
+                          (select-keys % [:kind :msg]))]]]
               (testing policy
                 (let [path (path-to-cert-request (:csrdir settings) subject)
                       csr  (io/input-stream (test-pem-file csr-file))]
                   (is (false? (fs/exists? path)))
-                  (is (thrown-with-slingshot? expected (process-csr-submission! subject csr settings)))
+                  (is (thrown+? expected (process-csr-submission! subject csr settings)))
                   (is (true? (fs/exists? path)))
                   (fs/delete path)))))))
 
@@ -931,15 +985,15 @@
         (testing "duplicates checked before subject policies"
           (let [settings (assoc settings :allow-duplicate-certs false)
                 csr-with-mismatched-name (csr-stream "test-agent")]
-            (is (thrown-with-slingshot?
-                 {:type :duplicate-cert
-                  :message "test-agent already has a requested certificate; ignoring certificate request"}
+            (is (thrown+?
+                 [:kind :duplicate-cert
+                  :msg "test-agent already has a requested certificate; ignoring certificate request"]
                  (process-csr-submission! "not-test-agent" csr-with-mismatched-name settings)))))
         (testing "subject policies checked before extension & key policies"
           (let [csr-with-disallowed-alt-names (io/input-stream (test-pem-file "hostwithaltnames.pem"))]
-            (is (thrown-with-slingshot?
-                 {:type :hostname-mismatch
-                  :message "Instance name \"hostwithaltnames\" does not match requested key \"foo\""}
+            (is (thrown+?
+                 [:kind :hostname-mismatch
+                  :msg "Instance name \"hostwithaltnames\" does not match requested key \"foo\""]
                  (process-csr-submission! "foo" csr-with-disallowed-alt-names settings)))))))))
 
 (deftest cert-signing-extension-test
@@ -1015,90 +1069,48 @@
                                                     subject-pub
                                                     issuer-pub
                                                     settings)
-            exts-expected [
-                           {:oid      "2.16.840.1.113730.1.13"
-                            :critical false
-                            :value    netscape-comment-value}
-                           {:oid      "2.5.29.35"
-                            :critical false
-                            :value    {:issuer-dn     nil
-                                       :public-key    issuer-pub
-                                       :serial-number nil}}
-                           {:oid      "2.5.29.19"
-                            :critical true
-                            :value    {:is-ca false}}
-                           {:oid      "2.5.29.37"
-                            :critical true
-                            :value    [ssl-server-cert ssl-client-cert]}
-                           {:oid      "2.5.29.15"
-                            :critical true
-                            :value    #{:digital-signature :key-encipherment}}
-                           {:oid      "2.5.29.14"
-                            :critical false
-                            :value    subject-pub}
-                           {:oid      "2.5.29.17"
-                            :critical false
-                            :value    {:dns-name ["subject"
-                                                  "onefish"
-                                                  "twofish"]}}
-                           ;; These extensions come form csr_attributes.yaml
-                           {:oid      "1.3.6.1.4.1.34380.1.1.1"
-                            :critical false
-                            :value    "ED803750-E3C7-44F5-BB08-41A04433FE2E"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.1.4"
-                            :critical false
-                            :value    "I am undefined but still work"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.2"
-                            :critical false
-                            :value    "thisisanid"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.3"
-                            :critical false
-                            :value    "my_ami_image"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.4"
-                            :critical false
-                            :value    "342thbjkt82094y0uthhor289jnqthpc2290"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.5" :critical false
-                            :value    "center"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.6" :critical false
-                            :value    "product"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.7" :critical false
-                            :value    "project"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.8" :critical false
-                            :value    "application"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.9" :critical false
-                            :value    "service"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.10" :critical false
-                            :value    "employee"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.11" :critical false
-                            :value    "created"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.12" :critical false
-                            :value    "environment"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.13" :critical false
-                            :value    "role"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.14" :critical false
-                            :value    "version"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.15" :critical false
-                            :value    "deparment"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.16" :critical false
-                            :value    "cluster"}
-                           {:oid      "1.3.6.1.4.1.34380.1.1.17" :critical false
-                            :value    "provisioner"}]]
+            exts-expected (concat attribute-file-extensions
+                                  [{:oid      "2.16.840.1.113730.1.13"
+                                    :critical false
+                                    :value    netscape-comment-value}
+                                   {:oid      "2.5.29.35"
+                                    :critical false
+                                    :value    {:issuer-dn     nil
+                                               :public-key    issuer-pub
+                                               :serial-number nil}}
+                                   {:oid      "2.5.29.19"
+                                    :critical true
+                                    :value    {:is-ca false}}
+                                   {:oid      "2.5.29.37"
+                                    :critical true
+                                    :value    [ssl-server-cert ssl-client-cert]}
+                                   {:oid      "2.5.29.15"
+                                    :critical true
+                                    :value    #{:digital-signature :key-encipherment}}
+                                   {:oid      "2.5.29.14"
+                                    :critical false
+                                    :value    subject-pub}
+                                   {:oid      "2.5.29.17"
+                                    :critical false
+                                    :value    {:dns-name ["subject"
+                                                          "onefish"
+                                                          "twofish"]}}])]
         (is (= (set exts) (set exts-expected)))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
       (let [config (assoc (testutils/master-settings confdir)
                           :csr-attributes
                           (csr-attributes-file "insecure_csr_attributes.yaml"))]
-        (is (thrown-with-slingshot?
-              {:type    :disallowed-extension
-               :message "Found extensions that are not permitted: 1.2.3.4"}
+        (is (thrown+?
+              [:kind :disallowed-extension
+               :msg "Found extensions that are not permitted: 1.2.3.4"]
               (create-master-extensions subject subject-pub issuer-pub config)))))
 
     (testing "invalid DNS alt names are rejected"
       (let [dns-alt-names "*.wildcard"]
-        (is (thrown-with-slingshot?
-              {:type    :invalid-alt-name
-               :message "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"}
+        (is (thrown+?
+              [:kind :invalid-alt-name
+               :msg "Cert subjectAltName contains a wildcard, which is not allowed: *.wildcard"]
               (create-master-extensions subject subject-pub issuer-pub
                                         (assoc (testutils/master-settings confdir)
                                                :dns-alt-names dns-alt-names))))))
@@ -1174,34 +1186,61 @@
   (testing "Netscape comment constant has expected value"
     (is (= "Puppet Server Internal Certificate" netscape-comment-value))))
 
+(deftest ensure-no-authorization-extensions!-test
+  (testing "when checking a csr for authorization extensions"
+    (let [subject-keys (utils/generate-key-pair 512)
+          subject-pub  (utils/get-public-key subject-keys)
+          subject      "borges"
+          subject-dn   (utils/cn subject)
+
+          pp-auth-ext {:oid (:pp_authorization puppet-short-names)
+                       :value "true"
+                       :critical false}
+          pp-auth-role {:oid (:pp_auth_role puppet-short-names)
+                        :value "com"
+                        :critical false}
+          auth-csr (utils/generate-certificate-request subject-keys subject-dn [pp-auth-ext])
+          auth-role-csr (utils/generate-certificate-request subject-keys subject-dn [pp-auth-role])]
+
+      (testing "pp_authorization is caught"
+        (is (thrown+-with-msg?
+             [:kind :disallowed-extension]
+              #".*contains an authorization extension.*borges.*"
+             (ensure-no-authorization-extensions! auth-csr))))
+      (testing "pp_auth_role is caught"
+        (is (thrown+-with-msg?
+             [:kind :disallowed-extension]
+              #".*contains an authorization extension.*borges.*"
+             (ensure-no-authorization-extensions! auth-role-csr)))))))
+
 (deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
-    (is (thrown-with-slingshot?
-          {:type    :hostname-mismatch
-           :message "Instance name \"test-agent\" does not match requested key \"not-test-agent\""}
+    (is (thrown+?
+          [:kind :hostname-mismatch
+           :msg "Instance name \"test-agent\" does not match requested key \"not-test-agent\""]
           (validate-subject!
             "not-test-agent" "test-agent"))))
 
   (testing "an exception is thrown if the subject name contains a capital letter"
-    (is (thrown-with-slingshot?
-          {:type    :invalid-subject-name
-           :message "Certificate names must be lower case."}
+    (is (thrown+?
+          [:kind :invalid-subject-name
+           :msg "Certificate names must be lower case."]
           (validate-subject! "Host-With-Capital-Letters"
                              "Host-With-Capital-Letters")))))
 
 (deftest validate-dns-alt-names!-test
   (testing "Only DNS alt names are allowed"
-    (is (thrown-with-slingshot?
-          {:type    :invalid-alt-name
-           :message "Only DNS names are allowed in the Subject Alternative Names extension"}
+    (is (thrown+?
+          [:kind :invalid-alt-name
+           :msg "Only DNS names are allowed in the Subject Alternative Names extension"]
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:ip-address ["12.34.5.6"]}}))))
 
   (testing "No DNS wildcards are allowed"
-    (is (thrown-with-slingshot?
-          {:type    :invalid-alt-name
-           :message "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"}
+    (is (thrown+?
+          [:kind :invalid-alt-name
+           :msg "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"]
           (validate-dns-alt-names! {:oid "2.5.29.17"
                                     :critical false
                                     :value {:dns-name ["ahostname" "foo*bar"]}})))))
@@ -1244,3 +1283,23 @@
             (is (= change-perm (get-file-perms tmp-file)))
             (fs/delete tmp-file)
             (recur (nthnext perms 2))))))))
+
+(deftest create-csr-attrs-exts-test
+  (testing "when parsing a csr_attributes file using short names"
+    (testing "and the file exists"
+      (testing "and it has non-whitelisted OIDs we properly translate the short names."
+        (let [extensions (create-csr-attrs-exts (csr-attributes-file "csr_attributes_with_auth.yaml"))
+              expected (concat attribute-file-extensions
+                               [{:oid "1.3.6.1.4.1.34380.1.3.1" ;; :pp_authorization
+                                 :critical false
+                                 :value "true"}
+                                {:oid "1.3.6.1.4.1.34380.1.3.13" ;; :pp_auth_role
+                                 :critical false
+                                 :value "com"}])]
+          (is (= (set extensions) (set expected)))))
+      (testing "and it has whitelisted OIDs we properly translate the short names."
+        (let [extensions (create-csr-attrs-exts (csr-attributes-file "csr_attributes.yaml"))]
+          (is (= (set extensions) (set attribute-file-extensions))))))
+    (testing "and the file doesn't exist"
+      (testing "the result is nil"
+        (is (nil? (create-csr-attrs-exts "does/not/exist.yaml")))))))

@@ -22,7 +22,7 @@ module PuppetServerExtensions
                          "PUPPETSERVER_VERSION", nil, :string)
 
     puppet_version = get_option_value(options[:puppet_version],
-                         nil, "Puppet Version", "PUPPET_VERSION", "1.5.2", :string) ||
+                         nil, "Puppet Version", "PUPPET_VERSION", "1.5.2.300.ga3e58f3", :string) ||
                          get_puppet_version
 
     # puppet-agent version corresponds to packaged development version located at:
@@ -30,7 +30,7 @@ module PuppetServerExtensions
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Agent Development Build Version",
                          "PUPPET_BUILD_VERSION",
-                         "1.5.2", :string)
+                         "a3e58f345f2f4dd48ed247ee731508fee3a57ec0", :string)
 
     # puppetdb version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppetdb/
@@ -291,7 +291,7 @@ module PuppetServerExtensions
   end
 
   def hup_server(host = master, timeout = 30)
-    pid = on(host, 'pgrep -f puppetserver').stdout.chomp
+    pid = on(host, 'pgrep -fo puppetserver').stdout.chomp
     on(host, "kill -HUP #{pid}")
     url = "https://#{host}:8140/puppet/v3/status"
     cert = get_cert(master)

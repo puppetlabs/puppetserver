@@ -1,32 +1,49 @@
 (ns puppetlabs.services.config.puppet-server-config-core-test
   (:require [clojure.test :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
-            [puppetlabs.services.jruby.jruby-testutils :as jruby-testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [schema.core :as schema]))
+            [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
+            [schema.core :as schema]
+            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
 
 (use-fixtures :once
               (testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
 
-(deftest test-puppet-config-values
-  (let [pool-instance (jruby-testutils/create-pool-instance)
-        jruby-puppet  (:jruby-puppet pool-instance)]
+(deftest ^:integration test-puppet-config-values
+  (tk-bootstrap/with-app-with-config
+   app
+   [jruby-puppet-pooled-service
+    puppet-profiler-service
+    jruby-pool-manager-service]
+   (jruby-testutils/jruby-puppet-tk-config
+    (jruby-testutils/jruby-puppet-config))
+   (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+         pool-instance (jruby-testutils/borrow-instance jruby-service :test)
+         jruby-puppet (:jruby-puppet pool-instance)]
+     (try
+       (testing "usage of get-puppet-config-value"
+         (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
+         (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
+         (is (= false (get-puppet-config-value jruby-puppet :onetime)))
+         (is (= false (get-puppet-config-value jruby-puppet :archive-files)))
+         (is (= nil (get-puppet-config-value jruby-puppet :not-a-valid-setting))))
 
-    (testing "usage of get-puppet-config-value"
-      (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
-      (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
-      (is (= false (get-puppet-config-value jruby-puppet :onetime)))
-      (is (= false (get-puppet-config-value jruby-puppet :archive-files)))
-      (is (= nil (get-puppet-config-value jruby-puppet :not-a-valid-setting))))
-
-    (testing (str "all needed config values from puppet are available in the map "
-                  "returned by `get-puppet-config`")
-      (let [puppet-config (get-puppet-config* jruby-puppet)]
-        (is (map? puppet-config))
-        (doseq [k puppet-config-keys]
-          (is (contains? puppet-config k))
-          (is (not (nil? (get puppet-config k)))))))))
+       (testing (str "all needed config values from puppet are available in the map "
+                     "returned by `get-puppet-config`")
+         (let [puppet-config (get-puppet-config* jruby-puppet)]
+           (is (map? puppet-config))
+           (doseq [k puppet-config-keys]
+             (is (contains? puppet-config k))
+             (is (not (nil? (get puppet-config k)))))))
+       (finally
+         (jruby-testutils/return-instance jruby-service pool-instance :test))))))
 
 (deftest test-schema-validation
   (testing "validating a data structure with a missing key"

@@ -5,7 +5,8 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
-            [puppetlabs.comidi :as comidi]))
+            [puppetlabs.comidi :as comidi]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (tk/defservice certificate-authority-service
   CaService
@@ -22,7 +23,7 @@
          auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))]
      (ca/validate-settings! settings)
      (ca/initialize! settings)
-     (log/info "CA Service adding a ring handler")
+     (log/info (trs "CA Service adding a ring handler"))
      (add-ring-handler
        this
        (core/get-wrapped-handler

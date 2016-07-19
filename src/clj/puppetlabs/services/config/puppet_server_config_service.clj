@@ -8,7 +8,8 @@
             [puppetlabs.services.protocols.puppet-server-config
              :refer [PuppetServerConfigService]]
             [puppetlabs.services.config.puppet-server-config-core :as core]
-            [puppetlabs.trapperkeeper.services :as tk-services]))
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (tk/defservice puppet-server-config-service
   PuppetServerConfigService
@@ -22,9 +23,7 @@
       (core/validate-tk-config! tk-config)
       (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
             puppet-config (core/get-puppet-config jruby-service)]
-        (log/debugf
-          "Initializing with the following settings from core Puppet:\n%s"
-          (ks/pprint-to-string puppet-config))
+        (log/debug (format "%s\n%s" (trs "Initializing with the following settings from core Puppet:") (ks/pprint-to-string puppet-config)))
         (core/init-webserver! override-webserver-settings!
                               (get-in tk-config
                                       [:webserver :puppet-server]

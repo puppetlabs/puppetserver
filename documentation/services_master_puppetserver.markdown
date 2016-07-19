@@ -115,7 +115,7 @@ Puppet Server completely ignores the `masterport` setting in the puppet.conf fil
 
 ### Logging
 
-All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetserver/puppetserver.log` (open source releases) or `/var/log/pe-puppetserver/puppetserver.log` (Puppet Enterprise). The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
+All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver.log`. The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
 
 All log messages follow the same path, including HTTP traffic, catalog compilation, certificate processing, and all other parts of Puppet Server's work. This differs from Rack and WEBrick masters, which split their HTTP and application logs.
 
@@ -123,7 +123,7 @@ Puppet Server relies on `logrotate` to manage the log file, and installs a confi
 
 Logback is heavily configurable; if you need something more specialized than a unified log file, you can probably get it. [See the configuration docs for info on configuring logging.](./configuration.markdown#logging)
 
-Finally, there's a special "daemon" log file used only for errors that happen before logging is set up or which cause the logging system to die. This file can be found at `/var/log/puppetserver/puppetserver-daemon.log` or `/var/log/pe-puppetserver/pe-puppetserver-daemon.log`.
+Finally, there's a special "daemon" log file used only for errors that happen before logging is set up or which cause the logging system to die. This file can be found at `/var/log/puppetlabs/puppetserver/puppetserver-daemon.log` on platforms using SysV-style init, and in journalctl on platforms using systemd.
 
 ### SSL Termination
 
