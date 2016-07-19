@@ -17,6 +17,7 @@
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
+   [:SchedulerService interspaced stop-job]
    [:VersionedCodeService get-code-content]]
   (init
    [this context]
@@ -30,6 +31,7 @@
          product-name (or (get-in config [:product :name])
                           {:group-id    "puppetlabs"
                            :artifact-id "puppetserver"})
+         checkin-interval-millis (* 1000 60 60 24) ; once per day
          update-server-url (get-in config [:product :update-server-url])
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
@@ -39,7 +41,8 @@
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
                                                  false)]
-     (version-check/check-for-updates! {:product-name product-name} update-server-url)
+     (interspaced checkin-interval-millis
+                  (fn [] (version-check/check-for-updates! {:product-name product-name} update-server-url)))
 
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
