@@ -31,6 +31,8 @@
             [puppetlabs.services.ca.certificate-authority-service :as ca]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service
              :as authorization]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
+             :as tk-scheduler]
             [puppetlabs.services.versioned-code-service.versioned-code-service
              :as vcs])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
@@ -674,7 +676,8 @@
         ca/certificate-authority-service
         authorization/authorization-service
         admin/puppet-admin-service
-        vcs/versioned-code-service]
+        vcs/versioned-code-service
+        tk-scheduler/scheduler-service]
        {:jruby-puppet {:max-active-instances 1
                        :environment-class-cache-enabled true}
         :webserver {:ssl-ca-cert (:localcacert puppetserver-settings)
