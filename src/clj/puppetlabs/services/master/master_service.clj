@@ -17,7 +17,7 @@
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
-   [:SchedulerService interspaced stop-job]
+   [:SchedulerService interspaced]
    [:VersionedCodeService get-code-content]]
   (init
    [this context]
