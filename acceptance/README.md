@@ -34,7 +34,7 @@ platforms available in the pool, please see the output of:
 
     curl --url vmpooler.delivery.puppetlabs.net/vm
 
-## Define PACKAGE_BUILD_VERSION and PUPPET_VERSION environment variables
+## Define PACKAGE_BUILD_VERSION and PUPPET_BUILD_VERSION environment variables
 
 You'll need to provide a couple of environment variables that specify against
 which builds of puppetserver and puppet-agent to install and
@@ -57,9 +57,9 @@ changes.
    version at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.
    Set `PACKAGE_BUILD_VERSION` to this value.
 
-### PUPPET_VERSION
+### PUPPET_BUILD_VERSION
 
-Define `PUPPET_VERSION` as the packaged version of the puppet-agent package
+Define `PUPPET_BUILD_VERSION` as the packaged version of the puppet-agent package
 upon which your version of puppetserver depends, such as 1.3.5. You can pick
 a puppet-agent version from http://builds.delivery.puppetlabs.net/puppet-agent/?C=M;O=D.
 
@@ -120,7 +120,7 @@ workstation. Working with Jenkins remains an exercise for the reader.
 Here is an example beaker command line that runs a single test:
 
     export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
-    export PUPPET_VERSION='1.0.0'
+    export PUPPET_BUILD_VERSION='1.0.0'
     bundle exec beaker \
       --debug \
       --root-keys \
@@ -182,7 +182,7 @@ another round of tests against those hosts, use this slightly modified
 beaker call:
 
     export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
-    export PUPPET_VERSION='1.0.0'
+    export PUPPET_BUILD_VERSION='1.0.0'
     bundle exec beaker \
       --debug \
       --root-keys \
@@ -208,9 +208,9 @@ knows which hosts to use.
 If all that seems like too much work, we have a script that should
 make things much simpler for you. It relies on the built-in defaults
 for all arguments. All you provide is the two environment variables
-`PACKAGE_BUILD_VERSION` and `PUPPET_VERSION`. Thus:
+`PACKAGE_BUILD_VERSION` and `PUPPET_BUILD_VERSION`. Thus:
 
-1. Set the environment variables `PUPPET_VERSION` and
+1. Set the environment variables `PUPPET_BUILD_VERSION` and
    `PACKAGE_BUILD_VERSION` as described previously.
 2. Execute `acceptance/scripts/generic/testrun.sh -p` to start a
    complete run of the tests and preserve the hosts. When the tests
@@ -219,7 +219,7 @@ for all arguments. All you provide is the two environment variables
 
 ```
    export PACKAGE_BUILD_VERSION='2.1.0.SNAPSHOT.2015.04.17T0057'
-   export PUPPET_VERSION='1.0.0'
+   export PUPPET_BUILD_VERSION='1.0.0'
    acceptance/scripts/generic/testrun.sh -p
 ```
    

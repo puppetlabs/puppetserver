@@ -4,14 +4,15 @@
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.tools.logging :as log]
             [clojure.string :as string]
-            [puppetlabs.ring-middleware.core :as mw]
+            [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.puppetserver.common :as ps-common]
             [ring.util.codec :as ring-codec]
             [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
-            [schema.core :as schema]))
+            [schema.core :as schema]
+            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -99,23 +100,24 @@
     (do
       (let [cn (ssl-utils/x500-name->CN header-dn-val)
             authenticated (= "SUCCESS" header-auth-val)]
-        (log/debugf "CN '%s' provided by HTTP header '%s'"
-                    cn header-dn-val)
-        (log/debugf (str "Verification of client '%s' provided by HTTP "
-                         "header '%s': '%s'.  Authenticated: %s.")
-                    cn
-                    header-auth-name
-                    header-auth-val
-                    authenticated)
+        (log/debug (trs "CN ''{0}'' provided by HTTP header ''{1}''"
+                        cn header-dn-val))
+        (log/debug (format "%s  %s"
+                           (trs "Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
+                                cn
+                                header-auth-name
+                                header-auth-val)
+                           (trs "Authenticated: {3}." authenticated)))
         {:client-cert-cn cn
          :authenticated authenticated}))
     (do
       (if (nil? header-dn-val)
-        (log/debugf (str "No DN provided by the HTTP header '%s'.  Treating "
-                         "client as unauthenticated.") header-dn-name)
-        (log/errorf (str "DN '%s' provided by the HTTP header '%s' is "
-                         "malformed.  Treating client as unauthenticated.")
-                    header-dn-val header-dn-name))
+        (log/debug (format "%s  %s"
+                           (trs "No DN provided by the HTTP header ''{0}''." header-dn-name)
+                           (trs "Treating client as unauthenticated.")))
+        (log/error (format "%s  %s"
+                           (trs "DN ''{0}'' provided by the HTTP header ''{1}'' is malformed." header-dn-val header-dn-name)
+                           (trs "Treating client as unauthenticated."))))
       unauthenticated-client-info)))
 
 (defn header-cert->pem
@@ -124,11 +126,9 @@
   (try
     (ring-codec/url-decode header-cert)
     (catch Exception e
-      (mw/throw-bad-request!
-        (str "Unable to URL decode the "
-             header-client-cert-name
-             " header: "
-             (.getMessage e))))))
+      (ringutils/throw-bad-request!
+        (tru "Unable to URL decode the {0} header: {1}"
+              header-client-cert-name (.getMessage e))))))
 
 (defn pem->certs
   "Convert a pem string into certificate objects"
@@ -137,11 +137,9 @@
     (try
       (ssl-utils/pem->certs reader)
       (catch Exception e
-        (mw/throw-bad-request!
-          (str "Unable to parse "
-               header-client-cert-name
-               " into certificate: "
-               (.getMessage e)))))))
+        (ringutils/throw-bad-request!
+          (tru "Unable to parse {0} into certificate: {1}"
+               header-client-cert-name (.getMessage e)))))))
 
 (defn header-cert
   "Return an X509Certificate or nil from a string encoded for transmission
@@ -152,15 +150,11 @@
           certs      (pem->certs pem)
           cert-count (count certs)]
       (condp = cert-count
-        0 (mw/throw-bad-request!
-            (str "No certs found in PEM read from " header-client-cert-name))
+        0 (ringutils/throw-bad-request!
+            (tru "No certs found in PEM read from {0}" header-client-cert-name))
         1 (first certs)
-        (mw/throw-bad-request!
-          (str "Only 1 PEM should be supplied for "
-               header-client-cert-name
-               " but "
-               cert-count
-               " found"))))))
+        (ringutils/throw-bad-request!
+          (tru "Only 1 PEM should be supplied for {0} but {1} found" header-client-cert-name cert-count))))))
 
 (defn ssl-auth-info
   "Get map of client authentication info from the supplied
@@ -170,13 +164,12 @@
   (if ssl-client-cert
     (let [cn (ssl-utils/get-cn-from-x509-certificate ssl-client-cert)
           authenticated (not (empty? cn))]
-      (log/debugf "CN '%s' provided by SSL certificate.  Authenticated: %s."
-                  cn authenticated)
+      (log/debug (trs "CN ''{0}'' provided by SSL certificate.  Authenticated: {1}."
+                  cn authenticated))
       {:client-cert-cn cn
        :authenticated  authenticated})
     (do
-      (log/debugf "No SSL client certificate provided. "
-                  "Treating client as unauthenticated.")
+      (log/debug (trs "No SSL client certificate provided. Treating client as unauthenticated."))
       unauthenticated-client-info)))
 
 (defn client-auth-info
@@ -217,10 +210,9 @@
                    header-auth-name header-auth-val
                    header-client-cert-name header-cert-val}
                   :when header-val]
-            (log/warn "The HTTP header" header-name "was specified,"
-                      "but the master config option allow-header-cert-info"
-                      "was either not set, or was set to false."
-                      "This header will be ignored."))
+            (log/warn (format "%s %s"
+                              (trs "The HTTP header {0} was specified, but the master config option allow-header-cert-info was either not set, or was set to false." header-name)
+                              (trs "This header will be ignored."))))
           (let [ssl-cert (:ssl-client-cert request)]
             (-> (ssl-auth-info ssl-cert)
                 (assoc :client-cert ssl-cert))))))))
@@ -262,9 +254,9 @@
   (if (:include-code-id? request)
     (let [env (jruby-request/get-environment-from-request request)]
       (when-not (nil? (schema/check ps-common/Environment env))
-        (mw/throw-bad-request! (ps-common/environment-validation-error-msg env)))
+        (ringutils/throw-bad-request! (ps-common/environment-validation-error-msg env)))
       (when-not env
-        (mw/throw-bad-request! "Environment is required in a catalog request."))
+        (ringutils/throw-bad-request! (tru "Environment is required in a catalog request.")))
       (assoc-in request [:params "code_id"] (current-code-id env)))
     request))
 

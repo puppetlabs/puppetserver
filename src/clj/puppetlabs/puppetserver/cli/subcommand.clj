@@ -1,7 +1,8 @@
 (ns puppetlabs.puppetserver.cli.subcommand
   (:require [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :refer [try+]]
-            [puppetlabs.trapperkeeper.config :as tk-config]))
+            [puppetlabs.trapperkeeper.config :as tk-config]
+            [puppetlabs.i18n.core :as i18n :refer [trs]]))
 
 (defn parse-cli-args!
   "Parses the command-line arguments using `puppetlabs.kitchensink.core/cli!`.
@@ -9,9 +10,7 @@
       --config <config file or directory>"
   [cli-args]
   (let [specs    [["-c" "--config CONFIG-PATH"
-                   (str "Path to a configuration file or directory of "
-                        "configuration files. See the documentation for "
-                        "a list of supported file types.")]]
+                   (trs "Path to a configuration file or directory of configuration files. See the documentation for a list of supported file types.")]]
         required [:config]]
     (ks/cli! cli-args specs required)))
 
@@ -37,8 +36,8 @@
                                        (parse-cli-args!))]
       (run-fn (load-tk-config config) extra-args))
     (catch map? m
-      (println (:message m))
-      (case (ks/without-ns (:type m))
+      (println (:msg m))
+      (case (ks/without-ns (:kind m))
         :cli-error (System/exit 1)
         :cli-help  (System/exit 0)))
     (finally

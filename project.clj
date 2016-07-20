@@ -2,7 +2,7 @@
 (def tk-version "1.4.0")
 (def tk-jetty-version "1.5.9")
 (def ks-version "1.3.1")
-(def ps-version "2.4.1-stable-SNAPSHOT")
+(def ps-version "2.5.0-stable-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -56,14 +56,16 @@
                  [net.logstash.logback/logstash-logback-encoder "4.5.1"]
 
 
+                 [puppetlabs/jruby-utils "0.1.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.6.1"]
+                 [puppetlabs/trapperkeeper-authorization "0.7.0"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/ring-middleware "0.3.1"]
+                 [puppetlabs/ring-middleware "1.0.0"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.5.0"]
-                 [puppetlabs/comidi "0.3.1"]]
+                 [puppetlabs/comidi "0.3.1"]
+                 [puppetlabs/i18n "0.4.1"]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -77,16 +79,19 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]]
+  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]
+            [puppetlabs/i18n "0.4.1"]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
-                       :repo-target "PC1"}
+                       :repo-target "PC1"
+                       :bootstrap-source :services-d}
                 :resources {:dir "tmp/ezbake-resources"}
-                :config-dir "ezbake/config"}
+                :config-dir "ezbake/config"
+                :system-config-dir "ezbake/system-config"}
 
   :lein-release {:scm         :git
                  :deploy-via  :lein-deploy}
@@ -126,7 +131,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.4.0"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.4.2"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}

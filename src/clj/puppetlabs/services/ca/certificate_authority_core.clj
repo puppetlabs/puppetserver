@@ -4,6 +4,7 @@
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
+            [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [puppetlabs.comidi :as comidi :refer [GET ANY PUT DELETE]]
             [bidi.schema :as bidi-schema]
@@ -17,7 +18,8 @@
             ;[liberator.dev :as liberator-dev]
             [liberator.representation :as representation]
             [ring.util.request :as request]
-            [ring.util.response :as rr]))
+            [ring.util.response :as rr]
+            [puppetlabs.i18n.core :as i18n :refer [tru]]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -32,14 +34,14 @@
   [subject {:keys [cacert signeddir]}]
   (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
         (rr/response certificate)
-        (rr/not-found (str "Could not find certificate " subject)))
+        (rr/not-found (tru "Could not find certificate {0}" subject)))
       (rr/content-type "text/plain")))
 
 (defn handle-get-certificate-request
   [subject {:keys [csrdir]}]
   (-> (if-let [certificate-request (ca/get-certificate-request subject csrdir)]
         (rr/response certificate-request)
-        (rr/not-found (str "Could not find certificate_request " subject)))
+        (rr/not-found (tru "Could not find certificate_request {0}" subject)))
       (rr/content-type "text/plain")))
 
 (schema/defn handle-put-certificate-request!
@@ -49,10 +51,10 @@
   (sling/try+
     (ca/process-csr-submission! subject certificate-request ca-settings)
     (rr/content-type (rr/response nil) "text/plain")
-    (catch ca/csr-validation-failure? {:keys [message]}
-      (log/error message)
+    (catch ca/csr-validation-failure? {:keys [msg]}
+      (log/error msg)
       ;; Respond to all CSR validation failures with a 400
-      (middleware/plain-response 400 message))))
+      (middleware-utils/plain-response 400 msg))))
 
 (defn handle-get-certificate-revocation-list
   [{:keys [cacrl]}]
@@ -159,15 +161,13 @@
         :revoked
         ;; A signed cert must exist if we are to revoke it.
         (when-not (ca/certificate-exists? settings subject)
-          (conflict (str "Cannot revoke certificate for host "
-                         subject " without a signed certificate")))
+          (conflict (tru "Cannot revoke certificate for host {0} without a signed certificate" subject)))
 
         :signed
         (or
           ;; A CSR must exist if we are to sign it.
           (when-not (ca/csr-exists? settings subject)
-            (conflict (str "Cannot sign certificate for host "
-                           subject " without a certificate request")))
+            (conflict (tru "Cannot sign certificate for host {0} without a certificate request" subject)))
 
           ;; And the CSR must be valid.
           (when-let [error-message (ca/validate-csr settings subject)]
@@ -204,7 +204,7 @@
       ; https://github.com/clojure-liberator/liberator/pull/120
       ; ... but in our case, a 404 definitely makes more sense.
       (-> (assoc context :status 404)
-        (as-plain-text-response "Invalid certificate subject."))))
+          (as-plain-text-response (tru "Invalid certificate subject.")))))
 
   :handle-ok
   (fn [context]
@@ -219,21 +219,20 @@
           (if-let [desired-state (keyword (:desired_state json-body))]
             (if (schema/check ca/DesiredCertificateState desired-state)
               (malformed
-                (format
-                  "State %s invalid; Must specify desired state of 'signed' or 'revoked' for host %s."
+                (tru "State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' for host {1}."
                   (name desired-state) subject))
               ; this is the happy path. we have a body, it's parsable json,
               ; and the desired_state field is one of (signed revoked)
               [false {::json-body json-body}])
-            (malformed "Missing required parameter \"desired_state\""))
-          (malformed "Request body is not JSON."))
-        (malformed "Empty request body."))))
+            (malformed (tru "Missing required parameter \"desired_state\"")))
+          (malformed (tru "Request body is not JSON.")))
+        (malformed (tru "Empty request body.")))))
 
   :handle-malformed
   (fn [context]
     (if-let [message (::malformed context)]
       message
-      "Bad Request."))
+      (tru "Bad Request.")))
 
   :known-content-type?
   (fn [context]
@@ -274,7 +273,7 @@
       (comidi/context ["/certificate_statuses/"]
         (ANY [[#"[^/]+" :ignored-but-required]] []
           (certificate-statuses ca-settings))
-        (ANY [""] [] (middleware/plain-response 400 "Missing URL Segment")))
+        (ANY [""] [] (middleware-utils/plain-response 400 "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
       (comidi/context ["/certificate_request/" :subject]
@@ -321,4 +320,5 @@
           authorization-fn
           whitelist-path
           (get-in ca-settings [:access-control :certificate-status]))
+        i18n/locale-negotiator
         (wrap-middleware puppet-version))))
