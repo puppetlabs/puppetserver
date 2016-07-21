@@ -7,6 +7,7 @@
     [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
+    [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
@@ -41,7 +42,8 @@
              profiler/puppet-profiler-service
              certificate-authority-service
              authorization-service
-             versioned-code-service]
+             versioned-code-service
+             scheduler-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
@@ -102,7 +104,8 @@
                profiler/puppet-profiler-service
                certificate-authority-disabled-service
                authorization-service
-               versioned-code-service]
+               versioned-code-service
+               scheduler-service]
 
               (-> (jruby-testutils/jruby-puppet-tk-config
                     (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
