@@ -298,7 +298,7 @@ module PuppetServerExtensions
     key = get_key(master)
     response_code = "0"
     sleeptime = 1
-    while response_code != "404" && timeout > 0
+    while response_code != "200" && timeout > 0
       sleep sleeptime
       begin
         response = https_request(url, 'GET', cert, key)
@@ -309,17 +309,12 @@ module PuppetServerExtensions
           raise e
         else
           # Does this message violate the Wolfe Principle?
-          #puts "Caught and buried #{e}: this is expected because the server is restarting"
+          puts "Ignoring expected exception '#{e}' because server is restarting"
         end
       end
       response_code = response.code unless response == nil
       timeout = timeout - sleeptime
-      sleeptime *= 2
     end
-    # FIXME: We seem to get in a situation in which puppetserver is ready
-    # before file sync is ready. Adding a sleep will get CI greenn until we
-    # can track this down
-    sleep 10
   end
   
   # appends match-requests to TK auth.conf
