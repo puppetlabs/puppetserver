@@ -316,10 +316,6 @@ module PuppetServerExtensions
       timeout = timeout - sleeptime
       sleeptime *= 2
     end
-    # FIXME: We seem to get in a situation in which puppetserver is ready
-    # before file sync is ready. Adding a sleep will get CI greenn until we
-    # can track this down
-    sleep 10
   end
   
   # appends match-requests to TK auth.conf
