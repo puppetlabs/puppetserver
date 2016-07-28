@@ -224,8 +224,8 @@ module PuppetServerExtensions
     OpenSSL::X509::Certificate.new(rawcert)
   end
 
-  # Gets the key from the host hash if it is present, other wise uses 
-  # the encode_key method to get the key from the host, and stores it in the 
+  # Gets the key from the host hash if it is present, other wise uses
+  # the encode_key method to get the key from the host, and stores it in the
   # host hash
   def get_key(host)
     if host.host_hash[:key].class == OpenSSL::PKey::RSA then
@@ -303,9 +303,9 @@ module PuppetServerExtensions
       begin
         response = https_request(url, 'GET', cert, key)
       rescue StandardError => e
-        expected_errors = [ Errno::ECONNREFUSED, Errno::ECONNRESET, 
+        expected_errors = [ Errno::ECONNREFUSED, Errno::ECONNRESET,
                             OpenSSL::SSL::SSLError ]
-        if !expected_errors.include?e.class 
+        if !expected_errors.include?e.class
           raise e
         else
           # Does this message violate the Wolfe Principle?
@@ -317,13 +317,13 @@ module PuppetServerExtensions
       sleeptime *= 2
     end
   end
-  
+
   # appends match-requests to TK auth.conf
-  #   Provides many defaults so that users of this method can simply 
+  #   Provides many defaults so that users of this method can simply
   #   and easily allow a host in TK auth.conf
   #
   # NOTE: This method allows the caller to define invalid TK auth rules
-  # by design.  
+  # by design.
   #
   #   TK Auth is documented here:
   #   https://github.com/puppetlabs/puppetserver/blob/master
@@ -339,10 +339,10 @@ module PuppetServerExtensions
   #           true.
   #   deny:   hostname, glob or regex lookback to deny
   #   sort_order:
-  #   path:   
+  #   path:
   #   type:   Valid values are 'path' or 'regex'
   #   method: Should accept string or array or strings.
-  #           Valid strings include 'head', 'get', 'put', 'post', 'delete' 
+  #           Valid strings include 'head', 'get', 'put', 'post', 'delete'
   #
   require 'hocon/config_factory'
   def append_match_request(args)
@@ -359,10 +359,10 @@ module PuppetServerExtensions
     method                = args[:method] || default_http_methods
     query_params          = args[:query_params] || {}
     #TODO: handle TK-293 X509 extensions.
-    authconf_file         = args[:authconf_file] || 
+    authconf_file         = args[:authconf_file] ||
 	options[:'puppetserver-confdir']+'/auth.conf'
 
-    match_request = { 'match-request' =>   
+    match_request = { 'match-request' =>
        {  'path'        => path,
           'type'        => type,
           'method'      => method,
@@ -371,7 +371,7 @@ module PuppetServerExtensions
        'name'        => name
        }
 
-    #Note: If you set 'allow', 'allow-unauthenticated', and 'deny' you will 
+    #Note: If you set 'allow', 'allow-unauthenticated', and 'deny' you will
     #have an invalid match-request.
     match_request.merge!('allow' => allow) if allow
     match_request.merge!('allow-unauthenticated' => true) if allow_unauthenticated
@@ -380,7 +380,7 @@ module PuppetServerExtensions
     authconf_text = on(master, "cat #{authconf_file}").stdout
     authconf_hash = Hocon.parse(authconf_text)
     authconf_hash['authorization']['rules'] << match_request
- 
+
     modify_tk_config(host, authconf_file, authconf_hash, true)
   end
 
