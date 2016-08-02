@@ -303,7 +303,7 @@ module PuppetServerExtensions
       begin
         response = https_request(url, 'GET', cert, key)
       rescue StandardError => e
-        expected_errors = [ Errno::ECONNREFUSED, Errno::ECONNRESET,
+        expected_errors = [ EOFError, Errno::ECONNREFUSED, Errno::ECONNRESET,
                             OpenSSL::SSL::SSLError ]
         if !expected_errors.include?e.class
           raise e
