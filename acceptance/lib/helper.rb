@@ -317,6 +317,36 @@ module PuppetServerExtensions
     end
   end
 
+  def apply_one_hocon_setting(hocon_host,
+                              hocon_file_path, 
+                              hocon_setting,
+                              hocon_value)
+    hocon_manifest =<<-EOF.gsub(/^ {6}/, '')
+      hocon_setting { "#{hocon_setting}":
+        ensure => present,
+        path => "#{hocon_file_path}",
+        setting => "#{hocon_setting}",
+        value => #{hocon_value},
+      }
+    EOF
+    apply_manifest_on(hocon_host, hocon_manifest,
+                      {:acceptable_exit_codes => [0,2]})    
+  end
+
+  def delete_one_hocon_setting(hocon_host,
+                               hocon_file_path, 
+                               hocon_setting)
+    hocon_manifest =<<-EOF.gsub(/^ {6}/, '')
+      hocon_setting { "#{hocon_setting}":
+        ensure => absent,
+        path => "#{hocon_file_path}",
+        setting => "#{hocon_setting}",
+      }
+    EOF
+    apply_manifest_on(hocon_host, hocon_manifest,
+                      {:acceptable_exit_codes => [0,2]})    
+  end
+
   # appends match-requests to TK auth.conf
   #   Provides many defaults so that users of this method can simply
   #   and easily allow a host in TK auth.conf
