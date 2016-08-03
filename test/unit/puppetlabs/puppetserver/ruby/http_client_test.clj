@@ -101,7 +101,7 @@ jruby-config :- jruby-schemas/JRubyConfig
                                                       LocalVariableBehavior/PERSISTENT)
                                  (jruby-internal/init-jruby jruby-config))]
      (doto scripting-container
-       (.setEnvironment (jruby-core/managed-environment (jruby-core/get-system-env) (:gem-home jruby-config)))
+       (.setEnvironment (jruby-core/managed-environment (jruby-core/get-system-env) jruby-config))
        (.setLoadPaths (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path))
        (.runScriptlet "require 'jar-dependencies'")
        (.runScriptlet "require 'puppet/server/http_client'"))

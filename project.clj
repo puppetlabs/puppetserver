@@ -56,7 +56,7 @@
                  [net.logstash.logback/logstash-logback-encoder "4.5.1"]
 
 
-                 [puppetlabs/jruby-utils "0.1.0"]
+                 [puppetlabs/jruby-utils "0.2.0"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/trapperkeeper-authorization "0.7.0"]
                  [puppetlabs/trapperkeeper-scheduler "0.0.1"]
