@@ -49,23 +49,25 @@
   which will either return an interpreter if one is available within the
   timeout length, or will return nil after the timeout expires if no
   interpreters are available. This timeout defaults to 1200000 milliseconds.
+
   `reason` is an identifier (usually a map) describing the reason for borrowing the
   JRuby instance.  It may be used for metrics and logging purposes."
-  [jruby-puppet-service reason]
-  (let [{:keys [pool-context]} (tk-service/service-context jruby-puppet-service)
-        event-callbacks (jruby-core/get-event-callbacks pool-context)]
-    (jruby-core/borrow-from-pool-with-timeout pool-context reason event-callbacks)))
+ [jruby-puppet-service reason]
+ (let [{:keys [pool-context]} (tk-service/service-context jruby-puppet-service)
+       event-callbacks (jruby-core/get-event-callbacks pool-context)]
+   (jruby-core/borrow-from-pool-with-timeout pool-context reason event-callbacks)))
 
 (defn return-instance
   "Returns the JRubyPuppet interpreter back to the pool.
+
   `reason` is an identifier (usually a map) describing the reason for borrowing the
   JRuby instance.  It may be used for metrics and logging purposes, so for
   best results it should be set to the same value as it was set during the
   `borrow-instance` call."
-  [jruby-puppet-service jruby-instance reason]
-  (let [pool-context (:pool-context (tk-service/service-context jruby-puppet-service))
-        event-callbacks (jruby-core/get-event-callbacks pool-context)]
-    (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
+ [jruby-puppet-service jruby-instance reason]
+ (let [pool-context (:pool-context (tk-service/service-context jruby-puppet-service))
+       event-callbacks (jruby-core/get-event-callbacks pool-context)]
+   (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
 
 
 (schema/defn ^:always-validate
@@ -76,13 +78,13 @@ create-mock-pool-instance :- JRubyInstance
    config :- jruby-schemas/JRubyConfig
    flush-instance-fn :- IFn]
   (let [instance (jruby-schemas/map->JRubyInstance
-                   {:id id
-                    :internal {:pool pool
-                               :max-borrows (:max-borrows-per-instance config)
-                               :flush-instance-fn flush-instance-fn
-                               :state (atom {:borrow-count 0})}
-                    :scripting-container (ScriptingContainer.
-                                           LocalContextScope/SINGLETHREAD)})
+                  {:id id
+                   :internal {:pool pool
+                              :max-borrows (:max-borrows-per-instance config)
+                              :flush-instance-fn flush-instance-fn
+                              :state (atom {:borrow-count 0})}
+                   :scripting-container (ScriptingContainer.
+                                         LocalContextScope/SINGLETHREAD)})
         modified-instance (merge instance {:jruby-puppet (mock-jruby-instance-creator-fn)
                                            :environment-registry (puppet-env/environment-registry)})]
     (.register pool modified-instance)
@@ -106,7 +108,7 @@ create-mock-pool-instance :- JRubyInstance
                             :name "allow all"}]}})
 
 (schema/defn ^:always-validate
-jruby-puppet-config :- JRubyPuppetTKConfig
+  jruby-puppet-config :- JRubyPuppetTKConfig
   "Create a JRubyPuppetConfig for testing. The optional map argument `options` may
   contain a map, which, if present, will be merged into the final JRubyPuppetConfig
   map.  (This function differs from `jruby-puppet-tk-config` in
@@ -114,24 +116,24 @@ jruby-puppet-config :- JRubyPuppetTKConfig
   differs slightly from the raw format that would be read from config files
   on disk.)"
   ([]
-    (let [combined-configs
-          (merge (jruby-puppet-core/initialize-puppet-config
-                   {}
-                   {:master-conf-dir conf-dir
-                    :master-code-dir code-dir
-                    :master-var-dir var-dir
-                    :master-run-dir run-dir
-                    :master-log-dir log-dir
-                    :use-legacy-auth-conf false})
-                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
-                                                :gem-home gem-home}))
-          max-requests-per-instance (:max-borrows-per-instance combined-configs)
-          updated-config (-> combined-configs
-                             (assoc :max-requests-per-instance max-requests-per-instance)
-                             (dissoc :max-borrows-per-instance))]
-      (dissoc updated-config :lifecycle)))
+   (let [combined-configs
+         (merge (jruby-puppet-core/initialize-puppet-config
+                 {}
+                 {:master-conf-dir conf-dir
+                  :master-code-dir code-dir
+                  :master-var-dir var-dir
+                  :master-run-dir run-dir
+                  :master-log-dir log-dir
+                  :use-legacy-auth-conf false})
+                (jruby-core/initialize-config {:ruby-load-path ruby-load-path
+                                               :gem-home gem-home}))
+         max-requests-per-instance (:max-borrows-per-instance combined-configs)
+         updated-config (-> combined-configs
+                            (assoc :max-requests-per-instance max-requests-per-instance)
+                            (dissoc :max-borrows-per-instance))]
+     (dissoc updated-config :lifecycle)))
   ([options]
-    (merge (jruby-puppet-config) options)))
+   (merge (jruby-puppet-config) options)))
 
 (defn drain-pool
   "Drains the JRubyPuppet pool and returns each instance in a vector."
@@ -149,6 +151,7 @@ jruby-puppet-config :- JRubyPuppetTKConfig
   to string.  For each JRuby instance in the pool, f will be called, passing in
   an integer offset into the jruby array (0..size), and f is expected to return
   a string containing a script to run against the jruby instance.
+
   Returns a vector containing the results of executing the scripts against the
   JRuby instances."
   [pool-context size f]
