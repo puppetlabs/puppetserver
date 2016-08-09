@@ -296,6 +296,7 @@ module PuppetServerExtensions
   def hup_server(host = master, timeout = 30)
     pid = on(host, 'pgrep -fo puppetserver').stdout.chomp
     on(host, "kill -HUP #{pid}")
+    sleep 30
     url = "https://#{host}:8140/puppet/v3/status"
     cert = get_cert(master)
     key = get_key(master)
