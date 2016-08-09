@@ -393,7 +393,7 @@
                  (set (keys jruby-env))))
           (is (= (.get jruby-env "FOO") (System/getenv "HOME")))
           (finally
-            (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
+            (jruby-testutils/return-instance jruby-service jruby-instance :test)))))))
 
 (deftest master-termination-test
   (testing "Flushing the pool causes masters to be terminated"
