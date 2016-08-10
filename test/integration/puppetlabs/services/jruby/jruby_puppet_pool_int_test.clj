@@ -389,7 +389,7 @@
             jruby-scripting-container (:scripting-container jruby-instance)
             jruby-env (.runScriptlet jruby-scripting-container "ENV")]
         (try
-          (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE" "FOO"}
+          (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
                  (set (keys jruby-env))))
           (is (= (.get jruby-env "FOO") (System/getenv "HOME")))
           (finally
