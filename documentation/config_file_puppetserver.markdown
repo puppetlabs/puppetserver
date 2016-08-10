@@ -26,6 +26,14 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `gem-home`: The location where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If nothing is specified, JRuby uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
 
+    * `environment-vars:` Optional. A map of environment variables which are made visible to Ruby code running within JRuby, for example, via the Ruby `ENV` class.
+
+        By default, the only environment variables whose values are set into JRuby from the shell are `HOME` and `PATH`.
+
+        The default value for the `GEM_HOME` environment variable in JRuby is set from the value provided for the `jruby-puppet.gem-home` key.
+
+        Note that any variable set from the map for the `environment-vars` key will override these defaults; although it would probably be best to not override `HOME`, `PATH`, or `GEM_HOME` here since these values are already configurable.
+
     * `master-conf-dir`: Optional. The path to the Puppet [configuration directory][]. The default is `/etc/puppetlabs/puppet`.
 
     * `master-code-dir`: Optional. The path to the Puppet [code directory][]. The default is `/etc/puppetlabs/code`.
@@ -94,6 +102,8 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 jruby-puppet: {
     ruby-load-path: [/opt/puppetlabs/puppet/lib/ruby/vendor_ruby]
     gem-home: /opt/puppetlabs/server/data/puppetserver/jruby-gems
+    environment-vars: { "FOO" : ${FOO}
+                        "LANG" : "de_DE.UTF-8" }
     master-conf-dir: /etc/puppetlabs/puppet
     master-code-dir: /etc/puppetlabs/code
     master-var-dir: /opt/puppetlabs/server/data/puppetserver
