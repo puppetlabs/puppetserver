@@ -18,7 +18,7 @@ If you are managing your `bootstrap.cfg`, here's what you need to be aware of:
 ## `ca.cfg`
 Puppet Server will no longer look at `/etc/puppetlabs/puppetserver/bootstrap.cfg` for bootstrap entries. If you have modified `bootstrap.cfg` to disable the CA service, you will have to edit `/etc/puppetlabs/puppetserver/services.d/ca.cfg` and disable it there.
 
-It's a good idea to create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled *before* upgrading, since the `puppetserver` service will be restarted on upgrade if the service running when you upgrade. If you don't, the default `ca.cfg` created during the upgrade will re-enable the CA service.
+It's a good idea to create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled *before* upgrading, since the `puppetserver` service will be restarted on upgrade if the service is running when you upgrade. If you don't, the default `ca.cfg` created during the upgrade will re-enable the CA service.
 
 An example of `ca.cfg` with the CA disabled:
 ```
