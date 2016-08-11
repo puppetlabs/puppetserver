@@ -36,17 +36,17 @@ To improve the upgrade experience for these users, Puppet Server 2.5.0 can load 
 
 ### New feature: Signing CSRs with OIDs from a new arc
 
-Puppet Server 2.5.0 can sign certificate signing requests (CSRs) that contain a new custom object identifier (OID) arc to represent secured extensions for use with [`trapperkeeper-authorization`][Trapperkeeper], the system that underpins the [HOCON `auth.conf` and authorization methods][auth.conf] introduced in Puppet Server 2.2.0.
+Puppet Server 2.5.0 can sign certificate signing requests (CSRs) from Puppet 4.6 agents that contain a new custom object identifier (OID) arc to represent secured extensions for use with [`trapperkeeper-authorization`][Trapperkeeper].
 
-To sign CSRs wth the new OID arc via the command line, use the `puppet cert sign --allow-authorization-extensions` command. This workflow is similar to signing DNS alt names.
+> **Aside:** Trapperkeeper powers the [HOCON `auth.conf` and authorization methods][auth.conf] introduced in Puppet Server 2.2.0. This new CSR-signing functionality in Server 2.5.0 builds on features added to Puppet 4.6 and the addition of X.509 extension-based authorization rules added to Trapperkeeper alongside Puppet Server 2.4.
 
-The new OID arc is "puppetlabs.1.3", with a long name of "Puppet Authorization Certificate Extension" and short name of `ppAuthCertExt` (where "puppetlabs" is our registered OID arc 1.3.6.1.4.1.34380). Set the extension "puppetlabs.1.3.1" (`pp_authorization`) on CSRs that need to be authenticated via the new workflow. We've also included an default alias of `pp_auth_role` at extension "puppetlabs.1.3.13" for common workflows.
+To sign CSRs wth the new OID arc via the Puppet 4.6 command-line tools, use the `puppet cert sign --allow-authorization-extensions` command. See the [`puppet cert` man page](https://docs.puppet.com/puppet/4.6/reference/man/cert.html) for details. This workflow is similar to signing DNS alt names.
 
-Puppet Server can use these secured extensions in [`allow` and `deny` authorization rules](./config_file_auth.markdown#allow-allow-unauthenticated-and-deny).
+The new OID arc is "puppetlabs.1.3", with a long name of "Puppet Authorization Certificate Extension" and short name of `ppAuthCertExt` (where "puppetlabs" is our registered OID arc 1.3.6.1.4.1.34380). Set the extension "puppetlabs.1.3.1" (`pp_authorization`) on CSRs that need to be authenticated via the new workflow. We've also included an default alias of `pp_auth_role` at extension "puppetlabs.1.3.13" for common workflows. See [the Puppet CSR attributes and certificate extensions documentation](https://docs.puppet.com/puppet/4.6/reference/ssl_attributes_extensions.html) for more information.
 
 We've also improved the CLI output of `puppet cert list` and `puppet cert sign` to work better with the `--human-readable` and `--machine-readable` flags, and we allow administrators to force a prompt when signing certificates with the `--interactive` flag.
 
-This allows for easier automated failover to authorized nodes within a Puppet infrastructure and provides tools for creating new security workflows. See [the Puppet CSR attributes and certificate extensions documentation](https://docs.puppet.com/puppet/4.5/reference/ssl_attributes_extensions.html) for more information.
+This allows for easier automated failover to authorized nodes within a Puppet infrastructure and provides tools for creating new, securely automated workflows, such as automated component promotions within Puppet-managed infrastructure.
 
 -   [SERVER-1305](https://tickets.puppetlabs.com/browse/SERVER-1305)
 
