@@ -8,85 +8,68 @@ canonical: "/puppetserver/latest/release_notes.html"
 [service bootstrapping]: ./configuration.markdown#service-bootstrapping
 [auth.conf]: ./config_file_auth.markdown
 
-## Puppet Server 2.4
+For release notes on the previous version of Puppet Server, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
 
-Released May 19, 2016.
+## Puppet Server 2.5
 
-This is a feature and bug-fix release of Puppet Server that also upgrades its included [Trapperkeeper][] framework from version 1.3.1 to 1.4.0.
+Released August 11, 2016.
 
-This release also adds packages for Ubuntu 15.10 (Wily Werewolf) and 16.04 LTS (Xenial Xerus), and no longer includes packages for Fedora 21, which reached its end of life in December.
+This is a feature and bug-fix release of Puppet Server.
 
-### New platforms: Ubuntu 15.10 (Wily Werewolf) and 16.04 LTS (Xenial Xerus)
+> **Note:** If you disabled the certificate authority (CA) on Puppet Server by editing the [`bootstrap.cfg`][service bootstrapping] file on older versions of Puppet Server, be aware that Puppet Server 2.5.0 no longer uses the `bootstrap.cfg` file.
+>
+> To ensure that CA services remain disabled after upgrading to Server 2.5.0, create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled *before* upgrading. The `puppetserver` service restarts on upgrade if the service is running when you upgrade, which reloads the `ca.cfg` file.
+>
+> For more details, including an sample `ca.cfg` file that disables CA services, see the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown).
 
-Puppet Server 2.4.0 introduces [Puppet-built packages](https://docs.puppet.com/puppetserver/latest/install_from_packages.html) for Ubuntu 15.10 (Wily Werewolf) and 16.04 LTS (Xenial Xerus). For details about Puppet's package repositories, see the [Puppet Collections documentation](https://docs.puppet.com/puppet/latest/reference/puppet_collections.html).
+### New feature: Flexible service bootstrapping/CA configuration file
 
--   [SERVER-1182](https://tickets.puppetlabs.com/browse/SERVER-1182)
+To disable the Puppet CA service in previous versions of Puppet Server 2.x, users edited the [`bootstrap.cfg`][service bootstrapping] file, usually located at `/etc/puppetlabs/puppetserver/bootstrap.cfg`.
 
-### New feature: X.509-compliant certificate extensions can match authorization rules
+This workflow could cause problems for users performing package upgrades of Puppet Server where `bootstrap.cfg` was modified, because the package might overwrite the modified `bootstrap.cfg` and undo their changes.
 
-When using the [new authorization methods introduced in version 2.2.0](./config_file_auth.markdown#aside-changes-to-authorization-in-puppet-server-220), Puppet Server relied on matching a requester's certificate name (certname) when authorizing HTTPS requests via SSL. Starting with version 2.4.0, Server can also match [authorization rules][auth.conf] to the content of [X.509 certificate extensions](https://access.redhat.com/documentation/en-US/Red_Hat_Certificate_System/8.0/html/Admin_Guide/Standard_X.509_v3_Certificate_Extensions.html).
+To improve the upgrade experience for these users, Puppet Server 2.5.0 can load the service bootstrapping settings from multiple files. This in turn allows us to provide user-modifiable settings in a separate file and avoid overwriting any changes during an upgrade.
 
-Server 2.4.0 expands the syntax for [`allow` and `deny` parameters](./config_file_auth.markdown#allow-allow-unauthenticated-and-deny) in Server's `auth.conf` rules to allow for a map of `extensions` to match.
+-   [SERVER-1470](https://tickets.puppetlabs.com/browse/SERVER-1470)
+-   [SERVER-1247](https://tickets.puppetlabs.com/browse/SERVER-1247)
+-   [SERVER-1213](https://tickets.puppetlabs.com/browse/SERVER-1213)
 
--   [TK-293: tk-auth should support x.509 extensions for authentication instead of just certname](https://tickets.puppetlabs.com/browse/TK-293)
+### New feature: Signing CSRs with OIDs from a new arc
 
-Server 2.4.0 also reads custom OID shortname maps defined in Puppet's [`custom_trusted_oid_mapping.yaml`](https://docs.puppet.com/puppet/latest/reference/config_file_oid_map.html).
+Puppet Server 2.5.0 can sign certificate signing requests (CSRs) from Puppet 4.6 agents that contain a new custom object identifier (OID) arc to represent secured extensions for use with [`trapperkeeper-authorization`][Trapperkeeper].
 
--   [SERVER-1150](https://tickets.puppetlabs.com/browse/SERVER-1150)
--   [SERVER-1245](https://tickets.puppetlabs.com/browse/SERVER-1245)
+> **Aside:** Trapperkeeper powers the [HOCON `auth.conf` and authorization methods][auth.conf] introduced in Puppet Server 2.2.0. This new CSR-signing functionality in Server 2.5.0 builds on features added to Puppet 4.6 and the addition of X.509 extension-based authorization rules added to Trapperkeeper alongside Puppet Server 2.4.
 
-### New feature: Integrate with systemd services on Debian and Ubuntu
+To sign CSRs wth the new OID arc via the Puppet 4.6 command-line tools, use the `puppet cert sign --allow-authorization-extensions` command. See the [`puppet cert` man page](https://docs.puppet.com/puppet/4.6/reference/man/cert.html) for details. This workflow is similar to signing DNS alt names.
 
-Puppet Server 2.4.0 adds integration with `systemd` on Debian 8 and newer, and Ubuntu 16.04 LTS.
+The new OID arc is "puppetlabs.1.3", with a long name of "Puppet Authorization Certificate Extension" and short name of `ppAuthCertExt` (where "puppetlabs" is our registered OID arc 1.3.6.1.4.1.34380). Set the extension "puppetlabs.1.3.1" (`pp_authorization`) on CSRs that need to be authenticated via the new workflow. We've also included an default alias of `pp_auth_role` at extension "puppetlabs.1.3.13" for common workflows. See [the Puppet CSR attributes and certificate extensions documentation](https://docs.puppet.com/puppet/4.6/reference/ssl_attributes_extensions.html) for more information.
 
--   [EZ-48](https://tickets.puppetlabs.com/browse/EZ-48)
+We've also improved the CLI output of `puppet cert list` and `puppet cert sign` to work better with the `--human-readable` and `--machine-readable` flags, and we allow administrators to force a prompt when signing certificates with the `--interactive` flag.
 
-### Improvement: Responses to unauthenticated HTTPS requests include less information
+This allows for easier automated failover to authorized nodes within a Puppet infrastructure and provides tools for creating new, securely automated workflows, such as automated component promotions within Puppet-managed infrastructure.
 
-When responding to unauthorized HTTPS requests, previous versions of Puppet Server 2.x returned the requester's IP address and [authorization rule][auth.conf] in addition to logging the failed request. Puppet Server 2.4.0 removes this information from the response and directs the responder to consult the server logs for details.
+-   [SERVER-1305](https://tickets.puppetlabs.com/browse/SERVER-1305)
 
--   [TK-360: Error messages returned to client should not include IP or rule blocking the request](https://tickets.puppetlabs.com/browse/TK-360)
+### Bug fix: Unrecognized parse-opts
 
-### New feature: `always_retry_plugins` setting to configure Puppet feature caching
+Puppet Server 2.4.x used a deprecated API for a Clojure CLI option-parsing library. As a result, calls to `puppetserver gem` (either directly, or indirectly by using a `puppetserver_gem` package resource) generated unexpected warning messages:
 
-Puppet Server 2.4.0 respects the new [`always_retry_plugins` setting introduced in Puppet 4.5](https://docs.puppet.com/puppet/latest/reference/configuration.html#alwaysretryplugins), which determines how Puppet caches attempts to load Puppet resource types and features. However, Server changes this setting's value from its default (true) to false, in order to take advantage of additional caching for failures when loading types.
+    Warning: Could not match Warning: The following options to parse-opts are unrecognized: :flag
 
-The `always_retry_plugins` setting also replaces the [`always_cache_features` setting](https://docs.puppet.com/puppet/4.5/reference/configuration.html#alwayscachefeatures), which is now deprecated. If you set `always_cache_features` to true in previous versions of Puppet Server, set `always_retry_plugins` to false.
+Puppet Server 2.5.0 updates this library, which prevents this error message from appearing.
 
--   [PUP-5482](https://tickets.puppetlabs.com/browse/PUP-5482)
+-   [SERVER-1378](https://tickets.puppetlabs.com/browse/SERVER-1378)
 
-### New feature: Expanded logging for certificate autosigning attempts
+### Bug fix: Puppet Server no longer ships with an empty PID file
 
-Starting with version 2.4.0, Puppet Server [logs](./configuration.markdown#logging) message and warnings when an autosign command generates STDERR output or returns a non-zero exit code. Server 2.4.0 also logs autosigning attempts at the INFO level, rather than DEBUG, to help make autosigning issues easier to diagnose without changing Server's logging level.
+When installed on CentOS 6, Puppet Server 2.4.x included an empty PID file. When running `service puppetserver status`, Puppet Server returned an unexpected error message: `puppetserver dead but pid file exists`.
 
--   [SERVER-1187](https://tickets.puppetlabs.com/browse/SERVER-1187)
+When performing a clean installation of Puppet Server 2.5.0, no PID file is created, and `service puppetserver status` should return the expected `not running` message.
 
-### Bug fix: Closed memory leak when restarting Server via SIGHUP
+-   [SERVER-1455](https://tickets.puppetlabs.com/browse/SERVER-1455)
+-   [EZ-84](https://tickets.puppetlabs.com/browse/EZ-84)
 
-The Trapperkeeper components included with Puppet Server 2.3.x leaked a small amount of memory when [restarting Server with a HUP signal](./restarting.markdown). Puppet Server 2.4.0 includes updated components that resolve this issue.
+### Other changes
 
--   [TK-372: Jetty JMX Memory Leak in TK WS J9](https://tickets.puppetlabs.com/browse/TK-372)
-
-### Bug fix: Implement DELETE request handling on the `certificate_reqest` endpoint
-
-Unlike the Ruby Puppet master, previous versions of Puppet Server couldn't handle [DELETE requests to the `certificate_request` endpoint](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html#delete), even if authorization rules allowed for them. Server 2.4.0 resolves this by handling authorized DELETE requests in the same way that the Ruby master does.
-
--   [SERVER-977](https://tickets.puppetlabs.com/browse/SERVER-977)
-
-### Bug fixes: Certificate status endpoint behaviors
-
-Puppet Server 2.4.0 resolves these issues with the [`certificate_status` endpoint](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html):
-
--   **Handle nil values in `desired_state` more gracefully ([SERVER-542](https://tickets.puppetlabs.com/browse/SERVER-542)):** If the `desired_state` of a PUT request to the `certificate_status` endpoint was nil, previous versions of Server threw a NullPointerException. Server 2.4.0 resolves this issue.
--   **Respect asterisks in `certificate_statuses` requests ([SERVER-864](https://tickets.puppetlabs.com/browse/SERVER-864)):** Previous versions of Server wouldn't return a list of certificates to authenticated `certificate_statuses` requests if the request included an asterisk (`*`). Server 2.4.0 resolves this issue.
-
-### Other issues
-
--   **Remove hyphens in `puppet-server`:** We've [changed the name of our GitHub repository](https://tickets.puppetlabs.com/browse/SERVER-1206) from `puppet-server` to `puppetserver` and [removed the hyphen from many other references](https://tickets.puppetlabs.com/browse/SERVER-392).
--   **Log Ruby backtraces ([SERVER-1273](https://tickets.puppetlabs.com/browse/SERVER-1273)):** Previous versions of Server didn't log Ruby backtraces. Server 2.4.0 does, just like a Ruby Puppet master.
--   **Don't override the service startup timeout ([SERVER-557](https://tickets.puppetlabs.com/browse/SERVER-557)):** Previous versions of Server 2.x overrode the default 5-minute service startup timeout with a value of 120 seconds. Server 2.4.0 removes this override.
--   **Extend the default `ca_ttl` ([SERVER-615](https://tickets.puppetlabs.com/browse/SERVER-615)):** Server 2.4.0 enforces a maximum time-to-live of 50 years (1,576,800,000 seconds) on `puppet.conf`'s [`ca_ttl` setting](https://docs.puppet.com/puppet/latest/reference/configuration.html#cattl).
-
-### All changes
-
-* [All Puppet Server issues targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%202.4.0%22%20ORDER%20BY%20updated%20DESC%2C%20priority%20DESC%2C%20created%20ASC)
+-   [SERVER-1310](https://tickets.puppetlabs.com/browse/SERVER-1310): Error messages in Puppet Server 2.5.0 use the same standard types as other Puppet projects.
+-   [SERVER-1121](https://tickets.puppetlabs.com/browse/SERVER-1121): JRuby pool management code for the [Trapperkeeper Webserver Service][Trapperkeeper] is now its own open-source project, [puppetlabs/jrubyutils](https://github.com/puppetlabs/jruby-utils).
