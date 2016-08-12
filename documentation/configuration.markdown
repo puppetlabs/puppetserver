@@ -76,7 +76,15 @@ authorization, add the following to Puppet Server's `logback.xml` file:
 
 ## Service Bootstrapping
 
-Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper). One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service, by modifying your `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`). In that file, find the lines that look like this:
+Puppet Server is built on top of our open-source Clojure application framework, [Trapperkeeper](https://github.com/puppetlabs/trapperkeeper).
+
+One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service. The CA service is enabled by default, but if you're running a multi-master environment or using an external CA, you might want to disable the CA service on some nodes.
+
+You can do this by modifying your `ca.cfg` file, usually located with other service bootstrapping configuration files in `/etc/puppetlabs/puppetserver/services.d/`.
+
+> **Note:** If you're upgrading from Puppet Server 2.4 or earlier to Server 2.5 or newer, read the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) first.
+
+In that file, find and modify these lines to enable or disable the service:
 
 ~~~
 # To enable the CA service, leave the following line uncommented
@@ -84,8 +92,6 @@ puppetlabs.services.ca.certificate-authority-service/certificate-authority-servi
 # To disable the CA service, comment out the above line and uncomment the line below
 #puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
 ~~~
-
-In most cases, you'll want the CA service enabled. However, if you're running a multi-master environment or using an external CA, you might want to disable the CA service on some nodes.
 
 ## Enabling the Insecure SSLv3 Protocol
 
