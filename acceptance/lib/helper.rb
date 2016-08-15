@@ -163,7 +163,7 @@ module PuppetServerExtensions
     FileUtils.mkdir_p(destination)
     scp_from master, "/var/log/puppetlabs/puppetserver/puppetserver.log", destination
     if use_journalctl
-      puppetserver_daemon_log = on(master, "journalctl -u puppetserver").stdout.strip
+      puppetserver_daemon_log = on(master, "journalctl -u puppetserver", :acceptable_exit_codes => [0,1]).stdout.strip
       destination = File.join(destination, "puppetserver-daemon.log")
       File.open(destination, 'w') {|file| file.puts puppetserver_daemon_log }
     else
