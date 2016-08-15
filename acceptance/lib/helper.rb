@@ -157,6 +157,10 @@ module PuppetServerExtensions
       if version.to_i >= 15
         use_journalctl = true
       end
+    when /^sles$/
+      if version.to_i >= 12
+        use_journalctl = true
+      end
     end
 
     destination = File.join("./log/latest/puppetserver/", relative_path)
