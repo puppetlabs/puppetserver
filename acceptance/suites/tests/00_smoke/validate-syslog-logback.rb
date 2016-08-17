@@ -1,4 +1,5 @@
 test_name 'SERVER-1215: Validate that logback can be configured to work with syslog'
+require 'master_manipulator'
 
 service   = options['puppetservice']
 
@@ -42,7 +43,7 @@ EOM
 
 teardown do
   on(master, "mv #{logback_backup} #{logback_path}")
-  hup_server(master)
+  restart_puppet_server(master, {:hup? => true})
 end
 
 step 'Backup logback'

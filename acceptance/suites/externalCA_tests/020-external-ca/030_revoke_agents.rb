@@ -1,4 +1,5 @@
 test_name 'QA-1393 - C62573 - Revoke Agent Certificate on a Puppet Master using an External CA'
+require 'master_manipulator'
 skip_test('This test is destructive.  It works, but it is disabled until it can be improved to recertify the agents')
 step 'Run puppet agent -t on all agents to retreive new certificates' do
   agents.each do |my_agent|
