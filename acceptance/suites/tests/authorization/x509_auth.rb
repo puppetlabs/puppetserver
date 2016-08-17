@@ -1,9 +1,8 @@
 test_name "(SERVER-1268)/(TK-293) TK-AUTH uses certificate extensions for authentication" do
+require 'master_manipulator'
 
 confine :except, :platform => 'windows'
   
-require 'master_manipulator'
-
 server = master.puppet['certname']
 ssldir = master.puppet['ssldir']
 confdir = master.puppet['confdir']
@@ -41,7 +40,7 @@ end
 
 service = options['puppetservice']
 step "HUP the server" do
-  restart_puppet_server(master, {:hup? => true})
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 # After a server HUP, the agent cert should be rejected
@@ -110,7 +109,7 @@ step "Lay down a test tk-auth.conf file" do
 end
 
 step "HUP the server" do
-  restart_puppet_server(master, {:hup? => true})
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 # Confirm agents can connect with new cert

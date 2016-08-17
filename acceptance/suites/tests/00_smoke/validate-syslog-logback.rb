@@ -43,7 +43,7 @@ EOM
 
 teardown do
   on(master, "mv #{logback_backup} #{logback_path}")
-  restart_puppet_server(master, {:hup? => true})
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 step 'Backup logback'
@@ -55,11 +55,11 @@ step 'Modify logback configuration' do
 end
 
 step 'Restart puppetserver' do
-  bounce_service( master, service )
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 step 'Validate that the puppetserver service is running' do
-  result=on(master, "service #{service} status", :acceptable_exit_codes => [0,1])
+  result = on(master, "service #{service} status", :acceptable_exit_codes => [0,1])
   assert_equal(0, result.exit_code, 'FAIL: The puppetserver service does not appear to be running')
 end
 

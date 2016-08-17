@@ -1,11 +1,10 @@
 test_name '(SERVER-1380) Server reloads the CRL after being HUPped' do
+require 'master_manipulator'
+
 # Note the skip_test statement. This test requires at least one agent that is
 # not also a master.
-
 skip_test 'This test requires a non-master agent' unless \
   hosts_as('agent').count > hosts_as('master').count
-
-require 'master_manipulator'
 
 server = master.puppet['certname']
 
@@ -69,7 +68,7 @@ end
 
 service = options['puppetservice']
 step 'HUP the server' do
-  restart_puppet_server(master, {:hup? => true})
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 step 'Demonstrate that the certs are rejected' do
