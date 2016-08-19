@@ -82,34 +82,36 @@ To add JSON logging for HTTP requests:
             <providers>
                 <version/>
                 <pattern>
-                    {
-                      "@timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
-                      "clientip":"%remoteIP",
-                      "auth":"%user",
-                      "verb":"%requestMethod",
-                      "requestprotocol":"%protocol",
-                      "rawrequest":"%requestURL",
-                      "response":"#asLong{%statusCode}",
-                      "bytes":"#asLong{%bytesSent}",
-                      "total_service_time":"#asLong{%elapsedTime}",
-                      "request":"http://%header{Host}%requestURI",
-                      "referrer":"%header{Referer}",
-                      "agent":"%header{User-agent}",
+                    <pattern>
+                        {
+                          "@timestamp":"%date{yyyy-MM-dd'T'HH:mm:ss.SSSXXX}",
+                          "clientip":"%remoteIP",
+                          "auth":"%user",
+                          "verb":"%requestMethod",
+                          "requestprotocol":"%protocol",
+                          "rawrequest":"%requestURL",
+                          "response":"#asLong{%statusCode}",
+                          "bytes":"#asLong{%bytesSent}",
+                          "total_service_time":"#asLong{%elapsedTime}",
+                          "request":"http://%header{Host}%requestURI",
+                          "referrer":"%header{Referer}",
+                          "agent":"%header{User-agent}",
 
-                      "request.host":"%header{Host}",
-                      "request.accept":"%header{Accept}",
-                      "request.accept-encoding":"%header{Accept-Encoding}",
-                      "request.connection":"%header{Connection}",
+                          "request.host":"%header{Host}",
+                          "request.accept":"%header{Accept}",
+                          "request.accept-encoding":"%header{Accept-Encoding}",
+                          "request.connection":"%header{Connection}",
 
-                      "puppet.client-verify":"%header{X-Client-Verify}",
-                      "puppet.client-dn":"%header{X-Client-DN}",
-                      "puppet.client-cert":"%header{X-Client-Cert}",
+                          "puppet.client-verify":"%header{X-Client-Verify}",
+                          "puppet.client-dn":"%header{X-Client-DN}",
+                          "puppet.client-cert":"%header{X-Client-Cert}",
 
-                      "response.content-type":"%responseHeader{Content-Type}",
-                      "response.content-length":"%responseHeader{Content-Length}",
-                      "response.server":"%responseHeader{Server}",
-                      "response.connection":"%responseHeader{Connection}"
-                    }
+                          "response.content-type":"%responseHeader{Content-Type}",
+                          "response.content-length":"%responseHeader{Content-Length}",
+                          "response.server":"%responseHeader{Server}",
+                          "response.connection":"%responseHeader{Connection}"
+                        }
+                    </pattern>
                 </pattern>
             </providers>
         </encoder>
