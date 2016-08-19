@@ -26,11 +26,11 @@ If you edited or manage your `bootstrap.cfg` file, do the following:
 
 ### Before you upgrade: `ca.cfg`
 
-> **Warning:** Back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) before the upgrade. If anything unexpected happens, such as a master's newly enabled CA services or an emergency rollback overwriting them during the upgrade, this ensures that you can restore your previous certificates and certificate revocation list.
+> **Warning:** Back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) before the upgrade. If a master unexpectedly enables CA services or an emergency rollback overwrites your certificates and certificate revocation list, you'll need to restore them from backups.
 
-After upgrading to Puppet Server 2.5.0, CA services will be enabled on all Puppet Server masters, even if you edited the [`bootstrap.cfg` file][] before upgrading to disable them. This happens because Puppet Server 2.5 creates a new configuration file, `/etc/puppetlabs/puppetserver/services.d/ca.cfg`, if it doesn't already exist, and this new file enables CA services by default.
+Puppet Server 2.5 creates a new configuration file, `/etc/puppetlabs/puppetserver/services.d/ca.cfg`, if it doesn't already exist, and this new file enables CA services by default.
 
-To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ upgrading to Server 2.5.0. Unlike the `boostrap.cfg` file, package managers **do not** overwrite the new `ca.cfg` file, allowing future upgrades to respect settings without attempting to overwrite them.
+To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ you upgrade to Server 2.5.0. Unlike the `boostrap.cfg` file, package managers **do not** overwrite the new `ca.cfg` file, allowing future upgrades to respect settings without attempting to overwrite them.
 
 This example `ca.cfg` file disables the CA services:
 
