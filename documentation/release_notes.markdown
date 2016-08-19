@@ -16,11 +16,15 @@ Released August 11, 2016.
 
 This is a feature and bug-fix release of Puppet Server.
 
-> **Note:** If you disabled the certificate authority (CA) on Puppet Server by editing the [`bootstrap.cfg`][service bootstrapping] file on older versions of Puppet Server, be aware that Puppet Server 2.5.0 no longer uses the `bootstrap.cfg` file.
+> ### Potential breaking issues when upgrading with a modified `bootstrap.cfg`
 >
-> To ensure that CA services remain disabled after upgrading to Server 2.5.0, create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled *before* upgrading. The `puppetserver` service restarts on upgrade if the service is running when you upgrade, which reloads the `ca.cfg` file.
+> If you disabled the certificate authority (CA) on Puppet Server by editing the [`bootstrap.cfg`][service bootstrapping] file on older versions of Puppet Server --- for instance, because you have a multi-master configuration with the default CA disabled on some masters, or use an external CA --- be aware that Puppet Server 2.5.0 no longer uses the `bootstrap.cfg` file.
 >
-> For more details, including an sample `ca.cfg` file that disables CA services, see the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown).
+> If you modified `bootstrap.cfg` and then upgrade from earlier versions of Puppet Server to 2.5.0, CA services will be enabled on all upgraded Puppet Server masters. To ensure that CA services remain disabled after upgrading, create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled _before_ upgrading. The `puppetserver` service restarts after the upgrade if the service is running before the upgrade, and the service restart also reloads the new `ca.cfg` file.
+>
+> Also, back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) before the upgrade to ensure that you can restore your previous certificates and certificate revocation list should a master's newly enabled CA overwrite them during the upgrade.
+>
+> For more details, including a sample `ca.cfg` file that disables CA services, see the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown).
 
 ### New feature: Flexible service bootstrapping/CA configuration file
 
