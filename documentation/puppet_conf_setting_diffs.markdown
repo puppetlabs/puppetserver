@@ -4,7 +4,6 @@ title: "Puppet Server: Differing Behavior in puppet.conf"
 canonical: "/puppetserver/latest/puppet_conf_setting_diffs.html"
 ---
 
-
 Puppet Server honors almost all settings in puppet.conf and should pick them
 up automatically. However, some Puppet Server settings differ from a Ruby Puppet master's puppet.conf settings; we've detailed these differences below. For more complete information on puppet.conf settings, see our [Configuration Reference](https://docs.puppet.com/puppet/latest/reference/configuration.html) page.
 
@@ -23,7 +22,7 @@ listens, use either `host` (unencrypted) or `ssl-host` (SSL encrypted) in the
 
 Puppet Server does not use this setting. Instead, Puppet Server acts as a
 certificate authority based on the certificate authority service configuration
-in the `bootstrap.cfg` file. See [Service Bootstrapping](./configuration.markdown#service-bootstrapping) for more details.
+in the `ca.cfg` file. See [Service Bootstrapping](./configuration.markdown#service-bootstrapping) for more details.
 
 ### [`ca_ttl`](https://docs.puppetlabs.com/references/latest/configuration.html#cattl)
 

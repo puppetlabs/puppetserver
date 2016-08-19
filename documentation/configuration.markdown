@@ -80,11 +80,18 @@ Puppet Server is built on top of our open-source Clojure application framework, 
 
 One of the features that Trapperkeeper provides is the ability to enable or disable individual services that an application provides. In Puppet Server, you can use this feature to enable or disable the CA service. The CA service is enabled by default, but if you're running a multi-master environment or using an external CA, you might want to disable the CA service on some nodes.
 
-You can do this by modifying your `ca.cfg` file, usually located with other service bootstrapping configuration files in `/etc/puppetlabs/puppetserver/services.d/`.
+Starting in Puppet Server 2.5.0, the service bootstrap configuration files are in two locations:
 
-> **Note:** If you're upgrading from Puppet Server 2.4 or earlier to Server 2.5 or newer, read the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) first.
+-   `/etc/puppetlabs/puppetserver/services.d/`: For services that users are expected to manually configure if necessary, such as CA-related settings.
+-   `/opt/puppetlabs/server/apps/puppetserver/config/services.d/`: For services users _shouldn't_ need to configure.
 
-In that file, find and modify these lines to enable or disable the service:
+Any files with a `.cfg` extension in either of these locations are combined to form the final set of services Puppet Server will use.
+
+The CA-related configuration settings are set in `/etc/puppetlabs/puppetserver/services.d/ca.cfg`. If services added in future versions have user-configurable settings, the configuration files will also be in this directory. When upgrading Puppet Server 2.5.0 and newer with a package manager, it should not overwrite files already in this directory.
+
+> **Note:** If you're upgrading from Puppet Server 2.4.x or earlier to Server 2.5 or newer, read and act on the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) **before upgrading**.
+
+In the `ca.cfg` file, find and modify these lines as directed to enable or disable the service:
 
 ~~~
 # To enable the CA service, leave the following line uncommented
