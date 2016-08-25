@@ -348,7 +348,7 @@ use cases.
 `trapperkeeper-authorization` unifies authorization configuration across all
 of these endpoints into a single file and provides more granular control.
 
-### The "resource_types" API endpoint
+### Puppet's "resource_types" API endpoint
 
 #### Now
 
@@ -370,4 +370,4 @@ The `environment_classes` endpoint ignores Puppet's Ruby-based authorization met
 
 Users often rely on the `resource_types` endpoint for lists of classes and associated parameters in an environment. For such requests, the `resource_types` endpoint is inefficient and can trigger problematic events, such as [manifests being parsed during a catalog request](https://tickets.puppetlabs.com/browse/SERVER-1200).
 
-To fill these requests more efficiently and safely, Puppet Server 2.3.0 introduced the narrowly defined `environment_classes` endpoint.
+To fulfill these requests more efficiently and safely, Puppet Server 2.3.0 introduced the narrowly defined `environment_classes` endpoint.
