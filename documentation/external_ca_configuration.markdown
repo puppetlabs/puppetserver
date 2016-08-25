@@ -4,7 +4,6 @@ title: "Puppet Server: External CA Configuration"
 canonical: "/puppetserver/latest/external_ca_configuration.html"
 ---
 
-
 Puppet Server supports the ability to configure certificates from an existing
 external CA. This is similar to Ruby Puppet master functionality under a Rack-enabled web server like Apache with Passenger. Much of the existing
 documentation on [External CA Support for the Ruby Puppet Master](https://docs.puppet.com/puppet/latest/reference/config_ssl_external_ca.html)
@@ -20,18 +19,20 @@ external server. See [External SSL Termination with Puppet Server](./external_ss
 
 ## Disabling the Internal Puppet CA Service
 
-If you are using certs from an external CA, you'll need to disable the internal Puppet CA service. However, the `ca` setting from the `puppet.conf` file isn't honored by Puppet Server, so you'll disable the service in the `bootstrap.cfg` file (usually located in `/etc/puppetserver/bootstrap.cfg`).
+> **Note:** If you're upgrading from Puppet Server 2.4.x or earlier to Puppet Server 2.5, read and act on the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) **before upgrading**.
 
-To disable the Puppet CA service in `bootstrap.cfg`, comment out the line following "To enable the CA service..." and uncomment the line following "To disable the CA service...":
+If you are using certs from an external CA, you'll need to disable the internal Puppet CA service. However, the `ca` setting from the `puppet.conf` file isn't honored by Puppet Server. To disable the service, modify the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file.
 
-~~~
+To disable the Puppet CA service in the `ca.cfg` file, comment out the line following "To enable the CA service..." and uncomment the line following "To disable the CA service...", as so:
+
+```
 # To enable the CA service, leave the following line uncommented
 # puppetlabs.services.ca.certificate-authority-service/certificate-authority-service
 # To disable the CA service, comment out the above line and uncomment the line below
 puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
-~~~
+```
 
-For more information on the `bootstrap.cfg` file, see [Service Bootstrapping](./configuration.markdown#service-bootstrapping).
+For more information, see [Service Bootstrapping](./configuration.markdown#service-bootstrapping).
 
 ## Web Server Configuration
 

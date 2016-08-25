@@ -40,7 +40,7 @@ There are three ways to trigger your Puppet Server environment to refresh and pi
 
 ### Changes that require a full Server restart
 
-* Changes to JVM arguments, such as [heap size settings](./tuning_guide.markdown#jvm-heap-size), that are typically configured in your `/etc/sysconfig/puppetserver` file.
-* Changes to [`bootstrap.cfg`](./configuration.markdown#service-bootstrapping) to enable or disable Puppet Server's certificate authority (CA) service.
+* Changes to JVM arguments, such as [heap size settings](./tuning_guide.markdown#jvm-heap-size), that are typically configured in your `/etc/sysconfig/puppetserver` or `/etc/default/puppetserver` file.
+* Changes to [`ca.cfg`](./configuration.markdown#service-bootstrapping) to enable or disable Puppet Server's certificate authority (CA) service.
 
 For these types of changes, you must restart the process by using the operating system's service framework, for example, by using the `systemctl` or `service` commands.

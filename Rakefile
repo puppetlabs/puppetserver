@@ -54,7 +54,7 @@ namespace :spec do
       BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
       lein run -m org.jruby.Main \
-        -S bundle install --path='#{TEST_BUNDLE_DIR}'
+        -S bundle install --without extra development --path='#{TEST_BUNDLE_DIR}'
       CMD
       sh bundle_install
     end

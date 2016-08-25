@@ -347,3 +347,27 @@ use cases.
 
 `trapperkeeper-authorization` unifies authorization configuration across all
 of these endpoints into a single file and provides more granular control.
+
+### Puppet's "resource_types" API endpoint
+
+#### Now
+
+The [`resource_type` and `resource_types` Puppet HTTP API endpoints](https://docs.puppet.com/puppet/4.6/reference/http_api/http_resource_type.html) return information about classes, defined types, and node definitions.
+
+The [`environment_classes` HTTP API in Puppet Server](./puppet-api/v3/environment_classes.markdown) serves as a replacement for the Puppet resource type API for classes.
+
+#### In a Future Major Release
+
+The `resource_type` and `resource_types` HTTP APIs will be removed.
+
+#### Detecting and Updating
+
+If your application calls the `resource_type` or `resource_types` HTTP API endpoints for information about classes, point those calls to the `environment_classes` endpoint. The `environment_classes` endpoint has different features and returns different values than `resource_type`; see the [changes in the environment classes API](./puppet-api/v3/environment_classes.markdown) for details.
+
+The `environment_classes` endpoint ignores Puppet's Ruby-based authorization methods and configuration in favor of Puppet Server's Trapperkeeper authorization. For more information, see the ["Authorization" section](./puppet-api/v3/environment_classes.markdown) of the environment classes API documentation.
+
+#### Context
+
+Users often rely on the `resource_types` endpoint for lists of classes and associated parameters in an environment. For such requests, the `resource_types` endpoint is inefficient and can trigger problematic events, such as [manifests being parsed during a catalog request](https://tickets.puppetlabs.com/browse/SERVER-1200).
+
+To fulfill these requests more efficiently and safely, Puppet Server 2.3.0 introduced the narrowly defined `environment_classes` endpoint.

@@ -194,7 +194,7 @@ module PuppetServerExtensions
     variant, version, _, _ = master['platform'].to_array
 
     case variant
-    when /^(fedora|el|centos)$/
+    when /^(fedora|el|centos|sles)$/
       defaults_dir = "/etc/sysconfig/"
     when /^(debian|ubuntu)$/
       defaults_dir = "/etc/default/"
