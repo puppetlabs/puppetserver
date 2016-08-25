@@ -16,11 +16,27 @@ Released August 11, 2016.
 
 This is a feature and bug-fix release of Puppet Server.
 
-> **Note:** If you disabled the certificate authority (CA) on Puppet Server by editing the [`bootstrap.cfg`][service bootstrapping] file on older versions of Puppet Server, be aware that Puppet Server 2.5.0 no longer uses the `bootstrap.cfg` file.
+> ### Potential breaking issues when upgrading with a modified `bootstrap.cfg`
 >
-> To ensure that CA services remain disabled after upgrading to Server 2.5.0, create `/etc/puppetlabs/puppetserver/services.d/ca.cfg` with the CA disabled *before* upgrading. The `puppetserver` service restarts on upgrade if the service is running when you upgrade, which reloads the `ca.cfg` file.
+> If you disabled the certificate authority (CA) on Puppet Server by editing the [`bootstrap.cfg`][service bootstrapping] file on older versions of Puppet Server --- for instance, because you have a multi-master configuration with the default CA disabled on some masters, or use an external CA --- be aware that Puppet Server 2.5.0 no longer uses the `bootstrap.cfg` file.
 >
-> For more details, including an sample `ca.cfg` file that disables CA services, see the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown).
+> Puppet Server 2.5.0 instead creates a new configuration file, `/etc/puppetlabs/puppetserver/services.d/ca.cfg`, if it doesn't already exist, and this new file enables CA services by default.
+>
+> To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ you upgrade to Server 2.5.0. The `puppetserver` service restarts after the upgrade if the service is running before the upgrade, and the service restart also reloads the new `ca.cfg` file.
+>
+> Also, back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) _before_ you upgrade to ensure that you can restore your previous certificates and certificate revocation list, so you can restore them in case any mistakes or failures to disable the CA services in `ca.cfg` lead to a master unexpectedly enabling CA services and overwriting them.
+>
+> For more details, including a sample `ca.cfg` file that disables CA services, see the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown).
+
+> ### Potential warnings when upgrading with a modified init configuration
+>
+> If you modified the init configuration file --- for instance, to [configure Puppet Server's JVM memory allocation](./install_from_packages.html#memory-allocation) or [maximum heap size](./tuning_guide.html) --- you might see a warning during the upgrade that the updated package will overwrite the file (`/etc/sysconfig/puppetserver` in Red Hat and derivatives, or `/etc/default/puppetserver` in Debian-based systems).
+>
+> The changes to the file support the new service bootstrapping behaviors. If you don't accept changes to the file, you might see a `Service ':PoolManagerService' not found` or similar warning. To satisfy this warning, make sure the `BOOTSTRAP_CONFIG` setting in the init configuration file is set to:
+>
+>     BOOTSTRAP_CONFIG="/etc/puppetlabs/puppetserver/services.d/,/opt/puppetlabs/server/apps/puppetserver/services.d"
+>
+> If you modified other settings in the file before upgrading, and then overwrite the file during the upgrade, you might need to reapply those modifications after the upgrade.
 
 ### New feature: Flexible service bootstrapping/CA configuration file
 
