@@ -1,7 +1,7 @@
 ---
 layout: default
 title: "Puppet Server: Puppet API: Environment Classes"
-canonical: "/puppetserver/latest/puppet/v3/environment_classes.html"
+canonical: "/puppetserver/latest/puppet-api/v3/environment_classes.html"
 ---
 
 [classes]: https://docs.puppet.com/puppet/latest/reference/lang_classes.html
@@ -19,13 +19,13 @@ canonical: "/puppetserver/latest/puppet/v3/environment_classes.html"
 [Etag]: https://tools.ietf.org/html/rfc7232#section-2.3
 
 The environment classes API serves as a replacement for the Puppet [resource type API][]
-for [classes][].
+for [classes][], which is [deprecated](../../deprecated_features.markdown) as of Puppet
+Server 2.3.0 and Puppet 4.5.
 
 This endpoint is available only when the Puppet master is running Puppet Server, not
-on Ruby Puppet masters, such as the
-[deprecated WEBrick Puppet master][]. It also ignores the Ruby-based Puppet master's
-authorization methods and configuration. See the [Authorization section](#authorization)
-for more information.
+on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It also ignores
+the Ruby-based Puppet master's authorization methods and configuration. See the
+[Authorization section](#authorization) for more information.
 
 ## Changes in the environment classes API
 
@@ -184,9 +184,10 @@ Content-Type: text/json
 
 #### GET request with Etag roundtripped from a previous GET request
 
-If you send the [Etag][] value that was returned from the previous request to the server in a follow-up request,  and the underlying environment
-cache has not been invalidated, the server will return an HTTP 304 (Not Modified) response. See
-the [Headers and Caching Behavior](#headers-and-caching-behavior) section for more
+If you send the [Etag][] value that was returned from the previous request to the server
+in a follow-up request, and the underlying environment cache has not been invalidated, the
+server will return an HTTP 304 (Not Modified) response. See the
+[Headers and Caching Behavior](#headers-and-caching-behavior) section for more
 information about caching and invalidation of entries.
 
 ```
@@ -366,7 +367,8 @@ environment's class information.
 
 #### Clearing class information cache entries
 
-After updating an environment's manifests, you must clear the server's class information cache entries, so the server can parse the latest manifests and reflect class changes to
+After updating an environment's manifests, you must clear the server's class information
+cache entries, so the server can parse the latest manifests and reflect class changes to
 the class information in queries to the environment classes endpoint. To clear cache
 entries on the server, do one of the following:
 
