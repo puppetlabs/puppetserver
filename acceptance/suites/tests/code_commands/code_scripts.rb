@@ -1,16 +1,15 @@
+test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
 require 'json'
 
 skip_test 'SKIP: This test should only run in puppetserver FOSS.' if options[:type] == 'pe'
 
-test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
-
-git_repo        ='/git/puppetcode'
-git_local_repo  ='/tmp/git'
-hostname        =on(master, 'facter hostname').stdout.strip
-fqdn            =on(master, 'facter fqdn').stdout.strip
+git_repo        = '/git/puppetcode'
+git_local_repo  = '/tmp/git'
+hostname        = on(master, 'facter hostname').stdout.strip
+fqdn            = on(master, 'facter fqdn').stdout.strip
 
 def cicsetting(present_or_absent='present')
-  cicsetting=<<-CICS
+  cicsetting = <<-CICS
     hocon_setting { 'code-id-command-script' :
       ensure => #{present_or_absent},
       path => '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf',
@@ -29,10 +28,10 @@ end
 
 teardown do
   # Remove the code-id script configuration from puppetserver.conf
-  remove_cicsetting=cicsetting('absent')
+  remove_cicsetting = cicsetting('absent')
   create_remote_file(master, '/tmp/config_code_id_command_script_disable.pp', remove_cicsetting)
   on master, 'puppet apply /tmp/config_code_id_command_script_disable.pp'
-  hup_server(master)
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
  
   on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
   on(master, 'puppet resource user git ensure=absent')
@@ -53,11 +52,11 @@ end
 
 step 'SETUP: Generate a new ssh key for the root user account to use with the git server'
   on(master, 'ssh-keygen -t rsa -V +1d -f /root/.ssh/gittest_rsa -N ""')
-  gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
+  gittest_key = on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
 step 'SETUP: Install and configure git server' do
   on(master, 'puppet module install puppetlabs-git') 
-  git_config=<<-GIT
+  git_config = <<-GIT
     user { 'git':
       ensure => present,
       # shell => '/usr/bin/git-shell',
@@ -84,7 +83,7 @@ step 'SETUP: Install and configure git server' do
 end
 
 step 'SETUP: Write out ssh config...' do
-  ssh_config=<<-SSHCONFIG
+  ssh_config = <<-SSHCONFIG
   Host #{hostname} #{fqdn}
     User git
     IdentityFile ~/.ssh/gittest_rsa
@@ -114,7 +113,7 @@ step 'SETUP: Install and configure r10k, and perform the initial commit' do
   on master, "puppet config set server #{fqdn}"
   on master, '/opt/puppetlabs/puppet/bin/gem install r10k'
   on master, "cd #{git_local_repo} && git checkout -b production"
-  r10k_yaml=<<-R10K
+  r10k_yaml = <<-R10K
 # The location to use for storing cached Git repos
 :cachedir: '/opt/puppetlabs/r10k/cache'
 
@@ -177,7 +176,7 @@ step 'SETUP: Configure the code-id script' do
   on master, 'puppet module install puppetlabs-hocon' 
   create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting() )
   on master, 'puppet apply /tmp/config_code_id_command_script.pp'
-  hup_server(master)
+  restart_puppet_server(master, {:is_pe? => false, :hup? => true})
 end
 
 step 'Get the current code-id'

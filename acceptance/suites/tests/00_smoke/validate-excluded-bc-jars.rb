@@ -1,4 +1,3 @@
-
 test_name "Validate excluded BC jars are not in packaged uberjar."
 
 package_name = options['puppetserver-package']
