@@ -89,6 +89,9 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace "0.2.4"]
+                                   ; This logback dependency is here to resolve a pedantic conflict between
+                                   ; trapperkeeper 1.1.4 and trapperkeeper-webserver-jetty9. This isn't ideal,
+                                   ; but should only be necessary on the 1.x branch of PS.
                                    [ch.qos.logback/logback-access "1.1.7"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
@@ -104,6 +107,9 @@
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
              :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
+                                               ; This logback dependency is here to resolve a pedantic conflict between
+                                               ; trapperkeeper 1.1.4 and trapperkeeper-webserver-jetty9. This isn't ideal,
+                                               ; but should only be necessary on the 1.x branch of PS.
                                                [ch.qos.logback/logback-access "1.1.7"]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
