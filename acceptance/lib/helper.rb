@@ -259,28 +259,32 @@ module PuppetServerExtensions
   # and slightly modified.
   # url: (String) URL to poke
   # method: (Symbol) :post, :get
-  # cert: (OpenSSL::X509::Certificate, String) The certificate to
+  # cert: (OpenSSL::X509::Certificate, nil) The certificate to
   #       use for authentication.
-  # key: (OpenSSL::PKey::RSA, String) The private key to use for
+  # key: (OpenSSL::PKey::RSA, nil) The private key to use for
   #      authentication
   # body: (String) Request body (default empty)
   require 'net/http'
   require 'uri'
-  def https_request(url, request_method, cert, key, body = nil)
+  def https_request(url, request_method, cert = nil, key = nil, body = nil)
     # Make insecure https request
     uri = URI.parse(url)
     http = Net::HTTP.new(uri.host, uri.port)
 
-    if cert.is_a?(OpenSSL::X509::Certificate)
-      http.cert = cert
-    else
-      raise TypeError, "cert must be an OpenSSL::X509::Certificate object, not #{cert.class}"
+    if !cert.nil?
+      if cert.is_a?(OpenSSL::X509::Certificate)
+        http.cert = cert
+      else
+        raise TypeError, "cert must be an OpenSSL::X509::Certificate object, not #{cert.class}"
+      end
     end
 
-    if key.is_a?(OpenSSL::PKey::RSA)
-      http.key = key
-    else
-      raise TypeError, "key must be an OpenSSL::PKey:RSA object, not #{key.class}"
+    if !key.nil?
+      if key.is_a?(OpenSSL::PKey::RSA)
+        http.key = key
+      else
+        raise TypeError, "key must be an OpenSSL::PKey:RSA object, not #{key.class}"
+      end
     end
 
     http.use_ssl = true

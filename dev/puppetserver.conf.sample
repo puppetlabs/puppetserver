@@ -33,6 +33,9 @@ web-router-service: {
     # puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service
     # service is in the bootstrap.cfg
     "puppetlabs.services.legacy-routes.legacy-routes-service/legacy-routes-service": ""
+
+    # This controls the mount point for the status API
+    "puppetlabs.trapperkeeper.services.status.status-service/status-service": "/status"
 }
 
 # configuration for the JRuby interpreters
