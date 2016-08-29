@@ -52,5 +52,5 @@
           jruby-env (.runScriptlet jruby-interpreter "ENV")]
 
       ; $HOME and $PATH are left in by `jruby-puppet-env`
-      (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE"}
+      (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY"}
             (set (keys jruby-env)))))))
