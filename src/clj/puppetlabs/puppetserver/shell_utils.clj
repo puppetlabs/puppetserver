@@ -32,8 +32,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(schema/defn ^:private ^:always-validate
-  validate-command!
+(def default-execution-options
+  {:args []
+   :env nil
+   :in nil})
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(schema/defn ^:always-validate
+validate-command!
   "Checks the command string to ensure that it is an absolute path, executable
   and that the file exists. An exception is thrown if any of those are not the
   case."
@@ -53,14 +61,6 @@
       (not (.canExecute command-file))
       (throw (IllegalArgumentException.
               (trs "The referenced command ''{0}'' is not executable" command))))))
-
-(def default-execution-options
-  {:args []
-   :env nil
-   :in nil})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public
 
 (schema/defn ^:always-validate
   execute-command-streamed :- ExecutionResultStreamed
