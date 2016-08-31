@@ -143,7 +143,7 @@ GET /puppet/v3/environment_classes?environment=env
 
 HTTP/1.1 200 OK
 Etag: b02ede6ecc432b134217a1cc681c406288ef9224
-Content-Type: text/json
+Content-Type: application/json
 
 {
   "files": [
@@ -208,7 +208,7 @@ If-None-Match: b02ede6ecc432b134217a1cc681c406288ef9224
 
 HTTP/1.1 200 OK
 Etag: 2f4f83096265b9741c5304b3055f866df0336762
-Content-Type: text/json
+Content-Type: application/json
 
 {
   "files": [
