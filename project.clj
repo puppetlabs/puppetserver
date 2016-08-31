@@ -1,4 +1,4 @@
-(def tk-version "1.1.1")
+(def tk-version "1.1.4")
 (def tk-jetty-version "1.3.1")
 (def ks-version "1.1.0")
 (def ps-version "1.1.4-SNAPSHOT")
@@ -14,6 +14,11 @@
   :description "Puppet Server"
 
   :dependencies [[org.clojure/clojure "1.6.0"]
+
+                 ;; begin version conflict resolution dependencies
+                 [org.slf4j/slf4j-api "1.7.20"]
+                 ;; end version conflict resolution dependencies
+
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
@@ -65,7 +70,8 @@
                        :group "puppet"
                        :start-timeout "120"
                        :build-type "foss"
-                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"}
+                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
+                       :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"}
 
@@ -83,6 +89,10 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace "0.2.4"]
+                                   ; This logback dependency is here to resolve a pedantic conflict between
+                                   ; trapperkeeper 1.1.4 and trapperkeeper-webserver-jetty9. This isn't ideal,
+                                   ; but should only be necessary on the 1.x branch of PS.
+                                   [ch.qos.logback/logback-access "1.1.7"]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
                                    [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
@@ -97,9 +107,13 @@
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
              :ezbake {:dependencies ^:replace [[puppetlabs/puppetserver ~ps-version]
+                                               ; This logback dependency is here to resolve a pedantic conflict between
+                                               ; trapperkeeper 1.1.4 and trapperkeeper-webserver-jetty9. This isn't ideal,
+                                               ; but should only be necessary on the 1.x branch of PS.
+                                               [ch.qos.logback/logback-access "1.1.7"]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.2.12"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.2.13"]]
                       :name "puppetserver"}
 
              :uberjar {:aot [puppetlabs.trapperkeeper.main]}
