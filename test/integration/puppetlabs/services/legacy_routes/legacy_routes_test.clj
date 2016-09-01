@@ -13,6 +13,7 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.legacy-routes.legacy-routes-service :as legacy-routes]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as tk-scheduler]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
@@ -97,7 +98,8 @@
          admin/puppet-admin-service
          disabled-ca/certificate-authority-disabled-service
          authorization/authorization-service
-         vcs/versioned-code-service]
+         vcs/versioned-code-service
+         tk-scheduler/scheduler-service]
         {}
 
         (is (= 404 (:status (http-get "/production/certificate_statuses/all")))

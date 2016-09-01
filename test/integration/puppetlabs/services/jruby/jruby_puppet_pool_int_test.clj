@@ -29,7 +29,8 @@
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents])
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
+            [puppetlabs.trapperkeeper.config :as tk-config])
   (:import (org.jruby RubyInstanceConfig$CompileMode)))
 
 (def test-resources-dir
@@ -221,7 +222,10 @@
            request {:uri "/puppet/v3/environments", :params {}, :headers {},
                     :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
            ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
+           ping-before-stop (ping-environment)
            stop-complete? (future (tk-app/stop app))]
+       (is (= 200 (:status ping-before-stop))
+           "environment request before stop failed")
        (let [start (System/currentTimeMillis)]
          (logging/with-test-logging
           (while (and
@@ -358,6 +362,38 @@
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
+
+(deftest jruby-environment-vars-test
+  (testing "Make sure that the environment variables whitelisted in puppetserver.conf are being set"
+    (tk-testutils/with-app-with-config
+      app
+      [jruby/jruby-puppet-pooled-service
+       profiler/puppet-profiler-service
+       jruby-utils/jruby-pool-manager-service]
+      (let [tmp-conf (ks/temp-file "puppetserver" ".conf")]
+        (spit tmp-conf
+              "environment-vars: { \"FOO\": ${HOME} }")
+        (jruby-testutils/jruby-puppet-tk-config
+          (jruby-testutils/jruby-puppet-config
+            (merge
+              {:ruby-load-path   jruby-testutils/ruby-load-path
+               :gem-home         jruby-testutils/gem-home
+               :master-conf-dir  jruby-testutils/conf-dir
+               :master-code-dir  jruby-testutils/code-dir
+               :master-var-dir   jruby-testutils/var-dir
+               :master-run-dir   jruby-testutils/run-dir
+               :master-log-dir   jruby-testutils/log-dir}
+              (tk-config/load-config (.getPath tmp-conf))))))
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
+            jruby-scripting-container (:scripting-container jruby-instance)
+            jruby-env (.runScriptlet jruby-scripting-container "ENV")]
+        (try
+          (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
+                 (set (keys jruby-env))))
+          (is (= (.get jruby-env "FOO") (System/getenv "HOME")))
+          (finally
+            (jruby-testutils/return-instance jruby-service jruby-instance :test)))))))
 
 (deftest master-termination-test
   (testing "Flushing the pool causes masters to be terminated"

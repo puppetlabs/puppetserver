@@ -19,6 +19,7 @@
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as tk-scheduler]
             [puppetlabs.services.request-handler.request-handler-service :as handler-service]
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.master.master-service :as master-service]
@@ -311,7 +312,8 @@
                       ca-service/certificate-authority-service
                       authorization-service/authorization-service
                       routing-service/webrouting-service
-                      custom-vcs]]
+                      custom-vcs
+                      tk-scheduler/scheduler-service]]
         (jruby-bootstrap/with-puppetserver-running-with-services
          app services {:jruby-puppet {:max-active-instances 1}}
          (jruby-testutils/wait-for-jrubies app)

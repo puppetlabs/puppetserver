@@ -13,6 +13,8 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :refer [authorization-service]]
             [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
+            [puppetlabs.trapperkeeper.services.status.status-service :refer [status-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
@@ -59,7 +61,9 @@
                puppet-admin-service
                legacy-routes-service
                authorization-service
-               versioned-code-service]
+               versioned-code-service
+               scheduler-service
+               status-service]
               ((resolve 'user/puppetserver-conf)))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))

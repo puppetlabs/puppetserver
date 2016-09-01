@@ -1,8 +1,8 @@
 (def clj-version "1.7.0")
-(def tk-version "1.4.0")
-(def tk-jetty-version "1.5.9")
+(def tk-version "1.5.0")
+(def tk-jetty-version "1.5.10")
 (def ks-version "1.3.1")
-(def ps-version "2.5.1-stable-SNAPSHOT")
+(def ps-version "2.6.0-stable-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -23,6 +23,7 @@
                  [org.clojure/tools.logging "0.3.1"]
                  [ring/ring-servlet "1.4.0"]
                  [hiccup "1.0.5"]
+                 [org.slf4j/slf4j-api "1.7.20"]
                  ;; end version conflict resolution dependencies
 
                  [cheshire "5.6.1"]
@@ -36,36 +37,28 @@
                  [liberator "0.12.0"]
                  [org.apache.commons/commons-exec "1.3"]
 
-                 [org.jruby/jruby-core "1.7.20.1"
-                  :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
-                 ;; jffi and jnr-x86asm are explicit dependencies because,
-                 ;; in JRuby's poms, they are defined using version ranges,
-                 ;; and :pedantic? :abort won't tolerate this.
-                 [com.github.jnr/jffi "1.2.9"]
-                 [com.github.jnr/jffi "1.2.9" :classifier "native"]
-                 [com.github.jnr/jnr-x86asm "1.0.2"]
-                 ;; NOTE: jruby-stdlib packages some unexpected things inside
-                 ;; of its jar; please read the detailed notes above the
-                 ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.20.1"]
-
-                 ;; we do not currently use this dependency directly, but
+                 ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
                  ;; send their logs to logstash, so we include it in the jar.
                  ;; we may use it directly in the future
-                 [net.logstash.logback/logstash-logback-encoder "4.5.1"]
+                 ;; We are using an exlusion here because logback dependencies should
+                 ;; be inherited from trapperkeeper to avoid accidentally bringing
+                 ;; in different versions of the three different logback artifacts
+                 [net.logstash.logback/logstash-logback-encoder "4.5.1" :exclusions [ch.qos.logback/logback-access
+                                                                                     ch.qos.logback/logback-core]]
 
-
-                 [puppetlabs/jruby-utils "0.1.0"]
+                 [puppetlabs/jruby-utils "0.2.1"]
                  [puppetlabs/trapperkeeper ~tk-version]
                  [puppetlabs/trapperkeeper-authorization "0.7.0"]
+                 [puppetlabs/trapperkeeper-scheduler "0.0.1"]
+                 [puppetlabs/trapperkeeper-status "0.3.5"]
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/ring-middleware "1.0.0"]
                  [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
                  [puppetlabs/http-client "0.5.0"]
                  [puppetlabs/comidi "0.3.1"]
-                 [puppetlabs/i18n "0.4.1"]]
+                 [puppetlabs/i18n "0.4.3"]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -80,7 +73,7 @@
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
   :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]
-            [puppetlabs/i18n "0.4.1"]]
+            [puppetlabs/i18n "0.4.3"]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
@@ -88,7 +81,8 @@
                        :build-type "foss"
                        :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
                        :repo-target "PC1"
-                       :bootstrap-source :services-d}
+                       :bootstrap-source :services-d
+                       :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"
                 :system-config-dir "ezbake/system-config"}
@@ -131,7 +125,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.4.4"]]
+                      :plugins [[puppetlabs/lein-ezbake "0.5.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}

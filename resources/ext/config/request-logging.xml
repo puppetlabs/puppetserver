@@ -1,9 +1,17 @@
 <configuration debug="false" scan="true">
-  <appender name="FILE" class="ch.qos.logback.core.FileAppender">
-    <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log</file>
-    <encoder>
-        <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" %D</pattern>
-    </encoder>
-  </appender>
-  <appender-ref ref="FILE" />
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy"><!-- rollover daily -->
+            <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver-access-%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <!-- each file should be at most 10MB, keep 90 days worth of history, but at most 1GB total-->
+            <maxFileSize>10MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%h %l %u [%t] "%r" %s %b "%i{Referer}" "%i{User-Agent}" %D</pattern>
+        </encoder>
+    </appender>
+    <appender-ref ref="FILE" />
 </configuration>

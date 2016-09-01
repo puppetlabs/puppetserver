@@ -19,6 +19,7 @@ group :test do
   gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.7")
   gem 'uuidtools'
   gem 'httparty'
+  gem 'master_manipulator'
 end
 
 if File.exists? "#{__FILE__}.local"
