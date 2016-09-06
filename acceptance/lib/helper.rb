@@ -266,12 +266,12 @@ module PuppetServerExtensions
   # body: (String) Request body (default empty)
   require 'net/http'
   require 'uri'
-  def https_request(url, request_method, cert = nil, key = nil, body = nil)
+  def https_request(url, request_method, cert = nil, key = nil, body = nil, options = {})
     # Make insecure https request
     uri = URI.parse(url)
     http = Net::HTTP.new(uri.host, uri.port)
 
-    if !cert.nil?
+    if cert
       if cert.is_a?(OpenSSL::X509::Certificate)
         http.cert = cert
       else
@@ -279,7 +279,7 @@ module PuppetServerExtensions
       end
     end
 
-    if !key.nil?
+    if key
       if key.is_a?(OpenSSL::PKey::RSA)
         http.key = key
       else
@@ -289,6 +289,7 @@ module PuppetServerExtensions
 
     http.use_ssl = true
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.read_timeout = options[:read_timeout] if options[:read_timeout]
 
     if request_method == :post
       request = Net::HTTP::Post.new(uri.request_uri)
@@ -298,7 +299,13 @@ module PuppetServerExtensions
     else
       request = Net::HTTP::Get.new(uri.request_uri)
     end
+
+    start = Time.now
     response = http.request(request)
+    stop = Time.now
+
+    logger.debug "Remote took #{stop - start} to respond"
+    response
   end
 
   def hup_server(host = master, timeout = 30)
