@@ -336,6 +336,11 @@ module PuppetServerExtensions
     end
   end
 
+  def reload_server(host = master, opts = {})
+    service = options['puppetservice']
+    on(host, "service #{service} reload", opts)
+  end
+
   def apply_one_hocon_setting(hocon_host,
                               hocon_file_path,
                               hocon_setting,
