@@ -23,21 +23,20 @@
                  [puppetlabs/kitchensink ~ks-version]
                  [puppetlabs/ssl-utils "0.8.1"]
                  [puppetlabs/http-client "0.4.4"]
-                 [org.jruby/jruby-core "1.7.20.1"
+                 [org.jruby/jruby-core "1.7.26"
                   :exclusions [com.github.jnr/jffi com.github.jnr/jnr-x86asm]]
                  ;; jffi and jnr-x86asm are explicit dependencies because,
                  ;; in JRuby's poms, they are defined using version ranges,
                  ;; and :pedantic? :abort won't tolerate this.
-                 [com.github.jnr/jffi "1.2.9"]
-                 [com.github.jnr/jffi "1.2.9" :classifier "native"]
+                 [com.github.jnr/jffi "1.2.12"]
+                 [com.github.jnr/jffi "1.2.12" :classifier "native"]
                  [com.github.jnr/jnr-x86asm "1.0.2"]
                  ;; NOTE: jruby-stdlib packages some unexpected things inside
                  ;; of its jar; please read the detailed notes above the
                  ;; 'uberjar-exclusions' example toward the end of this file.
-                 [org.jruby/jruby-stdlib "1.7.20.1"]
+                 [org.jruby/jruby-stdlib "1.7.26"]
                  [org.clojure/data.json "0.2.3"]
                  [org.clojure/tools.macro "0.1.5"]
-                 [joda-time "2.5"]
                  [clj-time "0.7.0"]
                  [liberator "0.12.0"]
                  [puppetlabs/comidi "0.1.1"]
