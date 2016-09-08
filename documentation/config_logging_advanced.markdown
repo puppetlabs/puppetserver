@@ -20,7 +20,7 @@ Before you configure Puppet Server to log to JSON, consider the following:
 * Do you want to set up JSON logging *only* for the main Puppet Server logs (`puppetserver.log`), or *also* for the HTTP access logs (`puppetserver-access.log`)?
 * What kind of log rotation strategy do you want to use for the new JSON log files?
 
-The following examples show how to configure for:
+The following examples show how to configure Logback for:
 
 * logging to both JSON and plain-text
 * JSON logging both the main logs and the HTTP access logs
@@ -28,7 +28,7 @@ The following examples show how to configure for:
 
 Adjust the example configuration settings to suit your needs.
 
-> **Note:** Puppet Server sets up log rotation of the main `puppetserver.log` file automatically using `logrotate`, which is why you don't see Logback log rotation configuration settings in the default `logback.xml` file. However, Puppet Server does *not* include any `logrotate` configuration for the new JSON log files that we'll be setting up, so the examples show how to use `logback` to do that.  Alternatively, you can omit those portions of these configuration examples and configure `logrotate` on your own to manage the log rotation for these new JSON files.
+> **Note:** Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
 #### Adding a JSON version of the main Puppet Server logs
 

@@ -4,7 +4,6 @@ title: "Puppet Server: Puppet Server vs. Apache/Passenger Puppet Master"
 canonical: "/puppetserver/latest/puppetserver_vs_passenger.html"
 ---
 
-
 Puppet Server is intended to function as a drop-in replacement for the existing
 Apache/Passenger Puppet master stack. However, there are a handful of differences with Puppet Server due to changes in the underlying architecture.
 
