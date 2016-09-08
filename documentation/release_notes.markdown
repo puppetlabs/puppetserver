@@ -16,6 +16,8 @@ Released September 8, 2016.
 
 This is a feature and bug-fix release of Puppet Server.
 
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) for instructions on avoiding potential failures.
+
 ### New feature: JVM metrics endpoint `/status/v1/services`
 
 Puppet Server provides a new endpoint, `/status/v1/services`, which can provide basic Java Virtual Machine-level metrics related to the current Puppet Server process's memory usage.
