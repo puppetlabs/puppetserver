@@ -8,7 +8,68 @@ canonical: "/puppetserver/latest/release_notes.html"
 [service bootstrapping]: ./configuration.markdown#service-bootstrapping
 [auth.conf]: ./config_file_auth.markdown
 
-For release notes on the previous version of Puppet Server, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
+
+## Puppet Server 2.6
+
+Released September 8, 2016.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### New feature: JVM metrics endpoint `/status/v1/services`
+
+Puppet Server provides a new endpoint, `/status/v1/services`, which can provide basic Java Virtual Machine-level metrics related to the current Puppet Server process's memory usage.
+
+To request this data, make an HTTP GET request to Puppet Server with a query string of `level=debug`. For details on the endpoint and its response, see the [Services endpoint documentation](./status-api/v1/services.markdown).
+
+> **Experimental feature note:** These metrics are experimental. The names and values of the metrics may change in future releases.
+
+- [SERVER-1502](https://tickets.puppetlabs.com/browse/SERVER-1502)
+
+### New feature: Logback replaces logrotate for Server log rotation
+
+Previous versions of Puppet Server would rotate and compress logs daily using logrotate. Puppet Server 2.6 uses Logback, the logging library used by Puppet Server's Java Virtual Machine (JVM).
+
+Under logrotate, certain pathological error states --- such as running out of file handles --- could cause previous versions of Puppet Server to fill up disk partitions with logs of stack traces.
+
+In Puppet Server 2.6, Logback compresses Server-related logs into archives when their size exceeds 10MB. Also, when the total size of all Puppet Server logs exceeds 1GB, Logback deletes the oldest logs. These improvements should
+
+> **Debian upgrade note:** On Debian-based Linux distributions, logrotate will continue to attempt to manage your Puppet Server log files until `/etc/logrotate.d/puppetserver` is removed. These logrotate attempts are harmless, but will generate a duplicate archive of logs. As a best practice, delete `puppetserver` from `logrotate.d` after upgrading to Puppet Server 2.6.
+>
+> This doesn't affect clean installations of Puppet Server on Debian, or any upgrade or clean installation on other Linux distributions.
+
+- [SERVER-366](https://tickets.puppetlabs.com/browse/SERVER-366)
+
+### Bug fixes: Update JRuby to resolve several issues
+
+This release resolves two issues by updating the version of JRuby used by Puppet Server to 1.7.26.
+
+In previous versions of Puppet Server 2.x, when a variable lookup is performed from Ruby code or an ERB template and the variable is not defined, catalog compilation could periodically fail with an error message similar to:
+
+```
+Puppet Evaluation Error: Error while evaluating a Resource Statement, Evaluation Error: Error while evaluating a Function Call, integer 2181729414 too big to convert to `int` at <PUPPET FILE>
+```
+
+The error message is inaccurate; the lookup should return nil. The error is a [bug in JRuby](https://github.com/jruby/jruby/issues/3980), which Puppet Server uses to run Ruby code. Puppet Server 2.6 resolves this by updating JRuby.
+
+-   [SERVER-1408](https://tickets.puppetlabs.com/browse/SERVER-1408)
+
+Also, when Puppet Server uses a large JVM memory heap and large number of JRuby instances, Puppet Server could fail to start and produce error messages in the `puppetserver.log` file similar to:
+
+```
+java.lang.IllegalStateException: There was a problem adding a JRubyPuppet instance to the pool.
+Caused by: org.jruby.embed.EvalFailedException: (LoadError) load error: jopenssl/load -- java.lang.NoClassDefFoundError: org/jruby/ext/openssl/NetscapeSPKI
+```
+
+We [fixed the underlying issue in JRuby](https://github.com/jruby/jruby/pull/4063), and this fix is included in Puppet Server 2.6.
+
+- [SERVER-858](https://tickets.puppetlabs.com/browse/SERVER-1408)
+
+### New feature: Whitelist Ruby environment variables
+
+Puppet Server 2.6 adds the ability to specify a whitelist of environment variables made available to Ruby code. To whitelist variables, add them to the `environment-vars` section under the `jruby-puppet` configuration section in [`puppetserver.conf`](./config_file_puppetserver.markdown).
+
+- [SERVER-584](https://tickets.puppetlabs.com/browse/SERVER-584)
 
 ## Puppet Server 2.5
 

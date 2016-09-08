@@ -16,7 +16,7 @@ By default, Puppet Server logs messages and errors to `/var/log/puppetlabs/puppe
 
 Puppet Server picks up changes to `logback.xml` at runtime, so you don’t need to restart the service for changes to take effect.
 
-Puppet Server relies on `logrotate` to manage the log file, and installs a configuration file at `/etc/logrotate.d/puppetserver` (open source Puppet) or `/etc/logrotate.d/pe-puppetserver` (Puppet Enterprise).
+Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
 ### Settings
 
