@@ -1,7 +1,7 @@
 (def tk-version "1.1.4")
 (def tk-jetty-version "1.3.1")
 (def ks-version "1.1.0")
-(def ps-version "1.2.0")
+(def ps-version "1.2.1-SNAPSHOT")
 
 (defn deploy-info
   [url]
