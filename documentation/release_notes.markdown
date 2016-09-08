@@ -4,6 +4,59 @@ title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
 
+## Puppet Server 1.2.0
+
+Released September 8, 2016.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### New feature: Logback replaces logrotate for Server log rotation
+
+Previous versions of Puppet Server would rotate and compress logs daily using logrotate. Puppet Server 1.2 uses Logback, the logging library used by Puppet Server's Java Virtual Machine (JVM).
+
+Under logrotate, certain pathological error states --- such as running out of file handles --- could cause previous versions of Puppet Server to fill up disk partitions with logs of stack traces.
+
+In Puppet Server 1.2, Logback compresses Server-related logs into archives when their size exceeds 10MB. Also, when the total size of all Puppet Server logs exceeds 1GB, Logback deletes the oldest logs. These improvements should limit the space that Puppet Server's logs consume and prevent them from filling partitions.
+
+> **Debian upgrade note:** On Debian-based Linux distributions, logrotate will continue to attempt to manage your Puppet Server log files until `/etc/logrotate.d/puppetserver` is removed. These logrotate attempts are harmless, but will generate a duplicate archive of logs. As a best practice, delete `puppetserver` from `logrotate.d` after upgrading to Puppet Server 1.2.
+>
+> This doesn't affect clean installations of Puppet Server on Debian, or any upgrade or clean installation on other Linux distributions.
+
+-   [SERVER-366](https://tickets.puppetlabs.com/browse/SERVER-366)
+
+### Bug fixes: Update JRuby to resolve several issues
+
+This release resolves two issues by updating the version of JRuby used by Puppet Server to 1.7.26.
+
+In previous versions of Puppet Server 1.x, when a variable lookup is performed from Ruby code or an ERB template and the variable is not defined, catalog compilation could periodically fail with an error message similar to:
+
+```
+Puppet Evaluation Error: Error while evaluating a Resource Statement, Evaluation Error: Error while evaluating a Function Call, integer 2181729414 too big to convert to `int` at <PUPPET FILE>
+```
+
+The error message is inaccurate; the lookup should return nil. The error is a [bug in JRuby](https://github.com/jruby/jruby/issues/3980), which Puppet Server uses to run Ruby code. Puppet Server 1.2 resolves this by updating JRuby.
+
+-   [SERVER-1408](https://tickets.puppetlabs.com/browse/SERVER-1408)
+
+Also, when previous versions of Puppet Server use a large JVM memory heap and large number of JRuby instances, Server could fail to start and produce error messages in the `puppetserver.log` file similar to:
+
+```
+java.lang.IllegalStateException: There was a problem adding a JRubyPuppet instance to the pool.
+Caused by: org.jruby.embed.EvalFailedException: (LoadError) load error: jopenssl/load -- java.lang.NoClassDefFoundError: org/jruby/ext/openssl/NetscapeSPKI
+```
+
+We [fixed the underlying issue in JRuby](https://github.com/jruby/jruby/pull/4063), and this fix is included in Puppet Server 1.2.
+
+-   [SERVER-858](https://tickets.puppetlabs.com/browse/SERVER-1408)
+
+### Disabled feature: Automatic JVM heap dumps
+
+If a JVM OutOfMemoryError occurred in previous versions of Puppet Server 1.x, the JVM capture a heap dump by default. These heap dumps could fill disk partitions with unnecessary logs.
+
+Puppet Server 1.2 removes the `-XX:+HeapDumpOnOutOfMemoryError` and `-XX:HeapDumpPath` arguments from `JAVA_ARGS` in the Puppet Server service's command line, which disables the default JVM heap dumps.
+
+-   [SERVER-584](https://tickets.puppetlabs.com/browse/SERVER-584)
+
 ## Puppet Server 1.1.3
 
 Released December 9, 2015.
@@ -106,7 +159,7 @@ In addition to several bug fixes, this release adds a new feature which can be c
 
 ### Known Issues
 
-#### `max-requests-per-instance` Causes a Memory Leak 
+#### `max-requests-per-instance` Causes a Memory Leak
 
 When using the optional `max-requests-per-instance` setting in [`puppetserver.conf`](./configuration.html#puppetserverconf), Puppet Server should flush the JRuby instance from memory and replace it with a fresh instance after serving a number of requests defined by that setting. This can be handy when dealing with memory leaks in module code.
 
