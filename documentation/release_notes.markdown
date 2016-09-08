@@ -14,9 +14,9 @@ For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [
 
 Released September 8, 2016.
 
-This is a feature and bug-fix release of Puppet Server.
+This is a feature and bug-fix release of Puppet Server. This release also adds an official Puppet Server package for SuSE Enterprise Linux (SLES) 12.
 
-> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) for instructions on avoiding potential failures.
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
 
 ### New feature: JVM metrics endpoint `/status/v1/services`
 
