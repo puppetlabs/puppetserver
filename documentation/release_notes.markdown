@@ -34,7 +34,7 @@ Previous versions of Puppet Server would rotate and compress logs daily using lo
 
 Under logrotate, certain pathological error states --- such as running out of file handles --- could cause previous versions of Puppet Server to fill up disk partitions with logs of stack traces.
 
-In Puppet Server 2.6, Logback compresses Server-related logs into archives when their size exceeds 10MB. Also, when the total size of all Puppet Server logs exceeds 1GB, Logback deletes the oldest logs. These improvements should
+In Puppet Server 2.6, Logback compresses Server-related logs into archives when their size exceeds 10MB. Also, when the total size of all Puppet Server logs exceeds 1GB, Logback deletes the oldest logs. These improvements should limit the space that Puppet Server's logs consume and prevent them from filling partitions.
 
 > **Debian upgrade note:** On Debian-based Linux distributions, logrotate will continue to attempt to manage your Puppet Server log files until `/etc/logrotate.d/puppetserver` is removed. These logrotate attempts are harmless, but will generate a duplicate archive of logs. As a best practice, delete `puppetserver` from `logrotate.d` after upgrading to Puppet Server 2.6.
 >
