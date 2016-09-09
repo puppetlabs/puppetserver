@@ -194,10 +194,13 @@
       json/parse-string))
 
 (schema/defn ^:always-validate write-site-pp-file
-  [site-pp-contents :- schema/Str]
-  (let [site-pp-file (fs/file conf-dir "environments" "production" "manifests" "site.pp")]
-    (fs/mkdirs (fs/parent site-pp-file))
-    (spit site-pp-file site-pp-contents)))
+  ([site-pp-contents :- schema/Str]
+   (write-site-pp-file (fs/file conf-dir "environments" "production") site-pp-contents))
+  ([base-dir :- File
+    site-pp-contents :- schema/Str]
+   (let [site-pp-file (fs/file base-dir "manifests" "site.pp")]
+     (fs/mkdirs (fs/parent site-pp-file))
+     (spit site-pp-file site-pp-contents))))
 
 (schema/defn ^:always-validate catalog-name-matches? :- schema/Bool
   "Return whether the name (host) found in the catalog matches the supplied
@@ -207,21 +210,41 @@
   (= name (get catalog "name")))
 
 (schema/defn ^:always-validate resource-matches? :- schema/Bool
-  [resource-type :- schema/Str
-   resource-title :- schema/Str
-   resource :- PuppetResource]
-  (and (= resource-type (resource "type"))
-       (= resource-title (resource "title"))))
+  ([resource-type :- schema/Str
+    resource-title :- schema/Str
+    resource :- PuppetResource]
+   (and (= resource-type (resource "type"))
+        (= resource-title (resource "title"))))
+  ([resource-type :- schema/Str
+    resource-title :- schema/Str
+    resource :- PuppetResource
+    param-name :- schema/Str
+    param-value :- schema/Any]
+   (and
+    (resource-matches? resource-type resource-title resource)
+    (= param-value (get-in resource ["parameters" param-name])))))
 
 (schema/defn ^:always-validate catalog-contains? :- schema/Bool
-  [catalog :- PuppetCatalog
-   resource-type :- schema/Str
-   resource-title :- schema/Str]
-  (let [resources (get catalog "resources")]
-    (->> resources
-        (some (partial resource-matches? resource-type resource-title))
-        nil?
-        not)))
+  ([catalog :- PuppetCatalog
+    resource-type :- schema/Str
+    resource-title :- schema/Str]
+   (let [resources (get catalog "resources")]
+     (->> resources
+          (some (partial resource-matches? resource-type resource-title))
+          nil?
+          not)))
+  ([catalog :- PuppetCatalog
+    resource-type :- schema/Str
+    resource-title :- schema/Str
+    param-name :- schema/Str
+    param-value :- schema/Any]
+   (let [resources (get catalog "resources")]
+     (some #(resource-matches? resource-type resource-title % param-name param-value) resources))))
+
+(schema/defn catalog-code-id :- (schema/maybe schema/Str)
+  "Given a catalog, returns the code_id from the catalog."
+  [catalog :- PuppetCatalog]
+  (get catalog "code_id"))
 
 (schema/defn ^:always-validate num-catalogs-containing :- schema/Int
   [catalogs :- [PuppetCatalog]
