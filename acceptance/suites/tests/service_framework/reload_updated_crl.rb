@@ -77,7 +77,7 @@ step 'Validate that noop agent run successful after cert revoked but before relo
 end
 
 step 'Reload the server' do
-  reload_server(master)
+  reload_server
 end
 
 step 'Validate that noop run for revoked agent fails with SSL error after server reload' do

@@ -42,7 +42,7 @@ EOM
 
 teardown do
   on(master, "mv #{logback_backup} #{logback_path}")
-  hup_server(master)
+  reload_server
 end
 
 step 'Backup logback'
