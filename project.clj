@@ -72,8 +72,7 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]
-            [puppetlabs/i18n "0.4.3"]]
+  :plugins [[puppetlabs/i18n "0.4.3"]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
@@ -86,9 +85,6 @@
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"
                 :system-config-dir "ezbake/system-config"}
-
-  :lein-release {:scm         :git
-                 :deploy-via  :lein-deploy}
 
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
