@@ -37,6 +37,11 @@
       "github": "jpinsonault",
       "email": "joe.pinsonault@puppet.com",
       "name": "Joe Pinsonault"
+    },
+    {
+      "github": "gguillotte",
+      "email": "garrett.guillotte@puppet.com",
+      "name": "Garrett Guillotte"
     }
   ]
 }
