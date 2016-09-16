@@ -22,7 +22,7 @@ canonical: "/puppetserver/latest/bootstrap_upgrade_notes.html"
 >
 > The changes to the file support the new service bootstrapping behaviors. If you don't accept changes to the file during the upgrade, the puppetserver service fails and you might see a `Service ':PoolManagerService' not found` or similar warning. To resolve the issue, set the `BOOTSTRAP_CONFIG` setting in the init configuration file to:
 >
->     BOOTSTRAP_CONFIG="/etc/puppetlabs/puppetserver/services.d/,/opt/puppetlabs/server/apps/puppetserver/services.d"
+>     BOOTSTRAP_CONFIG="/etc/puppetlabs/puppetserver/services.d/,/opt/puppetlabs/server/apps/puppetserver/config/services.d/"
 >
 > If you modified other settings in the file before upgrading, and then overwrite the file during the upgrade, you might need to reapply those modifications after the upgrade.
 
