@@ -34,6 +34,7 @@
     :csrdir
     :csr-attributes
     :dns-alt-names
+    :data-binding-terminus
     :hostcert
     :hostcrl
     :hostprivkey
@@ -41,7 +42,7 @@
     :keylength
     :localcacert
     :manage-internal-file-permissions
-    :privatekeydir    
+    :privatekeydir
     :requestdir
     :serial
     :signeddir
