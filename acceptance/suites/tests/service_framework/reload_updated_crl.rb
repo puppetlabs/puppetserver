@@ -69,6 +69,12 @@ step 'Revoke cert' do
   on(master, puppet('cert', 'revoke', cert_to_revoke))
 end
 
+if options[:type] == 'pe'
+  step 'Copy cacrl to hostcrl in order to work around SERVER-911' do
+    on(master, 'cp "$(puppet config print cacrl)" "$(puppet config print hostcrl)"')
+  end
+end
+
 step 'Validate that noop agent run successful after cert revoked but before reload' do
   on(master, puppet('agent', '--test',
                     '--server', server,
