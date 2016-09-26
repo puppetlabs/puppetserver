@@ -34,7 +34,7 @@ Adjust the example configuration settings to suit your needs.
 
 Logback writes logs using components called [appenders](http://logback.qos.ch/manual/appenders.html). The example code below uses `RollingFileAppender` to rotate the log files and avoid consuming all of your storage.
 
-1. To configure Puppet Server to log its main logs to a second log file in JSON format, add an appender section like the following example to your `logback.xml` file, at the same level in the XML as existing appenders. The order of the appenders does not matter.
+1.  To configure Puppet Server to log its main logs to a second log file in JSON format, add an appender section like the following example to your `logback.xml` file, at the same level in the XML as existing appenders. The order of the appenders does not matter.
 
     ``` xml
     <appender name="JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -49,7 +49,7 @@ Logback writes logs using components called [appenders](http://logback.qos.ch/ma
     </appender>
     ```
 
-2. Activate the appended by adding an `appender-ref` entry to the `<root>` section of `logback.xml`:
+2.  Activate the appended by adding an `appender-ref` entry to the `<root>` section of `logback.xml`:
 
     ``` xml
     <root level="info">
@@ -58,7 +58,7 @@ Logback writes logs using components called [appenders](http://logback.qos.ch/ma
     </root>
     ```
 
-3. If you decide you want to log *only* the JSON format, comment out the other `appender-ref` entries.
+3.  If you decide you want to log *only* the JSON format, comment out the other `appender-ref` entries.
 
 `LogstashEncoder` has many configuration options, including the ability to modify the list of fields that you want to include, or give them different field names. For more information, see the [Logstash Logback Encoder Docs](https://github.com/logstash/logstash-logback-encoder/blob/master/README.md#loggingevent-fields).
 
