@@ -2,18 +2,12 @@ require 'spec_helper'
 
 require 'puppet/server/execution'
 
-def test_execute(command, args = nil, options = {})
-  if args.nil?
-    orig_command_str = command
-  else
-    orig_command_str = "#{command} #{args.join(" ")}"
-  end
+def test_execute(command, options = {})
   # NOTE: the `execute` function is not part of the public API,
   #  but is still the best level of abstraction to use for this sort
   #  of test, so we're abusing Ruby's `send` for these tests.
   Puppet::Server::Execution.send(:execute,
-                                 orig_command_str,
-                                 command, options, args)
+                                 command, options)
 end
 
 describe Puppet::Server::Execution do
@@ -29,17 +23,17 @@ describe Puppet::Server::Execution do
     end
 
     it "should return an instance of ProcessOutput for a command with args" do
-      result = test_execute("echo",  ["hi"])
+      result = test_execute(["echo", "hi"])
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
     end
 
     it "should return the STDOUT of the process for a command with args" do
-      result = test_execute("echo", ["hi"])
+      result = test_execute(["echo", "hi"])
       expect(result).to eq "hi\n"
     end
 
     it "returns an instance of ProcessOutput for a command with an empty array of args" do
-      result = test_execute("echo hi", [])
+      result = test_execute("echo hi")
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
       expect(result).to eq "hi\n"
     end
@@ -48,7 +42,7 @@ describe Puppet::Server::Execution do
       result = test_execute("echo hi")
       expect(result.exitstatus).to eq 0
 
-      result = test_execute("echo",  ["hi"])
+      result = test_execute(["echo",  "hi"])
       expect(result.exitstatus).to eq 0
 
       result = test_execute("false")
@@ -57,7 +51,7 @@ describe Puppet::Server::Execution do
 
     it "should raise an error if `failonfail` is true and the process returns non-zero" do
       expect {
-        test_execute("false", nil, {:failonfail => true})
+        test_execute("false", {:failonfail => true})
       }.to raise_error(Puppet::ExecutionFailure, /^Execution of 'false' returned 1/)
     end
   end
