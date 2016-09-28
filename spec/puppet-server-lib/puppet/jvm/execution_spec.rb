@@ -2,43 +2,57 @@ require 'spec_helper'
 
 require 'puppet/server/execution'
 
+def test_execute(command, options = {})
+  # NOTE: the `execute` function is not part of the public API,
+  #  but is still the best level of abstraction to use for this sort
+  #  of test, so we're abusing Ruby's `send` for these tests.
+  Puppet::Server::Execution.send(:execute,
+                                 command, options)
+end
+
 describe Puppet::Server::Execution do
   context "execution stub" do
     it "should return an instance of ProcessOutput" do
-      result = Puppet::Server::Execution.execute("echo hi")
+      result = test_execute("echo hi")
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
     end
 
     it "should return the STDOUT of the process" do
-      result = Puppet::Server::Execution.execute("echo hi")
+      result = test_execute("echo hi")
       expect(result).to eq "hi\n"
     end
 
     it "should return an instance of ProcessOutput for a command with args" do
-      result = Puppet::Server::Execution.execute("echo",  ["hi"])
+      result = test_execute(["echo", "hi"])
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
     end
 
     it "should return the STDOUT of the process for a command with args" do
-      result = Puppet::Server::Execution.execute("echo", ["hi"])
+      result = test_execute(["echo", "hi"])
       expect(result).to eq "hi\n"
     end
 
     it "returns an instance of ProcessOutput for a command with an empty array of args" do
-      result = Puppet::Server::Execution.execute("echo hi", [])
+      result = test_execute("echo hi")
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
       expect(result).to eq "hi\n"
     end
 
     it "should return the exit code of the process" do
-      result = Puppet::Server::Execution.execute("echo hi")
+      result = test_execute("echo hi")
       expect(result.exitstatus).to eq 0
 
-      result = Puppet::Server::Execution.execute("echo",  ["hi"])
+      result = test_execute(["echo",  "hi"])
       expect(result.exitstatus).to eq 0
 
-      result = Puppet::Server::Execution.execute("false")
+      result = test_execute("false")
       expect(result.exitstatus).not_to eq 0
+    end
+
+    it "should raise an error if `failonfail` is true and the process returns non-zero" do
+      expect {
+        test_execute("false", {:failonfail => true})
+      }.to raise_error(Puppet::ExecutionFailure, /^Execution of 'false' returned 1/)
     end
   end
 end
