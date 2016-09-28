@@ -16,6 +16,8 @@ public class ShellUtils {
 
     public static class ExecutionOptions {
         private boolean combineStdoutStderr = false;
+        private Map<String, String> env = null;
+        private InputStream stdin = null;
 
         public boolean getCombineStdoutStderr() {
             return combineStdoutStderr;
@@ -23,6 +25,22 @@ public class ShellUtils {
 
         public void setCombineStdoutStderr(boolean combineStdoutStderr) {
             this.combineStdoutStderr = combineStdoutStderr;
+        }
+
+        public InputStream getStdin() {
+            return stdin;
+        }
+
+        public void setStdin(InputStream stdin) {
+            this.stdin = stdin;
+        }
+
+        public Map<String, String> getEnv() {
+            return env;
+        }
+
+        public void setEnv(Map<String, String> env) {
+            this.env = env;
         }
     }
 
@@ -33,9 +51,6 @@ public class ShellUtils {
      * defaults and a DefaultExecutor. Also makes a delicious pancake.
      *
      * @param commandLine CommandLine instance to execute
-     * @param env environment variables [Map<String, String>] to expose to the command.
-     *            If null, use system environment.
-     * @param in optional stream to use as STDIN [InputStream]; may be null
      * @param options optional object [ExecutionOptions] to control behavior; may be null.
      * @return An ExecutionResult with output[String], error[String], and
      *                  the exit code[Integer] of the process
@@ -44,10 +59,11 @@ public class ShellUtils {
      * @throws IOException
      */
     private static ExecutionResult executeExecutor(CommandLine commandLine,
-                                                   Map<String, String> env,
-                                                   InputStream in,
                                                    ExecutionOptions options)
             throws InterruptedException, IOException {
+        if (options == null) {
+            options = new ExecutionOptions();
+        }
         DefaultExecutor executor = new DefaultExecutor();
         ByteArrayOutputStream errStream = new ByteArrayOutputStream();
         // TODO the nice thing here would be to set up a piped stream
@@ -63,7 +79,8 @@ public class ShellUtils {
         } else {
             stdoutOutputStream = new ByteArrayOutputStream();
         }
-        PumpStreamHandler streamHandler = new PumpStreamHandler(stdoutOutputStream, errStream, in);
+        PumpStreamHandler streamHandler = new PumpStreamHandler(stdoutOutputStream, errStream,
+                options.getStdin());
 
         // Don't throw exception on non-zero exit code
         executor.setExitValues(null);
@@ -71,7 +88,7 @@ public class ShellUtils {
         // Set up the handlers
         executor.setStreamHandler(streamHandler);
 
-        Integer exitCode = executor.execute(commandLine, env);
+        Integer exitCode = executor.execute(commandLine, options.getEnv());
 
         ByteArrayInputStream stdoutInputStream = new ByteArrayInputStream(stdoutOutputStream.toByteArray());
         String stdErr = errStream.toString();
@@ -87,9 +104,6 @@ public class ShellUtils {
      * Executes the given command in a separate process.
      *
      * @param commandLine the command to execute.
-     * @param env environment variables [Map<String, String>] to expose to the command.
-     *            If null, use system environment.
-     * @param in optional stream to use as STDIN [InputStream]; may be null
      * @param options optional object [ExecutionOptions] to control behavior; may be null.
      *
      * @return An ExecutionResult with output[String], error[String], and
@@ -98,12 +112,10 @@ public class ShellUtils {
      * @throws InterruptedException
      */
     protected static ExecutionResult executeCommand(CommandLine commandLine,
-                                                    Map<String, String> env,
-                                                    InputStream in,
                                                     ExecutionOptions options)
             throws InterruptedException {
         try {
-            return executeExecutor(commandLine, env, in, options);
+            return executeExecutor(commandLine, options);
         } catch (IOException e) {
             // this nonsense is due to a weird edge-case incompatibility between JDK8
             // and apache commons-exec.  See SERVER-1116; hopefully we can remove this
@@ -124,7 +136,6 @@ public class ShellUtils {
         }
     }
 
-
     /**
      * Executes the given command in a separate process.
      *
@@ -141,7 +152,7 @@ public class ShellUtils {
             throws InterruptedException, IOException {
         CommandLine commandLine = CommandLine.parse(command);
 
-        return executeCommand(commandLine, null, null, null);
+        return executeCommand(commandLine, null);
     }
 
     /**
@@ -161,9 +172,8 @@ public class ShellUtils {
             throws InterruptedException, IOException {
         CommandLine commandLine = CommandLine.parse(command);
 
-        return executeCommand(commandLine, null, null, options);
+        return executeCommand(commandLine, options);
     }
-
 
     /**
      * Executes the given command in a separate process.
@@ -178,7 +188,7 @@ public class ShellUtils {
      */
     public static ExecutionResult executeCommand(String command, String[] arguments)
             throws InterruptedException, IOException {
-        return executeCommand(command, arguments, null, null);
+        return executeCommand(command, arguments, null);
     }
 
     /**
@@ -187,26 +197,6 @@ public class ShellUtils {
      * @param command the command [String] to execute.
      * @param arguments arguments [Array of Strings] to add to the command being executed
      * @param options optional object [ExecutionOptions] to control behavior; may be null.
-     * @return An ExecutionResult with output[String], error[String], and
-     *                 the exit code[Integer] of the process
-     *
-     * @throws InterruptedException
-     * @throws IOException
-     */
-    public static ExecutionResult executeCommand(String command, String[] arguments,
-                                                 ExecutionOptions options)
-            throws InterruptedException, IOException {
-        return executeCommand(command, arguments, null, null, options);
-    }
-
-    /**
-     * Executes the given command in a separate process.
-     *
-     * @param command the command [String] to execute.
-     * @param arguments arguments [Array of Strings] to add to the command being executed
-     * @param env environment variables [Map<String, String>] to expose to the command.
-     *            If null, use system environment.
-     * @param in optional stream to use as STDIN [InputStream]; may be null
      *
      * @return An ExecutionResult with output[String], error[String], and
      *                 the exit code[Integer] of the process
@@ -215,35 +205,12 @@ public class ShellUtils {
      * @throws IOException
      */
     public static ExecutionResult executeCommand(String command, String[] arguments,
-                                                 Map<String, String> env, InputStream in)
-            throws InterruptedException, IOException {
-        return executeCommand(command, arguments, env, in, null);
-    }
-
-    /**
-     * Executes the given command in a separate process.
-     *
-     * @param command the command [String] to execute.
-     * @param arguments arguments [Array of Strings] to add to the command being executed
-     * @param env environment variables [Map<String, String>] to expose to the command.
-     *            If null, use system environment.
-     * @param in optional stream to use as STDIN [InputStream]; may be null
-     * @param options optional object [ExecutionOptions] to control behavior; may be null.
-     *
-     * @return An ExecutionResult with output[String], error[String], and
-     *                 the exit code[Integer] of the process
-     *
-     * @throws InterruptedException
-     * @throws IOException
-     */
-    public static ExecutionResult executeCommand(String command, String[] arguments,
-                                                 Map<String, String> env, InputStream in,
                                                  ExecutionOptions options)
             throws InterruptedException, IOException {
         CommandLine commandLine = new CommandLine(command);
         commandLine.addArguments(arguments, false);
 
-        return executeCommand(commandLine, env, in, options);
+        return executeCommand(commandLine, options);
     }
 
 
