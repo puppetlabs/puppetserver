@@ -9,6 +9,9 @@ inventory_file = master.puppet['cert_inventory']
 
 teardown do
   step 'Remove revoked CRL cert' do
+    # Since the cert may not exist if the test fails an assertion before
+    # getting to this point, this allows 0 (success) or 24 (could not find cert)
+    # here.
     on(master, puppet('cert', 'clean', cert_to_revoke),
        {:acceptable_exit_codes => [0, 24]})
   end
@@ -28,6 +31,11 @@ teardown do
 end
 
 step 'Clean up an old cert for the revoked CRL node if there is one' do
+  # On a clean system, this command should return 0 (success).  If a cert
+  # by the same name happened to have been left over from a previous run
+  # of the test for whatever reason, 24 (cert not found) could be returned.
+  # Shouldn't matter in either case since we're just looking to nuke the
+  # cert if one exits before getting into the body of the test.
   on(master, puppet('cert', 'clean', cert_to_revoke),
      {:acceptable_exit_codes => [0, 24]})
 end
@@ -45,6 +53,7 @@ end
 step 'Ask to cleanup the cert a second time, just to recreate the ca_crl file' do
   # Puppet Server chokes if no ca_crl file exists but other SSL files do when
   # it restarts.  This is an ugly way to ensure it gets recreated but it works.
+  # The cert shouldn't exist at this point, so 24 is expected to be returned.
   on(master, puppet('cert', 'clean', cert_to_revoke),
      {:acceptable_exit_codes => [24]})
   on(master, "[ -f #{ca_crl_file} ]")
