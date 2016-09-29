@@ -308,32 +308,9 @@ module PuppetServerExtensions
     response
   end
 
-  def hup_server(host = master, timeout = 30)
-    pid = on(host, 'pgrep -fo puppetserver').stdout.chomp
-    on(host, "kill -HUP #{pid}")
-    sleep 30
-    url = "https://#{host}:8140/puppet/v3/status"
-    cert = get_cert(master)
-    key = get_key(master)
-    response_code = "0"
-    sleeptime = 1
-    while response_code != "200" && timeout > 0
-      sleep sleeptime
-      begin
-        response = https_request(url, 'GET', cert, key)
-      rescue StandardError => e
-        expected_errors = [ EOFError, Errno::ECONNREFUSED, Errno::ECONNRESET,
-                            OpenSSL::SSL::SSLError ]
-        if !expected_errors.include?e.class
-          raise e
-        else
-          # Does this message violate the Wolfe Principle?
-          puts "Ignoring expected exception '#{e}' because server is restarting"
-        end
-      end
-      response_code = response.code unless response == nil
-      timeout = timeout - sleeptime
-    end
+  def reload_server(host = master, opts = {})
+    service = options['puppetservice']
+    on(host, "service #{service} reload", opts)
   end
 
   def apply_one_hocon_setting(hocon_host,

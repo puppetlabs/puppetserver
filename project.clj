@@ -1,5 +1,5 @@
 (def clj-version "1.7.0")
-(def tk-version "1.5.0")
+(def tk-version "1.5.1")
 (def tk-jetty-version "1.5.10")
 (def ks-version "1.3.1")
 (def ps-version "2.6.0-master-SNAPSHOT")
@@ -125,7 +125,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
                                                [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.5.0"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.0.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}

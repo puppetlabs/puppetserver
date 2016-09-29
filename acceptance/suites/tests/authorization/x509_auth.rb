@@ -37,8 +37,8 @@ step "Revoke and destroy the existing cert on the server" do
   end
 end
 
-step "HUP the server" do
-  hup_server
+step "Reload the server" do
+  reload_server
 end
 
 # After a server HUP, the agent cert should be rejected
@@ -106,8 +106,8 @@ step "Lay down a test tk-auth.conf file" do
     :acceptable_exit_codes => 0 )
 end
 
-step "HUP the server" do
-  hup_server
+step "Reload the server" do
+  reload_server
 end
 
 # Confirm agents can connect with new cert
