@@ -139,7 +139,6 @@ public class ShellUtils {
     /**
      * Executes the given command in a separate process.
      *
-     *
      * @param command the command [String] to execute. arguments can be
      *                included in the string.
      * @return An ExecutionResult with output[String], error[String], and
