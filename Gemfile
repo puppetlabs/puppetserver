@@ -9,6 +9,9 @@ group :test do
   if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
     gem 'sqa-utils', '0.12.1'
   end
+
+  # docker-api 1.32.0 requires ruby 2.0.0
+  gem 'docker-api', '1.31.0'
 end
 
 if File.exists? "#{__FILE__}.local"
