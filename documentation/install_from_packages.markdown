@@ -11,7 +11,7 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> **Note:** Puppet masters running Puppet Server 2.5 depend on [Puppet Agent 1.6.0](https://docs.puppet.com/puppet/4.6/reference/about_agent.html) or newer, which installs [Puppet 4.6](https://docs.puppet.com/puppet/4.6/) and compatible versions of its related tools and dependencies on the server. Puppet agents running older versions of Puppet Agent can connect to Puppet Server 2.5 --- this requirement applies to the Puppet Agent running on the Puppet Server node *only*.
+> **Note:** Puppet masters running Puppet Server 2.6 depend on [Puppet Agent 1.6.0](https://docs.puppet.com/puppet/4.6/reference/about_agent.html) or newer, which installs [Puppet 4.6](https://docs.puppet.com/puppet/4.6/) and compatible versions of its related tools and dependencies on the server. Puppet agents running older versions of Puppet Agent can connect to Puppet Server 2.6 --- this requirement applies to the Puppet Agent running on the Puppet Server node *only*.
 >
 > If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/latest/#system-requirements).
 
@@ -35,6 +35,10 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 -   Ubuntu 14.04 (Trusty)
 -   Ubuntu 15.10 (Wily)
 -   Ubuntu 16.04 (Xenial)
+
+### SuSE Linux Enterprise Server
+
+-   SLES 12
 
 ## Quick Start
 
