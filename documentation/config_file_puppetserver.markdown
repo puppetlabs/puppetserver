@@ -32,7 +32,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
         The default value for the `GEM_HOME` environment variable in JRuby is set from the value provided for the `jruby-puppet.gem-home` key.
 
-        Note that any variable set from the map for the `environment-vars` key will override these defaults; although it would probably be best to not override `HOME`, `PATH`, or `GEM_HOME` here since these values are already configurable.
+        Any variable set from the map for the `environment-vars` key overrides these defaults. Avoid overriding `HOME`, `PATH`, or `GEM_HOME` here because these values are already configurable via the shell or `jruby-puppet.gem-home`.
 
     * `master-conf-dir`: Optional. The path to the Puppet [configuration directory][]. The default is `/etc/puppetlabs/puppet`.
 

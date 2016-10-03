@@ -19,7 +19,7 @@ external server. See [External SSL Termination with Puppet Server](./external_ss
 
 ## Disabling the Internal Puppet CA Service
 
-> **Note:** If you're upgrading from Puppet Server 2.4.x or earlier to Puppet Server 2.5, read and act on the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) **before upgrading**.
+> **Note:** If you're upgrading from Puppet Server 2.4.x or earlier to Puppet Server 2.5 or newer, read and act on the [bootstrap upgrade notes](./bootstrap_upgrade_notes.markdown) **before upgrading**.
 
 If you are using certs from an external CA, you'll need to disable the internal Puppet CA service. However, the `ca` setting from the `puppet.conf` file isn't honored by Puppet Server. To disable the service, modify the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file.
 
