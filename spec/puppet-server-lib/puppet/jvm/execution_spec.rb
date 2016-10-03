@@ -22,6 +22,13 @@ describe Puppet::Server::Execution do
       expect(result).to eq "hi\n"
     end
 
+    it "should combine STDOUT/STDERR of the process when :combine is set" do
+      result = test_execute("./spec/fixtures/puppet-server-lib/puppet/jvm/execution_spec/echo_stdout_and_stderr.sh",
+                            {:combine => true})
+      expect(result).to match(/hello stdout/)
+      expect(result).to match(/hello stderr/)
+    end
+
     it "should return an instance of ProcessOutput for a command with args" do
       result = test_execute(["echo", "hi"])
       expect(result).to be_a Puppet::Util::Execution::ProcessOutput
