@@ -39,9 +39,11 @@
 
 (schema/defn ^:always-validate java-exe-options :- ShellUtils$ExecutionOptions
   [{:keys [env in]} :- ExecutionOptions]
-  (doto (ShellUtils$ExecutionOptions.)
-    (.setEnv (if env (ks/mapkeys name env) {}))
-    (.setStdin in)))
+  (let [exe-options (ShellUtils$ExecutionOptions.)]
+    (.setStdin exe-options in)
+    (when env
+      (.setEnv exe-options (ks/mapkeys name env)))
+    exe-options))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
