@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
             [puppetlabs.kitchensink.core :as ks]
-            [clojure.string :as str])
+            [clojure.string :as str]
+            [clojure.set :as set])
   (:import (java.io ByteArrayInputStream)))
 
 (def test-resources
@@ -64,12 +65,14 @@
     (let [env-output (:stdout (sh-utils/execute-command
                                (script-path "env")
                                {:env {"FOO" "foo"}}))
-          env (parse-env-output env-output)]
-      (is (= 2 (count env)))
-      ;; it seems that the JVM always includes a PWD env var, no
-      ;; matter what.
-      (is (= #{"FOO" "PWD"}
-             (ks/keyset env))))))
+          env (parse-env-output env-output)
+          ;; it seems that the JVM always includes a PWD env var, no
+          ;; matter what, and in certain terminals it may also include a few
+          ;; other vars, so we are writing the test to be tolerant of that.
+          expected-keys #{"FOO" "PWD" "_" "SHLVL"}
+          extra-keys (set/difference (ks/keyset env) expected-keys)]
+      (is (empty? extra-keys)
+          (str "Found unexpected environment variables:" extra-keys)))))
 
 (deftest pass-stdin-correctly
   (testing "passes stdin stream to command"
