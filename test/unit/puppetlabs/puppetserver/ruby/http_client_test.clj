@@ -82,7 +82,8 @@ jruby-config :- jruby-schemas/JRubyConfig
   ([options]
    (jruby-core/initialize-config
     (merge {:ruby-load-path (jruby-puppet-core/managed-load-path jruby-puppet-testutils/ruby-load-path)
-            :gem-home jruby-puppet-testutils/gem-home}
+            :gem-home jruby-puppet-testutils/gem-home
+            :gem-path jruby-puppet-testutils/gem-path}
            options))))
 
 (defn create-scripting-container

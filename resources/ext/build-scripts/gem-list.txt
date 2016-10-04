@@ -1,0 +1,2 @@
+semantic_puppet 0.1.2
+hocon 1.1.2

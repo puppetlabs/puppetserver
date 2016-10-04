@@ -335,6 +335,7 @@
                           (get-pool-context [_]
                             (jruby-pool-manager-core/create-pool-context
                              (jruby-core/initialize-config {:gem-home "foo"
+                                                            :gem-path "foo:foobar"
                                                             :ruby-load-path ["bar"]}))))]
       (logutils/with-test-logging
        (testing "slingshot bad requests translated to ring response"

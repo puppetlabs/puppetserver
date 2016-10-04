@@ -55,6 +55,9 @@
 (def default-master-var-dir
   "/opt/puppetlabs/server/data/puppetserver")
 
+(def default-vendored-gems-dir
+  "/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -158,6 +161,12 @@
                        :connect-timeout-milliseconds
                        :idle-timeout-milliseconds]))
 
+(schema/defn ^:always-validate initialize-gem-path
+  [{:keys [gem-home gem-path] :as jruby-config} :- {schema/Keyword schema/Any}]
+  (if gem-path
+    jruby-config
+    (assoc jruby-config :gem-path (str gem-home ":" default-vendored-gems-dir))))
+
 (schema/defn ^:always-validate
   initialize-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
   [http-config :- {schema/Keyword schema/Any}
@@ -194,15 +203,17 @@
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
-        modified-jruby-config (assoc jruby-config :ruby-load-path (managed-load-path
-                                                                   (:ruby-load-path jruby-config)))]
+        modified-jruby-config (-> jruby-config
+                                  (assoc :ruby-load-path (managed-load-path
+                                                          (:ruby-load-path jruby-config)))
+                                  initialize-gem-path)]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
 (schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
   "Handles the initialization of the jruby-puppet config for the purpose of returning a
   jruby config. This function will only use the :jruby-puppet and :http-client sections
   from raw-config. If values are not provided, everything in :http-client :jruby-puppet
-  will be given default values, except for :ruby-load-path and :gem-home in the
+  will be given default values, except for :ruby-load-path, :gem-home, and :gem-path in the
   :jruby-puppet subsection.
 
   The 1-arity function takes only a config and supplies a default of nil for the profiler,

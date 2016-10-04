@@ -44,9 +44,14 @@ jruby-puppet: {
     # Puppet server expects to load Puppet from this location
     ruby-load-path: [./ruby/puppet/lib, ./ruby/facter/lib, ./ruby/hiera/lib]
 
-    # This setting determines where JRuby will look for gems.  It is also
-    # used by the `puppetserver gem` command line tool.
+    # This setting determines where JRuby will install gems.  It is used for loading gems,
+    # and also by the `puppetserver gem` command line tool.
     gem-home: ./target/jruby-gems
+
+    # This setting defines the complete "GEM_PATH" for jruby.  If set, it should include
+    # the gem-home directory as well as any other directories that gems can be loaded
+    # from (including the vendored gems directory for gems that ship with puppetserver)
+    gem-path: ./target/vendored-jruby-gems
 
     # (optional) path to puppet conf dir; if not specified, will use the puppet default
     master-conf-dir: ./target/master-conf-dir

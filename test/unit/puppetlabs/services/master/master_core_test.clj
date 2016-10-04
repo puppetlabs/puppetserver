@@ -91,6 +91,7 @@
       (let [jruby-service (reify jruby/JRubyPuppetService
                             (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                    (jruby-core/initialize-config {:gem-home "bar"
+                                                                                  :gem-path "bar:foobar"
                                                                                   :ruby-load-path ["foo"]})))
                             (get-environment-class-info [_ _ env]
                               (if (= env "production")
