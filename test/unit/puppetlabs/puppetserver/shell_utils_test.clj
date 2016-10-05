@@ -1,7 +1,9 @@
 (ns puppetlabs.puppetserver.shell-utils-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
-            [puppetlabs.kitchensink.core :as ks])
+            [puppetlabs.kitchensink.core :as ks]
+            [clojure.string :as str]
+            [clojure.set :as set])
   (:import (java.io ByteArrayInputStream)))
 
 (def test-resources
@@ -11,6 +13,13 @@
 (defn script-path
   [script-name]
   (str test-resources "/" script-name))
+
+(defn parse-env-output
+  [env-output]
+  (->> env-output
+       str/split-lines
+       (map #(str/split % #"=" 2))
+       (into {})))
 
 (deftest returns-the-exit-code
   (testing "true should return 0"
@@ -36,11 +45,34 @@
                           (script-path "num-args")
                           {:args ["a" "b" "c" "d" "e"]}))))))
 
+(deftest inherits-env-correctly
+  (testing "inherits environment variables if not specified"
+    (let [env-output (:stdout (sh-utils/execute-command
+                               (script-path "env")))
+          env (parse-env-output env-output)]
+      (is (< 3 (count env))
+          (str "Expected at least 3 environment variables, got:\n" env-output))
+      (is (contains? env "PATH"))
+      (is (contains? env "PWD"))
+      (is (contains? env "HOME")))))
+
 (deftest sets-env-correctly
   (testing "sets environment variables correctly"
     (is (= "foo\n" (:stdout (sh-utils/execute-command
                              (script-path "echo_foo_env_var")
-                             {:env {"FOO" "foo"}}))))))
+                             {:env {"FOO" "foo"}}))))
+
+    (let [env-output (:stdout (sh-utils/execute-command
+                               (script-path "env")
+                               {:env {"FOO" "foo"}}))
+          env (parse-env-output env-output)
+          ;; it seems that the JVM always includes a PWD env var, no
+          ;; matter what, and in certain terminals it may also include a few
+          ;; other vars, so we are writing the test to be tolerant of that.
+          expected-keys #{"FOO" "PWD" "_" "SHLVL"}
+          extra-keys (set/difference (ks/keyset env) expected-keys)]
+      (is (empty? extra-keys)
+          (str "Found unexpected environment variables:" extra-keys)))))
 
 (deftest pass-stdin-correctly
   (testing "passes stdin stream to command"
