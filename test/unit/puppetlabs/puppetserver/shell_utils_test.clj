@@ -16,10 +16,7 @@
 
 (defn parse-env-output
   [env-output]
-  (->> env-output
-       str/split-lines
-       (map #(str/split % #"=" 2))
-       (into {})))
+  (set (str/split-lines env-output)))
 
 (deftest returns-the-exit-code
   (testing "true should return 0"
@@ -48,7 +45,7 @@
 (deftest inherits-env-correctly
   (testing "inherits environment variables if not specified"
     (let [env-output (:stdout (sh-utils/execute-command
-                               (script-path "env")))
+                               (script-path "list_env_var_names")))
           env (parse-env-output env-output)]
       (is (< 3 (count env))
           (str "Expected at least 3 environment variables, got:\n" env-output))
@@ -63,14 +60,14 @@
                              {:env {"FOO" "foo"}}))))
 
     (let [env-output (:stdout (sh-utils/execute-command
-                               (script-path "env")
+                               (script-path "list_env_var_names")
                                {:env {"FOO" "foo"}}))
           env (parse-env-output env-output)
           ;; it seems that the JVM always includes a PWD env var, no
           ;; matter what, and in certain terminals it may also include a few
           ;; other vars, so we are writing the test to be tolerant of that.
           expected-keys #{"FOO" "PWD" "_" "SHLVL"}
-          extra-keys (set/difference (ks/keyset env) expected-keys)]
+          extra-keys (set/difference env expected-keys)]
       (is (empty? extra-keys)
           (str "Found unexpected environment variables:" extra-keys)))))
 
