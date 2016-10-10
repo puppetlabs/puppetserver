@@ -28,7 +28,7 @@ The following examples show how to configure Logback for:
 
 Adjust the example configuration settings to suit your needs.
 
-> **Note:** Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
+> **Note:** Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 200MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
 #### Adding a JSON version of the main Puppet Server logs
 

@@ -119,7 +119,7 @@ All of Puppet Server's logging is routed through the JVM [Logback](http://logbac
 
 All log messages follow the same path, including HTTP traffic, catalog compilation, certificate processing, and all other parts of Puppet Server's work. This differs from Rack and WEBrick masters, which split their HTTP and application logs.
 
-Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
+Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 200MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
 Logback is heavily configurable; if you need something more specialized than a unified log file, you can probably get it. [See the configuration docs for info on configuring logging.](./configuration.markdown#logging)
 
