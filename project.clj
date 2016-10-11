@@ -102,16 +102,28 @@
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
-             :ezbake {:dependencies ^:replace [;; we need to explicitly specify the clojure version
-                                               ;; here, because without it, lein brings in its own
-                                               ;; version, and older versions of lein (such as version
-                                               ;; 2.5.1 that is used on our jenkins servers at the time
-                                               ;; of this writing) depend on clojure 1.6.
-                                               [org.clojure/clojure]
+             :ezbake {:dependencies ^:replace [;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                                               ;; NOTE: we need to explicitly pass in `nil` values
+                                               ;; for the version numbers here in order to correctly
+                                               ;; inherit the versions from our parent project.
+                                               ;; This is because of a bug in lein 2.7.1 that
+                                               ;; prevents the deps from being processed properly
+                                               ;; with `:managed-dependencies` when you specify
+                                               ;; dependencies in a profile.  See:
+                                               ;; https://github.com/technomancy/leiningen/issues/2216
+                                               ;; Hopefully we can remove those `nil`s (if we care)
+                                               ;; and this comment when lein 2.7.2 is available.
+                                               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                                               ;; we need to explicitly pull in our parent project's
+                                               ;; clojure version here, because without it, lein
+                                               ;; brings in its own version, and older versions of
+                                               ;; lein depend on clojure 1.6.
+                                               [org.clojure/clojure nil]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9]
-                                               [org.clojure/tools.nrepl]]
-                      :plugins [[puppetlabs/lein-ezbake "1.0.0"]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
+                                               [org.clojure/tools.nrepl nil]]
+                      :plugins [[puppetlabs/lein-ezbake "1.1.1"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
