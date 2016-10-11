@@ -48,7 +48,7 @@
    :manage-internal-file-permissions true
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
-   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]})
+   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib" "ruby/semantic_puppet/lib"]})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

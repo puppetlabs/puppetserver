@@ -7,3 +7,6 @@
 [submodule "ruby/hiera"]
 	path = ruby/hiera
 	url = https://github.com/puppetlabs/hiera.git
+[submodule "ruby/semantic_puppet"]
+	path = ruby/semantic_puppet
+	url = https://github.com/puppetlabs/semantic_puppet
