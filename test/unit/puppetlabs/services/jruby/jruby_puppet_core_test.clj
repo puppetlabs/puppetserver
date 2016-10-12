@@ -133,7 +133,7 @@
   (testing "provided values are not overriden"
     (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
           unitialized-jruby-config {:gem-home "/foo"
-                                    :gem-path "/foo:/bar"
+                                    :gem-path ["/foo" "/bar"]
                                     :compile-mode :jit
                                     :borrow-timeout 1234
                                     :max-active-instances 4321

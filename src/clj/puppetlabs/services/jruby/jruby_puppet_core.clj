@@ -9,7 +9,8 @@
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.i18n.core ::as i18n :refer [trs]]
-            [clojure.tools.logging :as log])
+            [clojure.tools.logging :as log]
+            [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
            (java.util HashMap)))
@@ -164,7 +165,7 @@
 (schema/defn ^:always-validate initialize-gem-path
   [{:keys [gem-home gem-path] :as jruby-config} :- {schema/Keyword schema/Any}]
   (if gem-path
-    jruby-config
+    (assoc jruby-config :gem-path (str/join ":" gem-path))
     (assoc jruby-config :gem-path (str gem-home ":" default-vendored-gems-dir))))
 
 (schema/defn ^:always-validate
