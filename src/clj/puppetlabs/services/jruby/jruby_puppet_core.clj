@@ -210,11 +210,13 @@
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
 (schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
-  "Handles the initialization of the jruby-puppet config for the purpose of returning a
-  jruby config. This function will only use the :jruby-puppet and :http-client sections
-  from raw-config. If values are not provided, everything in :http-client :jruby-puppet
-  will be given default values, except for :ruby-load-path, :gem-home, and :gem-path in the
-  :jruby-puppet subsection.
+  "Handles the initialization of the jruby-puppet config (from the puppetserver.conf file),
+  for the purpose of converting it to the structure required by the jruby-utils
+  library (puppetlabs.services.jruby-pool-manager.jruby-schemas/JRubyConfig).
+  This function will use data from the :jruby-puppet and :http-client sections
+  of puppetserver.conf, from raw-config. If values are not provided, everything in
+  :http-client :jruby-puppet will be given default values, except for
+  :ruby-load-path and :gem-home, which are required.
 
   The 1-arity function takes only a config and supplies a default of nil for the profiler,
   an empty fn for the agent-shutdown-fn, and suppresses warnings about legacy auth.conf.
