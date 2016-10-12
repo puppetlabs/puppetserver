@@ -1,3 +1,5 @@
+require 'open3'
+
 PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
   File.join(PROJECT_ROOT, 'acceptance')
@@ -116,6 +118,41 @@ namespace :test do
       beaker += " " + beakeropts
 
       sh beaker
+    end
+
+    desc "Do an ezbake build, and then a beaker smoke test off of that build, preserving the vmpooler host"
+    task :bakeNbeak do
+      package_version = nil
+
+      Open3.popen3("lein with-profile ezbake ezbake build 2>&1") do |stdin, stdout, stderr, thread|
+        # sleep 5
+        # puts "STDOUT IS: #{stdout}"
+        stdout.each do |line|
+          if match = line.match(%r|^Your packages will be available at http://builds.delivery.puppetlabs.net/puppetserver/(.*)$|)
+            package_version = match[1]
+          end
+          puts line
+        end
+        puts "PACKAGE VERSION IS #{package_version}"
+      end
+
+      sh "bundle exec beaker-hostgenerator centos7-64m-64a > acceptance/scripts/hosts.cfg"
+
+      beaker = "PACKAGE_BUILD_VERSION=#{package_version}"
+      beaker += " bundle exec beaker --debug --root-keys --repo-proxy"
+      beaker += " --preserve-hosts always"
+      beaker += " --type aio"
+      beaker += " --helper acceptance/lib/helper.rb"
+      beaker += " --options-file acceptance/config/beaker/options.rb"
+      beaker += " --load-path acceptance/lib"
+      beaker += " --config acceptance/scripts/hosts.cfg"
+      beaker += " --keyfile ~/.ssh/id_rsa-acceptance"
+      beaker += " --pre-suite acceptance/suites/pre_suite/foss"
+      beaker += " --post-suite acceptance/suites/post_suite"
+      beaker += " --tests acceptance/suites/tests/00_smoke"
+
+      sh beaker
+
     end
   end
 end
