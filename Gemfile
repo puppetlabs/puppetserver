@@ -16,7 +16,7 @@ gem 'jira-ruby', :group => :development
 group :test do
   gem 'rspec'
   gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 2.50.0')
-  gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.7")
+  gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.8")
   gem 'uuidtools'
   gem 'httparty'
   gem 'master_manipulator'
