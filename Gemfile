@@ -1,22 +1,14 @@
 source ENV['GEM_SOURCE'] || "https://rubygems.org"
 
-def location_for(place, fake_version = nil)
-  if place =~ /^(git[:@][^#]*)#(.*)/
-    [fake_version, { :git => $1, :branch => $2, :require => false }].compact
-  elsif place =~ /^file:\/\/(.*)/
-    ['>= 0', { :path => File.expand_path($1), :require => false }]
-  else
-    [place, { :require => false }]
-  end
-end
-
 gem 'rake', :group => [:development, :test]
 gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
   gem 'beaker', '~>1.21.0'
-  gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.8")
+  if ENV['GEM_SOURCE'] =~ /rubygems\.delivery\.puppetlabs\.net/
+    gem 'sqa-utils', '0.12.1'
+  end
 
   # docker-api 1.32.0 requires ruby 2.0.0
   gem 'docker-api', '1.31.0'
