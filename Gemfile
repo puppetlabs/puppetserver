@@ -6,7 +6,7 @@ gem 'jira-ruby', :group => :development
 group :test do
   gem 'rspec'
   gem 'beaker', '~>1.21.0'
-  gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.8")
+  gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 0.7")
 
   # docker-api 1.32.0 requires ruby 2.0.0
   gem 'docker-api', '1.31.0'
