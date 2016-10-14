@@ -322,6 +322,7 @@
       (jruby-testutils/jruby-puppet-config
        {:ruby-load-path  jruby-testutils/ruby-load-path
         :gem-home        jruby-testutils/gem-home
+        :gem-path        jruby-testutils/gem-path
         :master-conf-dir jruby-testutils/conf-dir
         :master-code-dir jruby-testutils/code-dir
         :master-var-dir  jruby-testutils/var-dir
@@ -378,6 +379,7 @@
             (merge
               {:ruby-load-path   jruby-testutils/ruby-load-path
                :gem-home         jruby-testutils/gem-home
+               :gem-path         jruby-testutils/gem-path
                :master-conf-dir  jruby-testutils/conf-dir
                :master-code-dir  jruby-testutils/code-dir
                :master-var-dir   jruby-testutils/var-dir
@@ -389,7 +391,8 @@
             jruby-scripting-container (:scripting-container jruby-instance)
             jruby-env (.runScriptlet jruby-scripting-container "ENV")]
         (try
-          (is (= #{"HOME" "PATH" "GEM_HOME" "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
+          (is (= #{"HOME" "PATH" "GEM_HOME" "GEM_PATH"
+                   "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
                  (set (keys jruby-env))))
           (is (= (.get jruby-env "FOO") (System/getenv "HOME")))
           (finally
