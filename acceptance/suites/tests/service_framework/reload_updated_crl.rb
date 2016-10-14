@@ -101,7 +101,7 @@ step 'Validate that noop run for revoked agent fails with SSL error after server
                     '--certname', cert_to_revoke,
                     '--noop'),
      {:acceptable_exit_codes => [1]}) do |result|
-    assert_match(/SSL_connect SYSCALL returned=5/,
+    assert_match(/SSL_connect/,
                  result.stderr,
                  "Agent run did not fail with SSL error as expected")
   end
