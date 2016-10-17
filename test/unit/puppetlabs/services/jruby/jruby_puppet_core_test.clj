@@ -9,14 +9,6 @@
 
 (use-fixtures :once schema-test/validate-schemas)
 
-(def min-config
-  {:product
-   {:name "puppetserver", :update-server-url "http://localhost:11111"},
-   :jruby-puppet
-   {:gem-home "./target/jruby-gem-home",
-    :gem-path "./target/jruby-gem-home:./target/vendored-jruby-gems"
-    :ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"]}})
-
 (defmacro capture-out
   "capture System.out and return it as the value of :out in the return map.
   The return value of body is available as :return in the return map.
