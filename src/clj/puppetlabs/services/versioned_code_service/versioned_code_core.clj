@@ -4,7 +4,7 @@
             [puppetlabs.puppetserver.common :as ps-common]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [clojure.string :as string]
-            [puppetlabs.i18n.core :as i18n :refer [trs]])
+            [puppetlabs.i18n.core :as i18n])
   (:import (java.io IOException InputStream)
            (org.apache.commons.io IOUtils)))
 
@@ -18,8 +18,8 @@
   [cmd :- schema/Str
    stderr :- schema/Str]
   (format "%s %s"
-          (trs "Error output generated while running ''{0}''." cmd)
-          (trs "stderr: ''{0}''" stderr)))
+          (i18n/trs "Error output generated while running ''{0}''." cmd)
+          (i18n/trs "stderr: ''{0}''" stderr)))
 
 (schema/defn ^:always-validate
   nonzero-msg :- schema/Str
@@ -28,14 +28,14 @@
    stdout :- schema/Str
    stderr :- schema/Str]
   (format "%s %s"
-          (trs "Non-zero exit code returned while running ''{0}''." cmd)
-          (trs "exit-code: ''{0}'', stdout: ''{1}'', stderr: ''{2}''" exit-code stdout stderr)))
+          (i18n/trs "Non-zero exit code returned while running ''{0}''." cmd)
+          (i18n/trs "exit-code: ''{0}'', stdout: ''{1}'', stderr: ''{2}''" exit-code stdout stderr)))
 
 (schema/defn ^:always-validate
   execution-error-msg :- schema/Str
   [cmd :- schema/Str
    e :- Exception]
-  (trs "Running script generated an error. Command executed: ''{0}'', error generated: ''{1}''"
+  (i18n/trs "Running script generated an error. Command executed: ''{0}'', error generated: ''{1}''"
               cmd (.getMessage e)))
 
 (schema/defn ^:always-validate execute-code-id-script! :- schema/Str
@@ -109,5 +109,5 @@
     (and (not code-id-command) code-content-command))
     (throw (IllegalStateException.
             (format "%s %s"
-                    (trs "Only one of \"versioned-code.code-id-command\" and \"versioned-code.code-content-command\" was set.")
-                    (trs "Both or neither must be set for the versioned-code-service to function correctly."))))))
+                    (i18n/trs "Only one of \"versioned-code.code-id-command\" and \"versioned-code.code-content-command\" was set.")
+                    (i18n/trs "Both or neither must be set for the versioned-code-service to function correctly."))))))

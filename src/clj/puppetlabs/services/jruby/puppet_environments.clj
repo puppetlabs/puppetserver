@@ -1,7 +1,7 @@
 (ns puppetlabs.services.jruby.puppet-environments
   (:import (com.puppetlabs.puppetserver EnvironmentRegistry))
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 (defprotocol EnvironmentStateContainer
   (environment-state [this])
@@ -19,26 +19,26 @@
       EnvironmentRegistry
       (registerEnvironment [this env-name]
         (when-not env-name
-          (throw (IllegalArgumentException. (trs "Missing environment name!"))))
-        (log/debugf "Registering environment '%s'" env-name)
+          (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
+        (log/debug (i18n/trs "Registering environment ''{0}''" env-name))
         (swap! state assoc-in [(keyword env-name) :expired] false)
         nil)
       (isExpired [this env-name]
         (when-not env-name
-          (throw (IllegalArgumentException. (trs "Missing environment name!"))))
+          (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
         (get-in @state [(keyword env-name) :expired]))
       (removeEnvironment [this env-name]
         (when-not env-name
-          (throw (IllegalArgumentException. (trs "Missing environment name!"))))
-        (log/debug (trs "Removing environment ''{0}'' from registry" env-name))
+          (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
+        (log/debug (i18n/trs "Removing environment ''{0}'' from registry" env-name))
         (swap! state dissoc (keyword env-name))
         nil)
 
       EnvironmentStateContainer
       (environment-state [this] state)
       (mark-all-environments-expired! [this]
-        (log/info (trs "Marking all registered environments as expired."))
+        (log/info (i18n/trs "Marking all registered environments as expired."))
         (swap! state mark-all-expired!))
       (mark-environment-expired! [this env-name]
-        (log/info (trs "Marking environment ''{0}'' as expired." env-name))
+        (log/info (i18n/trs "Marking environment ''{0}'' as expired." env-name))
         (swap! state mark-expired! (keyword env-name))))))

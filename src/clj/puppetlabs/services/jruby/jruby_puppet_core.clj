@@ -8,7 +8,7 @@
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.i18n.core ::as i18n :refer [trs]]
+            [puppetlabs.i18n.core :as i18n]
             [clojure.tools.logging :as log]
             [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
@@ -100,9 +100,9 @@
                        (filter fs/exists?
                                (map #(fs/file % facter-jar) ruby-load-path)))]
     (do
-      (log/debug (trs "Adding facter jar to classpath from: {0}" facter-jar))
+      (log/debug (i18n/trs "Adding facter jar to classpath from: {0}" facter-jar))
       (ks-classpath/add-classpath facter-jar))
-    (log/info (trs "Facter jar not found in ruby load path"))))
+    (log/info (i18n/trs "Facter jar not found in ruby load path"))))
 
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
@@ -244,12 +244,11 @@
                                         (assoc :max-borrows-per-instance
                                                (:max-requests-per-instance jruby-puppet-config)))]
      (when (and warn-legacy-auth-conf? (:use-legacy-auth-conf jruby-puppet-config))
-       (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
-                 "'true'.  Support for the legacy Puppet auth.conf file is"
-                 "deprecated and will be removed in a future release.  Change"
-                 "this setting to 'false' and migrate your authorization rule"
-                 "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
-                 "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
+       (log/warnf
+        "%s %s %s"
+        (i18n/trs "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''.")
+        (i18n/trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
+        (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
      (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler))))
 
 (def EnvironmentClassInfoCacheEntry

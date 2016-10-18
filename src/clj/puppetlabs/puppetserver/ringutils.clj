@@ -2,13 +2,10 @@
   (:import (clojure.lang IFn)
            (java.security.cert X509Certificate))
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [ring.util.response :as ring]
             [schema.core :as schema]
-            [ring.util.response :as rr]
-            [cheshire.core :as cheshire]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -37,7 +34,7 @@
    access control whitelist."
   (let [subject (ssl-utils/get-cn-from-x509-certificate certificate)]
     (log/info
-     (format "%s\n%s" (trs "Client ''{0}'' access to {1} rejected;" subject uri) (trs "client not found in whitelist configuration.")))))
+     (format "%s\n%s" (i18n/trs "Client ''{0}'' access to {1} rejected;" subject uri) (i18n/trs "client not found in whitelist configuration.")))))
 
 (defn client-on-whitelist?
   "Test if the certificate subject is on the client whitelist."
@@ -63,7 +60,7 @@
         true
         (do (log-access-denied (:uri req) client-cert) false))
       (do
-        (log/info (trs "Access to {0} rejected; no client certificate found" (:uri req)))
+        (log/info (i18n/trs "Access to {0} rejected; no client certificate found" (:uri req)))
         false))
     true))
 

@@ -27,3 +27,5 @@ Gemfile.local
 /junit/
 /tmp/
 acceptance/scripts/hosts.cfg
+/resources/locales.clj
+/resources/puppetlabs/puppetserver/*.class
