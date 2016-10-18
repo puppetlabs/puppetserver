@@ -33,8 +33,8 @@ However, Puppet Server now has its own `auth.conf` file that uses a new HOCON fo
 
 You have two options when configuring how Puppet Server authenticates requests:
 
-* If you opt into using Puppet Server's new, supported HOCON `auth.conf` file and authorization methods, use the parameters and rule definitions in the [HOCON Parameters](#hocon-parameters) section.
-* If you continue using the deprecated Ruby [Puppet `auth.conf`][] file and authorization methods, see the [Deprecated Ruby Parameters](#deprecated-ruby-parameters) section.
+-   If you opt into using Puppet Server's new, supported HOCON `auth.conf` file and authorization methods, use the parameters and rule definitions in the [HOCON Parameters](#hocon-parameters) section.
+-   If you continue using the deprecated Ruby [Puppet `auth.conf`][] file and authorization methods, see the [Deprecated Ruby Parameters](#deprecated-ruby-parameters) section.
 
 ## HOCON example
 
@@ -99,12 +99,12 @@ You define each rule by adding parameters to the rule's [`match-request`](#match
 
 If a request matches a rule in a `match-request` section, Puppet Server determines whether to allow or deny the request using the `rules` parameters that follow the rule's `match-request` section:
 
-* At least one of:
-    * [`allow`](#allow-allow-unauthenticated-and-deny)
-    * [`allow-unauthenticated`](#allow-allow-unauthenticated-and-deny)
-    * [`deny`](#allow-allow-unauthenticated-and-deny)
-* [`sort-order`](#sort-order) (required)
-* [`name`](#name) (required)
+-   At least one of:
+    -   [`allow`](#allow-allow-unauthenticated-and-deny)
+    -   [`allow-unauthenticated`](#allow-allow-unauthenticated-and-deny)
+    -   [`deny`](#allow-allow-unauthenticated-and-deny)
+-   [`sort-order`](#sort-order) (required)
+-   [`name`](#name) (required)
 
 If no rule matches, Puppet Server denies the request by default and returns an HTTP 403/Forbidden response.
 
@@ -112,7 +112,7 @@ If no rule matches, Puppet Server denies the request by default and returns an H
 
 A `match-request` can take the following parameters, some of which are required:
 
-* **`path` and `type` (required):** A `match-request` rule must have a `path` parameter, which returns a match when a request's endpoint URL starts with or contains the `path` parameter's value. The parameter can be a literal string or regular expression as defined in the required `type` parameter.
+-   **`path` and `type` (required):** A `match-request` rule must have a `path` parameter, which returns a match when a request's endpoint URL starts with or contains the `path` parameter's value. The parameter can be a literal string or regular expression as defined in the required `type` parameter.
 
     ``` hocon
     # Regular expression to match a path in a URL.
@@ -125,7 +125,8 @@ A `match-request` can take the following parameters, some of which are required:
     ```
 
     > **Note:** While the HOCON format doesn't require you to wrap all string values with double quotation marks, some special characters commonly used in regular expressions --- such as `*` --- break HOCON parsing unless the entire value is enclosed in double quotes.
-* **`method`:** If a rule contains the optional `method` parameter, Puppet Server applies that rule only to requests that use its value's listed HTTP methods. This parameter's valid values are `get`, `post`, `put`, `delete`, and `head`, provided either as a single value or array of values.
+
+-   **`method`:** If a rule contains the optional `method` parameter, Puppet Server applies that rule only to requests that use its value's listed HTTP methods. This parameter's valid values are `get`, `post`, `put`, `delete`, and `head`, provided either as a single value or array of values.
 
     ``` hocon
     # Use GET and POST.
@@ -136,7 +137,8 @@ A `match-request` can take the following parameters, some of which are required:
     ```
 
     > **Note:** While the new HOCON format does not provide a direct equivalent to the [deprecated][] `method` parameter's `search` indirector, you can create the equivalent rule by passing GET and POST to `method` and specifying endpoint paths using the `path` parameter.
-* **`query-params` and `environment`:** For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter suffix on the request's base URL. Use the optional `query-params` setting and provide the list of query parameters as an array to the setting's `environment` parameter.
+
+-   **`query-params` and `environment`:** For endpoints on a Puppet 4 master, you can supply the `environment` as a query parameter suffix on the request's base URL. Use the optional `query-params` setting and provide the list of query parameters as an array to the setting's `environment` parameter.
 
     For example, this rule would match a request URL containing the `environment=production` or `environment=test` query parameters:
 
@@ -154,23 +156,23 @@ After each rule's `match-request` section, it must also have an `allow`, `allow-
 
 If a request matches the rule, Puppet Server checks the request's authenticated "name" (see [`allow-header-cert-info`](#allow-header-cert-info)) against these parameters to determine what to do with the request.
 
-* **`allow-unauthenticated`**: If this Boolean parameter is set to `true`, Puppet Server allows the request --- even if it can't determine an authenticated name. **This is a potentially insecure configuration** --- be careful when enabling it. A rule with this parameter set to `true` can't also contain the `allow` or `deny` parameters.
-* **`allow`**: This parameter can take a single string value, an array of string values, a single map value with either an `extensions` or `certname` key, or an array of string and map values.
+-   **`allow-unauthenticated`**: If this Boolean parameter is set to `true`, Puppet Server allows the request --- even if it can't determine an authenticated name. **This is a potentially insecure configuration** --- be careful when enabling it. A rule with this parameter set to `true` can't also contain the `allow` or `deny` parameters.
+-   **`allow`**: This parameter can take a single string value, an array of string values, a single map value with either an `extensions` or `certname` key, or an array of string and map values.
 
     The string values can contain:
 
-    * An exact domain name, such as `www.example.com`.
-    * A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`.
-    * A regular expression surrounded by `/` characters, such as `/example/`.
-    * A backreference to a regular expression's capture group in the `path` value, if the rule also contains a `type` value of `regex`. For example, if the path for the rule were `"^/example/([^/]+)$"`, you can make a backreference to the first capture group using a value like `$1.domain.org`.
+    -   An exact domain name, such as `www.example.com`.
+    -   A glob of names containing a `*` in the first segment, such as `*.example.com` or simply `*`.
+    -   A regular expression surrounded by `/` characters, such as `/example/`.
+    -   A backreference to a regular expression's capture group in the `path` value, if the rule also contains a `type` value of `regex`. For example, if the path for the rule were `"^/example/([^/]+)$"`, you can make a backreference to the first capture group using a value like `$1.domain.org`.
 
     The map values can contain:
 
-    * An `extensions` key that specifies an array of matching X.509 extensions. Puppet Server authenticates the request only if each key in the map appears in the request, and each key's value exactly matches.
-    * A `certname` key equivalent to a bare string.
+    -   An `extensions` key that specifies an array of matching X.509 extensions. Puppet Server authenticates the request only if each key in the map appears in the request, and each key's value exactly matches.
+    -   A `certname` key equivalent to a bare string.
 
     If the request's authenticated name matches the parameter's value, Puppet Server allows it.
-* **`deny`**: This parameter can take the same types of values as the `allow` parameter, but refuses the request if the authenticated name matches --- even if the rule contains an `allow` value that also matches.
+-   **`deny`**: This parameter can take the same types of values as the `allow` parameter, but refuses the request if the authenticated name matches --- even if the rule contains an `allow` value that also matches.
 
 > **Note:** The new authentication method introduced in Puppet Server 2.2.0 does not support, or provide an equivalent to, the `allow_ip` or `deny_ip` parameters in the [deprecated][] [Puppet `auth.conf`][] rule format.
 >
@@ -198,10 +200,10 @@ name: "my path"
 
 Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
 
-* [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
-* [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
-* [Puppet 4 `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html)
-* [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
+-   [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+-   [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
+-   [Puppet 4 `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html)
+-   [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
 
 Puppet Server allows agents to make requests at the old URLs and internally translates them as requests to the new endpoints. However, rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._ For more information, see [Backward Compatibility With Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
 
@@ -209,9 +211,9 @@ Puppet Server allows agents to make requests at the old URLs and internally tran
 
 For backward compatibility, settings in [`puppetserver.conf`][] also control whether to use the new Puppet Server authorization method for certain endpoints:
 
-* `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `true`.
-* `authorization-required` and `client-whitelist` in the `puppet-admin` section: If `authorization-required` is set to `false` or `client-whitelist` has at least one entry, Puppet Server authorizes requests to Puppet Server's administrative API according to the parameters' values. See the [`puppetserver.conf` documentation][`puppetserver.conf`] for more information on these settings. If `authorization-required` is set to `true` or not set and `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests to Puppet Server's administrative API using the authorization method introduced in Puppet Server 2.2.0.
-* `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
+-   `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `true`.
+-   `authorization-required` and `client-whitelist` in the `puppet-admin` section: If `authorization-required` is set to `false` or `client-whitelist` has at least one entry, Puppet Server authorizes requests to Puppet Server's administrative API according to the parameters' values. See the [`puppetserver.conf` documentation][`puppetserver.conf`] for more information on these settings. If `authorization-required` is set to `true` or not set and `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests to Puppet Server's administrative API using the authorization method introduced in Puppet Server 2.2.0.
+-   `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
 
 ## Deprecated Ruby Parameters
 
