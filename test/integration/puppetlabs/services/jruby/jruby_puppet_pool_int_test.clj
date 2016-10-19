@@ -31,7 +31,7 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config])
-  (:import (org.jruby RubyInstanceConfig$CompileMode)))
+  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -273,7 +273,8 @@
 
 (deftest ^:integration settings-plumbed-into-jruby-container
   (testing "setting plumbed into jruby container for"
-    (let [jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compile-mode :off})
+    (let [jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compat-version "2.0"
+                                                                    :compile-mode :jit})
           config (assoc
                   (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
                    :http-client {:connect-timeout-milliseconds 2
@@ -291,8 +292,11 @@
              jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
              container (:scripting-container jruby-instance)]
          (try
-           (= RubyInstanceConfig$CompileMode/JIT
-              (.getCompileMode container))
+           (testing "compat version"
+             (is (= CompatVersion/RUBY2_0 (.getCompatVersion container))))
+           (testing "compile mode"
+             (is (= RubyInstanceConfig$CompileMode/JIT
+                    (.getCompileMode container))))
            (let [settings (into {} (.runScriptlet container
                                                   "java.util.HashMap.new
                                                      (Puppet::Server::HttpClient.settings)"))]

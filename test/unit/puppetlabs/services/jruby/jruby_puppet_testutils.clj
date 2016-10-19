@@ -18,7 +18,6 @@
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
 (def gem-home "./target/jruby-gem-home")
 (def gem-path "./target/jruby-gem-home:./target/vendored-jruby-gems")
-(def compile-mode :off)
 
 (def conf-dir "./target/master-conf")
 (def code-dir "./target/master-code")
