@@ -3,7 +3,8 @@
            [java.util Date]
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File]
            [java.nio.file Files Paths LinkOption]
-           [java.nio.file.attribute FileAttribute PosixFilePermissions])
+           [java.nio.file.attribute FileAttribute PosixFilePermissions]
+           (java.security KeyPair))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -172,10 +173,6 @@
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
-
-(def required-master-files
-  "The set of SSL files that are required on the master."
-  #{:hostprivkey :hostcert})
 
 (def required-ca-files
   "The set of SSL related files that are required on the CA."
@@ -633,6 +630,48 @@
       (validate-extensions! csr-attr-exts))
     (remove nil? (concat base-ext-list [alt-names-ext] csr-attr-exts))))
 
+(schema/defn generate-master-ssl-keys!* :- (schema/pred utils/public-key?)
+  "Generate and store ssl public and private keys for the master to disk.
+  Returns the public key."
+  [{:keys [hostprivkey hostpubkey keylength]} :- MasterSettings]
+  (log/debug (i18n/trs "Generating public and private keys for master cert"))
+  (let [keypair (utils/generate-key-pair keylength)
+        public-key (utils/get-public-key keypair)
+        private-key (utils/get-private-key keypair)]
+    (utils/key->pem! public-key hostpubkey)
+    (utils/key->pem! private-key
+                     (create-file-with-perms hostprivkey
+                                             private-key-perms))
+    public-key))
+
+(schema/defn generate-master-ssl-keys! :- (schema/pred utils/public-key?)
+  "Generate and store ssl public and private keys for the master to disk.  If
+  the files are both already present, new ones will not be generated to replace
+  them.  Returns the public key."
+  [{:keys [hostprivkey hostpubkey] :as settings} :- MasterSettings]
+  (cond
+    (and (fs/exists? hostprivkey) (fs/exists? hostpubkey))
+    (do
+      (log/debug (i18n/trs "Using keys found on disk to generate master cert"))
+      (utils/pem->public-key hostpubkey))
+
+    (and (not (fs/exists? hostprivkey)) (not (fs/exists? hostpubkey)))
+    (generate-master-ssl-keys!* settings)
+
+    (fs/exists? hostpubkey)
+    (throw
+     (IllegalStateException.
+      (i18n/trs "Found master public key ''{0}'' but master private key ''{1}'' is missing"
+                hostpubkey
+                hostprivkey)))
+
+    :else
+    (throw
+     (IllegalStateException.
+      (i18n/trs "Found master private key ''{0}'' but master public key ''{1}'' is missing"
+                hostprivkey
+                hostpubkey)))))
+
 (schema/defn generate-master-ssl-files!
   "Given master configuration settings, certname, and CA settings,
    generate and write to disk all of the necessary SSL files for
@@ -651,13 +690,11 @@
         ca-public-key  (.getPublicKey ca-cert)
         ca-private-key (utils/pem->private-key (:cakey ca-settings))
         next-serial    (next-serial-number! (:serial ca-settings))
-        keypair        (utils/generate-key-pair (:keylength settings))
-        public-key     (utils/get-public-key keypair)
+        public-key     (generate-master-ssl-keys! settings)
         extensions     (create-master-extensions certname
                                                  public-key
                                                  ca-public-key
                                                  settings)
-        private-key    (utils/get-private-key keypair)
         x500-name      (utils/cn certname)
         validity       (cert-validity-dates (:ca-ttl ca-settings))
         hostcert       (utils/sign-certificate (get-subject ca-cert)
@@ -669,9 +706,6 @@
                                                public-key
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
-    (utils/key->pem! public-key (:hostpubkey settings))
-    (utils/key->pem! private-key
-     (create-file-with-perms (:hostprivkey settings) private-key-perms))
     (utils/cert->pem! hostcert (:hostcert settings))
     (utils/cert->pem! hostcert
                       (path-to-cert (:signeddir ca-settings) certname))))
@@ -680,19 +714,22 @@
   "Given configuration settings, certname, and CA settings, ensure all
    necessary SSL files exist on disk by regenerating all of them if any
    are found to be missing."
-  [settings :- MasterSettings
-    certname :- schema/Str
-    ca-settings :- CaSettings]
-     (let [required-files (-> (settings->ssldir-paths settings)
-                              (select-keys required-master-files)
-                              (vals))]
-       (if (every? fs/exists? required-files)
-         (log/info (i18n/trs "Master already initialized for SSL"))
-         (let [{found   true
-                missing false} (group-by fs/exists? required-files)]
-           (if (= required-files missing)
-             (generate-master-ssl-files! settings certname ca-settings)
-             (throw (partial-state-error "master" found missing)))))))
+  [{:keys [hostprivkey hostcert] :as settings} :- MasterSettings
+   certname :- schema/Str
+   ca-settings :- CaSettings]
+  (cond
+    (and (fs/exists? hostcert) (fs/exists? hostprivkey))
+    (log/info (i18n/trs "Master already initialized for SSL"))
+
+    (fs/exists? hostcert)
+    (throw
+     (IllegalStateException.
+      (i18n/trs "Found master cert ''{0}'' but master private key ''{1}'' is missing"
+           hostcert
+           hostprivkey)))
+
+    :else
+    (generate-master-ssl-files! settings certname ca-settings)))
 
 (schema/defn ^:always-validate retrieve-ca-cert!
   "Ensure a local copy of the CA cert is available on disk.  cacert is the base

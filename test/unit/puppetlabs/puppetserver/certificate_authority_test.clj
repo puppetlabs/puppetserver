@@ -1,5 +1,8 @@
 (ns puppetlabs.puppetserver.certificate-authority-test
-  (:import (java.io StringReader ByteArrayInputStream ByteArrayOutputStream)
+  (:import (java.io StringReader
+                    StringWriter
+                    ByteArrayInputStream
+                    ByteArrayOutputStream)
            (java.security InvalidParameterException))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
@@ -664,23 +667,83 @@
     (testing "Does not replace files if they all exist"
       (let [files (-> (settings->ssldir-paths settings)
                       (dissoc :certdir :requestdir :privatekeydir)
-                      (vals))]
-        (doseq [f files] (spit f "testable string"))
-        (initialize-master-ssl! settings "master" ca-settings)
-        (doseq [f files] (is (= "testable string" (slurp f))
-                             "File was replaced"))))
+                      (vals))
+            file-content-fn (fn [files-to-read]
+                              (reduce
+                               #(assoc %1 %2 (slurp %2))
+                               {}
+                               files-to-read))
+            file-content-before-reinit (file-content-fn files)
+            _ (initialize-master-ssl! settings "master" ca-settings)
+            file-content-after-reinit (file-content-fn files)]
+        (is (= file-content-before-reinit file-content-after-reinit)
+            "File content unexpectedly changed after initialization called")))
 
-    (testing "Throws an exception if required file is missing"
-      (doseq [file required-master-files]
-        (testing file
-          (let [path (get settings file)
-                copy (fs/copy path (ks/temp-file))]
-            (fs/delete path)
-            (is (thrown-with-msg?
-                 IllegalStateException
-                 (re-pattern (str "Missing:\n" path))
-                 (initialize-master-ssl! settings "master" ca-settings)))
-            (fs/copy copy path)))))))
+    (testing "Throws an exception if the cert is present but private key is missing"
+      (let [private-key-path (:hostprivkey settings)
+            private-key-backup (fs/copy private-key-path (ks/temp-file))]
+        (fs/delete private-key-path)
+        (is (thrown-with-msg?
+             IllegalStateException
+             (re-pattern
+              (str "Found master cert '" (:hostcert settings)
+                   "' but master private key '" (:hostprivkey settings)
+                   "' is missing"))
+             (initialize-master-ssl! settings "master" ca-settings)))
+        (fs/copy private-key-backup private-key-path)))
+
+    (testing (str "Throws an exception if the private key is present but cert "
+                  "and public key are missing")
+      (let [public-key-path (:hostpubkey settings)
+            public-key-backup (fs/copy public-key-path (ks/temp-file))
+            cert-path (:hostcert settings)
+            cert-backup (fs/copy cert-path (ks/temp-file))]
+        (fs/delete public-key-path)
+        (fs/delete cert-path)
+        (is (thrown-with-msg?
+             IllegalStateException
+             (re-pattern
+              (str "Found master private key '" (:hostprivkey settings)
+                   "' but master public key '" (:hostpubkey settings)
+                   "' is missing"))
+             (initialize-master-ssl! settings "master" ca-settings)))
+        (fs/copy public-key-backup public-key-path)
+        (fs/copy cert-backup cert-path)))
+
+    (testing (str "Throws an exception if the public key is present but cert "
+                  "and private key are missing")
+      (let [private-key-path (:hostprivkey settings)
+            private-key-backup (fs/copy private-key-path (ks/temp-file))
+            cert-path (:hostcert settings)
+            cert-backup (fs/copy cert-path (ks/temp-file))]
+        (fs/delete private-key-path)
+        (fs/delete cert-path)
+        (is (thrown-with-msg?
+             IllegalStateException
+             (re-pattern
+              (str "Found master public key '" (:hostpubkey settings)
+                   "' but master private key '" (:hostprivkey settings)
+                   "' is missing"))
+             (initialize-master-ssl! settings "master" ca-settings)))
+        (fs/copy private-key-backup private-key-path)
+        (fs/copy cert-backup cert-path)))
+
+    (testing "hostcert regenerated if keys already present at initialization time"
+      (let [hostcert-path (:hostcert settings)
+            hostcert-backup (fs/copy hostcert-path (ks/temp-file))
+            public-key-before-init (slurp (:hostpubkey settings))
+            _ (fs/delete hostcert-path)
+            _ (initialize-master-ssl! settings "master" ca-settings)
+            hostcert-after-init (utils/pem->cert hostcert-path)
+            public-key-from-new-cert (StringWriter.)]
+        (-> hostcert-after-init
+            (.getPublicKey)
+            (utils/obj->pem! public-key-from-new-cert))
+        (testutils/assert-subject hostcert-after-init "CN=master")
+        (testutils/assert-issuer hostcert-after-init "CN=Puppet CA: localhost")
+        (is (= public-key-before-init (.toString public-key-from-new-cert))
+            "regenerated public key embedded in regenerated hostcert")
+        (fs/copy hostcert-backup hostcert-path)))))
 
 (deftest initialize-master-ssl!-test-with-keylength-settings
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
