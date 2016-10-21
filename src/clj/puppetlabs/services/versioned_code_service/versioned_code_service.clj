@@ -3,7 +3,7 @@
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.versioned-code-service.versioned-code-core :as vc-core]
             [clojure.tools.logging :as log]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -15,9 +15,9 @@
   (init
    [this context]
    (if (nil? (get-in-config [:versioned-code :code-id-command]))
-     (log/info (trs "No code-id-command set for versioned-code-service. Code-id will be nil.")))
+     (log/info (i18n/trs "No code-id-command set for versioned-code-service. Code-id will be nil.")))
    (if (nil? (get-in-config [:versioned-code :code-content-command]))
-     (log/info (trs "No code-content-command set for versioned-code-service. Attempting to fetch code content will fail.")))
+     (log/info (i18n/trs "No code-content-command set for versioned-code-service. Attempting to fetch code content will fail.")))
    (vc-core/validate-config! (get-in-config [:versioned-code]))
    context)
 
@@ -32,4 +32,4 @@
    (if-let [code-content-script (get-in-config [:versioned-code :code-content-command])]
      (vc-core/execute-code-content-script!
        code-content-script environment code-id file-path)
-     (throw (IllegalStateException. (trs "Cannot retrieve code content because the \"versioned-code.code-content-command\" setting is not present in configuration."))))))
+     (throw (IllegalStateException. (i18n/trs "Cannot retrieve code content because the \"versioned-code.code-content-command\" setting is not present in configuration."))))))

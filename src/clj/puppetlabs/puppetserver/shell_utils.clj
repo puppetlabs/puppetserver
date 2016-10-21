@@ -3,9 +3,9 @@
             [clojure.java.io :as io]
             [puppetlabs.kitchensink.core :as ks]
             [clojure.string :as string]
-            [puppetlabs.i18n.core :as i18n :refer [trs]])
+            [puppetlabs.i18n.core :as i18n])
   (:import (com.puppetlabs.puppetserver ShellUtils ShellUtils$ExecutionOptions)
-           (java.io IOException InputStream OutputStream)
+           (java.io InputStream)
            (org.apache.commons.io IOUtils)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,17 +58,17 @@
     (cond
       (not (.isAbsolute command-file))
       (throw (IllegalArgumentException.
-              (trs "An absolute path is required, but ''{0}'' is not an absolute path" command)))
+              (i18n/trs "An absolute path is required, but ''{0}'' is not an absolute path" command)))
       (not (.exists command-file))
       (let [cmds (string/split command #" ")]
         (if (and (> (count cmds) 1) (.exists (io/as-file (first cmds))))
           (throw (IllegalArgumentException.
-                  (trs "Command ''{0}'' appears to use command-line arguments, but this is not allowed." command)))
+                  (i18n/trs "Command ''{0}'' appears to use command-line arguments, but this is not allowed." command)))
           (throw (IllegalArgumentException.
-                  (trs "The referenced command ''{0}'' does not exist" command)))))
+                  (i18n/trs "The referenced command ''{0}'' does not exist" command)))))
       (not (.canExecute command-file))
       (throw (IllegalArgumentException.
-              (trs "The referenced command ''{0}'' is not executable" command))))))
+              (i18n/trs "The referenced command ''{0}'' is not executable" command))))))
 
 (schema/defn ^:always-validate
   execute-command-streamed :- ExecutionResultStreamed

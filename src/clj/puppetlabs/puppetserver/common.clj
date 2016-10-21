@@ -1,5 +1,6 @@
 (ns puppetlabs.puppetserver.common
-  (:require [schema.core :as schema]))
+  (:require [schema.core :as schema]
+            [puppetlabs.i18n.core :as i18n]))
 
 (def Environment
   "Schema for environment names. Alphanumeric and _ only."
@@ -10,9 +11,13 @@
   '-', '_', ';', or ':'."
   (schema/pred (comp not (partial re-find #"[^_\-:;a-zA-Z0-9]")) "code-id"))
 
-(def environment-validation-error-msg
-  (partial format "The environment must be purely alphanumeric, not '%s'"))
+(schema/defn environment-validation-error-msg
+  [environment :- schema/Str]
+  (i18n/tru "The environment must be purely alphanumeric, not ''{0}''"
+            environment))
 
-(def code-id-validation-error-msg
-  (partial format "Invalid code-id '%s'. Must contain only alpha-numerics and '-', '_', ';', or ':'"))
+(schema/defn code-id-validation-error-msg
+  [code-id :- schema/Str]
+  (i18n/tru "Invalid code-id ''{0}''. Must contain only alpha-numerics and ''-'', ''_'', '';'', or '':''"
+            code-id))
 
