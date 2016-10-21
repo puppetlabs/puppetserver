@@ -164,13 +164,23 @@ namespace :test do
       Open3.popen3("lein with-profile ezbake ezbake build 2>&1") do |stdin, stdout, stderr, thread|
         # sleep 5
         # puts "STDOUT IS: #{stdout}"
+        success = true
         stdout.each do |line|
           if match = line.match(%r|^Your packages will be available at http://builds.delivery.puppetlabs.net/puppetserver/(.*)$|)
             package_version = match[1]
+          elsif line =~ /^Packaging FAILURE\s*$/
+            success = false
           end
           puts line
         end
-        puts "PACKAGE VERSION IS #{package_version}"
+        exit_code = thread.value
+        if success == true
+          puts "PACKAGE VERSION IS #{package_version}"
+        else
+          puts "\n\nPACKAGING FAILED!  exit code is '#{exit_code}'.  STDERR IS:"
+          puts stderr.read
+          exit 1
+        end
       end
 
       begin
