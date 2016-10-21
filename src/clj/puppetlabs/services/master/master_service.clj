@@ -40,9 +40,13 @@
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
-                                                 false)]
-     (interspaced checkin-interval-millis
-                  (fn [] (version-check/check-for-updates! {:product-name product-name} update-server-url)))
+                                                 false)
+         check-for-updates (get-in config [:product :check-for-updates])]
+     (if (or (nil? check-for-updates) check-for-updates)
+       (interspaced checkin-interval-millis
+                    (fn [] (version-check/check-for-updates!
+                             {:product-name product-name} update-server-url)))
+       (log/info (i18n/trs "Not checking for updates - opt-out setting exists")))
 
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)

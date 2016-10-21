@@ -450,6 +450,10 @@ msgid "Route not found for service {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_service.clj
+msgid "Not checking for updates - opt-out setting exists"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
 msgid "Master Service adding ring handlers"
 msgstr ""
 
