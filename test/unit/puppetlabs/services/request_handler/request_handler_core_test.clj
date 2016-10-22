@@ -203,7 +203,8 @@
           (is (get req :authenticated))
           (is (= "puppet" (get req :client-cert-cn)))
           (is (= "CN=localhost"
-                 (cert-authority/get-subject (get req :client-cert))))))
+                 (ssl-utils/get-subject-from-x509-certificate
+                  (get req :client-cert))))))
 
       (testing "a malformed DN string fails"
         (let [req (core/as-jruby-request
@@ -238,7 +239,8 @@
           (is (get req :authenticated))
           (is (= "puppet" (get req :client-cert-cn)))
           (is (= "CN=master1.example.org"
-                 (cert-authority/get-subject (get req :client-cert))))))
+                 (ssl-utils/get-subject-from-x509-certificate
+                  (get req :client-cert))))))
 
       (testing "cert and cn from ssl used when allow-header-cert-info false"
         (let [cert (ssl-utils/pem->cert

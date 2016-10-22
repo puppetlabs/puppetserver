@@ -101,11 +101,33 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Generating public and private keys for master cert"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Using keys found on disk to generate master cert"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Found master public key ''{0}'' but master private key ''{1}'' is missing"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Found master private key ''{0}'' but master public key ''{1}'' is missing"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Initializing SSL for the Master; settings:"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Master already initialized for SSL"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Found master cert ''{0}'' but master private key ''{1}'' is missing"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj

@@ -305,13 +305,7 @@
            (i18n/trs "Missing:")
            (str/join "\n" missing-files))))
 
-; TODO - PE-5529 - these should be moved to jvm-c-a.
-(schema/defn get-subject :- schema/Str
-  [cert :- Certificate]
-  (-> cert
-      (.getSubjectX500Principal)
-      (.getName)))
-
+; TODO - PE-5529 - this should be moved to jvm-c-a.
 (schema/defn get-csr-subject :- schema/Str
   [csr :- CertificateRequest]
   (-> csr
@@ -413,7 +407,7 @@
         not-after     (-> cert
                           (.getNotAfter)
                           (format-date-time))
-        subject       (get-subject cert)
+        subject       (utils/get-subject-from-x509-certificate cert)
         entry (str serial-number " " not-before " " not-after " /" subject "\n")]
     (spit inventory-file entry :append true)))
 
@@ -697,7 +691,8 @@
                                                  settings)
         x500-name      (utils/cn certname)
         validity       (cert-validity-dates (:ca-ttl ca-settings))
-        hostcert       (utils/sign-certificate (get-subject ca-cert)
+        hostcert       (utils/sign-certificate (utils/get-subject-from-x509-certificate
+                                                ca-cert)
                                                ca-private-key
                                                next-serial
                                                (:not-before validity)
@@ -944,7 +939,8 @@
    {:keys [cacert cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [validity    (cert-validity-dates ca-ttl)
         cacert      (utils/pem->cert cacert)
-        signed-cert (utils/sign-certificate (get-subject cacert)
+        signed-cert (utils/sign-certificate (utils/get-subject-from-x509-certificate
+                                             cacert)
                                             (utils/pem->private-key cakey)
                                             (next-serial-number! serial)
                                             (:not-before validity)
