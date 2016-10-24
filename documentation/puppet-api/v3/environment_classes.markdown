@@ -389,7 +389,7 @@ entries on the server, do one of the following:
 
     Each environment's cache is held in memory for the Puppet Server process and is
     effectively flushed whenever Puppet Server is restarted, whether with a
-    [HUP signal](../../restarting.markdown) or a full JVM restart.
+    [HUP signal, service reload, ](../../restarting.markdown) or a full JVM restart.
 
 ### Authorization
 

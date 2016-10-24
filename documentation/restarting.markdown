@@ -17,13 +17,29 @@ There are several ways to send a HUP signal to the Puppet Server process, but th
 
     kill -HUP `pgrep -f puppet-server`
 
+Starting in version 2.7.0, you can also reload Puppet Server by running the "reload" action via the operating system's service framework.  This is analogous to sending a hangup signal but with the benefit of having the "reload" command pause until the server has been completely reloaded, similar to how the "restart" command pauses until the service process has been fully restarted.
+
+The following commands could be used to trigger a service reload.
+
+All current OS distributions:
+
+    service puppetserver reload
+
+OS distributions which use sysvinit-style scripts:
+
+    /etc/init.d/puppetserver reload
+
+OS distributions which use systemd service configurations:
+
+    systemctl reload puppetserver
+
 ## Restarting Puppet Server to pick up changes
 
-There are three ways to trigger your Puppet Server environment to refresh and pick up changes you've made. A request to the [HTTP Admin API to flush the JRuby pool](./admin-api/v1/jruby-pool.markdown) is the quickest, but picks up only certain types of changes. A HUP signal restart is also quick, and applies additional changes. Other changes require a full Puppet Server restart.
+There are three ways to trigger your Puppet Server environment to refresh and pick up changes you've made. A request to the [HTTP Admin API to flush the JRuby pool](./admin-api/v1/jruby-pool.markdown) is the quickest, but picks up only certain types of changes. A HUP signal or service reload is also quick, and applies additional changes. Other changes require a full Puppet Server restart.
 
 > **Note:** Changes to Puppet Server's [logging configuration in `logback.xml`][logback.xml] don't require a server reload or restart. Puppet Server recognizes and applies them automatically, though it can take a minute or so for this to happen.
 
-### Changes applied after a JRuby pool flush, HUP signal, or full Server restart
+### Changes applied after a JRuby pool flush, service reload, or full Server restart
 
 * Changes to your `hiera.yaml` file to change your [Hiera][] configuration.
 * [Installation or removal of gems][gems] for Puppet Server by `puppetserver gem`.
@@ -33,7 +49,7 @@ There are three ways to trigger your Puppet Server environment to refresh and pi
   [Admin API endpoint for flushing the environment cache](./admin-api/v1/environment-cache.markdown).
 * Changes to the CA CRL file.  For example, a `puppet cert clean`
 
-### Changes applied after a HUP signal or full Server restart
+### Changes applied after a service reload or full Server restart
 
 * Changes to Puppet Server [configuration files](./configuration.markdown) in its `conf.d` directory.
 * Changes to the CA CRL file.  For example, a `puppet cert clean`
