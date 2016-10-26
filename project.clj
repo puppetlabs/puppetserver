@@ -7,6 +7,26 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
+(def heap-size-from-profile-clj
+  (let [profile-clj (io/file (System/getenv "HOME") ".lein" "profiles.clj")]
+    (if (.exists profile-clj)
+      (-> profile-clj
+        slurp
+        read-string
+        (get-in [:user :puppetserver-heap-size])))))
+
+(defn heap-size
+  [default-heap-size heap-size-type]
+  (or
+    (System/getenv "PUPPETSERVER_HEAP_SIZE")
+    heap-size-from-profile-clj
+    (do
+      (println "Using" default-heap-size heap-size-type
+        "heap since not set via PUPPETSERVER_HEAP_SIZE environment variable or"
+        "user.puppetserver-heap-size in ~/.lein/profiles.clj file. Set to at"
+        "least 5G for best performance during test runs.")
+      default-heap-size)))
+
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
@@ -138,7 +158,9 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
 
   ; tests use a lot of PermGen (jruby instances)
-  :jvm-opts ["-XX:MaxPermSize=256m" "-Xmx2g"]
+  :jvm-opts ["-XX:MaxPermSize=256m"
+             ~(str "-Xms" (heap-size "1G" "min"))
+             ~(str "-Xmx" (heap-size "2G" "max"))]
 
   :repl-options {:init-ns user}
 
