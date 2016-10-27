@@ -18,6 +18,7 @@
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.protocols.request-handler :as handler]
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
@@ -31,7 +32,8 @@
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config])
-  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)))
+  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
+           (com.codahale.metrics MetricRegistry)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -322,7 +324,7 @@
                    :http-client {:connect-timeout-milliseconds 2
                                  :idle-timeout-milliseconds 5
                                  :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
-                                                             "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                                                 "TLS_RSA_WITH_AES_256_CBC_SHA"]
                                  :ssl-protocols ["TLSv1" "TLSv1.2"]})]
       (tk-testutils/with-app-with-config
        app
@@ -355,6 +357,43 @@
                       (into [] (settings "ssl_protocols"))))))
            (finally
              (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
+
+(deftest ^:integration http-client-metrics-test
+  (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))
+        base-services [jruby/jruby-puppet-pooled-service
+                       profiler/puppet-profiler-service
+                       jruby-utils/jruby-pool-manager-service]]
+    (testing "when no metrics service, http client does not use a metric registry"
+      (tk-testutils/with-app-with-config
+       app
+       base-services
+       config
+       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+             jruby-instance (jruby-testutils/borrow-instance jruby-service :no-metrics-test)
+             container (:scripting-container jruby-instance)]
+         (try
+           (let [client (.runScriptlet container "Puppet::Server::HttpClient.client")]
+             (testing "client does not have a registry"
+               (is (= nil (.getMetricRegistry client)))))
+           (finally
+             (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))
+    (testing "when metrics service is present, http client uses a metric registry"
+      (tk-testutils/with-app-with-config
+       app
+       (conj base-services metrics-service/metrics-service)
+       (assoc config :metrics {:server-id "localhost"})
+       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+             jruby-instance (jruby-testutils/borrow-instance jruby-service :no-metrics-test)
+             container (:scripting-container jruby-instance)]
+         (try
+           (let [client (.runScriptlet container "Puppet::Server::HttpClient.client")]
+             (testing "client has a registry"
+               (is (instance? MetricRegistry (.getMetricRegistry client))))
+             (testing "server id is passed through to client"
+               (is (= "puppetlabs.localhost.http-client.experimental"
+                      (.getMetricNamespace client)))))
+           (finally
+             (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))))
 
 (deftest create-jruby-instance-test
   (testing "Directories can be configured programatically

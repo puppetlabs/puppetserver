@@ -13,7 +13,8 @@
             [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
-           (java.util HashMap)))
+           (java.util HashMap)
+           (com.codahale.metrics MetricRegistry)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -89,6 +90,10 @@
   "Well-known name of the facter jar file"
   "facter.jar")
 
+(def MetricsInfo
+  {:metric-registry MetricRegistry
+   :server-id schema/Str})
+
 (schema/defn ^:always-validate
   add-facter-jar-to-system-classloader!
   "Searches the ruby load path for a file whose name matches that of the
@@ -106,14 +111,16 @@
 
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
-   profiler :- (schema/maybe PuppetProfiler)]
+   profiler :- (schema/maybe PuppetProfiler)
+   metrics-info :- (schema/maybe MetricsInfo)]
   (fn [jruby-instance]
     (let [{:keys [http-client-ssl-protocols
                   http-client-cipher-suites
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
                   use-legacy-auth-conf]} config
-          scripting-container (:scripting-container jruby-instance)]
+          scripting-container (:scripting-container jruby-instance)
+          {:keys [metric-registry server-id]} metrics-info]
 
       (.runScriptlet scripting-container "require 'puppet/server/master'")
       (let [ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
@@ -129,7 +136,9 @@
           (.put "environment_registry" env-registry)
           (.put "http_connect_timeout_milliseconds" http-client-connect-timeout-milliseconds)
           (.put "http_idle_timeout_milliseconds" http-client-idle-timeout-milliseconds)
-          (.put "use_legacy_auth_conf" use-legacy-auth-conf))
+          (.put "use_legacy_auth_conf" use-legacy-auth-conf)
+          (.put "metric_registry" metric-registry)
+          (.put "server_id" server-id))
         (let [jruby-puppet (.callMethodWithArgArray
                             scripting-container
                             ruby-puppet-class
@@ -199,8 +208,9 @@
   [jruby-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
    jruby-config :- {schema/Keyword schema/Any}
    agent-shutdown-fn :- IFn
-   profiler :- (schema/maybe PuppetProfiler)]
-  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler)
+   profiler :- (schema/maybe PuppetProfiler)
+   metrics-info :- (schema/maybe MetricsInfo)]
+  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-info)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
@@ -232,11 +242,12 @@
   ([raw-config :- {:jruby-puppet {schema/Keyword schema/Any}
                    (schema/optional-key :http-client) {schema/Keyword schema/Any}
                    schema/Keyword schema/Any}]
-   (initialize-and-create-jruby-config raw-config nil (fn []) false))
+   (initialize-and-create-jruby-config raw-config nil (fn []) false nil))
   ([raw-config :- {schema/Keyword schema/Any}
     profiler :- (schema/maybe PuppetProfiler)
     agent-shutdown-fn :- IFn
-    warn-legacy-auth-conf? :- schema/Bool]
+    warn-legacy-auth-conf? :- schema/Bool
+    metrics-info :- (schema/maybe MetricsInfo)]
    (let [jruby-puppet-config (initialize-puppet-config
                               (extract-http-config (:http-client raw-config))
                               (extract-puppet-config (:jruby-puppet raw-config)))
@@ -249,7 +260,7 @@
         (i18n/trs "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''.")
         (i18n/trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
         (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
-     (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler))))
+     (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler metrics-info))))
 
 (def EnvironmentClassInfoCacheEntry
   "Data structure that holds per-environment cache information for the

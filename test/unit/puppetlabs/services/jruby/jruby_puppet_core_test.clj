@@ -136,6 +136,7 @@
                                     jruby-puppet-config
                                     unitialized-jruby-config
                                     shutdown-fn
+                                    nil
                                     nil)]
       (testing "lifecycle functions are not overridden"
         (is (= 42 ((get-in initialized-jruby-config [:lifecycle :shutdown-on-error])))))
@@ -157,6 +158,7 @@
                                     jruby-puppet-config
                                     unitialized-jruby-config
                                     shutdown-fn
+                                    nil
                                     nil)]
 
       (testing "jruby-config default values are used if not provided"
