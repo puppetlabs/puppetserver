@@ -181,7 +181,7 @@
 (deftest handle-put-certificate-request!-test
   (let [settings   (assoc (testutils/ca-sandbox! cadir)
                      :allow-duplicate-certs true)
-        static-csr (ca/path-to-cert-request (str cadir "/requests") "test-agent")]
+        static-csr (ca/path-to-cert-request csrdir "test-agent")]
     (logutils/with-test-logging
       (testing "when autosign results in true"
         (doseq [value [true
@@ -201,7 +201,34 @@
                   (is (= "text/plain" (get-in response [:headers "Content-Type"])))
                   (is (nil? (:body response))))
                 (finally
-                  (fs/delete expected-path)))))))
+                  (fs/delete expected-path))))))
+
+        (let [ca-cert-file (ca/path-to-cert cadir "ca_crt_multiple_rdns")
+              ca-subject-bytes (-> ca-cert-file
+                                   (utils/pem->cert)
+                                   (.getSubjectX500Principal)
+                                   (.getEncoded))
+              settings (assoc settings :autosign true :cacert ca-cert-file)
+              csr-stream (io/input-stream static-csr)
+              expected-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+
+          (testing "a multi-RDN CA subject is properly set as signed cert's issuer"
+            (try
+              (is (false? (fs/exists? expected-path)))
+              (let [response (handle-put-certificate-request! "test-agent"
+                                                              csr-stream
+                                                              settings)
+                    signed-cert-issuer-bytes (-> (utils/pem->cert expected-path)
+                                                 (.getIssuerX500Principal)
+                                                 (.getEncoded))]
+                (is (true? (fs/exists? expected-path)))
+                (is (= 200 (:status response)))
+                (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+                (is (nil? (:body response)))
+                (is (= (seq ca-subject-bytes)
+                       (seq signed-cert-issuer-bytes))))
+              (finally
+                (fs/delete expected-path))))))
 
       (testing "when autosign results in false"
         (doseq [value [false
@@ -416,15 +443,55 @@
                        (wrap-with-ssl-client-cert))]
       (testing "PUT"
         (testing "signing a cert"
-          (let [signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")]
+          (let [csr-path (ca/path-to-cert-request (:csrdir settings) "test-agent")
+                signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
+                static-csr (ca/path-to-cert-request csrdir "test-agent")]
             (is (false? (fs/exists? signed-cert-path)))
-            (let [response (test-app
-                            {:uri "/v1/certificate_status/test-agent"
-                             :request-method :put
-                             :body (body-stream "{\"desired_state\":\"signed\"}")})]
-              (is (true? (fs/exists? signed-cert-path)))
-              (is (= 204 (:status response))
-                  (ks/pprint-to-string response)))))
+            (try
+              (let [response (test-app
+                              {:uri "/v1/certificate_status/test-agent"
+                               :request-method :put
+                               :body (body-stream "{\"desired_state\":\"signed\"}")})]
+                (is (true? (fs/exists? signed-cert-path)))
+                (is (= 204 (:status response))
+                    (ks/pprint-to-string response)))
+              (finally
+                (fs/copy static-csr csr-path)
+                (fs/delete signed-cert-path)))))
+
+        (testing "signing a cert with a CA that has multiple RDNs"
+          (let [ca-cert-with-mult-rdns (ca/path-to-cert cadir
+                                                        "ca_crt_multiple_rdns")
+                ca-subject-bytes (-> ca-cert-with-mult-rdns
+                                     (utils/pem->cert)
+                                     (.getSubjectX500Principal)
+                                     (.getEncoded))
+                ca-cert-path (:cacert settings)
+                csr-path (ca/path-to-cert-request (:csrdir settings) "test-agent")
+                signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
+                original-ca-cert (ca/path-to-cert cadir "ca_crt")
+                static-csr (ca/path-to-cert-request csrdir "test-agent")]
+            (try
+              (is (false? (fs/exists? signed-cert-path)))
+              (fs/copy ca-cert-with-mult-rdns ca-cert-path)
+              (let [response (test-app
+                              {:uri "/v1/certificate_status/test-agent"
+                               :request-method :put
+                               :body (body-stream "{\"desired_state\":\"signed\"}")})
+                    signed-cert-issuer-bytes (-> (utils/pem->cert signed-cert-path)
+                                                 (.getIssuerX500Principal)
+                                                 (.getEncoded))]
+                (is (true? (fs/exists? signed-cert-path)))
+                (is (= 204 (:status response))
+                    (ks/pprint-to-string response))
+                (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+                (is (nil? (:body response)))
+                (is (= (seq ca-subject-bytes)
+                       (seq signed-cert-issuer-bytes))))
+              (finally
+                (fs/copy static-csr csr-path)
+                (fs/copy original-ca-cert ca-cert-path)
+                (fs/delete signed-cert-path)))))
 
         (testing "revoking a cert"
           (let [cert (utils/pem->cert (ca/path-to-cert (:signeddir settings) "localhost"))]
