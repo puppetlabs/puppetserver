@@ -15,15 +15,6 @@ Puppet Server uses an embedded JRuby interpreter to execute Ruby code. This
 interpreter is compatible with Ruby 1.9. If you are installing
 Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby.
 
-## Config Reload
-
-[SERVER-15](https://tickets.puppet.com/browse/SERVER-15): In the current
-builds of Puppet Server, there is no signal handling mechanism
-that allows you to request a config reload/service refresh. In order to
-clear out the Ruby environments and reload all config, you must restart the
-service. This is expensive, and in the future we'd like to support some mechanisms
-for reloading rather than restarting.
-
 ## `tmp` directory mounted `noexec`
 
 In some cases (especially for RHEL 7 installations) if the `/tmp` directory is
