@@ -31,20 +31,22 @@
 
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."
-    (bootstrap/with-puppetserver-running app
-      {}
-      (is (= 200 (:status (http-get "/v2.0/environments"))))
-      (is (= 200 (:status (http-get "/production/node/localhost"))))
-      (is (= 200 (:status (http-get "/production/certificate_statuses/all")))))))
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     app
+     {}
+     (is (= 200 (:status (http-get "/v2.0/environments"))))
+     (is (= 200 (:status (http-get "/production/node/localhost"))))
+     (is (= 200 (:status (http-get "/production/certificate_statuses/all")))))))
 
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
-    (bootstrap/with-puppetserver-running app
-      {:web-router-service
-       {:puppetlabs.services.master.master-service/master-service
-        {:master-routes "/puppet"
-         :invalid-in-puppet-4 "/"}}}
-      (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     app
+     {:web-router-service
+      {:puppetlabs.services.master.master-service/master-service
+       {:master-routes "/puppet"
+        :invalid-in-puppet-4 "/"}}}
+     (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
 
   (testing "The new map-style multi-server route configuration map still works."
     ;; For a multi-server config, we need to remove the existing webserver
@@ -54,7 +56,7 @@
     (let [default-config (bootstrap/load-dev-config-with-overrides {})
           webserver-config (:webserver default-config)]
       ;; use `-with-config` variant, so that we can pass in the entire config map
-      (bootstrap/with-puppetserver-running-with-config
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
        app
        (-> default-config
            ;; remove the 'root' webserver config, which wouldn't exist in a
@@ -77,18 +79,19 @@
       (is (thrown-with-msg?
             IllegalArgumentException
             #"Route not found for service .*master-service"
-            (bootstrap/with-puppetserver-running app
-                                                 {:web-router-service {::master-service/master-service {:foo "/bar"}}}
-                                                 (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))
+            (bootstrap/with-puppetserver-running-with-mock-jrubies
+             app
+             {:web-router-service {::master-service/master-service {:foo "/bar"}}}
+             (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))
 
 (deftest ^:integration legacy-ca-routes-disabled
-  (testing "The legacy CA routes are on longer forwarded"
+  (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
+                "disabled CA is configured")
     (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running-with-services
+      (bootstrap/with-puppetserver-running-with-services-and-mock-jruby-pool-manager-service
         app
         [handler/request-handler-service
          jruby/jruby-puppet-pooled-service
-         jruby-utils/jruby-pool-manager-service
          profiler/puppet-profiler-service
          webserver/jetty9-service
          webrouting/webrouting-service

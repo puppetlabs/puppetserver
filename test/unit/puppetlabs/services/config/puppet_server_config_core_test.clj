@@ -7,8 +7,6 @@
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [schema.core :as schema]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
 

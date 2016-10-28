@@ -20,8 +20,7 @@
     [puppetlabs.services.versioned-code-service.versioned-code-service :refer [versioned-code-service]]
     [puppetlabs.dujour.version-check :as version-check]
     [me.raynes.fs :as fs]
-    [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]))
+    [puppetlabs.kitchensink.core :as ks]))
 
 (deftest ca-files-test
   (testing "CA settings from puppet are honored and the CA
@@ -86,18 +85,28 @@
           version-check-test-fn (fn [request-values update-server-url]
                                   (swap! version-check-params #(assoc % :request-values request-values
                                                                         :update-server-url update-server-url)))
-          test-dir (doto "target/master-service-test" fs/mkdir)]
+          test-dir (doto "target/master-service-test" fs/mkdir)
+          config (-> (jruby-testutils/jruby-puppet-tk-config
+                      (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+                     (assoc-in [:jruby-puppet :master-conf-dir]
+                               "dev-resources/puppetlabs/services/master/master_service_test/conf")
+                     (assoc :webserver {:port 8081})
+                     (assoc :web-router-service
+                            {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                             :puppetlabs.services.master.master-service/master-service "/puppet"})
+                     (assoc :product {:update-server-url "http://notarealurl/"
+                                      :name              {:group-id    "puppets"
+                                                          :artifact-id "yoda"}}))]
       (try
         (with-redefs
           [version-check/check-for-updates! version-check-test-fn]
           (logutils/with-test-logging
             (tk-testutils/with-app-with-config
               app
-
               [master-service
                puppet-server-config-service
                jruby/jruby-puppet-pooled-service
-               jruby-utils/jruby-pool-manager-service
+               (jruby-testutils/mock-jruby-pool-manager-service config)
                jetty9-service
                webrouting-service
                request-handler-service
@@ -106,18 +115,7 @@
                authorization-service
                versioned-code-service
                scheduler-service]
-
-              (-> (jruby-testutils/jruby-puppet-tk-config
-                    (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-                  (assoc-in [:jruby-puppet :master-conf-dir]
-                            "dev-resources/puppetlabs/services/master/master_service_test/conf")
-                  (assoc :webserver {:port 8081})
-                  (assoc :web-router-service
-                         {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                          :puppetlabs.services.master.master-service/master-service "/puppet"})
-                  (assoc :product {:update-server-url "http://notarealurl/"
-                                   :name              {:group-id    "puppets"
-                                                       :artifact-id "yoda"}}))
+              config
               (is (= {:group-id "puppets" :artifact-id "yoda"}
                      (get-in @version-check-params [:request-values :product-name])))
               (is (= "http://notarealurl/" (:update-server-url @version-check-params))))))
@@ -132,18 +130,29 @@
           version-check-test-fn (fn [request-values update-server-url]
                                   (swap! version-check-params #(assoc % :request-values request-values
                                                                         :update-server-url update-server-url)))
-          test-dir (doto "target/master-service-test" fs/mkdir)]
+          test-dir (doto "target/master-service-test" fs/mkdir)
+          config (-> (jruby-testutils/jruby-puppet-tk-config
+                      (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+                     (assoc-in [:jruby-puppet :master-conf-dir]
+                               "dev-resources/puppetlabs/services/master/master_service_test/conf")
+                     (assoc :webserver {:port 8081})
+                     (assoc :web-router-service
+                            {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
+                             :puppetlabs.services.master.master-service/master-service "/puppet"})
+                     (assoc :product {:update-server-url "http://notarealurl/"
+                                      :name              {:group-id    "puppets"
+                                                          :artifact-id "yoda"}
+                                      :check-for-updates false}))]
       (try
         (with-redefs
           [version-check/check-for-updates! version-check-test-fn]
           (logutils/with-test-logging
             (tk-testutils/with-app-with-config
               app
-
               [master-service
                puppet-server-config-service
                jruby/jruby-puppet-pooled-service
-               jruby-utils/jruby-pool-manager-service
+               (jruby-testutils/mock-jruby-pool-manager-service config)
                jetty9-service
                webrouting-service
                request-handler-service
@@ -152,19 +161,7 @@
                authorization-service
                versioned-code-service
                scheduler-service]
-
-              (-> (jruby-testutils/jruby-puppet-tk-config
-                    (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-                  (assoc-in [:jruby-puppet :master-conf-dir]
-                            "dev-resources/puppetlabs/services/master/master_service_test/conf")
-                  (assoc :webserver {:port 8081})
-                  (assoc :web-router-service
-                         {:puppetlabs.services.ca.certificate-authority-service/certificate-authority-service ""
-                          :puppetlabs.services.master.master-service/master-service "/puppet"})
-                  (assoc :product {:update-server-url "http://notarealurl/"
-                                   :name              {:group-id    "puppets"
-                                                       :artifact-id "yoda"}
-                                   :check-for-updates false}))
+              config
               (is (= nil (get-in @version-check-params [:request-values :product-name])))
               (is (= nil (:update-server-url @version-check-params))))))
         (finally

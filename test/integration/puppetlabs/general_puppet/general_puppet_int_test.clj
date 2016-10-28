@@ -146,7 +146,7 @@
       ; As we have set code-id-command to warn, the code id will
       ; be the result of running `warn_echo_and_error $environment`, which will
       ; exit non-zero and fail the catalog request.
-      (bootstrap/with-puppetserver-running
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
        app {:jruby-puppet
             {:max-active-instances num-jrubies}
             :versioned-code
@@ -163,7 +163,7 @@
 (deftest ^:integration code-id-request-test-no-environment
   (testing "code id is not added and 400 is returned if environment is not included in request"
     (logging/with-test-logging
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app {:jruby-puppet
            {:max-active-instances num-jrubies}
            :versioned-code
@@ -176,7 +176,7 @@
 (deftest ^:integration static-file-content-endpoint-test
   (logging/with-test-logging
    (testing "the /static_file_content endpoint behaves as expected when :code-content-command is set"
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:jruby-puppet
        {:max-active-instances num-jrubies}
@@ -259,7 +259,7 @@
 (deftest ^:integration static-file-content-endpoint-test-no-code-content-command
   (logging/with-test-logging
    (testing "the /static_file_content endpoint errors if :code-content-command is not set"
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:jruby-puppet
        {:max-active-instances num-jrubies}

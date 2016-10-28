@@ -29,7 +29,7 @@
 (deftest ^:integration admin-api-access-control-test
   (testing "access denied when cert not on whitelist"
     (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
         app
         {:puppet-admin  {:client-whitelist ["notlocalhost"]}
          :authorization {:version 1 :rules []}}
@@ -43,7 +43,7 @@
 
   (testing "access allowed when cert on whitelist"
     (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
         app
         {:puppet-admin  {:client-whitelist ["localhost"]}
          :authorization {:version 1 :rules []}}
@@ -57,7 +57,7 @@
 
   (testing "access allowed when whitelist disabled and no cert provided"
     (logutils/with-test-logging
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:puppet-admin {:authorization-required false}
        :authorization {:version 1 :rules []}}
@@ -71,7 +71,7 @@
                 (ks/pprint-to-string response))))))))
 
   (testing "access denied when cert denied by rule"
-    (bootstrap/with-puppetserver-running
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:puppet-admin  nil
        :authorization {:version 1
@@ -99,7 +99,7 @@
                (ks/pprint-to-string response)))))))
 
   (testing "when cert allowed by rule and whitelist not configured"
-    (bootstrap/with-puppetserver-running
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:puppet-admin  nil
        :authorization {:version 1
@@ -134,7 +134,7 @@
 
   (testing "access allowed when cert allowed by rule and whitelist empty"
     (logutils/with-test-logging
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:puppet-admin {:client-whitelist []}
        :authorization {:version 1
@@ -153,15 +153,16 @@
                 (ks/pprint-to-string response))))))))
 
   (testing "server tolerates client specifying an 'Accept: */*' header"
-    (bootstrap/with-puppetserver-running app
-      {}
-      (doseq [endpoint endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
-                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                           (assoc ssl-request-options :headers {"Accept" "*/*"}))]
-            (is (= 204 (:status response))
-                (ks/pprint-to-string response))))))))
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     app
+     {}
+     (doseq [endpoint endpoints]
+       (testing (str "for " endpoint " endpoint")
+         (let [response (http-client/delete
+                         (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
+                         (assoc ssl-request-options :headers {"Accept" "*/*"}))]
+           (is (= 204 (:status response))
+               (ks/pprint-to-string response))))))))
 
 ;; See 'environment-flush-integration-test'
 ;; for additional test coverage on the /environment-cache endpoint

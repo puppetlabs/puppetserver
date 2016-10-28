@@ -24,7 +24,6 @@
              [ca-cert localhost-cert localhost-key ssl-request-options]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [clojure.tools.logging :as log]
-            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -175,17 +174,21 @@
                           (init [this context] (lc-fn context :init-bonus-service))
                           (start [this context] (lc-fn context :start-bonus-service))
                           (stop [this context] (lc-fn context :stop-bonus-service))
-                          (bonus-service-fn [this] (lc-fn nil :bonus-service-fn)))]
+                          (bonus-service-fn [this] (lc-fn nil :bonus-service-fn)))
+          config-overrides {:global {:logging-config
+                                     (str "./dev-resources/puppetlabs/services/"
+                                          "jruby/jruby_pool_int_test/"
+                                          "logback-test-restart-comes-back.xml")}
+                            :jruby-puppet {:max-active-instances 1
+                                           :borrow-timeout default-borrow-timeout}}
+          config (bootstrap/load-dev-config-with-overrides config-overrides)]
       (fs/delete debug-log)
-      (bootstrap/with-puppetserver-running-with-services
+      (tk-testutils/with-app-with-config
        app
-       (conj (tk-bootstrap/parse-bootstrap-config! bootstrap/dev-bootstrap-file) bonus-service)
-       {:global {:logging-config
-                 (str "./dev-resources/puppetlabs/services/"
-                      "jruby/jruby_pool_int_test/"
-                      "logback-test-restart-comes-back.xml")}
-        :jruby-puppet {:max-active-instances 1
-                       :borrow-timeout default-borrow-timeout}}
+       (conj (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+              config)
+             bonus-service)
+       config
        (tk-internal/restart-tk-apps [app])
        (let [start (System/currentTimeMillis)]
          (while (and (not= (count @call-seq) 5)
@@ -204,15 +207,18 @@
 (deftest ^:integration test-503-when-app-shuts-down
   (testing "During a shutdown the agent requests result in a 503 response"
     (ks-testutils/with-no-jvm-shutdown-hooks
-     (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
-                     handler-service/request-handler-service ps-config/puppet-server-config-service
-                     jetty9/jetty9-service vcs/versioned-code-service
-                     jruby-utils/jruby-pool-manager-service]
-           config (-> (jruby-testutils/jruby-puppet-tk-config
+     (let [config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config {:max-active-instances 2
                                                              :borrow-timeout
                                                              default-borrow-timeout}))
                       (assoc-in [:webserver :port] 8081))
+           services [jruby/jruby-puppet-pooled-service
+                     profiler/puppet-profiler-service
+                     handler-service/request-handler-service
+                     ps-config/puppet-server-config-service
+                     jetty9/jetty9-service
+                     vcs/versioned-code-service
+                     (jruby-testutils/mock-jruby-pool-manager-service config)]
            app (tk/boot-services-with-config services config)
            cert (ssl-utils/pem->cert
                  (str test-resources-dir "/localhost-cert.pem"))
@@ -242,7 +248,7 @@
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"
-    (bootstrap/with-puppetserver-running
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
      app
      {:jruby-puppet {:max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}

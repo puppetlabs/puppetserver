@@ -265,7 +265,7 @@
   (testing "The static_file_content endpoint works even if legacy-auth is enabled."
     ;; with-test-logging is used here to suppress a warning about running with legacy auth enabled.
     (logging/with-test-logging
-     (bootstrap/with-puppetserver-running
+     (bootstrap/with-puppetserver-running-with-mock-jrubies
       app
       {:jruby-puppet {:use-legacy-auth-conf true}
        :authorization {:version 1
@@ -292,7 +292,7 @@
 (deftest ^:integration custom-oids-passed-to-tk-auth
   (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"
     (logging/with-test-logging
-      (bootstrap/with-puppetserver-running
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
         app
         {:authorization {:version 1
                          :allow-header-cert-info true
@@ -304,7 +304,10 @@
                            :sort-order 1
                            :name "all endpoints"}]}
          :webserver {:host "localhost"
-                     :port 8080}}
+                     :port 8080}
+         :puppet {"csr_attributes" (str test-resources-dir "/csr_attributes.yaml")
+                  "trusted_oid_mapping_file" (str test-resources-dir
+                                                  "/custom_trusted_oid_mapping.yaml")}}
         (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
                           :critical false
                           :value "12345"}
