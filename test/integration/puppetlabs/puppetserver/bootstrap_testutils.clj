@@ -8,7 +8,9 @@
             [puppetlabs.ssl-utils.simple :as ssl-simple]
             [puppetlabs.ssl-utils.core :as utils]
             [schema.core :as schema]
-            [puppetlabs.puppetserver.certificate-authority :as ca])
+            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.services.jruby.jruby-puppet-testutils
+             :as jruby-puppet-testutils])
   (:import (java.io ByteArrayInputStream ByteArrayOutputStream)
            (javax.net.ssl SSLContext)))
 
@@ -49,6 +51,12 @@
         (assoc-in [:jruby-puppet :master-log-dir] master-log-dir)
         (ks/deep-merge overrides))))
 
+(defn services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+  [config]
+  (conj (tk-bootstrap/parse-bootstrap-config!
+         jruby-puppet-testutils/dev-bootstrap-file-without-jruby-pool-service)
+        (jruby-puppet-testutils/mock-jruby-pool-manager-service config)))
+
 (defmacro with-puppetserver-running-with-services
   [app services config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
@@ -57,6 +65,18 @@
        ~services
        ~config
        ~@body)))
+
+(defmacro with-puppetserver-running-with-services-and-mock-jruby-pool-manager-service
+  [app services config-overrides & body]
+  (let [config (load-dev-config-with-overrides config-overrides)]
+    `(let [services# (conj ~services
+                           (jruby-puppet-testutils/mock-jruby-pool-manager-service
+                            ~config))]
+       (tk-testutils/with-app-with-config
+        ~app
+        services#
+        ~config
+        ~@body))))
 
 (defmacro with-puppetserver-running-with-config
   [app config & body]
@@ -76,6 +96,18 @@
          services#
          ~config
          ~@body))))
+
+(defmacro with-puppetserver-running-with-mock-jrubies
+  [app config-overrides & body]
+  (let [config (load-dev-config-with-overrides config-overrides)]
+    `(let [services#
+           (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+            ~config)]
+       (tk-testutils/with-app-with-config
+        ~app
+        services#
+        ~config
+        ~@body))))
 
 (defn write-to-stream [o]
   (let [s (ByteArrayOutputStream.)]
