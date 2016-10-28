@@ -66,7 +66,7 @@
        ~config
        ~@body)))
 
-(defmacro with-puppetserver-running-with-services-and-mock-jruby-pool-manager-service
+(defmacro with-puppetserver-running-with-services-and-mock-jrubies
   [app services config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services# (conj ~services

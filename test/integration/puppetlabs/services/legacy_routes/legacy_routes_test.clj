@@ -88,7 +88,7 @@
   (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
                 "disabled CA is configured")
     (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running-with-services-and-mock-jruby-pool-manager-service
+      (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
         app
         [handler/request-handler-service
          jruby/jruby-puppet-pooled-service

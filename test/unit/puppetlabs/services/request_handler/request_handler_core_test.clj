@@ -8,13 +8,11 @@
             [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
-            [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :refer [defservice service]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.puppetserver.bootstrap-testutils :as jruby-bootstrap]
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -292,45 +290,41 @@
      ; variety that we can control entry into and exit from. This allows us
      ; to make a request, and then while the request is in progress, make some
      ; assertions about the pool state, and then finish the request.
-     (testutils/with-puppet-conf-files
-      {"puppet.conf" (fs/file test-resources-dir "puppet.conf")}
-      jruby-bootstrap/master-conf-dir
-      (let [first-promise (promise)
-            second-promise (promise)
-            custom-vcs (service vc/VersionedCodeService
-                         []
-                         (current-code-id [_ _]
-                                          (deliver first-promise true)
-                                          (deref second-promise 5000 false))
-                         (get-code-content [_ _ _ _]
-                                               nil))
-            services [master-service/master-service
-                      jruby-service/jruby-puppet-pooled-service
-                      jruby-utils/jruby-pool-manager-service
-                      profiler/puppet-profiler-service
-                      handler-service/request-handler-service
-                      ps-config/puppet-server-config-service
-                      jetty9/jetty9-service
-                      ca-service/certificate-authority-service
-                      authorization-service/authorization-service
-                      routing-service/webrouting-service
-                      custom-vcs
-                      tk-scheduler/scheduler-service]]
-        (jruby-bootstrap/with-puppetserver-running-with-services
-         app services {:jruby-puppet {:max-active-instances 1}}
-         (jruby-testutils/wait-for-jrubies app)
-         (let [in-catalog-request-future (promise)
-               jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (future
-            (deliver in-catalog-request-future true)
-            (testutils/get-catalog))
-           (deref in-catalog-request-future)
-           (is (deref first-promise 10000 false))
-           ; Because we are blocking inside current-code-id, which happens to be
-           ; used during a jruby request, we can assert that there will be no
-           ; jruby instances left in the pool.
-           (is (zero? (jruby-protocol/free-instance-count jruby-service)))
-           (deliver second-promise true)))))))
+     (let [first-promise (promise)
+           second-promise (promise)
+           custom-vcs (service vc/VersionedCodeService
+                               []
+                               (current-code-id [_ _]
+                                                (deliver first-promise true)
+                                                (deref second-promise 5000 false))
+                               (get-code-content [_ _ _ _]
+                                                 nil))
+           services [master-service/master-service
+                     jruby-service/jruby-puppet-pooled-service
+                     profiler/puppet-profiler-service
+                     handler-service/request-handler-service
+                     ps-config/puppet-server-config-service
+                     jetty9/jetty9-service
+                     ca-service/certificate-authority-service
+                     authorization-service/authorization-service
+                     routing-service/webrouting-service
+                     custom-vcs
+                     tk-scheduler/scheduler-service]]
+       (jruby-bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+        app services {:jruby-puppet {:max-active-instances 1}}
+        (jruby-testutils/wait-for-jrubies app)
+        (let [in-catalog-request-future (promise)
+              jruby-service (tk-app/get-service app :JRubyPuppetService)]
+          (future
+           (deliver in-catalog-request-future true)
+           (testutils/get-catalog))
+          (deref in-catalog-request-future)
+          (is (deref first-promise 10000 false))
+          ; Because we are blocking inside current-code-id, which happens to be
+          ; used during a jruby request, we can assert that there will be no
+          ; jruby instances left in the pool.
+          (is (zero? (jruby-protocol/free-instance-count jruby-service)))
+          (deliver second-promise true))))))
 
 (deftest request-handler-test
     (let [dummy-service (reify jruby-protocol/JRubyPuppetService
