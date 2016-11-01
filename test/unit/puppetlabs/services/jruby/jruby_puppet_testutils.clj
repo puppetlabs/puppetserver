@@ -259,16 +259,18 @@ create-mock-pool-instance :- JRubyInstance
 (schema/defn ^:always-validate
   create-mock-pool :- jruby-schemas/PoolContext
   "Create a 'mock' JRuby pool.  The pool is filled with the number 'mock'
-   JRubyPuppet instances specified in the jruby-config."
-  [config :- {schema/Keyword schema/Any}
-   jruby-config :- jruby-schemas/JRubyConfig]
+   JRubyPuppet instances specified in the jruby-config.  The supplied
+   'mock-jruby-puppet-fn' is invoked for each instance to be created for the
+   pool and is expected to return an object of type 'JRubyPuppet'."
+  [jruby-config :- jruby-schemas/JRubyConfig
+   mock-jruby-puppet-fn :- IFn]
   (let [pool-context (jruby-pool-manager-core/create-pool-context jruby-config)
         pool (jruby-internal/get-pool pool-context)
         count (.remainingCapacity pool)]
     (dotimes [i count]
       (let [id (inc i)]
         (create-mock-pool-instance
-         (partial create-mock-jruby-puppet config)
+         mock-jruby-puppet-fn
          pool
          id
          jruby-config
@@ -279,14 +281,21 @@ create-mock-pool-instance :- JRubyInstance
   mock-jruby-pool-manager-service
   :- (schema/protocol tk-service/ServiceDefinition)
   "Create a 'mock' JRubyPoolManagerService, with a create-pool function
-  which returns a 'mock' JRuby pool when called"
-  [config :- {schema/Keyword schema/Any}]
-  (tk-service/service
-   pool-manager-protocol/PoolManagerService
-   []
-   (create-pool
-    [this jruby-config]
-    (create-mock-pool config jruby-config))))
+  which returns a 'mock' JRuby pool when called.  The supplied
+  'mock-jruby-puppet-fn' is invoked for each instance to be created for the pool
+  and is expected to return an object of type 'JRubyPuppet'.  The 'config'
+  option is passed back as an argument to 'mock-jruby-puppet-fn', if supplied."
+  ([config :- {schema/Keyword schema/Any}]
+   (mock-jruby-pool-manager-service config
+                                    create-mock-jruby-puppet))
+  ([config :- {schema/Keyword schema/Any}
+    mock-jruby-puppet-fn :- IFn]
+   (tk-service/service
+    pool-manager-protocol/PoolManagerService
+    []
+    (create-pool
+     [this jruby-config]
+     (create-mock-pool jruby-config (partial mock-jruby-puppet-fn config))))))
 
 (def dev-bootstrap-file-without-jruby-pool-service
   "Return a path to a bootstrap file which is a copy of the dev/boostrap.cfg
