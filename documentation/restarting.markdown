@@ -17,9 +17,15 @@ There are several ways to send a HUP signal to the Puppet Server process, but th
 
     kill -HUP `pgrep -f puppet-server`
 
-Starting in version 2.7.0, you can also reload Puppet Server by running the "reload" action via the operating system's service framework.  This is analogous to sending a hangup signal but with the benefit of having the "reload" command pause until the server has been completely reloaded, similar to how the "restart" command pauses until the service process has been fully restarted.
+Starting in version 2.7.0, you can also reload Puppet Server by running the "reload" action via the operating system's service framework.  This is analogous to sending a hangup signal but with the benefit of having the "reload" command pause until the server has been completely reloaded, similar to how the "restart" command pauses until the service process has been fully restarted.  Advantages to using the "reload" action as opposed to just sending a "HUP" signal include:
 
-Use the following commands to reload Puppet Server.
+1) Unlike with the "HUP signal" approach, you do not have to determine the process ID of the puppetserver process to be reloaded.
+
+2) When using the "HUP signal" with an automated script (or Puppet code), it is possible that any additional commands in the script might behave improperly if performed while the server is still reloading.  With the "reload" command, though, the server should be up and using its latest configuration before any subsequent script commands are performed.
+
+3) Even if the server fails to reload and shuts down - for example, due to a configuration error - the `kill -HUP` command might still return a 0 (success) exit code.  With the "reload" command, however, any configuration change which causes the server to shut down will produce a non-0 (failure) exit code.  The "reload" command, therefore, would allow you to more reliably determine if the server failed to reload properly.
+
+Use the following commands to perform the "reload" action for Puppet Server.
 
 All current OS distributions:
 
