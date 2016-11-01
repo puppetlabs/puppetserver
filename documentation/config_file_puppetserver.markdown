@@ -73,6 +73,19 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 * The `profiler` settings configure profiling:
 
     * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
+    
+* The `product` settings configure update checking and analytics data collection:
+
+    * `check_for_updates`: If set to `false`, Puppet Server will not automatically check for updates, and will not send analytics data to Puppet. 
+    
+        If this setting is unspecified (default) or set to `true`, Puppet Server checks for updates upon start or restart, and every 24 hours thereafter, by sending the following data to Puppet:
+        
+        * Product name
+        * Puppet Server version
+        * IP address
+        * Data collection timestamp 
+        
+        The data Puppet collects provides just one of many methods we use for learning about our community of users. The more we know about how you use Puppet, the better we can address your needs. No personally identifiable information is collected, and the data we collect is never used or shared outside Puppet. 
 
 * The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.)
 
