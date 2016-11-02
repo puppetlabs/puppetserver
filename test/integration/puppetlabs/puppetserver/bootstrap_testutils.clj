@@ -1,6 +1,7 @@
 (ns puppetlabs.puppetserver.bootstrap-testutils
   (:require [puppetlabs.trapperkeeper.config :as tk-config]
             [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
+            [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.kitchensink.core :as ks]
             [me.raynes.fs :as fs]
@@ -53,9 +54,11 @@
 
 (defn services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
   [config]
-  (conj (tk-bootstrap/parse-bootstrap-config!
-         jruby-puppet-testutils/dev-bootstrap-file-without-jruby-pool-service)
-        (jruby-puppet-testutils/mock-jruby-pool-manager-service config)))
+  (->> dev-bootstrap-file
+       tk-bootstrap/parse-bootstrap-config!
+       (remove #(= :PoolManagerService (tk-services/service-def-id %)))
+       vec
+       (cons (jruby-puppet-testutils/mock-jruby-pool-manager-service config))))
 
 (defmacro with-puppetserver-running-with-services
   [app services config-overrides & body]

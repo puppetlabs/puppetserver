@@ -296,16 +296,3 @@ create-mock-pool-instance :- JRubyInstance
     (create-pool
      [this jruby-config]
      (create-mock-pool jruby-config (partial mock-jruby-puppet-fn config))))))
-
-(def dev-bootstrap-file-without-jruby-pool-service
-  "Return a path to a bootstrap file which is a copy of the dev/boostrap.cfg
-  file in the project but with the `jruby-pool-manager-service` removed.  This
-  is most often used for tests which bootstrap the base set of services but
-  with the 'real' `jruby-pool-manager-service` replaced with a mock one."
-  (let [modified-bootstrap-file (ks/temp-file)]
-    (with-open [bootstrap-writer (io/writer modified-bootstrap-file)]
-      (with-open [bootstrap-reader (io/reader "./dev/bootstrap.cfg")]
-        (doseq [line (line-seq bootstrap-reader)]
-          (if-not (re-find #"jruby-pool-manager-service" line)
-            (.write bootstrap-writer (str line "\n"))))))
-    (.getAbsolutePath modified-bootstrap-file)))
