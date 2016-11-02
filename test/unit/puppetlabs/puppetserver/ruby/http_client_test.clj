@@ -109,8 +109,11 @@ jruby-config :- jruby-schemas/JRubyConfig
                                                     :cipher-suites]))
         http-client-class (.runScriptlet scripting-container
                                          "Puppet::Server::HttpClient")]
-    (.callMethod scripting-container http-client-class
-                 "initialize_settings" http-client-settings Object)
+    (.callMethodWithArgArray scripting-container
+                             http-client-class
+                             "initialize_settings"
+                             (into-array Object [http-client-settings])
+                             Object)
     (.runScriptlet scripting-container
                    (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
                            port use-ssl?))))
