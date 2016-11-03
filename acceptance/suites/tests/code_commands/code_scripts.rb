@@ -32,7 +32,7 @@ teardown do
   remove_cicsetting=cicsetting('absent')
   create_remote_file(master, '/tmp/config_code_id_command_script_disable.pp', remove_cicsetting)
   on master, 'puppet apply /tmp/config_code_id_command_script_disable.pp'
-  hup_server(master)
+  reload_server
  
   on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
   on(master, 'puppet resource user git ensure=absent')
@@ -177,7 +177,7 @@ step 'SETUP: Configure the code-id script' do
   on master, 'puppet module install puppetlabs-hocon' 
   create_remote_file(master, '/tmp/config_code_id_command_script.pp', cicsetting() )
   on master, 'puppet apply /tmp/config_code_id_command_script.pp'
-  hup_server(master)
+  reload_server
 end
 
 step 'Get the current code-id'

@@ -12,7 +12,7 @@
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [schema.core :as schema]
-            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -100,24 +100,24 @@
     (do
       (let [cn (ssl-utils/x500-name->CN header-dn-val)
             authenticated (= "SUCCESS" header-auth-val)]
-        (log/debug (trs "CN ''{0}'' provided by HTTP header ''{1}''"
+        (log/debug (i18n/trs "CN ''{0}'' provided by HTTP header ''{1}''"
                         cn header-dn-val))
-        (log/debug (format "%s  %s"
-                           (trs "Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
+        (log/debug (format "%s %s"
+                           (i18n/trs "Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
                                 cn
                                 header-auth-name
                                 header-auth-val)
-                           (trs "Authenticated: {3}." authenticated)))
+                           (i18n/trs "Authenticated: {0}." authenticated)))
         {:client-cert-cn cn
          :authenticated authenticated}))
     (do
       (if (nil? header-dn-val)
-        (log/debug (format "%s  %s"
-                           (trs "No DN provided by the HTTP header ''{0}''." header-dn-name)
-                           (trs "Treating client as unauthenticated.")))
-        (log/error (format "%s  %s"
-                           (trs "DN ''{0}'' provided by the HTTP header ''{1}'' is malformed." header-dn-val header-dn-name)
-                           (trs "Treating client as unauthenticated."))))
+        (log/debug (format "%s %s"
+                           (i18n/trs "No DN provided by the HTTP header ''{0}''." header-dn-name)
+                           (i18n/trs "Treating client as unauthenticated.")))
+        (log/error (format "%s %s"
+                           (i18n/trs "DN ''{0}'' provided by the HTTP header ''{1}'' is malformed." header-dn-val header-dn-name)
+                           (i18n/trs "Treating client as unauthenticated."))))
       unauthenticated-client-info)))
 
 (defn header-cert->pem
@@ -127,7 +127,7 @@
     (ring-codec/url-decode header-cert)
     (catch Exception e
       (ringutils/throw-bad-request!
-        (tru "Unable to URL decode the {0} header: {1}"
+        (i18n/tru "Unable to URL decode the {0} header: {1}"
               header-client-cert-name (.getMessage e))))))
 
 (defn pem->certs
@@ -138,7 +138,7 @@
       (ssl-utils/pem->certs reader)
       (catch Exception e
         (ringutils/throw-bad-request!
-          (tru "Unable to parse {0} into certificate: {1}"
+          (i18n/tru "Unable to parse {0} into certificate: {1}"
                header-client-cert-name (.getMessage e)))))))
 
 (defn header-cert
@@ -151,10 +151,10 @@
           cert-count (count certs)]
       (condp = cert-count
         0 (ringutils/throw-bad-request!
-            (tru "No certs found in PEM read from {0}" header-client-cert-name))
+            (i18n/tru "No certs found in PEM read from {0}" header-client-cert-name))
         1 (first certs)
         (ringutils/throw-bad-request!
-          (tru "Only 1 PEM should be supplied for {0} but {1} found" header-client-cert-name cert-count))))))
+          (i18n/tru "Only 1 PEM should be supplied for {0} but {1} found" header-client-cert-name cert-count))))))
 
 (defn ssl-auth-info
   "Get map of client authentication info from the supplied
@@ -164,12 +164,12 @@
   (if ssl-client-cert
     (let [cn (ssl-utils/get-cn-from-x509-certificate ssl-client-cert)
           authenticated (not (empty? cn))]
-      (log/debug (trs "CN ''{0}'' provided by SSL certificate.  Authenticated: {1}."
+      (log/debug (i18n/trs "CN ''{0}'' provided by SSL certificate.  Authenticated: {1}."
                   cn authenticated))
       {:client-cert-cn cn
        :authenticated  authenticated})
     (do
-      (log/debug (trs "No SSL client certificate provided. Treating client as unauthenticated."))
+      (log/debug (i18n/trs "No SSL client certificate provided. Treating client as unauthenticated."))
       unauthenticated-client-info)))
 
 (defn client-auth-info
@@ -211,8 +211,8 @@
                    header-client-cert-name header-cert-val}
                   :when header-val]
             (log/warn (format "%s %s"
-                              (trs "The HTTP header {0} was specified, but the master config option allow-header-cert-info was either not set, or was set to false." header-name)
-                              (trs "This header will be ignored."))))
+                              (i18n/trs "The HTTP header {0} was specified, but the master config option allow-header-cert-info was either not set, or was set to false." header-name)
+                              (i18n/trs "This header will be ignored."))))
           (let [ssl-cert (:ssl-client-cert request)]
             (-> (ssl-auth-info ssl-cert)
                 (assoc :client-cert ssl-cert))))))))
@@ -256,7 +256,7 @@
       (when-not (nil? (schema/check ps-common/Environment env))
         (ringutils/throw-bad-request! (ps-common/environment-validation-error-msg env)))
       (when-not env
-        (ringutils/throw-bad-request! (tru "Environment is required in a catalog request.")))
+        (ringutils/throw-bad-request! (i18n/tru "Environment is required in a catalog request.")))
       (assoc-in request [:params "code_id"] (current-code-id env)))
     request))
 

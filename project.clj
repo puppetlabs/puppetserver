@@ -1,8 +1,4 @@
-(def clj-version "1.7.0")
-(def tk-version "1.5.0")
-(def tk-jetty-version "1.5.10")
-(def ks-version "1.3.1")
-(def ps-version "2.6.1-stable-SNAPSHOT")
+(def ps-version "2.7.0-stable-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -11,31 +7,47 @@
     :password :env/nexus_jenkins_password
     :sign-releases false })
 
+(def heap-size-from-profile-clj
+  (let [profile-clj (io/file (System/getenv "HOME") ".lein" "profiles.clj")]
+    (if (.exists profile-clj)
+      (-> profile-clj
+        slurp
+        read-string
+        (get-in [:user :puppetserver-heap-size])))))
+
+(defn heap-size
+  [default-heap-size heap-size-type]
+  (or
+    (System/getenv "PUPPETSERVER_HEAP_SIZE")
+    heap-size-from-profile-clj
+    (do
+      (println "Using" default-heap-size heap-size-type
+        "heap since not set via PUPPETSERVER_HEAP_SIZE environment variable or"
+        "user.puppetserver-heap-size in ~/.lein/profiles.clj file. Set to at"
+        "least 5G for best performance during test runs.")
+      default-heap-size)))
+
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :dependencies [[org.clojure/clojure ~clj-version]
+  :min-lein-version "2.7.1"
 
-                 ;; begin version conflict resolution dependencies
-                 [puppetlabs/typesafe-config "0.1.5"]
-                 [org.clojure/tools.macro "0.1.5"]
-                 [org.clojure/tools.reader "1.0.0-beta1"]
-                 [org.clojure/tools.logging "0.3.1"]
-                 [ring/ring-servlet "1.4.0"]
-                 [hiccup "1.0.5"]
-                 [org.slf4j/slf4j-api "1.7.20"]
-                 ;; end version conflict resolution dependencies
+  :parent-project {:coords [puppetlabs/clj-parent "0.1.7"]
+                   :inherit [:managed-dependencies]}
 
-                 [cheshire "5.6.1"]
-                 [slingshot "0.12.2"]
-                 [clj-yaml "0.4.0" :exclusions [org.yaml/snakeyaml]]
-                 [commons-lang "2.6"]
-                 [commons-io "2.4"]
-                 [clj-time "0.11.0"]
-                 [prismatic/schema "1.1.1"]
-                 [me.raynes/fs "1.4.6"]
-                 [liberator "0.12.0"]
-                 [org.apache.commons/commons-exec "1.3"]
+  :dependencies [[org.clojure/clojure]
+
+                 [slingshot]
+                 ;; we need to exclude snakeyaml because JRuby also brings it in
+                 [clj-yaml nil :exclusions [org.yaml/snakeyaml]]
+                 [commons-lang]
+                 [commons-io]
+
+                 [clj-time]
+                 [prismatic/schema]
+                 [me.raynes/fs]
+                 [liberator]
+                 [org.apache.commons/commons-exec]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
@@ -44,21 +56,20 @@
                  ;; We are using an exlusion here because logback dependencies should
                  ;; be inherited from trapperkeeper to avoid accidentally bringing
                  ;; in different versions of the three different logback artifacts
-                 [net.logstash.logback/logstash-logback-encoder "4.5.1" :exclusions [ch.qos.logback/logback-access
-                                                                                     ch.qos.logback/logback-core]]
+                 [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.2.1"]
-                 [puppetlabs/trapperkeeper ~tk-version]
-                 [puppetlabs/trapperkeeper-authorization "0.7.0"]
-                 [puppetlabs/trapperkeeper-scheduler "0.0.1"]
-                 [puppetlabs/trapperkeeper-status "0.3.5"]
-                 [puppetlabs/kitchensink ~ks-version]
-                 [puppetlabs/ssl-utils "0.8.1"]
-                 [puppetlabs/ring-middleware "1.0.0"]
-                 [puppetlabs/dujour-version-check "0.1.2" :exclusions [org.clojure/tools.logging]]
-                 [puppetlabs/http-client "0.5.0"]
-                 [puppetlabs/comidi "0.3.1"]
-                 [puppetlabs/i18n "0.4.3"]]
+                 [puppetlabs/jruby-utils "0.4.0"]
+                 [puppetlabs/trapperkeeper]
+                 [puppetlabs/trapperkeeper-authorization]
+                 [puppetlabs/trapperkeeper-scheduler]
+                 [puppetlabs/trapperkeeper-status]
+                 [puppetlabs/kitchensink]
+                 [puppetlabs/ssl-utils]
+                 [puppetlabs/ring-middleware]
+                 [puppetlabs/dujour-version-check]
+                 [puppetlabs/http-client]
+                 [puppetlabs/comidi]
+                 [puppetlabs/i18n]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -72,7 +83,7 @@
   :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
-  :plugins [[lein-release "1.0.5" :exclusions [org.clojure/clojure]]
+  :plugins [[lein-parent "0.3.1"]
             [puppetlabs/i18n "0.4.3"]]
 
   :uberjar-name "puppet-server-release.jar"
@@ -87,9 +98,6 @@
                 :config-dir "ezbake/config"
                 :system-config-dir "ezbake/system-config"}
 
-  :lein-release {:scm         :git
-                 :deploy-via  :lein-deploy}
-
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
 
@@ -100,35 +108,45 @@
   :classifiers [["test" :testutils]]
 
   :profiles {:dev {:source-paths  ["dev"]
-                   :dependencies  [[org.clojure/tools.namespace "0.2.10"]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version :classifier "test"]
-                                   [puppetlabs/trapperkeeper ~tk-version :classifier "test" :scope "test"]
-                                   [puppetlabs/kitchensink ~ks-version :classifier "test" :scope "test"]
-                                   [ring-basic-authentication "1.0.5"]
-                                   [ring-mock "0.1.5"]
-                                   [spyscope "0.1.4" :exclusions [clj-time]]
+                   :dependencies  [[org.clojure/tools.namespace]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
+                                   [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
+                                   [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
+                                   [ring-basic-authentication]
+                                   [ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
-                                   [beckon "0.1.1"]]
-                   :injections    [(require 'spyscope.core)]
+                                   [beckon]]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
 
-             :ezbake {:dependencies ^:replace [;; we need to explicitly specify the clojure version
-                                               ;; here, because without it, lein brings in its own
-                                               ;; version, and older versions of lein (such as version
-                                               ;; 2.5.1 that is used on our jenkins servers at the time
-                                               ;; of this writing) depend on clojure 1.6.
-                                               [org.clojure/clojure ~clj-version]
+             :ezbake {:dependencies ^:replace [;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                                               ;; NOTE: we need to explicitly pass in `nil` values
+                                               ;; for the version numbers here in order to correctly
+                                               ;; inherit the versions from our parent project.
+                                               ;; This is because of a bug in lein 2.7.1 that
+                                               ;; prevents the deps from being processed properly
+                                               ;; with `:managed-dependencies` when you specify
+                                               ;; dependencies in a profile.  See:
+                                               ;; https://github.com/technomancy/leiningen/issues/2216
+                                               ;; Hopefully we can remove those `nil`s (if we care)
+                                               ;; and this comment when lein 2.7.2 is available.
+                                               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+                                               ;; we need to explicitly pull in our parent project's
+                                               ;; clojure version here, because without it, lein
+                                               ;; brings in its own version, and older versions of
+                                               ;; lein depend on clojure 1.6.
+                                               [org.clojure/clojure nil]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]
-                                               [org.clojure/tools.nrepl "0.2.3"]]
-                      :plugins [[puppetlabs/lein-ezbake "0.5.0"]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
+                                               [org.clojure/tools.nrepl nil]]
+                      :plugins [[puppetlabs/lein-ezbake "1.1.3"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-jetty-version]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 
@@ -140,7 +158,9 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
 
   ; tests use a lot of PermGen (jruby instances)
-  :jvm-opts ["-XX:MaxPermSize=256m" "-Xmx2g"]
+  :jvm-opts ["-XX:MaxPermSize=256m"
+             ~(str "-Xms" (heap-size "1G" "min"))
+             ~(str "-Xmx" (heap-size "2G" "max"))]
 
   :repl-options {:init-ns user}
 

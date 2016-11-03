@@ -7,7 +7,7 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
             [puppetlabs.services.protocols.master :as master]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 (defservice master-service
   master/MasterService
@@ -40,15 +40,19 @@
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
-                                                 false)]
-     (interspaced checkin-interval-millis
-                  (fn [] (version-check/check-for-updates! {:product-name product-name} update-server-url)))
+                                                 false)
+         check-for-updates (get-in config [:product :check-for-updates])]
+     (if (or (nil? check-for-updates) check-for-updates)
+       (interspaced checkin-interval-millis
+                    (fn [] (version-check/check-for-updates!
+                             {:product-name product-name} update-server-url)))
+       (log/info (i18n/trs "Not checking for updates - opt-out setting exists")))
 
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
 
-     (log/info (trs "Master Service adding ring handlers"))
+     (log/info (i18n/trs "Master Service adding ring handlers"))
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
            ring-handler (when path
@@ -81,5 +85,5 @@
    context)
   (start
     [this context]
-    (log/info (trs "Puppet Server has successfully started and is now ready to handle requests"))
+    (log/info (i18n/trs "Puppet Server has successfully started and is now ready to handle requests"))
     context))

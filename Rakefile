@@ -1,3 +1,5 @@
+require 'open3'
+
 PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
   File.join(PROJECT_ROOT, 'acceptance')
@@ -28,6 +30,43 @@ def assemble_default_beaker_config
   end
 
   return beaker_config
+end
+
+def setup_smoke_hosts_config
+  sh "bundle exec beaker-hostgenerator centos7-64m-64a > acceptance/scripts/hosts.cfg"
+end
+
+def basic_smoke_test(package_version)
+  beaker = "PACKAGE_BUILD_VERSION=#{package_version}"
+  beaker += " bundle exec beaker --debug --root-keys --repo-proxy"
+  beaker += " --preserve-hosts always"
+  beaker += " --type aio"
+  beaker += " --helper acceptance/lib/helper.rb"
+  beaker += " --options-file acceptance/config/beaker/options.rb"
+  beaker += " --load-path acceptance/lib"
+  beaker += " --config acceptance/scripts/hosts.cfg"
+  beaker += " --keyfile ~/.ssh/id_rsa-acceptance"
+  beaker += " --pre-suite acceptance/suites/pre_suite/foss"
+  beaker += " --post-suite acceptance/suites/post_suite"
+  beaker += " --tests acceptance/suites/tests/00_smoke"
+
+  sh beaker
+end
+
+# TODO: this could be DRY'd up with the method above, but it seemed like it
+# might make it a little harder to read and didn't seem worth the effort yet
+def re_run_basic_smoke_test
+  beaker = "bundle exec beaker --debug --root-keys --repo-proxy"
+  beaker += " --preserve-hosts always"
+  beaker += " --type aio"
+  beaker += " --helper acceptance/lib/helper.rb"
+  beaker += " --options-file acceptance/config/beaker/options.rb"
+  beaker += " --load-path acceptance/lib"
+  beaker += " --config acceptance/scripts/hosts.cfg"
+  beaker += " --keyfile ~/.ssh/id_rsa-acceptance"
+  beaker += " --tests acceptance/suites/tests/00_smoke"
+
+  sh beaker
 end
 
 namespace :spec do
@@ -117,6 +156,58 @@ namespace :test do
 
       sh beaker
     end
+
+    desc "Do an ezbake build, and then a beaker smoke test off of that build, preserving the vmpooler host"
+    task :bakeNbeak do
+      package_version = nil
+
+      Open3.popen3("lein with-profile ezbake ezbake build 2>&1") do |stdin, stdout, stderr, thread|
+        # sleep 5
+        # puts "STDOUT IS: #{stdout}"
+        success = true
+        stdout.each do |line|
+          if match = line.match(%r|^Your packages will be available at http://builds.delivery.puppetlabs.net/puppetserver/(.*)$|)
+            package_version = match[1]
+          elsif line =~ /^Packaging FAILURE\s*$/
+            success = false
+          end
+          puts line
+        end
+        exit_code = thread.value
+        if success == true
+          puts "PACKAGE VERSION IS #{package_version}"
+        else
+          puts "\n\nPACKAGING FAILED!  exit code is '#{exit_code}'.  STDERR IS:"
+          puts stderr.read
+          exit 1
+        end
+      end
+
+      begin
+        setup_smoke_hosts_config()
+        basic_smoke_test(package_version)
+      rescue => e
+        puts "\n\nJOB FAILED; PACKAGE VERSION WAS: #{package_version}\n\n"
+        raise e
+      end
+    end
+
+    desc "Do a basic smoke test, using the package version specified by PACKAGE_BUILD_VERSION, preserving the vmpooler host"
+    task :smoke do
+      package_version = ENV["PACKAGE_BUILD_VERSION"]
+      unless package_version
+        STDERR.puts("'smoke' task requires PACKAGE_BUILD_VERSION environment variable")
+        exit 1
+      end
+      setup_smoke_hosts_config()
+      basic_smoke_test(package_version)
+    end
+
+    desc "Re-run the basic smoke test on the host preserved from a previous run of the 'smoke' task"
+    task :resmoke do
+      re_run_basic_smoke_test()
+    end
+
   end
 end
 

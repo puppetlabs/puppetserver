@@ -46,6 +46,22 @@ gems.each do |gem_name, gem_version|
     assert(/^#{gem_name}/.match(stdout), "#{gem_name} was not found after installation.")
   end
 
+  if gem_name == 'excon'
+    step "SERVER-1601: Validate use of excon gem successful as puppet user" do
+      if options[:type] == 'pe'
+        runuser = 'pe-puppet'
+      else
+        runuser = 'puppet'
+      end
+      on(master, "su #{runuser} -s /bin/bash -c "\
+        "'/opt/puppetlabs/bin/puppetserver ruby "\
+        "-rexcon -e \"puts Excon::VERSION\"'") do
+        assert_equal(gems['excon'], stdout.strip,
+                     "Unexpected output for excon version")
+      end
+    end
+  end
+
   step "Uninstall test gem."
   on(master, "#{gem_uninstall} #{gem_name}")
 

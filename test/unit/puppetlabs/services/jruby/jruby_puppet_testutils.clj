@@ -17,7 +17,7 @@
 
 (def ruby-load-path ["./ruby/puppet/lib" "./ruby/facter/lib" "./ruby/hiera/lib"])
 (def gem-home "./target/jruby-gem-home")
-(def compile-mode :off)
+(def gem-path "./target/jruby-gem-home:./target/vendored-jruby-gems")
 
 (def conf-dir "./target/master-conf")
 (def code-dir "./target/master-code")
@@ -126,7 +126,8 @@ create-mock-pool-instance :- JRubyInstance
                   :master-log-dir log-dir
                   :use-legacy-auth-conf false})
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
-                                               :gem-home gem-home}))
+                                               :gem-home gem-home
+                                               :gem-path gem-path}))
          max-requests-per-instance (:max-borrows-per-instance combined-configs)
          updated-config (-> combined-configs
                             (assoc :max-requests-per-instance max-requests-per-instance)

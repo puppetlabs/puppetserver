@@ -26,6 +26,8 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `gem-home`: The location where JRuby looks for gems. It is also used by the `puppetserver gem` command line tool. If nothing is specified, JRuby uses the Puppet default `/opt/puppetlabs/server/data/puppetserver/jruby-gems`.
 
+    * `gem-path`: The complete "GEM_PATH" for jruby.  If set, it should include the `gem-home` directory, as well as any other directories that gems can be loaded from (including the vendored gems directory for gems that ship with puppetserver).  The default value is  `["/opt/puppetlabs/server/data/puppetserver/jruby-gems", "/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems"]`.
+
     * `environment-vars:` Optional. A map of environment variables which are made visible to Ruby code running within JRuby, for example, via the Ruby `ENV` class.
 
         By default, the only environment variables whose values are set into JRuby from the shell are `HOME` and `PATH`.
@@ -68,6 +70,8 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
         For more information, see the [`environment_classes` API documentation][].
 
+    * `compat-version`: Optional, experimental.  Used to control the MRI compatibility version under which JRuby runs.  The allowed values are "1.9" and "2.0".  The default value is "1.9".
+
     * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
 * The `profiler` settings configure profiling:
@@ -102,6 +106,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 jruby-puppet: {
     ruby-load-path: [/opt/puppetlabs/puppet/lib/ruby/vendor_ruby]
     gem-home: /opt/puppetlabs/server/data/puppetserver/jruby-gems
+    gem-path: [/opt/puppetlabs/server/data/puppetserver/jruby-gems, /opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems]
     environment-vars: { "FOO" : ${FOO}
                         "LANG" : "de_DE.UTF-8" }
     master-conf-dir: /etc/puppetlabs/puppet

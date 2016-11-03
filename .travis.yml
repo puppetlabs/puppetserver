@@ -1,11 +1,11 @@
 language: clojure
-lein: lein2
+lein: 2.7.1
 jdk:
 - oraclejdk7
 - openjdk7
 - oraclejdk8
 script: "./ext/travisci/test.sh"
-sudo: false
+sudo: required
 notifications:
   email: false
   hipchat:

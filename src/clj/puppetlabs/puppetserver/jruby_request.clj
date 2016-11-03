@@ -8,7 +8,7 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [puppetlabs.puppetserver.common :as ps-common]
-            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 (defn jruby-timeout?
   "Determine if the supplied slingshot message is for a JRuby borrow timeout."
@@ -19,7 +19,7 @@
 
 (defn output-error
   [{:keys [uri]} {:keys [msg]} http-status]
-  (log/error (trs "Error {0} on SERVER at {1}: {2}" http-status uri msg))
+  (log/error (i18n/trs "Error {0} on SERVER at {1}: {2}" http-status uri msg))
   (ringutils/plain-response http-status msg))
 
 (defn wrap-with-error-handling
@@ -64,7 +64,7 @@
       (cond
         (nil? environment)
         (ringutils/throw-bad-request!
-         (tru "An environment parameter must be specified"))
+         (i18n/tru "An environment parameter must be specified"))
 
         (not (nil? (schema/check ps-common/Environment environment)))
         (ringutils/throw-bad-request!

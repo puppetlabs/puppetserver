@@ -8,8 +8,9 @@
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
-            [puppetlabs.i18n.core ::as i18n :refer [trs]]
-            [clojure.tools.logging :as log])
+            [puppetlabs.i18n.core :as i18n]
+            [clojure.tools.logging :as log]
+            [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
            (java.util HashMap)))
@@ -55,6 +56,9 @@
 (def default-master-var-dir
   "/opt/puppetlabs/server/data/puppetserver")
 
+(def default-vendored-gems-dir
+  "/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
@@ -96,9 +100,9 @@
                        (filter fs/exists?
                                (map #(fs/file % facter-jar) ruby-load-path)))]
     (do
-      (log/debug (trs "Adding facter jar to classpath from: {0}" facter-jar))
+      (log/debug (i18n/trs "Adding facter jar to classpath from: {0}" facter-jar))
       (ks-classpath/add-classpath facter-jar))
-    (log/info (trs "Facter jar not found in ruby load path"))))
+    (log/info (i18n/trs "Facter jar not found in ruby load path"))))
 
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
@@ -158,6 +162,12 @@
                        :connect-timeout-milliseconds
                        :idle-timeout-milliseconds]))
 
+(schema/defn ^:always-validate initialize-gem-path
+  [{:keys [gem-home gem-path] :as jruby-config} :- {schema/Keyword schema/Any}]
+  (if gem-path
+    (assoc jruby-config :gem-path (str/join ":" gem-path))
+    (assoc jruby-config :gem-path (str gem-home ":" default-vendored-gems-dir))))
+
 (schema/defn ^:always-validate
   initialize-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
   [http-config :- {schema/Keyword schema/Any}
@@ -194,16 +204,20 @@
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
-        modified-jruby-config (assoc jruby-config :ruby-load-path (managed-load-path
-                                                                   (:ruby-load-path jruby-config)))]
+        modified-jruby-config (-> jruby-config
+                                  (assoc :ruby-load-path (managed-load-path
+                                                          (:ruby-load-path jruby-config)))
+                                  initialize-gem-path)]
     (jruby-core/initialize-config (assoc modified-jruby-config :lifecycle lifecycle-fns))))
 
 (schema/defn initialize-and-create-jruby-config :- jruby-schemas/JRubyConfig
-  "Handles the initialization of the jruby-puppet config for the purpose of returning a
-  jruby config. This function will only use the :jruby-puppet and :http-client sections
-  from raw-config. If values are not provided, everything in :http-client :jruby-puppet
-  will be given default values, except for :ruby-load-path and :gem-home in the
-  :jruby-puppet subsection.
+  "Handles the initialization of the jruby-puppet config (from the puppetserver.conf file),
+  for the purpose of converting it to the structure required by the jruby-utils
+  library (puppetlabs.services.jruby-pool-manager.jruby-schemas/JRubyConfig).
+  This function will use data from the :jruby-puppet and :http-client sections
+  of puppetserver.conf, from raw-config. If values are not provided, everything in
+  :http-client :jruby-puppet will be given default values, except for
+  :ruby-load-path and :gem-home, which are required.
 
   The 1-arity function takes only a config and supplies a default of nil for the profiler,
   an empty fn for the agent-shutdown-fn, and suppresses warnings about legacy auth.conf.
@@ -230,12 +244,11 @@
                                         (assoc :max-borrows-per-instance
                                                (:max-requests-per-instance jruby-puppet-config)))]
      (when (and warn-legacy-auth-conf? (:use-legacy-auth-conf jruby-puppet-config))
-       (log/warn "The 'jruby-puppet.use-legacy-auth-conf' setting is set to"
-                 "'true'.  Support for the legacy Puppet auth.conf file is"
-                 "deprecated and will be removed in a future release.  Change"
-                 "this setting to 'false' and migrate your authorization rule"
-                 "definitions in the /etc/puppetlabs/puppet/auth.conf file to"
-                 "the /etc/puppetlabs/puppetserver/conf.d/auth.conf file."))
+       (log/warnf
+        "%s %s %s"
+        (i18n/trs "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''.")
+        (i18n/trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
+        (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
      (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler))))
 
 (def EnvironmentClassInfoCacheEntry

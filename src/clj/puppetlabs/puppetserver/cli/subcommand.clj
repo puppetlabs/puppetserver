@@ -2,7 +2,7 @@
   (:require [puppetlabs.kitchensink.core :as ks]
             [slingshot.slingshot :refer [try+]]
             [puppetlabs.trapperkeeper.config :as tk-config]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 (defn parse-cli-args!
   "Parses the command-line arguments using `puppetlabs.kitchensink.core/cli!`.
@@ -10,7 +10,7 @@
       --config <config file or directory>"
   [cli-args]
   (let [specs    [["-c" "--config CONFIG-PATH"
-                   (trs "Path to a configuration file or directory of configuration files. See the documentation for a list of supported file types.")]]
+                   (i18n/trs "Path to a configuration file or directory of configuration files. See the documentation for a list of supported file types.")]]
         required [:config]]
     (ks/cli! cli-args specs required)))
 

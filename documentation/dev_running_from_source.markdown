@@ -211,11 +211,47 @@ run the following:
 
     $ lein run -c /path/to/puppetserver.conf
 
-Other useful commands for developers:
+Running tests
 -----
 
 * `lein test` to run the clojure test suite
 * `rake spec` to run the jruby test suite
+
+The Clojure test suite can consume a lot of transient memory.  Using a larger
+JVM heap size when running tests can significantly improve test run time.  The
+default heap size is somewhat conservative: 1 GB for the minimum heap (much
+lower than that as a maximum can lead to Java OutOfMemory errors during the
+test run) and 2 GB for the maximum heap.  While the heap size can be configured
+via the `-Xms` and `-Xmx` arguments for the `:jvm-opts` `defproject` key within
+the `project.clj` file, it can also be customized for an individual user
+environment via either of the following methods:
+
+1) An environment variable named `PUPPETSERVER_HEAP_SIZE`.  For example, to
+  use a heap size of 6 GiB for a `lein test` run, you could run the following:
+  
+    $ PUPPETSERVER_HEAP_SIZE=6G lein test
+  
+2) A lein `profiles.clj` setting in the `:user` profile under the
+  `:puppetserver-heap-size` key.  For example, to use a heap size of 6 GiB, you
+  could add the following key to your `~/.lein/profiles.clj` file:
+  
+```clj
+{:user {:puppetserver-heap-size "6G"
+        ...}}
+
+```
+
+With the `:puppetserver-heap-size` key defined in the `profiles.clj` file, any
+subsequent `lein test` run would utilize the associated value for the key.  If
+both the environment variable and the `profiles.clj` key are defined, the
+value from the environment variable takes precedence.  When either of these
+settings is defined, the value is used as both the minimum and maximum JVM heap
+size.
+
+From anecdotal testing from the puppetserver master branch as of 10/26/2016,
+it appeared that at least a heap size of 5 GB would provide the best performance
+benefit for full runs of the Clojure unit test suite.  This value may change
+over time depending upon how the tests evolve.
 
 Installing Ruby Gems for Development
 -----

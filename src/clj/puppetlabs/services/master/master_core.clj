@@ -19,7 +19,7 @@
             [clojure.string :as str]
             [bidi.schema :as bidi-schema]
             [ring.middleware.params :as ring]
-            [puppetlabs.i18n.core :as i18n :refer [trs tru]]))
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -140,7 +140,7 @@
   (if-let [obj-as-keyword (-> obj obj-or-ruby-symbol-as-string keyword)]
     obj-as-keyword
     (throw (IllegalArgumentException.
-            (trs "Object cannot be coerced to a keyword: {0}" obj)))))
+            (i18n/trs "Object cannot be coerced to a keyword: {0}" obj)))))
 
 (defn sort-nested-environment-class-info-maps
   "For a data structure, recursively sort any nested maps and sets descending
@@ -324,7 +324,7 @@
                                      (if-none-match-from-request request)
                                      cache-generation-id
                                      environment-class-cache-enabled)
-        (rr/not-found (tru "Could not find environment ''{0}''" environment))))))
+        (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment))))))
 
 (schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
@@ -382,7 +382,7 @@
       (cond
         (some empty? [environment code-id file-path])
         {:status 400
-         :body (tru "Error: A /static_file_content request requires an environment, a code-id, and a file-path")}
+         :body (i18n/tru "Error: A /static_file_content request requires an environment, a code-id, and a file-path")}
         (not (nil? (schema/check ps-common/Environment environment)))
         {:status 400
          :body (ps-common/environment-validation-error-msg environment)}
@@ -393,7 +393,7 @@
 
         (not (valid-static-file-path? file-path))
         {:status 403
-         :body (tru "Request Denied: A /static_file_content request must be a file within the files directory of a module.")}
+         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files directory of a module.")}
 
         :else
         {:status 200
@@ -506,10 +506,10 @@
           required-mem-size (* heap-size 1.1)]
       (when (< mem-size required-mem-size)
         (throw (Error.
-                (format "%s  %s  %s"
-                        (trs "Not enough available RAM ({0}MB) to safely accommodate the configured JVM heap size of {1}MB." (int (/ mem-size 1024.0)))
-                        (trs "Puppet Server requires at least {2}MB of available RAM given this heap size, computed as 1.1 * max heap (-Xmx)." (int (/ mem-size 1024.0)))
-                        (trs "Either increase available memory or decrease the configured heap size by reducing the -Xms and -Xmx values in JAVA_ARGS in /etc/sysconfig/puppetserver on EL systems or /etc/default/puppetserver on Debian systems." (int (/ mem-size 1024.0))))))))))
+                (format "%s %s %s"
+                        (i18n/trs "Not enough available RAM ({0}MB) to safely accommodate the configured JVM heap size of {1}MB." (int (/ mem-size 1024.0)) (int (/ heap-size 1024.0)))
+                        (i18n/trs "Puppet Server requires at least {0}MB of available RAM given this heap size, computed as 1.1 * max heap (-Xmx)." (int (/ required-mem-size 1024.0)))
+                        (i18n/trs "Either increase available memory or decrease the configured heap size by reducing the -Xms and -Xmx values in JAVA_ARGS in /etc/sysconfig/puppetserver on EL systems or /etc/default/puppetserver on Debian systems."))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -568,7 +568,7 @@
 
     :else
     (throw (IllegalArgumentException.
-             (trs "Route not found for service {0}" master-ns)))))
+             (i18n/trs "Route not found for service {0}" master-ns)))))
 
 (schema/defn ^:always-validate
   get-wrapped-handler :- IFn

@@ -9,8 +9,7 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [clojure.string :as str]
-            [puppetlabs.i18n.core :as i18n :refer [trs]]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet])
+            [puppetlabs.i18n.core :as i18n])
   (:import (com.puppetlabs.puppetserver JRubyPuppet)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,6 +33,7 @@
     :csrdir
     :csr-attributes
     :dns-alt-names
+    :data-binding-terminus
     :hostcert
     :hostcrl
     :hostprivkey
@@ -41,7 +41,7 @@
     :keylength
     :localcacert
     :manage-internal-file-permissions
-    :privatekeydir    
+    :privatekeydir
     :requestdir
     :serial
     :signeddir
@@ -96,7 +96,7 @@
   (let [key-conflicts (set/intersection (keyset tk-config) puppet-config-keys)]
     (when-not (empty? key-conflicts)
       (throw (Exception.
-               (trs "The following configuration keys conflict with the values to be read from puppet: {0}"
+               (i18n/trs "The following configuration keys conflict with the values to be read from puppet: {0}"
                     (str/join ", " (sort key-conflicts))))))))
 
 (schema/defn ^:always-validate
@@ -118,7 +118,7 @@
                    :ssl-ca-cert  localcacert
                    :ssl-crl-path cacrl}]
     (if (some #((key %) webserver-settings) overrides)
-      (log/info (trs "Not overriding webserver settings with values from core Puppet"))
+      (log/info (i18n/trs "Not overriding webserver settings with values from core Puppet"))
       (do
-        (log/info (trs "Initializing webserver settings from core Puppet"))
+        (log/info (i18n/trs "Initializing webserver settings from core Puppet"))
         (override-webserver-settings! overrides)))))

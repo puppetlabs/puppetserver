@@ -1,11 +1,11 @@
 (ns puppetlabs.services.jruby.jruby-puppet-service
   (:require [clojure.tools.logging :as log]
-            [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.jruby.jruby-puppet-core :as core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
+            [puppetlabs.services.protocols.jruby-puppet :as jruby]
+            [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -21,7 +21,7 @@
                            [:PoolManagerService create-pool]]
   (init
     [this context]
-    (log/info "Initializing the JRuby service")
+    (log/info (i18n/trs "Initializing the JRuby service"))
     (let [jruby-config (core/initialize-and-create-jruby-config
                         (get-config)
                         (get-profiler)
