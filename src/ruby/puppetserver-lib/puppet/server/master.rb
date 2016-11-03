@@ -71,7 +71,8 @@ class Puppet::Server::Master
   end
 
   def getSetting(setting)
-    Puppet[setting]
+    value = Puppet[setting]
+    value.is_a?(Symbol) ? value.to_s : value
   end
 
   def puppetVersion()
