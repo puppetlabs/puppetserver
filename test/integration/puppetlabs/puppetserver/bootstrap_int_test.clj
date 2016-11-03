@@ -10,6 +10,8 @@
 (deftest ^:integration test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because we're just testing service startup
+     and CA file generation (which is all Clojure)."
      app {}
      (is (true? true))
      (testing "Private keys have the correct permissions."

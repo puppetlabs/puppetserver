@@ -35,6 +35,8 @@
   (testing "requests made when cert is on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["localhost"]}}
@@ -65,6 +67,8 @@
   (testing "requests made when cert not on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
         app
         {:certificate-authority {:certificate-status
                                  {:client-whitelist ["notlocalhost"]}}
@@ -95,6 +99,8 @@
   (testing "requests made when no whitelist is defined"
     (logutils/with-test-logging
      (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
       app
       {:certificate-authority {:certificate-status
                                {:client-whitelist []}}
@@ -126,6 +132,8 @@
 (deftest ^:integration no-whitelist-defined-test
   (testing "requests made when no whitelist is defined"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
       app
       {:authorization {:version 1
                        :rules [{:match-request
@@ -187,6 +195,8 @@
       (fs/mkdir req-dir)
       (ssl-utils/obj->pem! csr (str req-dir "/test_cert_ca_true.pem"))
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
@@ -230,6 +240,8 @@
     ;; This test may be more useful at the point tk-auth and comidi were to
     ;; more generally handle the presence of a percent character.
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
      app
      {:authorization {:version 1
                       :rules [{:match-request

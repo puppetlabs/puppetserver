@@ -30,6 +30,8 @@
   (testing "access denied when cert not on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
         app
         {:puppet-admin  {:client-whitelist ["notlocalhost"]}
          :authorization {:version 1 :rules []}}
@@ -44,6 +46,8 @@
   (testing "access allowed when cert on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
         app
         {:puppet-admin  {:client-whitelist ["localhost"]}
          :authorization {:version 1 :rules []}}
@@ -58,6 +62,8 @@
   (testing "access allowed when whitelist disabled and no cert provided"
     (logutils/with-test-logging
      (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
       app
       {:puppet-admin {:authorization-required false}
        :authorization {:version 1 :rules []}}
@@ -72,6 +78,8 @@
 
   (testing "access denied when cert denied by rule"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
       app
       {:puppet-admin  nil
        :authorization {:version 1
@@ -100,6 +108,8 @@
 
   (testing "when cert allowed by rule and whitelist not configured"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
       app
       {:puppet-admin  nil
        :authorization {:version 1
@@ -135,6 +145,8 @@
   (testing "access allowed when cert allowed by rule and whitelist empty"
     (logutils/with-test-logging
      (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
       app
       {:puppet-admin {:client-whitelist []}
        :authorization {:version 1
@@ -154,6 +166,8 @@
 
   (testing "server tolerates client specifying an 'Accept: */*' header"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because the admin endpoint is implemented
+       in Clojure."
      app
      {}
      (doseq [endpoint endpoints]

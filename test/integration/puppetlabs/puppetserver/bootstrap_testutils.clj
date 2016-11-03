@@ -70,7 +70,12 @@
        ~@body)))
 
 (defmacro with-puppetserver-running-with-services-and-mock-jrubies
-  [app services config-overrides & body]
+  "This macro should be used with caution; it makes tests run much more quickly,
+  but you should be careful to make sure that the mocking won't be subverting
+  any important test coverage.  For this reason, we require a `docstring` argument
+  to be passed in, as a sort of annotation explaining why you feel it's safe to
+  use this mocking in your test."
+  [docstring app services config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services# (conj ~services
                            (jruby-puppet-testutils/mock-jruby-pool-manager-service
@@ -101,7 +106,12 @@
          ~@body))))
 
 (defmacro with-puppetserver-running-with-mock-jrubies
-  [app config-overrides & body]
+  "This macro should be used with caution; it makes tests run much more quickly,
+  but you should be careful to make sure that the mocking won't be subverting
+  any important test coverage.  For this reason, we require a `docstring` argument
+  to be passed in, as a sort of annotation explaining why you feel it's safe to
+  use this mocking in your test."
+  [docstring app config-overrides & body]
   (let [config (load-dev-config-with-overrides config-overrides)]
     `(let [services#
            (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service

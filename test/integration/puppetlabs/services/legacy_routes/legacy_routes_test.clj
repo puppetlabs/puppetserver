@@ -32,6 +32,9 @@
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "MOCK.TODO: discuss this one.  Currently all this is testing is that the
+     requests make it through to the JRuby layer; we aren't testing that they
+     are actually hitting the correct endpoints and getting successful responses."
      app
      {}
      (is (= 200 (:status (http-get "/v2.0/environments"))))
@@ -41,6 +44,11 @@
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "MOCK.TODO: discuss - this is *probably* ok because all we really care about
+     is that the webserver is accepting connections and handing them to the correct
+     ring handler.  Would be better if we could implement this to hit a clojure
+     endpoint instead of a Ruby one but I don't remember if there are any pure-clojure
+     endpoints under /puppet."
      app
      {:web-router-service
       {:puppetlabs.services.master.master-service/master-service
@@ -57,6 +65,11 @@
           webserver-config (:webserver default-config)]
       ;; use `-with-config` variant, so that we can pass in the entire config map
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "MOCK.TODO: discuss - this is *probably* ok because all we really care about
+        is that the webserver is accepting connections and handing them to the correct
+        ring handler.  Would be better if we could implement this to hit a clojure
+        endpoint instead of a Ruby one but I don't remember if there are any pure-clojure
+        endpoints under /puppet."
        app
        (-> default-config
            ;; remove the 'root' webserver config, which wouldn't exist in a
@@ -80,6 +93,9 @@
             IllegalArgumentException
             #"Route not found for service .*master-service"
             (bootstrap/with-puppetserver-running-with-mock-jrubies
+             "MOCK.TODO - discuss - I think mocking is OK here because it seems like
+             we should never get to the HTTP request, but if that's the case, the
+             assertion is weird and confusing."
              app
              {:web-router-service {::master-service/master-service {:foo "/bar"}}}
              (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))
@@ -89,6 +105,7 @@
                 "disabled CA is configured")
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+       "Mocking JRubies because CA endpoints are pure clojure"
         app
         [handler/request-handler-service
          jruby/jruby-puppet-pooled-service

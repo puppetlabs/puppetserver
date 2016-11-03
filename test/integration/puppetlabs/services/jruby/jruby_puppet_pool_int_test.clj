@@ -249,6 +249,8 @@
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "MOCK.TODO: discuss this one; it's probably safe because we don't really care
+     about the requests that are made before the JRuby service is stopped."
      app
      {:jruby-puppet {:max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}

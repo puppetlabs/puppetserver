@@ -311,6 +311,17 @@
                      custom-vcs
                      tk-scheduler/scheduler-service]]
        (jruby-bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+        "MOCK.TODO: This test is making a catalog request, in order
+        to trigger the code-id handling.  With the current jruby mocking that
+        means that we are artificially returning a 200 for that catalog request,
+        but this test passes because it doesn't make any assertions on the body.
+        The test description probably needs updating too... it seems like the
+        goal of this test is to assert that the jruby is borrowed before the
+        code id command is run, so that we know that a lock can't be acquired
+        (and new code deployed) while we're running the code id command.  If that's
+        the case, we should explain it more clearly, and it's probably OK to
+        use a mock since we're really just trying to test the jruby pool behavior
+        rather than anything having to do with the actual catalog."
         app services {:jruby-puppet {:max-active-instances 1}}
         (jruby-testutils/wait-for-jrubies app)
         (let [in-catalog-request-future (promise)

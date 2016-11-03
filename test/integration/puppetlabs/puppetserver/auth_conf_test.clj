@@ -266,6 +266,8 @@
     ;; with-test-logging is used here to suppress a warning about running with legacy auth enabled.
     (logging/with-test-logging
      (bootstrap/with-puppetserver-running-with-mock-jrubies
+      "JRuby mocking is safe here because the static_file_content endpoint is
+      implemented in Clojure."
       app
       {:jruby-puppet {:use-legacy-auth-conf true}
        :authorization {:version 1
@@ -293,6 +295,8 @@
   (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"
     (logging/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because these tests are strictly validating
+       the Clojure tk-auth checks."
         app
         {:authorization {:version 1
                          :allow-header-cert-info true
