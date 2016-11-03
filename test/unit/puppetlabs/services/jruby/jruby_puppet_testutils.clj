@@ -218,7 +218,6 @@ create-mock-pool-instance :- JRubyInstance
      "codedir" (:master-code-dir jruby-puppet-config)
      "csr_attributes" (str confdir "/csr_attributes.yaml")
      "csrdir" (str cadir "/requests")
-     "data_binding_terminus" "hiera"
      "dns_alt_names" ""
      "hostcert" (str certdir "/" certname ".pem")
      "hostcrl" (str ssldir "/crl.pem")
