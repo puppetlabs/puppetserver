@@ -246,7 +246,13 @@ create-mock-pool-instance :- JRubyInstance
                        (:puppet config))]
     (reify JRubyPuppet
       (getSetting [_ setting]
-        (get puppet-config setting))
+        (let [value (get puppet-config setting :not-found)]
+          (if (= value :not-found)
+            (throw (IllegalArgumentException.
+                    (str "Setting not in mock-puppet-config-settings "
+                         "requested: " setting ". Add an appropriate value "
+                         "to the map to correct this problem.")))
+            value)))
       (puppetVersion [_]
         "1.2.3")
       (handleRequest [_ _]
