@@ -97,8 +97,7 @@
              we should never get to the HTTP request, but if that's the case, the
              assertion is weird and confusing."
              app
-             {:web-router-service {::master-service/master-service {:foo "/bar"}}}
-             (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))
+             {:web-router-service {::master-service/master-service {:foo "/bar"}}}))))))
 
 (deftest ^:integration legacy-ca-routes-disabled
   (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
