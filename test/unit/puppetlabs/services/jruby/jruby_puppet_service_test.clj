@@ -45,6 +45,22 @@
 
 (deftest environment-class-info-tags
   (testing "environment-class-info-tags cache has proper data"
+    ;; This test uses a mock JRubyPoolManagerService.  Where these tests are
+    ;; largely about validating the content of the environment cache, whose
+    ;; implementation lives in Clojure, having "real" JRuby instances running
+    ;; in the application stack does not seem essential for these tests.
+    ;;
+    ;; There are related tests in other namespaces which do use real JRubyPuppet
+    ;; instances:
+    ;;
+    ;; * puppetlabs.services.jruby.class-info-test - Makes direct calls on a
+    ;;   "real" JRubyPuppet to validate that the environment class content
+    ;;   matches the manifest content on disk.
+    ;;
+    ;; * puppetlabs.services.master.environment-classes-int-test - Stands up
+    ;;   a full application stack and makes calls to the "environment_classes"
+    ;;   HTTP endpoint which exercise both the Clojure-level environment class
+    ;;   cache and "real" JRubyPuppet instances for doing class info parsing.
     (let [config (jruby-service-test-config 1)]
       (bootstrap/with-app-with-config
        app
