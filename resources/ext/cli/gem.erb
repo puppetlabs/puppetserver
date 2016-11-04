@@ -2,6 +2,6 @@
 
 umask 0022
 
-"${JAVA_BIN}" -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
+"${JAVA_BIN}" $JAVA_ARGS -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
     clojure.main -m puppetlabs.puppetserver.cli.gem \
     --config "${CONFIG}" -- "$@"
