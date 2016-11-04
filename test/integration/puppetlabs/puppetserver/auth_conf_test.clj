@@ -12,8 +12,10 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [me.raynes.fs :as fs]
             [ring.util.codec :as ring-codec]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging])
-  (:import (java.io StringWriter)))
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [cheshire.core :as cheshire])
+  (:import (java.io StringWriter)
+           (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
   (ks/absolute-path "./dev-resources/puppetlabs/puppetserver/auth_conf_test"))
@@ -294,7 +296,7 @@
 (deftest ^:integration custom-oids-passed-to-tk-auth
   (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"
     (logging/with-test-logging
-      (bootstrap/with-puppetserver-running-with-mock-jrubies
+      (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
        "JRuby mocking is safe here because these tests are strictly validating
        the Clojure tk-auth checks."
         app
@@ -312,6 +314,12 @@
          :puppet {"csr_attributes" (str test-resources-dir "/csr_attributes.yaml")
                   "trusted_oid_mapping_file" (str test-resources-dir
                                                   "/custom_trusted_oid_mapping.yaml")}}
+       (partial jruby-testutils/create-mock-jruby-puppet
+                (fn [_]
+                  (JRubyPuppetResponse. (Integer. 200)
+                                        "we've been tk-authorized!"
+                                        "text/plain"
+                                        "1.2.3")))
         (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
                           :critical false
                           :value "12345"}
@@ -347,23 +355,43 @@
                                              "X-Client-Verify" "SUCCESS"}
                                    :as :text}))]
           (testing "ca endpoints use oid shortnames"
-            (let [path "/puppet-ca/v1/certificate_status/localhost"]
-              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+            (let [path "/puppet-ca/v1/certificate_status/localhost"
+                  cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
+                  cert-status-body (-> cert-status-response
+                                       :body
+                                       cheshire/parse-string)]
+              (is (= 200 (:status cert-status-response)))
+              ;; Assert that some of the content looks like it came from the
+              ;; certificate_statuses endpoint
+              (is (= "localhost" (get cert-status-body "name")))
+              (is (= "signed" (get cert-status-body "state")))
               (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
           (testing "master endpoints use oid shortnames"
-            (let [path "puppet/v3/catalog/private?environment=production"]
-              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+            (let [path "puppet/v3/catalog/private?environment=production"
+                  catalog-response (http-get-no-ssl path url-encoded-allowable-cert)]
+              (is (= 200 (:status catalog-response)))
+              (is (= "we've been tk-authorized!" (:body catalog-response)))
               (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
           (testing "legacy endpoints support oid shortnames"
-            (let [path "/v2.0/environments"]
-              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+            (let [path "/v2.0/environments"
+                  env-response (http-get-no-ssl path url-encoded-allowable-cert)]
+              (is (= 200 (:status env-response)))
+              (is (= "we've been tk-authorized!" (:body env-response)))
               (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
           (testing "legacy CA endpoints support oid shortnames"
-            (let [path "/production/certificate_statuses/all"]
-              (is (= 200 (:status (http-get-no-ssl path url-encoded-allowable-cert))))
+            (let [path "/production/certificate_status/localhost"
+                  cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
+                  cert-status-body (-> cert-status-response
+                                       :body
+                                       cheshire/parse-string)]
+              (is (= 200 (:status cert-status-response)))
+              ;; Assert that some of the content looks like it came from the
+              ;; certificate_statuses endpoint
+              (is (= "localhost" (get cert-status-body "name")))
+              (is (= "signed" (get cert-status-body "state")))
               (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
           (testing "puppet-admin endpoints support oid shortnames"

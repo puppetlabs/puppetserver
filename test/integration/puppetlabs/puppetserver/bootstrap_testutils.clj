@@ -53,12 +53,18 @@
         (ks/deep-merge overrides))))
 
 (defn services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-  [config]
-  (->> dev-bootstrap-file
-       tk-bootstrap/parse-bootstrap-config!
-       (remove #(= :PoolManagerService (tk-services/service-def-id %)))
-       vec
-       (cons (jruby-puppet-testutils/mock-jruby-pool-manager-service config))))
+  ([config]
+   (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+    config
+    jruby-puppet-testutils/create-mock-jruby-puppet))
+  ([config mock-jruby-puppet-fn]
+   (->> dev-bootstrap-file
+        tk-bootstrap/parse-bootstrap-config!
+        (remove #(= :PoolManagerService (tk-services/service-def-id %)))
+        vec
+        (cons (jruby-puppet-testutils/mock-jruby-pool-manager-service
+               config
+               mock-jruby-puppet-fn)))))
 
 (defmacro with-puppetserver-running-with-services
   [app services config-overrides & body]
@@ -116,6 +122,24 @@
     `(let [services#
            (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
             ~config)]
+       (tk-testutils/with-app-with-config
+        ~app
+        services#
+        ~config
+        ~@body))))
+
+(defmacro with-puppetserver-running-with-mock-jruby-puppet-fn
+  "This macro should be used with caution; it makes tests run much more quickly,
+  but you should be careful to make sure that the mocking won't be subverting
+  any important test coverage.  For this reason, we require a `docstring` argument
+  to be passed in, as a sort of annotation explaining why you feel it's safe to
+  use this mocking in your test."
+  [docstring app config-overrides mock-jruby-puppet-fn & body]
+  (let [config (load-dev-config-with-overrides config-overrides)]
+    `(let [services#
+           (services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+            ~config
+            ~mock-jruby-puppet-fn)]
        (tk-testutils/with-app-with-config
         ~app
         services#

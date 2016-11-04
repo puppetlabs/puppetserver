@@ -30,7 +30,8 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config])
-  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)))
+  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
+           (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -181,12 +182,20 @@
                                           "logback-test-restart-comes-back.xml")}
                             :jruby-puppet {:max-active-instances 1
                                            :borrow-timeout default-borrow-timeout}}
-          config (bootstrap/load-dev-config-with-overrides config-overrides)]
+          config (bootstrap/load-dev-config-with-overrides config-overrides)
+          mock-jruby-puppet-fn (partial jruby-testutils/create-mock-jruby-puppet
+                                        (fn [_]
+                                          (JRubyPuppetResponse.
+                                           (Integer. 200)
+                                           "success response from restart test"
+                                           "text/plain"
+                                           "1.2.3")))]
       (fs/delete debug-log)
       (tk-testutils/with-app-with-config
        app
        (conj (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-              config)
+              config
+              mock-jruby-puppet-fn)
              bonus-service)
        config
        (tk-internal/restart-tk-apps [app])
@@ -202,7 +211,8 @@
            (str "dumping puppetserver.log\n" (slurp debug-log)))
        (let [get-results (http-client/get "https://localhost:8140/puppet/v3/environments"
                                           testutils/catalog-request-options)]
-         (is (= 200 (:status get-results))))))))
+         (is (= 200 (:status get-results)))
+         (is (= "success response from restart test" (:body get-results))))))))
 
 (deftest ^:integration test-503-when-app-shuts-down
   (testing "During a shutdown the agent requests result in a 503 response"
@@ -212,13 +222,24 @@
                                                              :borrow-timeout
                                                              default-borrow-timeout}))
                       (assoc-in [:webserver :port] 8081))
+           mock-jruby-puppet-fn (partial jruby-testutils/create-mock-jruby-puppet
+                                         (fn [_]
+                                           (JRubyPuppetResponse.
+                                            (Integer. 200)
+                                            (str "response body doesn't matter, just "
+                                                 "provide a successful response so the "
+                                                 "test knows the webserver is still running")
+                                            "text/plain"
+                                            "1.2.3")))
            services [jruby/jruby-puppet-pooled-service
                      profiler/puppet-profiler-service
                      handler-service/request-handler-service
                      ps-config/puppet-server-config-service
                      jetty9/jetty9-service
                      vcs/versioned-code-service
-                     (jruby-testutils/mock-jruby-pool-manager-service config)]
+                     (jruby-testutils/mock-jruby-pool-manager-service
+                      config
+                      mock-jruby-puppet-fn)]
            app (tk/boot-services-with-config services config)
            cert (ssl-utils/pem->cert
                  (str test-resources-dir "/localhost-cert.pem"))

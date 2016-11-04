@@ -239,27 +239,30 @@ create-mock-pool-instance :- JRubyInstance
   "Create a 'mock' JRubyPuppet instance which returns fixed values for settings
   and puppet version and a hard-coded HTTP 200 response for any requests it
   handles."
-  [config :- {schema/Keyword schema/Any}]
-  (let [puppet-config (merge
-                       (mock-puppet-config-settings (:jruby-puppet config))
-                       (:puppet config))]
-    (reify JRubyPuppet
-      (getSetting [_ setting]
-        (let [value (get puppet-config setting :not-found)]
-          (if (= value :not-found)
-            (throw (IllegalArgumentException.
-                    (str "Setting not in mock-puppet-config-settings "
-                         "requested: " setting ". Add an appropriate value "
-                         "to the map to correct this problem.")))
-            value)))
-      (puppetVersion [_]
-        "1.2.3")
-      (handleRequest [_ _]
-        (JRubyPuppetResponse. (Integer. 200)
-                              "looks good to me"
-                              "text/plain"
-                              "1.2.3"))
-      (terminate [_]))))
+  ([config :- {schema/Keyword schema/Any}]
+   (create-mock-jruby-puppet
+    (fn [_]
+      (throw (UnsupportedOperationException. "Mock handleRequest not defined")))
+    config))
+  ([handle-request-fn :- IFn
+    config :- {schema/Keyword schema/Any}]
+   (let [puppet-config (merge
+                        (mock-puppet-config-settings (:jruby-puppet config))
+                        (:puppet config))]
+     (reify JRubyPuppet
+       (getSetting [_ setting]
+         (let [value (get puppet-config setting :not-found)]
+           (if (= value :not-found)
+             (throw (IllegalArgumentException.
+                     (str "Setting not in mock-puppet-config-settings "
+                          "requested: " setting ". Add an appropriate value "
+                          "to the map to correct this problem.")))
+             value)))
+       (puppetVersion [_]
+         "1.2.3")
+       (handleRequest [_ request]
+         (handle-request-fn request))
+       (terminate [_])))))
 
 (schema/defn ^:always-validate
   create-mock-pool :- jruby-schemas/PoolContext
