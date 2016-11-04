@@ -272,6 +272,9 @@ create-mock-pool-instance :- JRubyInstance
    pool and is expected to return an object of type 'JRubyPuppet'."
   [jruby-config :- jruby-schemas/JRubyConfig
    mock-jruby-puppet-fn :- IFn]
+  ;; The implementation of this function is based on and very similar to
+  ;; `prime-pool!` in `puppetlabs.services.jruby-pool-manager.impl.jruby-agents`
+  ;; from the jruby-utils library.
   (let [pool-context (jruby-pool-manager-core/create-pool-context jruby-config)
         pool (jruby-internal/get-pool pool-context)
         count (.remainingCapacity pool)]
