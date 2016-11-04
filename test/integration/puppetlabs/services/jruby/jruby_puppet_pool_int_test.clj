@@ -293,17 +293,31 @@
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-     "MOCK.TODO: discuss this one; it's probably safe because we don't really care
-     about the requests that are made before the JRuby service is stopped."
+    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
+     "JRuby mocking is safe here, because we're just looking to see that the
+      HTTP response for an environment request transitions from success to
+      a 503 failure after the Jetty webserver has been shut down. Having a
+      'real' response body to the successful environment request isn't
+      essential to observing the transition from success to failure."
      app
      {:jruby-puppet {:max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}
+     (partial jruby-testutils/create-mock-jruby-puppet
+              (fn [_]
+                (JRubyPuppetResponse. (Integer. 200)
+                                      "our env request has been mocked!"
+                                      "text/plain"
+                                      "1.2.3")))
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
            jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
-           stop-complete? (future (tk-services/stop jruby-service context))
-           ping-environment #(testutils/http-get "puppet/v3/environments")]
+           ping-environment #(testutils/http-get "puppet/v3/environments")
+           ping-before-stop (ping-environment)
+           stop-complete? (future (tk-services/stop jruby-service context))]
+       (is (= 200 (:status ping-before-stop))
+           "environment request before stop failed")
+       (is (= "our env request has been mocked!" (:body ping-before-stop))
+           "environment response did not have our mock response body")
        (logging/with-test-logging
         (let [start (System/currentTimeMillis)]
           (while (and
