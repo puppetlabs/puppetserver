@@ -48,6 +48,7 @@ namespace :spec do
       ## Line 1 launches the JRuby that we depend on via leiningen
       ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
       gem_install_bundler = <<-CMD
+      GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
       lein run -m org.jruby.Main \
       -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler -v '#{BUNDLER_VER}'
       CMD
@@ -66,7 +67,7 @@ namespace :spec do
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
       PUPPET_LOADED=true \
       lein run -m org.jruby.Main \
-        -S bundle install --path='#{TEST_BUNDLE_DIR}'
+        -S bundle install --without extra development --path='#{TEST_BUNDLE_DIR}'
       CMD
       sh bundle_install
     end
