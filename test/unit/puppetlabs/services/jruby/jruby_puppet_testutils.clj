@@ -9,9 +9,7 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.protocols.pool-manager :as pool-manager-protocol]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
-            [puppetlabs.kitchensink.core :as ks]
-            [clojure.java.io :as io])
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal])
   (:import (clojure.lang IFn)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
@@ -263,6 +261,39 @@ create-mock-pool-instance :- JRubyInstance
        (handleRequest [_ request]
          (handle-request-fn request))
        (terminate [_])))))
+
+(schema/defn ^:always-validate
+  create-mock-jruby-puppet-fn-with-handle-response-params :- IFn
+  "Return a function which, when invoked, will create a mock JRubyPuppet
+  instance.  Supplied arguments - 'status-code', 'response-body',
+  'response-content-type', and 'puppet-version' are returned in the
+  'JRubyPuppetResponse' that the JRubyPuppet instance's .handleRequest
+  method returns when invoked.  The default value for 'response-content-type',
+  if not supplied, is 'text/plain'.  The default value for 'puppet-version',
+  if not supplied, is '1.2.3'."
+  ([status-code :- schema/Int
+    response-body :- schema/Str]
+   (create-mock-jruby-puppet-fn-with-handle-response-params status-code
+                                                            response-body
+                                                            "text/plain"))
+  ([status-code :- schema/Int
+    response-body :- schema/Str
+    response-content-type :- schema/Str]
+   (create-mock-jruby-puppet-fn-with-handle-response-params status-code
+                                                            response-body
+                                                            response-content-type
+                                                            "1.2.3"))
+  ([status-code :- schema/Int
+    response-body :- schema/Str
+    response-content-type :- schema/Str
+    puppet-version :- schema/Str]
+   (partial create-mock-jruby-puppet
+            (fn [_]
+              (JRubyPuppetResponse.
+               (Integer. status-code)
+               response-body
+               response-content-type
+               puppet-version)))))
 
 (schema/defn ^:always-validate
   create-mock-pool :- jruby-schemas/PoolContext

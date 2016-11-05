@@ -2,7 +2,6 @@
   (:import (java.io StringReader ByteArrayInputStream)
            (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.test :refer :all]
-            [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
             [ring.util.codec :as ring-codec]
             [puppetlabs.ring-middleware.utils :as ringutils]

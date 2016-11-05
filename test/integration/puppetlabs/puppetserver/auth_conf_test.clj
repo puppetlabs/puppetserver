@@ -14,8 +14,7 @@
             [ring.util.codec :as ring-codec]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [cheshire.core :as cheshire])
-  (:import (java.io StringWriter)
-           (com.puppetlabs.puppetserver JRubyPuppetResponse)))
+  (:import (java.io StringWriter)))
 
 (def test-resources-dir
   (ks/absolute-path "./dev-resources/puppetlabs/puppetserver/auth_conf_test"))
@@ -314,12 +313,9 @@
          :puppet {"csr_attributes" (str test-resources-dir "/csr_attributes.yaml")
                   "trusted_oid_mapping_file" (str test-resources-dir
                                                   "/custom_trusted_oid_mapping.yaml")}}
-       (partial jruby-testutils/create-mock-jruby-puppet
-                (fn [_]
-                  (JRubyPuppetResponse. (Integer. 200)
-                                        "we've been tk-authorized!"
-                                        "text/plain"
-                                        "1.2.3")))
+       (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+        200
+        "we've been tk-authorized!")
         (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
                           :critical false
                           :value "12345"}

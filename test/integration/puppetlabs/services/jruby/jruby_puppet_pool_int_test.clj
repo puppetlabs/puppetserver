@@ -30,8 +30,7 @@
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config])
-  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
-           (com.puppetlabs.puppetserver JRubyPuppetResponse)))
+  (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -183,13 +182,9 @@
                             :jruby-puppet {:max-active-instances 1
                                            :borrow-timeout default-borrow-timeout}}
           config (bootstrap/load-dev-config-with-overrides config-overrides)
-          mock-jruby-puppet-fn (partial jruby-testutils/create-mock-jruby-puppet
-                                        (fn [_]
-                                          (JRubyPuppetResponse.
-                                           (Integer. 200)
-                                           "success response from restart test"
-                                           "text/plain"
-                                           "1.2.3")))]
+          mock-jruby-puppet-fn (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+                                200
+                                "success response from restart test")]
       (fs/delete debug-log)
       (tk-testutils/with-app-with-config
        app
@@ -223,15 +218,11 @@
                                                              default-borrow-timeout}))
                       (assoc :webserver {:port 8081
                                          :shutdown-timeout-seconds 1}))
-           mock-jruby-puppet-fn (partial jruby-testutils/create-mock-jruby-puppet
-                                         (fn [_]
-                                           (JRubyPuppetResponse.
-                                            (Integer. 200)
-                                            (str "response body doesn't matter, just "
-                                                 "provide a successful response so the "
-                                                 "test knows the webserver is still running")
-                                            "text/plain"
-                                            "1.2.3")))
+           mock-jruby-puppet-fn (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+                                 200
+                                 (str "response body doesn't matter, just "
+                                      "provide a successful response so the "
+                                      "test knows the webserver is still running"))
            services [jruby/jruby-puppet-pooled-service
                      profiler/puppet-profiler-service
                      handler-service/request-handler-service
@@ -302,12 +293,9 @@
      app
      {:jruby-puppet {:max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}
-     (partial jruby-testutils/create-mock-jruby-puppet
-              (fn [_]
-                (JRubyPuppetResponse. (Integer. 200)
-                                      "our env request has been mocked!"
-                                      "text/plain"
-                                      "1.2.3")))
+     (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+      200
+      "our env request has been mocked!")
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
            jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
