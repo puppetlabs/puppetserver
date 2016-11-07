@@ -32,7 +32,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.1.7"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.2.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -153,9 +153,9 @@
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
 
-  :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem"]
-            "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby"]
-            "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb"]}
+  :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev/puppetserver.conf" "--"]
+            "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby" "--config" "./dev/puppetserver.conf" "--"]
+            "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]}
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"
