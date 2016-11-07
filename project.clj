@@ -162,7 +162,7 @@
              ~(str "-Xms" (heap-size "1G" "min"))
              ~(str "-Xmx" (heap-size "2G" "max"))]
 
-  :repl-options {:init-ns user}
+  :repl-options {:init-ns dev-tools}
 
   ;; NOTE: jruby-stdlib packages some unexpected things inside
   ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle

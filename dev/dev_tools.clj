@@ -1,4 +1,4 @@
-(ns user-repl
+(ns dev-tools
   (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
             [puppetlabs.services.master.master-service :refer [master-service]]
@@ -21,25 +21,24 @@
             [clojure.pprint :as pprint]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [me.raynes.fs :as fs]
-            [puppetlabs.kitchensink.core :as ks]))
+            [puppetlabs.trapperkeeper.bootstrap :as bootstrap]
+            [puppetlabs.trapperkeeper.config :as config]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
 
-(defn initialize-default-config-file
-  "Checks to see if ~/.puppetserver/puppetserver.conf exists; if it does not,
-  copies ./dev/puppetserver.conf.sample to that location."
+(defn get-default-config
   []
-  (let [conf-dir (fs/expand-home "~/.puppetserver")
-        default-conf-file-dest (fs/file conf-dir "puppetserver.conf")]
-    (when-not (fs/exists? conf-dir)
-      (println "Creating .puppetserver dir")
-      (fs/mkdirs conf-dir))
-    (when-not (fs/exists? default-conf-file-dest)
-      (println "Copying puppetserver.conf.sample to" conf-dir)
-      (fs/copy "./dev/puppetserver.conf.sample" default-conf-file-dest))
-    (ks/absolute-path default-conf-file-dest)))
+  (config/load-config "./dev/puppetserver.conf"))
+
+(defn get-config
+  "This function is required by the Puppet clojure repo best practices guide.  It
+  will be called during the bootstrapping of the application via `go`, and will
+  be passed as an argument a copy of the default configuration map for the dev
+  environment for the app; users may override the implementation function in their
+  `user.clj` to make customizations to the configuration map."
+  [default-config]
+  default-config)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Basic system life cycle
@@ -49,22 +48,8 @@
 (defn- init []
   (alter-var-root #'system
     (fn [_] (tk/build-app
-              [jetty9-service
-               webrouting-service
-               master-service
-               jruby-puppet-pooled-service
-               jruby-pool-manager-service
-               puppet-profiler-service
-               request-handler-service
-               puppet-server-config-service
-               certificate-authority-service
-               puppet-admin-service
-               legacy-routes-service
-               authorization-service
-               versioned-code-service
-               scheduler-service
-               status-service]
-              ((resolve 'user/puppetserver-conf)))))
+             (bootstrap/parse-bootstrap-config! "./dev/bootstrap.cfg")
+             (get-config (get-default-config)))))
   (alter-var-root #'system tka/init)
   (tka/check-for-errors! system))
 
@@ -89,12 +74,12 @@
   "Stop the running server, reload code, and restart."
   []
   (stop)
-  (refresh :after 'user-repl/go))
+  (refresh :after 'dev-tools/go))
 
 (defn help
   "Prints a list of all of the public functions and their docstrings"
   []
-  (let [fns (ns-publics 'user-repl)]
+  (let [fns (ns-publics 'dev-tools)]
     (doseq [f fns]
       ;; TODO; inspect arglists
       (println (format "(%s): %s\n"
