@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# TODO: Ultimately it'd be nice to not hard-code this path, because it is
+# not guaranteed to match up with the path in puppetserver.conf or used by the
+# REPL.  That said, it doesn't seem like a great ROI to sort it out right now
+# because it will probably require introducing a new setting in puppetserver.conf.
+VENDORED_GEMS_HOME="${HOME}/.puppetlabs/opt/server/data/puppetserver/vendored-jruby-gems"
+
+while read line; do
+    line_entries=($line)
+    gem_name=${line_entries[0]}
+    gem_version=${line_entries[1]}
+    echo "Installing gem '${gem_name}' (version '${gem_version}') to '${VENDORED_GEMS_HOME}'"
+    lein gem install --install-dir "${VENDORED_GEMS_HOME}" ${gem_name} --version ${gem_version}
+done < ./resources/ext/build-scripts/gem-list.txt
