@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 
-# TODO: Ultimately it'd be nice to not hard-code this path, because it is
-# not guaranteed to match up with the path in puppetserver.conf or used by the
+# TODO: Ultimately it'd be nice to not hard-code these paths, because it is
+# not guaranteed to match up with the paths in puppetserver.conf or used by the
 # REPL.  That said, it doesn't seem like a great ROI to sort it out right now
-# because it will probably require introducing a new setting in puppetserver.conf.
-VENDORED_GEMS_HOME="${HOME}/.puppetlabs/opt/server/data/puppetserver/vendored-jruby-gems"
+# because it will probably require introducing a new setting for the vendored gem
+# dir into puppetserver.conf.
+ROOTDIR="${HOME}/.puppetlabs"
+CONFDIR="${ROOTDIR}/etc/puppet"
+CODEDIR="${ROOTDIR}/etc/code"
+VENDORED_GEMS_HOME="${ROOTDIR}/opt/server/data/puppetserver/vendored-jruby-gems"
+
+echo "Installing vendored gems to dev environment"
 
 while read line; do
     line_entries=($line)
@@ -13,3 +19,31 @@ while read line; do
     echo "Installing gem '${gem_name}' (version '${gem_version}') to '${VENDORED_GEMS_HOME}'"
     lein gem install --install-dir "${VENDORED_GEMS_HOME}" ${gem_name} --version ${gem_version}
 done < ./resources/ext/build-scripts/gem-list.txt
+
+echo "Setting up puppet.conf for dev environment"
+
+# TODO: current implementation will simply overwrite puppet.conf.  Might be better
+# to add some checks at the beginning of this script, and abort the whole script
+# if it already exists.
+
+if [ -z "${MASTERHOST}" ]; then
+    echo "    No value specified for environment variable 'MASTERHOST'; using 'localhost' for puppet certname."
+    CERTNAME="localhost"
+else
+    echo "    Found environment variable 'MASTERHOST'; using value '${MASTERHOST}' for puppet certname."
+    CERTNAME="${MASTERHOST}"
+fi
+
+mkdir -p "${CONFDIR}"
+cat > "${CONFDIR}/puppet.conf" <<PUPPET_CONF_CONTENT
+[main]
+certname = ${CERTNAME}
+
+[agent]
+server = ${CERTNAME}
+PUPPET_CONF_CONTENT
+
+echo "Creating modules directory for production environment, to avoid misleading pluginsync warning messages."
+mkdir -p "${CODEDIR}/environments/production/modules"
+
+echo "DONE!"
