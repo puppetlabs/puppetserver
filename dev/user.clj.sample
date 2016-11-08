@@ -1,0 +1,10 @@
+(in-ns 'dev-tools)
+
+(clojure.core/refer 'clojure.core)
+
+;; Override the default `get-config` function from `dev-tools`, so that we
+;; can customize our dev configuration without modifying the default conf file.
+(defn get-config
+  [default-config]
+  ;; override number of jrubies
+  (assoc-in default-config [:jruby-puppet :max-active-instances] 2))

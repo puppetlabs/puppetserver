@@ -22,7 +22,8 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.trapperkeeper.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.config :as config]))
+            [puppetlabs.trapperkeeper.config :as config])
+  (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Configuration
@@ -148,3 +149,14 @@
   []
   (jruby-protocol/flush-jruby-pool!
     (tka/get-service system :JRubyPuppetService)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Allow user overrides
+
+;; This code will load `user.repl` if it exists, allowing the user to override
+;; functions in this namespace.  For an example, see `user.clj.sample`.  This
+;; is usually used to provide an alternate implementation of `get-config`.
+
+(let [user-overrides (File. "./dev/user.clj")]
+  (if (.exists user-overrides)
+    (load-file (.getAbsolutePath user-overrides))))
