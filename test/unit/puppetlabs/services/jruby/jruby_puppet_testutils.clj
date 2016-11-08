@@ -6,11 +6,14 @@
             [puppetlabs.trapperkeeper.services :as tk-service]
             [schema.core :as schema]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
-            [puppetlabs.services.jruby.puppet-environments :as puppet-env])
+            [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.services.protocols.pool-manager :as pool-manager-protocol]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal])
   (:import (clojure.lang IFn)
-           (org.jruby.embed LocalContextScope)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
-           (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)))
+           (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
+           (com.puppetlabs.puppetserver JRubyPuppet JRubyPuppetResponse)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Constants
@@ -69,6 +72,10 @@
        event-callbacks (jruby-core/get-event-callbacks pool-context)]
    (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
 
+(schema/defn create-mock-scripting-container :- ScriptingContainer
+  []
+  (reify ScriptingContainer
+    (terminate [_])))
 
 (schema/defn ^:always-validate
 create-mock-pool-instance :- JRubyInstance
@@ -83,8 +90,7 @@ create-mock-pool-instance :- JRubyInstance
                               :max-borrows (:max-borrows-per-instance config)
                               :flush-instance-fn flush-instance-fn
                               :state (atom {:borrow-count 0})}
-                   :scripting-container (ScriptingContainer.
-                                         LocalContextScope/SINGLETHREAD)})
+                   :scripting-container (create-mock-scripting-container)})
         modified-instance (merge instance {:jruby-puppet (mock-jruby-instance-creator-fn)
                                            :environment-registry (puppet-env/environment-registry)})]
     (.register pool modified-instance)
@@ -181,3 +187,154 @@ create-mock-pool-instance :- JRubyInstance
     (while (< (count (jruby-core/registered-instances pool-context))
               num-jrubies)
       (Thread/sleep 100))))
+
+(schema/defn ^:always-validate
+  mock-puppet-config-settings :- {schema/Str schema/Any}
+  "Return a map of settings that mock the settings that core Ruby Puppet
+  would return via a call to JRubyPuppet.getSetting()."
+  [jruby-puppet-config :- {:master-conf-dir schema/Str
+                           :master-code-dir schema/Str
+                           schema/Keyword schema/Any}]
+  (let [certname "localhost"
+        confdir (:master-conf-dir jruby-puppet-config)
+        ssldir (str confdir "/ssl")
+        certdir (str ssldir "/certs")
+        cadir (str ssldir "/ca")
+        private-key-dir (str ssldir "/private_keys")]
+    {"allow_duplicate_certs" false
+     "autosign" true
+     "keylength" 2048
+     "cacert" (str cadir "/ca_crt.pem")
+     "ca_name" (str "Puppet CA: " certname)
+     "cacrl" (str cadir "/ca_crl.pem")
+     "cakey" (str cadir "/ca_key.pem")
+     "capub" (str cadir "/ca_pub.pem")
+     "ca_ttl" 157680000
+     "certdir" certdir
+     "certname" certname
+     "cert_inventory" (str cadir "/inventory.txt")
+     "codedir" (:master-code-dir jruby-puppet-config)
+     "csr_attributes" (str confdir "/csr_attributes.yaml")
+     "csrdir" (str cadir "/requests")
+     "dns_alt_names" ""
+     "hostcert" (str certdir "/" certname ".pem")
+     "hostcrl" (str ssldir "/crl.pem")
+     "hostprivkey" (str private-key-dir "/" certname ".pem")
+     "hostpubkey" (str ssldir "/public_keys/" certname ".pem")
+     "localcacert" (str certdir "/ca.pem")
+     "manage_internal_file_permissions" true
+     "privatekeydir" private-key-dir
+     "requestdir" (str ssldir "/certificate_requests")
+     "serial" (str cadir "/serial")
+     "signeddir" (str cadir "/signed")
+     "ssl_client_header" "HTTP_X_CLIENT_DN"
+     "ssl_client_verify_header" "HTTP_X_CLIENT_VERIFY"
+     "trusted_oid_mapping_file" (str confdir
+                                     "/custom_trusted_oid_mapping.yaml")}))
+
+(schema/defn ^:always-validate
+  create-mock-jruby-puppet :- JRubyPuppet
+  "Create a 'mock' JRubyPuppet instance which returns fixed values for settings
+  and puppet version and a hard-coded HTTP 200 response for any requests it
+  handles."
+  ([config :- {schema/Keyword schema/Any}]
+   (create-mock-jruby-puppet
+    (fn [_]
+      (throw (UnsupportedOperationException. "Mock handleRequest not defined")))
+    config))
+  ([handle-request-fn :- IFn
+    config :- {schema/Keyword schema/Any}]
+   (let [puppet-config (merge
+                        (mock-puppet-config-settings (:jruby-puppet config))
+                        (:puppet config))]
+     (reify JRubyPuppet
+       (getSetting [_ setting]
+         (let [value (get puppet-config setting :not-found)]
+           (if (= value :not-found)
+             (throw (IllegalArgumentException.
+                     (str "Setting not in mock-puppet-config-settings "
+                          "requested: " setting ". Add an appropriate value "
+                          "to the map to correct this problem.")))
+             value)))
+       (puppetVersion [_]
+         "1.2.3")
+       (handleRequest [_ request]
+         (handle-request-fn request))
+       (terminate [_])))))
+
+(schema/defn ^:always-validate
+  create-mock-jruby-puppet-fn-with-handle-response-params :- IFn
+  "Return a function which, when invoked, will create a mock JRubyPuppet
+  instance.  Supplied arguments - 'status-code', 'response-body',
+  'response-content-type', and 'puppet-version' are returned in the
+  'JRubyPuppetResponse' that the JRubyPuppet instance's .handleRequest
+  method returns when invoked.  The default value for 'response-content-type',
+  if not supplied, is 'text/plain'.  The default value for 'puppet-version',
+  if not supplied, is '1.2.3'."
+  ([status-code :- schema/Int
+    response-body :- schema/Str]
+   (create-mock-jruby-puppet-fn-with-handle-response-params status-code
+                                                            response-body
+                                                            "text/plain"))
+  ([status-code :- schema/Int
+    response-body :- schema/Str
+    response-content-type :- schema/Str]
+   (create-mock-jruby-puppet-fn-with-handle-response-params status-code
+                                                            response-body
+                                                            response-content-type
+                                                            "1.2.3"))
+  ([status-code :- schema/Int
+    response-body :- schema/Str
+    response-content-type :- schema/Str
+    puppet-version :- schema/Str]
+   (partial create-mock-jruby-puppet
+            (fn [_]
+              (JRubyPuppetResponse.
+               (Integer. status-code)
+               response-body
+               response-content-type
+               puppet-version)))))
+
+(schema/defn ^:always-validate
+  create-mock-pool :- jruby-schemas/PoolContext
+  "Create a 'mock' JRuby pool.  The pool is filled with the number 'mock'
+   JRubyPuppet instances specified in the jruby-config.  The supplied
+   'mock-jruby-puppet-fn' is invoked for each instance to be created for the
+   pool and is expected to return an object of type 'JRubyPuppet'."
+  [jruby-config :- jruby-schemas/JRubyConfig
+   mock-jruby-puppet-fn :- IFn]
+  ;; The implementation of this function is based on and very similar to
+  ;; `prime-pool!` in `puppetlabs.services.jruby-pool-manager.impl.jruby-agents`
+  ;; from the jruby-utils library.
+  (let [pool-context (jruby-pool-manager-core/create-pool-context jruby-config)
+        pool (jruby-internal/get-pool pool-context)
+        count (.remainingCapacity pool)]
+    (dotimes [i count]
+      (let [id (inc i)]
+        (create-mock-pool-instance
+         mock-jruby-puppet-fn
+         pool
+         id
+         jruby-config
+         (constantly nil))))
+    pool-context))
+
+(schema/defn ^:always-validate
+  mock-jruby-pool-manager-service
+  :- (schema/protocol tk-service/ServiceDefinition)
+  "Create a 'mock' JRubyPoolManagerService, with a create-pool function
+  which returns a 'mock' JRuby pool when called.  The supplied
+  'mock-jruby-puppet-fn' is invoked for each instance to be created for the pool
+  and is expected to return an object of type 'JRubyPuppet'.  The 'config'
+  option is passed back as an argument to 'mock-jruby-puppet-fn', if supplied."
+  ([config :- {schema/Keyword schema/Any}]
+   (mock-jruby-pool-manager-service config
+                                    create-mock-jruby-puppet))
+  ([config :- {schema/Keyword schema/Any}
+    mock-jruby-puppet-fn :- IFn]
+   (tk-service/service
+    pool-manager-protocol/PoolManagerService
+    []
+    (create-pool
+     [this jruby-config]
+     (create-mock-pool jruby-config (partial mock-jruby-puppet-fn config))))))

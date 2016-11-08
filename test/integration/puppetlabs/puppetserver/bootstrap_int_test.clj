@@ -9,15 +9,18 @@
 
 (deftest ^:integration test-app-startup
   (testing "Trapperkeeper can be booted successfully using the dev config files."
-    (bootstrap/with-puppetserver-running app {}
-    (is (true? true))
-    (testing "Private keys have the correct permissions."
-      (let [pk-dir (str bootstrap/master-conf-dir "/ssl/private_keys")
-            pks (fs/find-files pk-dir #".*pem$")]
-        (is (= ca/private-key-dir-perms (ca/get-file-perms pk-dir)))
-        (is (= ca/private-key-perms
-               (ca/get-file-perms (str bootstrap/master-conf-dir
-                                       "/ssl/ca/ca_key.pem"))))
-        (doseq [pk pks]
-          (is (= ca/private-key-perms (ca/get-file-perms (.getPath pk)))))))
-    (is (true? true)))))
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because we're just testing service startup
+     and CA file generation (which is all Clojure)."
+     app {}
+     (is (true? true))
+     (testing "Private keys have the correct permissions."
+       (let [pk-dir (str bootstrap/master-conf-dir "/ssl/private_keys")
+             pks (fs/find-files pk-dir #".*pem$")]
+         (is (= ca/private-key-dir-perms (ca/get-file-perms pk-dir)))
+         (is (= ca/private-key-perms
+                (ca/get-file-perms (str bootstrap/master-conf-dir
+                                        "/ssl/ca/ca_key.pem"))))
+         (doseq [pk pks]
+           (is (= ca/private-key-perms (ca/get-file-perms (.getPath pk)))))))
+     (is (true? true)))))

@@ -7,43 +7,52 @@
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [schema.core :as schema]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]
+            [me.raynes.fs :as fs]
+            [puppetlabs.kitchensink.core :as ks]))
 
 (use-fixtures :once
               (testutils/with-puppet-conf
                 "./dev-resources/puppetlabs/services/config/puppet_server_config_core_test/puppet.conf"))
 
 (deftest ^:integration test-puppet-config-values
-  (tk-bootstrap/with-app-with-config
-   app
-   [jruby-puppet-pooled-service
-    puppet-profiler-service
-    jruby-pool-manager-service]
-   (jruby-testutils/jruby-puppet-tk-config
-    (jruby-testutils/jruby-puppet-config))
-   (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-         pool-instance (jruby-testutils/borrow-instance jruby-service :test)
-         jruby-puppet (:jruby-puppet pool-instance)]
-     (try
-       (testing "usage of get-puppet-config-value"
-         (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
-         (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
-         (is (= false (get-puppet-config-value jruby-puppet :onetime)))
-         (is (= false (get-puppet-config-value jruby-puppet :archive-files)))
-         (is (= nil (get-puppet-config-value jruby-puppet :not-a-valid-setting))))
-
-       (testing (str "all needed config values from puppet are available in the map "
-                     "returned by `get-puppet-config`")
-         (let [puppet-config (get-puppet-config* jruby-puppet)]
-           (is (map? puppet-config))
+  (let [jruby-config (-> (jruby-testutils/jruby-puppet-config)
+                         (update :master-conf-dir #(str (fs/normalized %)))
+                         (update :master-code-dir #(str (fs/normalized %))))]
+    (tk-bootstrap/with-app-with-config
+     app
+     [jruby-puppet-pooled-service
+      puppet-profiler-service
+      jruby-pool-manager-service]
+     (jruby-testutils/jruby-puppet-tk-config jruby-config)
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           pool-instance (jruby-testutils/borrow-instance jruby-service :test)
+           jruby-puppet (:jruby-puppet pool-instance)
+           mock-config (jruby-testutils/mock-puppet-config-settings jruby-config)
+           actual-config (get-puppet-config* jruby-puppet)
+           setting->keyword (fn [setting] (-> setting
+                                              (.replace "_" "-")
+                                              keyword))]
+       (try
+         (testing "usage of get-puppet-config-value"
+           (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
+           (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
+           (is (= false (get-puppet-config-value jruby-puppet :onetime)))
+           (is (= false (get-puppet-config-value jruby-puppet :archive-files)))
+           (is (= nil (get-puppet-config-value jruby-puppet :not-a-valid-setting))))
+         (testing "get-puppet-config* values match mock config values"
+           (let [mock-config-with-keywordized-keys
+                 (ks/mapkeys setting->keyword mock-config)]
+             (is (= mock-config-with-keywordized-keys actual-config))))
+         (testing (str "all needed config values from puppet are available in the map "
+                       "returned by `get-puppet-config`")
+           (is (map? actual-config))
            (doseq [k puppet-config-keys]
-             (is (contains? puppet-config k))
-             (is (not (nil? (get puppet-config k)))))))
-       (finally
-         (jruby-testutils/return-instance jruby-service pool-instance :test))))))
+             (is (contains? actual-config k))
+             (is (not (nil? (get actual-config k))))))
+         (finally
+           (jruby-testutils/return-instance jruby-service pool-instance :test)))))))
 
 (deftest test-schema-validation
   (testing "validating a data structure with a missing key"

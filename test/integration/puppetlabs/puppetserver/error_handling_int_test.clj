@@ -27,7 +27,9 @@
 (deftest ^:integration test-HTTP-500
   (testing "When returning an HTTP 500, the response body is a simple text message,
             not anything wacky like HTML (I'm looking at you, Jetty.)"
-    (bootstrap/with-puppetserver-running
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because the request handlers are being with-redef'd
+     to throw exceptions."
       app
       {}
       (with-test-logging
@@ -60,7 +62,9 @@
 (deftest ^:integration test-invalid-code-id-error
   (let [vcs-script (ks/absolute-path (fs/file vcs-scripts "invalid_code_id"))]
     (testing "Catalog request fails when user provided code-id-command returns invalid code-id"
-      (bootstrap/with-puppetserver-running
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because the Clojure code will throw the code-id-command
+       error before the request ever makes it to JRuby."
         app
         {:versioned-code {:code-id-command vcs-script
                           :code-content-command vcs-script}}

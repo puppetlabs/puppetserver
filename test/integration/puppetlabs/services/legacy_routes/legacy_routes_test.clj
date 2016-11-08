@@ -7,7 +7,6 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.request-handler.request-handler-service :as handler]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as webserver]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
@@ -19,7 +18,10 @@
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
-            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]))
+            [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+            [cheshire.core :as cheshire])
+  (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
@@ -31,20 +33,57 @@
 
 (deftest ^:integration legacy-routes
   (testing "The legacy web routing service properly handles old routes."
-    (bootstrap/with-puppetserver-running app
-      {}
-      (is (= 200 (:status (http-get "/v2.0/environments"))))
-      (is (= 200 (:status (http-get "/production/node/localhost"))))
-      (is (= 200 (:status (http-get "/production/certificate_statuses/all")))))))
+    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
+     "JRuby mocking is safe ,here because we're only interested in validating
+     that the request is routed from a legacy to a new endpoint and the
+     translation is expected to occur at the Clojure layer, not in Ruby."
+     app
+     {}
+     (partial jruby-testutils/create-mock-jruby-puppet
+              (fn [request]
+                (JRubyPuppetResponse.
+                 (Integer. 200)
+                 (str "request routed to: " (get request "uri"))
+                 "text/plain"
+                 "1.2.3")))
+     (let [env-response (http-get "/v2.0/environments")]
+       (is (= 200 (:status env-response)))
+       (is (= "request routed to: /puppet/v3/environments" (:body env-response))))
+     (let [node-response (http-get "/production/node/localhost")]
+       (is (= 200 (:status node-response)))
+       (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response))))
+     (let [cert-status-response (http-get "/production/certificate_status/localhost")
+           cert-status-body (-> cert-status-response :body cheshire/parse-string)]
+       (is (= 200 (:status cert-status-response)))
+       ;; Assert that some of the content looks like it came from the
+       ;; certificate_status endpoint
+       (is (= "localhost" (get cert-status-body "name")))
+       (is (= "signed" (get cert-status-body "state")))))))
 
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
-    (bootstrap/with-puppetserver-running app
-      {:web-router-service
-       {:puppetlabs.services.master.master-service/master-service
-        {:master-routes "/puppet"
-         :invalid-in-puppet-4 "/"}}}
-      (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))
+    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
+     "JRuby mocking is safe here because we're just interested in validating
+     that a request would be properly routed down to the Ruby layer even with
+     the alternate :master-routes / :invalid-in-puppet-4 keys in the route
+     configuration.  Note that :invalid-in-puppet-4 is essentially ignored
+     in Puppet Server 2.1+ but this test ensures that its presence in
+     configuration doesn't adversely affect request routing."
+     app
+     {:web-router-service
+      {:puppetlabs.services.master.master-service/master-service
+       {:master-routes "/puppet"
+        :invalid-in-puppet-4 "/"}}}
+     (partial jruby-testutils/create-mock-jruby-puppet
+              (fn [request]
+                (JRubyPuppetResponse.
+                 (Integer. 200)
+                 (str "request routed to: " (get request "uri"))
+                 "text/plain"
+                 "1.2.3")))
+     (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
+       (is (= 200 (:status node-response)))
+       (is (= "request routed to: /puppet/v3/node/localhost")))))
 
   (testing "The new map-style multi-server route configuration map still works."
     ;; For a multi-server config, we need to remove the existing webserver
@@ -54,7 +93,10 @@
     (let [default-config (bootstrap/load-dev-config-with-overrides {})
           webserver-config (:webserver default-config)]
       ;; use `-with-config` variant, so that we can pass in the entire config map
-      (bootstrap/with-puppetserver-running-with-config
+      (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
+       "JRuby mocking is safe here because we're just interested in validating
+       that a request would be properly routed down to the Ruby layer for a
+       multiple webserver configuration."
        app
        (-> default-config
            ;; remove the 'root' webserver config, which wouldn't exist in a
@@ -70,25 +112,38 @@
              {:puppetlabs.services.master.master-service/master-service
               {:route "/puppet"
                :server "puppetserver"}}}))
-       (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production")))))))
+       (partial jruby-testutils/create-mock-jruby-puppet
+                (fn [request]
+                  (JRubyPuppetResponse.
+                   (Integer. 200)
+                   (str "request routed to: " (get request "uri"))
+                   "text/plain"
+                   "1.2.3")))
+       (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
+         (is (= 200 (:status node-response)))
+         (is (= "request routed to: /puppet/v3/node/localhost"))))))
 
   (testing "An exception is thrown if an improper master service route is found."
     (logutils/with-test-logging
       (is (thrown-with-msg?
             IllegalArgumentException
             #"Route not found for service .*master-service"
-            (bootstrap/with-puppetserver-running app
-                                                 {:web-router-service {::master-service/master-service {:foo "/bar"}}}
-                                                 (is (= 200 (:status (http-get "/puppet/v3/node/localhost?environment=production"))))))))))
+            (bootstrap/with-puppetserver-running-with-mock-jrubies
+             "JRuby mocking is safe here because the test doesn't actually do
+             anything with JRuby instances - just validates that an error
+             occurs due to an invalid web routing configuration at startup."
+             app
+             {:web-router-service {::master-service/master-service {:foo "/bar"}}}))))))
 
 (deftest ^:integration legacy-ca-routes-disabled
-  (testing "The legacy CA routes are on longer forwarded"
+  (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
+                "disabled CA is configured")
     (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running-with-services
+      (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+       "Mocking JRubies because CA endpoints are pure clojure"
         app
         [handler/request-handler-service
          jruby/jruby-puppet-pooled-service
-         jruby-utils/jruby-pool-manager-service
          profiler/puppet-profiler-service
          webserver/jetty9-service
          webrouting/webrouting-service

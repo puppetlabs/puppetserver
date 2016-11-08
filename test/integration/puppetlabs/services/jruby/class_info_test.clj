@@ -9,7 +9,6 @@
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
 
@@ -83,7 +82,6 @@
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              instance (jruby-testutils/borrow-instance jruby-service :test)
              jruby-puppet (:jruby-puppet instance)
-             container (:scripting-container instance)
              env-registry (:environment-registry instance)
 
              _ (testutils/create-file (fs/file conf-dir "puppet.conf")

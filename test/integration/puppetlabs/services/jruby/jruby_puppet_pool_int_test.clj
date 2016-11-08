@@ -24,7 +24,6 @@
              [ca-cert localhost-cert localhost-key ssl-request-options]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [clojure.tools.logging :as log]
-            [puppetlabs.trapperkeeper.bootstrap :as tk-bootstrap]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
@@ -175,17 +174,25 @@
                           (init [this context] (lc-fn context :init-bonus-service))
                           (start [this context] (lc-fn context :start-bonus-service))
                           (stop [this context] (lc-fn context :stop-bonus-service))
-                          (bonus-service-fn [this] (lc-fn nil :bonus-service-fn)))]
+                          (bonus-service-fn [this] (lc-fn nil :bonus-service-fn)))
+          config-overrides {:global {:logging-config
+                                     (str "./dev-resources/puppetlabs/services/"
+                                          "jruby/jruby_pool_int_test/"
+                                          "logback-test-restart-comes-back.xml")}
+                            :jruby-puppet {:max-active-instances 1
+                                           :borrow-timeout default-borrow-timeout}}
+          config (bootstrap/load-dev-config-with-overrides config-overrides)
+          mock-jruby-puppet-fn (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+                                200
+                                "success response from restart test")]
       (fs/delete debug-log)
-      (bootstrap/with-puppetserver-running-with-services
+      (tk-testutils/with-app-with-config
        app
-       (conj (tk-bootstrap/parse-bootstrap-config! bootstrap/dev-bootstrap-file) bonus-service)
-       {:global {:logging-config
-                 (str "./dev-resources/puppetlabs/services/"
-                      "jruby/jruby_pool_int_test/"
-                      "logback-test-restart-comes-back.xml")}
-        :jruby-puppet {:max-active-instances 1
-                       :borrow-timeout default-borrow-timeout}}
+       (conj (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+              config
+              mock-jruby-puppet-fn)
+             bonus-service)
+       config
        (tk-internal/restart-tk-apps [app])
        (let [start (System/currentTimeMillis)]
          (while (and (not= (count @call-seq) 5)
@@ -199,58 +206,106 @@
            (str "dumping puppetserver.log\n" (slurp debug-log)))
        (let [get-results (http-client/get "https://localhost:8140/puppet/v3/environments"
                                           testutils/catalog-request-options)]
-         (is (= 200 (:status get-results))))))))
+         (is (= 200 (:status get-results)))
+         (is (= "success response from restart test" (:body get-results))))))))
 
 (deftest ^:integration test-503-when-app-shuts-down
   (testing "During a shutdown the agent requests result in a 503 response"
     (ks-testutils/with-no-jvm-shutdown-hooks
-     (let [services [jruby/jruby-puppet-pooled-service profiler/puppet-profiler-service
-                     handler-service/request-handler-service ps-config/puppet-server-config-service
-                     jetty9/jetty9-service vcs/versioned-code-service
-                     jruby-utils/jruby-pool-manager-service]
-           config (-> (jruby-testutils/jruby-puppet-tk-config
+     (let [config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config {:max-active-instances 2
                                                              :borrow-timeout
                                                              default-borrow-timeout}))
-                      (assoc-in [:webserver :port] 8081))
+                      (assoc :webserver {:port 8081
+                                         :shutdown-timeout-seconds 1}))
+           mock-jruby-puppet-fn (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+                                 200
+                                 (str "response body doesn't matter, just "
+                                      "provide a successful response so the "
+                                      "test knows the webserver is still running"))
+           services [jruby/jruby-puppet-pooled-service
+                     profiler/puppet-profiler-service
+                     handler-service/request-handler-service
+                     ps-config/puppet-server-config-service
+                     jetty9/jetty9-service
+                     vcs/versioned-code-service
+                     (jruby-testutils/mock-jruby-pool-manager-service
+                      config
+                      mock-jruby-puppet-fn)]
+           jruby-instance (atom nil)
            app (tk/boot-services-with-config services config)
-           cert (ssl-utils/pem->cert
-                 (str test-resources-dir "/localhost-cert.pem"))
-           jruby-service (tk-app/get-service app :JRubyPuppetService)
-           jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
-           handler-service (tk-app/get-service app :RequestHandlerService)
-           request {:uri "/puppet/v3/environments", :params {}, :headers {},
-                    :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
-           ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
-           ping-before-stop (ping-environment)
-           stop-complete? (future (tk-app/stop app))]
-       (is (= 200 (:status ping-before-stop))
-           "environment request before stop failed")
-       (let [start (System/currentTimeMillis)]
-         (logging/with-test-logging
-          (while (and
-                  (< (- (System/currentTimeMillis) start) 10000)
-                  (not= 503 (:status (ping-environment))))
-            (Thread/yield))
-          (is (= 503 (:status (ping-environment)))))
-         (jruby-testutils/return-instance jruby-service jruby-instance :i-want-this-instance)
-         (is (not= :timed-out (timed-deref stop-complete?))
-             (str "timed out waiting for the stop to complete, stack:\n"
-                  (get-all-stack-traces-as-str)))
-         (logging/with-test-logging
-          (is (= 503 (:status (ping-environment))))))))))
+           jruby-service (tk-app/get-service app :JRubyPuppetService)]
+       (try
+         (let [cert (ssl-utils/pem->cert
+                     (str test-resources-dir "/localhost-cert.pem"))
+               _ (reset! jruby-instance (jruby-testutils/borrow-instance
+                                         jruby-service
+                                         :i-want-this-instance))
+               handler-service (tk-app/get-service app :RequestHandlerService)
+               request {:uri "/puppet/v3/environments", :params {}, :headers {},
+                        :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
+               ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
+               ping-before-stop (ping-environment)
+               stop-complete? (future (tk-app/stop app))]
+           (is (= 200 (:status ping-before-stop))
+               "environment request before stop failed")
+           (let [start (System/currentTimeMillis)]
+             (logging/with-test-logging
+              (while (and
+                      (< (- (System/currentTimeMillis) start) 10000)
+                      (not= 503 (:status (ping-environment))))
+                (Thread/yield))
+              (is (= 503 (:status (ping-environment)))))
+             (jruby-testutils/return-instance jruby-service
+                                              @jruby-instance
+                                              :i-want-this-instance)
+             (reset! jruby-instance nil)
+             (is (not= :timed-out (timed-deref stop-complete?))
+                 (str "timed out waiting for the stop to complete, stack:\n"
+                      (get-all-stack-traces-as-str)))
+             (logging/with-test-logging
+              (is (= 503 (:status (ping-environment)))))))
+         (finally
+           ;; Return the borrowed instance to the pool in case it hadn't
+           ;; been returned previously.  This is done before stop is called
+           ;; so that the jruby-puppet-pooled-service will hopefully be able
+           ;; to be stopped (with all instances back in the pool).
+           (if-let [instance @jruby-instance]
+             (jruby-testutils/return-instance jruby-service
+                                              instance
+                                              :i-want-this-instance))
+           ;; Stop the tk app.  In success cases, this will end up being done
+           ;; twice - which is benign.  This is done in the finally block so
+           ;; that it is done even if the test errors out prematurely.  Not
+           ;; doing so could leave a Jetty webserver running indefinitely -
+           ;; causing many tests downstream from this one that try to create
+           ;; new Jetty servers to fail.
+           (tk-app/stop app)))))))
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
   (testing "During a shutdown requests result in 503 http responses"
-    (bootstrap/with-puppetserver-running
+    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
+     "JRuby mocking is safe here, because we're just looking to see that the
+      HTTP response for an environment request transitions from success to
+      a 503 failure after the Jetty webserver has been shut down. Having a
+      'real' response body to the successful environment request isn't
+      essential to observing the transition from success to failure."
      app
      {:jruby-puppet {:max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}
+     (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
+      200
+      "our env request has been mocked!")
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
            jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
-           stop-complete? (future (tk-services/stop jruby-service context))
-           ping-environment #(testutils/http-get "puppet/v3/environments")]
+           ping-environment #(testutils/http-get "puppet/v3/environments")
+           ping-before-stop (ping-environment)
+           stop-complete? (future (tk-services/stop jruby-service context))]
+       (is (= 200 (:status ping-before-stop))
+           "environment request before stop failed")
+       (is (= "our env request has been mocked!" (:body ping-before-stop))
+           "environment response did not have our mock response body")
        (logging/with-test-logging
         (let [start (System/currentTimeMillis)]
           (while (and

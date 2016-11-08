@@ -1,20 +1,18 @@
 (ns puppetlabs.services.request-handler.request-handler-core-test
-  (:import (java.io StringReader ByteArrayInputStream))
+  (:import (java.io StringReader ByteArrayInputStream)
+           (com.puppetlabs.puppetserver JRubyPuppetResponse))
   (:require [clojure.test :refer :all]
-            [me.raynes.fs :as fs]
             [slingshot.test :refer :all]
             [ring.util.codec :as ring-codec]
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.request-handler.request-handler-core :as core]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.ssl-utils.simple :as ssl-simple]
-            [puppetlabs.puppetserver.certificate-authority :as cert-authority]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :refer [defservice service]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.puppetserver.bootstrap-testutils :as jruby-bootstrap]
             [puppetlabs.services.protocols.versioned-code :as vc]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
@@ -29,7 +27,8 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]))
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
+            [cheshire.core :as cheshire]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -286,51 +285,82 @@
 (deftest ^:integration test-jruby-pool-not-full-during-code-id-generation
    (testing "A jruby instance is held while code id is generated"
      ; Okay, some prose to describe the test at hand.
-     ; Here we are validating that the code id command is run by the same jruby
-     ; instance that will be handling the current request. To do this we stand
-     ; up most of the stack, and replace the current-code-id function with a
-     ; variety that we can control entry into and exit from. This allows us
-     ; to make a request, and then while the request is in progress, make some
-     ; assertions about the pool state, and then finish the request.
-     (testutils/with-puppet-conf-files
-      {"puppet.conf" (fs/file test-resources-dir "puppet.conf")}
-      jruby-bootstrap/master-conf-dir
-      (let [first-promise (promise)
-            second-promise (promise)
-            custom-vcs (service vc/VersionedCodeService
-                         []
-                         (current-code-id [_ _]
-                                          (deliver first-promise true)
-                                          (deref second-promise 5000 false))
-                         (get-code-content [_ _ _ _]
-                                               nil))
-            services [master-service/master-service
-                      jruby-service/jruby-puppet-pooled-service
-                      jruby-utils/jruby-pool-manager-service
-                      profiler/puppet-profiler-service
-                      handler-service/request-handler-service
-                      ps-config/puppet-server-config-service
-                      jetty9/jetty9-service
-                      ca-service/certificate-authority-service
-                      authorization-service/authorization-service
-                      routing-service/webrouting-service
-                      custom-vcs
-                      tk-scheduler/scheduler-service]]
-        (jruby-bootstrap/with-puppetserver-running-with-services
-         app services {:jruby-puppet {:max-active-instances 1}}
-         (jruby-testutils/wait-for-jrubies app)
-         (let [in-catalog-request-future (promise)
-               jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (future
-            (deliver in-catalog-request-future true)
-            (testutils/get-catalog))
-           (deref in-catalog-request-future)
-           (is (deref first-promise 10000 false))
-           ; Because we are blocking inside current-code-id, which happens to be
-           ; used during a jruby request, we can assert that there will be no
-           ; jruby instances left in the pool.
-           (is (zero? (jruby-protocol/free-instance-count jruby-service)))
-           (deliver second-promise true)))))))
+     ;
+     ; Here we are validating that a JRubyPuppet instance is checked out of the
+     ; pool at the point a request for the current-code-id is made.  Reservation
+     ; of a JRuby is done to protect the pool from potentially being locked (and
+     ; underlying code updated) between the time that the code-id is calculated
+     ; and a catalog request is fulfilled.  Any changes to code on disk during
+     ; this window could invalidate the code-id.
+     ;
+     ; For this test, we stand up most of the stack, and replace the
+     ; current-code-id function with a variety that we can control entry into
+     ; and exit from. This allows us to make a request, and then while the
+     ; request is in progress, make some assertions about the pool state, and
+     ; then finish the request.
+     (let [first-promise (promise)
+           second-promise (promise)
+           original-code-id 42
+           code-id (atom original-code-id)
+           custom-vcs (service vc/VersionedCodeService
+                               []
+                               (current-code-id [_ _]
+                                                (deliver first-promise true)
+                                                (deref second-promise 5000 false)
+                                                (let [current-id @code-id]
+                                                  (swap! code-id inc)
+                                                  (str current-id)))
+                               (get-code-content [_ _ _ _]
+                                                 nil))
+           services [master-service/master-service
+                     jruby-service/jruby-puppet-pooled-service
+                     profiler/puppet-profiler-service
+                     handler-service/request-handler-service
+                     ps-config/puppet-server-config-service
+                     jetty9/jetty9-service
+                     ca-service/certificate-authority-service
+                     authorization-service/authorization-service
+                     routing-service/webrouting-service
+                     custom-vcs
+                     tk-scheduler/scheduler-service]]
+       (jruby-bootstrap/with-puppetserver-running-with-services-and-mock-jruby-puppet-fn
+        "For this test we're basically just validating that a JRuby is reserved
+         before a code-id is calculated.  A JRuby mock is safe here in that
+         we're just validating operations against the JRuby pool and not
+         functionality in core Ruby Puppet."
+        app services {:jruby-puppet {:max-active-instances 1}}
+        (partial jruby-testutils/create-mock-jruby-puppet
+                 (fn [request]
+                   (JRubyPuppetResponse. (Integer. 200)
+                                         (cheshire/generate-string
+                                          {"classes" []
+                                           "environment" "production"
+                                           "version" "1.2.3"
+                                           "resources" []
+                                           "edges" []
+                                           "code_id" (get-in request
+                                                             ["params"
+                                                              "code_id"])
+                                           "name" "localhost"})
+                                         "application/json"
+                                         "1.2.3")))
+        (jruby-testutils/wait-for-jrubies app)
+        (let [in-catalog-request-future (promise)
+              jruby-service (tk-app/get-service app :JRubyPuppetService)
+              catalog-response (future
+                                (deliver in-catalog-request-future true)
+                                (testutils/get-catalog))]
+          (deref in-catalog-request-future)
+          (is (deref first-promise 10000 false))
+          ; Because we are blocking inside current-code-id, which happens to be
+          ; used during a jruby request, we can assert that there will be no
+          ; jruby instances left in the pool.
+          (is (zero? (jruby-protocol/free-instance-count jruby-service)))
+          (deliver second-promise true)
+          ; Simple validation that the code-id from our mock VersionedCodeService
+          ; was passed through to the catalog response from our mock
+          ; JRubyPuppet instance.
+          (is (= (str original-code-id) (get @catalog-response "code_id"))))))))
 
 (deftest request-handler-test
     (let [dummy-service (reify jruby-protocol/JRubyPuppetService
