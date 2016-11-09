@@ -7,8 +7,137 @@ canonical: "/puppetserver/latest/release_notes.html"
 [Trapperkeeper]: https://github.com/puppetlabs/trapperkeeper
 [service bootstrapping]: ./configuration.markdown#service-bootstrapping
 [auth.conf]: ./config_file_auth.markdown
+[puppetserver.conf]: ./config_file_puppetserver.markdown
+[product.conf]: ./config_file_product.markdown
 
 For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
+
+## Puppet Server 2.7
+
+Released November 8, 2016.
+
+This is a feature and bug-fix release of Puppet Server.
+
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
+
+### New Feature: Disable update checking and telemetry data collection
+
+Puppet Server automatically communicates with Puppet's servers to check for updates. Puppet Server 2.7 adds the option to stop checking for updates by creating a new configuration file, [`product.conf`][product.conf], setting `check-for-updates` to false, then [restarting Puppet Server](./restarting.markdown).
+
+For more information, see the [`product.conf`][product.conf] documentation.
+
+-   [SERVER-1599](https://tickets.puppetlabs.com/browse/SERVER-1599)
+
+### New Feature: New `reload` service action for faster, safer service restarts
+
+Since Puppet Server 2.3, administrators could send a HUP signal to the `puppetserver` process to [quickly reload the service](./restarting.markdown). This provides a faster way to apply changes to settings that require a Puppet Server restart, but sending the signal directly to the process could lead to potential conflicts with actions attempted while the service was reloading.
+
+Puppet Server 2.7 adds a `reload` action can be performed via the operating system's service framework (for example, running `service puppetserver reload`) to perform a HUP reload without requiring a Java process restart. The result is similar to sending a SIGHUP directly to the process, but with the additional benefits of waiting until the server has been reloaded before performing additional scripted commands, tracking the process's ID for you, and providing a more informative exit code should the service fail to reload.
+
+For details, see [Restarting Puppet Server](./restarting.markdown).
+
+-   [SERVER-1490](https://tickets.puppetlabs.com/browse/SERVER-1490)
+
+### Bug Fix: Fix attribute order in CA certificates
+
+In Puppet Server 2.6 and earlier, when the server's certificate authority (CA) service issued a client certificate from a CA with multiple attributes in its certificate Subject's distinguished name (DN), the attributes in the client certificate's Issuer DN were in reverse order from the corresponding attributes in the CA certificate's Subject DN.
+
+For example, if the Subject DN in the CA certificate were `/C=US/CN=myca.org`, the Issuer DN in the client certificate would be `/CN=myca.org/C=US`. The improper attribute order causes SSL connections made with the client certificate to fail validation.
+
+In Puppet Server 2.7, the Issuer DN attributes for newly generated client certificates are formatted in the same order as in the corresponding CA Subject DN. SSL connections made with these new certificates are now validated, allowing for successful secure connections.
+
+-   [SERVER-1545](https://tickets.puppetlabs.com/browse/SERVER-1545)
+
+### Experimental Feature: Run Puppet Server in an MRI 2.0 compatibility mode
+
+Puppet Server uses JRuby 1.7 configured in a "1.9" MRI compatibility mode. In Puppet Server 2.6 and earlier, this configuration could not be changed.
+
+In Puppet Server 2.7, you can choose to run JRuby in modes compatible with 1.9 or 2.0 by changing the `compat-version` setting in [`puppetserver.conf`][puppetserver.conf]. If set to "2.0", users can install and use gems that require Ruby 2.0 with Puppet Server.
+
+> **Warning:** This is an experimental feature and might not be suitable for production.
+
+-   [SERVER-1585](https://tickets.puppetlabs.com/browse/SERVER-1585)
+
+### Bug Fix: Honor all `pp_` custom certificate extension short names
+
+In Puppet Server 2.6, the Puppet Server certificate authority (CA) did not honor short names for these `pp_*` custom certificate extensions in Puppet:
+
+-   pp_region
+-   pp_datacenter
+-   pp_zone
+-   pp_network
+-   pp_securitypolicy
+-   pp_cloudplatform
+-   pp_apptier
+-   pp_hostname
+
+Puppet Server 2.7 honors these short names as expected.
+
+-   [SERVER-1583](https://tickets.puppetlabs.com/browse/SERVER-1583)
+
+### Bug Fix: Make `generate()` function behavior consistent with MRI/Rack Puppet masters
+
+When a command executed by Puppet's [`generate()` function](https://docs.puppet.com/puppet/latest/reference/function.html#generate) returns a non-zero exit code, the MRI/Rack Puppet master throws an exception while retrieving the catalog similar to:
+
+```
+Error: Could not retrieve catalog from remote server: Error 400 on SERVER: Failed to execute generator /bin/false: Execution of '/bin/false' returned 1:  at /etc/puppet/environments/production/manifests/test.pp:2 on node MYNODE.mygtld
+```
+
+However, Puppet Server 2.6 and earlier do not throw an exception as expected, and instead appears to apply the catalog without error, making Puppet Server's behavior inconsistent with the MRI/Rack master.
+
+Puppet Server 2.7 resolves this issue by throwing the expected exception.
+
+Also, in Puppet Server 2.6 and earlier, `generate()` doesn't merge the executed command's output from `STDERR` to `STDOUT` as expected. Puppet Server 2.7 resolves this issue by including the `STDERR` output.
+
+-   [SERVER-1570](https://tickets.puppetlabs.com/browse/SERVER-1570): puppet4 function generate() should throw exception when command fails
+-   [SERVER-1571](https://tickets.puppetlabs.com/browse/SERVER-1571): The function generate() should merge stdout and stderr
+
+### Bug Fix: Avoid "partial state" error if an agent attempts a Puppet run on the master before first puppetserver service start
+
+In Puppet Server 2.6 and earlier, if the agent on a Puppet Server master starts a Puppet run (such as `puppet agent -t`) before the Puppet Server service has first started, private and public keys would be created for the agent but the Puppet Server service would subsequently fail to start with an error message similar to:
+
+```
+java.lang.IllegalStateException: Cannot initialize master with partial state; need all files or none.
+Found:
+/var/lib/puppet/ssl/private_keys/master.pem
+Missing:
+/var/lib/puppet/ssl/certs/master.pem
+```
+
+In this situation, Puppet Server 2.7 now uses pre-generated public and private keys to generate a certificate for the master and will finish starting without error.
+
+-   [SERVER-528](https://tickets.puppetlabs.com/browse/SERVER-528)
+
+### New Feature: Required gems are packaged with Puppet Server, with a new `GEM_PATH` and setting
+
+Some gems are required by both the Puppet agent and Puppet Server. To ship these gems as part of our packaging, Puppet Server 2.7 changes how Puppet Server looks for gems.
+
+In Puppet Server 2.6 and earlier, Puppet Server's `GEM_PATH` was comprised of only a single directory by default: `/opt/puppetlabs/server/data/puppetserver/jruby-gems`. Puppet Server also used this directory as the value for `GEM_HOME`, meaning that the `puppetserver gem install` command installed gems to this directory.
+
+In Puppet Server 2.7, we've added a second path to `GEM_PATH`: `/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems`. Gems that are known to be needed by Puppet Server will be installed in this directory as part of the Puppet Server packaging.
+
+`GEM_HOME` still points to the same `jruby-gems` directory as it did in previous releases, and `puppetserver gem install` continues to install gems to, and use gems from, that directory.
+
+To configure the `GEM_PATH`, set the new `gem-path` setting in [`puppetserver.conf`][puppetserver.conf].
+
+-   [SERVER-1412](https://tickets.puppetlabs.com/browse/SERVER-1412)
+
+### Bug Fix: `puppetserver gem` command makes installed gems readable
+
+In Puppet Server 2.6 and earlier, if the system's default umask did not permit world-readability for gems installed with the 'puppetserver gem' subcommand, the `puppetserver` process might not be able to use the resulting gemspec files, leading to errors such as:
+
+```
+Exception in thread "main" org.jruby.exceptions.RaiseException: (LoadError) no such file to load -- trollop
+Exception in thread "main" org.jruby.exceptions.RaiseException: (Errno::EACCES) /opt/puppetlabs/server/data/puppetserver/jruby-gems/specifications/trollop-2.1.2.gemspec
+```
+
+Puppet Server 2.7 resolves this issue by explicitly setting a umask of 0022 when running any `puppetserver gem` subcommand. This ensures that `puppetserver` can use any gems installed by the `gem` subcommand at run-time.
+
+-   [SERVER-1601](https://tickets.puppetlabs.com/browse/SERVER-1601)
+
+### Other new features
+
+-   [SERVER-1589](https://tickets.puppetlabs.com/browse/SERVER-1589): Use `.gz` extensions for Puppet Server log file archives, and rotate them when they reach 200MB in size instead of 10MB.
 
 ## Puppet Server 2.6
 
@@ -26,7 +155,7 @@ To request this data, make an HTTP GET request to Puppet Server with a query str
 
 > **Experimental feature note:** These metrics are experimental. The names and values of the metrics may change in future releases.
 
-- [SERVER-1502](https://tickets.puppetlabs.com/browse/SERVER-1502)
+-   [SERVER-1502](https://tickets.puppetlabs.com/browse/SERVER-1502)
 
 ### New feature: Logback replaces logrotate for Server log rotation
 
@@ -40,7 +169,7 @@ In Puppet Server 2.6, Logback compresses Server-related logs into archives when 
 >
 > This doesn't affect clean installations of Puppet Server on Debian, or any upgrade or clean installation on other Linux distributions.
 
-- [SERVER-366](https://tickets.puppetlabs.com/browse/SERVER-366)
+-   [SERVER-366](https://tickets.puppetlabs.com/browse/SERVER-366)
 
 ### Bug fixes: Update JRuby to resolve several issues
 
@@ -69,7 +198,7 @@ We [fixed the underlying issue in JRuby](https://github.com/jruby/jruby/pull/406
 
 ### New feature: Whitelist Ruby environment variables
 
-Puppet Server 2.6 adds the ability to specify a whitelist of environment variables made available to Ruby code. To whitelist variables, add them to the `environment-vars` section under the `jruby-puppet` configuration section in [`puppetserver.conf`](./config_file_puppetserver.markdown).
+Puppet Server 2.6 adds the ability to specify a whitelist of environment variables made available to Ruby code. To whitelist variables, add them to the `environment-vars` section under the `jruby-puppet` configuration section in [`puppetserver.conf`][puppetserver.conf].
 
 - [SERVER-584](https://tickets.puppetlabs.com/browse/SERVER-584)
 
