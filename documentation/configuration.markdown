@@ -27,6 +27,8 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 * [`master.conf`](./config_file_master.markdown) ([deprecated][])
 * [`ca.conf`](./config_file_ca.markdown) ([deprecated][])
 
+The [`product.conf`](./config_file_product.markdown) file is optional and is not included by default. You can create that file in the `conf.d` directory in order to configure product-related settings, such as automatic update checking and analytics data collection.
+
 ## Logging
 
 Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. The default Logback configuration file is at `/etc/puppetserver/logback.xml` or `/etc/puppetlabs/puppetserver/logback.xml`. You can edit this file to change the logging behavior, or specify a different Logback config file in [`global.conf`](#globalconf).
