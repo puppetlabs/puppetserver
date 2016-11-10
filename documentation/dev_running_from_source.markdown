@@ -30,7 +30,7 @@ Step 0: Quick Start for Developers
     dev-tools=> (help)
 
 You should now have a running server.  All relevant paths (`$confdir`, `$codedir`,
-etc.) are configured by default to point to directories underneath `~.puppetlabs`.
+etc.) are configured by default to point to directories underneath `~/.puppetlabs`.
 These should all align with the default values that `puppet` uses (for non-root
 users).
 
