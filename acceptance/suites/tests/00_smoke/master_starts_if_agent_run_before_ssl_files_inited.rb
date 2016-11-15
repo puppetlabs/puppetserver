@@ -1,5 +1,9 @@
 test_name "Master can startup even if agent run before ssl files inited"
 
+skip_test 'Skipping for PE since it pre-configures a CRL file and Puppet ' \
+  'Server does not yet update it at startup - SERVER-346 and SERVER-911' \
+  if options[:type] == 'pe'
+
 puppetservice=options['puppetservice']
 ssldir = master.puppet['ssldir']
 backup_ssldir = master.tmpdir("agent_run_before_master_init_ssldir_backup")
