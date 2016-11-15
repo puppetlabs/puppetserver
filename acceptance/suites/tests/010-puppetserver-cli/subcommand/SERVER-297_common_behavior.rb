@@ -1,4 +1,3 @@
-require 'test/unit/assertions'
 require 'json'
 
 test_name "Puppetserver subcommand consolidated ENV handling tests."

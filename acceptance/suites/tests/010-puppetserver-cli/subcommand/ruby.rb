@@ -1,5 +1,3 @@
-require 'test/unit/assertions'
-
 test_name "Puppetserver 'ruby' subcommand tests."
 
 # --------------------------------------------------------------------------
