@@ -16,7 +16,7 @@
            (javax.net.ssl SSLContext)))
 
 (def dev-config-file
-  "./dev/puppetserver.conf.sample")
+  "./dev/puppetserver.conf")
 
 (def dev-bootstrap-file
   "./dev/bootstrap.cfg")
