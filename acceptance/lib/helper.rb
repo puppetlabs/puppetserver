@@ -153,6 +153,10 @@ module PuppetServerExtensions
       if version.to_i >= 7
         use_journalctl = true
       end
+    when /^debian$/
+      if version.to_i >= 8
+        use_journalctl = true
+      end
     when /^ubuntu$/
       if version.to_i >= 15
         use_journalctl = true
