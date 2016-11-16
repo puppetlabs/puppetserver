@@ -56,6 +56,22 @@ Example:
 $ JAVA_ARGS_CLI=-Xmx8g puppetserver gem install pry --no-ri --no-rdoc
 ~~~
 
+If you prefer to have the `JAVA_ARGS_CLI` option persist for multiple command
+executions, you could set the value in the `/etc/sysconfig/puppetserver` or
+`/etc/default/puppetserver` file, depending upon your OS distribution:
+
+~~~ini
+JAVA_ARGS_CLI=-Xmx8g
+~~~
+
+With the value specified in the sysconfig or defaults file, subsequent commands
+would use the `JAVA_ARGS_CLI` variable automatically:
+
+~~~sh
+$ puppetserver gem install pry --no-ri --no-rdoc
+// Would run 'gem' with a maximum Java heap of 8g
+~~~
+
 For more information, see [Puppet Server and Gems](./gems.markdown).
 
 ## ruby
@@ -84,6 +100,22 @@ Example:
 
 ~~~sh
 $ JAVA_ARGS_CLI=-Xmx8g puppetserver ruby -e "require 'puppet'; puts Puppet[:certname]"
+~~~
+
+If you prefer to have the `JAVA_ARGS_CLI` option persist for multiple command
+executions, you could set the value in the `/etc/sysconfig/puppetserver` or
+`/etc/default/puppetserver` file, depending upon your OS distribution:
+
+~~~ini
+JAVA_ARGS_CLI=-Xmx8g
+~~~
+
+With the value specified in the sysconfig or defaults file, subsequent commands
+would use the `JAVA_ARGS_CLI` variable automatically:
+
+~~~sh
+$ puppetserver ruby -e "require 'puppet'; puts Puppet[:certname]"
+// Would run 'ruby' with a maximum Java heap of 8g
 ~~~
 
 ## irb
@@ -119,6 +151,22 @@ Example:
 
 ~~~sh
 $ JAVA_ARGS_CLI=-Xmx8g puppetserver irb
+~~~
+
+If you prefer to have the `JAVA_ARGS_CLI` option persist for multiple command
+executions, you could set the value in the `/etc/sysconfig/puppetserver` or
+`/etc/default/puppetserver` file, depending upon your OS distribution:
+
+~~~ini
+JAVA_ARGS_CLI=-Xmx8g
+~~~
+
+With the value specified in the sysconfig or defaults file, subsequent commands
+would use the `JAVA_ARGS_CLI` variable automatically:
+
+~~~sh
+$ puppetserver irb
+// Would run 'irb' with a maximum Java heap of 8g
 ~~~
 
 ## foreground
