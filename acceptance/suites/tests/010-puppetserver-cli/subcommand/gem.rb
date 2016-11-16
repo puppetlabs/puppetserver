@@ -84,3 +84,9 @@ end
 
 step "Verify that gem env operates"
 on(master, "#{cli} gem env", :acceptable_exit_codes => [0])
+
+step "Verify that Java cli args passed through to gem command"
+on(master, "JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} gem help") do
+  assert_match(/jruby \d\.\d\.\d.*$/, stdout,
+               'jruby version not included in gem command output')
+end

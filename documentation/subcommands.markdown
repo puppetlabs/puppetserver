@@ -47,6 +47,15 @@ $ puppetserver gem install pry --no-ri --no-rdoc
 $ lein gem -c /path/to/puppetserver.conf -- install pry --no-ri --no-rdoc
 ~~~
 
+If needed, you also can use the `JAVA_ARGS_CLI` environment variable to pass
+along custom arguments to the Java process that the `gem` command is run within.
+ 
+Example:
+
+~~~sh
+$ JAVA_ARGS_CLI=-Xmx8g puppetserver gem install pry --no-ri --no-rdoc
+~~~
+
 For more information, see [Puppet Server and Gems](./gems.markdown).
 
 ## ruby
@@ -66,6 +75,15 @@ $ puppetserver ruby -e "require 'puppet'; puts Puppet[:certname]"
 
 ~~~sh
 $ lein ruby -c /path/to/puppetserver.conf -- -e "require 'puppet'; puts Puppet[:certname]"
+~~~
+
+If needed, you also can use the `JAVA_ARGS_CLI` environment variable to pass
+along custom arguments to the Java process that the `ruby` command is run within.
+ 
+Example:
+
+~~~sh
+$ JAVA_ARGS_CLI=-Xmx8g puppetserver ruby -e "require 'puppet'; puts Puppet[:certname]"
 ~~~
 
 ## irb
@@ -92,6 +110,15 @@ centos6-64.localdomain
 ~~~sh
 $ lein irb -c /path/to/puppetserver.conf -- --version
 irb 0.9.6(09/06/30)
+~~~
+
+If needed, you also can use the `JAVA_ARGS_CLI` environment variable to pass
+along custom arguments to the Java process that the `irb` command is run within.
+ 
+Example:
+
+~~~sh
+$ JAVA_ARGS_CLI=-Xmx8g puppetserver irb
 ~~~
 
 ## foreground
