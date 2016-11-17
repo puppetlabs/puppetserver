@@ -450,6 +450,9 @@
             jruby-scripting-container (:scripting-container jruby-instance)
             jruby-env (.runScriptlet jruby-scripting-container "ENV")]
         (try
+         ;; Note that if this test is run in an environment where the
+         ;; variables HTTP_PROXY, HTTPS_PROXY, NO_PROXY, or their lowercase
+         ;; variants are set, this will fail.
           (is (= #{"HOME" "PATH" "GEM_HOME" "GEM_PATH"
                    "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
                  (set (keys jruby-env))))
