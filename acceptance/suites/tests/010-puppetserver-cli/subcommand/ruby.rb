@@ -27,3 +27,9 @@ on(master, cmd) do
   assert_match(/GOOD:/, stdout)
   assert_no_match(/error/i, stdout)
 end
+
+step "Verify that Java cli args passed through to ruby command"
+on(master, "JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} ruby -e ''") do
+  assert_match(/jruby \d\.\d\.\d.*$/, stdout,
+               'jruby version not included in ruby command output')
+end
