@@ -28,3 +28,9 @@ on(master, cmd) do
   assert_match(/GOOD:/, stdout)
   assert_no_match(/error/i, stdout)
 end
+
+step "Verify that Java cli args passed through to irb command"
+on(master, "echo '' | JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} irb -f") do
+  assert_match(/jruby \d\.\d\.\d.*$/, stdout,
+               'jruby version not included in irb command output')
+end
