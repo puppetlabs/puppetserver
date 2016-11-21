@@ -24,7 +24,7 @@ This is a bug-fix release of Puppet Server.
 
 In Puppet Server 2.7.0, the `JAVA_ARGS` from Puppet Server's sysconfig/default file (typically located at `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`) were passed along to the Java process started when running the [`puppetserver gem`](./gems.markdown) command. This could lead to arguments that are intended only for use when running the full puppetserver service --- for example, debug arguments or large memory heap settings --- being used when running `gem` commands, which could cause the `gem` commands to fail.
 
-In Puppet Server 2.7.1, you can set custom arguments to be passed into the Java process for the `gem` command via the new `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file. The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver ruby` and `puppetserver irb` subcommands.
+In Puppet Server 2.7.1, you can set custom arguments to be passed into the Java process for the `gem` command via the new `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file. The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver ruby` and `puppetserver irb` [subcommands](./subcommands.markdown).
 
 -   [SERVER-1644](https://tickets.puppetlabs.com/browse/SERVER-1644)
 

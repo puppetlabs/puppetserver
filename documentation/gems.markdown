@@ -16,7 +16,9 @@ environment variables because `puppetserver` unsets `GEM_PATH` and manages
 > **Note:** Starting with Puppet Server 2.7.1, you can set custom Java
 > arguments for the `puppetserver gem` command via the `JAVA_ARGS_CLI`
 > environment variable, either temporarily on the command line or persistently
-> by adding it to the sysconfig/default file. See the
+> by adding it to the sysconfig/default file. The `JAVA_ARGS_CLI` environment
+> variable also controls the arguments used when running the `puppetserver gem`
+> and `puppetserver irb` [subcommands](./subcommands.markdown). See the
 > [Server 2.7.1 release notes](https://docs.puppet.com/puppetserver/2.7.1/release_notes.html)
 > for details.
 
