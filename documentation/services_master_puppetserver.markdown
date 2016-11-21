@@ -89,6 +89,8 @@ Since we don't use the system Ruby, you can't use the system `gem` command to in
 
 Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that will execute Ruby code in a JRuby environment identical to what the Puppet master application uses.
 
+> **Note:** In Puppet Server 2.7.1, you can set custom arguments to be passed into the Java process for the `puppetserver ruby` command via the new `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file (typically located at `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`). The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver gem` and `puppetserver irb` subcommands.
+
 To handle parallel requests from agent nodes, Puppet Server maintains several separate JRuby interpreters, all independently running Puppet's application code, and distributes agent requests among them. Today, agent requests are distributed more or less randomly, without regard to their environment; this may change in the future.
 
 You can configure the JRuby interpreters in the `jruby-puppet` section of [the `puppetserver.conf` file.](./config_file_puppetserver.markdown)

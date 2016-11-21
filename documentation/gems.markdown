@@ -4,15 +4,21 @@ title: "Puppet Server: Using Ruby Gems"
 canonical: "/puppetserver/latest/gems.html"
 ---
 
-
 If you have server-side Ruby code in your modules, Puppet Server will run it
 via JRuby. Generally speaking, this only affects custom parser functions,
 types, and report processors. For the vast majority of cases this shouldn't
 pose any problems because JRuby is highly compatible with vanilla Ruby.
 
-Puppet server will not load gems from user specified `GEM_HOME` and `GEM_PATH`
+Puppet Server will not load gems from user specified `GEM_HOME` and `GEM_PATH`
 environment variables because `puppetserver` unsets `GEM_PATH` and manages
 `GEM_HOME`.
+
+> **Note:** Starting with Puppet Server 2.7.1, you can set custom Java
+> arguments for the `puppetserver gem` command via the `JAVA_ARGS_CLI`
+> environment variable, either temporarily on the command line or persistently
+> by adding it to the sysconfig/default file. See the
+> [Server 2.7.1 release notes](https://docs.puppet.com/puppetserver/2.7.1/release_notes.html)
+> for details.
 
 ### Gems with packaged versions of Puppet Server
 
