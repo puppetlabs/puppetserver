@@ -58,7 +58,7 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.4.2-SNAPSHOT"]
+                 [puppetlabs/jruby-utils "0.5.0"]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-scheduler]
