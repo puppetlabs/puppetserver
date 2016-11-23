@@ -23,7 +23,7 @@ module PuppetServerExtensions
 
     puppet_version = get_option_value(options[:puppet_version],
                          nil, "Puppet Version", "PUPPET_VERSION",
-                         "1.8.0.48.g549d028",
+                         "1.8.1",
                          :string) ||
                          get_puppet_version
 
