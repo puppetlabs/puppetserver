@@ -18,13 +18,18 @@ end
 step "ruby: Check that proxy env-variables are present"
 on(master, "#{proxy_env_vars} puppetserver ruby -rjson -e 'puts JSON.pretty_generate(ENV.to_hash)'") do
   env = JSON.parse(stdout)
-  assert(env['HTTP_PROXY'], "HTTP_PROXY is missing")
-  assert(env['http_proxy'], "http_proxy is missing")
-  assert(env['HTTPS_PROXY'], "HTTPS_PROXY is missing")
-  assert(env['https_proxy'], "https_proxy is missing")
-  assert(env['NO_PROXY'], "NO_PROXY is missing")
-  assert(env['no_proxy'], "no_proxy is missing")
-  assert_nil(env['RANDOM_VARIABLE'], "RANDOM_VARIABLE is present and should not be")
+  assert_equal(env['HTTP_PROXY'], "foo",
+               "HTTP_PROXY is missing or has wrong value: '#{env['HTTP_PROXY']}'")
+  assert_equal(env['http_proxy'], "foo",
+               "http_proxy is missing or has wrong value: '#{env['http_proxy']}'")
+  assert_equal(env['HTTPS_PROXY'], "foo",
+               "HTTPS_PROXY is missing or has wrong value: '#{env['HTTPS_PROXY']}'")
+  assert_equal(env['https_proxy'], "foo",
+               "https_proxy is missing or has wrong value: '#{env['https_proxy']}'")
+  assert_equal(env['NO_PROXY'], "foo",
+               "NO_PROXY is missing or has wrong value: '#{env['NO_PROXY']}'")
+  assert_equal(env['no_proxy'], "foo",
+               "no_proxy is missing or has wrong value: '#{env['no_proxy']}'")
 end
 
 step "irb: Check that PATH, HOME, GEM_HOME JARS_REQUIRE and JARS_NO_REQUIRE are present"
@@ -38,10 +43,10 @@ end
 
 step "irb: Check that proxy env-variables are present"
 on(master, "echo 'puts JSON.pretty_generate(ENV.to_hash)' | #{proxy_env_vars} puppetserver irb -f -rjson") do
-  assert_match(/\bHTTP_PROXY\b/, stdout, "HTTP_PROXY missing")
-  assert_match(/\bhttp_proxy\b/, stdout, "http_proxy missing")
-  assert_match(/\bHTTPS_PROXY\b/, stdout, "HTTPS_PROXY missing")
-  assert_match(/\bhttps_proxy\b/, stdout, "https_proxy missing")
-  assert_match(/\bNO_PROXY\b/, stdout, "NO_PROXY missing")
-  assert_match(/\bno_proxy\b/, stdout, "no_proxy missing")
+  assert_match(/\bHTTP_PROXY\b\W\W\s\W\bfoo\b/, stdout, "HTTP_PROXY missing or has wrong value")
+  assert_match(/\bhttp_proxy\b\W\W\s\W\bfoo\b/, stdout, "http_proxy missing or has wrong value")
+  assert_match(/\bHTTPS_PROXY\b\W\W\s\W\bfoo\b/, stdout, "HTTPS_PROXY missing or has wrong value")
+  assert_match(/\bhttps_proxy\b\W\W\s\W\bfoo\b/, stdout, "https_proxy missing or has wrong value")
+  assert_match(/\bNO_PROXY\b\W\W\s\W\bfoo\b/, stdout, "NO_PROXY missing or has wrong value")
+  assert_match(/\bno_proxy\b\W\W\s\W\bfoo\b/, stdout, "no_proxy missing or has wrong value")
 end
