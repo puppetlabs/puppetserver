@@ -28,6 +28,7 @@
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config])
   (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)))
@@ -450,9 +451,14 @@
             jruby-scripting-container (:scripting-container jruby-instance)
             jruby-env (.runScriptlet jruby-scripting-container "ENV")]
         (try
+         ;; Note that other environment variables are allowed through
+         ;; (HTTP_PROXY, HTTPS_PROXY, NO_PROXY, or their lowercase
+         ;; variants) but are not expected to be set in most environments.
+         ;; However, in order to make this test more robust, these variables
+         ;; are always filtered out.
           (is (= #{"HOME" "PATH" "GEM_HOME" "GEM_PATH"
                    "JARS_NO_REQUIRE" "JARS_REQUIRE" "RUBY" "FOO"}
-                 (set (keys jruby-env))))
+                 (set (remove (set jruby-core/proxy-vars-allowed-list) (keys jruby-env)))))
           (is (= (.get jruby-env "FOO") (System/getenv "HOME")))
           (finally
             (jruby-testutils/return-instance jruby-service jruby-instance :test)))))))
