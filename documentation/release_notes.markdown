@@ -12,6 +12,22 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
 
+## Puppet Server 2.7.2
+
+Released December 6, 2016.
+
+This is a bug-fix and feature release of Puppet Server.
+
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
+
+### Bug Fix: 
+
+### New Feature: Native systemd service file
+
+Puppet Server 2.7.2 includes a native systemd service file, providing more consistent service behavior on operating systems using systemd as an init provider.
+
+-   [EZ-102](https://tickets.puppetlabs.com/browse/EZ-102)
+
 ## Puppet Server 2.7.1
 
 Released November 21, 2016.
