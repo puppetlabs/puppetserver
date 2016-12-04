@@ -1,6 +1,6 @@
 (ns puppetlabs.puppetserver.cli.subcommand
   (:require [puppetlabs.kitchensink.core :as ks]
-            [slingshot.slingshot :refer [try+]]
+            [slingshot.slingshot :refer [try+ throw+]]
             [puppetlabs.trapperkeeper.config :as tk-config]
             [puppetlabs.i18n.core :as i18n]))
 
@@ -23,6 +23,13 @@
           (tk-config/load-config)
           (assoc :debug debug?)))))
 
+(defn print-message-and-exit
+  [error-map exit-code]
+  (if-let [msg (:msg error-map)]
+    (println msg)
+    (println error-map))
+  (System/exit exit-code))
+
 (defn run
   "The main entry for subcommands, this parses the `args` provided on the
    command line and prints out a message if there's any missing or incorrect.
@@ -32,13 +39,16 @@
    The `run-fn` must accept a configuration map and argument sequence."
   [run-fn args]
   (try+
-    (let [[config extra-args help] (-> (or args '())
-                                       (parse-cli-args!))]
+    (let [[config extra-args] (-> (or args '())
+                                  (parse-cli-args!))]
       (run-fn (load-tk-config config) extra-args))
     (catch map? m
-      (println (:msg m))
-      (case (ks/without-ns (:kind m))
-        :cli-error (System/exit 1)
-        :cli-help  (System/exit 0)))
+      (let [kind (:kind m)]
+        (if (keyword? kind)
+          (case (ks/without-ns kind)
+            :cli-error (print-message-and-exit m 1)
+            :cli-help (print-message-and-exit m 0)
+            nil)))
+      (throw+))
     (finally
       (shutdown-agents))))
