@@ -20,11 +20,17 @@ This is a bug-fix and feature release of Puppet Server.
 
 > **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
 
-### Bug Fix: 
+### Bug Fix: `puppetserver` package no longer depends on `/usr/bin/ruby`
 
-### New Feature: Native systemd service file
+As of Puppet Server 2.7.0, a packaging issue caused the `puppetserver` package to unnecessarily depend on Ruby being installed at `/usr/bin/ruby`. This could potentially block upgrades from older versions of Puppet if Ruby isn't (or couldn't be) installed.
 
-Puppet Server 2.7.2 includes a native systemd service file, providing more consistent service behavior on operating systems using systemd as an init provider.
+Puppet Server 2.7.2 resolves this issue by removing the unnecessary dependency.
+
+-   [SERVER-1670](https://tickets.puppetlabs.com/browse/SERVER-1670)
+
+### New Feature: Native systemd and SysV service files in Debian packages
+
+Puppet Server 2.7.2 includes native systemd and SysV service files in Debian packages, allowing for more consistent service management behavior on operating systems that use systemd. This also makes it easier to change service providers after installation.
 
 -   [EZ-102](https://tickets.puppetlabs.com/browse/EZ-102)
 
@@ -166,6 +172,14 @@ Exception in thread "main" org.jruby.exceptions.RaiseException: (Errno::EACCES) 
 Puppet Server 2.7 resolves this issue by explicitly setting a umask of 0022 when running any `puppetserver gem` subcommand. This ensures that `puppetserver` can use any gems installed by the `gem` subcommand at run-time.
 
 -   [SERVER-1601](https://tickets.puppetlabs.com/browse/SERVER-1601)
+
+### Known issue: Package mistakenly requires `/usr/bin/ruby`
+
+As of Puppet Server 2.7.0, a packaging issue caused the `puppetserver` package to unnecessarily depend on Ruby being installed at `/usr/bin/ruby`. This can potentially block upgrades from older versions of Puppet if Ruby isn't (or couldn't be) installed.
+
+This issue is resolved in Puppet Server 2.7.2.
+
+-   [EZ-102](https://tickets.puppetlabs.com/browse/SERVER-1670)
 
 ### Other new features
 
