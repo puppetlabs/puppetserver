@@ -58,7 +58,7 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.5.0"]
+                 [puppetlabs/jruby-utils "0.6.0"]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-scheduler]
@@ -90,7 +90,8 @@
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
                        :build-type "foss"
-                       :java-args "-Xms2g -Xmx2g -XX:MaxPermSize=256m"
+                       :java-args ~(str "-Xms2g -Xmx2g -XX:MaxPermSize=256m "
+                                     "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :repo-target "PC1"
                        :bootstrap-source :services-d
                        :logrotate-enabled false}
@@ -159,6 +160,7 @@
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-XX:MaxPermSize=256m"
+             "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
              ~(str "-Xms" (heap-size "1G" "min"))
              ~(str "-Xmx" (heap-size "2G" "max"))]
 
