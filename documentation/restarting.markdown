@@ -43,7 +43,7 @@ OS distributions which use systemd service configurations:
 
 There are three ways to trigger your Puppet Server environment to refresh and pick up changes you've made. A request to the [HTTP Admin API to flush the JRuby pool](./admin-api/v1/jruby-pool.markdown) is the quickest, but picks up only certain types of changes. A HUP signal or service reload is also quick, and applies additional changes. Other changes require a full Puppet Server restart.
 
-> **Note:** Changes to Puppet Server's [logging configuration in `logback.xml`][logback.xml] don't require a server reload or restart. Puppet Server recognizes and applies them automatically, though it can take a minute or so for this to happen.
+> **Note:** Changes to Puppet Server's [logging configuration in `logback.xml`][logback.xml] don't require a server restart. Puppet Server recognizes and applies them automatically, though it can take a minute or so for this to happen. However, you can restart the service to force it to recognize those changes.
 
 ### Changes applied after a JRuby pool flush, HUP signal, service reload, or full Server restart
 
