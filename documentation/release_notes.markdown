@@ -248,6 +248,15 @@ Puppet Server 2.6 adds the ability to specify a whitelist of environment variabl
 
 - [SERVER-584](https://tickets.puppetlabs.com/browse/SERVER-584)
 
+### Known issue: Changes to logback.xml are applied more slowly than expected
+
+In previous versions of Puppet Server, changes to [`logback.xml`](./config_file_logbackxml.markdown) were applied automatically within a minute or so. Since Puppet Server 2.6, those changes can take longer than expected or not be applied at all until the service is [restarted](./restarting.markdown).
+
+As a workaround, restart the `puppetserver` service after making changes to the `logback.xml` file.
+
+- [TK-424](https://tickets.puppetlabs.com/browse/TK-424)
+- [TK-426](https://tickets.puppetlabs.com/browse/TK-426)
+
 ## Puppet Server 2.5
 
 Released August 11, 2016.
