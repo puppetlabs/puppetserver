@@ -70,6 +70,13 @@ class Puppet::Server::Master
     end
   end
 
+  def getModuleInfoForEnvironment(env)
+    environment = @env_loader.get(env)
+    unless environment.nil?
+      self.class.getModules(environment)
+    end
+  end
+
   def getSetting(setting)
     Puppet[setting]
   end
@@ -87,6 +94,20 @@ class Puppet::Server::Master
   end
 
   private
+
+  def self.getModules(env)
+    env.modules.collect do |mod|
+      module_data = {}
+
+      # NOTE: If in the future we want to collect more
+      #       Module settings, this should be more programatic
+      #       rather than getting these settings one by one
+      module_data[:name] = mod.forge_name
+      module_data[:version] = mod.version
+
+      module_data
+    end
+  end
 
   def self.getManifests(env)
     manifests =

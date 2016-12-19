@@ -1,7 +1,7 @@
 (ns puppetlabs.services.master.master-core
   (:import (java.io FileInputStream)
            (clojure.lang IFn)
-           (java.util Map Map$Entry)
+           (java.util List Map Map$Entry)
            (org.jruby RubySymbol)
            (org.eclipse.jetty.util URIUtil))
   (:require [me.raynes.fs :as fs]
@@ -124,6 +124,17 @@
   {:name schema/Str
    :files [EnvironmentClassesFileEntry]})
 
+(def EnvironmentModuleInfo
+  "Schema for a given module that can be returned within the
+  :modules key in EnvironmentModulesInfo."
+  {:name schema/Str
+   :version schema/Str})
+
+(def EnvironmentModulesInfo
+  "Schema for the return payload for an environment_classes request."
+  {:name schema/Str
+   :modules [EnvironmentModuleInfo]})
+
 (defn obj-or-ruby-symbol-as-string
   "If the supplied object is of type RubySymbol, returns a string
   representation of the RubySymbol.  Otherwise, just returns the original
@@ -142,7 +153,7 @@
     (throw (IllegalArgumentException.
             (i18n/trs "Object cannot be coerced to a keyword: {0}" obj)))))
 
-(defn sort-nested-environment-class-info-maps
+(defn sort-nested-info-maps
   "For a data structure, recursively sort any nested maps and sets descending
   into map values, lists, vectors and set members as well. The result should be
   that all maps in the data structure become explicitly sorted with natural
@@ -171,10 +182,10 @@
     (instance? Map data)
     (into (sorted-map) (for [[k v] data]
                          [(obj->keyword k)
-                          (sort-nested-environment-class-info-maps v)]))
+                          (sort-nested-info-maps v)]))
 
     (instance? Iterable data)
-    (map sort-nested-environment-class-info-maps data)
+    (map sort-nested-info-maps data)
 
     :else data))
 
@@ -219,7 +230,7 @@
   (-> file-info
       val
       (add-path-to-file-entry (key file-info))
-      sort-nested-environment-class-info-maps))
+      sort-nested-info-maps))
 
 (schema/defn ^:always-validate
   class-info-from-jruby->class-info-for-json :- EnvironmentClassesInfo
@@ -327,6 +338,43 @@
         (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment))))))
 
 (schema/defn ^:always-validate
+  module-info-from-jruby->module-info-for-json  :- EnvironmentModulesInfo
+  "Creates a new map with a top level key `name` that corresponds to the
+  requested environment and a top level key `modules` which contains the module
+  information obtained from JRuby."
+  [info-from-jruby :- List
+   environment :- schema/Str]
+  (->> info-from-jruby
+       sort-nested-info-maps
+       vec
+       (sorted-map :name environment :modules)))
+
+(schema/defn ^:always-validate
+  environment-module-response! :- ringutils/RingResponse
+  "Process the environment module information, returning a ring response to be
+  propagated back up to the caller of the environment_modules endpoint."
+  [info-from-jruby :- List
+   environment :- schema/Str]
+  (let [info-as-json (module-info-from-jruby->module-info-for-json
+                       info-from-jruby environment)]
+    (middleware-utils/json-response 200 info-as-json)))
+
+(schema/defn ^:always-validate
+  environment-module-info-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for environment_modules information."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)]
+      (if-let [module-info
+               (jruby-protocol/get-environment-module-info jruby-service
+                                                           (:jruby-instance request)
+                                                           environment)]
+        (environment-module-response! module-info
+                                      environment)
+        (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment))))))
+
+(schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
   header on an incoming environment_classes request matches the last Etag
@@ -357,6 +405,17 @@
                               environment-class-cache-enabled)
    (jruby-request/wrap-with-jruby-instance jruby-service)
    (wrap-with-etag-check jruby-service)
+   jruby-request/wrap-with-environment-validation
+   jruby-request/wrap-with-error-handling))
+
+
+(schema/defn ^:always-validate
+  environment-module-handler :- IFn
+  "Handler for processing an incoming environment_modules Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (->
+   (environment-module-info-fn jruby-service)
+   (jruby-request/wrap-with-jruby-instance jruby-service)
    jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling))
 
@@ -448,13 +507,17 @@
   (let [environment-class-handler
         (environment-class-handler jruby-service
                                    environment-class-cache-enabled)
+        environment-module-handler
+        (environment-module-handler jruby-service)
         static-file-content-handler
         (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
-     (comidi/GET ["/environment_classes" [#".*" :rest]] request
-                 (environment-class-handler request))
-     (comidi/GET ["/static_file_content/" [#".*" :rest]] request
-                 (static-file-content-handler request)))))
+      (comidi/GET ["/environment_classes" [#".*" :rest]] request
+                  (environment-class-handler request))
+      (comidi/GET ["/environment_modules" [#".*" :rest]] request
+                  (environment-module-handler request))
+      (comidi/GET ["/static_file_content/" [#".*" :rest]] request
+                  (static-file-content-handler request)))))
 
 (schema/defn ^:always-validate
   v3-routes :- bidi-schema/RoutePair
