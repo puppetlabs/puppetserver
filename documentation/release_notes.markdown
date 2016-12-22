@@ -159,7 +159,7 @@ Puppet Server 2.7 resolves this issue by explicitly setting a umask of 0022 when
 
 Released September 8, 2016.
 
-This is a feature and bug-fix release of Puppet Server. This release also adds an official Puppet Server package for SuSE Enterprise Linux (SLES) 12.
+This is a feature and bug-fix release of Puppet Server. This release also adds an official Puppet Server package for SUSE Enterprise Linux (SLES) 12.
 
 > **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
 

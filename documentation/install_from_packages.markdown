@@ -36,7 +36,7 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 -   Ubuntu 15.10 (Wily)
 -   Ubuntu 16.04 (Xenial)
 
-### SuSE Linux Enterprise Server
+### SUSE Linux Enterprise Server
 
 -   SLES 12
 
