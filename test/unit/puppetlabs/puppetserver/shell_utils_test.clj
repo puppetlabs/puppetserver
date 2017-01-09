@@ -2,9 +2,11 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.shell-utils :as sh-utils]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [clojure.string :as str]
             [clojure.set :as set])
-  (:import (java.io ByteArrayInputStream)))
+  (:import (java.io ByteArrayInputStream)
+           (com.puppetlabs.puppetserver ShellUtils ShellUtils$ExecutionOptions)))
 
 (def test-resources
   (ks/absolute-path
@@ -32,9 +34,26 @@
 
 (deftest returns-stderr-correctly
   (testing "echo can add content to stderr as well"
-    (is (= "bar\n" (:stderr (sh-utils/execute-command
-                             (script-path "warn")
-                             {:args ["bar"]}))))))
+    (logging/with-test-logging
+     (is (= "bar\n" (:stderr (sh-utils/execute-command
+                              (script-path "warn")
+                              {:args ["bar"]})))))))
+
+(deftest combines-stderr-and-stdout-correctly
+  (logging/with-test-logging
+   (let [options (ShellUtils$ExecutionOptions.)
+         _ (.setCombineStdoutStderr options true)
+         results (ShellUtils/executeCommand (str (script-path "echo_and_warn")
+                                                 " baz")
+                                            options)]
+     (testing "combined info echoed to stdout and stderr captured as output"
+       (is (= "to out: baz\nto err: baz\n" (.getOutput results))))
+     (testing "only info echoed to stderr captured as error"
+       (is (= "to err: baz\n" (.getError results))))
+     (testing "only stderr info (and not stdout info) is logged"
+       (is (logged?
+            "Executed an external process which logged to STDERR: to err: baz\n"
+            :warn))))))
 
 (deftest pass-args-correctly
   (testing "passes the expected number of args to cmd"

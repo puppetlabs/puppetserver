@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+echo "to out:" $@
+echo "to err:" $@ 1>&2

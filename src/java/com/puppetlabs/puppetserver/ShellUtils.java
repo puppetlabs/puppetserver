@@ -3,6 +3,7 @@ package com.puppetlabs.puppetserver;
 import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.PumpStreamHandler;
 import org.apache.commons.exec.CommandLine;
+import org.apache.commons.io.output.TeeOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,15 +73,18 @@ public class ShellUtils {
         //    PipedInputStream stdoutInputStream = new PipedInputStream(stdoutOutputStream);
         // but this requires that the input stream be read on a different thread
         // than this one. this is currently out of scope.
-        ByteArrayOutputStream stdoutOutputStream;
+        ByteArrayOutputStream stdoutOutputStream = new ByteArrayOutputStream();
+        PumpStreamHandler streamHandler;
         if (options.getCombineStdoutStderr()) {
             log.debug("Combining STDOUT/STDERR for external command '" + commandLine.toString() + "'");
-            stdoutOutputStream = errStream;
+            streamHandler = new PumpStreamHandler(
+                    stdoutOutputStream,
+                    new TeeOutputStream(stdoutOutputStream, errStream),
+                    options.getStdin());
         } else {
-            stdoutOutputStream = new ByteArrayOutputStream();
+            streamHandler = new PumpStreamHandler(stdoutOutputStream, errStream,
+                    options.getStdin());
         }
-        PumpStreamHandler streamHandler = new PumpStreamHandler(stdoutOutputStream, errStream,
-                options.getStdin());
 
         // Don't throw exception on non-zero exit code
         executor.setExitValues(null);
