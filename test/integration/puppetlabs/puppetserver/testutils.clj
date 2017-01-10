@@ -1,17 +1,19 @@
 (ns puppetlabs.puppetserver.testutils
-  (:require [me.raynes.fs :as fs]
+  (:require [clojure.java.io :as io]
+            [me.raynes.fs :as fs]
             [schema.core :as schema]
             [cheshire.core :as json]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.ringutils :as ringutils])
-  (:import (java.io File)))
+  (:import (java.io File)
+           (java.net URL)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
 
 (def PuppetConfFiles
-  {schema/Str (schema/pred (some-fn string? #(instance? File %)))})
+  {schema/Str (schema/pred (some-fn string? #(instance? File %) #(instance? URL %)))})
 
 (def PuppetResource
   "Schema for a Puppet resource. Based on
@@ -97,8 +99,12 @@
   [puppet-conf-files :- PuppetConfFiles
    target-paths :- PuppetConfFiles]
   (doseq [filename (keys puppet-conf-files)]
-    (fs/copy+ (get puppet-conf-files filename)
-              (get target-paths filename))))
+    (let [dest (io/file (get target-paths filename))
+          dest-dir (.getParentFile dest)]
+      (when dest-dir
+        (ks/mkdirs! dest-dir))
+      (with-open [source (io/input-stream (get puppet-conf-files filename))]
+        (io/copy source dest)))))
 
 (schema/defn ^:always-validate cleanup-with-puppet-conf-files!
   "Deletes all of the files in the target-paths map."
