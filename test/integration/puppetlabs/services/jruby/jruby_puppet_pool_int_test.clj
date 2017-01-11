@@ -91,7 +91,7 @@
 (defn add-watch-for-flush-complete
   [pool-context]
   (let [flush-complete (promise)]
-    (add-watch (get-in pool-context [:internal :pool-agent]) :flush-callback
+    (add-watch (get-in pool-context [:internal :modify-instance-agent]) :flush-callback
                (fn [k a old-state new-state]
                  (when (= k :flush-callback)
                    (remove-watch a :flush-callback)
@@ -233,15 +233,10 @@
                      (jruby-testutils/mock-jruby-pool-manager-service
                       config
                       mock-jruby-puppet-fn)]
-           jruby-instance (atom nil)
-           app (tk/boot-services-with-config services config)
-           jruby-service (tk-app/get-service app :JRubyPuppetService)]
+           app (tk/boot-services-with-config services config)]
        (try
          (let [cert (ssl-utils/pem->cert
                      (str test-resources-dir "/localhost-cert.pem"))
-               _ (reset! jruby-instance (jruby-testutils/borrow-instance
-                                         jruby-service
-                                         :i-want-this-instance))
                handler-service (tk-app/get-service app :RequestHandlerService)
                request {:uri "/puppet/v3/environments", :params {}, :headers {},
                         :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
@@ -257,24 +252,12 @@
                       (not= 503 (:status (ping-environment))))
                 (Thread/yield))
               (is (= 503 (:status (ping-environment)))))
-             (jruby-testutils/return-instance jruby-service
-                                              @jruby-instance
-                                              :i-want-this-instance)
-             (reset! jruby-instance nil)
              (is (not= :timed-out (timed-deref stop-complete?))
                  (str "timed out waiting for the stop to complete, stack:\n"
                       (get-all-stack-traces-as-str)))
              (logging/with-test-logging
               (is (= 503 (:status (ping-environment)))))))
          (finally
-           ;; Return the borrowed instance to the pool in case it hadn't
-           ;; been returned previously.  This is done before stop is called
-           ;; so that the jruby-puppet-pooled-service will hopefully be able
-           ;; to be stopped (with all instances back in the pool).
-           (if-let [instance @jruby-instance]
-             (jruby-testutils/return-instance jruby-service
-                                              instance
-                                              :i-want-this-instance))
            ;; Stop the tk app.  In success cases, this will end up being done
            ;; twice - which is benign.  This is done in the finally block so
            ;; that it is done even if the test errors out prematurely.  Not
@@ -284,7 +267,7 @@
            (tk-app/stop app)))))))
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
-  (testing "During a shutdown requests result in 503 http responses"
+  (testing "After a shutdown, requests result in 503 http responses"
     (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
      "JRuby mocking is safe here, because we're just looking to see that the
       HTTP response for an environment request transitions from success to
@@ -299,7 +282,6 @@
       "our env request has been mocked!")
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            context (tk-services/service-context jruby-service)
-           jruby-instance (jruby-testutils/borrow-instance jruby-service :i-want-this-instance)
            ping-environment #(testutils/http-get "puppet/v3/environments")
            ping-before-stop (ping-environment)
            stop-complete? (future (tk-services/stop jruby-service context))]
@@ -314,7 +296,7 @@
                   (not= 503 (:status (ping-environment))))
             (Thread/yield)))
         (is (= 503 (:status (ping-environment)))))
-       (jruby-testutils/return-instance jruby-service jruby-instance :i-want-this-instance)
+
        (is (not= :timed-out (timed-deref stop-complete?))
            (str "timed out waiting for the stop to complete, stack:\n"
                 (get-all-stack-traces-as-str)))
@@ -479,7 +461,7 @@
           (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
                pool-context (jruby-protocol/get-pool-context jruby-service)
-               pool-agent (jruby-agents/get-pool-agent pool-context)]
+               pool-agent (jruby-agents/get-modify-instance-agent pool-context)]
            (jruby-protocol/flush-jruby-pool! jruby-service)
            ; wait until the flush is complete
            (await pool-agent)
