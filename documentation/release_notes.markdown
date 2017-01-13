@@ -12,6 +12,28 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
 
+## Puppet Server 2.7.2
+
+Released December 6, 2016.
+
+This is a bug-fix and feature release of Puppet Server.
+
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
+
+### Bug Fix: `puppetserver` package no longer depends on `/usr/bin/ruby`
+
+As of Puppet Server 2.7.0, a packaging issue caused the `puppetserver` package to unnecessarily depend on Ruby being installed at `/usr/bin/ruby`. This could potentially block upgrades from older versions of Puppet if Ruby isn't (or couldn't be) installed.
+
+Puppet Server 2.7.2 resolves this issue by removing the unnecessary dependency.
+
+-   [SERVER-1670](https://tickets.puppetlabs.com/browse/SERVER-1670)
+
+### New Feature: Native systemd and SysV service files in Debian packages
+
+Puppet Server 2.7.2 includes native systemd and SysV service files in Debian packages, allowing for more consistent service management behavior on operating systems that use systemd. This also makes it easier to change service providers after installation.
+
+-   [EZ-102](https://tickets.puppetlabs.com/browse/EZ-102)
+
 ## Puppet Server 2.7.1
 
 Released November 21, 2016.
@@ -151,6 +173,14 @@ Puppet Server 2.7 resolves this issue by explicitly setting a umask of 0022 when
 
 -   [SERVER-1601](https://tickets.puppetlabs.com/browse/SERVER-1601)
 
+### Known issue: Package mistakenly requires `/usr/bin/ruby`
+
+As of Puppet Server 2.7.0, a packaging issue caused the `puppetserver` package to unnecessarily depend on Ruby being installed at `/usr/bin/ruby`. This can potentially block upgrades from older versions of Puppet if Ruby isn't (or couldn't be) installed.
+
+This issue is resolved in Puppet Server 2.7.2.
+
+-   [EZ-102](https://tickets.puppetlabs.com/browse/SERVER-1670)
+
 ### Other new features
 
 -   [SERVER-1589](https://tickets.puppetlabs.com/browse/SERVER-1589): Use `.gz` extensions for Puppet Server log file archives, and rotate them when they reach 200MB in size instead of 10MB.
@@ -217,6 +247,15 @@ We [fixed the underlying issue in JRuby](https://github.com/jruby/jruby/pull/406
 Puppet Server 2.6 adds the ability to specify a whitelist of environment variables made available to Ruby code. To whitelist variables, add them to the `environment-vars` section under the `jruby-puppet` configuration section in [`puppetserver.conf`][puppetserver.conf].
 
 - [SERVER-584](https://tickets.puppetlabs.com/browse/SERVER-584)
+
+### Known issue: Changes to logback.xml are applied more slowly than expected
+
+In previous versions of Puppet Server, changes to [`logback.xml`](./config_file_logbackxml.markdown) were applied automatically within a minute or so. Since Puppet Server 2.6, those changes can take longer than expected or not be applied at all until the service is [restarted](./restarting.markdown).
+
+As a workaround, restart the `puppetserver` service after making changes to the `logback.xml` file.
+
+- [TK-424](https://tickets.puppetlabs.com/browse/TK-424)
+- [TK-426](https://tickets.puppetlabs.com/browse/TK-426)
 
 ## Puppet Server 2.5
 
