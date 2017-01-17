@@ -84,7 +84,7 @@
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
   :plugins [[lein-parent "0.3.1"]
-            [puppetlabs/i18n "0.4.3"]]
+            [puppetlabs/i18n "0.5.1"]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
