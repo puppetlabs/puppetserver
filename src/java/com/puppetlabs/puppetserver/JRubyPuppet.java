@@ -1,6 +1,7 @@
 package com.puppetlabs.puppetserver;
 
 import java.util.Map;
+import java.util.List;
 
 /**
  *
@@ -16,6 +17,7 @@ import java.util.Map;
  */
 public interface JRubyPuppet {
     Map getClassInfoForEnvironment(String environment);
+    List getModuleInfoForEnvironment(String environment);
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);
     String puppetVersion();

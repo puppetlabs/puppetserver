@@ -64,6 +64,10 @@
     [this jruby-instance env-name]
     (.getClassInfoForEnvironment jruby-instance env-name))
 
+  (get-environment-module-info
+    [this jruby-instance env-name]
+    (.getModuleInfoForEnvironment jruby-instance env-name))
+
   (get-environment-class-info-tag
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags

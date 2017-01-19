@@ -50,6 +50,10 @@
     'cache-generation-id' value stored in the cache for the environment, the
     cache will remain unchanged as a result of this call.")
 
+  (get-environment-module-info
+    [this jruby-instance env-name]
+    "Get module information for a specific environment")
+
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")
