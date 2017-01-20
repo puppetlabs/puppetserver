@@ -3,7 +3,8 @@
            (org.apache.http ConnectionClosedException)
            (javax.net.ssl SSLHandshakeException)
            (java.util HashMap)
-           (java.io IOException))
+           (java.io IOException)
+           (java.util.zip GZIPInputStream))
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.webserver :as jetty9]
@@ -39,6 +40,14 @@
   {:status 200
    :body (str "The Connection header has value "
               ((:headers req) "connection"))})
+
+(defn ring-app-decompressing-gzipped-request
+  [req]
+  {:status 200
+   :body (-> req
+             :body
+             (GZIPInputStream.)
+             slurp)})
 
 (defn authenticated? [name pass]
   (and (= name "foo")
@@ -190,6 +199,33 @@ jruby-config :- jruby-schemas/JRubyConfig
             (.runScriptlet sc (format "$response = $c.post('/', 'foo', {}, %s)" auth)))
           (is (= "401" (.runScriptlet sc "$response.code")))
           (is (= "access denied" (.runScriptlet sc "$response.body"))))))))
+
+(deftest http-compressed-requests
+  (jetty9/with-test-webserver ring-app-decompressing-gzipped-request port
+    (with-scripting-container sc
+      (with-http-client sc port {:use-ssl false}
+        (testing "GZIP compression format"
+          (let [compress "{ :compress => :gzip }"
+                body "howdy"]
+            (.runScriptlet sc (format "$response = $c.post('/', '%s', {}, %s)"
+                                      body
+                                      compress))
+            (is (= "200" (.runScriptlet sc "$response.code")))
+            (is (= body (.runScriptlet sc "$response.body")))))
+
+       (testing "invalid compression format"
+         (let [compress "{ :compress => :bunk }"]
+           (is (= "Unsupported compression specified for request: bunk"
+                  (.runScriptlet
+                   sc
+                   (str "begin;"
+                        "  $response = $c.post('/', 'foo', {}, "
+                        compress
+                        ");"
+                        "  'No error raised from post';"
+                        "rescue ArgumentError => e;"
+                        "  e.message;"
+                        "end"))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Tests

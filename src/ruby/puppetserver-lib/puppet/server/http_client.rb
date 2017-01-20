@@ -7,6 +7,7 @@ require 'base64'
 require 'java'
 java_import com.puppetlabs.http.client.RequestOptions
 java_import com.puppetlabs.http.client.ClientOptions
+java_import com.puppetlabs.http.client.CompressType
 java_import com.puppetlabs.http.client.ResponseBodyType
 SyncHttpClient = com.puppetlabs.http.client.Sync
 
@@ -73,6 +74,17 @@ class Puppet::Server::HttpClient
     request_options.set_headers(headers)
     request_options.set_as(ResponseBodyType::TEXT)
     request_options.set_body(body)
+
+    compress = options[:compress]
+    if compress
+      compress_as_sym = compress.to_sym
+      if compress_as_sym == :gzip
+        request_options.set_compress_request_body(CompressType::GZIP)
+      else
+        raise ArgumentError, "Unsupported compression specified for request: #{compress}"
+      end
+    end
+
     response = self.class.client_post(request_options)
     ruby_response(response)
   end
