@@ -1,5 +1,6 @@
 (ns puppetlabs.services.master.environment-classes-int-test
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
@@ -178,7 +179,13 @@
                                               "default_source" "\"is foo\""}]}]}]
                                         "name" "production"}
              initial-response (get-env-classes "production")
-             initial-etag (response-etag initial-response)]
+             initial-etag (response-etag initial-response)
+             initial-etag-with-gzip-suffix (if (.endsWith initial-etag "--gzip")
+                                             initial-etag
+                                             (str initial-etag "--gzip"))
+             initial-etag-without-gzip-suffix (str/replace initial-etag
+                                                           #"--gzip$"
+                                                           "")]
          (testing "initial fetch of environment_classes info is good"
            (is (= 200 (:status initial-response))
                (str
@@ -205,23 +212,20 @@
                  (str
                   "unexpected status code for response for no code change and "
                   "original etag roundtripped"))
-             (is (= initial-etag (response-etag response))
+             (is (= initial-etag-without-gzip-suffix (response-etag response))
                  "etag changed even though code did not")
              (is (empty? (:body response))
                  "unexpected body for response")))
          (testing (str "SERVER-1153 - HTTP 304 (not modified) returned when "
                        "request roundtrips last etag with '--gzip' suffix and "
                        "code has not changed")
-           (let [etag-with-gzip-suffix (if (.endsWith initial-etag "--gzip")
-                                         initial-etag
-                                         (str initial-etag "--gzip"))
-                 response (get-env-classes "production"
-                                           etag-with-gzip-suffix)]
+           (let [response (get-env-classes "production"
+                                           initial-etag-with-gzip-suffix)]
              (is (= 304 (:status response))
                  (str
                   "unexpected status code for response for no code change and "
                   "etag with '--gzip' suffix roundtripped"))
-             (is (= initial-etag (response-etag response))
+             (is (= initial-etag-without-gzip-suffix (response-etag response))
                  "etag changed even though code did not")
              (is (empty? (:body response))
                  "unexpected body for response")))
