@@ -159,6 +159,21 @@ run the following:
 
     $ lein run -c /path/to/puppetserver.conf
 
+Running the Agent
+-----
+
+Use a command like the one below to run an agent against your running puppetserver:
+
+        puppet agent --confdir ~/.puppetlabs/etc/puppet \
+                     --debug -t
+
+Note that a system installed Puppet Agent is ok for use with
+source-based PuppetDB and Puppet Server. The `--confdir` above
+specifies the same confdir that Puppet Server is using. Since the
+Puppet Agent and Puppet Server instances are both using the same
+confdir, they're both using the same certificates as well. This
+alleviates the need to sign certificates as a separate step.
+
 Running tests
 -----
 
@@ -176,13 +191,13 @@ environment via either of the following methods:
 
 1) An environment variable named `PUPPETSERVER_HEAP_SIZE`.  For example, to
   use a heap size of 6 GiB for a `lein test` run, you could run the following:
-  
+
     $ PUPPETSERVER_HEAP_SIZE=6G lein test
-  
+
 2) A lein `profiles.clj` setting in the `:user` profile under the
   `:puppetserver-heap-size` key.  For example, to use a heap size of 6 GiB, you
   could add the following key to your `~/.lein/profiles.clj` file:
-  
+
 ```clj
 {:user {:puppetserver-heap-size "6G"
         ...}}
@@ -214,3 +229,69 @@ Debugging
 
 For more information about debugging both Clojure and JRuby code, please see
 [Puppet Server: Debugging](./dev_debugging.markdown) documentation.
+
+Running PuppetDB
+-----
+
+To run a source PuppetDB with Puppet Server, Puppet Server needs
+standard PuppetDB configuration and how to find the PuppetDB
+terminus. First copy the `dev/puppetserver.conf` file to another
+directory. In your copy of the config, append a new entry to the
+`ruby-load-path` list: `<PDB source path>/puppet/lib`. This tells
+PuppetServer to load the PuppetDB terminus from the specified
+directory.
+
+From here, the instructions are similar to installing PuppetDB
+manually via packages. The PuppetServer instance needs configuration
+for connecting to PuppetDB. Instructions on this configuration are
+below, but the official docs for this can be found
+[here](https://docs.puppet.com/puppetdb/4.3/connect_puppet_master.html).
+
+Update `~/.puppetlabs/etc/puppet/puppet.conf` to include:
+
+    [master]
+    storeconfigs = true
+    storeconfigs_backend = puppetdb
+    reports = store,puppetdb
+
+Create a new puppetdb config file
+`~/.puppetlabs/etc/puppet/puppetdb.conf` that contains
+
+    [main]
+    server_urls = https://<MASTERHOST>:8081
+
+Then create a new routes file at
+`~/.puppetlabs/etc/puppet/routes.yaml` that contains
+
+    ---
+    master:
+      facts:
+        terminus: puppetdb
+        cache: yaml
+
+Assuming you have a PuppetDB instance up and running, start your Puppet
+Server instance with the new puppetserver.conf file that you changed:
+
+    lein run -c ~/<YOUR CONFIG DIR>/puppetserver.conf
+
+Depending on your PuppetDB configuration, you might need to change
+some SSL config. PuppetDB requires that the same CA that signs it's
+certificate, also has signed Puppet Server's certificate. The easiest
+way to do this is to point PuppetDB at the same configuration
+directory that Puppet Server and Puppet Agent are pointing
+to. Typically this setting is specified in the `jetty.ini` file in the
+PuppetDB conf.d directory. The update would look like:
+
+    [jetty]
+
+    #...
+    ssl-cert = <home dir>/.puppetlabs/etc/puppet/ssl/certs/<MASTERHOST>.pem
+    ssl-key = <home dir>/.puppetlabs/etc/puppet/ssl/private_keys/<MASTERHOST>.pem
+    ssl-ca-cert = <home dir>/.puppetlabs/etc/puppet/ssl/certs/ca.pem
+
+Once the SSL config is in place, start (or restart) PuppetDB:
+
+    lein run services -c <path to PDB config>/conf.d
+
+Then run the Puppet Agent and you should see activity in PuppetDB and
+Puppet Server.
