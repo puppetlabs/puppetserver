@@ -47,7 +47,14 @@
                                                  " baz")
                                             options)]
      (testing "combined info echoed to stdout and stderr captured as output"
-       (is (= "to out: baz\nto err: baz\n" (.getOutput results))))
+       (let [output (.getOutput results)]
+         ;; Allow stdout and stderr messages to come in either order since
+         ;; the order in which they are read from the different stream
+         ;; consuming threads is not reliable.
+         (is (or (= "to out: baz\nto err: baz\n" output)
+                 (= "to err: baz\nto out: baz\n" output))
+             (format "Output produced, '%s', did not match expected output"
+                     output))))
      (testing "only info echoed to stderr captured as error"
        (is (= "to err: baz\n" (.getError results))))
      (testing "only stderr info (and not stdout info) is logged"
