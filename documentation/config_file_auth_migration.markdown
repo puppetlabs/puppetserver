@@ -86,7 +86,7 @@ authorization: {
 
 Next, let's convert each component of the deprecated rule to the new HOCON format.
 
-1. Add the path to the new rule's [`path`](./config_file_auth.markdown#match-request) setting in its `match-request` section.
+1.  Add the path to the new rule's [`path`](./config_file_auth.markdown#match-request) setting in its `match-request` section.
 
     ``` hocon
     ...
@@ -101,7 +101,7 @@ Next, let's convert each component of the deprecated rule to the new HOCON forma
     ...
     ```
 
-2. Next, add its type to the section's [`type`](./config_file_auth.markdown#match-request) setting. Since this is a literal string path, the type is `path`.
+2.  Next, add its type to the section's [`type`](./config_file_auth.markdown#match-request) setting. Since this is a literal string path, the type is `path`.
 
     ``` hocon
     ...
@@ -116,7 +116,7 @@ Next, let's convert each component of the deprecated rule to the new HOCON forma
     ...
     ```
 
-3. The legacy rule has a [`method`](./config_file_auth.markdown#method-1) setting, with an indirector value of `find` that's equivalent to the GET and POST HTTP methods. We can implement these by adding an optional HOCON [`method`](./config_file_auth.markdown#match-request) setting in the rule's `match-request` section and specifying GET and POST as an array.
+3.  The legacy rule has a [`method`](./config_file_auth.markdown#method-1) setting, with an indirector value of `find` that's equivalent to the GET and POST HTTP methods. We can implement these by adding an optional HOCON [`method`](./config_file_auth.markdown#match-request) setting in the rule's `match-request` section and specifying GET and POST as an array.
 
     ``` hocon
     ...
@@ -132,7 +132,7 @@ Next, let's convert each component of the deprecated rule to the new HOCON forma
     ...
     ```
 
-4. Next, set the [`allow`](#allow-allow-unauthenticated-and-deny) setting. The legacy rule used a `*` glob, which is also supported in HOCON.
+4.  Next, set the [`allow`](#allow-allow-unauthenticated-and-deny) setting. The legacy rule used a `*` glob, which is also supported in HOCON.
 
     ``` hocon
     ...
@@ -148,7 +148,7 @@ Next, let's convert each component of the deprecated rule to the new HOCON forma
     ...
     ```
 
-5. Finally, give the rule a unique [`name`](#name) value. Remember that the rule will appear in logs and in the body of error responses to unauthorized clients.
+5.  Finally, give the rule a unique [`name`](#name) value. Remember that the rule will appear in logs and in the body of error responses to unauthorized clients.
 
     ``` hocon
     ...
