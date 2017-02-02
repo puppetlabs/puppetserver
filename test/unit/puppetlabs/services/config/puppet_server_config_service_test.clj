@@ -13,6 +13,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :refer [metrics-service]]
             [clj-semver.core :as semver]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
@@ -21,7 +22,7 @@
 
 (def service-and-deps
   [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
-   profiler/puppet-profiler-service scheduler-service])
+   profiler/puppet-profiler-service scheduler-service metrics-service])
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/config/puppet_server_config_service_test")

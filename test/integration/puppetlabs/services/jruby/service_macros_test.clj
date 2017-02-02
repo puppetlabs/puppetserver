@@ -4,6 +4,7 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]))
 
 (deftest simple-with-lock-test
@@ -14,6 +15,7 @@
        app
        [profiler/puppet-profiler-service
         jruby-puppet/jruby-puppet-pooled-service
+        metrics/metrics-service
         (jruby-testutils/mock-jruby-pool-manager-service config)]
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]

@@ -107,6 +107,7 @@ create-mock-pool-instance :- JRubyInstance
                    :update-server-url "http://localhost:11111"}
    :jruby-puppet  pool-config
    :http-client {}
+   :metrics {:server-id "localhost"}
    :authorization {:version 1
                    :rules [{:match-request {:path "/" :type "path"}
                             :allow "*"

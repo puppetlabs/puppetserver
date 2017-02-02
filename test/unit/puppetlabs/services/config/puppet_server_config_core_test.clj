@@ -9,6 +9,7 @@
             [schema.core :as schema]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :refer [metrics-service]]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]))
 
@@ -24,7 +25,8 @@
      app
      [jruby-puppet-pooled-service
       puppet-profiler-service
-      jruby-pool-manager-service]
+      jruby-pool-manager-service
+      metrics-service]
      (jruby-testutils/jruby-puppet-tk-config jruby-config)
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            pool-instance (jruby-testutils/borrow-instance jruby-service :test)

@@ -5,7 +5,6 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics]
             [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -16,25 +15,24 @@
 
 (trapperkeeper/defservice jruby-puppet-pooled-service
                           jruby/JRubyPuppetService
-                          {:required [[:ConfigService get-config]
-                                      [:ShutdownService shutdown-on-error]
-                                      [:PuppetProfilerService get-profiler]
-                                      [:PoolManagerService create-pool]]
-                           :optional [MetricsService]}
+                          [[:ConfigService get-config]
+                           [:ShutdownService shutdown-on-error]
+                           [:PuppetProfilerService get-profiler]
+                           [:PoolManagerService create-pool]
+                           [:MetricsService get-metrics-registry]]
 
   (init
     [this context]
     (log/info (i18n/trs "Initializing the JRuby service"))
     (let [config (get-config)
-          metrics-registry (when-let [metrics-service (tk-services/maybe-get-service this :MetricsService)]
-                             {:metric-registry (metrics/get-metrics-registry metrics-service :puppetserver)
-                              :server-id (get-in config [:metrics :server-id])})
+          metrics-info {:metric-registry (get-metrics-registry :puppetserver)
+                            :server-id (get-in config [:metrics :server-id])}
           jruby-config (core/initialize-and-create-jruby-config
                         config
                         (get-profiler)
                         (partial shutdown-on-error (tk-services/service-id this))
                         true
-                        metrics-registry)
+                        metrics-info)
           _ (core/add-facter-jar-to-system-classloader! (:ruby-load-path jruby-config))
           pool-context (create-pool jruby-config)]
       (-> context

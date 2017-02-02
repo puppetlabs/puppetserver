@@ -234,11 +234,13 @@
   This arity is intended for uses where a jruby-config is required but will not be used
   to create a pool, such as the cli ruby subcommands
 
-  The 4-arity function takes a profiler object which will be placed into the puppetserver
-  config through the :initialize-pool-instance lifecycle function. The agent-shutdown-fn
-  is run when a jruby-instance is terminated. When warn-legacy-auth-conf? is passed in as
-  true, it will log a warning that the use-legacy-auth-conf setting is deprecated if the
-  config setting is set to true as well."
+  The 5-arity function takes a profiler object and a map of metrics-info with
+  a metrics-registry and server-id - all of these will be placed into the
+  puppetserver config through the :initialize-pool-instance lifecycle
+  function. The agent-shutdown-fn is run when a jruby-instance is terminated.
+  When warn-legacy-auth-conf? is passed in as true, it will log a warning that
+  the use-legacy-auth-conf setting is deprecated if the config setting is set
+  to true as well."
   ([raw-config :- {:jruby-puppet {schema/Keyword schema/Any}
                    (schema/optional-key :http-client) {schema/Keyword schema/Any}
                    schema/Keyword schema/Any}]

@@ -8,6 +8,7 @@
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]))
@@ -21,7 +22,8 @@
 
 (def default-services
   [jruby-puppet-pooled-service
-   profiler/puppet-profiler-service])
+   profiler/puppet-profiler-service
+   metrics/metrics-service])
 
 (deftest facter-jar-loaded-during-init
   (testing (str "facter jar found from the ruby load path is properly "

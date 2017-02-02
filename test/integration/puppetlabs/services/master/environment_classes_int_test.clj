@@ -22,6 +22,7 @@
              webserver]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service
              :as webrouting]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
             [puppetlabs.services.ca.certificate-authority-service :as ca]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service
@@ -661,7 +662,8 @@
       authorization/authorization-service
       admin/puppet-admin-service
       vcs/versioned-code-service
-      tk-scheduler/scheduler-service]
+      tk-scheduler/scheduler-service
+      metrics/metrics-service]
      config
      (let [continue-promise (promise)
            wait-promise (promise)

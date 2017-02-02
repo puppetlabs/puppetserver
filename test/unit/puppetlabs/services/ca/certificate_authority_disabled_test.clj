@@ -10,6 +10,7 @@
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.kitchensink.core :as ks]))
 
 (deftest ca-disabled-files-test
@@ -28,7 +29,8 @@
          jruby-puppet/jruby-puppet-pooled-service
          (jruby-testutils/mock-jruby-pool-manager-service config)
          disabled/certificate-authority-disabled-service
-         tk-auth/authorization-service]
+         tk-auth/authorization-service
+         metrics/metrics-service]
         config
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
           (jruby/with-jruby-puppet

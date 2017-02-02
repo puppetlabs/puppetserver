@@ -8,6 +8,7 @@
     [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
     [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
     [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
+    [puppetlabs.trapperkeeper.services.metrics.metrics-service :refer [metrics-service]]
     [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
@@ -42,7 +43,8 @@
              certificate-authority-service
              authorization-service
              versioned-code-service
-             scheduler-service]
+             scheduler-service
+             metrics-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
@@ -114,7 +116,8 @@
                certificate-authority-disabled-service
                authorization-service
                versioned-code-service
-               scheduler-service]
+               scheduler-service
+               metrics-service]
               config
               (is (= {:group-id "puppets" :artifact-id "yoda"}
                      (get-in @version-check-params [:request-values :product-name])))
@@ -160,7 +163,8 @@
                certificate-authority-disabled-service
                authorization-service
                versioned-code-service
-               scheduler-service]
+               scheduler-service
+               metrics-service]
               config
               (is (= nil (get-in @version-check-params [:request-values :product-name])))
               (is (= nil (:update-server-url @version-check-params))))))
