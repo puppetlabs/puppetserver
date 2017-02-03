@@ -53,27 +53,23 @@
     (let [version-check-params  (atom {})
           version-check-test-fn (fn [request-values update-server-url]
                                   (swap! version-check-params #(assoc % :request-values request-values
-                                                                        :update-server-url update-server-url)))
-          test-dir (doto "target/master-service-test" fs/mkdir)]
-      (try
-        (with-redefs
-          [version-check/check-for-updates! version-check-test-fn]
-          (logutils/with-test-logging
-            (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
-             "Mocking is safe here because we're not doing anything with JRubies, just making sure
-             the service starts and makes the right dujour calls"
-             app
-             {:jruby-puppet {:max-active-instances 1
-                             :master-conf-dir "dev-resources/puppetlabs/services/master/master_service_test/conf"}
-              :webserver {:port 8081}
-              :product {:update-server-url "http://notarealurl/"
-                        :name {:group-id "puppets"
-                               :artifact-id "yoda"}}}
-              (is (= {:group-id "puppets" :artifact-id "yoda"}
-                     (get-in @version-check-params [:request-values :product-name])))
-              (is (= "http://notarealurl/" (:update-server-url @version-check-params))))))
-        (finally
-          (fs/delete-dir test-dir)))))
+                                                                        :update-server-url update-server-url)))]
+      (with-redefs
+       [version-check/check-for-updates! version-check-test-fn]
+        (logutils/with-test-logging
+         (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
+          "Mocking is safe here because we're not doing anything with JRubies, just making sure
+          the service starts and makes the right dujour calls"
+          app
+          {:jruby-puppet {:max-active-instances 1
+                          :master-conf-dir "dev-resources/puppetlabs/services/master/master_service_test/conf"}
+           :webserver {:port 8081}
+           :product {:update-server-url "http://notarealurl/"
+                     :name {:group-id "puppets"
+                            :artifact-id "yoda"}}}
+          (is (= {:group-id "puppets" :artifact-id "yoda"}
+                 (get-in @version-check-params [:request-values :product-name])))
+          (is (= "http://notarealurl/" (:update-server-url @version-check-params))))))))
 
   (testing "master does not make an analytics call to dujour if opt-out exists"
     ; This atom will store the parameters passed to the version-check-test-fn, which allows us to keep the
@@ -82,24 +78,20 @@
     (let [version-check-params  (atom {})
           version-check-test-fn (fn [request-values update-server-url]
                                   (swap! version-check-params #(assoc % :request-values request-values
-                                                                        :update-server-url update-server-url)))
-          test-dir (doto "target/master-service-test" fs/mkdir)]
-      (try
-        (with-redefs
-          [version-check/check-for-updates! version-check-test-fn]
-          (logutils/with-test-logging
-            (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
-              "Mocking is safe here because we're not doing anything with JRubies, just making sure
-              the service starts and makes the right dujour calls"
-              app
-              {:jruby-puppet {:max-active-instances 1
-                             :master-conf-dir "dev-resources/puppetlabs/services/master/master_service_test/conf"}
-              :webserver {:port 8081}
-              :product {:update-server-url "http://notarealurl/"
-                        :name {:group-id "puppets"
-                               :artifact-id "yoda"}
-                        :check-for-updates false}}
-              (is (= nil (get-in @version-check-params [:request-values :product-name])))
-              (is (= nil (:update-server-url @version-check-params))))))
-        (finally
-          (fs/delete-dir test-dir))))))
+                                                                        :update-server-url update-server-url)))]
+      (with-redefs
+       [version-check/check-for-updates! version-check-test-fn]
+        (logutils/with-test-logging
+         (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
+          "Mocking is safe here because we're not doing anything with JRubies, just making sure
+          the service starts and makes the right dujour calls"
+          app
+          {:jruby-puppet {:max-active-instances 1
+                          :master-conf-dir "dev-resources/puppetlabs/services/master/master_service_test/conf"}
+           :webserver {:port 8081}
+           :product {:update-server-url "http://notarealurl/"
+                     :name {:group-id "puppets"
+                            :artifact-id "yoda"}
+                     :check-for-updates false}}
+          (is (= nil (get-in @version-check-params [:request-values :product-name])))
+          (is (= nil (:update-server-url @version-check-params)))))))))
