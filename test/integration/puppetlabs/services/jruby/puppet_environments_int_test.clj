@@ -7,8 +7,7 @@
              [ssl-request-options catalog-request-options get-catalog]]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]))
+            [puppetlabs.kitchensink.core :as ks]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/puppet_environments_int_test")

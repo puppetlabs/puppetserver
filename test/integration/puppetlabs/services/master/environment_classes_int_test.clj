@@ -12,27 +12,6 @@
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [clojure.tools.logging :as log]
-            [puppetlabs.services.master.master-service :as master-service]
-            [puppetlabs.services.request-handler.request-handler-service :as
-             handler]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as
-             profiler]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as
-             webserver]
-            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service
-             :as webrouting]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
-            [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
-            [puppetlabs.services.ca.certificate-authority-service :as ca]
-            [puppetlabs.trapperkeeper.services.authorization.authorization-service
-             :as authorization]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
-             :as tk-scheduler]
-            [puppetlabs.services.versioned-code-service.versioned-code-service
-             :as vcs]
-            [puppetlabs.services.config.puppet-server-config-service
-             :as ps-config]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
@@ -640,30 +619,17 @@
         config (bootstrap/load-dev-config-with-overrides
                 {:jruby-puppet {:max-active-instances 1
                                 :environment-class-cache-enabled true}})
-        mock-jruby-manager-service (jruby-puppet-testutils/mock-jruby-pool-manager-service
-                                    config
-                                    (partial create-jruby-instance-with-mock-class-info
-                                             wait-atom
-                                             class-info-atom))]
+        mock-jruby-fn (partial create-jruby-instance-with-mock-class-info
+                               wait-atom
+                               class-info-atom)]
     ;; This test uses a mock jruby instance function which can provide mock
     ;; data for an environment class info query and can suspend a request
     ;; long enough for the cached environment data to be invalidated.
     (tk-bootstrap-testutils/with-app-with-config
      app
-     [handler/request-handler-service
-      jruby-service/jruby-puppet-pooled-service
-      mock-jruby-manager-service
-      profiler/puppet-profiler-service
-      webserver/jetty9-service
-      webrouting/webrouting-service
-      ps-config/puppet-server-config-service
-      master-service/master-service
-      ca/certificate-authority-service
-      authorization/authorization-service
-      admin/puppet-admin-service
-      vcs/versioned-code-service
-      tk-scheduler/scheduler-service
-      metrics/metrics-service]
+     (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
+      config
+      mock-jruby-fn)
      config
      (let [continue-promise (promise)
            wait-promise (promise)

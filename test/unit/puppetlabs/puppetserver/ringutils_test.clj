@@ -2,8 +2,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.ringutils :refer :all]
             [puppetlabs.ssl-utils.core :as ssl-utils]
-            [schema.test :as schema-test]
-            [cheshire.core :as cheshire]))
+            [schema.test :as schema-test]))
 
 (use-fixtures :once schema-test/validate-schemas)
 

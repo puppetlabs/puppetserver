@@ -3,26 +3,29 @@
             [puppetlabs.services.protocols.puppet-server-config :refer :all]
             [puppetlabs.services.config.puppet-server-config-service :refer :all]
             [puppetlabs.services.config.puppet-server-config-core :as core]
-            [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :refer [metrics-service]]
             [clj-semver.core :as semver]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
-            [puppetlabs.kitchensink.testutils :as ks-testutils]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby]))
+            [puppetlabs.kitchensink.testutils :as ks-testutils]))
 
 (def service-and-deps
-  [puppet-server-config-service jruby-puppet-pooled-service jetty9-service
-   profiler/puppet-profiler-service scheduler-service metrics-service])
+  (conj jruby-testutils/jruby-service-and-dependencies
+        puppet-server-config-service
+        jetty9-service
+        scheduler-service))
+
+(defn service-and-deps-with-mock-jruby
+  [config]
+  (jruby-testutils/add-mock-jruby-pool-manager-service
+   service-and-deps
+   config))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/config/puppet_server_config_service_test")
@@ -37,7 +40,7 @@
 (deftest config-service-functions
   (tk-testutils/with-app-with-config
     app
-    (conj service-and-deps jruby-pool-manager-service)
+    service-and-deps
     (-> required-config
         (assoc :my-config {:foo "bar"}))
     (testing "Basic puppetserver config service function usage"
@@ -89,8 +92,7 @@
       (ks-testutils/with-no-jvm-shutdown-hooks
        (let [config (assoc required-config :cacrl "bogus" :cacert "meow")
              app (tk/boot-services-with-config
-                  (conj service-and-deps
-                        (jruby-testutils/mock-jruby-pool-manager-service config))
+                  (service-and-deps-with-mock-jruby config)
                   config)]
          (is (thrown-with-msg?
               Exception
@@ -111,8 +113,7 @@
                                            {:puppet-server webserver-config})]
          (tk-testutils/with-app-with-config
           app
-          (conj service-and-deps
-                (jruby-testutils/mock-jruby-pool-manager-service config))
+          (service-and-deps-with-mock-jruby config)
           config
           (is (logged? #"Not overriding webserver settings with values from core Puppet"))))))
 
@@ -122,8 +123,6 @@
         (with-test-logging
          (tk-testutils/with-app-with-config
           app
-          (conj
-           service-and-deps
-           (jruby-testutils/mock-jruby-pool-manager-service config))
+          (service-and-deps-with-mock-jruby config)
           config
           (is (logged? #"Not overriding webserver settings with values from core Puppet"))))))))

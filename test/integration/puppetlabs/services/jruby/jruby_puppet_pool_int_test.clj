@@ -6,9 +6,6 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.http.client.sync :as http-client]
             [me.raynes.fs :as fs]
@@ -19,7 +16,6 @@
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
             [puppetlabs.services.protocols.request-handler :as handler]
             [puppetlabs.services.request-handler.request-handler-core :as handler-core]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
             [puppetlabs.ssl-utils.core :as ssl-utils]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
             [puppetlabs.puppetserver.testutils :as testutils :refer
@@ -27,7 +23,6 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-utils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
@@ -142,12 +137,6 @@
                    ssl-options)]
     (= 204 (:status response))))
 
-(def jruby-service-and-dependencies [jruby/jruby-puppet-pooled-service
-                                     profiler/puppet-profiler-service
-                                     jruby-utils/jruby-pool-manager-service
-                                     metrics/metrics-service])
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
@@ -232,16 +221,14 @@
                                  (str "response body doesn't matter, just "
                                       "provide a successful response so the "
                                       "test knows the webserver is still running"))
-           services [jruby/jruby-puppet-pooled-service
-                     profiler/puppet-profiler-service
-                     handler-service/request-handler-service
-                     ps-config/puppet-server-config-service
-                     jetty9/jetty9-service
-                     vcs/versioned-code-service
-                     metrics/metrics-service
-                     (jruby-testutils/mock-jruby-pool-manager-service
-                      config
-                      mock-jruby-puppet-fn)]
+           services (jruby-testutils/add-mock-jruby-pool-manager-service
+                     (conj jruby-testutils/jruby-service-and-dependencies
+                           handler-service/request-handler-service
+                           ps-config/puppet-server-config-service
+                           jetty9/jetty9-service
+                           vcs/versioned-code-service)
+                     config
+                     mock-jruby-puppet-fn)
            app (tk/boot-services-with-config services config)]
        (try
          (let [cert (ssl-utils/pem->cert
@@ -335,7 +322,7 @@
                                  :ssl-protocols ["TLSv1" "TLSv1.2"]})]
       (tk-testutils/with-app-with-config
        app
-       jruby-service-and-dependencies
+       jruby-testutils/jruby-service-and-dependencies
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
@@ -382,7 +369,7 @@
     (testing "when metrics service is present, http client uses a metric registry"
       (tk-testutils/with-app-with-config
        app
-       jruby-service-and-dependencies
+       jruby-testutils/jruby-service-and-dependencies
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              jruby-instance (jruby-testutils/borrow-instance jruby-service :no-metrics-test)
@@ -402,7 +389,7 @@
             (and take precedence over puppet.conf)"
     (tk-testutils/with-app-with-config
      app
-     jruby-service-and-dependencies
+     jruby-testutils/jruby-service-and-dependencies
      (jruby-testutils/jruby-puppet-tk-config
       (jruby-testutils/jruby-puppet-config
        {:ruby-load-path  jruby-testutils/ruby-load-path
@@ -433,7 +420,7 @@
   (testing "Settings from Ruby Puppet are available"
     (tk-testutils/with-app-with-config
      app
-     jruby-service-and-dependencies
+     jruby-testutils/jruby-service-and-dependencies
      (jruby-testutils/jruby-puppet-tk-config
       (jruby-testutils/jruby-puppet-config))
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
@@ -451,7 +438,7 @@
   (testing "Make sure that the environment variables whitelisted in puppetserver.conf are being set"
     (tk-testutils/with-app-with-config
       app
-      jruby-service-and-dependencies
+      jruby-testutils/jruby-service-and-dependencies
       (let [tmp-conf (ks/temp-file "puppetserver" ".conf")]
         (spit tmp-conf
               "environment-vars: { \"FOO\": ${HOME} }")
@@ -493,7 +480,7 @@
       (logging/with-test-logging
         (tk-testutils/with-app-with-config
          app
-         jruby-service-and-dependencies
+         jruby-testutils/jruby-service-and-dependencies
          (jruby-testutils/jruby-puppet-tk-config
           (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)

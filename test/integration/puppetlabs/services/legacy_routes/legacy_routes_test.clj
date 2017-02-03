@@ -5,23 +5,12 @@
             [schema.test :as schema-test]
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-            [puppetlabs.services.request-handler.request-handler-service :as handler]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as webserver]
-            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting]
-            [puppetlabs.services.config.puppet-server-config-service :as ps-config]
-            [puppetlabs.services.legacy-routes.legacy-routes-service :as legacy-routes]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as tk-scheduler]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
-            [puppetlabs.services.puppet-admin.puppet-admin-service :as admin]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled-ca]
-            [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
             [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [cheshire.core :as cheshire])
+            [cheshire.core :as cheshire]
+            [puppetlabs.trapperkeeper.services :as tk-services])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
@@ -143,20 +132,9 @@
       (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
        "Mocking JRubies because CA endpoints are pure clojure"
         app
-        [handler/request-handler-service
-         jruby/jruby-puppet-pooled-service
-         profiler/puppet-profiler-service
-         webserver/jetty9-service
-         webrouting/webrouting-service
-         ps-config/puppet-server-config-service
-         master-service/master-service
-         legacy-routes/legacy-routes-service
-         admin/puppet-admin-service
-         disabled-ca/certificate-authority-disabled-service
-         authorization/authorization-service
-         vcs/versioned-code-service
-         tk-scheduler/scheduler-service
-         metrics/metrics-service]
+       (->> bootstrap/services-from-dev-boostrap
+            (remove #(= :CaService (tk-services/service-def-id %)))
+            (cons disabled-ca/certificate-authority-disabled-service))
         {}
 
         (is (= 404 (:status (http-get "/production/certificate_statuses/all")))

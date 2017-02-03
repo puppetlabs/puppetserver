@@ -9,7 +9,12 @@
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
             [puppetlabs.services.protocols.pool-manager :as pool-manager-protocol]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal])
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-pool-manager]
+            [puppetlabs.trapperkeeper.services :as tk-services])
   (:import (clojure.lang IFn)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
@@ -27,6 +32,12 @@
 (def var-dir "./target/master-var")
 (def run-dir "./target/master-var/run")
 (def log-dir "./target/master-var/log")
+
+(def jruby-service-and-dependencies
+  [jruby-puppet/jruby-puppet-pooled-service
+   profiler/puppet-profiler-service
+   jruby-pool-manager/jruby-pool-manager-service
+   metrics/metrics-service])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schemas
@@ -339,3 +350,20 @@ create-mock-pool-instance :- JRubyInstance
     (create-pool
      [this jruby-config]
      (create-mock-pool jruby-config (partial mock-jruby-puppet-fn config))))))
+
+(defn add-mock-jruby-pool-manager-service
+  ([services config]
+   (add-mock-jruby-pool-manager-service services config create-mock-jruby-puppet))
+  ([services config mock-jruby-puppet-fn]
+   (->> services
+        (remove #(= :PoolManagerService (tk-services/service-def-id %)))
+        vec
+        (cons (mock-jruby-pool-manager-service
+               config
+               mock-jruby-puppet-fn)))))
+
+(defn jruby-service-and-dependencies-with-mocking
+  [config]
+  (add-mock-jruby-pool-manager-service
+   jruby-service-and-dependencies
+   config))

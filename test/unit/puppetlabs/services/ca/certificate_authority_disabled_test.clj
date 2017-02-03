@@ -3,14 +3,11 @@
             [me.raynes.fs :as fs]
             [puppetlabs.services.ca.certificate-authority-disabled-service :as disabled]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as tk-auth]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.kitchensink.core :as ks]))
 
 (deftest ca-disabled-files-test
@@ -25,12 +22,11 @@
                       (assoc :puppet {"vardir" (str puppet-conf-dir "/var")}))]
        (tk-testutils/with-app-with-config
         app
-        [profiler/puppet-profiler-service
-         jruby-puppet/jruby-puppet-pooled-service
-         (jruby-testutils/mock-jruby-pool-manager-service config)
-         disabled/certificate-authority-disabled-service
-         tk-auth/authorization-service
-         metrics/metrics-service]
+        (jruby-testutils/add-mock-jruby-pool-manager-service
+         (conj jruby-testutils/jruby-service-and-dependencies
+               disabled/certificate-authority-disabled-service
+               tk-auth/authorization-service)
+         config)
         config
         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
           (jruby/with-jruby-puppet

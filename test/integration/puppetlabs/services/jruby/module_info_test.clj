@@ -2,10 +2,6 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
-            [puppetlabs.trapperkeeper.services.metrics.metrics-service :refer [metrics-service]]
             [me.raynes.fs :as fs]
             [cheshire.core :as cheshire]
             [puppetlabs.puppetserver.testutils :as testutils]
@@ -50,10 +46,7 @@
 
       (tk-bootstrap/with-app-with-config
        app
-       [jruby-puppet-pooled-service
-        puppet-profiler-service
-        jruby-pool-manager-service
-        metrics-service]
+       jruby-testutils/jruby-service-and-dependencies
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              instance (jruby-testutils/borrow-instance jruby-service :test)
