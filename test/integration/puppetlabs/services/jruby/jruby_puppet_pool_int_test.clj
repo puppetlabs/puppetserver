@@ -352,11 +352,11 @@
 
 (deftest ^:integration http-client-metrics-test
   (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))]
-    #_(testing "when no metrics service, http client does not use a metric registry"
+    (testing "when http client metrics are disabled, http client does not use a metric registry"
       (tk-testutils/with-app-with-config
        app
-       base-services
-       config
+       jruby-testutils/jruby-service-and-dependencies
+       (assoc-in config [:http-client :metrics-enabled] false)
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              jruby-instance (jruby-testutils/borrow-instance jruby-service :no-metrics-test)
              container (:scripting-container jruby-instance)]
@@ -366,7 +366,7 @@
                (is (= nil (.getMetricRegistry client)))))
            (finally
              (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))
-    (testing "when metrics service is present, http client uses a metric registry"
+    (testing "when http client metrics are enabled, http client uses a metric registry"
       (tk-testutils/with-app-with-config
        app
        jruby-testutils/jruby-service-and-dependencies

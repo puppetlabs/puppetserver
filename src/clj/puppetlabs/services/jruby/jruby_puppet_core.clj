@@ -8,6 +8,7 @@
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
+            [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics]
             [puppetlabs.i18n.core :as i18n]
             [clojure.tools.logging :as log]
             [clojure.string :as str])
@@ -41,6 +42,10 @@
   "The default number of milliseconds that the client will allow for no data to
   be available on the socket. Currently set to 20 minutes."
   (* 20 60 1000))
+
+(def default-http-metrics-enabled
+  "The default for whether or not to enable http client metrics. Currently set to true."
+  true)
 
 (def default-master-conf-dir
   "/etc/puppetlabs/puppet")
@@ -112,15 +117,15 @@
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)
-   metrics-info :- (schema/maybe MetricsInfo)]
+   metrics-service]
   (fn [jruby-instance]
     (let [{:keys [http-client-ssl-protocols
                   http-client-cipher-suites
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
+                  http-client-metrics-enabled
                   use-legacy-auth-conf]} config
-          scripting-container (:scripting-container jruby-instance)
-          {:keys [metric-registry server-id]} metrics-info]
+          scripting-container (:scripting-container jruby-instance)]
 
       (.runScriptlet scripting-container "require 'puppet/server/master'")
       (let [ruby-puppet-class (.runScriptlet scripting-container "Puppet::Server::Master")
@@ -131,14 +136,16 @@
           (.put puppetserver-config "ssl_protocols" (into-array String http-client-ssl-protocols)))
         (when http-client-cipher-suites
           (.put puppetserver-config "cipher_suites" (into-array String http-client-cipher-suites)))
+        (when http-client-metrics-enabled
+          (doto puppetserver-config
+            (.put "metric_registry" (metrics/get-metrics-registry metrics-service :puppetserver))
+            (.put "server_id" (metrics/get-server-id metrics-service))))
         (doto puppetserver-config
           (.put "profiler" profiler)
           (.put "environment_registry" env-registry)
           (.put "http_connect_timeout_milliseconds" http-client-connect-timeout-milliseconds)
           (.put "http_idle_timeout_milliseconds" http-client-idle-timeout-milliseconds)
-          (.put "use_legacy_auth_conf" use-legacy-auth-conf)
-          (.put "metric_registry" metric-registry)
-          (.put "server_id" server-id))
+          (.put "use_legacy_auth_conf" use-legacy-auth-conf))
         (let [jruby-puppet (.callMethodWithArgArray
                             scripting-container
                             ruby-puppet-class
@@ -169,7 +176,8 @@
   (select-keys config [:ssl-protocols
                        :cipher-suites
                        :connect-timeout-milliseconds
-                       :idle-timeout-milliseconds]))
+                       :idle-timeout-milliseconds
+                       :metrics-enabled]))
 
 (schema/defn ^:always-validate initialize-gem-path
   [{:keys [gem-home gem-path] :as jruby-config} :- {schema/Keyword schema/Any}]
@@ -190,6 +198,8 @@
       (assoc :http-client-idle-timeout-milliseconds
              (get http-config :idle-timeout-milliseconds
                   default-http-socket-timeout))
+      (assoc :http-client-metrics-enabled
+             (get http-config :metrics-enabled default-http-metrics-enabled))
       (update-in [:master-conf-dir] #(or % default-master-conf-dir))
       (update-in [:master-var-dir] #(or % default-master-var-dir))
       (update-in [:master-code-dir] #(or % default-master-code-dir))
@@ -209,8 +219,8 @@
    jruby-config :- {schema/Keyword schema/Any}
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)
-   metrics-info :- (schema/maybe MetricsInfo)]
-  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-info)
+   metrics-service]
+  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-service)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
@@ -234,13 +244,13 @@
   This arity is intended for uses where a jruby-config is required but will not be used
   to create a pool, such as the cli ruby subcommands
 
-  The 5-arity function takes a profiler object and a map of metrics-info with
-  a metrics-registry and server-id - all of these will be placed into the
-  puppetserver config through the :initialize-pool-instance lifecycle
-  function. The agent-shutdown-fn is run when a jruby-instance is terminated.
-  When warn-legacy-auth-conf? is passed in as true, it will log a warning that
-  the use-legacy-auth-conf setting is deprecated if the config setting is set
-  to true as well."
+  The 5-arity function takes a profiler object and the metrics service. The profiler is placed into
+  the puppetserver config through the :initialize-pool-instance lifecycle function. If the
+  `http-client -> metrics-enabled` setting is set to true, then the metrics service is used to get a
+  metrics registry for the `:puppetserver` domain, and the server id - these are also placed into
+  the puppetserver config. The agent-shutdown-fn is run when a jruby-instance is terminated. When
+  warn-legacy-auth-conf? is passed in as true, it will log a warning that the use-legacy-auth-conf
+  setting is deprecated if the config setting is set to true as well."
   ([raw-config :- {:jruby-puppet {schema/Keyword schema/Any}
                    (schema/optional-key :http-client) {schema/Keyword schema/Any}
                    schema/Keyword schema/Any}]
@@ -249,7 +259,7 @@
     profiler :- (schema/maybe PuppetProfiler)
     agent-shutdown-fn :- IFn
     warn-legacy-auth-conf? :- schema/Bool
-    metrics-info :- (schema/maybe MetricsInfo)]
+    metrics-service]
    (let [jruby-puppet-config (initialize-puppet-config
                               (extract-http-config (:http-client raw-config))
                               (extract-puppet-config (:jruby-puppet raw-config)))
@@ -262,7 +272,7 @@
         (i18n/trs "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''.")
         (i18n/trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
         (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
-     (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler metrics-info))))
+     (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler metrics-service))))
 
 (def EnvironmentClassInfoCacheEntry
   "Data structure that holds per-environment cache information for the
