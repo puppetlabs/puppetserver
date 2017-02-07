@@ -211,7 +211,7 @@
          (is (= "success response from restart test" (:body get-results))))))))
 
 (deftest ^:integration test-503-when-app-shuts-down
-  (testing "During a shutdown the agent requests result in a 503 response"
+  (testing "After the app is shutdown the agent requests result in a 503 response"
     (ks-testutils/with-no-jvm-shutdown-hooks
      (let [config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config {:max-active-instances 2
@@ -267,7 +267,11 @@
            (tk-app/stop app)))))))
 
 (deftest ^:integration test-503-when-jruby-is-first-to-shutdown
-  (testing "After a shutdown, requests result in 503 http responses"
+  (testing "After the jruby service is shutdown, requests result in 503 http responses"
+    ;; The difference between this test and the test-503-when-app-shuts-down test is that
+    ;; This test only shuts down the jruby service as opposed to the entire app. This way
+    ;; we can test that the behavior is the same even if the app is in a partial shutdown
+    ;; state when a request comes in
     (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
      "JRuby mocking is safe here, because we're just looking to see that the
       HTTP response for an environment request transitions from success to
