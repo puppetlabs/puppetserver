@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-"${JAVA_BIN}" $JAVA_ARGS_CLI \
+"${JAVA_BIN}" $JAVA_ARGS_CLI -Djava.security.egd=/dev/urandom \
     -cp "${INSTALL_DIR}/<%= EZBake::Config[:uberjar_name] %>" \
     clojure.main -m puppetlabs.puppetserver.cli.irb \
     --config "${CONFIG}" -- "$@"
