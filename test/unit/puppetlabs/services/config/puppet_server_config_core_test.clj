@@ -3,9 +3,6 @@
             [puppetlabs.services.config.puppet-server-config-core :refer :all]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [puppetlabs.services.jruby.jruby-puppet-service :refer [jruby-puppet-pooled-service]]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :refer [puppet-profiler-service]]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [schema.core :as schema]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]
@@ -22,9 +19,7 @@
                          (update :master-code-dir #(str (fs/normalized %))))]
     (tk-bootstrap/with-app-with-config
      app
-     [jruby-puppet-pooled-service
-      puppet-profiler-service
-      jruby-pool-manager-service]
+     jruby-testutils/jruby-service-and-dependencies
      (jruby-testutils/jruby-puppet-tk-config jruby-config)
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            pool-instance (jruby-testutils/borrow-instance jruby-service :test)

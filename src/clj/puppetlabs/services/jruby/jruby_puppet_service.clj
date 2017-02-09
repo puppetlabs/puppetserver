@@ -18,15 +18,20 @@
                           [[:ConfigService get-config]
                            [:ShutdownService shutdown-on-error]
                            [:PuppetProfilerService get-profiler]
-                           [:PoolManagerService create-pool]]
+                           [:PoolManagerService create-pool]
+                           MetricsService]
+
   (init
     [this context]
     (log/info (i18n/trs "Initializing the JRuby service"))
-    (let [jruby-config (core/initialize-and-create-jruby-config
-                        (get-config)
+    (let [config (get-config)
+          metrics-service (tk-services/get-service this :MetricsService)
+          jruby-config (core/initialize-and-create-jruby-config
+                        config
                         (get-profiler)
                         (partial shutdown-on-error (tk-services/service-id this))
-                        true)
+                        true
+                        metrics-service)
           _ (core/add-facter-jar-to-system-classloader! (:ruby-load-path jruby-config))
           pool-context (create-pool jruby-config)]
       (-> context

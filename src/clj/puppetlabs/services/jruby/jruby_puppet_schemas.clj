@@ -43,6 +43,8 @@
         timeout is infinite and if negative, the value is undefined by the
         application and is governed by the default system behavior.
 
+    * :http-client-metrics-enabled - Whether to use http client metrics.
+
     * :use-legacy-auth-conf - Whether to use the legacy core Puppet auth.conf
         (true) or trapperkeeper-authorization (false) to authorize requests
         being made to core Puppet endpoints."
@@ -55,6 +57,7 @@
    :http-client-cipher-suites [schema/Str]
    :http-client-connect-timeout-milliseconds schema/Int
    :http-client-idle-timeout-milliseconds schema/Int
+   :http-client-metrics-enabled schema/Bool
    :max-requests-per-instance schema/Int
    :use-legacy-auth-conf schema/Bool})
 

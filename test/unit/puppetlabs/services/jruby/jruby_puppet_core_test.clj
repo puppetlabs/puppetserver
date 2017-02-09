@@ -90,12 +90,14 @@
     (let [http-config {:ssl-protocols ["some-protocol"]
                        :cipher-suites ["some-suite"]
                        :connect-timeout-milliseconds 31415
-                       :idle-timeout-milliseconds 42}
+                       :idle-timeout-milliseconds 42
+                       :metrics-enabled false}
           initialized-config (jruby-puppet-core/initialize-puppet-config http-config {})]
       (is (= ["some-suite"] (:http-client-cipher-suites initialized-config)))
       (is (= ["some-protocol"] (:http-client-ssl-protocols initialized-config)))
       (is (= 42 (:http-client-idle-timeout-milliseconds initialized-config)))
-      (is (= 31415 (:http-client-connect-timeout-milliseconds initialized-config)))))
+      (is (= 31415 (:http-client-connect-timeout-milliseconds initialized-config)))
+      (is (= false (:http-client-metrics-enabled initialized-config)))))
 
   (testing "jruby-puppet values are not overridden by defaults"
     (let [jruby-puppet-config {:master-run-dir "one"
@@ -119,7 +121,8 @@
       (is (= "/etc/puppetlabs/puppet" (:master-conf-dir initialized-config)))
       (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir initialized-config)))
       (is (= "/etc/puppetlabs/code" (:master-code-dir initialized-config)))
-      (is (= true (:use-legacy-auth-conf initialized-config))))))
+      (is (= true (:use-legacy-auth-conf initialized-config)))
+      (is (= true (:http-client-metrics-enabled initialized-config))))))
 
 (deftest create-jruby-config-test
   (testing "provided values are not overriden"
@@ -136,6 +139,7 @@
                                     jruby-puppet-config
                                     unitialized-jruby-config
                                     shutdown-fn
+                                    nil
                                     nil)]
       (testing "lifecycle functions are not overridden"
         (is (= 42 ((get-in initialized-jruby-config [:lifecycle :shutdown-on-error])))))
@@ -157,6 +161,7 @@
                                     jruby-puppet-config
                                     unitialized-jruby-config
                                     shutdown-fn
+                                    nil
                                     nil)]
 
       (testing "jruby-config default values are used if not provided"

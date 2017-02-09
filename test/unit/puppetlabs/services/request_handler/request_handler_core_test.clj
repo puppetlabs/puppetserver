@@ -24,6 +24,7 @@
             [puppetlabs.services.ca.certificate-authority-service :as ca-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as routing-service]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
+            [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
@@ -322,7 +323,8 @@
                      authorization-service/authorization-service
                      routing-service/webrouting-service
                      custom-vcs
-                     tk-scheduler/scheduler-service]]
+                     tk-scheduler/scheduler-service
+                     metrics/metrics-service]]
        (jruby-bootstrap/with-puppetserver-running-with-services-and-mock-jruby-puppet-fn
         "For this test we're basically just validating that a JRuby is reserved
          before a code-id is calculated.  A JRuby mock is safe here in that

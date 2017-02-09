@@ -2,13 +2,10 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.services.jruby.jruby-puppet-service :refer :all]
-            [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.trapperkeeper.app :as app]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [me.raynes.fs :as fs]
             [schema.test :as schema-test]))
 
@@ -18,10 +15,6 @@
   [pool-size]
   (jruby-testutils/jruby-puppet-tk-config
     (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})))
-
-(def default-services
-  [jruby-puppet-pooled-service
-   profiler/puppet-profiler-service])
 
 (deftest facter-jar-loaded-during-init
   (testing (str "facter jar found from the ruby load path is properly "
@@ -37,8 +30,7 @@
       (fs/touch facter-jar)
       (bootstrap/with-app-with-config
         app
-        (conj default-services
-              (jruby-testutils/mock-jruby-pool-manager-service config))
+        (jruby-testutils/jruby-service-and-dependencies-with-mocking config)
         config
         (is (true? (some #(= facter-jar (.getFile %))
                      (.getURLs (ClassLoader/getSystemClassLoader)))))))))
@@ -64,8 +56,7 @@
     (let [config (jruby-service-test-config 1)]
       (bootstrap/with-app-with-config
        app
-       (conj default-services
-             (jruby-testutils/mock-jruby-pool-manager-service config))
+       (jruby-testutils/jruby-service-and-dependencies-with-mocking config)
        config
        (let [service (app/get-service app :JRubyPuppetService)
              production-cache-id-before-first-update

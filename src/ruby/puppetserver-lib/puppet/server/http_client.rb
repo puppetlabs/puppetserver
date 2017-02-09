@@ -30,7 +30,9 @@ class Puppet::Server::HttpClient
   # Store a java HashMap of settings related to the http client
   def self.initialize_settings(settings)
     @settings = settings.select { |k,v|
-      ["ssl_protocols",
+      ["server_id",
+       "metric_registry",
+       "ssl_protocols",
        "cipher_suites",
        "http_connect_timeout_milliseconds",
        "http_idle_timeout_milliseconds"].include? k
@@ -120,6 +122,16 @@ class Puppet::Server::HttpClient
     end
   end
 
+  def self.configure_metrics(client_options)
+    settings = self.settings
+    if settings.has_key?("metric_registry")
+      client_options.set_metric_registry(settings["metric_registry"])
+    end
+    if settings.has_key?("server_id")
+      client_options.set_server_id(settings["server_id"])
+    end
+  end
+
   def remove_leading_slash(url)
     url.sub(/^\//, "")
   end
@@ -154,6 +166,7 @@ class Puppet::Server::HttpClient
     client_options = ClientOptions.new
     self.configure_timeouts(client_options)
     self.configure_ssl(client_options)
+    self.configure_metrics(client_options)
     client_options
   end
 

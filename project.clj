@@ -32,7 +32,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.3.3"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.4.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -61,6 +61,7 @@
                  [puppetlabs/jruby-utils "0.7.0"]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
+                 [puppetlabs/trapperkeeper-metrics]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/kitchensink]

@@ -2,7 +2,6 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]))
 
@@ -12,9 +11,7 @@
                   (jruby-testutils/jruby-puppet-config))]
       (tk-testutils/with-app-with-config
        app
-       [profiler/puppet-profiler-service
-        jruby-puppet/jruby-puppet-pooled-service
-        (jruby-testutils/mock-jruby-pool-manager-service config)]
+       (jruby-testutils/jruby-service-and-dependencies-with-mocking config)
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
          (jruby-puppet/with-lock
