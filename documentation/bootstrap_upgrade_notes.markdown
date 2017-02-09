@@ -48,7 +48,7 @@ If you edited or manage your `bootstrap.cfg` file, do the following:
 
 Puppet Server 2.5 and newer create a new configuration file, `/etc/puppetlabs/puppetserver/services.d/ca.cfg`, if it doesn't already exist, and this new file enables CA services by default.
 
-To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ you upgrade to Server 2.5.0 or newer. Unlike the `boostrap.cfg` file, package managers **do not** overwrite the new `ca.cfg` file, allowing future upgrades to respect settings without attempting to overwrite them.
+To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ you upgrade to Server 2.5.0 or newer. Unlike the `bootstrap.cfg` file, package managers **do not** overwrite the new `ca.cfg` file, allowing future upgrades to respect settings without attempting to overwrite them.
 
 This example `ca.cfg` file disables the CA services:
 

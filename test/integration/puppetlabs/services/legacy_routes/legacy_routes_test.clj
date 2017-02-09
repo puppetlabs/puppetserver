@@ -132,7 +132,7 @@
       (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
        "Mocking JRubies because CA endpoints are pure clojure"
         app
-       (->> bootstrap/services-from-dev-boostrap
+       (->> bootstrap/services-from-dev-bootstrap
             (remove #(= :CaService (tk-services/service-def-id %)))
             (cons disabled-ca/certificate-authority-disabled-service))
         {}
