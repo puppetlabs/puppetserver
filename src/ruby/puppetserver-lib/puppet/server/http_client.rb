@@ -97,28 +97,28 @@ class Puppet::Server::HttpClient
 
   private
 
-  def self.configure_timeouts(request_options)
+  def self.configure_timeouts(client_options)
     settings = self.settings
 
     if settings.has_key?("http_connect_timeout_milliseconds")
-      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
+      client_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
     end
 
     if settings.has_key?("http_idle_timeout_milliseconds")
-      request_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
+      client_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
     end
   end
 
-  def self.configure_ssl(request_options)
-    request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
+  def self.configure_ssl(client_options)
+    client_options.set_ssl_context(Puppet::Server::Config.ssl_context)
 
     settings = self.settings
 
     if settings.has_key?("ssl_protocols")
-      request_options.set_ssl_protocols(settings["ssl_protocols"])
+      client_options.set_ssl_protocols(settings["ssl_protocols"])
     end
     if settings.has_key?("cipher_suites")
-      request_options.set_ssl_cipher_suites(settings["cipher_suites"])
+      client_options.set_ssl_cipher_suites(settings["cipher_suites"])
     end
   end
 
