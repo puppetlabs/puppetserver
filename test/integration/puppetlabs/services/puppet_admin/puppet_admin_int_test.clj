@@ -8,7 +8,10 @@
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]
     [puppetlabs.puppetserver.testutils :as testutils :refer
-     [ca-cert localhost-cert localhost-key ssl-request-options]]))
+     [ca-cert localhost-cert localhost-key ssl-request-options]]
+    [puppetlabs.trapperkeeper.app :as tk-app]
+    [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+    [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")
@@ -177,6 +180,27 @@
                          (assoc ssl-request-options :headers {"Accept" "*/*"}))]
            (is (= 204 (:status response))
                (ks/pprint-to-string response))))))))
+
+(deftest ^:integration admin-api-pool-timeout-test
+  (testing "pool lock timeout results in 503"
+    (logutils/with-test-logging
+      (bootstrap/with-puppetserver-running
+       app
+       {:jruby-puppet {:flush-timeout 0}}
+       ; Borrow a jruby instance so that the timeout of 0 is reached immediately
+       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+             pool-context (jruby-protocol/get-pool-context jruby-service)
+             pool (jruby-core/get-pool pool-context)
+             borrowed-instance (.borrowItem pool)]
+         (try
+           (let [response (http-client/delete
+                           (str "https://localhost:8140/puppet-admin-api/v1/jruby-pool")
+                           ssl-request-options)]
+             (is (= 503 (:status response)))
+             (is (= "Timeout limit reached before lock could be granted"
+                    (slurp (:body response)))))
+           (finally
+             (.releaseItem pool borrowed-instance))))))))
 
 ;; See 'environment-flush-integration-test'
 ;; for additional test coverage on the /environment-cache endpoint
