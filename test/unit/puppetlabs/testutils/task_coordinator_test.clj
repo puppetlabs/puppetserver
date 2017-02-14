@@ -1,6 +1,6 @@
-(ns puppetlabs.enterprise.testutils.task-coordinator-test
+(ns puppetlabs.testutils.task-coordinator-test
   (:require [clojure.test :refer :all]
-            [puppetlabs.enterprise.testutils.task-coordinator :as tc]))
+            [puppetlabs.testutils.task-coordinator :as tc]))
 
 (deftest task-coordinator-basic-test
   (let [phases [:phase1 :phase2 :phase3]

@@ -3,14 +3,17 @@
             [puppetlabs.metrics :as metrics]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [clojure.tools.logging :as log]
-            [puppetlabs.enterprise.utils :as utils]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.i18n.core :refer [trs]])
+            [puppetlabs.i18n.core :refer [trs]]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format])
   (:import (com.codahale.metrics MetricRegistry Gauge Counter Histogram Timer)
            (clojure.lang Atom IFn)
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
-           (java.util.concurrent TimeUnit)))
+           (java.util.concurrent TimeUnit)
+           (org.joda.time DateTime)
+           (org.joda.time.format DateTimeFormatter)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -103,6 +106,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
 
+(schema/def ^:always-validate datetime-formatter :- DateTimeFormatter
+  "The date/time formatter used to produce timestamps using clj-time.
+  This matches the format used by PuppetDB."
+  (time-format/formatters :date-time))
+
+(schema/defn ^:always-validate format-date-time :- schema/Str
+  "Given a DateTime object, return a human-readable, formatted string."
+  [date-time :- DateTime]
+  (time-format/unparse datetime-formatter date-time))
+
+(schema/defn ^:always-validate timestamp :- schema/Str
+  "Returns a nicely-formatted string of the current date/time."
+  []
+  (format-date-time (time/now)))
+
 (schema/defn timestamped-reason :- TimestampedReason
   [reason :- jruby-schemas/JRubyEventReason]
   {:time (System/currentTimeMillis)
@@ -184,7 +202,7 @@
                           :lock-requested jruby-pool-lock-requested
                           :lock-acquired jruby-pool-lock-acquired
                           :lock-released jruby-pool-lock-not-in-use)
-         :last-change-time (utils/timestamp)))
+         :last-change-time (timestamp)))
 
 (schema/defn ^:always-validate track-lock-requested!
   [{:keys [lock-requests lock-status]} :- JRubyMetrics
@@ -257,7 +275,7 @@
    :lock-held-timer (.timer registry (metrics/host-metric-name hostname "jruby.lock-held-timer"))
    :lock-requests (atom {})
    :lock-status (atom {:current-state jruby-pool-lock-not-in-use
-                       :last-change-time (utils/timestamp)})
+                       :last-change-time (timestamp)})
    :sampler-job-id nil})
 
 (schema/defn track-free-instance-count!

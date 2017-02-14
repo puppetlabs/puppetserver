@@ -25,7 +25,7 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.comidi :as comidi]
             [cemerick.url :as url]
-            [puppetlabs.enterprise.testutils.task-coordinator :as coordinator]
+            [puppetlabs.testutils.task-coordinator :as coordinator]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [clojure.tools.logging :as log]
             [schema.core :as schema])

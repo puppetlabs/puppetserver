@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.testutils.task-coordinator
+(ns puppetlabs.testutils.task-coordinator
   "This namespace defines a TaskCoordinator protocol.  It is used for testing
   in cases where you need a lot of control over asynchronous behaviors; it provides
   a mechanism for defining phases for a task, and blocking/unblocking the task
