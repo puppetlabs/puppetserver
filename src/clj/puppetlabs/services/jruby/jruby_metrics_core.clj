@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.services.jruby.pe-jruby-metrics-core
+(ns puppetlabs.services.jruby.jruby-metrics-core
   (:require [schema.core :as schema]
             [puppetlabs.metrics :as metrics]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
@@ -235,7 +235,7 @@
   {:num-jrubies (metrics/register registry (metrics/host-metric-name hostname "jruby.num-jrubies")
                   (metrics/gauge max-active-instances))
    :requested-count (.counter registry (metrics/host-metric-name hostname "jruby.request-count"))
-   ;; See the comments on `pe-jruby-metrics-service/schedule-metrics-sampler!` for
+   ;; See the comments on `jruby-metrics-service/schedule-metrics-sampler!` for
    ;; an explanation of how we're using these histograms.
    :requested-jrubies-histo (.histogram registry (metrics/host-metric-name hostname "jruby.requested-jrubies-histo"))
    :borrow-count (.counter registry (metrics/host-metric-name hostname "jruby.borrow-count"))
@@ -246,7 +246,7 @@
                    (proxy [Gauge] []
                      (getValue []
                        (free-instances-fn))))
-   ;; See the comments on `pe-jruby-metrics-service/schedule-metrics-sampler!` for
+   ;; See the comments on `jruby-metrics-service/schedule-metrics-sampler!` for
    ;; an explanation of how we're using these histograms.
    :free-jrubies-histo (.histogram registry (metrics/host-metric-name hostname "jruby.free-jrubies-histo"))
    :borrow-timer (.timer registry (metrics/host-metric-name hostname "jruby.borrow-timer"))

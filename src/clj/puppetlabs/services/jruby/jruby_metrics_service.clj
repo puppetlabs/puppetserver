@@ -1,20 +1,20 @@
-(ns puppetlabs.enterprise.services.jruby.pe-jruby-metrics-service
+(ns puppetlabs.services.jruby.jruby-metrics-service
   (:require [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.enterprise.services.jruby.pe-jruby-metrics-core :as pe-jruby-metrics-core]
+            [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.enterprise.services.protocols.jruby-metrics :as jruby-metrics-protocol]
+            [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics-protocol]
             [puppetlabs.i18n.core :refer [trs]]))
 
 (defn sample-jruby-metrics!
   [jruby-service metrics]
   (log/trace (trs "Sampling JRuby metrics"))
-  (pe-jruby-metrics-core/track-free-instance-count!
+  (jruby-metrics-core/track-free-instance-count!
     metrics
     (jruby-protocol/free-instance-count jruby-service))
-  (pe-jruby-metrics-core/track-requested-instance-count! metrics))
+  (jruby-metrics-core/track-requested-instance-count! metrics))
 
 ;; This function schedules some metrics sampling to happen on a background thread.
 ;; The reason it is necessary to do this is because the metrics histograms are
@@ -32,7 +32,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(tk/defservice pe-jruby-metrics-service
+(tk/defservice jruby-metrics-service
   jruby-metrics-protocol/JRubyMetricsService
   [[:ConfigService get-in-config]
    [:JRubyPuppetService register-event-handler]
@@ -46,16 +46,16 @@
           max-active-instances (-> (tk-services/get-service this :JRubyPuppetService)
                                  tk-services/service-context
                                  (get-in [:pool-context :config :max-active-instances]))
-          metrics (pe-jruby-metrics-core/init-metrics
+          metrics (jruby-metrics-core/init-metrics
                     metrics-server-id
                     max-active-instances
                     (fn [] (jruby-protocol/free-instance-count jruby-service))
                     (get-metrics-registry :puppetserver))]
       (register-status
-        "pe-jruby-metrics"
+        "jruby-metrics"
         (status-core/get-artifact-version "puppetlabs" "puppetserver")
         1
-        (partial pe-jruby-metrics-core/v1-status metrics))
+        (partial jruby-metrics-core/v1-status metrics))
       (assoc context :metrics metrics)))
 
   (start
@@ -63,7 +63,7 @@
     (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
           {:keys [metrics]} (tk-services/service-context this)
           sampler-job-id (schedule-metrics-sampler! jruby-service metrics interspaced)]
-      (register-event-handler (partial pe-jruby-metrics-core/jruby-event-callback
+      (register-event-handler (partial jruby-metrics-core/jruby-event-callback
                                        metrics))
       (assoc-in context [:metrics :sampler-job-id] sampler-job-id)))
 
@@ -73,7 +73,7 @@
 
   (stop
     [this context]
-    (log/info (trs "PE JRuby Metrics Service: stopping metrics sampler job"))
+    (log/info (trs "JRuby Metrics Service: stopping metrics sampler job"))
     (stop-job (get-in context [:metrics :sampler-job-id]))
-    (log/info (trs "PE JRuby Metrics Service: stopped metrics sampler job"))
+    (log/info (trs "JRuby Metrics Service: stopped metrics sampler job"))
     context))

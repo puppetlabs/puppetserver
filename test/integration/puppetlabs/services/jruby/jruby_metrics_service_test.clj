@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.services.jruby.pe-jruby-metrics-service-test
+(ns puppetlabs.services.jruby.jruby-metrics-service-test
   (:require [clojure.test :refer :all]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -9,14 +9,14 @@
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
-            [puppetlabs.enterprise.services.jruby.pe-jruby-metrics-service :as pe-jruby-metrics-service]
+            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics-service]
             [puppetlabs.services.request-handler.request-handler-service :as request-handler-service]
             [puppetlabs.services.versioned-code-service.versioned-code-service :as versioned-code-service]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-pool-manager-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.enterprise.services.protocols.jruby-metrics :as jruby-metrics-protocol]
+            [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics-protocol]
             [puppetlabs.services.protocols.puppet-server-config :as ps-config-protocol]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
@@ -26,7 +26,7 @@
             [puppetlabs.comidi :as comidi]
             [cemerick.url :as url]
             [puppetlabs.enterprise.testutils.task-coordinator :as coordinator]
-            [puppetlabs.enterprise.services.jruby.pe-jruby-metrics-core :as pe-jruby-metrics-core]
+            [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [clojure.tools.logging :as log]
             [schema.core :as schema])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
@@ -159,7 +159,7 @@
              (log/info "Terminating Master")))))
 
 (def TestEnvironment
-  {:metrics pe-jruby-metrics-core/JRubyMetrics
+  {:metrics jruby-metrics-core/JRubyMetrics
    :sample-metrics! IFn
    :sampling-scheduled? Atom
    :coordinator (schema/protocol coordinator/TaskCoordinator)
@@ -179,7 +179,7 @@
          :as metrics} (jruby-metrics-protocol/get-metrics
                                                    jruby-metrics-service)
         jruby-service (tk-app/get-service app :JRubyPuppetService)
-        sample-metrics! #(pe-jruby-metrics-service/sample-jruby-metrics! jruby-service metrics)
+        sample-metrics! #(jruby-metrics-service/sample-jruby-metrics! jruby-service metrics)
 
         ;; an atom to track the expected values for the basic metrics, so
         ;; that we don't have to keep track of the latest counts by hand
@@ -229,7 +229,7 @@
         ;; when the sampling occurs.  Otherwise these tests would be very racy.
         sampling-scheduled?# (atom false)
         mock-schedule-metrics-sampler# (fn [_# _# _#] (reset! sampling-scheduled?# true))]
-    (with-redefs [puppetlabs.enterprise.services.jruby.pe-jruby-metrics-service/schedule-metrics-sampler! mock-schedule-metrics-sampler#
+    (with-redefs [puppetlabs.services.jruby.jruby-metrics-service/schedule-metrics-sampler! mock-schedule-metrics-sampler#
                   jruby-internal/create-pool-instance! (partial jruby-testutils/create-mock-pool-instance
                                                                 (coordinated-mock-jruby-instance coordinator#))]
       (bootstrap/with-app-with-config
@@ -237,7 +237,7 @@
         [jetty9-service/jetty9-service
          jruby-service/jruby-puppet-pooled-service
          profiler/puppet-profiler-service
-         pe-jruby-metrics-service/pe-jruby-metrics-service
+         jruby-metrics-service/jruby-metrics-service
          scheduler-service/scheduler-service
          metrics-service/metrics-service
          request-handler-service/request-handler-service
