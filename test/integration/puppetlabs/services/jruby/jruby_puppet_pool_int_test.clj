@@ -21,13 +21,15 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]
             [puppetlabs.trapperkeeper.testutils.logging :as logging]
+            [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics-protocol]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
-            [puppetlabs.trapperkeeper.config :as tk-config])
+            [puppetlabs.trapperkeeper.config :as tk-config]
+            [puppetlabs.http.client.metrics :as metrics])
   (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
            (com.codahale.metrics MetricRegistry)))
 
@@ -350,7 +352,7 @@
            (finally
              (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
 
-(deftest ^:integration http-client-metrics-test
+(deftest ^:integration http-client-metrics-enabled-test
   (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))]
     (testing "when http client metrics are disabled, http client does not use a metric registry"
       (tk-testutils/with-app-with-config
@@ -381,6 +383,90 @@
              (testing "server id is passed through to client"
                (is (= "puppetlabs.localhost.http-client.experimental"
                       (.getMetricNamespace client)))))
+           (finally
+             (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))))
+
+(tk/defservice test-metric-web-service
+               [[:WebserverService add-ring-handler]]
+  (init [this context]
+        (add-ring-handler
+         (fn [_] {:status 200 :body "Hello, World!"}) "/hello")
+        context))
+
+(deftest ^:integration http-client-metrics-test
+  (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))
+        add-metric-ns #(format "puppetlabs.localhost.http-client.experimental.%s.full-response" %)]
+    (testing "metrics get registered with metric registry when http client makes requests"
+      (tk-testutils/with-app-with-config
+       app
+       (conj jruby-testutils/jruby-service-and-dependencies
+             test-metric-web-service
+             puppetlabs.trapperkeeper.services.webserver.jetty9-service/jetty9-service)
+       (assoc-in config [:webserver :host] "localhost")
+       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+             jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
+             container (:scripting-container jruby-instance)]
+         (try
+           (.runScriptlet container
+                          (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                                  8080 false))
+           (let [metrics-svc (tk-app/get-service app :MetricsService)
+                 metric-registry (metrics-protocol/get-metrics-registry metrics-svc :puppetserver)]
+             (testing "metric registry has no metrics when no http requests have been made"
+               (is (= {:url [] :url-and-method [] :metric-id []}
+                      (metrics/get-client-metrics-data metric-registry))))
+             (testing (str "metric registry has url and url-and-method metrics after http requests"
+                           " have been made without metric-id specified")
+               (testing "GET request"
+                 (.runScriptlet container "$c.get('/hello', {})")
+                 (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
+                   (is (= #{(add-metric-ns "with-url.http://localhost:8080/hello")}
+                          (set (map :metric-name (:url metrics-data)))))
+                   (is (= #{(add-metric-ns "with-url-and-method.http://localhost:8080/hello.GET")}
+                          (set (map :metric-name (:url-and-method metrics-data)))))))
+               (testing "POST request"
+                 (.runScriptlet container "$c.post('/hello', 'body', {})")
+                 (let [metrics-data (metrics/get-client-metrics-data metric-registry)
+                       url-metrics-data (:url metrics-data)]
+                   (is (= #{(add-metric-ns "with-url.http://localhost:8080/hello")}
+                          (set (map :metric-name url-metrics-data))))
+                   (is (= 2 (:count (first url-metrics-data))))
+                   (is (= #{(add-metric-ns "with-url-and-method.http://localhost:8080/hello.GET")
+                            (add-metric-ns "with-url-and-method.http://localhost:8080/hello.POST")}
+                          (set (map :metric-name (:url-and-method metrics-data)))))))
+               (testing "no metric-id metrics are registered"
+                 (is (= [] (:metric-id (metrics/get-client-metrics-data metric-registry))))))
+             (testing (str "metric registry has metric-id metrics after http requests have been made"
+                           " with metric-id specified")
+               (testing "GET request"
+                 (.runScriptlet container
+                                "$c.get('/hello', {}, {:metric_id => ['foo', 'get']})")
+                 (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
+                   (is (= 2 (count metric-id-data)))
+                   (is (= #{(add-metric-ns "with-metric-id.foo")
+                            (add-metric-ns "with-metric-id.foo.get")}
+                          (set (map :metric-name metric-id-data)))))
+                 (is (= 1 (:count (first (metrics/get-client-metrics-data-by-metric-id
+                                          metric-registry ["foo"])))))
+                 (is (= 1 (:count (first (metrics/get-client-metrics-data-by-metric-id
+                                          metric-registry ["foo" "get"]))))))
+               (testing "POST request"
+                 (.runScriptlet container
+                                "$c.post('/hello', 'body', {}, {:metric_id => ['foo', 'post']})")
+                 (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
+                   ;; there should now be two requests with the 'foo' metric id, one with 'foo.get',
+                   ;; and one with 'foo.post'
+                   (is (= 3 (count metric-id-data)))
+                   (is (= #{(add-metric-ns "with-metric-id.foo")
+                            (add-metric-ns "with-metric-id.foo.get")
+                            (add-metric-ns "with-metric-id.foo.post")}
+                          (set (map :metric-name metric-id-data)))))
+                 (is (= 2 (:count (first (metrics/get-client-metrics-data-by-metric-id
+                                          metric-registry ["foo"])))))
+                 (is (= 1 (:count (first (metrics/get-client-metrics-data-by-metric-id
+                                          metric-registry ["foo" "get"])))))
+                 (is (= 1 (:count (first (metrics/get-client-metrics-data-by-metric-id
+                                          metric-registry ["foo" "post"]))))))))
            (finally
              (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))))
 

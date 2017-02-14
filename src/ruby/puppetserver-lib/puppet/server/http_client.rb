@@ -66,26 +66,28 @@ class Puppet::Server::HttpClient
       headers["Authorization"] = "Basic #{encoded}"
     end
 
-    # Ensure multiple requests are not made on the same connection
-    headers["Connection"] = "close"
-
-    request_options = RequestOptions.new(build_url(url))
-    request_options.set_headers(headers)
-    request_options.set_as(ResponseBodyType::TEXT)
+    request_options = create_common_request_options(url, headers, options)
     request_options.set_body(body)
     response = self.class.client_post(request_options)
     ruby_response(response)
   end
 
-  def get(url, headers)
-    # Ensure multiple requests are not made on the same connection
-    headers["Connection"] = "close"
+  def get(url, headers, options={})
 
-    request_options = RequestOptions.new(build_url(url))
-    request_options.set_headers(headers)
-    request_options.set_as(ResponseBodyType::TEXT)
+    request_options = create_common_request_options(url, headers, options)
     response = self.class.client_get(request_options)
     ruby_response(response)
+  end
+
+  def create_common_request_options(url, headers, options)
+    # Ensure multiple requests are not made on the same connection
+    headers["Connection"] = "close"
+    request_options = RequestOptions.new(build_url(url))
+    if options[:metric_id]
+      request_options.set_metric_id(options[:metric_id])
+    end
+    request_options.set_headers(headers)
+    request_options.set_as(ResponseBodyType::TEXT)
   end
 
   def self.terminate
