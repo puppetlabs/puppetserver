@@ -28,7 +28,8 @@
             [puppetlabs.testutils.task-coordinator :as coordinator]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [clojure.tools.logging :as log]
-            [schema.core :as schema])
+            [schema.core :as schema]
+            [cheshire.core :as json])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (clojure.lang IFn Atom)
            (java.util.concurrent TimeUnit)))
@@ -88,6 +89,31 @@
   [coordinator request-id uri]
   (async-request coordinator request-id uri :request-complete)
   (coordinator/final-result coordinator request-id))
+
+(defn current-jruby-status-metrics
+  []
+  (-> (str "http://localhost:8140/status/v1/"
+           "services/jruby-metrics?level=debug")
+      http-get
+      :body
+      (json/parse-string true)
+      (get-in [:status :experimental :metrics])))
+
+(defn jruby-status-metric-counters
+  [jruby-status-metrics]
+  (-> jruby-status-metrics
+      (select-keys
+       [:borrow-count
+        :borrow-retry-count
+        :borrow-timeout-count
+        :num-free-jrubies
+        :num-jrubies
+        :requested-count
+        :return-count])
+      (assoc :current-borrowed-instances (count (:borrowed-instances
+                                                 jruby-status-metrics))
+             :current-requested-instances (count (:requested-instances
+                                                  jruby-status-metrics)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test services/mocks
@@ -287,7 +313,10 @@
                                  :borrow-count 2
                                  :return-count 2})
 
-        (is (= (expected-metrics-values) (current-metrics-values)))))))
+        (let [expected-metrics (expected-metrics-values)]
+          (is (= expected-metrics (current-metrics-values)))
+          (is (= expected-metrics (-> (current-jruby-status-metrics)
+                                      (jruby-status-metric-counters)))))))))
 
 (deftest ^:metrics borrowed-instances-test
   (with-metrics-test-env test-env default-test-config
@@ -305,18 +334,41 @@
                                  :requested-count 2
                                  :borrow-count 2
                                  :current-borrowed-instances 2})
-        (is (= (expected-metrics-values) (current-metrics-values)))
 
-        ;; let's take a peek at the info about the borrowed instances.
-        ;; the keys for `borrowed-instances` are the jruby instance ids.
-        (is (= #{1 2} (set (keys @borrowed-instances))))
-        (is (= #{"/foo/bar/async1" "/foo/baz/async2"}
-              (set (map #(get-in % [:reason :request :uri]) (vals @borrowed-instances)))))
-        (let [routes (set (map #(get-in % [:reason :request :route-info :route-id]) (vals @borrowed-instances)))]
-          (is (= #{"foo-baz-:baz" "foo-bar-:bar"} routes)))
-        (doseq [borrowed (vals @borrowed-instances)]
-          (is (= :get (get-in borrowed [:reason :request :request-method])))
-          (is (timestamp-after? start-time (:time borrowed))))
+        (let [expected-metrics (expected-metrics-values)
+              jruby-status-metrics (current-jruby-status-metrics)]
+          (is (= expected-metrics (current-metrics-values)))
+          (is (= expected-metrics (-> (current-jruby-status-metrics)
+                                      (jruby-status-metric-counters))))
+
+          ;; let's take a peek at the info about the borrowed instances.
+          ;; the keys for `borrowed-instances` are the jruby instance ids.
+          (is (= #{1 2} (set (keys @borrowed-instances))))
+          (let [expected-uris #{"/foo/bar/async1" "/foo/baz/async2"}
+                actual-uris #(set (map (fn [instance]
+                                         (get-in instance
+                                                 [:reason :request :uri])) %))]
+            (is (= expected-uris (actual-uris (vals @borrowed-instances))))
+            (is (= expected-uris (actual-uris (:borrowed-instances
+                                               jruby-status-metrics)))))
+
+          (let [expected-routes #{"foo-baz-:baz" "foo-bar-:bar"}
+                actual-routes #(set (map (fn [instance]
+                                           (get-in instance %1)) %2))]
+            (is (= expected-routes (actual-routes
+                                    [:reason :request :route-info :route-id]
+                                    (vals @borrowed-instances))))
+            (is (= expected-routes (actual-routes
+                                    [:reason :request :route-id]
+                                    (:borrowed-instances jruby-status-metrics)))))
+
+          (doseq [borrowed (vals @borrowed-instances)]
+            (is (= :get (get-in borrowed [:reason :request :request-method])))
+            (is (timestamp-after? start-time (:time borrowed))))
+
+          (doseq [borrowed (:borrowed-instances jruby-status-metrics)]
+            (is (= "get" (get-in borrowed [:reason :request :request-method])))
+            (is (timestamp-after? start-time (:time borrowed)))))
 
         ;; unblock both of our requests
         (coordinator/final-result coordinator 1)
@@ -368,7 +420,12 @@
                                  :requested-count 2
                                  :borrow-count 2
                                  :current-borrowed-instances 2})
-        (is (= (expected-metrics-values) (current-metrics-values)))
+
+        (let [expected-metrics (expected-metrics-values)
+              jruby-status-metrics (current-jruby-status-metrics)]
+          (is (= expected-metrics (current-metrics-values)))
+          (is (= expected-metrics (-> (current-jruby-status-metrics)
+                                      (jruby-status-metric-counters)))))
 
         ;; now we'll create a few more requests and tell them they may
         ;; try to proceed to the :borrowed-jruby phase; they won't
@@ -386,18 +443,38 @@
 
         (update-expected-values {:requested-count 2
                                  :current-requested-instances 2})
-        (is (= (expected-metrics-values) (current-metrics-values)))
 
-        ;; now, make sure we can see info about requests 3 and 4 in the
-        ;; metrics
-        (let [req-instances (vals @requested-instances)]
-          (is (= #{"/foo/bar/async3" "/foo/baz/async4"}
-                (set (map #(get-in % [:reason :request :uri]) req-instances))))
-          (let [routes (set (map #(get-in % [:reason :request :route-info :route-id]) req-instances))]
-            (is (= #{"foo-baz-:baz" "foo-bar-:bar"} routes)))
-          (doseq [requested req-instances]
-            (is (= :get (get-in requested [:reason :request :request-method])))
-            (is (timestamp-after? start-time (:time requested)))))
+        (let [expected-metrics (expected-metrics-values)
+              jruby-status-metrics (current-jruby-status-metrics)]
+          (is (= expected-metrics (current-metrics-values)))
+          (is (= expected-metrics (-> (current-jruby-status-metrics)
+                                      (jruby-status-metric-counters))))
+
+          ;; now, make sure we can see info about requests 3 and 4 in the
+          ;; metrics
+          (let [expected-uris #{"/foo/bar/async3" "/foo/baz/async4"}
+                actual-uris #(set (map (fn [instance]
+                                         (get-in instance
+                                                 [:reason :request :uri])) %))]
+            (is (= expected-uris (actual-uris (vals @requested-instances)))))
+
+          (let [expected-routes #{"foo-baz-:baz" "foo-bar-:bar"}
+                actual-routes #(set (map (fn [instance]
+                                           (get-in instance %1)) %2))]
+            (is (= expected-routes (actual-routes
+                                    [:reason :request :route-info :route-id]
+                                    (vals @requested-instances))))
+            (is (= expected-routes (actual-routes
+                                    [:reason :request :route-id]
+                                    (:requested-instances jruby-status-metrics)))))
+
+          (doseq [borrowed (vals @requested-instances)]
+            (is (= :get (get-in borrowed [:reason :request :request-method])))
+            (is (timestamp-after? start-time (:time borrowed))))
+
+          (doseq [borrowed (:requested-instances jruby-status-metrics)]
+            (is (= "get" (get-in borrowed [:reason :request :request-method])))
+            (is (timestamp-after? start-time (:time borrowed)))))
 
         ;; finish the first two requests
         (coordinator/final-result coordinator 1)
