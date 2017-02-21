@@ -205,7 +205,7 @@
          :as metrics} (jruby-metrics-protocol/get-metrics
                                                    jruby-metrics-service)
         jruby-service (tk-app/get-service app :JRubyPuppetService)
-        sample-metrics! #(jruby-metrics-service/sample-jruby-metrics! jruby-service metrics)
+        sample-metrics! #(jruby-metrics-core/sample-jruby-metrics! jruby-service metrics)
 
         ;; an atom to track the expected values for the basic metrics, so
         ;; that we don't have to keep track of the latest counts by hand
@@ -255,7 +255,7 @@
         ;; when the sampling occurs.  Otherwise these tests would be very racy.
         sampling-scheduled?# (atom false)
         mock-schedule-metrics-sampler# (fn [_# _# _#] (reset! sampling-scheduled?# true))]
-    (with-redefs [puppetlabs.services.jruby.jruby-metrics-service/schedule-metrics-sampler! mock-schedule-metrics-sampler#
+    (with-redefs [puppetlabs.services.jruby.jruby-metrics-core/schedule-metrics-sampler! mock-schedule-metrics-sampler#
                   jruby-internal/create-pool-instance! (partial jruby-testutils/create-mock-pool-instance
                                                                 (coordinated-mock-jruby-instance coordinator#))]
       (bootstrap/with-app-with-config

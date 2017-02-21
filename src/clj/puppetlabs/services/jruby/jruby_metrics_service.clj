@@ -8,27 +8,6 @@
             [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics-protocol]
             [puppetlabs.i18n.core :refer [trs]]))
 
-(defn sample-jruby-metrics!
-  [jruby-service metrics]
-  (log/trace (trs "Sampling JRuby metrics"))
-  (jruby-metrics-core/track-free-instance-count!
-    metrics
-    (jruby-protocol/free-instance-count jruby-service))
-  (jruby-metrics-core/track-requested-instance-count! metrics))
-
-;; This function schedules some metrics sampling to happen on a background thread.
-;; The reason it is necessary to do this is because the metrics histograms are
-;; sample-based, as opposed to time-based, and we are interested in keeping a
-;; time-based average for certain metrics.  e.g. if we only updated the
-;; "free-instance-count" average when an instance was borrowed or returned, then,
-;; if there was a period where there was no load on the server, the histogram
-;; would not be getting any updates at all and the average would appear to
-;; remain flat, when actually it should be changing (increasing, presumably,
-;; because there should be plenty of free jruby instances available in the pool).
-(defn schedule-metrics-sampler!
-  [jruby-service metrics interspaced]
-  (interspaced 5000 (partial sample-jruby-metrics! jruby-service metrics)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -62,7 +41,8 @@
     [this context]
     (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
           {:keys [metrics]} (tk-services/service-context this)
-          sampler-job-id (schedule-metrics-sampler! jruby-service metrics interspaced)]
+          sampler-job-id (jruby-metrics-core/schedule-metrics-sampler!
+                          jruby-service metrics interspaced)]
       (register-event-handler (partial jruby-metrics-core/jruby-event-callback
                                        metrics))
       (assoc-in context [:metrics :sampler-job-id] sampler-job-id)))

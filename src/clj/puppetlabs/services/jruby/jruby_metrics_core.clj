@@ -7,7 +7,8 @@
             [puppetlabs.comidi :as comidi]
             [puppetlabs.i18n.core :refer [trs]]
             [clj-time.core :as time]
-            [clj-time.format :as time-format])
+            [clj-time.format :as time-format]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
   (:import (com.codahale.metrics MetricRegistry Gauge Counter Histogram Timer)
            (clojure.lang Atom IFn)
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
@@ -242,6 +243,24 @@
                    lock-request-id)))
   (update-pool-lock-status! lock-status :lock-released))
 
+(schema/defn track-free-instance-count!
+  [metrics :- JRubyMetrics
+   free-instance-count :- schema/Int]
+  (.update (:free-jrubies-histo metrics) free-instance-count))
+
+(schema/defn track-requested-instance-count!
+  [{:keys [requested-jrubies-histo requested-instances]} :- JRubyMetrics]
+  (.update requested-jrubies-histo (count @requested-instances)))
+
+(schema/defn sample-jruby-metrics!
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   metrics :- JRubyMetrics]
+  (log/trace (trs "Sampling JRuby metrics"))
+  (track-free-instance-count!
+   metrics
+   (jruby-protocol/free-instance-count jruby-service))
+  (track-requested-instance-count! metrics))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -277,15 +296,6 @@
    :lock-status (atom {:current-state jruby-pool-lock-not-in-use
                        :last-change-time (timestamp)})
    :sampler-job-id nil})
-
-(schema/defn track-free-instance-count!
-  [metrics :- JRubyMetrics
-   free-instance-count :- schema/Int]
-  (.update (:free-jrubies-histo metrics) free-instance-count))
-
-(schema/defn track-requested-instance-count!
-  [{:keys [requested-jrubies-histo requested-instances]} :- JRubyMetrics]
-  (.update requested-jrubies-histo (count @requested-instances)))
 
 (schema/defn jruby-event-callback
   [metrics :- JRubyMetrics
@@ -336,3 +346,18 @@
                                    :average-lock-wait-time (metrics/mean-millis lock-wait-timer)
                                    :average-lock-held-time (metrics/mean-millis lock-held-timer)
                                    }}))}))
+
+;; This function schedules some metrics sampling to happen on a background thread.
+;; The reason it is necessary to do this is because the metrics histograms are
+;; sample-based, as opposed to time-based, and we are interested in keeping a
+;; time-based average for certain metrics.  e.g. if we only updated the
+;; "free-instance-count" average when an instance was borrowed or returned, then,
+;; if there was a period where there was no load on the server, the histogram
+;; would not be getting any updates at all and the average would appear to
+;; remain flat, when actually it should be changing (increasing, presumably,
+;; because there should be plenty of free jruby instances available in the pool).
+(schema/defn ^:always-validate schedule-metrics-sampler!
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   metrics :- JRubyMetrics
+   interspaced :- IFn]
+  (interspaced 5000 (partial sample-jruby-metrics! jruby-service metrics)))
