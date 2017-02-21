@@ -20,6 +20,7 @@
             [puppetlabs.services.protocols.puppet-server-config :as ps-config-protocol]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
+            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
             [schema.test :as schema-test]
             [puppetlabs.metrics :as metrics]
             [puppetlabs.http.client.sync :as http-client]
@@ -40,14 +41,11 @@
 ;;; Config / constants
 
 (def default-test-config
-  (assoc (jruby-testutils/jruby-puppet-tk-config
-           (jruby-testutils/jruby-puppet-config {:max-active-instances 2}))
+  (bootstrap-testutils/load-dev-config-with-overrides
+   {:jruby-puppet {:max-active-instances 2}
     :webserver {:port 8140
                 :host "localhost"}
-    :web-router-service {:puppetlabs.trapperkeeper.services.status.status-service/status-service "/status"}
-    :metrics {:server-id "localhost"}
-    :puppetserver {:ssl-client-header "X_ssl-client-header-FOO"
-                   :ssl-client-verify-header "X_ssl-client-verify-header-FOO"}))
+    :metrics {:server-id "localhost"}}))
 
 (def request-phases [:http-handler-invoked :borrowed-jruby :returning-jruby :request-complete])
 
@@ -164,25 +162,30 @@
 ;; Coordinator, so that we have fine-grained control over how we handle the
 ;; incoming requests
 (schema/defn ^:always-validate coordinated-mock-jruby-instance
-  [coordinator :- (schema/protocol coordinator/TaskCoordinator)]
-  (fn [] (reify JRubyPuppet
-           (handleRequest [this request]
-             ;; read the request-id from the query params so that we can
-             ;; interact with the test coordinator
-             (let [request-id (get-in request ["params" "request-id"])]
-               ;; notify the coordinator that we've borrowed a jruby instance
-               (coordinator/notify-task-progress coordinator request-id :borrowed-jruby)
-               ;; if the request has a 'sleep' query param, sleep
-               (when-let [sleep (get-in request ["params" "sleep"])]
-                 (log/debugf "JRuby handler: request '%s' sleeping '%s'" request-id sleep)
-                 (Thread/sleep (Long/parseLong sleep)))
-               ;; notify coordinator that we're about to return the jruby to the pool
-               (coordinator/notify-task-progress coordinator request-id :returning-jruby)
-               (JRubyPuppetResponse. (int 200) "hi!" "text/plain" "9.0.0.0")))
-           (getSetting [_ _]
-             (Object.))
-           (terminate [_]
-             (log/info "Terminating Master")))))
+  [coordinator :- (schema/protocol coordinator/TaskCoordinator)
+   config :- {schema/Keyword schema/Any}]
+  (let [puppet-config (jruby-testutils/mock-puppet-config-settings
+                       (:jruby-puppet config))]
+    (reify JRubyPuppet
+      (getSetting [_ setting]
+        (get puppet-config setting))
+      (handleRequest [this request]
+       ;; read the request-id from the query params so that we can
+       ;; interact with the test coordinator
+        (let [request-id (get-in request ["params" "request-id"])]
+          ;; notify the coordinator that we've borrowed a jruby instance
+          (coordinator/notify-task-progress coordinator request-id :borrowed-jruby)
+          ;; if the request has a 'sleep' query param, sleep
+          (when-let [sleep (get-in request ["params" "sleep"])]
+            (log/debugf "JRuby handler: request '%s' sleeping '%s'" request-id sleep)
+            (Thread/sleep (Long/parseLong sleep)))
+          ;; notify coordinator that we're about to return the jruby to the pool
+          (coordinator/notify-task-progress coordinator request-id :returning-jruby)
+          (JRubyPuppetResponse. (int 200) "hi!" "text/plain" "9.0.0.0")))
+      (puppetVersion [_]
+        "1.2.3")
+      (terminate [_]
+        (log/info "Terminating Master")))))
 
 (def TestEnvironment
   {:metrics jruby-metrics-core/JRubyMetrics
@@ -255,26 +258,15 @@
         ;; when the sampling occurs.  Otherwise these tests would be very racy.
         sampling-scheduled?# (atom false)
         mock-schedule-metrics-sampler# (fn [_# _# _#] (reset! sampling-scheduled?# true))]
-    (with-redefs [puppetlabs.services.jruby.jruby-metrics-core/schedule-metrics-sampler! mock-schedule-metrics-sampler#
-                  jruby-internal/create-pool-instance! (partial jruby-testutils/create-mock-pool-instance
-                                                                (coordinated-mock-jruby-instance coordinator#))]
+    (with-redefs [puppetlabs.services.jruby.jruby-metrics-core/schedule-metrics-sampler! mock-schedule-metrics-sampler#]
       (bootstrap/with-app-with-config
         app#
-        [jetty9-service/jetty9-service
-         jruby-service/jruby-puppet-pooled-service
-         profiler/puppet-profiler-service
-         jruby-metrics-service/jruby-metrics-service
-         scheduler-service/scheduler-service
-         metrics-service/metrics-service
-         request-handler-service/request-handler-service
-         status-service/status-service
-         versioned-code-service/versioned-code-service
-         webrouting-service/webrouting-service
-         (comidi-handler-service coordinator#)
-         mock-puppetserver-config-service
-         jruby-pool-manager-service/jruby-pool-manager-service]
+        (jruby-testutils/add-mock-jruby-pool-manager-service
+         (conj bootstrap-testutils/services-from-dev-bootstrap
+               (comidi-handler-service coordinator#))
+         ~config
+         (partial coordinated-mock-jruby-instance coordinator#))
         ~config
-
         (let [~test-env-var-name (build-test-env sampling-scheduled?# coordinator# app#)]
           ~@body)))))
 
