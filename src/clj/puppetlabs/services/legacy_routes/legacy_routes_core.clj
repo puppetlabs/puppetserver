@@ -177,6 +177,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+(schema/defn add-root-path-to-route-id :- (schema/pred fn?)
+  [handler :- (schema/pred fn?)
+   path :- schema/Str]
+  (fn [request]
+    (handler (update-in request [:route-info :route-id]
+                        #(str (subs path 1) "-" %)))))
+
 (schema/defn ^:always-validate
   build-ring-handler :- IFn
   [master-handler-info :- LegacyHandlerInfo
