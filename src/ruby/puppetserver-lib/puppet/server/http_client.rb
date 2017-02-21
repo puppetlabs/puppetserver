@@ -67,12 +67,7 @@ class Puppet::Server::HttpClient
       headers["Authorization"] = "Basic #{encoded}"
     end
 
-    # Ensure multiple requests are not made on the same connection
-    headers["Connection"] = "close"
-
-    request_options = RequestOptions.new(build_url(url))
-    request_options.set_headers(headers)
-    request_options.set_as(ResponseBodyType::TEXT)
+    request_options = create_common_request_options(url, headers, options)
     request_options.set_body(body)
 
     compress = options[:compress]
@@ -89,15 +84,22 @@ class Puppet::Server::HttpClient
     ruby_response(response)
   end
 
-  def get(url, headers)
-    # Ensure multiple requests are not made on the same connection
-    headers["Connection"] = "close"
+  def get(url, headers, options={})
 
-    request_options = RequestOptions.new(build_url(url))
-    request_options.set_headers(headers)
-    request_options.set_as(ResponseBodyType::TEXT)
+    request_options = create_common_request_options(url, headers, options)
     response = self.class.client_get(request_options)
     ruby_response(response)
+  end
+
+  def create_common_request_options(url, headers, options)
+    # Ensure multiple requests are not made on the same connection
+    headers["Connection"] = "close"
+    request_options = RequestOptions.new(build_url(url))
+    if options[:metric_id]
+      request_options.set_metric_id(options[:metric_id])
+    end
+    request_options.set_headers(headers)
+    request_options.set_as(ResponseBodyType::TEXT)
   end
 
   def self.terminate
@@ -109,28 +111,28 @@ class Puppet::Server::HttpClient
 
   private
 
-  def self.configure_timeouts(request_options)
+  def self.configure_timeouts(client_options)
     settings = self.settings
 
     if settings.has_key?("http_connect_timeout_milliseconds")
-      request_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
+      client_options.set_connect_timeout_milliseconds(settings["http_connect_timeout_milliseconds"])
     end
 
     if settings.has_key?("http_idle_timeout_milliseconds")
-      request_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
+      client_options.set_socket_timeout_milliseconds(settings["http_idle_timeout_milliseconds"])
     end
   end
 
-  def self.configure_ssl(request_options)
-    request_options.set_ssl_context(Puppet::Server::Config.ssl_context)
+  def self.configure_ssl(client_options)
+    client_options.set_ssl_context(Puppet::Server::Config.ssl_context)
 
     settings = self.settings
 
     if settings.has_key?("ssl_protocols")
-      request_options.set_ssl_protocols(settings["ssl_protocols"])
+      client_options.set_ssl_protocols(settings["ssl_protocols"])
     end
     if settings.has_key?("cipher_suites")
-      request_options.set_ssl_cipher_suites(settings["cipher_suites"])
+      client_options.set_ssl_cipher_suites(settings["cipher_suites"])
     end
   end
 
