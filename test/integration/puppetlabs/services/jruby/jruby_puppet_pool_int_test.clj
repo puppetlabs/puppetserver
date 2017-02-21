@@ -374,7 +374,7 @@
        jruby-testutils/jruby-service-and-dependencies
        config
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-             jruby-instance (jruby-testutils/borrow-instance jruby-service :no-metrics-test)
+             jruby-instance (jruby-testutils/borrow-instance jruby-service :metrics-test)
              container (:scripting-container jruby-instance)]
          (try
            (let [client (.runScriptlet container "Puppet::Server::HttpClient.client")]
@@ -384,7 +384,7 @@
                (is (= "puppetlabs.localhost.http-client.experimental"
                       (.getMetricNamespace client)))))
            (finally
-             (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))))
+             (jruby-testutils/return-instance jruby-service jruby-instance :metrics-test))))))))
 
 (tk/defservice test-metric-web-service
                [[:WebserverService add-ring-handler]]
@@ -468,7 +468,7 @@
                  (is (= 1 (:count (first (metrics/get-client-metrics-data-by-metric-id
                                           metric-registry ["foo" "post"]))))))))
            (finally
-             (jruby-testutils/return-instance jruby-service jruby-instance :no-metrics-test))))))))
+             (jruby-testutils/return-instance jruby-service jruby-instance :http-client-metrics-test))))))))
 
 (deftest create-jruby-instance-test
   (testing "Directories can be configured programatically
