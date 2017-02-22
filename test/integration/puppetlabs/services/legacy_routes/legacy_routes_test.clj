@@ -10,7 +10,11 @@
             [puppetlabs.puppetserver.testutils :as testutils :refer [http-get]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [cheshire.core :as cheshire]
-            [puppetlabs.trapperkeeper.services :as tk-services])
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+            [cheshire.core :as json])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
@@ -49,6 +53,75 @@
        ;; certificate_status endpoint
        (is (= "localhost" (get cert-status-body "name")))
        (is (= "signed" (get cert-status-body "state")))))))
+
+(deftest ^:integration legacy-routes-metrics
+  (bootstrap/with-puppetserver-running
+   app
+   {}
+   (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
+         svc-context (tk-services/service-context jruby-metrics-service)
+         jruby-metrics (:metrics svc-context)
+         jruby-service (tk-app/get-service app :JRubyPuppetService)
+         time-before-first-borrow (System/currentTimeMillis)]
+     ;; Use with-jruby-puppet to borrow the lone jruby out of the pool,
+     ;; which should cause a subsequent catalog request to block on a borrow
+     ;; request
+     (jruby-service/with-jruby-puppet
+      _
+      jruby-service
+      :legacy-routes-test
+      (let [time-before-second-borrow (System/currentTimeMillis)]
+        (future
+         (logutils/with-test-logging
+          (http-get "/puppet/v3/catalog/localhost?environment=production")))
+        ;; Wait up to 10 seconds for the catalog request to get to the
+        ;; point where it is in the jruby borrow queue.
+        (while (and
+                (< (- (System/currentTimeMillis) time-before-second-borrow)
+                   10000)
+                (nil? (-> jruby-metrics
+                          :requested-instances
+                          deref
+                          first
+                          (get-in [:reason :request :uri]))))
+          (Thread/yield))
+        (let [resp (http-get "/status/v1/services/jruby-metrics?level=debug")]
+          (is (= 200 (:status resp)))
+          (let [status (json/parse-string (:body resp) true)]
+            (is (= 1 (:service_status_version status)))
+            (is (= "running" (:state status)))
+
+            (testing "Info for borrowed instance is correct"
+              (let [borrowed-instances (get-in status [:status
+                                                       :experimental
+                                                       :metrics
+                                                       :borrowed-instances])
+                    borrowed-instance (first borrowed-instances)]
+                (is (= 1 (count borrowed-instances)))
+                (is (= "legacy-routes-test" (:reason borrowed-instance)))
+                (is (>= (:time borrowed-instance) time-before-first-borrow))
+                (is (> (:duration-millis borrowed-instance) 0))
+                (is (>= (System/currentTimeMillis)
+                        (+ (:duration-millis borrowed-instance)
+                           (:time borrowed-instance))))))
+
+            (testing "Info for requested instance is correct"
+              (let [requested-instances (get-in status [:status
+                                                        :experimental
+                                                        :metrics
+                                                        :requested-instances])
+                    requested-instance (first requested-instances)]
+                (is (= 1 (count requested-instances)))
+                (is (= {:request
+                        {:request-method "get"
+                         :route-id "puppet-v3-catalog-/*/"
+                         :uri "/puppet/v3/catalog/localhost"}}
+                       (:reason requested-instance)))
+                (is (>= (:time requested-instance) time-before-second-borrow))
+                (is (> (:duration-millis requested-instance) 0))
+                (is (>= (System/currentTimeMillis)
+                        (+ (:duration-millis requested-instance)
+                           (:time requested-instance)))))))))))))
 
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
