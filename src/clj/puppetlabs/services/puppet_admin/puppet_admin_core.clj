@@ -10,7 +10,8 @@
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
             [puppetlabs.i18n.core :as i18n]
             [slingshot.slingshot :as sling]
-            [ring.util.response :as rr]))
+            [ring.util.response :as rr]
+            [clojure.tools.logging :as log]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -58,6 +59,7 @@
     {:status 204}
     ; If a lock timeout occurs return a 503 Service Unavailable
     (catch [:kind :puppetlabs.services.jruby-pool-manager.impl.jruby-agents/jruby-lock-timeout] e
+      (log/error (:msg e))
       (-> (rr/response (:msg e))
           (rr/status 503)
           (rr/content-type "text/plain")))))
