@@ -73,7 +73,7 @@
       (let [time-before-second-borrow (System/currentTimeMillis)]
         (future
          (logutils/with-test-logging
-          (http-get "/puppet/v3/catalog/localhost?environment=production")))
+          (http-get "/production/catalog/localhost")))
         ;; Wait up to 10 seconds for the catalog request to get to the
         ;; point where it is in the jruby borrow queue.
         (while (and

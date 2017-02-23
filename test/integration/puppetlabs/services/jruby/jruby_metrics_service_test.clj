@@ -41,11 +41,10 @@
 ;;; Config / constants
 
 (def default-test-config
-  (bootstrap-testutils/load-dev-config-with-overrides
-   {:jruby-puppet {:max-active-instances 2}
-    :webserver {:port 8140
-                :host "localhost"}
-    :metrics {:server-id "localhost"}}))
+  (-> {:jruby-puppet {:max-active-instances 2}
+       :metrics {:server-id "localhost"}}
+      bootstrap-testutils/load-dev-config-with-overrides
+      (assoc :webserver {:port 8140 :host "localhost"})))
 
 (def request-phases [:http-handler-invoked :borrowed-jruby :returning-jruby :request-complete])
 

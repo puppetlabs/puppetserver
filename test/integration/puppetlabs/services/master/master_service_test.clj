@@ -62,7 +62,7 @@
        (jruby-service/with-jruby-puppet
         _
         jruby-service
-        :legacy-routes-test
+        :master-service-metrics-test
         (let [time-before-second-borrow (System/currentTimeMillis)]
           (future
            (logutils/with-test-logging
@@ -92,7 +92,8 @@
                                                          :borrowed-instances])
                       borrowed-instance (first borrowed-instances)]
                   (is (= 1 (count borrowed-instances)))
-                  (is (= "legacy-routes-test" (:reason borrowed-instance)))
+                  (is (= "master-service-metrics-test"
+                         (:reason borrowed-instance)))
                   (is (>= (:time borrowed-instance) time-before-first-borrow))
                   (is (> (:duration-millis borrowed-instance) 0))
                   (is (>= (System/currentTimeMillis)
