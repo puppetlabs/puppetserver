@@ -118,11 +118,21 @@
                                    [ring-basic-authentication]
                                    [ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
-                                   [beckon]]
+                                   [beckon]
+                                   [com.cemerick/url "0.1.1"]]
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
+             :test {
+                    ;; NOTE: In core.async version 0.2.382, the default size for
+                    ;; the core.async dispatch thread pool was reduced from
+                    ;; (42 + (2 * num-cpus)) to... eight.  The jruby metrics tests
+                    ;; use core.async and need more than eight threads to run
+                    ;; properly; this setting overrides the default value.  Without
+                    ;; it the metrics tests will hang.
+                    :jvm-opts ["-Dclojure.core.async.pool-size=50"]
+                    }
 
              :ezbake {:dependencies ^:replace [;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
                                                ;; NOTE: we need to explicitly pass in `nil` values

@@ -31,21 +31,26 @@
                                 master-ns
                                 config)
           jruby-service (tk-services/get-service this :JRubyPuppetService)
-          master-route-handler (-> (master-core/root-routes handle-request
-                                                            (partial identity)
-                                                            jruby-service
-                                                            (constantly nil)
-                                                            false)
-                                   ((partial comidi/context path))
-                                   comidi/routes->handler)
-          master-handler-info {:mount       (master-core/get-master-mount
-                                              master-ns
-                                              master-route-config)
-                               :handler     (master-core/get-wrapped-handler
-                                              master-route-handler
-                                              (get-auth-handler)
-                                              puppet-version
-                                              use-legacy-auth-conf)
+          master-routes (comidi/context path
+                                        (master-core/root-routes handle-request
+                                                                 (partial identity)
+                                                                 jruby-service
+                                                                 (constantly nil)
+                                                                 false))
+          master-route-handler (comidi/routes->handler master-routes)
+          master-mount (master-core/get-master-mount
+                        master-ns
+                        master-route-config)
+          master-handler-info {:mount master-mount
+                               :handler (-> (master-core/get-wrapped-handler
+                                             master-route-handler
+                                             (get-auth-handler)
+                                             puppet-version
+                                             use-legacy-auth-conf)
+                                            (legacy-routes-core/add-root-path-to-route-id
+                                             master-mount)
+                                            (comidi/wrap-with-route-metadata
+                                             master-routes))
                                :api-version master-core/puppet-API-version}
           real-ca-service? (= (namespace (tk-services/service-symbol ca-service))
                               "puppetlabs.services.ca.certificate-authority-service")

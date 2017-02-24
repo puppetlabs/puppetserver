@@ -55,16 +55,16 @@
      (log/info (i18n/trs "Master Service adding ring handlers"))
      (let [route-config (core/get-master-route-config ::master-service config)
            path (core/get-master-mount ::master-service route-config)
-           ring-handler (when path
-                          (-> (core/construct-root-routes puppet-version
-                                                          use-legacy-auth-conf
-                                                          jruby-service
-                                                          get-code-content
-                                                          handle-request
-                                                          (get-auth-handler)
-                                                          environment-class-cache-enabled)
-                              ((partial comidi/context path))
-                              comidi/routes->handler))]
+           ring-app (core/construct-root-routes puppet-version
+                                                use-legacy-auth-conf
+                                                jruby-service
+                                                get-code-content
+                                                handle-request
+                                                (get-auth-handler)
+                                                environment-class-cache-enabled)
+           routes (comidi/context path ring-app)
+           comidi-handler (comidi/routes->handler routes)
+           ring-handler (comidi/wrap-with-route-metadata comidi-handler routes)]
        ;; if the webrouting config uses the old-style config where
        ;; there is a single key with a route-id, we need to deal with that
        ;; for backward compat.  We have a hard-coded assumption that this route-id
