@@ -1,12 +1,13 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Puppet <docs@puppet.com>
-# This file is distributed under the same license as the puppetlabs.puppetserver package.
+# This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
+"X-Git-Ref: 86336c57072bc7e711a8c9c7b2a48e2f08a1f9c9\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -33,6 +34,7 @@ msgstr ""
 msgid "Config setting ca_ttl must have a value below {0}"
 msgstr ""
 
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "The ''client-whitelist'' and ''authorization-required'' settings in the "
@@ -373,6 +375,47 @@ msgstr ""
 msgid "Initializing with the following settings from core Puppet:"
 msgstr ""
 
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid ""
+"JRuby instance ''{0}'' borrowed, but it appears to have already been in use!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Not tracking jruby instance borrowed because server is shutting down"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Unable to find request event for borrowed JRuby instance: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "JRuby instance ''{0}'' returned, but no record of when it was borrowed!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Lock request ''{0}'' acquired, but no record of when it was requested!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Lock request ''{0}'' released, but no record of when it was acquired!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Sampling JRuby metrics"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Unrecognized jruby event type: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_service.clj
+msgid "JRuby Metrics Service: stopping metrics sampler job"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_service.clj
+msgid "JRuby Metrics Service: stopped metrics sampler job"
+msgstr ""
+
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
 msgid "Adding facter jar to classpath from: {0}"
 msgstr ""
@@ -403,6 +446,8 @@ msgid "Initializing the JRuby service"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
 msgid "Missing environment name!"
 msgstr ""
 
@@ -432,6 +477,7 @@ msgstr ""
 msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
 
+#: src/clj/puppetlabs/services/master/master_core.clj
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Could not find environment ''{0}''"
 msgstr ""
@@ -489,6 +535,7 @@ msgid "Starting Puppet Admin web app"
 msgstr ""
 
 #: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
 msgid ""
 "The ''client-whitelist'' and ''authorization-required'' settings in the "
 "''puppet-admin'' section are deprecated and will be removed in a future "
@@ -526,6 +573,7 @@ msgstr ""
 msgid "No DN provided by the HTTP header ''{0}''."
 msgstr ""
 
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
 #: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
 msgid "Treating client as unauthenticated."
 msgstr ""
