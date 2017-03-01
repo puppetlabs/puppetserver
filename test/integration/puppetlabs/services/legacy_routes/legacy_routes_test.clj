@@ -291,19 +291,29 @@
 (deftest ^:integration legacy-ca-routes-disabled
   (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
                 "disabled CA is configured")
-    (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
-       "Mocking JRubies because CA endpoints are pure clojure"
-        app
-       (->> bootstrap/services-from-dev-bootstrap
-            (remove #(= :CaService (tk-services/service-def-id %)))
-            (cons disabled-ca/certificate-authority-disabled-service))
-        {}
+    ;; Startup server once with real CA service so that SSL certs/keys/etc.
+    ;; are generated properly before we start again with the disabled CA
+    ;; service bootstrapped.  When starting up with disabled CA service,
+    ;; the certs/keys/etc. are assumed to already be in place at startup.  The
+    ;; server would fail to start on being unable to find any of these files.
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "Mocking JRubies because don't need real ones just to have SSL files created"
+     _
+     {}
+     ;; Sanity check to see that the server was started up the first time
+     (is true))
+    (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+     "Mocking JRubies because CA endpoints are pure clojure"
+     app
+     (->> bootstrap/services-from-dev-bootstrap
+          (remove #(= :CaService (tk-services/service-def-id %)))
+          (cons disabled-ca/certificate-authority-disabled-service))
+     {}
 
-        (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
-            (str "A 404 was not returned, indicating that the legacy CA routes "
-                 "are still being forwarded to the core CA functions."))
+     (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
+         (str "A 404 was not returned, indicating that the legacy CA routes "
+              "are still being forwarded to the core CA functions."))
 
-        (is (not (= 200 (:status (http-get "/production/certificate_statuses/all"))))
-            (str "A 200 was returned from a request made to a legacy CA endpoint "
-                 "indicating the disabled CA service was not detected."))))))
+     (is (not (= 200 (:status (http-get "/production/certificate_statuses/all"))))
+         (str "A 200 was returned from a request made to a legacy CA endpoint "
+              "indicating the disabled CA service was not detected.")))))
