@@ -14,7 +14,10 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [schema.core :as schema]
+            [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+            [puppetlabs.services.master.master-core :as master-core])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
@@ -25,39 +28,126 @@
   schema-test/validate-schemas
   (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
-(deftest ^:integration legacy-routes
-  (testing "The legacy web routing service properly handles old routes."
-    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
-     "JRuby mocking is safe ,here because we're only interested in validating
-     that the request is routed from a legacy to a new endpoint and the
-     translation is expected to occur at the Clojure layer, not in Ruby."
-     app
-     {}
-     (partial jruby-testutils/create-mock-jruby-puppet
-              (fn [request]
-                (JRubyPuppetResponse.
-                 (Integer. 200)
-                 (str "request routed to: " (get request "uri"))
-                 "text/plain"
-                 "1.2.3")))
-     (let [env-response (http-get "/v2.0/environments")]
-       (is (= 200 (:status env-response)))
-       (is (= "request routed to: /puppet/v3/environments" (:body env-response))))
-     (let [node-response (http-get "/production/node/localhost")]
-       (is (= 200 (:status node-response)))
-       (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response))))
-     (let [cert-status-response (http-get "/production/certificate_status/localhost")
-           cert-status-body (-> cert-status-response :body cheshire/parse-string)]
-       (is (= 200 (:status cert-status-response)))
-       ;; Assert that some of the content looks like it came from the
-       ;; certificate_status endpoint
-       (is (= "localhost" (get cert-status-body "name")))
-       (is (= "signed" (get cert-status-body "state")))))))
-
 (deftest ^:integration legacy-routes-metrics
   (bootstrap/with-puppetserver-running
    app
    {}
+
+   (testing "Requests made to legacy endpoints are routed to new endpoints"
+     (let [env-response (http-get "/v2.0/environments")
+           env-response-body (-> env-response :body json/parse-string)]
+       (is (= 200 (:status env-response)))
+       ;; Assert that some of the content looks like it came from the
+       ;; environments endpoint
+       (is (not (nil? (get env-response-body "search_paths"))))
+       (is (not (nil? (get env-response-body "environments")))))
+     (let [node-response (logutils/with-test-logging
+                          (http-get "/production/node/localhost"))
+           node-response-body (-> node-response :body json/parse-string)]
+       (is (= 200 (:status node-response)))
+       ;; Assert that some of the content looks like it came from the
+       ;; node endpoint
+       (is (= "localhost" (get node-response-body "name")))
+       (is (= "production" (get node-response-body "environment"))))
+     (let [catalog-response (logutils/with-test-logging
+                             (http-get "/production/catalog/localhost"))
+           catalog-response-body (-> catalog-response :body json/parse-string)]
+       (is (= 200 (:status catalog-response)))
+       (is (= "localhost" (get catalog-response-body "name")))
+       (is (= "production" (get catalog-response-body "environment"))))
+     (let [cert-status-response (http-get "/production/certificate_status/localhost")
+           cert-status-body (-> cert-status-response :body json/parse-string)]
+       (is (= 200 (:status cert-status-response)))
+       ;; Assert that some of the content looks like it came from the
+       ;; certificate_status endpoint
+       (is (= "localhost" (get cert-status-body "name")))
+       (is (= "signed" (get cert-status-body "state")))))
+
+   ;; Add in some metrics tests for the requests just made above.
+
+   ;; Seed metrics with an extra request which doesn't match any of the
+   ;; pre-defined routes that puppetserver registers.
+   (is (= 404 (:status (http-get
+                        "/puppet/funky/town"))))
+   (let [master-service (tk-app/get-service app :MasterService)
+         svc-context (tk-services/service-context master-service)
+         http-metrics (:http-metrics svc-context)
+         profiler-service (tk-app/get-service app :PuppetProfilerService)]
+
+     (testing "Metrics are captured for requests to legacy routes"
+       (is (= 4 (-> http-metrics :total-timer .getCount)))
+       (is (= 1 (-> http-metrics :route-timers :other .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-environments")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-node-/*/")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-catalog-/*/")
+                    .getCount)))
+       (is (= 0 (-> http-metrics :route-timers
+                    (get "puppet-v3-report-/*/")
+                    .getCount)))))
+
+   (let [resp (http-get "/status/v1/services?level=debug")]
+     (is (= 200 (:status resp)))
+     (let [status (json/parse-string (:body resp) true)]
+
+       (is (= #{:jruby-metrics :master :status-service}
+              (set (keys status))))
+
+       (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
+       (is (= "running" (get-in status [:jruby-metrics :state])))
+       (is (nil? (schema/check jruby-metrics-core/JRubyMetricsStatusV1
+                               (get-in status [:jruby-metrics :status]))))
+
+       (is (= jruby-metrics-core/jruby-pool-lock-not-in-use
+              (get-in status [:jruby-metrics :status :experimental
+                              :jruby-pool-lock-status :current-state])))
+
+       (is (= 1 (get-in status [:master :service_status_version])))
+       (is (= "running" (get-in status [:master :state])))
+       (is (nil? (schema/check master-core/MasterStatusV1
+                               (get-in status [:master :status]))))
+       (testing (str "HTTP metrics in status endpoint are sorted in order of "
+                     "aggregate amount of time spent")
+         (let [hit-routes #{"total"
+                            "puppet-v3-environments"
+                            "puppet-v3-node-/*/"
+                            "puppet-v3-catalog-/*/"
+                            "other"}
+               http-metrics (get-in status [:master
+                                            :status
+                                            :experimental
+                                            :http-metrics])]
+           (testing (str "'total' should come first since it is the sum of "
+                         "the other endpoints")
+             (is (= "total" (:route-id (first http-metrics)))))
+           (testing (str "The other three routes that actually received "
+                         "requests should come next")
+             (is (= #{"puppet-v3-environments"
+                      "puppet-v3-node-/*/"
+                      "puppet-v3-catalog-/*/"}
+                    (set (map :route-id (rest (take 4 http-metrics)))))))
+           (testing "The aggregate times should be in descending order"
+             (let [aggregate-times (map :aggregate http-metrics)]
+               (= aggregate-times (reverse (sort aggregate-times)))))
+           (testing (str "The counts should be accurate for the endpoints "
+                         "that we hit")
+             (let [find-route (fn [route-metrics route-id]
+                                (first (filter #(= (:route-id %) route-id) route-metrics)))]
+               (is (= 4 (:count (find-route http-metrics "total"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-environments"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-node-/*/"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-catalog-/*/"))))
+               (is (= 1 (:count (find-route http-metrics "other"))))))
+           (testing "The counts should be zero for endpoints that we didn't hit"
+             (is (every? #(= 0 %) (map :count
+                                       (filter
+                                        #(not (hit-routes (:route-id %)))
+                                        http-metrics)))))))))
+
    (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
          svc-context (tk-services/service-context jruby-metrics-service)
          jruby-metrics (:metrics svc-context)

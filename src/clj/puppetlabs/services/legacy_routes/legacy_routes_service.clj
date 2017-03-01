@@ -7,7 +7,8 @@
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.master.master-core :as master-core]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.metrics.http :as http-metrics]))
 
 (tk/defservice legacy-routes-service
   [[:WebroutingService add-ring-handler get-route]
@@ -15,7 +16,8 @@
    [:PuppetServerConfigService get-config]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
-   [:CaService get-auth-handler]]
+   [:CaService get-auth-handler]
+   [:MasterService]]
   (init
     [this context]
     (let [ca-service (tk-services/get-service this :CaService)
@@ -25,8 +27,11 @@
           use-legacy-auth-conf (get-in config
                                        [:jruby-puppet :use-legacy-auth-conf]
                                        true)
-          master-ns (keyword (tk-services/service-symbol
-                               (tk-services/get-service this :MasterService)))
+          master-service (tk-services/get-service this :MasterService)
+          master-ns (keyword (tk-services/service-symbol master-service))
+          master-metrics (-> master-service
+                             tk-services/service-context
+                             :http-metrics)
           master-route-config (master-core/get-master-route-config
                                 master-ns
                                 config)
@@ -47,6 +52,8 @@
                                              (get-auth-handler)
                                              puppet-version
                                              use-legacy-auth-conf)
+                                            (http-metrics/wrap-with-request-metrics
+                                             master-metrics)
                                             (legacy-routes-core/add-root-path-to-route-id
                                              master-mount)
                                             (comidi/wrap-with-route-metadata

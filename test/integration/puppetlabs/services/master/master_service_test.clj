@@ -15,7 +15,9 @@
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
     [puppetlabs.trapperkeeper.services :as tk-services]
     [puppetlabs.puppetserver.testutils :as testutils]
-    [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]))
+    [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+    [schema.core :as schema]
+    [puppetlabs.services.master.master-core :as master-core]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
 (def test-resources-code-dir (str test-resources-path "/code"))
@@ -50,6 +52,77 @@
       :metrics {:server-id "localhost"}}
      ;; mostly just making sure we can get here w/o exception
      (is (true? true))
+
+     ;; validate a few of the http metrics as long as we have the server up
+     ;; anyway :)
+     (let [master-service (tk-app/get-service app :MasterService)
+           svc-context (tk-services/service-context master-service)
+           http-metrics (:http-metrics svc-context)]
+
+       (logutils/with-test-logging
+        (is (= 200 (:status (http-get
+                             "/puppet/v3/node/foo?environment=production"))))
+        (is (= 200 (:status (http-get
+                             "/puppet/v3/catalog/foo?environment=production"))))
+        (is (= 404 (:status (http-get
+                             "/puppet/funky/town")))))
+
+       (is (= 3 (-> http-metrics :total-timer .getCount)))
+       (is (= 1 (-> http-metrics :route-timers :other .getCount)))
+
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-node-/*/")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-catalog-/*/")
+                    .getCount)))
+       (is (= 0 (-> http-metrics :route-timers
+                    (get "puppet-v3-report-/*/")
+                    .getCount))))
+
+     (let [resp (http-get "/status/v1/services?level=debug")]
+       (is (= 200 (:status resp)))
+       (let [status (json/parse-string (:body resp) true)]
+         (is (= #{:jruby-metrics :master :status-service}
+                (set (keys status))))
+
+         (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
+         (is (= "running" (get-in status [:jruby-metrics :state])))
+         (is (nil? (schema/check jruby-metrics-core/JRubyMetricsStatusV1
+                                 (get-in status [:jruby-metrics :status]))))
+
+         (is (= jruby-metrics-core/jruby-pool-lock-not-in-use
+                (get-in status [:jruby-metrics :status :experimental
+                                :jruby-pool-lock-status :current-state])))
+
+         (is (= 1 (get-in status [:master :service_status_version])))
+         (is (= "running" (get-in status [:master :state])))
+         (is (nil? (schema/check master-core/MasterStatusV1
+                                 (get-in status [:master :status]))))
+         (testing "HTTP metrics in status endpoint are sorted in order of aggregate amount of time spent"
+           (let [hit-routes #{"total" "puppet-v3-node-/*/"
+                              "puppet-v3-catalog-/*/" "other"}
+                 http-metrics (get-in status [:master :status :experimental :http-metrics])]
+             (testing "'total' should come first since it is the sum of the other endpoints"
+               (is (= "total" (:route-id (first http-metrics)))))
+             (testing "The other two routes that actually received requests should come next"
+               (is (= #{"puppet-v3-node-/*/" "puppet-v3-catalog-/*/"}
+                      (set (map :route-id (rest (take 3 http-metrics)))))))
+             (testing "The aggregate times should be in descending order"
+               (let [aggregate-times (map :aggregate http-metrics)]
+                 (= aggregate-times (reverse (sort aggregate-times)))))
+             (testing "The counts should be accurate for the endpoints that we hit"
+               (let [find-route (fn [route-metrics route-id]
+                                  (first (filter #(= (:route-id %) route-id) route-metrics)))]
+                 (is (= 3 (:count (find-route http-metrics "total"))))
+                 (is (= 1 (:count (find-route http-metrics "puppet-v3-node-/*/"))))
+                 (is (= 1 (:count (find-route http-metrics "puppet-v3-catalog-/*/"))))
+                 (is (= 1 (:count (find-route http-metrics "other"))))))
+             (testing "The counts should be zero for endpoints that we didn't hit"
+               (is (every? #(= 0 %) (map :count
+                                         (filter
+                                          #(not (hit-routes (:route-id %)))
+                                          http-metrics)))))))))
 
      (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
            svc-context (tk-services/service-context jruby-metrics-service)

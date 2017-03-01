@@ -6,18 +6,22 @@
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
+            [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.services.protocols.master :as master]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
+   [:MetricsService get-metrics-registry initialize-registry-settings]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
    [:SchedulerService interspaced]
+   [:StatusService register-status]
    [:VersionedCodeService get-code-content]]
   (init
    [this context]
@@ -63,8 +67,18 @@
                                                 (get-auth-handler)
                                                 environment-class-cache-enabled)
            routes (comidi/context path ring-app)
+           route-metadata (comidi/route-metadata routes)
            comidi-handler (comidi/routes->handler routes)
-           ring-handler (comidi/wrap-with-route-metadata comidi-handler routes)]
+           registry (get-metrics-registry :puppetserver)
+           metrics-server-id (get-in config [:metrics :server-id])
+           metrics (http-metrics/initialize-http-metrics!
+                    registry
+                    metrics-server-id
+                    route-metadata)
+           ring-handler (-> comidi-handler
+                            (http-metrics/wrap-with-request-metrics metrics)
+                            (comidi/wrap-with-route-metadata routes))]
+
        ;; if the webrouting config uses the old-style config where
        ;; there is a single key with a route-id, we need to deal with that
        ;; for backward compat.  We have a hard-coded assumption that this route-id
@@ -81,8 +95,15 @@
                             :normalize-request-uri true})
          (add-ring-handler this
                            ring-handler
-                           {:normalize-request-uri true}))))
-   context)
+                           {:normalize-request-uri true}))
+
+       (register-status
+        "master"
+        (status-core/get-artifact-version "puppetlabs" "puppetserver")
+        1
+        (partial core/v1-status metrics))
+
+       (assoc context :http-metrics metrics))))
   (start
     [this context]
     (log/info (i18n/trs "Puppet Server has successfully started and is now ready to handle requests"))
