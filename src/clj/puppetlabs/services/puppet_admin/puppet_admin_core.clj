@@ -6,6 +6,7 @@
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
             [liberator.core :refer [defresource]]
+            ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
             [puppetlabs.i18n.core :as i18n]

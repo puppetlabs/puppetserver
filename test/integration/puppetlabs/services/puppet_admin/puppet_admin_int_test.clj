@@ -194,10 +194,10 @@
              borrowed-instance (.borrowItem pool)]
          (try
            (let [response (http-client/delete
-                           (str "https://localhost:8140/puppet-admin-api/v1/jruby-pool")
+                           "https://localhost:8140/puppet-admin-api/v1/jruby-pool"
                            ssl-request-options)]
              (is (= 503 (:status response)))
-             (is (= "Timeout limit reached before lock could be granted"
+             (is (= "An attempt to lock the JRubyPool failed with a timeout"
                     (slurp (:body response)))))
            (finally
              (.releaseItem pool borrowed-instance))))))))
