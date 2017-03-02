@@ -6,10 +6,13 @@
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
             [liberator.core :refer [defresource]]
-    ;[liberator.dev :as liberator-dev]
+            ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [slingshot.slingshot :as sling]
+            [ring.util.response :as rr]
+            [clojure.tools.logging :as log]))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,33 +52,18 @@
       (jruby-puppet/mark-environment-expired! jruby-service env-name)
       (jruby-puppet/mark-all-environments-expired! jruby-service))))
 
-(defresource jruby-pool-resource
+(defn handle-jruby-pool-flush
   [jruby-service]
-  :allowed-methods [:delete]
-
-  ;; If you need to define :available-media-types, see comment below.
-  ;:available-media-types ...
-
-  :handle-exception liberator-utils/exception-handler
-
-  ;; This next line of code tells liberator to ignore any media-types
-  ;; the client has asked for.  This is necessary for this endpoint to work
-  ;; when the client sends an 'Accept: */*' header, due to the somewhat strange
-  ;; fact that this endpoint defines no 'available-media-types', since it always
-  ;; returns a '204 No Content' on success.
-  ;;
-  ;; If this resource is ever updated to define ':available-media-types' and
-  ;; return a response body, this line of code should be deleted.
-
-  :media-type-available? true
-
-  ;; Never return a '201 Created', we're not creating anything
-  :new? false
-
-  :delete!
-  (fn [context]
-    (jruby-puppet/flush-jruby-pool! jruby-service)))
-
+  (sling/try+
+    (jruby-puppet/flush-jruby-pool! jruby-service)
+    ; 204 No Content on success
+    {:status 204}
+    ; If a lock timeout occurs return a 503 Service Unavailable
+    (catch [:kind :puppetlabs.services.jruby-pool-manager.impl.jruby-agents/jruby-lock-timeout] e
+      (log/error (:msg e))
+      (-> (rr/response (:msg e))
+          (rr/status 503)
+          (rr/content-type "text/plain")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
@@ -87,8 +75,8 @@
     (comidi/ANY "/environment-cache" request
       (environment-cache-resource jruby-service
         (get-in request [:query-params "environment"])))
-    (comidi/ANY "/jruby-pool" []
-       (jruby-pool-resource jruby-service))))
+    (comidi/DELETE "/jruby-pool" []
+      (handle-jruby-pool-flush jruby-service))))
 
 (defn versioned-routes
   [jruby-service]
