@@ -44,8 +44,8 @@
                       :headers {"Accept" "pson"}
                       :as :text})))
 
-(deftest ^:integration master-service-metrics
-  (testing "Metrics computed via use of the master service are correct"
+(deftest ^:integration master-service-http-metrics
+  (testing "HTTP metrics computed via use of the master service are correct"
     (bootstrap-testutils/with-puppetserver-running
      app
      {:jruby-puppet {:max-active-instances 1
@@ -124,8 +124,16 @@
                (is (every? #(= 0 %) (map :count
                                          (filter
                                           #(not (hit-routes (:route-id %)))
-                                          http-metrics)))))))))
+                                          http-metrics))))))))))))
 
+(deftest ^:integration master-service-jruby-metrics
+  (testing "JRuby metrics computed via use of the master service actions are correct"
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:max-active-instances 1
+                     :master-code-dir test-resources-code-dir
+                     :master-conf-dir master-service-test-runtime-dir}
+      :metrics {:server-id "localhost"}}
      (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
            svc-context (tk-services/service-context jruby-metrics-service)
            jruby-metrics (:metrics svc-context)
