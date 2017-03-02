@@ -11,12 +11,14 @@
             [puppetlabs.i18n.core :as i18n]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
+(def master-service-status-version 1)
+
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:MetricsService get-metrics-registry initialize-registry-settings]
+   [:MetricsService get-metrics-registry get-server-id initialize-registry-settings]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
@@ -33,7 +35,7 @@
          localcacert (get-in config [:puppetserver :localcacert])
          puppet-version (get-in config [:puppetserver :puppet-version])
          settings (ca/config->master-settings config)
-         metrics-server-id (get-in config [:metrics :server-id])
+         metrics-server-id (get-server-id)
          jruby-service (tk-services/get-service this :JRubyPuppetService)
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
@@ -102,7 +104,7 @@
      (register-status
       "master"
       (status-core/get-artifact-version "puppetlabs" "puppetserver")
-      1
+      master-service-status-version
       (partial core/v1-status metrics))
      (assoc context :http-metrics metrics)))
   (start
