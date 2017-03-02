@@ -32,15 +32,17 @@
 
 (defn http-get
   [url]
-  (http-client/get (str "https://localhost:8140" url)
-                   {:ssl-cert (str master-service-test-runtime-dir
-                                   "/certs/localhost.pem")
-                    :ssl-key (str master-service-test-runtime-dir
-                                  "/private_keys/localhost.pem")
-                    :ssl-ca-cert (str master-service-test-runtime-dir
-                                      "/ca/ca.pem")
-                    :headers {"Accept" "pson"}
-                    :as :text}))
+  (let [master-service-test-runtime-ssl-dir
+        (str master-service-test-runtime-dir "/ssl")]
+    (http-client/get (str "https://localhost:8140" url)
+                     {:ssl-cert (str master-service-test-runtime-ssl-dir
+                                     "/certs/localhost.pem")
+                      :ssl-key (str master-service-test-runtime-ssl-dir
+                                    "/private_keys/localhost.pem")
+                      :ssl-ca-cert (str master-service-test-runtime-ssl-dir
+                                        "/certs/ca.pem")
+                      :headers {"Accept" "pson"}
+                      :as :text})))
 
 (deftest ^:integration master-service-metrics
   (testing "Metrics computed via use of the master service are correct"
@@ -194,36 +196,40 @@
 (deftest ^:integration ca-files-test
   (testing "CA settings from puppet are honored and the CA
             files are created when the service starts up"
-    (fs/delete-dir master-service-test-runtime-dir)
-    (testutils/with-puppet-conf-files
-     {"puppet.conf" test-resources-puppet-conf}
-     master-service-test-runtime-dir
-     (logutils/with-test-logging
-      (bootstrap-testutils/with-puppetserver-running
-       app
-       {:jruby-puppet {:master-conf-dir master-service-test-runtime-dir
-                       :max-active-instances 1}
-        :webserver {:port 8081}}
-       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-         (jruby/with-jruby-puppet
-          jruby-puppet jruby-service :ca-files-test
-          (letfn [(test-path!
-                    [setting expected-path]
-                    (is (= (ks/absolute-path expected-path)
-                           (.getSetting jruby-puppet setting)))
-                    (is (fs/exists? (ks/absolute-path expected-path))))]
+    (let [ca-files-test-runtime-dir (str master-service-test-runtime-dir
+                                         "/ca-files-test")
+          ca-files-test-puppet-conf (fs/file test-resources-path
+                                             "ca_files_test/puppet.conf")]
+      (fs/delete-dir ca-files-test-runtime-dir)
+      (testutils/with-puppet-conf-files
+       {"puppet.conf" ca-files-test-puppet-conf}
+       ca-files-test-runtime-dir
+       (logutils/with-test-logging
+        (bootstrap-testutils/with-puppetserver-running
+         app
+         {:jruby-puppet {:master-conf-dir ca-files-test-runtime-dir
+                         :max-active-instances 1}
+          :webserver {:port 8081}}
+         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+           (jruby/with-jruby-puppet
+            jruby-puppet jruby-service :ca-files-test
+            (letfn [(test-path!
+                      [setting expected-path]
+                      (is (= (ks/absolute-path expected-path)
+                             (.getSetting jruby-puppet setting)))
+                      (is (fs/exists? (ks/absolute-path expected-path))))]
 
-            (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
-            (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
-            (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
-            (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
-            (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
-            (test-path! "hostcrl" "target/master-service-test/ca/crl.pem")
-            (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
-            (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
-            (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
-            (test-path! "serial" "target/master-service-test/certs/serial")
-            (test-path! "cert_inventory" "target/master-service-test/inventory.txt")))))))))
+              (test-path! "capub" (str ca-files-test-runtime-dir "/ca/ca_pub.pem"))
+              (test-path! "cakey" (str ca-files-test-runtime-dir "/ca/ca_key.pem"))
+              (test-path! "cacert" (str ca-files-test-runtime-dir "/ca/ca_crt.pem"))
+              (test-path! "localcacert" (str ca-files-test-runtime-dir "/ca/ca.pem"))
+              (test-path! "cacrl" (str ca-files-test-runtime-dir "/ca/ca_crl.pem"))
+              (test-path! "hostcrl" (str ca-files-test-runtime-dir "/ca/crl.pem"))
+              (test-path! "hostpubkey" (str ca-files-test-runtime-dir "/public_keys/localhost.pem"))
+              (test-path! "hostprivkey" (str ca-files-test-runtime-dir "/private_keys/localhost.pem"))
+              (test-path! "hostcert" (str ca-files-test-runtime-dir "/certs/localhost.pem"))
+              (test-path! "serial" (str ca-files-test-runtime-dir "/certs/serial"))
+              (test-path! "cert_inventory" (str ca-files-test-runtime-dir "/inventory.txt")))))))))))
 
 (deftest ^:integration version-check-test
   (testing "master calls into the dujour version check library using the correct values"
