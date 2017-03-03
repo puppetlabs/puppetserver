@@ -53,7 +53,7 @@ class Puppet::Server::HttpClient
     @protocol = @use_ssl ? "https" : "http"
   end
 
-  def post(url, body, headers, options = {})
+  def post(url, body, headers = {}, options = {})
     # If credentials were supplied for HTTP basic auth, add them into the headers.
     # This is based on the code in lib/puppet/reports/http.rb.
     credentials = options[:basic_auth]
@@ -84,7 +84,7 @@ class Puppet::Server::HttpClient
     ruby_response(response)
   end
 
-  def get(url, headers, options={})
+  def get(url, headers={}, options={})
 
     request_options = create_common_request_options(url, headers, options)
     response = self.class.client_get(request_options)
