@@ -14,7 +14,10 @@
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-            [cheshire.core :as json])
+            [cheshire.core :as json]
+            [schema.core :as schema]
+            [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+            [puppetlabs.services.master.master-core :as master-core])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
@@ -25,103 +28,196 @@
   schema-test/validate-schemas
   (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
-(deftest ^:integration legacy-routes
-  (testing "The legacy web routing service properly handles old routes."
-    (bootstrap/with-puppetserver-running-with-mock-jruby-puppet-fn
-     "JRuby mocking is safe ,here because we're only interested in validating
-     that the request is routed from a legacy to a new endpoint and the
-     translation is expected to occur at the Clojure layer, not in Ruby."
-     app
-     {}
-     (partial jruby-testutils/create-mock-jruby-puppet
-              (fn [request]
-                (JRubyPuppetResponse.
-                 (Integer. 200)
-                 (str "request routed to: " (get request "uri"))
-                 "text/plain"
-                 "1.2.3")))
-     (let [env-response (http-get "/v2.0/environments")]
+(deftest ^:integration legacy-routes-http-metrics
+  (bootstrap/with-puppetserver-running
+   app
+   {}
+
+   (testing "Requests made to legacy endpoints are routed to new endpoints"
+     (let [env-response (http-get "/v2.0/environments")
+           env-response-body (-> env-response :body json/parse-string)]
        (is (= 200 (:status env-response)))
-       (is (= "request routed to: /puppet/v3/environments" (:body env-response))))
-     (let [node-response (http-get "/production/node/localhost")]
+       ;; Assert that some of the content looks like it came from the
+       ;; environments endpoint
+       (is (not (nil? (get env-response-body "search_paths"))))
+       (is (not (nil? (get env-response-body "environments")))))
+     (let [node-response (logutils/with-test-logging
+                          (http-get "/production/node/localhost"))
+           node-response-body (-> node-response :body json/parse-string)]
        (is (= 200 (:status node-response)))
-       (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response))))
+       ;; Assert that some of the content looks like it came from the
+       ;; node endpoint
+       (is (= "localhost" (get node-response-body "name")))
+       (is (= "production" (get node-response-body "environment"))))
+     (let [catalog-response (logutils/with-test-logging
+                             (http-get "/production/catalog/localhost"))
+           catalog-response-body (-> catalog-response :body json/parse-string)]
+       (is (= 200 (:status catalog-response)))
+       (is (= "localhost" (get catalog-response-body "name")))
+       (is (= "production" (get catalog-response-body "environment"))))
      (let [cert-status-response (http-get "/production/certificate_status/localhost")
-           cert-status-body (-> cert-status-response :body cheshire/parse-string)]
+           cert-status-body (-> cert-status-response :body json/parse-string)]
        (is (= 200 (:status cert-status-response)))
        ;; Assert that some of the content looks like it came from the
        ;; certificate_status endpoint
        (is (= "localhost" (get cert-status-body "name")))
-       (is (= "signed" (get cert-status-body "state")))))))
+       (is (= "signed" (get cert-status-body "state")))))
 
-(deftest ^:integration legacy-routes-metrics
-  (bootstrap/with-puppetserver-running
-   app
-   {}
-   (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
-         svc-context (tk-services/service-context jruby-metrics-service)
-         jruby-metrics (:metrics svc-context)
-         jruby-service (tk-app/get-service app :JRubyPuppetService)
-         time-before-first-borrow (System/currentTimeMillis)]
-     ;; Use with-jruby-puppet to borrow the lone jruby out of the pool,
-     ;; which should cause a subsequent catalog request to block on a borrow
-     ;; request
-     (jruby-service/with-jruby-puppet
-      _
-      jruby-service
-      :legacy-routes-test
-      (let [time-before-second-borrow (System/currentTimeMillis)]
-        (future
-         (logutils/with-test-logging
-          (http-get "/production/catalog/localhost")))
-        ;; Wait up to 10 seconds for the catalog request to get to the
-        ;; point where it is in the jruby borrow queue.
-        (while (and
-                (< (- (System/currentTimeMillis) time-before-second-borrow)
-                   10000)
-                (nil? (-> jruby-metrics
-                          :requested-instances
-                          deref
-                          first
-                          (get-in [:reason :request :uri]))))
-          (Thread/yield))
-        (let [resp (http-get "/status/v1/services/jruby-metrics?level=debug")]
-          (is (= 200 (:status resp)))
-          (let [status (json/parse-string (:body resp) true)]
-            (is (= 1 (:service_status_version status)))
-            (is (= "running" (:state status)))
+   ;; Add in some metrics tests for the requests just made above.
 
-            (testing "Info for borrowed instance is correct"
-              (let [borrowed-instances (get-in status [:status
-                                                       :experimental
-                                                       :metrics
-                                                       :borrowed-instances])
-                    borrowed-instance (first borrowed-instances)]
-                (is (= 1 (count borrowed-instances)))
-                (is (= "legacy-routes-test" (:reason borrowed-instance)))
-                (is (>= (:time borrowed-instance) time-before-first-borrow))
-                (is (> (:duration-millis borrowed-instance) 0))
-                (is (>= (System/currentTimeMillis)
-                        (+ (:duration-millis borrowed-instance)
-                           (:time borrowed-instance))))))
+   ;; Seed metrics with an extra request which doesn't match any of the
+   ;; pre-defined routes that puppetserver registers.
+   (is (= 404 (:status (http-get
+                        "/puppet/funky/town"))))
+   (let [master-service (tk-app/get-service app :MasterService)
+         svc-context (tk-services/service-context master-service)
+         http-metrics (:http-metrics svc-context)
+         profiler-service (tk-app/get-service app :PuppetProfilerService)]
 
-            (testing "Info for requested instance is correct"
-              (let [requested-instances (get-in status [:status
-                                                        :experimental
-                                                        :metrics
-                                                        :requested-instances])
-                    requested-instance (first requested-instances)]
-                (is (= 1 (count requested-instances)))
-                (is (= {:request
-                        {:request-method "get"
-                         :route-id "puppet-v3-catalog-/*/"
-                         :uri "/puppet/v3/catalog/localhost"}}
-                       (:reason requested-instance)))
-                (is (>= (:time requested-instance) time-before-second-borrow))
-                (is (> (:duration-millis requested-instance) 0))
-                (is (>= (System/currentTimeMillis)
-                        (+ (:duration-millis requested-instance)
-                           (:time requested-instance)))))))))))))
+     (testing "Metrics are captured for requests to legacy routes"
+       (is (= 4 (-> http-metrics :total-timer .getCount)))
+       (is (= 1 (-> http-metrics :route-timers :other .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-environments")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-node-/*/")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-catalog-/*/")
+                    .getCount)))
+       (is (= 0 (-> http-metrics :route-timers
+                    (get "puppet-v3-report-/*/")
+                    .getCount)))))
+
+   (let [resp (http-get "/status/v1/services?level=debug")]
+     (is (= 200 (:status resp)))
+     (let [status (json/parse-string (:body resp) true)]
+
+       (is (= #{:jruby-metrics :master :status-service}
+              (set (keys status))))
+
+       (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
+       (is (= "running" (get-in status [:jruby-metrics :state])))
+       (is (nil? (schema/check jruby-metrics-core/JRubyMetricsStatusV1
+                               (get-in status [:jruby-metrics :status]))))
+
+       (is (= jruby-metrics-core/jruby-pool-lock-not-in-use
+              (get-in status [:jruby-metrics :status :experimental
+                              :jruby-pool-lock-status :current-state])))
+
+       (is (= 1 (get-in status [:master :service_status_version])))
+       (is (= "running" (get-in status [:master :state])))
+       (is (nil? (schema/check master-core/MasterStatusV1
+                               (get-in status [:master :status]))))
+       (testing (str "HTTP metrics in status endpoint are sorted in order of "
+                     "aggregate amount of time spent")
+         (let [hit-routes #{"total"
+                            "puppet-v3-environments"
+                            "puppet-v3-node-/*/"
+                            "puppet-v3-catalog-/*/"
+                            "other"}
+               http-metrics (get-in status [:master
+                                            :status
+                                            :experimental
+                                            :http-metrics])]
+           (testing (str "'total' should come first since it is the sum of "
+                         "the other endpoints")
+             (is (= "total" (:route-id (first http-metrics)))))
+           (testing (str "The other three routes that actually received "
+                         "requests should come next")
+             (is (= #{"puppet-v3-environments"
+                      "puppet-v3-node-/*/"
+                      "puppet-v3-catalog-/*/"}
+                    (set (map :route-id (rest (take 4 http-metrics)))))))
+           (testing "The aggregate times should be in descending order"
+             (let [aggregate-times (map :aggregate http-metrics)]
+               (= aggregate-times (reverse (sort aggregate-times)))))
+           (testing (str "The counts should be accurate for the endpoints "
+                         "that we hit")
+             (let [find-route (fn [route-metrics route-id]
+                                (first (filter #(= (:route-id %) route-id) route-metrics)))]
+               (is (= 4 (:count (find-route http-metrics "total"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-environments"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-node-/*/"))))
+               (is (= 1 (:count (find-route http-metrics "puppet-v3-catalog-/*/"))))
+               (is (= 1 (:count (find-route http-metrics "other"))))))
+           (testing "The counts should be zero for endpoints that we didn't hit"
+             (is (every? #(= 0 %) (map :count
+                                       (filter
+                                        #(not (hit-routes (:route-id %)))
+                                        http-metrics)))))))))))
+
+(deftest ^:integration legacy-routes-jruby-metrics
+  (testing "JRuby metrics computed via use of the legacy routes service actions are correct"
+    (bootstrap/with-puppetserver-running
+     app
+     {}
+
+     (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
+           svc-context (tk-services/service-context jruby-metrics-service)
+           jruby-metrics (:metrics svc-context)
+           jruby-service (tk-app/get-service app :JRubyPuppetService)
+           time-before-first-borrow (System/currentTimeMillis)]
+       ;; Use with-jruby-puppet to borrow the lone jruby out of the pool,
+       ;; which should cause a subsequent catalog request to block on a borrow
+       ;; request
+       (jruby-service/with-jruby-puppet
+        _
+        jruby-service
+        :legacy-routes-test
+        (let [time-before-second-borrow (System/currentTimeMillis)]
+          (future
+           (logutils/with-test-logging
+            (http-get "/production/catalog/localhost")))
+          ;; Wait up to 10 seconds for the catalog request to get to the
+          ;; point where it is in the jruby borrow queue.
+          (while (and
+                  (< (- (System/currentTimeMillis) time-before-second-borrow)
+                     10000)
+                  (nil? (-> jruby-metrics
+                            :requested-instances
+                            deref
+                            first
+                            (get-in [:reason :request :uri]))))
+            (Thread/yield))
+          (let [resp (http-get "/status/v1/services/jruby-metrics?level=debug")]
+            (is (= 200 (:status resp)))
+            (let [status (json/parse-string (:body resp) true)]
+              (is (= 1 (:service_status_version status)))
+              (is (= "running" (:state status)))
+
+              (testing "Info for borrowed instance is correct"
+                (let [borrowed-instances (get-in status [:status
+                                                         :experimental
+                                                         :metrics
+                                                         :borrowed-instances])
+                      borrowed-instance (first borrowed-instances)]
+                  (is (= 1 (count borrowed-instances)))
+                  (is (= "legacy-routes-test" (:reason borrowed-instance)))
+                  (is (>= (:time borrowed-instance) time-before-first-borrow))
+                  (is (> (:duration-millis borrowed-instance) 0))
+                  (is (>= (System/currentTimeMillis)
+                          (+ (:duration-millis borrowed-instance)
+                             (:time borrowed-instance))))))
+
+              (testing "Info for requested instance is correct"
+                (let [requested-instances (get-in status [:status
+                                                          :experimental
+                                                          :metrics
+                                                          :requested-instances])
+                      requested-instance (first requested-instances)]
+                  (is (= 1 (count requested-instances)))
+                  (is (= {:request
+                          {:request-method "get"
+                           :route-id "puppet-v3-catalog-/*/"
+                           :uri "/puppet/v3/catalog/localhost"}}
+                         (:reason requested-instance)))
+                  (is (>= (:time requested-instance) time-before-second-borrow))
+                  (is (> (:duration-millis requested-instance) 0))
+                  (is (>= (System/currentTimeMillis)
+                          (+ (:duration-millis requested-instance)
+                             (:time requested-instance))))))))))))))
 
 (deftest ^:integration old-master-route-config
   (testing "The old map-style route configuration map still works."
@@ -201,19 +297,29 @@
 (deftest ^:integration legacy-ca-routes-disabled
   (testing (str "(SERVER-759) The legacy CA routes are not forwarded when the "
                 "disabled CA is configured")
-    (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
-       "Mocking JRubies because CA endpoints are pure clojure"
-        app
-       (->> bootstrap/services-from-dev-bootstrap
-            (remove #(= :CaService (tk-services/service-def-id %)))
-            (cons disabled-ca/certificate-authority-disabled-service))
-        {}
+    ;; Startup server once with real CA service so that SSL certs/keys/etc.
+    ;; are generated properly before we start again with the disabled CA
+    ;; service bootstrapped.  When starting up with disabled CA service,
+    ;; the certs/keys/etc. are assumed to already be in place at startup.  The
+    ;; server would fail to start on being unable to find any of these files.
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "Mocking JRubies because don't need real ones just to have SSL files created"
+     _
+     {}
+     ;; Sanity check to see that the server was started up the first time
+     (is true))
+    (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
+     "Mocking JRubies because CA endpoints are pure clojure"
+     app
+     (->> bootstrap/services-from-dev-bootstrap
+          (remove #(= :CaService (tk-services/service-def-id %)))
+          (cons disabled-ca/certificate-authority-disabled-service))
+     {}
 
-        (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
-            (str "A 404 was not returned, indicating that the legacy CA routes "
-                 "are still being forwarded to the core CA functions."))
+     (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
+         (str "A 404 was not returned, indicating that the legacy CA routes "
+              "are still being forwarded to the core CA functions."))
 
-        (is (not (= 200 (:status (http-get "/production/certificate_statuses/all"))))
-            (str "A 200 was returned from a request made to a legacy CA endpoint "
-                 "indicating the disabled CA service was not detected."))))))
+     (is (not (= 200 (:status (http-get "/production/certificate_statuses/all"))))
+         (str "A 200 was returned from a request made to a legacy CA endpoint "
+              "indicating the disabled CA service was not detected.")))))

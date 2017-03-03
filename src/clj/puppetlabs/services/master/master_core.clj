@@ -19,7 +19,10 @@
             [clojure.string :as str]
             [bidi.schema :as bidi-schema]
             [ring.middleware.params :as ring]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.metrics :as metrics]
+            [puppetlabs.metrics.http :as http-metrics]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -676,3 +679,18 @@
                  jruby-service
                  get-code-content
                  environment-class-cache-enabled)))
+
+(def MasterStatusV1
+  {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]}})
+
+(schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
+  [http-metrics :- http-metrics/HttpMetrics
+   level :- status-core/ServiceStatusDetailLevel]
+  (let [level>= (partial status-core/compare-levels >= level)]
+    {:state :running
+     :status (cond->
+              ;; no status info at ':critical' level
+              {}
+              ;; no extra status at ':info' level yet
+              (level>= :info) identity
+              (level>= :debug) (assoc-in [:experimental :http-metrics] (:sorted-routes (http-metrics/request-summary http-metrics))))}))

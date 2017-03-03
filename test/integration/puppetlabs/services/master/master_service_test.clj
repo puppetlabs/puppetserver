@@ -15,7 +15,9 @@
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
     [puppetlabs.trapperkeeper.services :as tk-services]
     [puppetlabs.puppetserver.testutils :as testutils]
-    [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]))
+    [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+    [schema.core :as schema]
+    [puppetlabs.services.master.master-core :as master-core]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
 (def test-resources-code-dir (str test-resources-path "/code"))
@@ -30,18 +32,20 @@
 
 (defn http-get
   [url]
-  (http-client/get (str "https://localhost:8140" url)
-                   {:ssl-cert (str master-service-test-runtime-dir
-                                   "/certs/localhost.pem")
-                    :ssl-key (str master-service-test-runtime-dir
-                                  "/private_keys/localhost.pem")
-                    :ssl-ca-cert (str master-service-test-runtime-dir
-                                      "/ca/ca.pem")
-                    :headers {"Accept" "pson"}
-                    :as :text}))
+  (let [master-service-test-runtime-ssl-dir
+        (str master-service-test-runtime-dir "/ssl")]
+    (http-client/get (str "https://localhost:8140" url)
+                     {:ssl-cert (str master-service-test-runtime-ssl-dir
+                                     "/certs/localhost.pem")
+                      :ssl-key (str master-service-test-runtime-ssl-dir
+                                    "/private_keys/localhost.pem")
+                      :ssl-ca-cert (str master-service-test-runtime-ssl-dir
+                                        "/certs/ca.pem")
+                      :headers {"Accept" "pson"}
+                      :as :text})))
 
-(deftest ^:integration master-service-metrics
-  (testing "Metrics computed via use of the master service are correct"
+(deftest ^:integration master-service-http-metrics
+  (testing "HTTP metrics computed via use of the master service are correct"
     (bootstrap-testutils/with-puppetserver-running
      app
      {:jruby-puppet {:max-active-instances 1
@@ -51,6 +55,85 @@
      ;; mostly just making sure we can get here w/o exception
      (is (true? true))
 
+     ;; validate a few of the http metrics as long as we have the server up
+     ;; anyway :)
+     (let [master-service (tk-app/get-service app :MasterService)
+           svc-context (tk-services/service-context master-service)
+           http-metrics (:http-metrics svc-context)]
+
+       (logutils/with-test-logging
+        (is (= 200 (:status (http-get
+                             "/puppet/v3/node/foo?environment=production"))))
+        (is (= 200 (:status (http-get
+                             "/puppet/v3/catalog/foo?environment=production"))))
+        (is (= 404 (:status (http-get
+                             "/puppet/funky/town")))))
+
+       (is (= 3 (-> http-metrics :total-timer .getCount)))
+       (is (= 1 (-> http-metrics :route-timers :other .getCount)))
+
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-node-/*/")
+                    .getCount)))
+       (is (= 1 (-> http-metrics :route-timers
+                    (get "puppet-v3-catalog-/*/")
+                    .getCount)))
+       (is (= 0 (-> http-metrics :route-timers
+                    (get "puppet-v3-report-/*/")
+                    .getCount))))
+
+     (let [resp (http-get "/status/v1/services?level=debug")]
+       (is (= 200 (:status resp)))
+       (let [status (json/parse-string (:body resp) true)]
+         (is (= #{:jruby-metrics :master :status-service}
+                (set (keys status))))
+
+         (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
+         (is (= "running" (get-in status [:jruby-metrics :state])))
+         (is (nil? (schema/check jruby-metrics-core/JRubyMetricsStatusV1
+                                 (get-in status [:jruby-metrics :status]))))
+
+         (is (= jruby-metrics-core/jruby-pool-lock-not-in-use
+                (get-in status [:jruby-metrics :status :experimental
+                                :jruby-pool-lock-status :current-state])))
+
+         (is (= 1 (get-in status [:master :service_status_version])))
+         (is (= "running" (get-in status [:master :state])))
+         (is (nil? (schema/check master-core/MasterStatusV1
+                                 (get-in status [:master :status]))))
+         (testing "HTTP metrics in status endpoint are sorted in order of aggregate amount of time spent"
+           (let [hit-routes #{"total" "puppet-v3-node-/*/"
+                              "puppet-v3-catalog-/*/" "other"}
+                 http-metrics (get-in status [:master :status :experimental :http-metrics])]
+             (testing "'total' should come first since it is the sum of the other endpoints"
+               (is (= "total" (:route-id (first http-metrics)))))
+             (testing "The other two routes that actually received requests should come next"
+               (is (= #{"puppet-v3-node-/*/" "puppet-v3-catalog-/*/"}
+                      (set (map :route-id (rest (take 3 http-metrics)))))))
+             (testing "The aggregate times should be in descending order"
+               (let [aggregate-times (map :aggregate http-metrics)]
+                 (= aggregate-times (reverse (sort aggregate-times)))))
+             (testing "The counts should be accurate for the endpoints that we hit"
+               (let [find-route (fn [route-metrics route-id]
+                                  (first (filter #(= (:route-id %) route-id) route-metrics)))]
+                 (is (= 3 (:count (find-route http-metrics "total"))))
+                 (is (= 1 (:count (find-route http-metrics "puppet-v3-node-/*/"))))
+                 (is (= 1 (:count (find-route http-metrics "puppet-v3-catalog-/*/"))))
+                 (is (= 1 (:count (find-route http-metrics "other"))))))
+             (testing "The counts should be zero for endpoints that we didn't hit"
+               (is (every? #(= 0 %) (map :count
+                                         (filter
+                                          #(not (hit-routes (:route-id %)))
+                                          http-metrics))))))))))))
+
+(deftest ^:integration master-service-jruby-metrics
+  (testing "JRuby metrics computed via use of the master service actions are correct"
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:max-active-instances 1
+                     :master-code-dir test-resources-code-dir
+                     :master-conf-dir master-service-test-runtime-dir}
+      :metrics {:server-id "localhost"}}
      (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
            svc-context (tk-services/service-context jruby-metrics-service)
            jruby-metrics (:metrics svc-context)
@@ -121,36 +204,40 @@
 (deftest ^:integration ca-files-test
   (testing "CA settings from puppet are honored and the CA
             files are created when the service starts up"
-    (fs/delete-dir master-service-test-runtime-dir)
-    (testutils/with-puppet-conf-files
-     {"puppet.conf" test-resources-puppet-conf}
-     master-service-test-runtime-dir
-     (logutils/with-test-logging
-      (bootstrap-testutils/with-puppetserver-running
-       app
-       {:jruby-puppet {:master-conf-dir master-service-test-runtime-dir
-                       :max-active-instances 1}
-        :webserver {:port 8081}}
-       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-         (jruby/with-jruby-puppet
-          jruby-puppet jruby-service :ca-files-test
-          (letfn [(test-path!
-                    [setting expected-path]
-                    (is (= (ks/absolute-path expected-path)
-                           (.getSetting jruby-puppet setting)))
-                    (is (fs/exists? (ks/absolute-path expected-path))))]
+    (let [ca-files-test-runtime-dir (str master-service-test-runtime-dir
+                                         "/ca-files-test")
+          ca-files-test-puppet-conf (fs/file test-resources-path
+                                             "ca_files_test/puppet.conf")]
+      (fs/delete-dir ca-files-test-runtime-dir)
+      (testutils/with-puppet-conf-files
+       {"puppet.conf" ca-files-test-puppet-conf}
+       ca-files-test-runtime-dir
+       (logutils/with-test-logging
+        (bootstrap-testutils/with-puppetserver-running
+         app
+         {:jruby-puppet {:master-conf-dir ca-files-test-runtime-dir
+                         :max-active-instances 1}
+          :webserver {:port 8081}}
+         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+           (jruby/with-jruby-puppet
+            jruby-puppet jruby-service :ca-files-test
+            (letfn [(test-path!
+                      [setting expected-path]
+                      (is (= (ks/absolute-path expected-path)
+                             (.getSetting jruby-puppet setting)))
+                      (is (fs/exists? (ks/absolute-path expected-path))))]
 
-            (test-path! "capub" "target/master-service-test/ca/ca_pub.pem")
-            (test-path! "cakey" "target/master-service-test/ca/ca_key.pem")
-            (test-path! "cacert" "target/master-service-test/ca/ca_crt.pem")
-            (test-path! "localcacert" "target/master-service-test/ca/ca.pem")
-            (test-path! "cacrl" "target/master-service-test/ca/ca_crl.pem")
-            (test-path! "hostcrl" "target/master-service-test/ca/crl.pem")
-            (test-path! "hostpubkey" "target/master-service-test/public_keys/localhost.pem")
-            (test-path! "hostprivkey" "target/master-service-test/private_keys/localhost.pem")
-            (test-path! "hostcert" "target/master-service-test/certs/localhost.pem")
-            (test-path! "serial" "target/master-service-test/certs/serial")
-            (test-path! "cert_inventory" "target/master-service-test/inventory.txt")))))))))
+              (test-path! "capub" (str ca-files-test-runtime-dir "/ca/ca_pub.pem"))
+              (test-path! "cakey" (str ca-files-test-runtime-dir "/ca/ca_key.pem"))
+              (test-path! "cacert" (str ca-files-test-runtime-dir "/ca/ca_crt.pem"))
+              (test-path! "localcacert" (str ca-files-test-runtime-dir "/ca/ca.pem"))
+              (test-path! "cacrl" (str ca-files-test-runtime-dir "/ca/ca_crl.pem"))
+              (test-path! "hostcrl" (str ca-files-test-runtime-dir "/ca/crl.pem"))
+              (test-path! "hostpubkey" (str ca-files-test-runtime-dir "/public_keys/localhost.pem"))
+              (test-path! "hostprivkey" (str ca-files-test-runtime-dir "/private_keys/localhost.pem"))
+              (test-path! "hostcert" (str ca-files-test-runtime-dir "/certs/localhost.pem"))
+              (test-path! "serial" (str ca-files-test-runtime-dir "/certs/serial"))
+              (test-path! "cert_inventory" (str ca-files-test-runtime-dir "/inventory.txt")))))))))))
 
 (deftest ^:integration version-check-test
   (testing "master calls into the dujour version check library using the correct values"

@@ -8,6 +8,8 @@
             [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics-protocol]
             [puppetlabs.i18n.core :refer [trs]]))
 
+(def jruby-metrics-service-status-version 1)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -15,13 +17,13 @@
   jruby-metrics-protocol/JRubyMetricsService
   [[:ConfigService get-in-config]
    [:JRubyPuppetService register-event-handler]
-   [:MetricsService get-metrics-registry]
+   [:MetricsService get-metrics-registry get-server-id]
    [:SchedulerService interspaced stop-job]
    [:StatusService register-status]]
   (init
     [this context]
     (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
-          metrics-server-id (get-in-config [:metrics :server-id])
+          metrics-server-id (get-server-id)
           max-active-instances (-> (tk-services/get-service this :JRubyPuppetService)
                                  tk-services/service-context
                                  (get-in [:pool-context :config :max-active-instances]))
@@ -31,10 +33,10 @@
                     (fn [] (jruby-protocol/free-instance-count jruby-service))
                     (get-metrics-registry :puppetserver))]
       (register-status
-        "jruby-metrics"
-        (status-core/get-artifact-version "puppetlabs" "puppetserver")
-        1
-        (partial jruby-metrics-core/v1-status metrics))
+       "jruby-metrics"
+       (status-core/get-artifact-version "puppetlabs" "puppetserver")
+       jruby-metrics-service-status-version
+       (partial jruby-metrics-core/v1-status metrics))
       (assoc context :metrics metrics)))
 
   (start
