@@ -17,18 +17,22 @@
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
     [schema.core :as schema]
-    [puppetlabs.services.master.master-core :as master-core]))
+    [puppetlabs.services.master.master-core :as master-core]
+    [puppetlabs.enterprise.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
-(def test-resources-code-dir (str test-resources-path "/code"))
-(def test-resources-conf-dir (str test-resources-path "/conf"))
-(def test-resources-puppet-conf (fs/file test-resources-conf-dir "puppet.conf"))
+(def test-resources-code-dir (str test-resources-path "/codedir"))
+(def test-resources-conf-dir (str test-resources-path "/confdir"))
 
 (def master-service-test-runtime-dir "target/master-service-test")
 
-(use-fixtures :once (testutils/with-puppet-conf
-                     test-resources-puppet-conf
-                     master-service-test-runtime-dir))
+(use-fixtures :once
+              (fn [f]
+                (testutils/with-puppet-config-files
+                 {test-resources-conf-dir
+                  master-service-test-runtime-dir}
+                 (f))))
 
 (defn http-get
   [url]
@@ -59,13 +63,31 @@
      ;; anyway :)
      (let [master-service (tk-app/get-service app :MasterService)
            svc-context (tk-services/service-context master-service)
-           http-metrics (:http-metrics svc-context)]
+           http-metrics (:http-metrics svc-context)
+           profiler-service (tk-app/get-service app :PuppetProfilerService)
+           puppet-profiler (profiler-protocol/get-profiler profiler-service)]
 
        (logutils/with-test-logging
-        (is (= 200 (:status (http-get
-                             "/puppet/v3/node/foo?environment=production"))))
-        (is (= 200 (:status (http-get
-                             "/puppet/v3/catalog/foo?environment=production"))))
+        (let [node-response (logutils/with-test-logging
+                             (http-get "/puppet/v3/node/foo?environment=production"))
+              node-response-body (-> node-response :body json/parse-string)]
+          (is (= 200 (:status node-response)))
+          ;; Assert that some of the content looks like it came from the
+          ;; node endpoint
+          (is (= "foo" (get node-response-body "name")))
+          (is (= "production" (get node-response-body "environment"))))
+        (let [catalog-response (logutils/with-test-logging
+                                (http-get "/puppet/v3/catalog/foo?environment=production"))
+              catalog-response-body (-> catalog-response :body json/parse-string)]
+          (is (= 200 (:status catalog-response)))
+          ;; Assert that some of the content looks like it came from the
+          ;; catalog endpoint
+          (is (testutils/catalog-contains? catalog-response-body
+                                           "Class"
+                                           "Foo"))
+
+          (is (= "foo" (get catalog-response-body "name")))
+          (is (= "production" (get catalog-response-body "environment"))))
         (is (= 404 (:status (http-get
                              "/puppet/funky/town")))))
 
@@ -80,12 +102,19 @@
                     .getCount)))
        (is (= 0 (-> http-metrics :route-timers
                     (get "puppet-v3-report-/*/")
-                    .getCount))))
+                    .getCount)))
+       (testing "Catalog compilation increments the catalog counter and adds timing data"
+         (let [catalog-metrics (map puppet-profiler-core/catalog-metric (.getCatalogTimers puppet-profiler))
+               compile-metric (->> catalog-metrics (filter #(= "compile" (:metric %))))]
+           (is (= 1 (count compile-metric)))
+           (let [metric (first compile-metric)]
+             (is (= 1 (metric :count)))
+             (is (= (metric :aggregate) (metric :mean)))))))
 
      (let [resp (http-get "/status/v1/services?level=debug")]
        (is (= 200 (:status resp)))
        (let [status (json/parse-string (:body resp) true)]
-         (is (= #{:jruby-metrics :master :status-service}
+         (is (= #{:jruby-metrics :master :pe-puppet-profiler :status-service}
                 (set (keys status))))
 
          (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
@@ -124,7 +153,22 @@
                (is (every? #(= 0 %) (map :count
                                          (filter
                                           #(not (hit-routes (:route-id %)))
-                                          http-metrics))))))))))))
+                                          http-metrics)))))))
+
+         (is (= 1 (get-in status [:pe-puppet-profiler :service_status_version])))
+         (is (= "running" (get-in status [:pe-puppet-profiler :state])))
+         (is (nil? (schema/check puppet-profiler-core/PEPuppetProfilerStatusV1
+                                 (get-in status [:pe-puppet-profiler :status]))))
+         (let [function-metrics (get-in status [:pe-puppet-profiler :status :experimental :function-metrics])
+               function-names (set (mapv :function function-metrics))]
+           (is (contains? function-names "digest"))
+           (is (contains? function-names "include")))
+
+         (let [resource-metrics (get-in status [:pe-puppet-profiler :status :experimental :resource-metrics])
+               resource-names (set (mapv :resource resource-metrics))]
+           (is (contains? resource-names "Class[Foo]"))
+           (is (contains? resource-names "Class[Foo::Params]"))
+           (is (contains? resource-names "Class[Foo::Bar]"))))))))
 
 (deftest ^:integration master-service-jruby-metrics
   (testing "JRuby metrics computed via use of the master service actions are correct"

@@ -331,3 +331,30 @@
    (with-puppet-conf puppet-conf-file conf-dir))
   ([puppet-conf-file dest-dir]
    (with-puppet-conf-fixture {"puppet.conf" puppet-conf-file} dest-dir)))
+
+(defn copy-config-files
+  [dirs-to-copy]
+  (doseq [[src target] dirs-to-copy]
+    (fs/mkdirs target)
+    (let [[_ dirs files] (first (fs/iterate-dir src))]
+      (doseq [d dirs] (fs/copy-dir (fs/file src d) target))
+      (doseq [f files] (fs/copy (fs/file src f) (fs/file target f))))))
+
+(defn remove-config-files
+  [dirs-to-copy]
+  (doseq [[src target] dirs-to-copy]
+    (let [[_ dirs files] (first (fs/iterate-dir src))]
+      (doseq [d dirs] (fs/delete-dir (fs/file target d)))
+      (doseq [f files] (fs/delete (fs/file target f))))))
+
+(defmacro with-puppet-config-files
+  "This function returns a test fixture that will copy a specified set of
+  config files into the specified paths relative paths from the confdir, and
+  then delete them after the tests have completed."
+  [dirs-to-copy & body]
+  `(do
+     (copy-config-files ~dirs-to-copy)
+     (try
+       ~@body
+       (finally
+         (remove-config-files ~dirs-to-copy)))))

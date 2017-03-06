@@ -17,7 +17,9 @@
             [cheshire.core :as json]
             [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
-            [puppetlabs.services.master.master-core :as master-core])
+            [puppetlabs.services.master.master-core :as master-core]
+            [puppetlabs.enterprise.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+            [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
 (def test-resources-dir
@@ -26,7 +28,13 @@
 (use-fixtures
   :once
   schema-test/validate-schemas
-  (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
+  (fn [f]
+    (testutils/with-puppet-config-files
+     {(fs/file test-resources-dir "confdir")
+      jruby-testutils/conf-dir
+      (fs/file test-resources-dir "codedir")
+      jruby-testutils/code-dir}
+     (f))))
 
 (deftest ^:integration legacy-routes-http-metrics
   (bootstrap/with-puppetserver-running
@@ -53,6 +61,12 @@
                              (http-get "/production/catalog/localhost"))
            catalog-response-body (-> catalog-response :body json/parse-string)]
        (is (= 200 (:status catalog-response)))
+       ;; Assert that some of the content looks like it came from the
+       ;; catalog endpoint
+       (is (testutils/catalog-contains? catalog-response-body
+                                        "Class"
+                                        "Foo"))
+
        (is (= "localhost" (get catalog-response-body "name")))
        (is (= "production" (get catalog-response-body "environment"))))
      (let [cert-status-response (http-get "/production/certificate_status/localhost")
@@ -72,7 +86,8 @@
    (let [master-service (tk-app/get-service app :MasterService)
          svc-context (tk-services/service-context master-service)
          http-metrics (:http-metrics svc-context)
-         profiler-service (tk-app/get-service app :PuppetProfilerService)]
+         profiler-service (tk-app/get-service app :PuppetProfilerService)
+         puppet-profiler (profiler-protocol/get-profiler profiler-service)]
 
      (testing "Metrics are captured for requests to legacy routes"
        (is (= 4 (-> http-metrics :total-timer .getCount)))
@@ -88,13 +103,24 @@
                     .getCount)))
        (is (= 0 (-> http-metrics :route-timers
                     (get "puppet-v3-report-/*/")
-                    .getCount)))))
+                    .getCount))))
+
+     (testing (str "Catalog compilation increments the catalog counter and "
+                   "adds timing data")
+       (let [catalog-metrics (map puppet-profiler-core/catalog-metric
+                                  (.getCatalogTimers puppet-profiler))
+             compile-metric (->> catalog-metrics
+                                 (filter #(= "compile" (:metric %))))]
+         (is (= 1 (count compile-metric)))
+         (let [metric (first compile-metric)]
+           (is (= 1 (metric :count)))
+           (is (= (metric :aggregate) (metric :mean)))))))
 
    (let [resp (http-get "/status/v1/services?level=debug")]
      (is (= 200 (:status resp)))
      (let [status (json/parse-string (:body resp) true)]
 
-       (is (= #{:jruby-metrics :master :status-service}
+       (is (= #{:jruby-metrics :master :pe-puppet-profiler :status-service}
               (set (keys status))))
 
        (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
@@ -146,7 +172,29 @@
              (is (every? #(= 0 %) (map :count
                                        (filter
                                         #(not (hit-routes (:route-id %)))
-                                        http-metrics)))))))))))
+                                        http-metrics)))))))
+
+       (is (= 1 (get-in status [:pe-puppet-profiler :service_status_version])))
+       (is (= "running" (get-in status [:pe-puppet-profiler :state])))
+       (is (nil? (schema/check puppet-profiler-core/PEPuppetProfilerStatusV1
+                               (get-in status [:pe-puppet-profiler :status]))))
+       (let [function-metrics (get-in status
+                                      [:pe-puppet-profiler
+                                       :status
+                                       :experimental
+                                       :function-metrics])
+             function-names (set (mapv :function function-metrics))]
+         (is (contains? function-names "digest"))
+         (is (contains? function-names "include")))
+
+       (let [resource-metrics (get-in status [:pe-puppet-profiler
+                                              :status
+                                              :experimental
+                                              :resource-metrics])
+             resource-names (set (mapv :resource resource-metrics))]
+         (is (contains? resource-names "Class[Foo]"))
+         (is (contains? resource-names "Class[Foo::Params]"))
+         (is (contains? resource-names "Class[Foo::Bar]")))))))
 
 (deftest ^:integration legacy-routes-jruby-metrics
   (testing "JRuby metrics computed via use of the legacy routes service actions are correct"
