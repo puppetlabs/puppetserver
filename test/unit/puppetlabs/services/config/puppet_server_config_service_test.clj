@@ -5,11 +5,9 @@
             [puppetlabs.services.config.puppet-server-config-core :as core]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :refer [with-test-logging]]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
             [clj-semver.core :as semver]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
@@ -17,9 +15,7 @@
 
 (def service-and-deps
   (conj jruby-testutils/jruby-service-and-dependencies
-        puppet-server-config-service
-        jetty9-service
-        scheduler-service))
+        puppet-server-config-service))
 
 (defn service-and-deps-with-mock-jruby
   [config]
@@ -33,7 +29,7 @@
 (def required-config
   (-> (jruby-testutils/jruby-puppet-tk-config
         (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-      (assoc-in [:webserver :port] 8081)
+      (assoc :webserver {:port 8081})
       (assoc-in [:jruby-puppet :master-conf-dir]
                 (str test-resources-dir "/master/conf"))))
 
@@ -105,7 +101,8 @@
                           :ssl-key "thehostprivkey"
                           :ssl-ca-cert "thelocalcacert"
                           :ssl-crl-path "thecacrl"
-                          :port 8081}]
+                          :port 8081
+                          :default-server true}]
     (testing (str "webserver settings not overridden when mult-webserver config is provided"
                   "and full ssl cert configuration is available")
       (with-test-logging

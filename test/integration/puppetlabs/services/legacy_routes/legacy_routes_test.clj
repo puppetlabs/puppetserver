@@ -18,7 +18,7 @@
             [schema.core :as schema]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
             [puppetlabs.services.master.master-core :as master-core]
-            [puppetlabs.enterprise.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
             [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 

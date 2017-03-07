@@ -13,7 +13,11 @@
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-puppet]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :as jruby-pool-manager]
+            [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
+            [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
+            [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
             [puppetlabs.trapperkeeper.services :as tk-services])
   (:import (clojure.lang IFn)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
@@ -37,7 +41,11 @@
   [jruby-puppet/jruby-puppet-pooled-service
    profiler/puppet-profiler-service
    jruby-pool-manager/jruby-pool-manager-service
-   metrics/metrics-service])
+   metrics/metrics-service
+   scheduler-service/scheduler-service
+   status-service/status-service
+   jetty9-service/jetty9-service
+   webrouting-service/webrouting-service])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schemas
@@ -123,7 +131,10 @@ create-mock-pool-instance :- JRubyInstance
                    :rules [{:match-request {:path "/" :type "path"}
                             :allow "*"
                             :sort-order 1
-                            :name "allow all"}]}})
+                            :name "allow all"}]}
+   :webserver {:host "localhost"}
+   :web-router-service {:puppetlabs.trapperkeeper.services.status.status-service/status-service
+                        "/status"}})
 
 (schema/defn ^:always-validate
   jruby-puppet-config :- JRubyPuppetTKConfig

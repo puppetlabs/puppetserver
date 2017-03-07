@@ -18,7 +18,7 @@
     [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
     [schema.core :as schema]
     [puppetlabs.services.master.master-core :as master-core]
-    [puppetlabs.enterprise.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
     [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")

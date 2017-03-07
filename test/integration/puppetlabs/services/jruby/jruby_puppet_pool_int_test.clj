@@ -227,7 +227,6 @@
                      (conj jruby-testutils/jruby-service-and-dependencies
                            handler-service/request-handler-service
                            ps-config/puppet-server-config-service
-                           jetty9/jetty9-service
                            vcs/versioned-code-service)
                      config
                      mock-jruby-puppet-fn)
@@ -400,8 +399,7 @@
       (tk-testutils/with-app-with-config
        app
        (conj jruby-testutils/jruby-service-and-dependencies
-             test-metric-web-service
-             puppetlabs.trapperkeeper.services.webserver.jetty9-service/jetty9-service)
+             test-metric-web-service)
        (assoc-in config [:webserver :host] "localhost")
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
