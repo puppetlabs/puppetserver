@@ -120,7 +120,7 @@
      (is (= 200 (:status resp)))
      (let [status (json/parse-string (:body resp) true)]
 
-       (is (= #{:jruby-metrics :master :pe-puppet-profiler :status-service}
+       (is (= #{:jruby-metrics :master :puppet-profiler :status-service}
               (set (keys status))))
 
        (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
@@ -174,12 +174,12 @@
                                         #(not (hit-routes (:route-id %)))
                                         http-metrics)))))))
 
-       (is (= 1 (get-in status [:pe-puppet-profiler :service_status_version])))
-       (is (= "running" (get-in status [:pe-puppet-profiler :state])))
-       (is (nil? (schema/check puppet-profiler-core/PEPuppetProfilerStatusV1
-                               (get-in status [:pe-puppet-profiler :status]))))
+       (is (= 1 (get-in status [:puppet-profiler :service_status_version])))
+       (is (= "running" (get-in status [:puppet-profiler :state])))
+       (is (nil? (schema/check puppet-profiler-core/PuppetProfilerStatusV1
+                               (get-in status [:puppet-profiler :status]))))
        (let [function-metrics (get-in status
-                                      [:pe-puppet-profiler
+                                      [:puppet-profiler
                                        :status
                                        :experimental
                                        :function-metrics])
@@ -187,7 +187,7 @@
          (is (contains? function-names "digest"))
          (is (contains? function-names "include")))
 
-       (let [resource-metrics (get-in status [:pe-puppet-profiler
+       (let [resource-metrics (get-in status [:puppet-profiler
                                               :status
                                               :experimental
                                               :resource-metrics])

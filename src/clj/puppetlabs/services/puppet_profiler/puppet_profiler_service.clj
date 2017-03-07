@@ -17,7 +17,7 @@
                     (get-in-config [:metrics :server-id])
                     (get-metrics-registry :puppetserver))]
       (register-status
-        "pe-puppet-profiler"
+        "puppet-profiler"
         (status-core/get-artifact-version "puppetlabs" "puppetserver")
         1
         (partial puppet-profiler-core/v1-status (:profiler context)))

@@ -20,7 +20,7 @@
   {(schema/optional-key :enabled)
    (schema/conditional string? schema/Str :else schema/Bool)})
 
-(def PEPuppetProfilerStatusV1
+(def PuppetProfilerStatusV1
   {(schema/optional-key :experimental)
    {:function-metrics [{:function schema/Str
                         :count schema/Int
