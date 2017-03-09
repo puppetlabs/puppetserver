@@ -26,5 +26,5 @@
                     (fn [] (version-check/check-for-updates!
                             {:product-name product-name} update-server-url)))
        (log/info (i18n/trs "Not checking for updates - opt-out setting exists"))))
-   (log/info (i18n/trs "Puppet Server Analytics has successfully started and will run in the background"))
+   (log/info (i18n/trs "Puppet Server Update Service has successfully started and will run in the background"))
    context))
