@@ -62,20 +62,7 @@
          ring-handler (-> comidi-handler
                           (http-metrics/wrap-with-request-metrics metrics)
                           (comidi/wrap-with-route-metadata routes))
-         product-name (or (get-in config [:product :name])
-                          {:group-id    "puppetlabs"
-                           :artifact-id "puppetserver"})
-         checkin-interval-millis (* 1000 60 60 24) ; once per day
-         update-server-url (get-in config [:product :update-server-url])
-
-         check-for-updates (get-in config [:product :check-for-updates])
          hostcrl (get-in config [:puppetserver :hostcrl])]
-
-     (if (or (nil? check-for-updates) check-for-updates)
-       (interspaced checkin-interval-millis
-                    (fn [] (version-check/check-for-updates!
-                             {:product-name product-name} update-server-url)))
-       (log/info (i18n/trs "Not checking for updates - opt-out setting exists")))
 
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
