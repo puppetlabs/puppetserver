@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 86336c57072bc7e711a8c9c7b2a48e2f08a1f9c9\n"
+"X-Git-Ref: 17e18a668d215a2c42919bf8acbaa2a9965f36cf\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -299,6 +299,16 @@ msgstr ""
 msgid "The referenced command ''{0}'' is not executable"
 msgstr ""
 
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Not checking for updates - opt-out setting exists"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid ""
+"Puppet Server Update Service has successfully started and will run in the "
+"background"
+msgstr ""
+
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Could not find certificate {0}"
 msgstr ""
@@ -515,10 +525,6 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Route not found for service {0}"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_service.clj
-msgid "Not checking for updates - opt-out setting exists"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_service.clj
