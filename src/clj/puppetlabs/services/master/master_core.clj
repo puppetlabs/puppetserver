@@ -694,3 +694,22 @@
               ;; no extra status at ':info' level yet
               (level>= :info) identity
               (level>= :debug) (assoc-in [:experimental :http-metrics] (:sorted-routes (http-metrics/request-summary http-metrics))))}))
+
+(def resources-root "puppetlabs/enterprise/pe-puppet-server/public")
+(def js-resources-root (str resources-root "/js"))
+
+(schema/defn ^:always-validate experimental-routes :- bidi-schema/RoutePair
+  [path]
+  (let [experimental (str path "/experimental")]
+    (comidi/context "/experimental"
+      (comidi/GET "" request
+                  (rr/redirect (str experimental "/dashboard.html")))
+      (comidi/GET "/" request
+                  (rr/redirect (str experimental "/dashboard.html")))
+      (comidi/GET "/dashboard.html" request
+                  (rr/resource-response "dashboard.html" {:root resources-root}))
+
+      ;; These calls create routes that are necessary in order for the
+      ;; javascript code to retrieve resources from inside the jar
+      (comidi/resources "/metrics-dashboard" {:root "puppetlabs/metrics/dashboard/public"})
+      (comidi/resources "/js" {:root js-resources-root}))))

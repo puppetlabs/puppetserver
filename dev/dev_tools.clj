@@ -1,5 +1,6 @@
 (ns dev-tools
   (:require [puppetlabs.trapperkeeper.services.webserver.jetty9-service :refer [jetty9-service]]
+
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :refer [webrouting-service]]
             [puppetlabs.services.master.master-service :refer [master-service]]
             [puppetlabs.services.request-handler.request-handler-service :refer [request-handler-service]]
@@ -27,7 +28,8 @@
             [puppetlabs.metrics :as metrics]
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core])
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+            [leiningen.core.main :as lein])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -91,6 +93,14 @@
       (println (format "(%s): %s\n"
                        (key f)
                        (-> (val f) meta :doc))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CLJS utility functions
+
+(defn start-figwheel []
+  (future
+   (print "Starting figwheel.\n")
+   (lein/-main ["figwheel"])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for interacting with running system
