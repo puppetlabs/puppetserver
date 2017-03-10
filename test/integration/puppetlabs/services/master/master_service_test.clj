@@ -256,7 +256,7 @@
                      :master-conf-dir master-service-test-runtime-dir}}
      (let [resp (http-get "/puppet/experimental/dashboard.html")]
        (is (= 200 (:status resp)))
-       (is (re-find #"PE Puppet Server Developer Dashboard" (:body resp)))))))
+       (is (re-find #"Puppet Server Developer Dashboard" (:body resp)))))))
 
 (deftest ^:integration ca-files-test
   (testing "CA settings from puppet are honored and the CA

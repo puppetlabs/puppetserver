@@ -1,8 +1,8 @@
-(ns puppetlabs.enterprise.pe-puppet-server.dashboard
+(ns puppetlabs.puppetserver.dashboard
   (:require [reagent.core :as reagent]
             [puppetlabs.metrics.dashboard.metrics-box :as metrics-box]
             [puppetlabs.metrics.dashboard.sortable-table :as sortable-table]
-            [puppetlabs.enterprise.pe-puppet-server.metrics-data :as metrics-data]
+            [puppetlabs.puppetserver.metrics-data :as metrics-data]
             [puppetlabs.metrics.dashboard.utils :as metrics-utils]))
 
 (def num-historical-data-points 60)

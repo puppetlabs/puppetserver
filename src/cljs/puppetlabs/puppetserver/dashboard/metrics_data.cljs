@@ -1,4 +1,4 @@
-(ns puppetlabs.enterprise.pe-puppet-server.metrics-data
+(ns puppetlabs.puppetserver.metrics-data
   (:require-macros [cljs.core.async.macros :refer [go]])
   (:require [cljs-http.client :as http]
             [cljs.core.async :as async]))

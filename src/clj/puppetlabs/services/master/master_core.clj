@@ -695,7 +695,7 @@
               (level>= :info) identity
               (level>= :debug) (assoc-in [:experimental :http-metrics] (:sorted-routes (http-metrics/request-summary http-metrics))))}))
 
-(def resources-root "puppetlabs/enterprise/pe-puppet-server/public")
+(def resources-root "puppetlabs/puppetserver/public")
 (def js-resources-root (str resources-root "/js"))
 
 (schema/defn ^:always-validate experimental-routes :- bidi-schema/RoutePair

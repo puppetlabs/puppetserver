@@ -1,5 +1,5 @@
-(ns ^:figwheel-no-load puppetlabs.enterprise.pe-puppet-server.dashboard.dev
-  (:require [puppetlabs.enterprise.pe-puppet-server.dashboard :as dashboard]
+(ns ^:figwheel-no-load puppetlabs.puppetserver.dashboard.dev
+  (:require [puppetlabs.puppetserver.dashboard :as dashboard]
             [figwheel.client :as figwheel :include-macros true]
             [reagent.core :as r]))
 

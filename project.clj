@@ -121,12 +121,12 @@
   :classifiers [["test" :testutils]]
 
   :cljsbuild {:builds {:app {:source-paths ["src/cljs"]
-                             :compiler {:output-to     "target/js-resources/puppetlabs/enterprise/pe-puppet-server/public/js/pe-puppet-server-dashboard.js"
-                                        :output-dir    "target/js-resources/puppetlabs/enterprise/pe-puppet-server/public/js/out"
+                             :compiler {:output-to     "target/js-resources/puppetlabs/puppetserver/public/js/puppetserver-dashboard.js"
+                                        :output-dir    "target/js-resources/puppetlabs/puppetserver/public/js/out"
                                         :asset-path   "js/out"
                                         :optimizations :none
                                         :pretty-print  true
-                                        :main "puppetlabs.enterprise.pe-puppet-server.dashboard.production"}}}}
+                                        :main "puppetlabs.puppetserver.dashboard.production"}}}}
   :hooks [leiningen.cljsbuild]
 
   :profiles {:dev {:source-paths  ["dev"]
@@ -158,11 +158,11 @@
                               :exclusions [org.clojure/clojure
                                            commons-io
                                            commons-codec]]]
-                   :figwheel {:http-server-root "puppetlabs/enterprise/pe-puppet-server/public"
+                   :figwheel {:http-server-root "puppetlabs/puppetserver/public"
                               :server-port 3449
                               :repl false}
                    :cljsbuild {:builds {:app {:source-paths ["dev-cljs"]
-                                              :compiler {:main "puppetlabs.enterprise.pe-puppet-server.dashboard.dev"
+                                              :compiler {:main "puppetlabs.puppetserver.dashboard.dev"
                                                          :source-map true}}}}
                    ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
