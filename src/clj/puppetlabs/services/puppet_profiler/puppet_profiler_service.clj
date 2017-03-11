@@ -7,14 +7,14 @@
 
 (trapperkeeper/defservice puppet-profiler-service
                           profiler/PuppetProfilerService
-                          [[:MetricsService get-metrics-registry]
+                          [[:MetricsService get-metrics-registry get-server-id]
                            [:ConfigService get-in-config]
                            [:StatusService register-status]]
 
   (init [this context]
     (let [context (puppet-profiler-core/initialize
                     (get-in-config [:profiler] {})
-                    (get-in-config [:metrics :server-id])
+                    (get-server-id)
                     (get-metrics-registry :puppetserver))]
       (register-status
         "puppet-profiler"

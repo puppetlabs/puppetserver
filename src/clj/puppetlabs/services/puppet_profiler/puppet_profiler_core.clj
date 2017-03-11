@@ -95,7 +95,6 @@
                                (sort-by :count)
                                reverse)]
       (-> status
-          ;; TODO: decide whether 50 is a reasonable max here
           (assoc-in [:experimental :function-metrics] (take 50 function-metrics))
           (assoc-in [:experimental :resource-metrics] (take 50 resource-metrics))
           (assoc-in [:experimental :catalog-metrics] catalog-metrics)
@@ -124,8 +123,4 @@
   (let [enabled (ks/to-bool (:enabled config))]
     (if-not enabled
       {:profiler nil}
-      (if registry
-        {:profiler (metrics-profiler hostname registry)}
-        (do
-          (log/warn (trs "Unable to initialize puppet profiler because metrics are disabled."))
-          {:profiler nil})))))
+      {:profiler (metrics-profiler hostname registry)})))

@@ -105,12 +105,6 @@
     (let [registry  (MetricRegistry.)
           context   (initialize {:enabled false} "localhost" registry)]
       (is (nil? (:profiler context)))))
-  (testing "logs message and does not initialize profiler if profiler is enabled but metrics are not"
-    (logutils/with-test-logging
-     (let [registry nil
-           context (initialize {:enabled true} "localhost" registry)]
-       (is (nil? (:profiler context)))
-       (is (logged? #"Unable to initialize puppet profiler because metrics are disabled.")))))
   (testing "initializes profiler if enabled"
     (let [registry  (MetricRegistry.)
           context   (initialize {:enabled true} "localhost" registry)]
