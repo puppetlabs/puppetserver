@@ -29,7 +29,7 @@
 
 (use-fixtures :once
               (fn [f]
-                (testutils/with-puppet-config-files
+                (testutils/with-config-dirs
                  {test-resources-conf-dir
                   master-service-test-runtime-dir}
                  (f))))

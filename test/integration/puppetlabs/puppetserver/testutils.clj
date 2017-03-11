@@ -347,10 +347,18 @@
       (doseq [d dirs] (fs/delete-dir (fs/file target d)))
       (doseq [f files] (fs/delete (fs/file target f))))))
 
-(defmacro with-puppet-config-files
-  "This function returns a test fixture that will copy a specified set of
-  config files into the specified paths relative paths from the confdir, and
-  then delete them after the tests have completed."
+(defmacro with-config-dirs
+  "Evaluates the supplied body after copying the source directory (key) to
+  target directory (value) for each element in the supplied dirs-to-copy
+  map.  After the body is evaluated, all of the copied directory content is
+  removed.
+
+  For example:
+
+  (with-config-dirs
+     {\"/my/source-dir1\" \"/my/target-dir1\"
+      \"/my/source-dir2\" \"/my/target-dir2\"}
+      (println \"Do something interesting\"))"
   [dirs-to-copy & body]
   `(do
      (copy-config-files ~dirs-to-copy)

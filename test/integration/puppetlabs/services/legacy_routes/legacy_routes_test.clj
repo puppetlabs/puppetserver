@@ -29,7 +29,7 @@
   :once
   schema-test/validate-schemas
   (fn [f]
-    (testutils/with-puppet-config-files
+    (testutils/with-config-dirs
      {(fs/file test-resources-dir "confdir")
       jruby-testutils/conf-dir
       (fs/file test-resources-dir "codedir")
