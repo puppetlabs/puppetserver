@@ -48,6 +48,7 @@
                  [me.raynes/fs]
                  [liberator]
                  [org.apache.commons/commons-exec]
+                 [io.dropwizard.metrics/metrics-core "3.1.2"]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to

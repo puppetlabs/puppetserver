@@ -22,7 +22,12 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.trapperkeeper.bootstrap :as bootstrap]
-            [puppetlabs.trapperkeeper.config :as config])
+            [puppetlabs.trapperkeeper.config :as config]
+            [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+            [puppetlabs.metrics :as metrics]
+            [puppetlabs.metrics.http :as http-metrics]
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -149,6 +154,64 @@
   []
   (jruby-protocol/flush-jruby-pool!
     (tka/get-service system :JRubyPuppetService)))
+
+(defn print-puppet-profiler-metrics
+  "Print metrics data about function calls, resources, catalog compile and file
+  metadata inlining."
+  []
+  (let [metrics-profiler (get-in (context)
+                                 [:service-contexts
+                                  :PuppetProfilerService
+                                  :profiler])
+        metrics (:experimental (puppet-profiler-core/assoc-metrics-data
+                                {}
+                                metrics-profiler))]
+    (pprint/pprint metrics)))
+
+(defn print-http-request-stats
+  "Print metrics data about requests we've handled, sorted in descending order
+  of time spent."
+  []
+  (let [metrics (-> (tka/get-service system :MasterService)
+                    tk-services/service-context
+                    :http-metrics)
+        request-stats (http-metrics/request-summary metrics)]
+    (pprint/pprint (:sorted-routes request-stats))))
+
+(defn print-jruby-metrics
+  []
+  (pprint/pprint (context [:service-contexts :JRubyMetricsService :metrics]))
+  (pprint/pprint
+   (let [{:keys [num-jrubies num-free-jrubies requested-count requested-jrubies-histo
+                 borrow-count borrow-timeout-count borrow-retry-count
+                 return-count free-jrubies-histo borrow-timer wait-timer
+                 requested-instances borrowed-instances
+                 lock-wait-timer lock-held-timer]}
+         (context [:service-contexts :JRubyMetricsService :metrics])]
+     {:num-jrubies (.getValue num-jrubies)
+      :num-free-jrubies (.getValue num-free-jrubies)
+      :requested-count (.getCount requested-count)
+      :borrow-count (.getCount borrow-count)
+      :borrow-timeout-count (.getCount borrow-timeout-count)
+      :borrow-retry-count (.getCount borrow-retry-count)
+      :return-count (.getCount return-count)
+      :average-requested-jrubies (metrics/mean requested-jrubies-histo)
+      :average-free-jrubies (metrics/mean free-jrubies-histo)
+      :average-borrow-time (metrics/mean-millis borrow-timer)
+      :average-wait-time (metrics/mean-millis wait-timer)
+      :requested-instances (jruby-metrics-core/requested-instances-info
+                            (vals @requested-instances))
+      :borrowed-instances (jruby-metrics-core/requested-instances-info
+                           (vals @borrowed-instances))
+      :num-pool-locks (.getCount lock-held-timer)
+      :average-lock-wait-time (metrics/mean-millis lock-wait-timer)
+      :average-lock-held-time (metrics/mean-millis lock-held-timer)})))
+
+(defn print-interesting-metrics
+  []
+  (print-puppet-profiler-metrics)
+  (print-http-request-stats)
+  (print-jruby-metrics))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Allow user overrides

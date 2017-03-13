@@ -331,3 +331,38 @@
    (with-puppet-conf puppet-conf-file conf-dir))
   ([puppet-conf-file dest-dir]
    (with-puppet-conf-fixture {"puppet.conf" puppet-conf-file} dest-dir)))
+
+(defn copy-config-files
+  [dirs-to-copy]
+  (doseq [[src target] dirs-to-copy]
+    (fs/mkdirs target)
+    (let [[_ dirs files] (first (fs/iterate-dir src))]
+      (doseq [d dirs] (fs/copy-dir (fs/file src d) target))
+      (doseq [f files] (fs/copy (fs/file src f) (fs/file target f))))))
+
+(defn remove-config-files
+  [dirs-to-copy]
+  (doseq [[src target] dirs-to-copy]
+    (let [[_ dirs files] (first (fs/iterate-dir src))]
+      (doseq [d dirs] (fs/delete-dir (fs/file target d)))
+      (doseq [f files] (fs/delete (fs/file target f))))))
+
+(defmacro with-config-dirs
+  "Evaluates the supplied body after copying the source directory (key) to
+  target directory (value) for each element in the supplied dirs-to-copy
+  map.  After the body is evaluated, all of the copied directory content is
+  removed.
+
+  For example:
+
+  (with-config-dirs
+     {\"/my/source-dir1\" \"/my/target-dir1\"
+      \"/my/source-dir2\" \"/my/target-dir2\"}
+      (println \"Do something interesting\"))"
+  [dirs-to-copy & body]
+  `(do
+     (copy-config-files ~dirs-to-copy)
+     (try
+       ~@body
+       (finally
+         (remove-config-files ~dirs-to-copy)))))
