@@ -13,12 +13,96 @@
 
 (def master-service-status-version 1)
 
+;; Default list of allowed histograms/timers
+(def default-metrics-allowed-hists
+  ["compiler"
+   "compiler.compile"
+   "compiler.find_facts"
+   "compiler.find_node"
+   "compiler.static_compile"
+   "compiler.static_compile_inlining"
+   "compiler.static_compile_postprocessing"
+   "functions"
+   "http.active-histo"
+   "http.puppet-v3-catalog-/*/-requests"
+   "http.puppet-v3-environment-/*/-requests"
+   "http.puppet-v3-environment_classes-/*/-requests"
+   "http.puppet-v3-environments-requests"
+   "http.puppet-v3-file_bucket_file-/*/-requests"
+   "http.puppet-v3-file_content-/*/-requests"
+   "http.puppet-v3-file_metadata-/*/-requests"
+   "http.puppet-v3-file_metadatas-/*/-requests"
+   "http.puppet-v3-node-/*/-requests"
+   "http.puppet-v3-report-/*/-requests"
+   "http.puppet-v3-static_file_content-/*/-requests"
+   "jruby.borrow-timer"
+   "jruby.free-jrubies-histo"
+   "jruby.lock-held-timer"
+   "jruby.lock-wait-timer"
+   "jruby.requested-jrubies-histo"
+   "jruby.wait-timer"
+   "puppetdb.catalog.save"
+   "puppetdb.command.submit"
+   "puppetdb.facts.find"
+   "puppetdb.facts.search"
+   "puppetdb.report.process"
+   "puppetdb.resource.search"])
+
+;; Default list of allowed values/counts
+(def default-metrics-allowed-vals
+  ["http.active-requests"
+   "http.puppet-v3-catalog-/*/-percentage"
+   "http.puppet-v3-environment-/*/-percentage"
+   "http.puppet-v3-environment_classes-/*/-percentage"
+   "http.puppet-v3-environments-percentage"
+   "http.puppet-v3-file_bucket_file-/*/-percentage"
+   "http.puppet-v3-file_content-/*/-percentage"
+   "http.puppet-v3-file_metadata-/*/-percentage"
+   "http.puppet-v3-file_metadatas-/*/-percentage"
+   "http.puppet-v3-node-/*/-percentage"
+   "http.puppet-v3-report-/*/-percentage"
+   "http.puppet-v3-resource_type-/*/-percentage"
+   "http.puppet-v3-resource_types-/*/-percentage"
+   "http.puppet-v3-static_file_content-/*/-percentage"
+   "http.puppet-v3-status-/*/-percentage"
+   "http.total-requests"
+   "jruby.borrow-count"
+   "jruby.borrow-retry-count"
+   "jruby.borrow-timeout-count"
+   "jruby.num-free-jrubies"
+   "jruby.num-jrubies"
+   "jruby.request-count"
+   "jruby.return-count"
+   "num-cpus"])
+
+; List of allowed jvm gauges/values
+(def default-jvm-metrics-allowed
+  ["uptime"
+   "memory.heap.committed"
+   "memory.heap.init"
+   "memory.heap.max"
+   "memory.heap.used"
+   "memory.non-heap.committed"
+   "memory.non-heap.init"
+   "memory.non-heap.max"
+   "memory.non-heap.used"
+   "memory.total.committed"
+   "memory.total.init"
+   "memory.total.max"
+   "memory.total.used"])
+
+(def default-metrics-allowed
+  (concat
+   default-metrics-allowed-hists
+   default-metrics-allowed-vals
+   default-jvm-metrics-allowed))
+
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:MetricsService get-metrics-registry get-server-id initialize-registry-settings]
+   [:MetricsService get-metrics-registry get-server-id update-registry-settings]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
@@ -67,6 +151,9 @@
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
+
+     (update-registry-settings :puppetserver
+                               {:default-metrics-allowed default-metrics-allowed})
 
      (log/info (i18n/trs "Master Service adding ring handlers"))
 
