@@ -173,4 +173,9 @@ with_puppet_running_on(master, {}) do
     curl_unauthenticated('/metrics/v1/mbeans')
     assert_allowed
   end
+
+  step 'dashboard endpoint' do
+    curl_unauthenticated('/puppet/experimental/dashboard.html')
+    assert_allowed(200)
+  end
 end
