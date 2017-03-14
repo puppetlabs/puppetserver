@@ -156,6 +156,7 @@
                    :plugins [[lein-cljsbuild ~cljsbuild-version]
                              [lein-figwheel ~figwheel-version
                               :exclusions [org.clojure/clojure
+                                           org.clojure/core.cache
                                            commons-io
                                            commons-codec]]]
                    :figwheel {:http-server-root "puppetlabs/puppetserver/public"
