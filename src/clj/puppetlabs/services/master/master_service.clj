@@ -15,15 +15,7 @@
 
 ;; Default list of allowed histograms/timers
 (def default-metrics-allowed-hists
-  ["compiler"
-   "compiler.compile"
-   "compiler.find_facts"
-   "compiler.find_node"
-   "compiler.static_compile"
-   "compiler.static_compile_inlining"
-   "compiler.static_compile_postprocessing"
-   "functions"
-   "http.active-histo"
+  ["http.active-histo"
    "http.puppet-v3-catalog-/*/-requests"
    "http.puppet-v3-environment-/*/-requests"
    "http.puppet-v3-environment_classes-/*/-requests"
@@ -34,19 +26,7 @@
    "http.puppet-v3-file_metadatas-/*/-requests"
    "http.puppet-v3-node-/*/-requests"
    "http.puppet-v3-report-/*/-requests"
-   "http.puppet-v3-static_file_content-/*/-requests"
-   "jruby.borrow-timer"
-   "jruby.free-jrubies-histo"
-   "jruby.lock-held-timer"
-   "jruby.lock-wait-timer"
-   "jruby.requested-jrubies-histo"
-   "jruby.wait-timer"
-   "puppetdb.catalog.save"
-   "puppetdb.command.submit"
-   "puppetdb.facts.find"
-   "puppetdb.facts.search"
-   "puppetdb.report.process"
-   "puppetdb.resource.search"])
+   "http.puppet-v3-static_file_content-/*/-requests"])
 
 ;; Default list of allowed values/counts
 (def default-metrics-allowed-vals
@@ -66,36 +46,14 @@
    "http.puppet-v3-static_file_content-/*/-percentage"
    "http.puppet-v3-status-/*/-percentage"
    "http.total-requests"
-   "jruby.borrow-count"
-   "jruby.borrow-retry-count"
-   "jruby.borrow-timeout-count"
-   "jruby.num-free-jrubies"
-   "jruby.num-jrubies"
-   "jruby.request-count"
-   "jruby.return-count"
+   ; num-cpus is registered in trapperkeeper-comidi-metrics, see
+   ; https://github.com/puppetlabs/trapperkeeper-comidi-metrics/blob/0.1.1/src/puppetlabs/metrics/http.clj#L117-L120
    "num-cpus"])
-
-; List of allowed jvm gauges/values
-(def default-jvm-metrics-allowed
-  ["uptime"
-   "memory.heap.committed"
-   "memory.heap.init"
-   "memory.heap.max"
-   "memory.heap.used"
-   "memory.non-heap.committed"
-   "memory.non-heap.init"
-   "memory.non-heap.max"
-   "memory.non-heap.used"
-   "memory.total.committed"
-   "memory.total.init"
-   "memory.total.max"
-   "memory.total.used"])
 
 (def default-metrics-allowed
   (concat
    default-metrics-allowed-hists
-   default-metrics-allowed-vals
-   default-jvm-metrics-allowed))
+   default-metrics-allowed-vals))
 
 (defservice master-service
   master/MasterService

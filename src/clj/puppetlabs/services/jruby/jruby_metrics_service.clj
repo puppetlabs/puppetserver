@@ -10,6 +10,30 @@
 
 (def jruby-metrics-service-status-version 1)
 
+;; Default list of allowed histograms/timers
+(def default-metrics-allowed-hists
+  ["jruby.borrow-timer"
+   "jruby.free-jrubies-histo"
+   "jruby.lock-held-timer"
+   "jruby.lock-wait-timer"
+   "jruby.requested-jrubies-histo"
+   "jruby.wait-timer"])
+
+;; Default list of allowed values/counts
+(def default-metrics-allowed-vals
+  ["jruby.borrow-count"
+   "jruby.borrow-retry-count"
+   "jruby.borrow-timeout-count"
+   "jruby.num-free-jrubies"
+   "jruby.num-jrubies"
+   "jruby.request-count"
+   "jruby.return-count"])
+
+(def default-metrics-allowed
+  (concat
+   default-metrics-allowed-hists
+   default-metrics-allowed-vals))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -17,7 +41,7 @@
   jruby-metrics-protocol/JRubyMetricsService
   [[:ConfigService get-in-config]
    [:JRubyPuppetService register-event-handler]
-   [:MetricsService get-metrics-registry get-server-id]
+   [:MetricsService get-metrics-registry get-server-id update-registry-settings]
    [:SchedulerService interspaced stop-job]
    [:StatusService register-status]]
   (init
@@ -32,6 +56,8 @@
                     max-active-instances
                     (fn [] (jruby-protocol/free-instance-count jruby-service))
                     (get-metrics-registry :puppetserver))]
+      (update-registry-settings :puppetserver
+                                {:default-metrics-allowed default-metrics-allowed})
       (register-status
        "jruby-metrics"
        (status-core/get-artifact-version "puppetlabs" "puppetserver")
