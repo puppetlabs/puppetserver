@@ -48,7 +48,7 @@
                  [me.raynes/fs]
                  [liberator]
                  [org.apache.commons/commons-exec]
-                 [io.dropwizard.metrics/metrics-core "3.1.2"]
+                 [io.dropwizard.metrics/metrics-core]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
@@ -116,6 +116,7 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
+                                   [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
                                    [ring-mock]
