@@ -121,13 +121,13 @@
 
 (defmacro with-puppetserver-running
   [app config-overrides & body]
-  (let [config (load-dev-config-with-overrides config-overrides)]
-    `(let [services# (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file)]
+  `(let [config# (load-dev-config-with-overrides ~config-overrides)]
+     (let [services# (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file)]
        (tk-testutils/with-app-with-config
-         ~app
-         services#
-         ~config
-         ~@body))))
+        ~app
+        services#
+        config#
+        ~@body))))
 
 (defmacro with-puppetserver-running-with-mock-jrubies
   "This macro should be used with caution; it makes tests run much more quickly,
