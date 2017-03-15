@@ -45,7 +45,7 @@ use the correct SSL configuration:
 * `ssl-key`: The value of `puppet master --configprint hostprivkey`. Equivalent to the 'SSLCertificateKeyFile' Apache config setting.
 * `ssl-ca-cert`: The value of `puppet master --configprint localcacert`. Equivalent to the 'SSLCACertificateFile' Apache config setting.
 * `ssl-cert-chain`: Equivalent to the 'SSLCertificateChainFile' Apache config setting. Optional.
-* `ssl-crl-path`: Equivalent to the 'SSLCARevocationPath' Apache config setting. Optional.
+* `ssl-crl-path`: The path to the CRL file to use. Optional.
 
 An example `webserver.conf` file might look something like this:
 
