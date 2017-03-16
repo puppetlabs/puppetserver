@@ -3,7 +3,9 @@
            (clojure.lang IFn)
            (java.util List Map Map$Entry)
            (org.jruby RubySymbol)
-           (org.eclipse.jetty.util URIUtil))
+           (org.eclipse.jetty.util URIUtil)
+           (com.codahale.metrics MetricRegistry Gauge)
+           (java.lang.management ManagementFactory))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.common :as ps-common]
@@ -576,6 +578,55 @@
                         (i18n/trs "Not enough available RAM ({0}MB) to safely accommodate the configured JVM heap size of {1}MB." (int (/ mem-size 1024.0)) (int (/ heap-size 1024.0)))
                         (i18n/trs "Puppet Server requires at least {0}MB of available RAM given this heap size, computed as 1.1 * max heap (-Xmx)." (int (/ required-mem-size 1024.0)))
                         (i18n/trs "Either increase available memory or decrease the configured heap size by reducing the -Xms and -Xmx values in JAVA_ARGS in /etc/sysconfig/puppetserver on EL systems or /etc/default/puppetserver on Debian systems."))))))))
+
+(defn register-gauge!
+  [registry hostname metric-name metric-fn]
+  (.register registry (metrics/host-metric-name hostname metric-name)
+             (proxy [Gauge] []
+               (getValue []
+                 (metric-fn)))))
+
+(schema/defn register-jvm-metrics!
+  [registry :- MetricRegistry
+   hostname :- schema/Str]
+  (register-gauge! registry hostname "uptime"
+                   (fn [] (.getUptime (ManagementFactory/getRuntimeMXBean))))
+  (let [memory-mbean (ManagementFactory/getMemoryMXBean)
+        get-heap-memory (fn [] (.getHeapMemoryUsage memory-mbean))
+        get-non-heap-memory (fn [] (.getNonHeapMemoryUsage memory-mbean))]
+    (register-gauge! registry hostname "memory.heap.committed"
+                     (fn [] (.getCommitted (get-heap-memory))))
+    (register-gauge! registry hostname "memory.heap.init"
+                     (fn [] (.getInit (get-heap-memory))))
+    (register-gauge! registry hostname "memory.heap.max"
+                     (fn [] (.getMax (get-heap-memory))))
+    (register-gauge! registry hostname "memory.heap.used"
+                     (fn [] (.getUsed (get-heap-memory))))
+
+    (register-gauge! registry hostname "memory.non-heap.committed"
+                     (fn [] (.getCommitted (get-non-heap-memory))))
+    (register-gauge! registry hostname "memory.non-heap.init"
+                     (fn [] (.getInit (get-non-heap-memory))))
+    (register-gauge! registry hostname "memory.non-heap.max"
+                     (fn [] (.getMax (get-non-heap-memory))))
+    (register-gauge! registry hostname "memory.non-heap.used"
+                     (fn [] (.getUsed (get-non-heap-memory))))
+
+    ;; Unfortunately there isn't an mbean for "total" memory. Dropwizard metrics'
+    ;; MetricUsageGaugeSet has "total" metrics that are computed by adding together Heap Memory and
+    ;; Non Heap Memory.
+    (register-gauge! registry hostname "memory.total.committed"
+                     (fn [] (+ (.getCommitted (get-heap-memory))
+                               (.getCommitted (get-non-heap-memory)))))
+    (register-gauge! registry hostname "memory.total.init"
+                     (fn [] (+ (.getInit (get-heap-memory))
+                               (.getInit (get-non-heap-memory)))))
+    (register-gauge! registry hostname "memory.total.max"
+                     (fn [] (+ (.getMax (get-heap-memory))
+                               (.getMax (get-non-heap-memory)))))
+    (register-gauge! registry hostname "memory.total.used"
+                     (fn [] (+ (.getUsed (get-heap-memory))
+                               (.getUsed (get-non-heap-memory)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
