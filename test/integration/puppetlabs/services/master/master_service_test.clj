@@ -9,7 +9,6 @@
     [me.raynes.fs :as fs]
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.http.client.sync :as http-client]
-    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [cheshire.core :as json]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
     [puppetlabs.trapperkeeper.services :as tk-services]
@@ -18,7 +17,9 @@
     [schema.core :as schema]
     [puppetlabs.services.master.master-core :as master-core]
     [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
-    [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]))
+    [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]
+    [puppetlabs.trapperkeeper.services.metrics.metrics-core :as metrics-core]
+    [puppetlabs.trapperkeeper.services.metrics.metrics-testutils :as metrics-testutils]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
 (def test-resources-code-dir (str test-resources-path "/codedir"))
@@ -281,3 +282,70 @@
               (test-path! "hostcert" (str ca-files-test-runtime-dir "/certs/localhost.pem"))
               (test-path! "serial" (str ca-files-test-runtime-dir "/certs/serial"))
               (test-path! "cert_inventory" (str ca-files-test-runtime-dir "/inventory.txt")))))))))))
+
+(def graphite-enabled-config
+  {:metrics {:server-id "localhost"
+             :reporters {:graphite {:update-interval-seconds 5000
+                                    :port 10001
+                                    :host "foo.localdomain"}}
+             :registries {:puppetserver
+                          {:reporters {:graphite {:enabled true}}}}}
+   :jruby-puppet {:master-code-dir test-resources-code-dir
+                  :master-conf-dir master-service-test-runtime-dir}})
+
+(defn get-puppetserver-registry-context
+      [app]
+      (-> app
+          (tk-app/get-service :MetricsService)
+          tk-services/service-context
+          :registries
+          deref
+          :puppetserver))
+
+(defn get-puppetserver-graphite-reporter
+      [app]
+      (:graphite-reporter (get-puppetserver-registry-context app)))
+
+(deftest graphite-filtering-works
+  (testing "default filter works"
+    (let [reported-metrics-atom (atom {})]
+      (with-redefs [metrics-core/build-graphite-sender
+                    (fn [_ domain]
+                      (metrics-testutils/make-graphite-sender reported-metrics-atom domain))]
+        (logutils/with-test-logging
+          (bootstrap-testutils/with-puppetserver-running
+           app
+           graphite-enabled-config
+           (http-get "/puppet/v3/catalog/localhost?environment=production")
+           (.report (get-puppetserver-graphite-reporter app))
+           (testing "reports metrics on the default list"
+             (is (metrics-testutils/reported? @reported-metrics-atom
+                                              :puppetserver
+                                              "puppetlabs.localhost.compiler.compile.mean")))
+           (testing "doesn't report metrics not on the default list"
+             (is (not (metrics-testutils/reported?
+                       @reported-metrics-atom
+                       :puppetserver
+                       "puppetlabs.localhost.compiler.compile.production.mean")))))))))
+  (testing "can add metrics to export to Graphite with the `metrics-allowed` setting"
+      (let [reported-metrics-atom (atom {})]
+        (with-redefs [metrics-core/build-graphite-sender
+                      (fn [_ domain]
+                        (metrics-testutils/make-graphite-sender reported-metrics-atom domain))]
+          (logutils/with-test-logging
+            (bootstrap-testutils/with-puppetserver-running
+             app
+             (assoc-in graphite-enabled-config [:metrics :registries :puppetserver :metrics-allowed]
+                       ["compiler.compile.production"])
+             (http-get "/puppet/v3/catalog/localhost?environment=production")
+             (.report (get-puppetserver-graphite-reporter app))
+             (testing "reports metrics on the default list"
+               (is (metrics-testutils/reported?
+                    @reported-metrics-atom
+                    :puppetserver
+                    "puppetlabs.localhost.compiler.compile.mean")))
+             (testing "reports metrics on the metrics-allowed list"
+               (is (metrics-testutils/reported?
+                    @reported-metrics-atom
+                    :puppetserver
+                    "puppetlabs.localhost.compiler.compile.production.mean")))))))))

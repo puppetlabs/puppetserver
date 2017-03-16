@@ -13,12 +13,54 @@
 
 (def master-service-status-version 1)
 
+;; Default list of allowed histograms/timers
+(def default-metrics-allowed-hists
+  ["http.active-histo"
+   "http.puppet-v3-catalog-/*/-requests"
+   "http.puppet-v3-environment-/*/-requests"
+   "http.puppet-v3-environment_classes-/*/-requests"
+   "http.puppet-v3-environments-requests"
+   "http.puppet-v3-file_bucket_file-/*/-requests"
+   "http.puppet-v3-file_content-/*/-requests"
+   "http.puppet-v3-file_metadata-/*/-requests"
+   "http.puppet-v3-file_metadatas-/*/-requests"
+   "http.puppet-v3-node-/*/-requests"
+   "http.puppet-v3-report-/*/-requests"
+   "http.puppet-v3-static_file_content-/*/-requests"])
+
+;; Default list of allowed values/counts
+(def default-metrics-allowed-vals
+  ["http.active-requests"
+   "http.puppet-v3-catalog-/*/-percentage"
+   "http.puppet-v3-environment-/*/-percentage"
+   "http.puppet-v3-environment_classes-/*/-percentage"
+   "http.puppet-v3-environments-percentage"
+   "http.puppet-v3-file_bucket_file-/*/-percentage"
+   "http.puppet-v3-file_content-/*/-percentage"
+   "http.puppet-v3-file_metadata-/*/-percentage"
+   "http.puppet-v3-file_metadatas-/*/-percentage"
+   "http.puppet-v3-node-/*/-percentage"
+   "http.puppet-v3-report-/*/-percentage"
+   "http.puppet-v3-resource_type-/*/-percentage"
+   "http.puppet-v3-resource_types-/*/-percentage"
+   "http.puppet-v3-static_file_content-/*/-percentage"
+   "http.puppet-v3-status-/*/-percentage"
+   "http.total-requests"
+   ; num-cpus is registered in trapperkeeper-comidi-metrics, see
+   ; https://github.com/puppetlabs/trapperkeeper-comidi-metrics/blob/0.1.1/src/puppetlabs/metrics/http.clj#L117-L120
+   "num-cpus"])
+
+(def default-metrics-allowed
+  (concat
+   default-metrics-allowed-hists
+   default-metrics-allowed-vals))
+
 (defservice master-service
   master/MasterService
   [[:WebroutingService add-ring-handler get-route]
    [:PuppetServerConfigService get-config]
    [:RequestHandlerService handle-request]
-   [:MetricsService get-metrics-registry get-server-id initialize-registry-settings]
+   [:MetricsService get-metrics-registry get-server-id update-registry-settings]
    [:CaService initialize-master-ssl! retrieve-ca-cert! retrieve-ca-crl! get-auth-handler]
    [:JRubyPuppetService]
    [:AuthorizationService wrap-with-authorization-check]
@@ -67,6 +109,9 @@
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
+
+     (update-registry-settings :puppetserver
+                               {:default-metrics-allowed default-metrics-allowed})
 
      (log/info (i18n/trs "Master Service adding ring handlers"))
 
