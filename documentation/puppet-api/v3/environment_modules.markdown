@@ -16,10 +16,55 @@ on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It als
 the Ruby-based Puppet master's authorization methods and configuration. See the
 [Authorization section](#authorization) for more information.
 
-## `GET /puppet/v3/environment_modules?environment=:environment`
+## `GET /puppet/v3/environment_modules`
 
-Making a request with no query parameters is not supported and returns an HTTP 400 (Bad
-Request) response.
+### Supported HTTP Methods
+
+GET
+
+### Supported Formats
+
+JSON
+
+### Responses
+
+#### GET request with results
+
+```
+GET /puppet/v3/environment_modules
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+[{
+    "modules": [
+        {
+            "name": "puppetlabs/ntp",
+            "version": "6.0.0"
+        },
+        {
+            "name": "puppetlabs/stdlib",
+            "version": "4.14.0"
+        }
+    ],
+    "name": "env"
+},
+{
+    "modules": [
+        {
+            "name": "puppetlabs/stdlib",
+            "version": "4.14.0"
+        },
+        {
+            "name": "puppetlabs/azure",
+            "version": "1.1.0"
+        }
+    ],
+    "name": "production"
+}]
+```
+
+## `GET /puppet/v3/environment_modules?environment=:environment`
 
 ### Supported HTTP Methods
 
@@ -107,10 +152,68 @@ HTTP/1.1 400 Bad Request
 The environment must be purely alphanumeric, not 'bog|us'
 ```
 
+### No metadata.json file
+
+If your modules do not have a [metadata.json](https://docs.puppet.com/puppet/latest/modules_metadata.html)
+file, puppetserver will not be able to determine the version of your module. In
+this case, puppetserver will return a null value for `version` in the response
+body.
+
 ### Schema
 
 An environment modules response body conforms to the
 [environment modules schema](./environment_modules.json).
+
+#### Validating your json
+
+If you have a response body that you'd like to validate against the
+[environment_modules.json](./environment_modules.json) schema, you can do so using the ruby library
+[json-schema](https://github.com/ruby-json-schema/json-schema).
+
+First, install the ruby gem to be used:
+
+```bash
+gem install json-schema
+```
+
+Next, given a json file, you can validate its schema.
+
+Here is a basic json file called _example.json_:
+
+```json
+{
+    "modules": [
+        {
+            "name": "puppetlabs/ntp",
+            "version": "6.0.0"
+        },
+        {
+            "name": "puppetlabs/stdlib",
+            "version": "4.16.0"
+        }
+    ],
+    "name": "production"
+}
+```
+
+Run this command from the root dir of the puppetserver project (or update the
+path to the json schema file in the command below):
+
+```bash
+ruby -rjson-schema -e "puts JSON::Validator.validate!('./documentation/puppet-api/v3/environment_modules.json','example.json')"
+```
+
+If the json is a valid schema, the command should output `true`. Otherwise, the
+library will print a schema validation error detailing which key or keys validate
+the schema.
+
+If you have a response that is the entire list of environment modules (i.e. the
+environment_modules endpoint), you will need to use this command to validate
+the json schema:
+
+```bash
+ruby -rjson-schema -e "puts JSON::Validator.validate!('./documentation/puppet-api/v3/environment_modules.json','all.json', :list=>true)"
+```
 
 ### Authorization
 

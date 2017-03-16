@@ -134,7 +134,7 @@
   "Schema for a given module that can be returned within the
   :modules key in EnvironmentModulesInfo."
   {:name schema/Str
-   :version schema/Str})
+   :version (schema/maybe schema/Str)})
 
 (def EnvironmentModulesInfo
   "Schema for the return payload for an environment_classes request."
@@ -359,11 +359,17 @@
   environment-module-response! :- ringutils/RingResponse
   "Process the environment module information, returning a ring response to be
   propagated back up to the caller of the environment_modules endpoint."
-  [info-from-jruby :- List
-   environment :- schema/Str]
-  (let [info-as-json (module-info-from-jruby->module-info-for-json
-                       info-from-jruby environment)]
-    (middleware-utils/json-response 200 info-as-json)))
+  ([info-from-jruby :- Map]
+   (let [all-info-as-json (map #(module-info-from-jruby->module-info-for-json
+                                  (val %)
+                                  (name (key %)))
+                               (sort-nested-info-maps info-from-jruby))]
+     (middleware-utils/json-response 200 all-info-as-json)))
+  ([info-from-jruby :- List
+    environment :- schema/Str]
+   (let [info-as-json (module-info-from-jruby->module-info-for-json
+                        info-from-jruby environment)]
+     (middleware-utils/json-response 200 info-as-json))))
 
 (schema/defn ^:always-validate
   environment-module-info-fn :- IFn
@@ -371,14 +377,18 @@
   request for environment_modules information."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
-    (let [environment (jruby-request/get-environment-from-request request)]
+    (if-let [environment (jruby-request/get-environment-from-request request)]
       (if-let [module-info
                (jruby-protocol/get-environment-module-info jruby-service
                                                            (:jruby-instance request)
                                                            environment)]
         (environment-module-response! module-info
                                       environment)
-        (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment))))))
+        (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment)))
+      (let [module-info
+            (jruby-protocol/get-all-environment-module-info jruby-service
+                                                            (:jruby-instance request))]
+        (environment-module-response! module-info)))))
 
 (schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
@@ -422,7 +432,7 @@
   (->
    (environment-module-info-fn jruby-service)
    (jruby-request/wrap-with-jruby-instance jruby-service)
-   jruby-request/wrap-with-environment-validation
+   (jruby-request/wrap-with-environment-validation true)
    jruby-request/wrap-with-error-handling))
 
 (schema/defn ^:always-validate valid-static-file-path?

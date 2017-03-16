@@ -54,6 +54,10 @@
     [this jruby-instance env-name]
     "Get module information for a specific environment")
 
+  (get-all-environment-module-info
+    [this jruby-instance]
+    "Get all module information for all environments")
+
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")
