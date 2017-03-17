@@ -10,7 +10,8 @@
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.services.protocols.master :as master]
             [puppetlabs.i18n.core :as i18n]
-            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
+            [puppetlabs.services.master.master-core :as master-core]))
 
 (def master-service-status-version 1)
 
@@ -123,12 +124,13 @@
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)
          registry (get-metrics-registry :puppetserver)
-         metrics (http-metrics/initialize-http-metrics!
-                  registry
-                  metrics-server-id
-                  route-metadata)
+         http-metrics (http-metrics/initialize-http-metrics!
+                       registry
+                       metrics-server-id
+                       route-metadata)
+         http-client-metric-ids-for-status (atom master-core/puppet-server-http-client-metrics-for-status)
          ring-handler (-> comidi-handler
-                          (http-metrics/wrap-with-request-metrics metrics)
+                          (http-metrics/wrap-with-request-metrics http-metrics)
                           (comidi/wrap-with-route-metadata routes))
          hostcrl (get-in config [:puppetserver :hostcrl])]
 
@@ -165,9 +167,18 @@
       "master"
       (status-core/get-artifact-version "puppetlabs" "puppetserver")
       master-service-status-version
-      (partial core/v1-status metrics))
-     (assoc context :http-metrics metrics)))
+      (partial core/v1-status http-metrics http-client-metric-ids-for-status registry))
+     (-> context
+         (assoc :http-metrics http-metrics)
+         (assoc :http-client-metric-ids-for-status http-client-metric-ids-for-status))))
   (start
     [this context]
     (log/info (i18n/trs "Puppet Server has successfully started and is now ready to handle requests"))
-    context))
+    context)
+
+  (add-metric-ids-to-http-client-metrics-list!
+   [this metric-ids-to-add]
+   (let [metric-ids-from-context (:http-client-metric-ids-for-status
+                                  (tk-services/service-context this))]
+     (master-core/add-metric-ids-to-http-client-metrics-list! metric-ids-from-context
+                                                              metric-ids-to-add))))
