@@ -355,76 +355,75 @@
     (with-redefs [metrics-core/build-graphite-sender
                   (fn [_ domain]
                     (metrics-testutils/make-graphite-sender reported-metrics-atom domain))]
-      (logutils/with-test-logging
-       (bootstrap-testutils/with-puppetserver-running
-        app
-        graphite-enabled-config
-        (let [registry (:registry (get-puppetserver-registry-context app))
-              get-memory-map
-              (fn [mem-type]
-                (ks/mapvals #(.getValue %)
-                            (filter #(.matches (key %) (format "puppetlabs.localhost.memory.%s.*" mem-type))
-                                    (.getMetrics registry))))
-              heap-memory-map (get-memory-map "heap")
-              non-heap-memory-map (get-memory-map "non-heap")
-              total-memory-map (get-memory-map "total")]
-          (testing "heap memory metrics work"
-            (= #{"puppetlabs.localhost.memory.heap.committed"
-                 "puppetlabs.localhost.memory.heap.init"
-                 "puppetlabs.localhost.memory.heap.max"
-                 "puppetlabs.localhost.memory.heap.used"} (ks/keyset heap-memory-map))
-            (is (every? #(< 0 %) (vals heap-memory-map))))
+      (bootstrap-testutils/with-puppetserver-running
+       app
+       graphite-enabled-config
+       (let [registry (:registry (get-puppetserver-registry-context app))
+             get-memory-map
+             (fn [mem-type]
+               (ks/mapvals #(.getValue %)
+                           (filter #(.matches (key %) (format "puppetlabs.localhost.memory.%s.*" mem-type))
+                                   (.getMetrics registry))))
+             heap-memory-map (get-memory-map "heap")
+             non-heap-memory-map (get-memory-map "non-heap")
+             total-memory-map (get-memory-map "total")]
+         (testing "heap memory metrics work"
+           (= #{"puppetlabs.localhost.memory.heap.committed"
+                "puppetlabs.localhost.memory.heap.init"
+                "puppetlabs.localhost.memory.heap.max"
+                "puppetlabs.localhost.memory.heap.used"} (ks/keyset heap-memory-map))
+           (is (every? #(< 0 %) (vals heap-memory-map))))
 
-          (testing "non-heap memory metrics work"
-            (= #{"puppetlabs.localhost.memory.non-heap.committed"
-                 "puppetlabs.localhost.memory.non-heap.init"
-                 "puppetlabs.localhost.memory.non-heap.max"
-                 "puppetlabs.localhost.memory.non-heap.used"}
-               (ks/keyset non-heap-memory-map))
-            ;; Some of the memory metrics don't propagate correctly on OS X, which can result in a
-            ;; value of -1. This is here so that these tests will pass when run in developers local
-            ;; environments.
-            (is (every? #(or (< 0 %) (= -1 %)) (vals non-heap-memory-map))))
+         (testing "non-heap memory metrics work"
+           (= #{"puppetlabs.localhost.memory.non-heap.committed"
+                "puppetlabs.localhost.memory.non-heap.init"
+                "puppetlabs.localhost.memory.non-heap.max"
+                "puppetlabs.localhost.memory.non-heap.used"}
+              (ks/keyset non-heap-memory-map))
+           ;; Some of the memory metrics don't propagate correctly on OS X, which can result in a
+           ;; value of -1. This is here so that these tests will pass when run in developers local
+           ;; environments.
+           (is (every? #(or (< 0 %) (= -1 %)) (vals non-heap-memory-map))))
 
-          (testing "total memory metrics work"
-            (= #{"puppetlabs.localhost.memory.total.committed"
-                 "puppetlabs.localhost.memory.total.init"
-                 "puppetlabs.localhost.memory.total.max"
-                 "puppetlabs.localhost.memory.total.used"}
-               (ks/keyset total-memory-map))
-            (is (every? #(< 0 %) (vals total-memory-map))))
+         (testing "total memory metrics work"
+           (= #{"puppetlabs.localhost.memory.total.committed"
+                "puppetlabs.localhost.memory.total.init"
+                "puppetlabs.localhost.memory.total.max"
+                "puppetlabs.localhost.memory.total.used"}
+              (ks/keyset total-memory-map))
+           (is (every? #(< 0 %) (vals total-memory-map))))
 
-          (testing "uptime metric works"
-            (let [get-uptime (fn [] (-> registry
-                                        .getMetrics
-                                        (get "puppetlabs.localhost.uptime")
-                                        .getValue))
-                  uptime (get-uptime)]
-              (is (< 0 uptime))
-              ;; Make sure uptime can be updated after initialization.
-              (Thread/sleep 1)
-              (is (not= uptime (get-uptime))))))
+         (testing "uptime metric works"
+           (let [get-uptime (fn [] (-> registry
+                                       .getMetrics
+                                       (get "puppetlabs.localhost.uptime")
+                                       .getValue))
+                 uptime (get-uptime)]
+             (is (< 0 uptime))
+             ;; Make sure uptime can be updated after initialization.
+             (Thread/sleep 1)
+             (is (not= uptime (get-uptime))))))
 
-        (.report (get-puppetserver-graphite-reporter app))
+       (.report (get-puppetserver-graphite-reporter app))
 
-        (testing "jvm metrics are reported to graphite"
-          (is (every? #(metrics-testutils/reported? @reported-metrics-atom
-                                                    :puppetserver
-                                                    %)
-                      (map #(format "puppetlabs.localhost.memory.%s" %)
-                           ["heap.committed"
-                            "heap.init"
-                            "heap.max"
-                            "heap.used"
-                            "non-heap.committed"
-                            "non-heap.init"
-                            "non-heap.max"
-                            "non-heap.used"
-                            "total.committed"
-                            "total.init"
-                            "total.max"
-                            "total.used"])))
+       (testing "jvm metrics are reported to graphite"
+         (is (every? #(metrics-testutils/reported? @reported-metrics-atom
+                                                   :puppetserver
+                                                   %)
+                     (map #(format "puppetlabs.localhost.memory.%s" %)
+                          ["heap.committed"
+                           "heap.init"
+                           "heap.max"
+                           "heap.used"
+                           "non-heap.committed"
+                           "non-heap.init"
+                           "non-heap.max"
+                           "non-heap.used"
+                           "total.committed"
+                           "total.init"
+                           "total.max"
+                           "total.used"])))
 
-          (is (metrics-testutils/reported? @reported-metrics-atom
-                                           :puppetserver
-                                           "puppetlabs.localhost.uptime"))))))))
+         (is (metrics-testutils/reported? @reported-metrics-atom
+                                          :puppetserver
+                                          "puppetlabs.localhost.uptime")))))))
