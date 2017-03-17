@@ -41,6 +41,18 @@ step 'Install graphite (and grafana)' do
 
   on(graphite, "puppet module install cprice404-grafanadash --codedir #{tmp_module_dir}")
   on(graphite, "puppet apply -e \"include grafanadash::dev\" --codedir #{tmp_module_dir}")
+
+  # Set max_creates_per_minute to 'inf' (in place of smaller default) in order
+  # to speed up how quickly Graphite makes newly-created metrics available to
+  # be queried - and, therefore, hopefully make this test run much more quickly.
+  graphitepp = "#{tmp_module_dir}/graphite.pp"
+  create_remote_file(master, graphitepp, <<GRAPHITEPP)
+class { 'graphite':
+  gr_web_cors_allow_from_all => true,
+  gr_max_creates_per_minute => inf,
+}
+GRAPHITEPP
+  on(graphite, "puppet apply #{graphitepp} --codedir #{tmp_module_dir}")
 end
 
 step 'Enable graphite and profiler metrics in puppetserver configuration' do
