@@ -51,6 +51,22 @@
                       :headers {"Accept" "pson"}
                       :as :text})))
 
+(defn http-put
+  [url body]
+  (let [master-service-test-runtime-ssl-dir
+        (str master-service-test-runtime-dir "/ssl")]
+    (http-client/put (str "https://localhost:8140" url)
+                     {:ssl-cert (str master-service-test-runtime-ssl-dir
+                                     "/certs/localhost.pem")
+                      :ssl-key (str master-service-test-runtime-ssl-dir
+                                    "/private_keys/localhost.pem")
+                      :ssl-ca-cert (str master-service-test-runtime-ssl-dir
+                                        "/certs/ca.pem")
+                      :body body
+                      :headers {"Accept" "pson"
+                                "Content-type" "text/pson"}
+                      :as :text})))
+
 (deftest ^:integration master-service-http-metrics
   (testing "HTTP metrics computed via use of the master service are correct"
     (bootstrap-testutils/with-puppetserver-running
@@ -600,3 +616,39 @@
                           (set metric-ids)))))))
            (finally
              (jruby-testutils/return-instance jruby-service jruby-instance :add-metric-ids-test))))))))
+
+(deftest ^:integration http-report-processor-client-metrics-test
+  (testing "HTTP client metrics from the http report processor are added to status"
+    (bootstrap-testutils/with-puppetserver-running
+     app
+     {:jruby-puppet {:max-active-instances 2 ; we need 2 jruby-instances since processing the report uses an instance
+                     :master-code-dir test-resources-code-dir
+                     :master-conf-dir master-service-test-runtime-dir}
+      :metrics {:server-id "localhost"}}
+     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+           jruby-instance (jruby-testutils/borrow-instance jruby-service :http-report-processor-metrics-test)
+           container (:scripting-container jruby-instance)]
+       (try
+         ;; we don't care at all about the content of the report, just that it is valid
+         (let [report (.runScriptlet container "Puppet::Transaction::Report.new('apply').to_pson")]
+           (logutils/with-test-logging
+            ;; this test relies on the http report processor being configured in the puppet.conf
+            ;; defined by `test-resources-puppet-conf`. We don't care whether the report is actually
+            ;; submitted successfully, just that the underlying http client actually makes the
+            ;; request, so the configured `reporturl` doesn't have a valid url, and we use
+            ;; `with-test-logging` around this request to suppress the error.
+            (let [resp (http-put "/puppet/v3/report/localhost?environment=production" report)]
+              (testing "report was successfully submitted to http report processor"
+                (is (= 200 (:status resp)))
+                (is (= "[\"http\"]" (:body resp))))))
+           (testing "http-client-metrics key in status has metric for processing report"
+             (let [metrics (get-http-client-metrics-status)
+                   {:keys [metric-id count mean aggregate metric-name]} (first metrics)]
+               (is (= ["puppet" "report" "http"] metric-id))
+               (is (= 1 count))
+               (is (< 0 mean))
+               (is (= (* count mean) aggregate))
+               (is (= "puppetlabs.localhost.http-client.experimental.with-metric-id.puppet.report.http.full-response"
+                      metric-name)))))
+         (finally
+           (jruby-testutils/return-instance jruby-service jruby-instance :http-report-processor-metrics-test)))))))
