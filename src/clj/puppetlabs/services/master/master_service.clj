@@ -1,5 +1,6 @@
 (ns puppetlabs.services.master.master-service
   (:require [clojure.tools.logging :as log]
+            [ring.middleware.params :as ring]
             [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.services.master.master-core :as core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
@@ -82,17 +83,25 @@
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
                                       true)
+         clojure-handler (fn [handler]
+                           (core/get-wrapped-handler
+                            (ring/wrap-params handler)
+                            (get-auth-handler)
+                            puppet-version))
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
                                                  false)
-         ring-app (core/construct-root-routes puppet-version
-                                              use-legacy-auth-conf
-                                              jruby-service
-                                              get-code-content
-                                              handle-request
-                                              (get-auth-handler)
-                                              environment-class-cache-enabled)
+         ring-app (comidi/routes
+                   (core/construct-root-routes puppet-version
+                                               use-legacy-auth-conf
+                                               jruby-service
+                                               get-code-content
+                                               handle-request
+                                               (get-auth-handler)
+                                               environment-class-cache-enabled)
+                   (-> (core/experimental-routes path)
+                       (comidi/wrap-routes clojure-handler)))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)
