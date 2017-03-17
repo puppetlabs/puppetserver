@@ -11,7 +11,8 @@
             [puppetlabs.services.protocols.master :as master]
             [puppetlabs.i18n.core :as i18n]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
-            [puppetlabs.services.master.master-core :as master-core]))
+            [puppetlabs.services.master.master-core :as master-core]
+            [clojure.string :as str]))
 
 (def master-service-status-version 1)
 
@@ -68,11 +69,16 @@
    "memory.total.max"
    "memory.total.used"])
 
+(def http-client-metrics-allowed-hists
+  (map #(format "http-client.experimental.with-metric-id.%s.full-response" (str/join "." %))
+       master-core/puppet-server-http-client-metrics-for-status))
+
 (def default-metrics-allowed
   (concat
    default-metrics-allowed-hists
    default-metrics-allowed-vals
-   default-jvm-metrics-allowed))
+   default-jvm-metrics-allowed
+   http-client-metrics-allowed-hists))
 
 (defservice master-service
   master/MasterService

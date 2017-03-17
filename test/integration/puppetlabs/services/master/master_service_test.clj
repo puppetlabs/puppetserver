@@ -469,89 +469,105 @@
       (get-in [:status :experimental :http-client-metrics])))
 
 (deftest ^:integration master-service-http-client-metrics
-  (testing "HTTP client metrics are present in the master status"
-    (bootstrap-testutils/with-puppetserver-running
-     app
-     {:jruby-puppet {:max-active-instances 1
-                     :master-code-dir test-resources-code-dir
-                     :master-conf-dir master-service-test-runtime-dir}
-      :metrics {:server-id "localhost"}}
-     (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-           jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
-           container (:scripting-container jruby-instance)]
-       (try
-         (.runScriptlet
-          container
-          ;; create a client and assign it to a global variable
-          (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                  8140 true))
-         (let [make-request-with-metric-id (fn [metric-id-as-string]
-                                             (.runScriptlet
-                                              container
-                                              ;; So long as the server and port are accessible, it
-                                              ;; doesn't actually matter whether the endpoint is
-                                              ;; reachable or not - we just need to make requests
-                                              ;; with the given metric ids.
-                                              (format "$c.get('/fake', {}, {:metric_id => %s})"
-                                                      metric-id-as-string)))]
-           (testing "http-client-metrics key in master status"
-             (testing "empty array if no requests have been made"
-               (is (= [] (get-http-client-metrics-status))))
+  (let [reported-metrics-atom (atom {})]
+    (with-redefs [metrics-core/build-graphite-sender
+                  (fn [_ domain]
+                    (metrics-testutils/make-graphite-sender reported-metrics-atom domain))]
+      (testing "HTTP client metrics are present in the master status"
+        (bootstrap-testutils/with-puppetserver-running
+         app
+         graphite-enabled-config
+         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+               jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
+               container (:scripting-container jruby-instance)]
+           (try
+             (.runScriptlet
+              container
+              ;; create a client and assign it to a global variable
+              (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
+                      8140 true))
+             (let [make-request-with-metric-id (fn [metric-id-as-string]
+                                                 (.runScriptlet
+                                                  container
+                                                  ;; So long as the server and port are accessible, it
+                                                  ;; doesn't actually matter whether the endpoint is
+                                                  ;; reachable or not - we just need to make requests
+                                                  ;; with the given metric ids.
+                                                  (format "$c.get('/fake', {}, {:metric_id => %s})"
+                                                          metric-id-as-string)))]
+               (testing "http-client-metrics key in master status"
+                 (testing "empty array if no requests have been made"
+                   (is (= [] (get-http-client-metrics-status))))
 
-             (testing "doesn't include metrics for metric-ids it is not supposed to have"
-               (make-request-with-metric-id "['fake', 'fake', 'fakery']")
-               (is (= [] (get-http-client-metrics-status))))
+                 (testing "doesn't include metrics for metric-ids it is not supposed to have"
+                   (make-request-with-metric-id "['fake', 'fake', 'fakery']")
+                   (is (= [] (get-http-client-metrics-status))))
 
-             (testing "includes metrics for metric-ids it is supposed to have"
-               (make-request-with-metric-id "['puppetdb', 'query']")
-               (is (= [["puppetdb" "query"]] (map :metric-id (get-http-client-metrics-status)))))
+                 (testing "includes metrics for metric-ids it is supposed to have"
+                   (make-request-with-metric-id "['puppetdb', 'query']")
+                   (is (= [["puppetdb" "query"]] (map :metric-id (get-http-client-metrics-status)))))
 
-             (testing "only includes exact metric-ids it's supposed to have"
-               (make-request-with-metric-id "['puppetdb', 'command', 'replace_catalog', 'foonode']")
-               (let [metric-ids (map :metric-id (get-http-client-metrics-status))]
-                 (is (some #(= ["puppetdb" "command" "replace_catalog"] %) metric-ids))
-                 (is (not-any? #(= ["puppetdb" "command" "replace_catalog" "foodnode"] %)
-                               metric-ids))
-                 (is (= #{["puppetdb" "query"] ["puppetdb" "command" "replace_catalog"]}
-                        (set metric-ids)))))
+                 (testing "only includes exact metric-ids it's supposed to have"
+                   (make-request-with-metric-id "['puppetdb', 'command', 'replace_catalog', 'foonode']")
+                   (let [metric-ids (map :metric-id (get-http-client-metrics-status))]
+                     (is (some #(= ["puppetdb" "command" "replace_catalog"] %) metric-ids))
+                     (is (not-any? #(= ["puppetdb" "command" "replace_catalog" "foodnode"] %)
+                                   metric-ids))
+                     (is (= #{["puppetdb" "query"] ["puppetdb" "command" "replace_catalog"]}
+                            (set metric-ids)))))
 
-             (testing "includes all metrics it is supposed to have"
-               (make-request-with-metric-id "['puppet', 'report', 'http']")
-               (make-request-with-metric-id "['puppetdb', 'command', 'replace_facts', 'foonode']")
-               (make-request-with-metric-id "['puppetdb', 'command', 'store_report', 'foonode']")
-               (make-request-with-metric-id "['puppetdb', 'facts', 'find', 'foonode']")
-               (make-request-with-metric-id "['puppetdb', 'facts', 'search']")
-               (make-request-with-metric-id "['puppetdb', 'resource', 'search', 'Package']")
-               (= (set master-core/puppet-server-http-client-metrics-for-status)
-                  (set (map :metric-id (get-http-client-metrics-status)))))
+                 (testing "includes all metrics it is supposed to have"
+                   (make-request-with-metric-id "['puppet', 'report', 'http']")
+                   (make-request-with-metric-id "['puppetdb', 'command', 'replace_facts', 'foonode']")
+                   (make-request-with-metric-id "['puppetdb', 'command', 'store_report', 'foonode']")
+                   (make-request-with-metric-id "['puppetdb', 'facts', 'find', 'foonode']")
+                   (make-request-with-metric-id "['puppetdb', 'facts', 'search']")
+                   (make-request-with-metric-id "['puppetdb', 'resource', 'search', 'Package']")
+                   (= (set master-core/puppet-server-http-client-metrics-for-status)
+                      (set (map :metric-id (get-http-client-metrics-status)))))
 
-             (testing "all metrics contain information they are supposed to have"
-               (let [metrics (get-http-client-metrics-status)]
-                 (testing "contains correct keys"
-                   (is (every?
-                        #(= #{:metric-id :metric-name :count :mean :aggregate} (set (keys %)))
-                        metrics)))
-                 (testing "count is correct"
-                   (is (every? #(= 1 %) (map :count metrics))))
-                 (testing "mean is correct"
-                   (is (every? #(< 0 %) (map :mean metrics))))
-                 (testing "aggregate is correct"
-                   ;; since each metric-id has only been hit once, aggregate and mean should be the
-                   ;; same
-                   (is (every? (fn [{:keys [aggregate mean]}] #(= aggregate mean)) metrics)))
-                 (testing "metric-name is correct"
-                   (is (= (set (map #(str/join "." %)
-                                    master-core/puppet-server-http-client-metrics-for-status))
-                          (set (map
-                                ;; re-find returns a vector of results, the second element being the
-                                ;; capture match
-                                #(second
-                                  (re-find
-                                   #"puppetlabs.localhost.http-client.experimental.with-metric-id.(.*).full-response"
-                                   (:metric-name %)))
-                                metrics)))))))))
-         (finally
-           (jruby-testutils/return-instance jruby-service jruby-instance :http-client-metrics-test)))))))
+                 (testing "all metrics contain information they are supposed to have"
+                   (let [metrics (get-http-client-metrics-status)]
+                     (testing "contains correct keys"
+                       (is (every?
+                            #(= #{:metric-id :metric-name :count :mean :aggregate} (set (keys %)))
+                            metrics)))
+                     (testing "count is correct"
+                       (is (every? #(= 1 %) (map :count metrics))))
+                     (testing "mean is correct"
+                       (is (every? #(< 0 %) (map :mean metrics))))
+                     (testing "aggregate is correct"
+                       ;; since each metric-id has only been hit once, aggregate and mean should be the
+                       ;; same
+                       (is (every? (fn [{:keys [aggregate mean]}] #(= aggregate mean)) metrics)))
+                     (testing "metric-name is correct"
+                       (is (= (set (map #(str/join "." %)
+                                        master-core/puppet-server-http-client-metrics-for-status))
+                              (set (map
+                                    ;; re-find returns a vector of results, the second element being the
+                                    ;; capture match
+                                    #(second
+                                      (re-find
+                                       #"puppetlabs.localhost.http-client.experimental.with-metric-id.(.*).full-response"
+                                       (:metric-name %)))
+                                    metrics)))))))))
+
+             (testing "http client metrics are reported to graphite"
+               (.report (get-puppetserver-graphite-reporter app))
+               (is (every? #(metrics-testutils/reported? @reported-metrics-atom
+                                                         :puppetserver
+                                                         %)
+                           (map #(format "puppetlabs.localhost.http-client.experimental.with-metric-id.%s.full-response.mean" %)
+                                ["puppet.report.http"
+                                 "puppetdb.command.replace_catalog"
+                                 "puppetdb.command.replace_facts"
+                                 "puppetdb.command.store_report"
+                                 "puppetdb.facts.find"
+                                 "puppetdb.facts.search"
+                                 "puppetdb.resource.search"
+                                 "puppetdb.query"]))))
+             (finally
+               (jruby-testutils/return-instance jruby-service jruby-instance :http-client-metrics-test)))))))))
 
 (deftest ^:integration add-metric-ids-to-http-client-metrics-list-test
   (let [test-service (tk/service
