@@ -8,9 +8,9 @@ on(legacy_agents, puppet("--version")) do
   assert(stdout.start_with? "3.", "puppet --version does not start with major version 3.")
 end
 
-step "Check that Puppet Server has Puppet 4.x installed"
+step "Check that Puppet Server has Puppet 4.x or 5.x installed"
 on(master, puppet("--version")) do
-  assert(stdout.start_with? "4.", "puppet --version does not start with major version 4.")
+  assert_match(/\A[45]/, stdout, "puppet --version does not start with major version 4.x or 5.x")
 end
 
 step "Check that the agent on the master runs against the master"
