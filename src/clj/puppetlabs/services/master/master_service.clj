@@ -51,10 +51,27 @@
    ; https://github.com/puppetlabs/trapperkeeper-comidi-metrics/blob/0.1.1/src/puppetlabs/metrics/http.clj#L117-L120
    "num-cpus"])
 
+;; List of allowed jvm gauges/values
+(def default-jvm-metrics-allowed
+  ["uptime"
+   "memory.heap.committed"
+   "memory.heap.init"
+   "memory.heap.max"
+   "memory.heap.used"
+   "memory.non-heap.committed"
+   "memory.non-heap.init"
+   "memory.non-heap.max"
+   "memory.non-heap.used"
+   "memory.total.committed"
+   "memory.total.init"
+   "memory.total.max"
+   "memory.total.used"])
+
 (def default-metrics-allowed
   (concat
    default-metrics-allowed-hists
-   default-metrics-allowed-vals))
+   default-metrics-allowed-vals
+   default-jvm-metrics-allowed))
 
 (defservice master-service
   master/MasterService
@@ -118,6 +135,8 @@
      (retrieve-ca-cert! localcacert)
      (retrieve-ca-crl! hostcrl)
      (initialize-master-ssl! settings certname)
+
+     (core/register-jvm-metrics! registry metrics-server-id)
 
      (update-registry-settings :puppetserver
                                {:default-metrics-allowed default-metrics-allowed})
