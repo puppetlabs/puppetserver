@@ -11,8 +11,8 @@ manifests_dir = "#{environments_dir}/production/manifests"
 sitepp = "#{manifests_dir}/site.pp"
 
 step 'Backup puppetserver config files' do
-  on master, "cp -f #{puppetserver_conf_file} #{puppetserver_conf_file}.bak"
-  on master, "cp -f #{metrics_conf_file} #{metrics_conf_file}.bak"
+  on master, "cp -pf #{puppetserver_conf_file} #{puppetserver_conf_file}.bak"
+  on master, "cp -pf #{metrics_conf_file} #{metrics_conf_file}.bak"
 end
 
 teardown do
