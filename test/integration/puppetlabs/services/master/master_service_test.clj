@@ -22,7 +22,8 @@
     [puppetlabs.trapperkeeper.services.metrics.metrics-testutils :as metrics-testutils]
     [puppetlabs.trapperkeeper.services :as tk]
     [clojure.string :as str]
-    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]))
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+    [schema.test :as schema-test]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
 (def test-resources-code-dir (str test-resources-path "/codedir"))
@@ -31,6 +32,7 @@
 (def master-service-test-runtime-dir "target/master-service-test")
 
 (use-fixtures :once
+              schema-test/validate-schemas
               (fn [f]
                 (testutils/with-config-dirs
                  {test-resources-conf-dir
