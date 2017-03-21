@@ -24,6 +24,15 @@ teardown do
   bounce_service(master, puppetservice)
 end
 
+# This test assumes that at least some function metrics will be exported by
+# the server.  For OSS, we create a manifest with a function in it, generate(),
+# which should provoke the use of some function metrics during catalog
+# compilation for an agent.  For PE, we shouldn't need to create a special
+# manifest since any PE agent run should automatically have some functions
+# exercised as part of its catalog compilation.  This test avoids putting the
+# special manifest in place for PE in order to avoid unnecessarily dirtying up
+# the code directory before any downstream tests are run, e.g., in the event
+# that file sync is enabled.
 if !master.is_pe?
   step 'Configuring manifest for exercising function metrics in agent run' do
     on master, "mkdir -p #{manifests_dir}"
