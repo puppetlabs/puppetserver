@@ -512,9 +512,6 @@
                  (testing "only includes exact metric-ids it's supposed to have"
                    (make-request-with-metric-id "['puppetdb', 'command', 'replace_catalog', 'foonode']")
                    (let [metric-ids (map :metric-id (get-http-client-metrics-status))]
-                     (is (some #(= ["puppetdb" "command" "replace_catalog"] %) metric-ids))
-                     (is (not-any? #(= ["puppetdb" "command" "replace_catalog" "foodnode"] %)
-                                   metric-ids))
                      (is (= #{["puppetdb" "query"] ["puppetdb" "command" "replace_catalog"]}
                             (set metric-ids)))))
 
@@ -648,7 +645,7 @@
            container (:scripting-container jruby-instance)]
        (try
          ;; we don't care at all about the content of the report, just that it is valid
-         (let [report (.runScriptlet container "Puppet::Transaction::Report.new('apply').to_pson")]
+         (let [report (.runScriptlet container "Puppet::Transaction::Report.new('apply').to_json")]
            (logutils/with-test-logging
             ;; this test relies on the http report processor being configured in the puppet.conf
             ;; defined by `test-resources-puppet-conf`. We don't care whether the report is actually

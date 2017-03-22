@@ -464,11 +464,13 @@
         {:status 200
          :body (get-code-content environment code-id file-path)}))))
 
+(def MetricIdsForStatus (schema/atom [[schema/Str]]))
+
 (schema/defn http-client-metrics-summary
   :- {:metrics-data [http-client-common/MetricIdMetricData]
       :sorted-metrics-data [http-client-common/MetricIdMetricData]}
   [metric-registry :- MetricRegistry
-   metric-ids-to-select :- (schema/atom [[schema/Str]])]
+   metric-ids-to-select :- MetricIdsForStatus]
   (let [metrics-data (map #(http-client-metrics/get-client-metrics-data-by-metric-id metric-registry %)
                           @metric-ids-to-select)
         flattened-data (flatten metrics-data)]
@@ -757,13 +759,13 @@
    ["puppetdb" "resource" "search"]])
 
 (schema/defn ^:always-validate add-metric-ids-to-http-client-metrics-list!
-  [metric-id-atom :- (schema/atom [[schema/Str]])
+  [metric-id-atom :- MetricIdsForStatus
    metric-ids-to-add :- [[schema/Str]]]
   (swap! metric-id-atom concat metric-ids-to-add))
 
 (schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
   [http-metrics :- http-metrics/HttpMetrics
-   http-client-metric-ids-for-status :- (schema/atom [[schema/Str]])
+   http-client-metric-ids-for-status :- MetricIdsForStatus
    metric-registry :- MetricRegistry
    level :- status-core/ServiceStatusDetailLevel]
   (let [level>= (partial status-core/compare-levels >= level)]
