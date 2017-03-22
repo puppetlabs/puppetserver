@@ -3,7 +3,6 @@
            (clojure.lang IFn)
            (java.util List Map Map$Entry)
            (org.jruby RubySymbol)
-           (org.eclipse.jetty.util URIUtil)
            (com.codahale.metrics MetricRegistry Gauge)
            (java.lang.management ManagementFactory))
   (:require [me.raynes.fs :as fs]
@@ -24,6 +23,8 @@
             [puppetlabs.i18n.core :as i18n]
             [puppetlabs.metrics :as metrics]
             [puppetlabs.metrics.http :as http-metrics]
+            [puppetlabs.http.client.metrics :as http-client-metrics]
+            [puppetlabs.http.client.common :as http-client-common]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -463,6 +464,18 @@
         {:status 200
          :body (get-code-content environment code-id file-path)}))))
 
+(def MetricIdsForStatus (schema/atom [[schema/Str]]))
+
+(schema/defn http-client-metrics-summary
+  :- {:metrics-data [http-client-common/MetricIdMetricData]
+      :sorted-metrics-data [http-client-common/MetricIdMetricData]}
+  [metric-registry :- MetricRegistry
+   metric-ids-to-select :- MetricIdsForStatus]
+  (let [metrics-data (map #(http-client-metrics/get-client-metrics-data-by-metric-id metric-registry %)
+                          @metric-ids-to-select)
+        flattened-data (flatten metrics-data)]
+    {:metrics-data flattened-data
+     :sorted-metrics-data (sort-by :aggregate > flattened-data)}))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
@@ -732,10 +745,28 @@
                  environment-class-cache-enabled)))
 
 (def MasterStatusV1
-  {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]}})
+  {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]
+                                        :http-client-metrics [http-client-common/MetricIdMetricData]}})
+
+(def puppet-server-http-client-metrics-for-status
+  [["puppet" "report" "http"]
+   ["puppetdb" "command" "replace_catalog"]
+   ["puppetdb" "command" "replace_facts"]
+   ["puppetdb" "command" "store_report"]
+   ["puppetdb" "facts" "find"]
+   ["puppetdb" "facts" "search"]
+   ["puppetdb" "query"]
+   ["puppetdb" "resource" "search"]])
+
+(schema/defn ^:always-validate add-metric-ids-to-http-client-metrics-list!
+  [metric-id-atom :- MetricIdsForStatus
+   metric-ids-to-add :- [[schema/Str]]]
+  (swap! metric-id-atom concat metric-ids-to-add))
 
 (schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
   [http-metrics :- http-metrics/HttpMetrics
+   http-client-metric-ids-for-status :- MetricIdsForStatus
+   metric-registry :- MetricRegistry
    level :- status-core/ServiceStatusDetailLevel]
   (let [level>= (partial status-core/compare-levels >= level)]
     {:state :running
@@ -744,7 +775,14 @@
               {}
               ;; no extra status at ':info' level yet
               (level>= :info) identity
-              (level>= :debug) (assoc-in [:experimental :http-metrics] (:sorted-routes (http-metrics/request-summary http-metrics))))}))
+              (level>= :debug) (-> (assoc-in [:experimental :http-metrics]
+                                             (:sorted-routes
+                                              (http-metrics/request-summary http-metrics)))
+                                   (assoc-in [:experimental :http-client-metrics]
+                                             (:sorted-metrics-data
+                                              (http-client-metrics-summary
+                                               metric-registry
+                                               http-client-metric-ids-for-status)))))}))
 
 (def resources-root "puppetlabs/puppetserver/public")
 (def js-resources-root (str resources-root "/js"))
