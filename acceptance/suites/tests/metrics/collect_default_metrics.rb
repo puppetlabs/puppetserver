@@ -46,7 +46,7 @@ SITEPP
 end
 
 step 'Install graphite (and grafana)' do
-  tmp_module_dir = agent.tmpdir('collect_default_metrics')
+  tmp_module_dir = graphite.tmpdir('collect_default_metrics')
 
   on(graphite, "puppet module install cprice404-grafanadash --codedir #{tmp_module_dir}")
   on(graphite, "puppet apply -e \"include grafanadash::dev\" --codedir #{tmp_module_dir}")
@@ -76,7 +76,7 @@ step 'Enable graphite and profiler metrics in puppetserver configuration' do
                                 "update-interval-seconds" => 1}}}},
             "reporters" =>
                 {"graphite" =>
-                     {"host" => agent.hostname,
+                     {"host" => graphite.hostname,
                       "port" => 2003,
                       "update-interval-seconds" => 1}}}};
 
