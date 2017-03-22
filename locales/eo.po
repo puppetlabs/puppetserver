@@ -1,0 +1,694 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Puppet <docs@puppet.com>
+# This file is distributed under the same license as the puppetlabs.puppetserver package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: puppetlabs.puppetserver\n"
+"Report-Msgid-Bugs-To: docs@puppet.com\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: 2017-03-22 16:36-0600\n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 1.8.12\n"
+"Last-Translator: \n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: eo\n"
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Cannot initialize {0} with partial state; need all files or none."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Found:"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Missing:"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Config setting ca_ttl must have a value below {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"The ''client-whitelist'' and ''authorization-required'' settings in the "
+"''certificate-authority.certificate-status'' section are deprecated and will "
+"be removed in a future release."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+msgid ""
+"Remove these settings and create an appropriate authorization rule in the /"
+"etc/puppetlabs/puppetserver/conf.d/auth.conf file."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Because the ''client-whitelist'' is empty and ''authorization-required'' is "
+"set to ''false'', the ''certificate-authority.certificate-status'' settings "
+"will be ignored and authorization for the ''certificate_status'' endpoints "
+"will be done per the authorization rules in the /etc/puppetlabs/puppetserver/"
+"conf.d/auth.conf file."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"To suppress this warning, remove the ''certificate-authority'' configuration "
+"settings."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Initializing SSL for the CA; settings:"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Instance name \"{0}\" does not match requested key \"{1}\""
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Certificate names must be lower case."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Subject contains unprintable or non-ASCII characters"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Subject contains a wildcard, which is not allowed: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Found extensions that are not permitted: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Only DNS names are allowed in the Subject Alternative Names extension"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Cert subjectAltName contains a wildcard, which is not allowed: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"No CSR Attributes configuration file found at {0}, CSR Attributes will not "
+"be loaded"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Generating public and private keys for master cert"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Using keys found on disk to generate master cert"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Found master public key ''{0}'' but master private key ''{1}'' is missing"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Found master private key ''{0}'' but master public key ''{1}'' is missing"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Initializing SSL for the Master; settings:"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Master already initialized for SSL"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Found master cert ''{0}'' but master private key ''{1}'' is missing"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy "
+"it from"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Invalid pattern ''{0}'' found in {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Executing ''{0} {1}''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Autosign command ''{0} {1}'' exit status: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Autosign command ''{0} {1}'' output on stdout: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Autosign command ''{0} {1}'' generated output to stderr: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"Autosign command ''{0}'' rejected certificate ''{1}'' because the exit code "
+"was {2}, not zero"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Signed certificate request for {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Saving CSR to ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "{0} already has a {1} certificate; new certificate will overwrite it"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "{0} already has a {1} certificate; ignoring certificate request"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "CSR contains a public key that does not correspond to the signing key"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "CSR ''{0}'' contains an authorization extension, which is disallowed."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Use {0} to sign this request."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"CSR ''{0}'' contains subject alternative names ({1}), which are disallowed."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Use `puppet cert --allow-dns-alt-names sign {0}` to sign this request."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Deleted certificate request for {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Path {0} exists but could not be deleted"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "No certificate request for {0} at expected path {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"The private CA key at ''{0}'' was found to have the wrong permissions set as "
+"''{1}''."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "This has been corrected to ''{0}''."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "CA already initialized for SSL"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Removed certificate request for {0} at ''{1}''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Revoked {0} certificate with serial {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Deleted certificate for {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid ""
+"No custom OID mapping configuration file found at {0}, custom OID mappings "
+"will not be loaded"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/cli/subcommand.clj
+msgid ""
+"Path to a configuration file or directory of configuration files. See the "
+"documentation for a list of supported file types."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid "The environment must be purely alphanumeric, not ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/common.clj
+msgid ""
+"Invalid code-id ''{0}''. Must contain only alpha-numerics and ''-'', ''_'', "
+"'';'', or '':''"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/jruby_request.clj
+msgid "Error {0} on SERVER at {1}: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/jruby_request.clj
+msgid "An environment parameter must be specified"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/ringutils.clj
+msgid "Client ''{0}'' access to {1} rejected;"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/ringutils.clj
+msgid "client not found in whitelist configuration."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/ringutils.clj
+msgid "Access to {0} rejected; no client certificate found"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/shell_utils.clj
+msgid "An absolute path is required, but ''{0}'' is not an absolute path"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/shell_utils.clj
+msgid ""
+"Command ''{0}'' appears to use command-line arguments, but this is not "
+"allowed."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/shell_utils.clj
+msgid "The referenced command ''{0}'' does not exist"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/shell_utils.clj
+msgid "The referenced command ''{0}'' is not executable"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid "Not checking for updates - opt-out setting exists"
+msgstr ""
+
+#: src/clj/puppetlabs/services/analytics/analytics_service.clj
+msgid ""
+"Puppet Server Update Service has successfully started and will run in the "
+"background"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Could not find certificate {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Could not find certificate_request {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Cannot revoke certificate for host {0} without a signed certificate"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Cannot sign certificate for host {0} without a certificate request"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Invalid certificate subject."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid ""
+"State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' "
+"for host {1}."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Missing required parameter \"desired_state\""
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Request body is not JSON."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Empty request body."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "Bad Request."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_disabled_service.clj
+msgid "CA disabled; ignoring SSL initialization for Master"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_disabled_service.clj
+msgid "CA disabled; ignoring retrieval of CA cert"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_disabled_service.clj
+msgid "CA disabled; ignoring retrieval of CA CRL"
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_service.clj
+msgid "CA Service adding a ring handler"
+msgstr ""
+
+#: src/clj/puppetlabs/services/config/puppet_server_config_core.clj
+msgid ""
+"The following configuration keys conflict with the values to be read from "
+"puppet: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/config/puppet_server_config_core.clj
+msgid "Not overriding webserver settings with values from core Puppet"
+msgstr ""
+
+#: src/clj/puppetlabs/services/config/puppet_server_config_core.clj
+msgid "Initializing webserver settings from core Puppet"
+msgstr ""
+
+#: src/clj/puppetlabs/services/config/puppet_server_config_service.clj
+msgid "Initializing with the following settings from core Puppet:"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid ""
+"JRuby instance ''{0}'' borrowed, but it appears to have already been in use!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Not tracking jruby instance borrowed because server is shutting down"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Unable to find request event for borrowed JRuby instance: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "JRuby instance ''{0}'' returned, but no record of when it was borrowed!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Lock request ''{0}'' acquired, but no record of when it was requested!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Lock request ''{0}'' released, but no record of when it was acquired!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Sampling JRuby metrics"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Unrecognized jruby event type: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_service.clj
+msgid "JRuby Metrics Service: stopping metrics sampler job"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_service.clj
+msgid "JRuby Metrics Service: stopped metrics sampler job"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "Adding facter jar to classpath from: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "Facter jar not found in ruby load path"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid ""
+"Support for the legacy Puppet auth.conf file is deprecated and will be "
+"removed in a future release."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid ""
+"Change this setting to 'false' and migrate your authorization rule "
+"definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/"
+"puppetlabs/puppetserver/conf.d/auth.conf file."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_service.clj
+msgid "Initializing the JRuby service"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+msgid "Missing environment name!"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+msgid "Registering environment ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+msgid "Removing environment ''{0}'' from registry"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+msgid "Marking all registered environments as expired."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
+msgid "Marking environment ''{0}'' as expired."
+msgstr ""
+
+#: src/clj/puppetlabs/services/legacy_routes/legacy_routes_service.clj
+msgid ""
+"The legacy routing service has successfully started and is now ready to "
+"handle requests"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Object cannot be coerced to a keyword: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Could not find environment ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"Error: A /static_file_content request requires an environment, a code-id, "
+"and a file-path"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"Request Denied: A /static_file_content request must be a file within the "
+"files directory of a module."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"Not enough available RAM ({0}MB) to safely accommodate the configured JVM "
+"heap size of {1}MB."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"Puppet Server requires at least {0}MB of available RAM given this heap size, "
+"computed as 1.1 * max heap (-Xmx)."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"Either increase available memory or decrease the configured heap size by "
+"reducing the -Xms and -Xmx values in JAVA_ARGS in /etc/sysconfig/"
+"puppetserver on EL systems or /etc/default/puppetserver on Debian systems."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Route not found for service {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
+msgid "Master Service adding ring handlers"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_service.clj
+msgid ""
+"Puppet Server has successfully started and is now ready to handle requests"
+msgstr ""
+
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+msgid "Starting Puppet Admin web app"
+msgstr ""
+
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+msgid ""
+"The ''client-whitelist'' and ''authorization-required'' settings in the "
+"''puppet-admin'' section are deprecated and will be removed in a future "
+"release."
+msgstr ""
+
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+msgid ""
+"Because the ''client-whitelist'' is empty and ''authorization-required'' is "
+"set to ''false'', the ''puppet-admin'' settings will be ignored and "
+"authorization for the ''puppet-admin'' endpoints will be done per the "
+"authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf "
+"file."
+msgstr ""
+
+#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
+msgid ""
+"To suppress this warning, remove the ''puppet-admin'' configuration settings."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "CN ''{0}'' provided by HTTP header ''{1}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid ""
+"Verification of client ''{0}'' provided by HTTP header ''{1}'': ''{2}''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Authenticated: {0}."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "No DN provided by the HTTP header ''{0}''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Treating client as unauthenticated."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "DN ''{0}'' provided by the HTTP header ''{1}'' is malformed."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Unable to URL decode the {0} header: {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Unable to parse {0} into certificate: {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "No certs found in PEM read from {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Only 1 PEM should be supplied for {0} but {1} found"
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "CN ''{0}'' provided by SSL certificate.  Authenticated: {1}."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "No SSL client certificate provided. Treating client as unauthenticated."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid ""
+"The HTTP header {0} was specified, but the master config option allow-header-"
+"cert-info was either not set, or was set to false."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "This header will be ignored."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
+msgid "Environment is required in a catalog request."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
+msgid "The ''master.allow-header-cert-info'' setting is deprecated."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
+msgid ""
+"Remove it, set ''jruby-puppet.use-legacy-auth-conf'' to ''false'', migrate "
+"your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf "
+"file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file, and set "
+"''authorization.allow-header-cert-info'' to the desired value."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
+msgid ""
+"The ''master.allow-header-cert-info'' setting is deprecated and will be "
+"ignored in favor of the ''authorization.allow-header-cert-info'' setting "
+"because the ''jruby-puppet.use-legacy-auth-conf'' setting is ''false''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
+msgid "Remove the ''master.allow-header-cert-info'' setting."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid "Error output generated while running ''{0}''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid "stderr: ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid "Non-zero exit code returned while running ''{0}''."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid "exit-code: ''{0}'', stdout: ''{1}'', stderr: ''{2}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid ""
+"Running script generated an error. Command executed: ''{0}'', error "
+"generated: ''{1}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid ""
+"Only one of \"versioned-code.code-id-command\" and \"versioned-code.code-"
+"content-command\" was set."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_core.clj
+msgid ""
+"Both or neither must be set for the versioned-code-service to function "
+"correctly."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_service.clj
+msgid "No code-id-command set for versioned-code-service. Code-id will be nil."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_service.clj
+msgid ""
+"No code-content-command set for versioned-code-service. Attempting to fetch "
+"code content will fail."
+msgstr ""
+
+#: src/clj/puppetlabs/services/versioned_code_service/versioned_code_service.clj
+msgid ""
+"Cannot retrieve code content because the \"versioned-code.code-content-"
+"command\" setting is not present in configuration."
+msgstr ""

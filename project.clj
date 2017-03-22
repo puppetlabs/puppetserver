@@ -35,14 +35,14 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.5.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.6.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
 
                  [slingshot]
                  ;; we need to exclude snakeyaml because JRuby also brings it in
-                 [clj-yaml nil :exclusions [org.yaml/snakeyaml]]
+                 [circleci/clj-yaml nil :exclusions [org.yaml/snakeyaml]]
                  [commons-lang]
                  [commons-io]
 
@@ -96,7 +96,7 @@
                  ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
 
   :plugins [[lein-parent "0.3.1"]
-            [puppetlabs/i18n "0.6.0"]]
+            [puppetlabs/i18n "0.8.0"]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
@@ -231,4 +231,11 @@
   ;; in your final jar.  Here is an example of how you could exclude
   ;; that from the final uberjar:
   :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
+
+  ;; This is used to merge the locales.clj of all the dependencies into a single
+  ;; file inside the uberjar
+  :uberjar-merge-with {"locales.clj"  [(comp read-string slurp)
+                                       (fn [new prev]
+                                         (if (map? prev) [new prev] (conj prev new)))
+                                       #(spit %1 (pr-str %2))]}
   )
