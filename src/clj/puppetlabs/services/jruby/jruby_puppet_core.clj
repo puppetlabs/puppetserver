@@ -206,7 +206,7 @@
       (update-in [:master-run-dir] #(or % default-master-run-dir))
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-requests-per-instance] #(or % 0))
-      (update-in [:use-legacy-auth-conf] #(or % (nil? %)))
+      (update-in [:use-legacy-auth-conf] #(if (some? %) % false))
       (dissoc :environment-class-cache-enabled)))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
