@@ -120,7 +120,9 @@
   [config :- MetricsProfilerServiceConfig
    hostname :- schema/Str
    registry :- (schema/maybe MetricRegistry)]
-  (let [enabled (ks/to-bool (:enabled config))]
-    (if-not enabled
-      {:profiler nil}
-      {:profiler (metrics-profiler hostname registry)})))
+  (let [enabled (if (some? (:enabled config))
+                  (ks/to-bool (:enabled config))
+                  true)]
+    (if enabled
+      {:profiler (metrics-profiler hostname registry)}
+      {:profiler nil})))

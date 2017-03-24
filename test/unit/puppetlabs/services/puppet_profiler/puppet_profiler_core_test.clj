@@ -36,39 +36,6 @@
                          (= level (.getLevel event))))
         @logs))
 
-(defn profile
-  [profiler message metric-id]
-  (let [metric-id (into-array String metric-id)
-        context (.start profiler message metric-id)]
-    (.finish profiler context message metric-id)))
-
-(deftest test-metrics-profiler
-  (testing "metrics profiler"
-    (logutils/with-test-logging
-     (with-test-logs logs
-       (let [registry (MetricRegistry.)
-             profiler (metrics-profiler "localhost" registry)]
-         (profile profiler "hi" ["function" "hiera-lookup"])
-         (profile profiler "bye" ["compile" "init-environment"])
-         (testing "keeps timers for all metrics"
-           (let [metrics-map (.getMetrics registry)
-                 expected-metrics ["puppetlabs.localhost.function"
-                                   "puppetlabs.localhost.function.hiera-lookup"
-                                   "puppetlabs.localhost.compile"
-                                   "puppetlabs.localhost.compile.init-environment"]]
-             (is (= (set expected-metrics)
-                    (.keySet metrics-map)))
-             (is (every? #(instance? Timer (.get metrics-map %)) expected-metrics))))
-         (testing "logs a message"
-           (is (test-logs-contain?
-                logs
-                #"\[function hiera-lookup\] \(\d+ ms\) hi"
-                Level/DEBUG))
-           (is (test-logs-contain?
-                logs
-                #"\[compile init-environment\] \(\d+ ms\) bye"
-                Level/DEBUG))))))))
-
 (deftest test-profiler-via-ruby
   (let [sc      (jruby-internal/empty-scripting-container
                  (jruby-core/initialize-config
@@ -98,17 +65,18 @@
            (into #{} (.getNames registry))))))
 
 (deftest test-initialize
-  (testing "does not initialize profiler if profiler is disabled"
+  (testing "initializes profiler by default"
     (let [registry  (MetricRegistry.)
           context   (initialize {} "localhost" registry)]
-      (is (nil? (:profiler context))))
-    (let [registry  (MetricRegistry.)
-          context   (initialize {:enabled false} "localhost" registry)]
-      (is (nil? (:profiler context)))))
-  (testing "initializes profiler if enabled"
+      (is (instance? PuppetProfiler (:profiler context)))))
+  (testing "initializes profiler if explicitly enabled"
     (let [registry  (MetricRegistry.)
           context   (initialize {:enabled true} "localhost" registry)]
-      (is (instance? PuppetProfiler (:profiler context))))))
+      (is (instance? PuppetProfiler (:profiler context)))))
+  (testing "does not initialize profiler if profiler is explicitly disabled"
+    (let [registry  (MetricRegistry.)
+          context   (initialize {:enabled false} "localhost" registry)]
+      (is (nil? (:profiler context))))))
 
 (deftest status-tolerates-nil-profiler
   (is (= {:state :running
