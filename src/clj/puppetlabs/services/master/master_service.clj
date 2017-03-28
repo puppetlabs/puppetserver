@@ -106,7 +106,7 @@
          jruby-service (tk-services/get-service this :JRubyPuppetService)
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
-                                      true)
+                                      false)
          clojure-handler (fn [handler]
                            (core/get-wrapped-handler
                             (ring/wrap-params handler)

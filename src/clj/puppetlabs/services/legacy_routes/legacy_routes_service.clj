@@ -26,7 +26,7 @@
           puppet-version (get-in config [:puppetserver :puppet-version])
           use-legacy-auth-conf (get-in config
                                        [:jruby-puppet :use-legacy-auth-conf]
-                                       true)
+                                       false)
           master-service (tk-services/get-service this :MasterService)
           master-ns (keyword (tk-services/service-symbol master-service))
           master-metrics (-> master-service
