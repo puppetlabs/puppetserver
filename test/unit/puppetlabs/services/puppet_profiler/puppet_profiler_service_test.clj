@@ -32,10 +32,10 @@
 
 (deftest test-profiler-service
   (testing "get-profiler returns nil if profiling is not enabled"
-    (call-get-profiler {} nil?)
-    (call-get-profiler {:profiler {}} nil?)
     (call-get-profiler {:profiler {:enabled "false"}} nil?)
     (call-get-profiler {:profiler {:enabled false}} nil?))
   (testing "get-profiler returns a profiler if profiling is enabled"
+    (call-get-profiler {} #(instance? PuppetProfiler %))
+    (call-get-profiler {:profiler {}} #(instance? PuppetProfiler %))
     (call-get-profiler {:profiler {:enabled "true"}} #(instance? PuppetProfiler %))
     (call-get-profiler {:profiler {:enabled true}} #(instance? PuppetProfiler %))))

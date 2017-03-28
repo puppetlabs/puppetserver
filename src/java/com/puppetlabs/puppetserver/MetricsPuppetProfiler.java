@@ -3,8 +3,6 @@ package com.puppetlabs.puppetserver;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -18,8 +16,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class MetricsPuppetProfiler implements PuppetProfiler {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(MetricsPuppetProfiler.class);
 
     private final String hostname;
     private final MetricRegistry registry;
@@ -44,17 +40,12 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
 
     @Override
     public void finish(Object context, String message, String[] metric_id) {
-        String metric_id_str = StringUtils.join(metric_id, ' ');
-        Long elapsed = System.currentTimeMillis() - (Long)context;
-
         if (shouldTime(metric_id)) {
+          Long elapsed = System.currentTimeMillis() - (Long)context;
             for (Timer t : getTimers(metric_id)) {
                 t.update(elapsed, TimeUnit.MILLISECONDS);
             }
         }
-
-        String msg = String.format("[%s] (%d ms) %s", metric_id_str, elapsed, message);
-        LOGGER.debug(msg);
     }
 
     public Set<String> getAllMetricIds() {

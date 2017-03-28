@@ -76,7 +76,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
 * The `profiler` settings configure profiling:
 
-    * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `false`.
+    * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `true`.
 
 * The `puppet-admin` section configures Puppet Server's administrative API. (This API is unavailable with Rack or WEBrick Puppet masters.)
 
