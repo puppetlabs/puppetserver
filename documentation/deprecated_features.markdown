@@ -21,11 +21,11 @@ endpoints:
 * [Puppet's HTTPS API (current)](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
 * [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
 
-For a value of `true` (also the default if not specified), the core
+For a value of `true` , the core
 [Puppet auth.conf][auth.conf] file (`/etc/puppetlabs/puppet/auth.conf`), is
 used when authorizing client requests.
 
-For a value of `false`, Puppet Server uses the `authorization` settings in
+For a value of `false` (also the default if not specified), Puppet Server uses the `authorization` settings in
 its own "auth.conf" file, evaluated by the `trapperkeeper-authorization`
 service.  This "auth.conf" file is installed at
 `/etc/puppetlabs/puppetserver/conf.d/auth.conf`.  See the

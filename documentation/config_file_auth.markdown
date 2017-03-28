@@ -23,11 +23,15 @@ However, Puppet Server now has its own `auth.conf` file that uses a new HOCON fo
 >
 > Puppet Server follows the following logic when determining whether to use the new or old authorization methods:
 >
-> * Requests to Puppet master service endpoints already manageable through the deprecated authorization methods and [Puppet `auth.conf`][] file --- such as `catalog`, `node`, and `report` --- use Puppet Server's new `auth.conf` rules **only** if the `use-legacy-auth-conf` setting in `puppetserver.conf` is set to `false`. If `use-legacy-auth-conf` is set to true (which is its default), Puppet Server warns you that the legacy authentication method is deprecated.
+> * Requests to Puppet master service endpoints already manageable through the deprecated authorization methods and [Puppet `auth.conf`][] file --- such as `catalog`, `node`, and `report` --- use Puppet Server's new `auth.conf` rules if the `use-legacy-auth-conf` setting in `puppetserver.conf` is set to `false` (which is its default). If `use-legacy-auth-conf` is set to true, Puppet Server warns you that the legacy authentication method is deprecated.
 > * Requests to certificate status and administration endpoints use the new `auth.conf` rules **only** if the corresponding `client-whitelists` setting is empty or unspecified **and** the `authorization-required` flag is set to `true` (which is its default).
 > * Requests to other certificate administration endpoints --- such as `certificate`, `certificate_request`, and `certificate_revocation_list` --- **always** use the new HOCON `auth.conf` rules in Puppet Server's `auth.conf` file. This happens regardless of the `client-whitelist`, `authorization-required`, or `use-legacy-auth-conf` settings, as versions of Puppet Server before 2.2.0 can't manage those endpoints.
 >
 > For detailed conversion examples for authorization rules, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown). For help configuring authorization rules that serve both Puppet 3 and Puppet 4 agents, see [Backward Compatibility with Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
+
+> ### Aside: Changes to Authorization in Puppet Server 5.0.0
+>
+> Puppet Server 5.0.0 changes the default value of `use-legacy-auth-conf` from true to false. If the legacy [Puppet `auth.conf`][] file should be in use with Puppet Server 5 then the `use-legacy-auth-conf` setting must be explicitly set.
 
 > **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppet.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppet.com/puppetlabs/hocon) module to use Puppet to manage HOCON-formatted settings in general.
 
@@ -211,7 +215,7 @@ Puppet Server allows agents to make requests at the old URLs and internally tran
 
 For backward compatibility, settings in [`puppetserver.conf`][] also control whether to use the new Puppet Server authorization method for certain endpoints:
 
--   `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `true`.
+-   `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `false`.
 -   `authorization-required` and `client-whitelist` in the `puppet-admin` section: If `authorization-required` is set to `false` or `client-whitelist` has at least one entry, Puppet Server authorizes requests to Puppet Server's administrative API according to the parameters' values. See the [`puppetserver.conf` documentation][`puppetserver.conf`] for more information on these settings. If `authorization-required` is set to `true` or not set and `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests to Puppet Server's administrative API using the authorization method introduced in Puppet Server 2.2.0.
 -   `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
 
