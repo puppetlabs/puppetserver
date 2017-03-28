@@ -36,6 +36,30 @@
                          (= level (.getLevel event))))
         @logs))
 
+(defn profile
+  [profiler message metric-id]
+  (let [metric-id (into-array String metric-id)
+        context (.start profiler message metric-id)]
+    (.finish profiler context message metric-id)))
+
+(deftest test-metrics-profiler
+  (testing "metrics profiler"
+    (logutils/with-test-logging
+      (with-test-logs logs
+        (let [registry (MetricRegistry.)
+              profiler (metrics-profiler "localhost" registry)]
+          (profile profiler "hi" ["function" "hiera-lookup"])
+          (profile profiler "bye" ["compile" "init-environment"])
+          (testing "keeps timers for all metrics"
+            (let [metrics-map (.getMetrics registry)
+                  expected-metrics ["puppetlabs.localhost.function"
+                                    "puppetlabs.localhost.function.hiera-lookup"
+                                    "puppetlabs.localhost.compile"
+                                    "puppetlabs.localhost.compile.init-environment"]]
+              (is (= (set expected-metrics)
+                     (.keySet metrics-map)))
+              (is (every? #(instance? Timer (.get metrics-map %)) expected-metrics)))))))))
+
 (deftest test-profiler-via-ruby
   (let [sc      (jruby-internal/empty-scripting-container
                  (jruby-core/initialize-config
