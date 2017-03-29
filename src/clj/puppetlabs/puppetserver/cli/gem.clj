@@ -10,4 +10,4 @@
 
 (defn -main
   [& args]
-  (cli/run gem-run! args))
+  (cli/jruby-run gem-run! args))
