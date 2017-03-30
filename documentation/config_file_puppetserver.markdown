@@ -56,9 +56,9 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
 
-        If this setting is set to `true` or is not specified, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
+        If this setting is set to `true`, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
 
-        For a value of `false`, Puppet uses the HOCON configuration file format and location.
+        For a value of `false` or is not specified, Puppet uses the HOCON configuration file format and location.
 
         For more information, see the [`auth.conf` documentation][].
 
@@ -116,7 +116,6 @@ jruby-puppet: {
     master-log-dir: /var/log/puppetlabs/puppetserver
     max-active-instances: 1
     max-requests-per-instance: 0
-    use-legacy-auth-conf: false
 }
 
 # Settings related to HTTP client requests made by Puppet Server.
