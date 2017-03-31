@@ -34,3 +34,7 @@ on(master, "echo '' | JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} irb -f") do
   assert_match(/jruby \d\.\d\.\d.*$/, stdout,
                'jruby version not included in irb command output')
 end
+
+step "(SERVER-1759) Verify that the jruby irb exit code is used for the java return code"
+
+on(master, "echo 'exit!(4)' | #{cli} irb", :acceptable_exit_codes => [4])

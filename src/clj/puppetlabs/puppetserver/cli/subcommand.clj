@@ -52,3 +52,11 @@
       (throw+))
     (finally
       (shutdown-agents))))
+
+(defn jruby-run
+  "Executes a function that invokes the JRuby interpeter with the `run` function and
+  use the return value from JRuby as the process exit code."
+  [run-fn args]
+  (-> (run run-fn args)
+      .getStatus
+      System/exit))

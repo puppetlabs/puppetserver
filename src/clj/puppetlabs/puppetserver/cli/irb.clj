@@ -10,4 +10,4 @@
 
 (defn -main
   [& args]
-  (cli/run irb-run! args))
+  (cli/jruby-run irb-run! args))

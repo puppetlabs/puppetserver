@@ -10,4 +10,4 @@
 
 (defn -main
   [& args]
-  (cli/run ruby-run! args))
+  (cli/jruby-run ruby-run! args))

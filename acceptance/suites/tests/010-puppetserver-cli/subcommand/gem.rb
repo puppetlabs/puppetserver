@@ -90,3 +90,10 @@ on(master, "JAVA_ARGS_CLI=-Djruby.cli.version=true #{cli} gem help") do
   assert_match(/jruby \d\.\d\.\d.*$/, stdout,
                'jruby version not included in gem command output')
 end
+
+step "(SERVER-1759) Verify that installing a non-existent gem produces a non-zero exit return value"
+
+gem_name = 'if-this-gem-exists-then-someone-has-a-cruel-sense-of-humor'
+on(master, "#{cli} gem install #{gem_name}", :acceptable_exit_codes => [2]) do
+  assert_match(/Could not find a valid gem/, stderr)
+end
