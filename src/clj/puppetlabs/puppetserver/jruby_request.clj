@@ -57,18 +57,27 @@
 (defn wrap-with-environment-validation
   "Middleware function which validates the presence and syntactical content
   of an environment in a ring request.  If validation fails, a :bad-request
-  slingshot exception is thrown."
-  [handler]
-  (fn [request]
-    (let [environment (get-environment-from-request request)]
-      (cond
-        (nil? environment)
-        (ringutils/throw-bad-request!
-         (i18n/tru "An environment parameter must be specified"))
+  slingshot exception is thrown. If the optional-environment-param is
+  provided as true, it allows for the endpoint to have its query param
+  environment to be optional. However if the param is provided, it will
+  still validate that param for the given request."
+  ([handler]
+   (wrap-with-environment-validation handler false))
+  ([handler optional-environment-param]
+   (fn [request]
+     (let [environment (get-environment-from-request request)]
+       (cond
+         (and (true? optional-environment-param)
+              (nil? environment))
+         (handler request)
 
-        (not (nil? (schema/check ps-common/Environment environment)))
-        (ringutils/throw-bad-request!
-         (ps-common/environment-validation-error-msg environment))
+         (nil? environment)
+         (ringutils/throw-bad-request!
+           (i18n/tru "An environment parameter must be specified"))
 
-        :else
-        (handler request)))))
+         (not (nil? (schema/check ps-common/Environment environment)))
+         (ringutils/throw-bad-request!
+           (ps-common/environment-validation-error-msg environment))
+
+         :else
+         (handler request))))))

@@ -77,6 +77,15 @@ class Puppet::Server::Master
     end
   end
 
+  def getModuleInfoForAllEnvironments()
+    all_envs = @env_loader.list
+    all_mod_data = {}
+    all_envs.each { |env|
+      all_mod_data[env.name] = self.class.getModules(env)
+    }
+    all_mod_data
+  end
+
   def getSetting(setting)
     Puppet[setting]
   end
@@ -97,15 +106,11 @@ class Puppet::Server::Master
 
   def self.getModules(env)
     env.modules.collect do |mod|
-      module_data = {}
-
       # NOTE: If in the future we want to collect more
       #       Module settings, this should be more programatic
       #       rather than getting these settings one by one
-      module_data[:name] = mod.forge_name
-      module_data[:version] = mod.version
-
-      module_data
+      {:name    => mod.forge_name ||= mod.name,
+       :version => mod.version}
     end
   end
 

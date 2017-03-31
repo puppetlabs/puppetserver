@@ -16,7 +16,7 @@
           },
           "version": {
             "description": "The version of the puppet module",
-            "type": "string"
+            "type": ["string","null"]
           }
         },
         "required": ["name", "version"],

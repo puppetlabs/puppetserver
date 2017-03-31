@@ -18,6 +18,7 @@ import java.util.List;
 public interface JRubyPuppet {
     Map getClassInfoForEnvironment(String environment);
     List getModuleInfoForEnvironment(String environment);
+    Map getModuleInfoForAllEnvironments();
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);
     String puppetVersion();
