@@ -54,6 +54,10 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
         JRuby flushing can be useful for working around buggy module code that would otherwise cause memory leaks, but it slightly reduces performance whenever a new JRuby instance reloads all of the Puppet Ruby code. If memory leaks from module code are not an issue in your deployment, the default value of 0 performs best.
 
+    * `max-queued-requests`: Optional. The maximum number of requests that may be queued waiting to borrow a JRuby from the pool. Once this limit is exceeded, a 503 "Service Unavailable" response will be returned for all new requests until the queue drops below the limit. If `max-retry-delay` is set to a positive value, then the 503 responses will include a `Retry-After` header indicating a random sleep time after which the client may retry the request. The default is 0, which disables the queue limit.
+
+    * `max-retry-delay`: Optional. Sets the upper limit for the random sleep set as a `Retry-After` header on 503 responses returned when `max-queued-requests` is enabled. A value of 0 will cause the `Retry-After` header to be omitted. Default is 1800 seconds which corresponds to the default run interval of the Puppet daemon.
+
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
 
     * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api). As of Puppet Server 5.0, this setting's default value is false.

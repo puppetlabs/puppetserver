@@ -25,6 +25,7 @@
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as routing-service]
             [puppetlabs.trapperkeeper.services.authorization.authorization-service :as authorization-service]
             [puppetlabs.trapperkeeper.services.metrics.metrics-service :as metrics]
+            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
@@ -326,6 +327,7 @@
                      custom-vcs
                      tk-scheduler/scheduler-service
                      metrics/metrics-service
+                     jruby-metrics-service/jruby-metrics-service
                      status-service/status-service]]
        (jruby-bootstrap/with-puppetserver-running-with-services-and-mock-jruby-puppet-fn
         "For this test we're basically just validating that a JRuby is reserved

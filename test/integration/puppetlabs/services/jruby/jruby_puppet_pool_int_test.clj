@@ -11,6 +11,7 @@
             [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.internal :as tk-internal]
             [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
             [puppetlabs.services.request-handler.request-handler-service :as handler-service]
             [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
             [puppetlabs.services.config.puppet-server-config-service :as ps-config]
@@ -228,6 +229,7 @@
                                       "test knows the webserver is still running"))
            services (jruby-testutils/add-mock-jruby-pool-manager-service
                      (conj jruby-testutils/jruby-service-and-dependencies
+                           jruby-metrics-service/jruby-metrics-service
                            handler-service/request-handler-service
                            ps-config/puppet-server-config-service
                            vcs/versioned-code-service)
