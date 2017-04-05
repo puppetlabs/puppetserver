@@ -120,7 +120,7 @@ Visit our [JIRA project](https://tickets.puppetlabs.com/browse/SERVER).
 
 ## License
 
-Copyright © 2013---2016 Puppet
+Copyright © 2013---2017 Puppet
 
 Distributed under the [Apache License, Version
 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
