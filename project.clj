@@ -63,7 +63,11 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.8.0"]
+                 [puppetlabs/jruby-utils "0.8.0"
+                   :exclusions [org.jruby/jruby-core
+                                org.jruby/jruby-stdlib
+                                com.github.jnr/jffi
+                                com.github.jnr/jnr-x86asm]]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
@@ -130,7 +134,8 @@
                                         :main "puppetlabs.puppetserver.dashboard.production"}}}}
   :hooks [leiningen.cljsbuild]
 
-  :profiles {:dev {:source-paths  ["dev"]
+  :profiles {:provided {:dependencies [[puppetlabs/jruby-deps "1.7.26-1"]]}
+             :dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version :classifier "test"]
@@ -221,16 +226,6 @@
              ~(str "-Xmx" (heap-size "2G" "max"))]
 
   :repl-options {:init-ns dev-tools}
-
-  ;; NOTE: jruby-stdlib packages some unexpected things inside
-  ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle
-  ;; jar into its META-INF directory.  This is highly undesirable
-  ;; for projects that already have a dependency on a different
-  ;; version of bouncycastle.  Therefore, when building uberjars,
-  ;; you should take care to exclude the things that you don't want
-  ;; in your final jar.  Here is an example of how you could exclude
-  ;; that from the final uberjar:
-  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
 
   ;; This is used to merge the locales.clj of all the dependencies into a single
   ;; file inside the uberjar
