@@ -31,7 +31,7 @@
   classpath.
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
-  "puppetserver-lib")
+  "classpath:/puppetserver-lib")
 
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection

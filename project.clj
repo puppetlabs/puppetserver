@@ -36,14 +36,14 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.6.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.7.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
 
                  [slingshot]
-                 ;; we need to exclude snakeyaml because JRuby also brings it in
-                 [circleci/clj-yaml nil :exclusions [org.yaml/snakeyaml]]
+                 [circleci/clj-yaml]
+                 [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
 
@@ -211,7 +211,8 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
-             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
+             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}
+             :jruby9k {:dependencies [[puppetlabs/jruby-deps "9.1.8.0-1"]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
