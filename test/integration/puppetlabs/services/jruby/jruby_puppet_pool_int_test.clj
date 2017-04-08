@@ -330,7 +330,12 @@
              container (:scripting-container jruby-instance)]
          (try
            (testing "compat version"
-             (is (= CompatVersion/RUBY2_0 (.getCompatVersion container))))
+             (if (some #(= (.toString %) "RUBY2_1")
+                       (.getEnumConstants CompatVersion))
+               (testing "fixed at '2.1' if '2.1' version available"
+                 (is (= "RUBY2_1" (.. container (getCompatVersion) (toString)))))
+               (testing "returns '2.0' per compat version setting"
+                 (is (= CompatVersion/RUBY2_0 (.getCompatVersion container))))))
            (testing "compile mode"
              (is (= RubyInstanceConfig$CompileMode/JIT
                     (.getCompileMode container))))
