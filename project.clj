@@ -63,7 +63,7 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.8.0"
+                 [puppetlabs/jruby-utils "0.9.0"
                    :exclusions [org.jruby/jruby-core
                                 org.jruby/jruby-stdlib
                                 com.github.jnr/jffi
