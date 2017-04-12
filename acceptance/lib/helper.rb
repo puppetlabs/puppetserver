@@ -476,8 +476,6 @@ module PuppetServerExtensions
       http.puppet-v3-file_metadatas-.*.-percentage
       http.puppet-v3-node-.*.-percentage
       http.puppet-v3-report-.*.-percentage
-      http.puppet-v3-resource_type-.*.-percentage
-      http.puppet-v3-resource_types-.*.-percentage
       http.puppet-v3-static_file_content-.*.-percentage
       http.puppet-v3-status-.*.-percentage
       num-cpus

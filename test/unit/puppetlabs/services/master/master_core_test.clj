@@ -51,8 +51,6 @@
                    "file_metadatas"
                    "file_metadata"
                    "file_bucket_file"
-                   "resource_type"
-                   "resource_types"
                    "status"]
              :put ["file_bucket_file"
                    "report"]
@@ -294,8 +292,6 @@
                      "file_metadatas"
                      "file_metadata"
                      "file_bucket_file"
-                     "resource_type"
-                     "resource_types"
                      "status"]
                :put ["file_bucket_file"
                      "report"]

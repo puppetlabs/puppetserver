@@ -515,10 +515,6 @@
                 (request-handler (assoc request :include-code-id? true)))
    (comidi/PUT ["/report/" [#".*" :rest]] request
                (request-handler request))
-   (comidi/GET ["/resource_type/" [#".*" :rest]] request
-               (request-handler request))
-   (comidi/GET ["/resource_types/" [#".*" :rest]] request
-               (request-handler request))
    (comidi/GET ["/environment/" [#".*" :environment]] request
                (request-handler (assoc request :include-code-id? true)))
    (comidi/GET "/environments" request

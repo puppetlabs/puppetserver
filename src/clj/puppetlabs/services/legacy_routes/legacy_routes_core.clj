@@ -151,10 +151,6 @@
       (master-request-handler request))
     (comidi/PUT ["/report/" [#".*" :rest]] request
       (master-request-handler request))
-    (comidi/GET ["/resource_type/" [#".*" :rest]] request
-      (master-request-handler request))
-    (comidi/GET ["/resource_types/" [#".*" :rest]] request
-      (master-request-handler request))
     (comidi/GET ["/status/" [#".*" :rest]] request
       (master-request-handler request))))
 

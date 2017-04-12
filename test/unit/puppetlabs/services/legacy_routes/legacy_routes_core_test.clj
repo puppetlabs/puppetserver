@@ -91,9 +91,7 @@
                                     "file_metadatas"
                                     "file_metadata"
                                     "file_bucket_file"
-                                    "catalog"
-                                    "resource_type"
-                                    "resource_types"]
+                                    "catalog"]
                               :put ["report"]
                               :head ["file_bucket_file"]
                               :post ["catalog"]}
