@@ -200,7 +200,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.1.8"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.2.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
