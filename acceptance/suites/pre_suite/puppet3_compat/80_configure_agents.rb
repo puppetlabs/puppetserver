@@ -2,7 +2,7 @@ require 'puppetserver/acceptance/compat_utils'
 
 step "Perform agent upgrade steps" do
   step "Enable structured facts" do
-    on(agents, puppet("config set stringify_facts false --section agent"))
+    on(valid_agents, puppet("config set stringify_facts false --section agent"))
   end
 end
 

@@ -1,5 +1,11 @@
 def nonmaster_agents()
-  agents.reject { |agent| agent == master }
+  agents.reject { |agent| agent.host_hash[:platform].start_with?('fedora-21') || agent == master }
+end
+
+# This is all agents minus those legacy agents running Fedora 21, as it is not supported
+# by Puppet 3.x
+def valid_agents
+  agents.reject{ |agent| agent.host_hash[:platform].start_with?('fedora-21') && agent != master }
 end
 
 def apply_simmons_class(agent, studio, classname)
@@ -19,7 +25,7 @@ end
 def rm_vardirs()
   # In order to prevent file caching and ensure agent-master HTTP communication
   # during agent runs we blow away the vardirs, which contains the cached files
-  hosts.each do |host|
+  valid_agents.each do |host|
     vardir = on(host, puppet("config print vardir")).stdout.chomp
     on(host, "rm -rf #{vardir}")
   end
