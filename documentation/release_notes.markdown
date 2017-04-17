@@ -3,6 +3,48 @@ layout: default
 title: "Puppet Server: Release Notes"
 canonical: "/puppetserver/latest/release_notes.html"
 ---
+---
+layout: default
+title: "Puppet Server: Release Notes"
+canonical: "/puppetserver/latest/release_notes.html"
+---
+
+## Puppet Server 1.1.2
+
+Released October 19, 2015.
+
+This is a security and bug fix release in the Puppet Server 1.1 series; no new
+features have been added since 1.1.0. We recommend that all users upgrade.
+
+### Bug Fixes
+
+#### Make Certificate Authority and Master Private Keys Inaccessible to "World" Users
+
+Previous versions of Puppet Server would not explicitly set file permissions for certificate authority (CA) and Master private keys, which could leave both keys' readable by "world" users. Puppet Server 2.2 resolves this bug by automatically setting and enforcing a permissions change that limits read access to the Puppet Server user and group.
+
+This fix was also applied to [Puppet Server 2.1.x](#puppet-server-212) and [1.2.x](#puppet-server-122).
+
+* [SERVER-910](https://tickets.puppetlabs.com/browse/SERVER-910)
+
+#### Resolve an Issue with FreeIPA 4.x CA Signed Certificates
+
+When running Puppet agent against a Puppet Server with a FreeIPA 4.x CA signed certificate, Puppet agent fails with an error:
+
+    [puppet-server] Puppet java.util.ArrayList cannot be cast to java.lang.String
+    
+Puppet Server 1.1.2 resolves this issue.
+
+* [SERVER-816](https://tickets.puppetlabs.com/browse/SERVER-816)
+
+#### Correctly Flush Caches of Actively Used JRuby Instances
+
+In previous versions of Puppet Server, Puppet Server could not flush the caches of JRuby instances if they were borrowed from a pool when the cache flush request was issued. This version resolves the issue.
+
+* [SERVER-813](https://tickets.puppetlabs.com/browse/SERVER-813)
+
+### All Changes
+
+* [All Puppet Server tickets targeted at this release](https://tickets.puppetlabs.com/issues/?jql=project%20%3D%20SERVER%20AND%20fixVersion%20%3D%20%22SERVER%201.1.2%22)
 
 ## Puppet Server 1.2.0
 
