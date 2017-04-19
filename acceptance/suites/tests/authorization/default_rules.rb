@@ -122,9 +122,12 @@ with_puppet_running_on(master, {}) do
 
   step 'file_bucket_file endpoint' do
     # We'd actually need to store a file in the filebucket in order to get
-    # back a 200, but we know that a 500 means we got past authorization
+    # back a 200, but we know that a 400 means we got past authorization.
+    # The 400 in this case is expected because "123" is a malformed md5
+    # checksum, which the file_bucket_file endpoint will reject as a bad
+    # request
     curl_authenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
-    assert_allowed(500)
+    assert_allowed(400)
 
     curl_unauthenticated('/puppet/v3/file_bucket_file/md5/123?environment=production')
     assert_denied(/\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
