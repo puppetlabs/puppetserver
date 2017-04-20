@@ -16,19 +16,16 @@
   {schema/Str (schema/pred (some-fn string? #(instance? File %) #(instance? URL %)))})
 
 (def PuppetResource
-  "Schema for a Puppet resource. Based on
-  https://github.com/puppetlabs/puppet/blob/master/api/schemas/resource_type.json
-  which seems a little out of date and incomplete."
+  "Schema for a Puppet resource. Based on the resource within the catalog schema."
   {(schema/required-key "type") schema/Str
    (schema/required-key "title") schema/Str
-   (schema/optional-key "name") schema/Str
-   (schema/optional-key "tags") [schema/Str]
-   (schema/optional-key "exported") schema/Bool
-   (schema/optional-key "parameters") {schema/Str schema/Str}
    (schema/optional-key "line") schema/Int
    (schema/optional-key "file") schema/Str
-   (schema/optional-key "parent") schema/Str
-   (schema/optional-key "doc") schema/Str
+   (schema/required-key "exported") schema/Bool
+   (schema/optional-key "sensitive_parameters") [schema/Str]
+   (schema/required-key "tags") [schema/Str]
+   (schema/optional-key "parameters") {schema/Str schema/Str}
+   (schema/optional-key "ext_parameters") {schema/Str schema/Str}
    schema/Str schema/Str})
 
 (def PuppetCatalog
