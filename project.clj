@@ -102,7 +102,7 @@
   :lein-ezbake {:vars {:user "puppet"
                        :group "puppet"
                        :build-type "foss"
-                       :java-args ~(str "-Xms2g -Xmx2g -XX:MaxPermSize=256m "
+                       :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :repo-target "PC1"
                        :bootstrap-source :services-d
@@ -215,8 +215,7 @@
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]}
 
   ; tests use a lot of PermGen (jruby instances)
-  :jvm-opts ["-XX:MaxPermSize=256m"
-             "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+  :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
              ~(str "-Xms" (heap-size "1G" "min"))
              ~(str "-Xmx" (heap-size "2G" "max"))]
 

@@ -17,7 +17,7 @@ calls into C code, the `jruby.debug.fullTrace` Java property must be set to
 adding the option to the `project.clj` file:
 
 ~~~ini
-:jvm-opts ["-XX:MaxPermSize=256m" "-Djruby.debug.fullTrace=true"]
+:jvm-opts ["-Djruby.debug.fullTrace=true"]
 ~~~
 
 If you are running Puppet Server from a package, this can be done by adding the
@@ -25,7 +25,7 @@ option to the `puppetserver` file in `/etc/sysconfig` or `/etc/default`,
 depending upon your OS distribution:
 
 ~~~ini
-JAVA_ARGS="-Xms2g -Xmx2g -XX:MaxPermSize=256m -Djruby.debug.fullTrace=true"
+JAVA_ARGS="-Xms2g -Xmx2g -Djruby.debug.fullTrace=true"
 ~~~
 
 A call to the `set_trace_func` function can be done in one of the Ruby files in
