@@ -9,6 +9,7 @@ puppetservice = options['puppetservice']
 environments_dir = "/etc/puppetlabs/code/environments"
 manifests_dir = "#{environments_dir}/production/manifests"
 sitepp = "#{manifests_dir}/site.pp"
+graphite_port = 50000
 
 step 'Backup puppetserver config files' do
   on master, "cp -pf #{puppetserver_conf_file} #{puppetserver_conf_file}.bak"
@@ -45,9 +46,27 @@ SITEPP
   end
 end
 
-step 'Install graphite (and grafana)' do
-  tmp_module_dir = graphite.tmpdir('collect_default_metrics')
+tmp_module_dir = graphite.tmpdir('collect_default_metrics')
 
+step 'Ensure apache is not trying to run on default ports' do
+  on(graphite, "puppet module install puppetlabs-apache --codedir #{tmp_module_dir}")
+
+  # Ensure apache is not trying to run on default ports (80 and 443) since
+  # those would conflict when run on a node hosting the PE console.  Ensure
+  # that the headers module is supported for the apache server since the
+  # graphite server configuration depends upon it.
+  apachepp = "#{tmp_module_dir}/apache.pp"
+  create_remote_file(graphite, apachepp, <<APACHEPP)
+class { 'apache':
+  default_vhost => false,
+}
+
+include apache::mod::headers
+APACHEPP
+  on(graphite, "puppet apply #{apachepp} --codedir #{tmp_module_dir}")
+end
+
+step 'Install graphite (and grafana)' do
   on(graphite, "puppet module install cprice404-grafanadash --codedir #{tmp_module_dir}")
   on(graphite, "puppet apply -e \"include grafanadash::dev\" --codedir #{tmp_module_dir}")
 
@@ -59,6 +78,7 @@ step 'Install graphite (and grafana)' do
 class { 'graphite':
   gr_web_cors_allow_from_all => true,
   gr_max_creates_per_minute => inf,
+  gr_apache_port => #{graphite_port}
 }
 GRAPHITEPP
   on(graphite, "puppet apply #{graphitepp} --codedir #{tmp_module_dir}")
@@ -97,7 +117,8 @@ default_metrics = build_default_metrics
 full_results = Hash.new
 
 step 'Query the graphite system for the default list of metrics' do
-  full_results = query_metrics(master.hostname, graphite, default_metrics)
+  full_results = query_metrics(master.hostname, "#{graphite}:#{graphite_port}",
+                               default_metrics)
 
   puts "List of collected metrics:"
   full_results.each do |key, val|
