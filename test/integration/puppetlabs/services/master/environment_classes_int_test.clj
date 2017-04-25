@@ -74,6 +74,16 @@
   [request]
   (get-in request [:headers "etag"]))
 
+(defn etag-with-gzip-suffix
+  [etag]
+  (if (.endsWith etag "--gzip")
+    etag
+    (str etag "--gzip")))
+
+(defn etag-without-gzip-suffix
+  [etag]
+  (str/replace etag #"--gzip$" ""))
+
 (defn response->class-info-map
   [response]
   (-> response :body cheshire/parse-string))
@@ -160,12 +170,8 @@
                                         "name" "production"}
              initial-response (get-env-classes "production")
              initial-etag (response-etag initial-response)
-             initial-etag-with-gzip-suffix (if (.endsWith initial-etag "--gzip")
-                                             initial-etag
-                                             (str initial-etag "--gzip"))
-             initial-etag-without-gzip-suffix (str/replace initial-etag
-                                                           #"--gzip$"
-                                                           "")]
+             initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
+             initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
          (testing "initial fetch of environment_classes info is good"
            (is (= 200 (:status initial-response))
                (str
@@ -319,8 +325,11 @@
                                                     "test")
                  production-response-initial (get-env-classes "production")
                  production-etag-initial (response-etag production-response-initial)
+                 production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
                  test-response-initial (get-env-classes "test")
-                 test-etag-initial (response-etag test-response-initial)]
+                 test-etag-initial (response-etag test-response-initial)
+                 test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
+                                                         (response-etag test-response-initial))]
              (is (= 200 (:status production-response-initial))
                  (str
                   "unexpected status code for initial production response"
@@ -365,8 +374,8 @@
                    (str
                     "unexpected status code for prod response after code change "
                     "but before flush"))
-               (is (= production-etag-initial (response-etag
-                                               production-response-before-flush))
+               (is (= production-etag-initial-without-gzip-suffix (response-etag
+                                                                    production-response-before-flush))
                    "unexpected etag change when no production environment change")
                (is (empty? (:body production-response-before-flush))
                    "unexpected body for production response")
@@ -374,8 +383,8 @@
                    (str
                     "unexpected status code for test response after code change "
                     "but before flush"))
-               (is (= test-etag-initial (response-etag
-                                         test-response-before-flush))
+               (is (= test-etag-initial-without-gzip-suffix (response-etag
+                                                              test-response-before-flush))
                    "unexpected etag change when no test environment change")
                (is (empty? (:body test-response-before-flush))
                    "unexpected body for test response")
@@ -412,8 +421,8 @@
                      (str
                       "unexpected status code for test response after code change "
                       "but test environment not invalidated"))
-                 (is (= test-etag-initial (response-etag
-                                           test-response-after-prod-flush))
+                 (is (= test-etag-initial-without-gzip-suffix (response-etag
+                                                                test-response-after-prod-flush))
                      "unexpected etag change when test environment not invalidated")
                  (is (empty? (:body test-response-after-prod-flush))
                      "unexpected body for test response")))))
