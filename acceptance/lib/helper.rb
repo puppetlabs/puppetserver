@@ -70,7 +70,7 @@ module PuppetServerExtensions
       /el/, # includes cent6,7 and redhat6,7
       /ubuntu-12/,
       /ubuntu-14/,
-      /ubuntu-16/,
+      /ubuntu-1604/,
     ]
   end
 
