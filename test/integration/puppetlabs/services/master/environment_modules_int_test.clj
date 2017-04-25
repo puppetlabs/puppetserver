@@ -97,12 +97,12 @@
            (is (= 404 (:status notreal-response))
                (str
                  "unexpected status code for response, response: "
-                 (ks/pprint-to-string response))))
+                 (ks/pprint-to-string notreal-response))))
          (testing "a failed status code is returned"
            (is (= 400 (:status emptyenv-response))
                (str
                  "unexpected status code for response, response: "
-                 (ks/pprint-to-string response))))
+                 (ks/pprint-to-string emptyenv-response))))
          (testing "the expected response body is returned"
            (is (= expected-response
                   (response->module-info-map response))))
@@ -110,7 +110,7 @@
            (is (= 200 (:status all-response))
                (str
                  "unexpected status code for response, response: "
-                 (ks/pprint-to-string response))))
+                 (ks/pprint-to-string all-response))))
          (testing "the expected response body is returned"
            (is (= expected-all-response
                   (response->module-info-map all-response)))))))))
