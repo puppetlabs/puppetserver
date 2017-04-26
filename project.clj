@@ -1,4 +1,5 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
+(def tk-ws-jetty9-version "2.0.0")
 
 (defn deploy-info
   [url]
@@ -131,8 +132,8 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -198,12 +199,12 @@
                                                ;; lein depend on clojure 1.6.
                                                [org.clojure/clojure nil]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                                [org.clojure/tools.nrepl nil]]
                       :plugins [[puppetlabs/lein-ezbake "1.2.1"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 

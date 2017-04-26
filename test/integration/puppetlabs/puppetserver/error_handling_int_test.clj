@@ -47,7 +47,7 @@
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.Exception: barf"
                      (:body response)))
-              (is (re-matches #"text/plain; charset=.*"
+              (is (re-matches #"text/plain;\s*charset=.*"
                               (get-in response [:headers "content-type"]))))))
         (testing "the CA API - in particular, one of the endpoints implemented via liberator"
           ;; Yes, this is weird - see comment above.
@@ -56,7 +56,7 @@
               (is (= 500 (:status response)))
               (is (= "Internal Server Error: java.lang.NullPointerException"
                      (:body response)))
-              (is (re-matches #"text/plain; charset=.*"
+              (is (re-matches #"text/plain;\s*charset=.*"
                               (get-in response [:headers "content-type"]))))))))))
 
 (deftest ^:integration test-invalid-code-id-error

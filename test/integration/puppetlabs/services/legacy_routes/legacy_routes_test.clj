@@ -290,7 +290,7 @@
                  "1.2.3")))
      (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
        (is (= 200 (:status node-response)))
-       (is (= "request routed to: /puppet/v3/node/localhost")))))
+       (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response))))))
 
   (testing "The new map-style multi-server route configuration map still works."
     ;; For a multi-server config, we need to remove the existing webserver
@@ -328,7 +328,7 @@
                    "1.2.3")))
        (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
          (is (= 200 (:status node-response)))
-         (is (= "request routed to: /puppet/v3/node/localhost"))))))
+         (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response)))))))
 
   (testing "An exception is thrown if an improper master service route is found."
     (logutils/with-test-logging

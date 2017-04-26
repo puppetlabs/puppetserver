@@ -1,7 +1,7 @@
 (ns puppetlabs.puppetserver.ruby.http-client-test
   (:import (org.jruby.embed EvalFailedException)
-           (org.apache.http ConnectionClosedException)
-           (javax.net.ssl SSLHandshakeException)
+           (org.apache.http ProtocolException ConnectionClosedException)
+           (javax.net.ssl SSLHandshakeException SSLException)
            (java.util HashMap)
            (java.io IOException)
            (java.util.zip GZIPInputStream))
@@ -62,6 +62,8 @@
   (or
     (instance? ConnectionClosedException ex)
     (instance? SSLHandshakeException ex)
+    (and (instance? SSLException ex)
+         (= "Received fatal alert: handshake_failure" (. ex getMessage)))
     (and (instance? IOException ex)
          (= "Connection reset by peer" (.getMessage ex)))))
 
@@ -265,7 +267,7 @@ jruby-config :- jruby-schemas/JRubyConfig
             (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
             (is false "Expected HTTP connection to HTTPS port to fail")
             (catch EvalFailedException e
-              (is (instance? ConnectionClosedException (.getCause e))))))))))
+              (is (instance? ProtocolException (.getCause e))))))))))
 
   (testing "Can connect via TLSv1 by default"
     (with-webserver-with-protocols ["TLSv1"] nil
