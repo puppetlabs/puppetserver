@@ -1,5 +1,7 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
 (def tk-ws-jetty9-version "2.0.0")
+(def jruby-1_7-version "1.7.26-1")
+(def jruby-9k-version "9.1.8.0-1")
 
 (defn deploy-info
   [url]
@@ -114,7 +116,9 @@
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"
-                :system-config-dir "ezbake/system-config"}
+                :system-config-dir "ezbake/system-config"
+                :additional-uberjars [[puppetlabs/jruby-deps ~jruby-9k-version]
+                                      [puppetlabs/jruby-deps ~jruby-1_7-version]]}
 
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
@@ -134,7 +138,7 @@
                                         :main "puppetlabs.puppetserver.dashboard.production"}}}}
   :hooks [leiningen.cljsbuild]
 
-  :profiles {:provided {:dependencies [[puppetlabs/jruby-deps "1.7.26-1"]]}
+  :profiles {:provided {:dependencies [[puppetlabs/jruby-deps ~jruby-1_7-version]]}
              :dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
@@ -206,13 +210,13 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.2.1"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.3.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}
-             :jruby9k {:dependencies [[puppetlabs/jruby-deps "9.1.8.0-1"]]}}
+             :jruby9k {:dependencies [[puppetlabs/jruby-deps ~jruby-9k-version]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
