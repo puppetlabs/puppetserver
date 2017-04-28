@@ -182,6 +182,7 @@ module PuppetServerExtensions
   end
 
   def install_puppet_server (host, make_env={})
+    install_puppet_server_deps
     case test_config[:puppetserver_install_type]
     when :package
       install_package host, 'puppetserver'
@@ -192,6 +193,16 @@ module PuppetServerExtensions
       install_from_ezbake host, 'puppetserver', project_version, make_env
     else
       abort("Invalid install type: " + test_config[:puppetserver_install_type])
+    end
+  end
+
+  def install_puppet_server_deps
+    variant = master['platform'].variant
+    version = master['platform'].version
+    if variant == 'debian' && version == "8"
+      create_remote_file(master, "/etc/apt/sources.list.d/jessie-backports.list", "deb http://ftp.debian.org/debian jessie-backports main")
+      on master, 'apt-get update'
+      master.install_package("openjdk-8-jre-headless", "-t jessie-backports")
     end
   end
 
