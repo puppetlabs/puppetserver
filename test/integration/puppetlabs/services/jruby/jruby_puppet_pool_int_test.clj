@@ -330,6 +330,13 @@
              container (:scripting-container jruby-instance)]
          (try
            (testing "compat version"
+             ;; We do a different assertion here for pre-JRuby 9k vs. 9k+ or
+             ;; later.  As of JRuby 9k, the CompatVersion is basically fixed to
+             ;; always return "RUBY_2_1" for a getCompatVersion call even if a
+             ;; caller tried to set it to something different via a call to the
+             ;; (now deprecated) setCompatVersion method.  This is because the
+             ;; compatVersion is hardcoded in the JRuby implementation for 9k
+             ;; and later.
              (if (some #(= (.toString %) "RUBY2_1")
                        (.getEnumConstants CompatVersion))
                (testing "fixed at '2.1' if '2.1' version available"
