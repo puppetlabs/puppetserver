@@ -50,7 +50,7 @@
                                     "/private_keys/localhost.pem")
                       :ssl-ca-cert (str master-service-test-runtime-ssl-dir
                                         "/certs/ca.pem")
-                      :headers {"Accept" "pson"}
+                      :headers {"Accept" "application/json"}
                       :as :text})))
 
 (defn http-put
@@ -65,8 +65,8 @@
                       :ssl-ca-cert (str master-service-test-runtime-ssl-dir
                                         "/certs/ca.pem")
                       :body body
-                      :headers {"Accept" "pson"
-                                "Content-type" "text/pson"}
+                      :headers {"Accept" "application/json"
+                                "Content-type" "application/json"}
                       :as :text})))
 
 (deftest ^:integration master-service-http-metrics

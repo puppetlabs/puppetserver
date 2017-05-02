@@ -73,7 +73,7 @@
 (def catalog-request-options
   (merge
    ssl-request-options
-   {:headers     {"Accept" "pson"}
+   {:headers     {"Accept" "application/json"}
     :as          :text}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -185,7 +185,7 @@
    (let [request-options (if include-ssl-certs?
                            catalog-request-options
                            {:ssl-ca-cert ca-cert
-                            :headers     {"Accept" "pson"}})]
+                            :headers     {"Accept" "application/json"}})]
      (http-client/get (str "https://localhost:8140/puppet/v3/static_file_content/" url-end)
                       (assoc request-options
                         :as :text)))))
