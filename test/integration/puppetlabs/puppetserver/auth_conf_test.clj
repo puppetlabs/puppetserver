@@ -208,7 +208,7 @@
           http-get-no-ssl (fn [path]
                             (http-client/get
                              (str "http://localhost:8080/" path)
-                             {:headers {"Accept" "pson"
+                             {:headers {"Accept" "application/json"
                                         "X-Client-Cert" url-encoded-cert
                                         "X-Client-DN" "CN=private"
                                         "X-Client-Verify" "SUCCESS"}
@@ -345,7 +345,7 @@
               http-get-no-ssl (fn [path cert]
                                 (http-client/get
                                   (str "http://localhost:8080/" path)
-                                  {:headers {"Accept" "pson"
+                                  {:headers {"Accept" "application/json"
                                              "X-Client-Cert" cert
                                              "X-Client-DN" "CN=private"
                                              "X-Client-Verify" "SUCCESS"}
@@ -395,7 +395,7 @@
                   http-delete (fn [cert]
                                 (http-client/delete
                                   (str "http://localhost:8080/" path)
-                                  {:headers {"Accept" "pson"
+                                  {:headers {"Accept" "application/json"
                                              "X-Client-Cert" cert
                                              "X-Client-DN" "CN=private"
                                              "X-Client-Verify" "SUCCESS"}
