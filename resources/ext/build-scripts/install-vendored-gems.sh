@@ -19,5 +19,5 @@ while read LINE
 do
   gem_name=$(echo $LINE |awk '{print $1}')
   gem_version=$(echo $LINE |awk '{print $2}')
-  java -cp puppet-server-release.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install ${gem_name} --version ${gem_version}
+  java -cp puppet-server-release.jar:jruby-1_7.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install ${gem_name} --version ${gem_version}
 done < "${DIR}/gem-list.txt"

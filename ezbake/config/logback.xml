@@ -23,6 +23,7 @@
     </appender>
 
     <logger name="org.eclipse.jetty" level="INFO"/>
+    <logger name="jruby" level="info"/>
 
     <root level="info">
         <!--<appender-ref ref="STDOUT"/>-->

@@ -15,7 +15,8 @@
   (:import (com.puppetlabs.puppetserver PuppetProfiler JRubyPuppet)
            (clojure.lang IFn)
            (java.util HashMap)
-           (com.codahale.metrics MetricRegistry)))
+           (com.codahale.metrics MetricRegistry)
+           (org.jruby.runtime Constants)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -31,7 +32,14 @@
   classpath.
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
-  "puppetserver-lib")
+  ;; Under JRuby 9k (and presumably later JRuby versions as well), JRuby
+  ;; will fail to find resources from the classpath unless they are prefixed
+  ;; with "classpath:/".  JRuby 1.x will generally find resources when
+  ;; prefixed with "classpath:/" as well, but an invocation of JRuby's irb
+  ;; will error out with "java.lang.NullPointerException: 'in' is null"
+  ;; when the "classpath:/" prefix is included.  The code below ensures
+  ;; that the "classpath:/" prefix is only included for JRuby 9k.
+  (str (if jruby-schemas/using-jruby-9k? "classpath:/") "puppetserver-lib"))
 
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection

@@ -206,20 +206,24 @@ module PuppetServerExtensions
     end
   end
 
-  def get_defaults_var(host, varname)
+  def get_defaults_file
     package_name = options['puppetserver-package']
-    variant, version, _, _ = master['platform'].to_array
+    variant, _, _, _ = master['platform'].to_array
 
     case variant
-    when /^(fedora|el|centos|sles)$/
-      defaults_dir = "/etc/sysconfig/"
-    when /^(debian|ubuntu)$/
-      defaults_dir = "/etc/default/"
-    else
-      logger.warn("#{platform}: Unsupported platform for puppetserver.")
+      when /^(fedora|el|centos|sles)$/
+        defaults_dir = "/etc/sysconfig/"
+      when /^(debian|ubuntu)$/
+        defaults_dir = "/etc/default/"
+      else
+        logger.warn("#{platform}: Unsupported platform for puppetserver.")
     end
 
-    defaults_file = File.join(defaults_dir, package_name)
+    File.join(defaults_dir, package_name)
+  end
+
+  def get_defaults_var(host, varname)
+    defaults_file = get_defaults_file
 
     on(host, "source #{defaults_file}; echo -n $#{varname}")
     stdout

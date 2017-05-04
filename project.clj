@@ -1,5 +1,7 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
 (def tk-ws-jetty9-version "2.0.0")
+(def jruby-1_7-version "1.7.26-1")
+(def jruby-9k-version "9.1.8.0-1")
 
 (defn deploy-info
   [url]
@@ -36,14 +38,14 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.6.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "0.8.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
 
                  [slingshot]
-                 ;; we need to exclude snakeyaml because JRuby also brings it in
-                 [circleci/clj-yaml nil :exclusions [org.yaml/snakeyaml]]
+                 [circleci/clj-yaml]
+                 [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
 
@@ -63,7 +65,11 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.8.0"]
+                 [puppetlabs/jruby-utils "0.9.0"
+                   :exclusions [org.jruby/jruby-core
+                                org.jruby/jruby-stdlib
+                                com.github.jnr/jffi
+                                com.github.jnr/jnr-x86asm]]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
@@ -110,7 +116,9 @@
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"
-                :system-config-dir "ezbake/system-config"}
+                :system-config-dir "ezbake/system-config"
+                :additional-uberjars [[puppetlabs/jruby-deps ~jruby-9k-version]
+                                      [puppetlabs/jruby-deps ~jruby-1_7-version]]}
 
   :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
                         ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
@@ -130,7 +138,8 @@
                                         :main "puppetlabs.puppetserver.dashboard.production"}}}}
   :hooks [leiningen.cljsbuild]
 
-  :profiles {:dev {:source-paths  ["dev"]
+  :profiles {:provided {:dependencies [[puppetlabs/jruby-deps ~jruby-1_7-version]]}
+             :dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version :classifier "test"]
@@ -201,12 +210,13 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.2.1"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.3.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
-             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
+             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}
+             :jruby9k {:dependencies [[puppetlabs/jruby-deps ~jruby-9k-version]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
@@ -217,20 +227,11 @@
 
   ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
+             "-XX:+UseG1GC"
              ~(str "-Xms" (heap-size "1G" "min"))
              ~(str "-Xmx" (heap-size "2G" "max"))]
 
   :repl-options {:init-ns dev-tools}
-
-  ;; NOTE: jruby-stdlib packages some unexpected things inside
-  ;; of its jar.  e.g., it puts a pre-built copy of the bouncycastle
-  ;; jar into its META-INF directory.  This is highly undesirable
-  ;; for projects that already have a dependency on a different
-  ;; version of bouncycastle.  Therefore, when building uberjars,
-  ;; you should take care to exclude the things that you don't want
-  ;; in your final jar.  Here is an example of how you could exclude
-  ;; that from the final uberjar:
-  :uberjar-exclusions [#"META-INF/jruby.home/lib/ruby/shared/org/bouncycastle"]
 
   ;; This is used to merge the locales.clj of all the dependencies into a single
   ;; file inside the uberjar

@@ -29,9 +29,12 @@
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
             [puppetlabs.trapperkeeper.config :as tk-config]
-            [puppetlabs.http.client.metrics :as metrics])
+            [puppetlabs.http.client.metrics :as metrics]
+            [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
+            [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (org.jruby RubyInstanceConfig$CompileMode CompatVersion)
-           (com.codahale.metrics MetricRegistry)))
+           (com.codahale.metrics MetricRegistry)
+           (org.jruby.runtime Constants)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/jruby/jruby_pool_int_test")
@@ -312,7 +315,9 @@
 
 (deftest ^:integration settings-plumbed-into-jruby-container
   (testing "setting plumbed into jruby container for"
-    (let [jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compat-version "2.0"
+    (let [compat-version (if jruby-schemas/using-jruby-9k?
+                           Constants/RUBY_VERSION "2.0")
+          jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compat-version compat-version
                                                                     :compile-mode :jit})
           config (assoc
                   (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
@@ -321,35 +326,47 @@
                                  :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
                                                  "TLS_RSA_WITH_AES_256_CBC_SHA"]
                                  :ssl-protocols ["TLSv1" "TLSv1.2"]})]
-      (tk-testutils/with-app-with-config
-       app
-       jruby-testutils/jruby-service-and-dependencies
-       config
-       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-             jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
-             container (:scripting-container jruby-instance)]
-         (try
-           (testing "compat version"
-             (is (= CompatVersion/RUBY2_0 (.getCompatVersion container))))
-           (testing "compile mode"
-             (is (= RubyInstanceConfig$CompileMode/JIT
-                    (.getCompileMode container))))
-           (let [settings (into {} (.runScriptlet container
-                                                  "java.util.HashMap.new
-                                                     (Puppet::Server::HttpClient.settings)"))]
-             (testing "http_connect_timeout_milliseconds"
-               (is (= 2 (settings "http_connect_timeout_milliseconds"))))
-             (testing "http_idle_timeout_milliseconds"
-               (is (= 5 (settings "http_idle_timeout_milliseconds"))))
-             (testing "cipher_suites"
-               (is (= ["TLS_RSA_WITH_AES_256_CBC_SHA256"
-                       "TLS_RSA_WITH_AES_256_CBC_SHA"]
-                      (into [] (settings "cipher_suites")))))
-             (testing "ssl_protocols"
-               (is (= ["TLSv1" "TLSv1.2"]
-                      (into [] (settings "ssl_protocols"))))))
-           (finally
-             (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test))))))))
+      (logutils/with-test-logging
+       (tk-testutils/with-app-with-config
+        app
+        jruby-testutils/jruby-service-and-dependencies
+        config
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+              jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
+              container (:scripting-container jruby-instance)]
+          (try
+            (testing "compat version"
+              ;; We do a different assertion here for pre-JRuby 9k vs. 9k+ or
+              ;; later.  As of JRuby 9k, the CompatVersion is basically fixed to
+              ;; always return "RUBY_2_1" for a getCompatVersion call even if a
+              ;; caller tried to set it to something different via a call to the
+              ;; (now deprecated) setCompatVersion method.  This is because the
+              ;; compatVersion is hardcoded in the JRuby implementation for 9k
+              ;; and later.
+              (if jruby-schemas/using-jruby-9k?
+                (testing "fixed at '2.1' for jruby9k"
+                  (is (= "RUBY2_1" (.. container (getCompatVersion) (toString)))))
+                (testing "returns '2.0' per compat version setting"
+                  (is (= CompatVersion/RUBY2_0 (.getCompatVersion container))))))
+            (testing "compile mode"
+              (is (= RubyInstanceConfig$CompileMode/JIT
+                     (.getCompileMode container))))
+            (let [settings (into {} (.runScriptlet container
+                                                   "java.util.HashMap.new
+                                                      (Puppet::Server::HttpClient.settings)"))]
+              (testing "http_connect_timeout_milliseconds"
+                (is (= 2 (settings "http_connect_timeout_milliseconds"))))
+              (testing "http_idle_timeout_milliseconds"
+                (is (= 5 (settings "http_idle_timeout_milliseconds"))))
+              (testing "cipher_suites"
+                (is (= ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+                        "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                       (into [] (settings "cipher_suites")))))
+              (testing "ssl_protocols"
+                (is (= ["TLSv1" "TLSv1.2"]
+                       (into [] (settings "ssl_protocols"))))))
+            (finally
+              (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))))
 
 (deftest ^:integration http-client-metrics-enabled-test
   (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))]
