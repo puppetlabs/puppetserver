@@ -70,6 +70,8 @@
                                 org.jruby/jruby-stdlib
                                 com.github.jnr/jffi
                                 com.github.jnr/jnr-x86asm]]
+                 [puppetlabs/jruby-deps ~jruby-1_7-version]
+
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
@@ -138,8 +140,7 @@
                                         :main "puppetlabs.puppetserver.dashboard.production"}}}}
   :hooks [leiningen.cljsbuild]
 
-  :profiles {:provided {:dependencies [[puppetlabs/jruby-deps ~jruby-1_7-version]]}
-             :dev {:source-paths  ["dev"]
+  :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version :classifier "test"]
@@ -207,7 +208,7 @@
                                                ;; brings in its own version, and older versions of
                                                ;; lein depend on clojure 1.6.
                                                [org.clojure/clojure nil]
-                                               [puppetlabs/puppetserver ~ps-version]
+                                               [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
                                                [org.clojure/tools.nrepl nil]]
                       :plugins [[puppetlabs/lein-ezbake "1.3.0"]]
