@@ -91,9 +91,4 @@ else
     }
 
     install_puppet_server master, make_env
-
-
-    step 'Use puppetserver legacy auth.conf' do
-      modify_tk_config(master, options['puppetserver-config'], {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
-    end
 end
