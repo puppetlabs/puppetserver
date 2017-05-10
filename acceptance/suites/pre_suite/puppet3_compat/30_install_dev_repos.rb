@@ -12,11 +12,8 @@ when :package
     end
   end
 
-  puppet_build_version = test_config[:puppet_build_version]
-  if puppet_build_version
-    step "Setup Puppet dev repository on the master." do
-      install_puppetlabs_dev_repo(master, 'puppet-agent', puppet_build_version,
-                                  repo_config_dir, install_opts)
-    end
+  step "Setup Puppet dev repository on the master." do
+    install_puppetlabs_dev_repo(master, 'puppet-agent', test_config[:puppet_build_version],
+                                repo_config_dir, install_opts)
   end
 end

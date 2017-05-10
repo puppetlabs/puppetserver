@@ -13,14 +13,11 @@ when :package
   end
 end
 
-puppet_build_version = test_config[:puppet_build_version]
-if puppet_build_version
-  confine_block :except, :platform => ['windows'] do
-    step "Setup Puppet Labs Dev Repositories." do
-      hosts.each do |host|
-        install_puppetlabs_dev_repo(host, 'puppet-agent', puppet_build_version,
+confine_block :except, :platform => ['windows'] do
+  step "Setup Puppet Labs Dev Repositories." do
+    hosts.each do |host|
+      install_puppetlabs_dev_repo(host, 'puppet-agent', test_config[:puppet_build_version],
                                     nil, install_opts)
-      end
     end
   end
 end
