@@ -8,6 +8,3 @@ if not puppet_version
 end
 
 install_puppet_on(nonmaster_agents, {:version => puppet_version})
-
-step "Install Puppet Server."
-install_puppet_server master
