@@ -41,7 +41,12 @@
   (stop
    [this context]
    (let [{:keys [pool-context]} (tk-services/service-context this)]
-     (jruby-core/flush-pool-for-shutdown! pool-context))
+     ;; Only flush the pool if there is a pool-context available.  No pool-context
+     ;; would be available if an exception were to be thrown during service
+     ;; initialization before the pool-context were created - e.g., during the
+     ;; the initialization of an upstream service.
+     (when pool-context
+       (jruby-core/flush-pool-for-shutdown! pool-context)))
    context)
 
   (free-instance-count
