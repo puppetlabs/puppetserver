@@ -1,5 +1,5 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
-(def tk-ws-jetty9-version "2.0.0")
+(def tk-ws-jetty9-version "2.0.1")
 (def jruby-1_7-version "1.7.26-1")
 (def jruby-9k-version "9.1.8.0-1")
 
