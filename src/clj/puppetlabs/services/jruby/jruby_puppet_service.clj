@@ -5,7 +5,8 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n])
+  (:import (org.jruby.runtime Constants)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -34,6 +35,9 @@
                         metrics-service)
           _ (core/add-facter-jar-to-system-classloader! (:ruby-load-path jruby-config))
           pool-context (create-pool jruby-config)]
+      (log/info (i18n/trs "Using JRuby version {0}, Ruby language version {1}"
+                          Constants/VERSION
+                          (:compat-version jruby-config)))
       (-> context
           (assoc :pool-context pool-context)
           (assoc :environment-class-info-tags (atom {})))))
