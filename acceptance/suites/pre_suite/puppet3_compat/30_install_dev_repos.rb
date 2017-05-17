@@ -11,6 +11,6 @@ if test_config[:puppetserver_install_type] == :package
   end
 
   step "Setup Puppet dev repository on the master." do
-    install_puppetlabs_dev_repo(host, 'puppet-agent', test_config[:puppet_build_version], nil, install_opts)
+    install_puppetlabs_dev_repo(master, 'puppet-agent', test_config[:puppet_build_version], nil, install_opts)
   end
 end
