@@ -27,5 +27,17 @@ describe 'Puppet::Server::PuppetConfig' do
         expect(subject).to eq(false)
       end
     end
+
+    describe '(PUP-6060) Puppet::Node indirection caching' do
+      subject { Puppet[:node_cache_terminus] }
+      it 'is nil to avoid superfluous caching' do
+        expect(subject).to be_nil
+      end
+
+      subject { Puppet::Node.indirection.cache_class }
+      it 'is nil to avoid superfluous caching'do
+        expect(subject).to be_nil
+      end
+    end
   end
 end

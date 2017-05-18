@@ -35,7 +35,6 @@ class Puppet::Server::PuppetConfig
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
         merge({:name => "master",
-               :node_cache_terminus => :write_only_yaml,
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
@@ -48,8 +47,6 @@ class Puppet::Server::PuppetConfig
     Puppet::FileServing::Content.indirection.terminus_class = :file_server
     Puppet::FileServing::Metadata.indirection.terminus_class = :file_server
     Puppet::FileBucket::File.indirection.terminus_class = :file
-
-    Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
 
     Puppet::ApplicationSupport.configure_indirector_routes("master")
 
