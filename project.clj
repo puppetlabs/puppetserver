@@ -1,7 +1,6 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
-(def tk-ws-jetty9-version "2.0.1")
-(def jruby-1_7-version "1.7.26-1")
-(def jruby-9k-version "9.1.8.0-1")
+(def jruby-1_7-version "1.7.26-2")
+(def jruby-9k-version "9.1.9.0-1")
 
 (defn deploy-info
   [url]
@@ -38,7 +37,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "0.8.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "1.1.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -65,8 +64,12 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.9.0"]
+                 [puppetlabs/jruby-utils "0.9.1"]
                  [puppetlabs/jruby-deps ~jruby-1_7-version]
+
+                 ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
+                 ;; asm dependencies.  Deferring to clj-parent to resolve the version.
+                 [org.ow2.asm/asm-all]
 
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
@@ -138,8 +141,8 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version :classifier "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -205,12 +208,12 @@
                                                ;; lein depend on clojure 1.6.
                                                [org.clojure/clojure nil]
                                                [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.3.0"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.4.0"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~tk-ws-jetty9-version]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
              :ci {:plugins [[lein-pprint "1.1.1"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}
              :jruby9k {:dependencies [[puppetlabs/jruby-deps ~jruby-9k-version]]}}
