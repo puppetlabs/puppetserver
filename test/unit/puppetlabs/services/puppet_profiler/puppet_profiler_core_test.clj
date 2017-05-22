@@ -61,32 +61,35 @@
               (is (every? #(instance? Timer (.get metrics-map %)) expected-metrics)))))))))
 
 (deftest test-profiler-via-ruby
-  (let [sc      (jruby-internal/empty-scripting-container
+  (let [sc      (jruby-internal/create-scripting-container
                  (jruby-core/initialize-config
                   {:ruby-load-path (jruby-puppet-core/managed-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
                    :gem-home "./target/jruby-gems"
-                   :compile-mode :off}))
-        script  " require 'puppet'
-                  require 'puppet/util/profiler'
-                  require 'puppet/server'
-                  require 'puppet/server/jvm_profiler'
+                   :compile-mode :off}))]
+    (try
+      (let [script " require 'puppet'
+                     require 'puppet/util/profiler'
+                     require 'puppet/server'
+                     require 'puppet/server/jvm_profiler'
 
-                  require 'java'
-                  java_import com.puppetlabs.puppetserver.MetricsPuppetProfiler
-                  java_import com.codahale.metrics.MetricRegistry
+                     require 'java'
+                     java_import com.puppetlabs.puppetserver.MetricsPuppetProfiler
+                     java_import com.codahale.metrics.MetricRegistry
 
-                  registry = MetricRegistry.new
-                  profiler = MetricsPuppetProfiler.new('testhost', registry)
-                  Puppet::Util::Profiler.add_profiler(Puppet::Server::JvmProfiler.new(profiler))
-                  Puppet::Util::Profiler.profile('test', ['foo', 'bar', 'baz']) do
-                    sleep(0.01)
-                  end
-                  registry"
-        registry (.runScriptlet sc script)]
-    (is (= #{"puppetlabs.testhost.foo"
-             "puppetlabs.testhost.foo.bar"
-             "puppetlabs.testhost.foo.bar.baz"}
-           (into #{} (.getNames registry))))))
+                     registry = MetricRegistry.new
+                     profiler = MetricsPuppetProfiler.new('testhost', registry)
+                     Puppet::Util::Profiler.add_profiler(Puppet::Server::JvmProfiler.new(profiler))
+                     Puppet::Util::Profiler.profile('test', ['foo', 'bar', 'baz']) do
+                       sleep(0.01)
+                     end
+                     registry"
+            registry (.runScriptlet sc script)]
+        (is (= #{"puppetlabs.testhost.foo"
+                 "puppetlabs.testhost.foo.bar"
+                 "puppetlabs.testhost.foo.bar.baz"}
+               (into #{} (.getNames registry)))))
+      (finally
+        (.terminate sc)))))
 
 (deftest test-initialize
   (testing "initializes profiler by default"
