@@ -40,4 +40,13 @@ describe 'Puppet::Server::PuppetConfig' do
       end
     end
   end
+
+  # Even though we don't set the node_cache_terminus setting value, so it
+  # defaults to nil, we want to honor it if users have specified it directly.
+  # PUP-6060 / SERVER-1819
+  subject { Puppet::Node.indirection.cache_class }
+  it 'honors the Puppet[:node_cache_terminus] setting' do
+    Puppet::Server::PuppetConfig.initialize_puppet({ :node_cache_terminus => "plain" })
+    expect(subject).to eq(:plain)
+  end
 end
