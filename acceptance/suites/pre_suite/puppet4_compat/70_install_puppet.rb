@@ -7,4 +7,4 @@ if not puppet_version
   fail "PUPPET_LEGACY_VERSION is not set, e.g. '1.9.3'"
 end
 
-install_puppet_agent_on(nonmaster_agents, {:puppet_agent_version => puppet_agent_version})
+install_puppet_agent_on(nonmaster_agents, {:puppet_agent_version => puppet_version})
