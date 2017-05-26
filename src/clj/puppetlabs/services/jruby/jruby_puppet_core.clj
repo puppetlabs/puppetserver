@@ -270,9 +270,9 @@
     metrics-service]
    (when (get-in raw-config [:jruby-puppet :compat-version])
      (log/errorf "%s %s %s"
-                 "The jruby-puppet.compat-version setting is no longer supported."
-                 "To use Ruby language version 1.9.3, remove the jruby-puppet.compat-version setting."
-                 "To use a Ruby language version later than 2.0, remove the jruby-puppet.compat-version setting and add the line 'JRUBY_JAR=/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar' to the /etc/sysconfig/(pe-)puppet(-)server or /etc/default/(pe-)puppet(-)server file.")
+                 (i18n/trs "The jruby-puppet.compat-version setting is no longer supported.")
+                 (i18n/trs "To use Ruby language version 1.9.3, remove the jruby-puppet.compat-version setting.")
+                 (i18n/trs "To use a Ruby language version later than 2.0, remove the jruby-puppet.compat-version setting and add the line 'JRUBY_JAR=/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar' to the /etc/sysconfig/(pe-)puppet(-)server or /etc/default/(pe-)puppet(-)server file."))
      (throw (IllegalArgumentException.
              (i18n/trs "jruby-puppet.compat-version setting no longer supported"))))
    (let [jruby-puppet-config (initialize-puppet-config
