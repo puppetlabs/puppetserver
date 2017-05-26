@@ -70,8 +70,6 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
         For more information, see the [`environment_classes` API documentation][].
 
-    * `compat-version`: Optional, experimental.  Used to control the MRI compatibility version under which JRuby runs.  The allowed values are "1.9" and "2.0".  The default value is "1.9".
-
     * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
 * The `profiler` settings configure profiling:
