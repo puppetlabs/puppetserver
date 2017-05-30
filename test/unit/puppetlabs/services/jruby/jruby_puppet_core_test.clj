@@ -132,7 +132,6 @@
     (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
           unitialized-jruby-config {:gem-home "/foo"
                                     :gem-path ["/foo" "/bar"]
-                                    :compat-version 2.0
                                     :compile-mode :jit
                                     :borrow-timeout 1234
                                     :max-active-instances 4321
@@ -151,8 +150,6 @@
       (testing "jruby-config values are not overridden if provided"
         (is (= "/foo" (:gem-home initialized-jruby-config)))
         (is (= "/foo:/bar" (:gem-path initialized-jruby-config)))
-        (is (= (if jruby-schemas/using-jruby-9k? Constants/RUBY_VERSION "2.0")
-               (:compat-version initialized-jruby-config)))
         (is (= :jit (:compile-mode initialized-jruby-config)))
         (is (= 1234 (:borrow-timeout initialized-jruby-config)))
         (is (= 4321 (:max-active-instances initialized-jruby-config)))
@@ -170,8 +167,6 @@
                                     nil)]
 
       (testing "jruby-config default values are used if not provided"
-        (is (= (if jruby-schemas/using-jruby-9k? Constants/RUBY_VERSION "1.9")
-               (:compat-version initialized-jruby-config)))
         (is (= :off (:compile-mode initialized-jruby-config)))
         (is (= jruby-core/default-borrow-timeout (:borrow-timeout initialized-jruby-config)))
         (is (= (jruby-core/default-pool-size (ks/num-cpus)) (:max-active-instances initialized-jruby-config)))

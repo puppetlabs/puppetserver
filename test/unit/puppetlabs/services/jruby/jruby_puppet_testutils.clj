@@ -55,16 +55,11 @@
   This represents what would be in a real TK configuration's jruby-puppet section,
   so we remove some things from the JRubyConfig:
   - remove :max-borrows-per-instance (keep :max-requests-per-instance)
-  - remove :lifecycle
-  - make :compat-version optional"
-  (let [initial-schema (-> jruby-puppet-schemas/JRubyPuppetConfig
-                           (merge jruby-schemas/JRubyConfig)
-                           (dissoc :max-borrows-per-instance
-                                   :lifecycle))]
-    (-> initial-schema
-        (assoc (schema/optional-key :compat-version)
-               (:compat-version initial-schema))
-        (dissoc :compat-version))))
+  - remove :lifecycle"
+  (-> jruby-puppet-schemas/JRubyPuppetConfig
+      (merge jruby-schemas/JRubyConfig)
+      (dissoc :max-borrows-per-instance
+              :lifecycle)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; JRubyPuppet Test util functions
@@ -166,7 +161,7 @@ create-mock-pool-instance :- JRubyInstance
          updated-config (-> combined-configs
                             (assoc :max-requests-per-instance max-requests-per-instance)
                             (dissoc :max-borrows-per-instance))]
-     (dissoc updated-config :lifecycle :compat-version)))
+     (dissoc updated-config :lifecycle)))
   ([options]
    (merge (jruby-puppet-config) options)))
 
