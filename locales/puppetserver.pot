@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: cbc76615d037c772e017fca6bd129076169b5ef7\n"
+"X-Git-Ref: 26809fa701825ee23e47400e10bd512e2dc48e2f\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -34,7 +34,6 @@ msgstr ""
 msgid "Config setting ca_ttl must have a value below {0}"
 msgstr ""
 
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "The ''client-whitelist'' and ''authorization-required'' settings in the "
@@ -435,6 +434,28 @@ msgid "Facter jar not found in ruby load path"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "The jruby-puppet.compat-version setting is no longer supported."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid ""
+"To use Ruby language version 1.9.3, remove the jruby-puppet.compat-version "
+"setting."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid ""
+"To use a Ruby language version later than 2.0, remove the jruby-puppet."
+"compat-version setting and add the line 'JRUBY_JAR=/opt/puppetlabs/server/"
+"apps/puppetserver/jruby-9k.jar' to the /etc/sysconfig/(pe-)puppet(-)server "
+"or /etc/default/(pe-)puppet(-)server file."
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "jruby-puppet.compat-version setting no longer supported"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
 msgid "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''."
 msgstr ""
 
@@ -456,11 +477,9 @@ msgid "Initializing the JRuby service"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_service.clj
-msgid "Using JRuby version {0}, Ruby language version {1}"
+msgid "JRuby version info: {0}"
 msgstr ""
 
-#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
-#: src/clj/puppetlabs/services/jruby/puppet_environments.clj
 #: src/clj/puppetlabs/services/jruby/puppet_environments.clj
 msgid "Missing environment name!"
 msgstr ""
@@ -491,7 +510,6 @@ msgstr ""
 msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
 
-#: src/clj/puppetlabs/services/master/master_core.clj
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Could not find environment ''{0}''"
 msgstr ""
@@ -545,7 +563,6 @@ msgid "Starting Puppet Admin web app"
 msgstr ""
 
 #: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
-#: src/clj/puppetlabs/services/puppet_admin/puppet_admin_service.clj
 msgid ""
 "The ''client-whitelist'' and ''authorization-required'' settings in the "
 "''puppet-admin'' section are deprecated and will be removed in a future "
@@ -583,7 +600,6 @@ msgstr ""
 msgid "No DN provided by the HTTP header ''{0}''."
 msgstr ""
 
-#: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
 #: src/clj/puppetlabs/services/request_handler/request_handler_core.clj
 msgid "Treating client as unauthenticated."
 msgstr ""
