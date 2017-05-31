@@ -16,7 +16,7 @@ SITEPP
   end
 end
 
-def rm_vardirs()
+def rm_compat_test_files()
   # In order to prevent file caching and ensure agent-master HTTP communication
   # during agent runs we blow away the vardirs, which contains the cached files
   hosts.each do |host|

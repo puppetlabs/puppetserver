@@ -3,7 +3,7 @@ require 'puppetserver/acceptance/compat_utils'
 test_name 'content file resource'
 
 teardown do
-  rm_vardirs()
+  rm_compat_test_files()
 end
 
 agents.each do |agent|

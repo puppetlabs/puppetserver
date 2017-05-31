@@ -3,7 +3,7 @@ require 'puppetserver/acceptance/compat_utils'
 test_name 'executable external fact'
 
 teardown do
-  rm_vardirs()
+  rm_compat_test_files()
 end
 
 agents.each do |agent|
