@@ -1,9 +1,12 @@
+def sitepp
+  '/etc/puppetlabs/code/environments/production/manifests/site.pp'
+end
+
 def nonmaster_agents()
   agents.reject { |agent| agent == master }
 end
 
 def apply_simmons_class(agent, studio, classname)
-  sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
   create_remote_file(master, sitepp, <<SITEPP)
 class { 'simmons':
   studio    => "#{studio}",
@@ -23,4 +26,7 @@ def rm_compat_test_files()
     vardir = on(host, puppet("config print vardir")).stdout.chomp
     on(host, "rm -rf #{vardir}")
   end
+  # Remove any custom site.pp file which may have been laid down so that it
+  # doesn't pollute the outcome from any additional tests which are run.
+  on(master, "rm -f #{sitepp}")
 end
