@@ -10,4 +10,6 @@ if not puppet_version
   puppet_version = default_puppet_version
 end
 
+# Always force 3.x agents to use FOSS puppet install type
+nonmaster_agents.each { |agent| agent[:type] = 'foss' }
 install_puppet_on(nonmaster_agents, {:version => puppet_version})
