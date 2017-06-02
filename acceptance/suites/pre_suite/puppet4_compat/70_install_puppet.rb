@@ -1,5 +1,18 @@
 require 'puppetserver/acceptance/compat_utils'
 
+# zypper installs of puppet-agent for SLES will fail if the package can't be
+# validated with the Puppet GPG key.  Beaker doesn't implicitly install the
+# Puppet GPG key so need to install it before trying to install the
+# puppet-agent.
+step "Install Updated Puppet GPG key for Any SLES Agents."
+
+nonmaster_agents.each { |agent|
+  variant = master['platform'].variant
+  if variant == 'sles'
+    on(agent, 'rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet')
+  end
+}
+
 step "Install Legacy Puppet Agents."
 
 default_puppet_version = '1.10.1'
