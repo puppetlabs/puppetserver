@@ -1,6 +1,6 @@
 (def ps-version "5.0.0-master-SNAPSHOT")
 (def jruby-1_7-version "1.7.27-1")
-(def jruby-9k-version "9.1.9.0-1")
+(def jruby-9k-version "9.1.9.0-2")
 
 (defn deploy-info
   [url]
