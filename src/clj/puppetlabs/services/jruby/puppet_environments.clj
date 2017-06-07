@@ -26,7 +26,7 @@
       (isExpired [this env-name]
         (when-not env-name
           (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
-        (get-in @state [(keyword env-name) :expired]))
+        (get-in @state [(keyword env-name) :expired] true))
       (removeEnvironment [this env-name]
         (when-not env-name
           (throw (IllegalArgumentException. (i18n/trs "Missing environment name!"))))
