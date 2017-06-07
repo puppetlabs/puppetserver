@@ -61,6 +61,14 @@
       (is (false? (contains-environment? reg :foo)))
       (.registerEnvironment reg "foo")
       (is (false? (.isExpired reg "foo")))
-      (is (false? (expired? reg :foo))))))
+      (is (false? (expired? reg :foo)))))
+  (testing "unregistered environments are expired by default"
+    (let [reg (puppet-env/environment-registry)]
+      (is (false? (contains-environment? reg :foo)))
+      (is (true? (.isExpired reg "foo")))
+      ; expired? returns nil because it bypasses the
+      ; EnvironmentRegistry.isExpired fn and accesses the underlying data
+      ; directly, which of course not contain :foo
+      (is (nil? (expired? reg :foo))))))
 
 
