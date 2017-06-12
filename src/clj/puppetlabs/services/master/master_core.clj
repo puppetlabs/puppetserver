@@ -472,6 +472,7 @@
 
         :else
         {:status 200
+         :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
 (def MetricIdsForStatus (schema/atom [[schema/Str]]))
