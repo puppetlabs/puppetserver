@@ -194,11 +194,13 @@
       (testing "the /static_file_content endpoint successfully streams file content"
         (let [response (testutils/get-static-file-content "modules/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
+          (is (= "application/octet-stream" (get-in response [:headers "content-type"])))
           (is (= "test foobar modules/foo/files/bar.txt\n" (:body response)))))
       (testing (str "the /static_file_content endpoint successfully streams file content "
                     "from directories other than /modules")
         (let [response (testutils/get-static-file-content "site/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))
+          (is (= "application/octet-stream" (get-in response [:headers "content-type"])))
           (is (= "test foobar site/foo/files/bar.txt\n" (:body response))))
         (let [response (testutils/get-static-file-content "dist/foo/files/bar.txt?code_id=foobar&environment=test")]
           (is (= 200 (:status response)))

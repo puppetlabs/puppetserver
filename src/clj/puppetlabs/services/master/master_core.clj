@@ -457,21 +457,27 @@
       (cond
         (some empty? [environment code-id file-path])
         {:status 400
+         :headers {"Content-Type" "text/plain"}
          :body (i18n/tru "Error: A /static_file_content request requires an environment, a code-id, and a file-path")}
+
         (not (nil? (schema/check ps-common/Environment environment)))
         {:status 400
+         :headers {"Content-Type" "text/plain"}
          :body (ps-common/environment-validation-error-msg environment)}
 
         (not (nil? (schema/check ps-common/CodeId code-id)))
         {:status 400
+         :headers {"Content-Type" "text/plain"}
          :body (ps-common/code-id-validation-error-msg code-id)}
 
         (not (valid-static-file-path? file-path))
         {:status 403
+         :headers {"Content-Type" "text/plain"}
          :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files directory of a module.")}
 
         :else
         {:status 200
+         :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
 (def MetricIdsForStatus (schema/atom [[schema/Str]]))
