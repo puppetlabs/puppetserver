@@ -151,6 +151,20 @@ ntp::servers:
 YAML
   create_remote_file(master, "#{git_local_repo}/hieradata/common.yaml", common_yaml)
 
+  hiera_yaml=<<-YAML
+---
+
+version: 5
+
+hierarchy:
+ - name: Common
+   path: common.yaml
+defaults:
+  data_hash: yaml_data
+  datadir: hieradata
+YAML
+  create_remote_file(master, "#{git_local_repo}/hiera.yaml", hiera_yaml)
+
   puppetfile=<<-EOF
 forge 'forge.puppetlabs.com'
 
