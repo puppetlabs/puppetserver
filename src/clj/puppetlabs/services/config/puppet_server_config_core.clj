@@ -61,7 +61,7 @@
   JRubyPuppet.  Returns `nil` if Puppet does not have a setting for the given
   key.  The keyword will be converted into the appropriate format before it is
   passed to Puppet - for example, if you want the value of Puppet's
-  'archive_files' setting, pass in `:archive-files`."
+  'autoflush' setting, pass in `:autoflush`."
   [jruby-puppet k]
   {:pre [(keyword? k)]}
   (->> (keyword->setting k)

@@ -34,7 +34,7 @@
            (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
            (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
            (is (= false (get-puppet-config-value jruby-puppet :onetime)))
-           (is (= false (get-puppet-config-value jruby-puppet :archive-files)))
+           (is (= true (get-puppet-config-value jruby-puppet :autoflush)))
            (is (= nil (get-puppet-config-value jruby-puppet :not-a-valid-setting))))
          (testing "get-puppet-config* values match mock config values"
            (let [mock-config-with-keywordized-keys
