@@ -4,10 +4,11 @@ skip_test 'SKIP: This test should only run in puppetserver FOSS.' if options[:ty
 
 test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
 
-git_repo        ='/git/puppetcode'
-git_local_repo  ='/tmp/git'
-hostname        =on(master, 'facter hostname').stdout.strip
-fqdn            =on(master, 'facter fqdn').stdout.strip
+git_repo_parentdir=master.tmpdir('code_scripts_gitrepo')
+git_repo="#{git_repo_parentdir}/gitdir"
+git_local_repo=master.tmpdir('code_scripts_gitlocalrepo')
+hostname=on(master, 'facter hostname').stdout.strip
+fqdn=on(master, 'facter fqdn').stdout.strip
 
 def cicsetting(present_or_absent='present')
   cicsetting=<<-CICS
@@ -33,10 +34,10 @@ teardown do
   create_remote_file(master, '/tmp/config_code_id_command_script_disable.pp', remove_cicsetting)
   on master, 'puppet apply /tmp/config_code_id_command_script_disable.pp'
   reload_server
- 
+
   on(master, 'rm -rf /root/.ssh/gittest_rsa*', :accept_all_exit_codes => true)
   on(master, 'puppet resource user git ensure=absent')
-  on(master, "rm -rf #{git_repo}", :accept_all_exit_codes => true)
+  on(master, "rm -rf #{git_repo_parentdir}", :accept_all_exit_codes => true)
   on(master, "rm -rf #{git_local_repo}", :accept_all_exit_codes => true)
   on(master, 'rm -rf /home/git/.ssh/authorized_keys', :accept_all_exit_codes => true)
  
@@ -52,6 +53,7 @@ teardown do
 end
 
 step 'SETUP: Generate a new ssh key for the root user account to use with the git server'
+  on(master, 'rm -f /root/.ssh/gittest_rsa')
   on(master, 'ssh-keygen -t rsa -V +1d -f /root/.ssh/gittest_rsa -N ""')
   gittest_key=on(master, "awk '{print $2}' /root/.ssh/gittest_rsa.pub").stdout.chomp
 
@@ -66,16 +68,20 @@ step 'SETUP: Install and configure git server' do
       system => true,
       }
 
+    file { '/home/git':
+      owner => 'git',
+      ensure => 'directory',
+      recurse => 'true',
+      require => User['git'],
+      }
+
     ssh_authorized_key { 'root@#{hostname}' :
       user => 'git',
       ensure => present,
       type => 'ssh-rsa',
       key => '#{gittest_key}',
-      require => User['git'],
+      require => File['/home/git'],
       }
-
-    file { '/git':            ensure => directory, mode => '777', owner => 'git' }
-    file { '/git/puppetcode': ensure => directory, mode => '777', owner => 'git' }
 
     class { 'git': }
     GIT
@@ -95,11 +101,12 @@ step 'SETUP: Write out ssh config...' do
  end
 
 step 'SETUP: Initialize the git control repository' do
+  on master, "chown git #{git_repo_parentdir}"
   on master, "sudo -u git git init --bare #{git_repo}", :pty => true
 end
 
 step 'SETUP: Initialize the local git repository' do
-  on master, "mkdir #{git_local_repo}"
+  on master, "chown git #{git_local_repo}"
   on master, "cd #{git_local_repo} && git config --global user.name 'TestUser'"
   on master, "cd #{git_local_repo} && git config --global user.email 'you@example.com'"
   on master, "cd #{git_local_repo} && git init"
@@ -143,6 +150,21 @@ ntp::servers:
   - 1.us.pool.ntp.org
 YAML
   create_remote_file(master, "#{git_local_repo}/hieradata/common.yaml", common_yaml)
+
+  hiera_yaml=<<-YAML
+---
+
+version: 5
+
+hierarchy:
+ - name: Common
+   path: common.yaml
+defaults:
+  data_hash: yaml_data
+  datadir: hieradata
+YAML
+  create_remote_file(master, "#{git_local_repo}/hiera.yaml", hiera_yaml)
+
   puppetfile=<<-EOF
 forge 'forge.puppetlabs.com'
 
