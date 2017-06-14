@@ -181,6 +181,7 @@ class Puppet::Server::HttpClient
     self.configure_timeouts(client_options)
     self.configure_ssl(client_options)
     self.configure_metrics(client_options)
+    client_options.set_enable_url_metrics(false)
     client_options
   end
 
