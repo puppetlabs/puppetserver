@@ -118,13 +118,24 @@
   liberator does not know how to serialize a map as PSON (as it does with JSON),
   so we have to tell it how."
   [x context]
-  (let [context-with-media-type (if (string/blank? (get-in context
-                                                           [:representation
-                                                            :media-type]))
+  (let [representation-media-type (get-in context [:representation :media-type])
+        accept-header (-> context
+                          (get-in [:request :headers])
+                          ((partial some #(when (= (string/lower-case (key %))
+                                                   "accept")
+                                            (val %)))))
+        context-with-media-type (cond
+                                  (not-empty representation-media-type) context
+
+                                  (not-empty accept-header)
                                   (assoc-in context
                                             [:representation :media-type]
-                                            "text/pson")
-                                  context)]
+                                            accept-header)
+
+                                  :else
+                                  (assoc-in context
+                                            [:representation :media-type]
+                                            "application/json"))]
     (-> (cheshire/generate-string x)
         (representation/as-response context-with-media-type)
         (assoc :status 200)
