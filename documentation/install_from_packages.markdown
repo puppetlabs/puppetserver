@@ -26,6 +26,15 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 
 -   Debian 8 (Jessie)
 
+Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie). In order to install Puppet Server for Jessie, users would need to first configure the jessie-backports repository (see: https://backports.debian.org/Instructions/), which does have openjdk-8. The following steps should install Puppet Server properly for Jessie:
+
+~~~
+echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d
+apt-get update
+apt-get -t jessie-backports install "openjdk-8-jdk-headless"
+apt-get install puppetserver
+~~~~
+
 ### Ubuntu
 
 -   Ubuntu 16.04 (Xenial)
@@ -33,6 +42,8 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 ### SUSE Linux Enterprise Server
 
 -   SLES 12
+
+Users will need to be running SP1 or later in order to be able to install openjdk8 properly for SLES 12.
 
 ## Quick Start
 
