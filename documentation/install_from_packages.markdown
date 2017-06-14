@@ -24,13 +24,10 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 
 ### Debian
 
--   Debian 7 (Wheezy)
 -   Debian 8 (Jessie)
 
 ### Ubuntu
 
--   Ubuntu 12.04 (Precise)
--   Ubuntu 14.04 (Trusty)
 -   Ubuntu 15.10 (Wily)
 -   Ubuntu 16.04 (Xenial)
 
