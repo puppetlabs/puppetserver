@@ -356,6 +356,15 @@
                 response (test-app request)]
             (is (= 404 (:status response)))))
 
+        (testing "returns json when no accept header specified"
+          (let [request {:uri "/v1/certificate_status/localhost"
+                         :request-method :get
+                         :headers {}}
+                response (test-app request)]
+            (is (= 200 (:status response))
+                (ks/pprint-to-string response))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))))
+
         (testing "honors 'Accept: pson' header"
           (let [request {:uri "/v1/certificate_status/localhost"
                          :request-method :get
@@ -363,7 +372,7 @@
                 response (test-app request)]
             (is (= 200 (:status response))
                 (ks/pprint-to-string response))
-            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))))
 
         (testing "honors 'Accept: text/pson' header"
           (let [request {:uri "/v1/certificate_status/localhost"
@@ -407,13 +416,23 @@
             (is (= #{localhost-status test-agent-status revoked-agent-status}
                  (set (json/parse-string (:body response) true))))))
 
+        (testing "returns json when no accept header specified"
+          (let [response (test-app
+                          {:uri "/v1/certificate_statuses/thisisirrelevant"
+                           :request-method :get
+                           :headers {}})]
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
+            (is (= #{localhost-status test-agent-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true))))))
+
         (testing "with 'Accept: pson'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "pson"}})]
           (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+          (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))
           (is (= #{localhost-status test-agent-status revoked-agent-status}
                  (set (json/parse-string (:body response) true))))))
 
