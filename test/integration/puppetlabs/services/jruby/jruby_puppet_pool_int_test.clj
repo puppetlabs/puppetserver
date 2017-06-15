@@ -414,8 +414,7 @@
              (testing "metric registry has no metrics when no http requests have been made"
                (is (= {:url [] :url-and-method [] :metric-id []}
                       (metrics/get-client-metrics-data metric-registry))))
-             (testing (str "metric registry has url and url-and-method metrics after http requests"
-                           " have been made without metric-id specified")
+             (testing "metric registry does not have any metrics by default"
                (testing "GET request"
                  (.runScriptlet container "$c.get('/hello', {})")
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
