@@ -414,25 +414,18 @@
              (testing "metric registry has no metrics when no http requests have been made"
                (is (= {:url [] :url-and-method [] :metric-id []}
                       (metrics/get-client-metrics-data metric-registry))))
-             (testing (str "metric registry has url and url-and-method metrics after http requests"
-                           " have been made without metric-id specified")
+             (testing "metric registry does not have any metrics by default"
                (testing "GET request"
                  (.runScriptlet container "$c.get('/hello', {})")
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
-                   (is (= #{(add-metric-ns "with-url.http://localhost:8080/hello")}
-                          (set (map :metric-name (:url metrics-data)))))
-                   (is (= #{(add-metric-ns "with-url-and-method.http://localhost:8080/hello.GET")}
-                          (set (map :metric-name (:url-and-method metrics-data)))))))
+                   (is (= [] (:url metrics-data)))
+                   (is (= [] (:url-and-method metrics-data)))))
                (testing "POST request"
                  (.runScriptlet container "$c.post('/hello', 'body', {})")
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)
                        url-metrics-data (:url metrics-data)]
-                   (is (= #{(add-metric-ns "with-url.http://localhost:8080/hello")}
-                          (set (map :metric-name url-metrics-data))))
-                   (is (= 2 (:count (first url-metrics-data))))
-                   (is (= #{(add-metric-ns "with-url-and-method.http://localhost:8080/hello.GET")
-                            (add-metric-ns "with-url-and-method.http://localhost:8080/hello.POST")}
-                          (set (map :metric-name (:url-and-method metrics-data)))))))
+                   (is (= [] (:url metrics-data)))
+                   (is (= [] (:url-and-method metrics-data)))))
                (testing "no metric-id metrics are registered"
                  (is (= [] (:metric-id (metrics/get-client-metrics-data metric-registry))))))
              (testing (str "metric registry has metric-id metrics after http requests have been made"
