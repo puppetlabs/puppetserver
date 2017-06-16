@@ -11,8 +11,6 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> **Note:** Puppet masters running Puppet Server 2.6 depend on [Puppet Agent 1.6.0](https://docs.puppet.com/puppet/4.6/reference/about_agent.html) or newer, which installs [Puppet 4.6](https://docs.puppet.com/puppet/4.6/) and compatible versions of its related tools and dependencies on the server. Puppet agents running older versions of Puppet Agent can connect to Puppet Server 2.6 --- this requirement applies to the Puppet Agent running on the Puppet Server node *only*.
->
 > If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/latest/#system-requirements).
 
 ## Platforms with Packages
@@ -26,19 +24,24 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 
 ### Debian
 
--   Debian 7 (Wheezy)
 -   Debian 8 (Jessie)
+
+Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/), which includes openjdk-8:
+
+~~~
+echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d
+apt-get update
+apt-get -t jessie-backports install "openjdk-8-jdk-headless"
+apt-get install puppetserver
+~~~~
 
 ### Ubuntu
 
--   Ubuntu 12.04 (Precise)
--   Ubuntu 14.04 (Trusty)
--   Ubuntu 15.10 (Wily)
 -   Ubuntu 16.04 (Xenial)
 
 ### SUSE Linux Enterprise Server
 
--   SLES 12
+-   SLES 12 SP1
 
 ## Quick Start
 
