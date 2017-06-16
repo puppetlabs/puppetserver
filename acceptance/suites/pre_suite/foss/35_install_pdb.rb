@@ -5,14 +5,8 @@ install_opts = options.merge( { :dev_builds_repos => ["PC1"] })
 repo_config_dir = 'tmp/repo_configs'
 
 step "Install PuppetDB repository" do
-  pdb_build_version = test_config[:puppetdb_build_version]
-  if pdb_build_version == 'LATEST'
-    pdb_build_version = latest_pdb_build
-    puts "Using latest PuppetDB build version (#{pdb_build_version})"
-  end
-
   install_puppetlabs_dev_repo(
-    master, 'puppetdb', pdb_build_version,
+    master, 'puppetdb', test_config[:pdb_build_version],
     repo_config_dir, install_opts)
 
   # Internal packages on ubuntu/debian aren't authenticated and thus apt
