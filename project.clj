@@ -112,7 +112,8 @@
                        :build-type "foss"
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
-                       :repo-target "PC1"
+                       :repo-target "puppet5"
+                       :nonfinal-repo-target "puppet5-nightly"
                        :bootstrap-source :services-d
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
