@@ -6,7 +6,7 @@ repo_config_dir = 'tmp/repo_configs'
 
 step "Install PuppetDB repository" do
   install_puppetlabs_dev_repo(
-    master, 'puppetdb', test_config[:pdb_build_version],
+    master, 'puppetdb', test_config[:puppetdb_build_version],
     repo_config_dir, install_opts)
 
   # Internal packages on ubuntu/debian aren't authenticated and thus apt
