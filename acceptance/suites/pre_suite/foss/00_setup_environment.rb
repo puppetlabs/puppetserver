@@ -1,13 +1,16 @@
 step "Initialize Test Config" do
   PuppetServerExtensions.initialize_config options
 
-  if PuppetServerExtensions.config[:puppet_build_version] == 'LATEST'
-    PuppetServerExtensions.config[:puppet_build_version] = latest_agent_build
-    logger.info "Using latest Puppet agent build version (#{PuppetServerExtensions.config[:puppet_build_version]})"
-  end
+  latest_options = [
+    [:puppet_build_version, lambda { latest_agent_build }],
+    [:puppet_version, lambda { latest_puppet_version }],
+    [:puppetdb_build_version, lambda { latest_pdb_build }]
+  ]
 
-  if PuppetServerExtensions.config[:puppetdb_build_version] == 'LATEST'
-    PuppetServerExtensions.config[:puppetdb_build_version] = latest_pdb_build
-    logger.info "Using latest PuppetDB build version (#{PuppetServerExtensions.config[:puppetdb_build_version]})"
+  latest_options.each do |(option, fn)|
+    if PuppetServerExtensions.config[option] == 'LATEST'
+      PuppetServerExtensions.config[option] = fn.call
+      logger.info "Setting option #{option} to latest version #{PuppetServerExtensions.config[option]}"
+    end
   end
 end

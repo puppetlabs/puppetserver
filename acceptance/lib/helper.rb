@@ -308,6 +308,11 @@ module PuppetServerExtensions
     param_from_build(url, "SUITE_COMMIT")
   end
 
+  def latest_puppet_version
+    url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/puppet-agent%20suite%20pipelines/job/platform_puppet-agent_intn-van-promote_suite-daily-promotion-master/lastSuccessfulBuild/api/json"
+    param_from_build(url, "SUITE_VERSION")
+  end
+
   def param_from_build(url, param)
     response = https_request(url, :git)
     json = JSON.parse(response.body)
