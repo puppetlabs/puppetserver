@@ -4,9 +4,7 @@ title: "Puppet Server: Metrics API"
 canonical: "/puppetserver/latest/metrics_api.html"
 ---
 
-# The Metrics API
-
-Puppet Enterprise includes two optional, enabled-by-default web APIs for
+Puppet Server includes two optional, enabled-by-default web APIs for
 [Java Management Extension (JMX)](https://docs.oracle.com/javase/tutorial/jmx/index.html)
 metrics, namely
 [managed beans (MBeans)](https://docs.oracle.com/javase/tutorial/jmx/mbeans/).
@@ -43,9 +41,7 @@ Jolokia's [agent initialization documentation](https://jolokia.org/reference/htm
 for all of the available options. The v2 endpoint may be disabled completely
 by setting the `metrics.metrics-webservice.jolokia.enabled` field to `false`.
 
-
 ### Usage
-
 
 Queries against the metrics v2 api take the general form
 
@@ -63,7 +59,7 @@ To list all valid mbeans querying the metrics endpoint
 
 Which should return a response similar to
 
-~~~ json
+``` json
 {
   "request": {
     "type": "list"
@@ -95,7 +91,7 @@ Which should return a response similar to
     ...
   }
 }
-~~~
+```
 
 The MBean names can then be created by joining the the first two keys of the
 value table with a colon (the `domain` and `prop list` in Jolokia parlance).
@@ -111,7 +107,7 @@ this HTTP call:
 
 Which would return the JSON document
 
-~~~ json
+``` json
 {
   "request": {
     "mbean": "java.util.logging:type=Logging",
@@ -136,7 +132,7 @@ Which would return the JSON document
   "timestamp": 1497977258,
   "status": 200
 }
-~~~
+```
 
 Two advanced features that the new Jolokia based metrics api provides are
 globbing and response filtering. An example of using both of these features
@@ -147,7 +143,7 @@ is to make this api request
 
 Which returns a response like:
 
-~~~ json
+``` json
 {
   "request": {
     "mbean": "java.lang:name=*,type=GarbageCollector",
@@ -170,12 +166,11 @@ Which returns a response like:
   "timestamp": 1497977710,
   "status": 200
 }
-~~~
+```
 
 Please refer to the
 [Jolokia protocol documentation](https://jolokia.org/reference/html/protocol.html)
 for more advanced usage.
-
 
 ## Metrics v1
 
@@ -246,7 +241,7 @@ Use `curl` from localhost to request data on MBean memory usage:
 
 The response should contain a JSON object representing the data:
 
-~~~ json
+``` json
 {
   "ObjectPendingFinalizationCount" : 0,
   "HeapMemoryUsage" : {
@@ -264,4 +259,4 @@ The response should contain a JSON object representing the data:
   "Verbose" : false,
   "ObjectName" : "java.lang:type=Memory"
 }
-~~~
+```
