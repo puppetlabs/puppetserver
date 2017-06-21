@@ -24,7 +24,7 @@ For security reasons, we enable only the read-access Jolokia interface by defaul
 
 ### Configuring Jolokia
 
-To change the security access policy, create the `/etc/puppetlabs/puppetserver/jolokia-access.xml` file with contents that follow the [Jolokia access policy](https://jolokia.org/reference/html/security.html).
+To change the security access policy, create the `/etc/puppetlabs/puppetserver/jolokia-access.xml` file with contents that follow the [Jolokia access policy](https://jolokia.org/reference/html/security.html) and uncomment the `metrics.metrics-webservice.jolokia.servlet-init-params.policyLocation` parameter before restarting puppetserver.
 
 The `metrics.metrics-webservice.jolokia.servlet-init-params` table
 within the [`/etc/puppetlabs/puppetserver/conf.d/metrics.conf`](../../config_file_metrics.markdown) file provides more configuration options. See Jolokia's [agent initialization documentation](https://jolokia.org/reference/html/agents.html#agent-war-init-params) for all of the available options.
