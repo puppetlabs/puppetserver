@@ -13,4 +13,5 @@ step "Initialize Test Config" do
       logger.info "Setting option #{option} to latest version #{PuppetServerExtensions.config[option]}"
     end
   end
+  PuppetServerExtensions.print_config
 end

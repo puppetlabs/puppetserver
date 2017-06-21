@@ -52,9 +52,10 @@ module PuppetServerExtensions
       :puppet_build_version => puppet_build_version,
       :puppetdb_build_version => puppetdb_build_version,
     }
+  end
 
+  def self.print_config
     pp_config = PP.pp(@config, "")
-
     Beaker::Log.notify "Puppet Server Acceptance Configuration:\n\n#{pp_config}\n\n"
   end
 
