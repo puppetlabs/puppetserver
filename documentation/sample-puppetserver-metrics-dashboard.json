@@ -1,0 +1,758 @@
+{
+  "title": "Puppet Server",
+  "services": {
+    "filter": {
+      "list": [],
+      "time": {
+        "from": "now-60m",
+        "to": "now"
+      }
+    }
+  },
+  "rows": [
+    {
+      "collapse": false,
+      "height": "300px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "* `num jrubies`: number of JRuby instances (constant)\n* `num free jrubies`: number of JRuby instances free\n* `average free jrubies`: average free JRubies over time\n* `average requested jrubies`: average requested JRubies over time",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": 0
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.num-jrubies,'num jrubies')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.num-free-jrubies,'num free jrubies')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.free-jrubies-histo.mean,'average free jrubies')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.requested-jrubies-histo.mean,'average requested jrubies')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "JRuby Usage",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        },
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "* `borrow time`: average time a JRuby is borrowed for\n* `wait time`: average time Puppet Server spends waiting to borrow a JRuby to service a request\n* `lock held time`: average time the lock on the JRuby pool is held\n* `lock wait time`: average time Puppet Server spends waiting to acquire the lock",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.borrow-timer.mean,'borrow time')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.wait-timer.mean,'wait time')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.lock-held-timer.mean,'lock held time')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.jruby.lock-wait-timer.mean,'lock wait time')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "JRuby Pool Timers",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        },
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Heap and non-heap memory used, number of cpus available.",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [
+            {
+              "alias": "num cpus",
+              "yaxis": 2
+            }
+          ],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.memory.heap.used,'heap used')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.memory.non-heap.used,'non-heap used')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.num-cpus, 'num cpus')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "JVM metrics",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "bytes",
+              "label": "Memory",
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": "CPUs",
+              "logBase": 1,
+              "min": "0",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null
+    },
+    {
+      "collapse": false,
+      "height": "300px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Average request time by type - time the server spends serving each type of request, including time waiting to acquire a JRuby",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-catalog-.*.-requests.mean,'catalog')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-report-.*.-requests.mean,'report')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-node-.*.-requests.mean,'node')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-file_metadatas-.*.-requests.mean,'file_metadatas')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-file_metadata-.*.-requests.mean,'file_metadata')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.puppet-v3-file_content-.*.-requests.mean,'file_content')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.other-requests.mean,'other')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.total-requests.mean,'all')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Request Durations",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        },
+        {
+          "aliasColors": {
+            "create scope": "#BADFF4"
+          },
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Time spent in different parts of handling a Catalog request\n\n* `compile`: time to compile catalogs.\n* `static_compile`: time to do a static compile of catalogs.\n* `static compile postprocessing`: time to do postprocessing of static catalog, including inlining file metadata.\n* `function calls`: time spent calling functions (included in `compile` time)\n* `find_node`: time to get node object (not included in `compile` time)\n* `find_facts`: time to parse facts sent as part of catalog request (not included in `compile` time)",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.compiler.compile.mean,'compile')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.functions.mean,'function calls')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.compiler.find_node.mean,'find_node')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.compiler.static_compile.mean,'static compile')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.compiler.static_compile_postprocessing.mean,'static compile postprocessing')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.compiler.find_facts.mean,'find_facts')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Compilation",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        },
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Time to make HTTP requests to other services\n\n* `PuppetDB: replace facts`: time to send a \"facts replace\" command to PuppetDB (part of a catalog compile)\n* `PuppetDB: replace catalog`: time to send a \"catalog replace\" command to PuppetDB (part of a catalog compile)\n* `PuppetDB: store report`: time to send a \"report store\" command to PuppetDB (part of handling a report request)\n* `PuppetDB: find facts`: time to get facts from PuppetDB (part of a node and catalog request, if the facts for the node are not cached)\n* `PuppetDB: search resources`: time to get exported resources from PuppetDB (part of a catalog compile if exported resources are used)\n*`PuppetDB: query`: time to execute a PuppetDB query (part of a catalog compile if the puppetdb query function is used)\n* `Http report processor`: time to submit a report to the http report url (if the http report processor is used)",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.command.replace_facts.full-response.mean, 'PuppetDB: replace facts')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.command.replace_catalog.full-response.mean, 'PuppetDB: replace catalog')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.command.store_report.full-response.mean, 'PuppetDB: store report')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.facts.find.full-response.mean, 'PuppetDB: find facts')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.resource.search.full-response.mean, 'PuppetDB: search resources')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppetdb.query.full-response.mean, 'PuppetDB: query')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http-client.experimental.with-metric-id.puppet.report.http.full-response.mean, 'Http report processor')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "External HTTP Communications",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "ms",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null
+    },
+    {
+      "collapse": false,
+      "height": "300px",
+      "panels": [
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Percentage of requests handled of each type.",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": true,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-catalog-.*.-percentage,100),'catalog')"
+            },
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-report-.*.-percentage,100),'report')"
+            },
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-node-.*.-percentage,100),'node')"
+            },
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-file_metadatas-.*.-percentage,100),'file_metadatas')"
+            },
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-file_metadata-.*.-percentage,100),'file_metadata')"
+            },
+            {
+              "target": "alias(scale(puppetlabs.master.example.com.http.puppet-v3-file_content-.*.-percentage,100),'file_content')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Request Ratios",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "individual"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": "Percentage of Requests",
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": "",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        },
+        {
+          "aliasColors": {},
+          "annotate": {
+            "enable": false
+          },
+          "bars": false,
+          "datasource": null,
+          "description": "Number of active requests and average number of active requests (over ~ 5 minutes).",
+          "editable": true,
+          "fill": 0,
+          "grid": {
+            "max": null,
+            "min": null
+          },
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "loadingEditor": false,
+          "nullPointMode": "connected",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "resolution": 100,
+          "scale": 1,
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "span": 4,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "target": "alias(puppetlabs.master.example.com.http.active-requests.count,'active requests')"
+            },
+            {
+              "target": "alias(puppetlabs.master.example.com.http.active-histo.mean, 'average number of active requests')"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Active Requests",
+          "tooltip": {
+            "query_as_alias": true,
+            "value_type": "cumulative"
+          },
+          "type": "graphite",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "show": true
+            },
+            {
+              "format": "short",
+              "show": true
+            }
+          ],
+          "zerofill": true
+        }
+      ],
+      "repeat": null,
+      "repeatIteration": null,
+      "repeatRowId": null
+    }
+  ],
+  "editable": true,
+  "failover": false,
+  "time": {
+    "from": "now-30m",
+    "to": "now"
+  },
+  "timepicker": {
+    "collapse": false,
+    "enable": true,
+    "notice": false,
+    "now": true,
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ],
+    "status": "Stable",
+    "time_options": [
+      "5m",
+      "15m",
+      "1h",
+      "6h",
+      "12h",
+      "24h",
+      "2d",
+      "7d",
+      "30d"
+    ],
+    "type": "timepicker"
+  },
+  "refresh": "30s",
+  "timezone": "browser"
+}
