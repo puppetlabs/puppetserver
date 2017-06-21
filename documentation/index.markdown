@@ -46,7 +46,8 @@ Puppet Server is the next-generation application for managing Puppet agents.
 * **Status API endpoints**
     * [Status services](./status-api/v1/services.markdown)
 * **Metrics API endpoints**
-    * [Metrics API versions](./metrics_api.markdown)
+    * [v1 metrics](./metrics-api/v1/metrics_api.markdown)
+    * [v2 (Jolokia) metrics](./metrics-api/v2/metrics_api.markdown)
 * **Developer information**
     * [Debugging](./dev_debugging.markdown)
     * [Running from source](./dev_running_from_source.markdown)
