@@ -1,57 +1,57 @@
 ---
 layout: default
-title: "Puppet Server: Metrics API"
-canonical: "/puppetserver/latest/metrics_api.html"
+title: "Puppet Server: Metrics API v2"
+canonical: "/puppetserver/latest/metrics-api/v2/metrics_api.html"
 ---
 
-Puppet Server includes two optional, enabled-by-default web APIs for
+By default, Puppet Server enables two optional web APIs for
 [Java Management Extension (JMX)](https://docs.oracle.com/javase/tutorial/jmx/index.html)
 metrics, namely
-[managed beans (MBeans)](https://docs.oracle.com/javase/tutorial/jmx/mbeans/).
+[managed beans (MBeans)](https://docs.oracle.com/javase/tutorial/jmx/mbeans/). For the older metrics API, see [the `/metrics/v1` documentation](../v1/metrics_api.html).
 
-## Metrics v2
+## Jolokia endpoints
 
-The first uses the [Jolokia](https://jolokia.org) library and is accessible at:
+The v2 metrics endpoint uses the [Jolokia](https://jolokia.org) library, an extensive open-source metrics library with its own documentation.
 
-    /metrics/v2/
+The documentation below provides only the information you need to use the metrics as configured by default for Puppet Server, but Jolokia offers more features than are described below. Consult the [Jolokia documentation](https://jolokia.org/documentation.html) for more information.
 
-Since the v2 API is implimented using a large open source metrics library with
-its own extensive documentation, below we will only walk through a very brief
-overview with the most common configuration and queries. Each section includes
-links to Jolokia's comprehensive documentation.
+For security reasons, we enable only the read-access Jolokia interface by default:
 
-### Configuration
+-   `read`
+-   `list`
+-   `version`
+-   `search`
 
-For security reasons only the read operations of the Jolokia interface are
-enabled by default. This includes:
+### Configuring Jolokia
 
-* `read`
-* `list`
-* `version`
-* `search`
+To change the security access policy, create the `/etc/puppetlabs/puppetserver/jolokia-access.xml` file with contents that follow the [Jolokia access policy](https://jolokia.org/reference/html/security.html).
 
-Users may change the security access policy by providing their own
-`/etc/puppetlabs/puppetserver/jolokia-access.xml` file that follows the
-[Jolokia access policy](https://jolokia.org/reference/html/security.html)
+The `metrics.metrics-webservice.jolokia.servlet-init-params` table
+within the [`/etc/puppetlabs/puppetserver/conf.d/metrics.conf`](../../config_file_metrics.markdown) file provides more configuration options. See Jolokia's [agent initialization documentation](https://jolokia.org/reference/html/agents.html#agent-war-init-params) for all of the available options.
 
-Further configuration, for optimizations or troubleshooting, is possible by
-editing the `metrics.metrics-webservice.jolokia.servlet-init-params` table
-within the `/etc/puppetlabs/puppetserver/conf.d/metrics.conf` file. See
-Jolokia's [agent initialization documentation](https://jolokia.org/reference/html/agents.html#agent-war-init-params)
-for all of the available options. The v2 endpoint may be disabled completely
-by setting the `metrics.metrics-webservice.jolokia.enabled` field to `false`.
+### Disabling the endpoints
 
-### Usage
+To disable the v2 endpoints, set the `metrics.metrics-webservice.jolokia.enabled` parameter in `metrics.conf` to `false`.
 
-Queries against the metrics v2 api take the general form
+## Usage
 
-    GET /metrics/v2/<operation>/<query>
+You can query the metrics v2 API using `GET` or `POST` requests.
 
-or
+### `GET /metrics/v2/`
 
-    POST /metrics/v2/<operation>
+(Introduced in Puppet Server 5)
 
-with the query as a JSON document in the body of the POST.
+This endpoint requires an operation, and depending on the operation can accept or might require an additional query:
+
+```
+GET /metrics/v2/<OPERATION>/<QUERY>
+```
+
+#### Response
+
+A successful request returns a JSON document.
+
+#### Examples
 
 To list all valid mbeans querying the metrics endpoint
 
@@ -93,13 +93,6 @@ Which should return a response similar to
 }
 ```
 
-The MBean names can then be created by joining the the first two keys of the
-value table with a colon (the `domain` and `prop list` in Jolokia parlance).
-Querying the MBeans is achieved via the `read` operation. The `read` operation
-has as its GET signature
-
-    GET /metrics/v2/read/<mbean names>/<attributes>/<optional inner path filter>
-
 So, from the example above we could query for the registered logger names with
 this HTTP call:
 
@@ -134,14 +127,30 @@ Which would return the JSON document
 }
 ```
 
-Two advanced features that the new Jolokia based metrics api provides are
-globbing and response filtering. An example of using both of these features
-to query garbage collection data, but only return collection counts and times
-is to make this api request
+The MBean names can then be created by joining the the first two keys of the
+value table with a colon (the `domain` and `prop list` in Jolokia parlance).
+Querying the MBeans is achieved via the `read` operation. The `read` operation
+has as its GET signature:
 
-    GET metrics/v2/read/java.lang:name=*,type=GarbageCollector/CollectionCount,CollectionTime
+    GET /metrics/v2/read/<MBEAN NAMES>/<ATTRIBUTES>/<OPTIONAL INNER PATH FILTER>
 
-Which returns a response like:
+### `POST /metrics/v2/<OPERATION>`
+
+You can also submit a POST request with the query as a JSON document in the body of the POST.
+
+## Filtering
+
+The new Jolokia-based metrics API also provides globbing (wildcard selection) and response filtering features.
+
+### Example
+
+You can combine both of these features to query garbage collection data, but return only the collection counts and times.
+
+```
+GET metrics/v2/read/java.lang:name=*,type=GarbageCollector/CollectionCount,CollectionTime
+```
+
+This returns a JSON response:
 
 ``` json
 {
@@ -168,95 +177,6 @@ Which returns a response like:
 }
 ```
 
-Please refer to the
+Refer to the
 [Jolokia protocol documentation](https://jolokia.org/reference/html/protocol.html)
 for more advanced usage.
-
-## Metrics v1
-
-The previous v1 API was provided in PE and is now open sourced. It is still
-enabled but is deprecated. The v1 API includes the endpoints
-
-* `GET /metrics/v1/mbeans`
-* `POST /metrics/v1/mbeans`
-* `GET /metrics/v1/mbeans/<name>`
-
-> **Note:** The metrics described here are returned only when passing the
-> `level=debug` URL parameter, and the structure of the returned data might
-> change in future versions.
->
-
-### GET /metrics/v1/mbeans
-
-The `GET /metrics/v1/mbeans` endpoint lists available MBeans.
-
-#### Response keys
-
-* The key is the name of a valid MBean.
-* The value is a URI to use when requesting that MBean's attributes.
-
-### POST /metrics/v1/mbeans
-
-The `POST /metrics/v1/mbeans` endpoint retrieves requested MBean metrics.
-
-#### Query parameters
-
-The query doesn't require any parameters, but the request body must contain a
-JSON object whose values are metric names, or a JSON array of metric names, or
-a JSON string containing a single metric's name.
-
-For a list of metric names, make a `GET` request to `/metrics/v1/mbeans`.
-
-#### Response keys
-
-The response format, though always JSON, depends on the request format:
-
-* Requests with a JSON object return a JSON object where the values of the
-  original object are transformed into the Mbeans' attributes for the metric
-  names.
-* Requests with a JSON array return a JSON array where the items of the original
-  array are transformed into the Mbeans' attributes for the metric names.
-* Requests with a JSON string return the a JSON object of the Mbean's attributes
-  for the given metric name.
-
-### GET /metrics/v1/mbeans/<name>
-
-The `GET /metrics/v1/mbeans/<name>` endpoint reports on a single metric.
-
-#### Query parameters
-
-The query doesn't require any parameters, but the endpoint itself must
-correspond to one of the metrics returned by a `GET` request to `/metrics/v1/mbeans`.
-
-#### Response keys
-
-The endpoint's responses contain a JSON object mapping strings to values. The
-keys and values returned in the response vary based on the specified metric.
-
-For example:
-
-Use `curl` from localhost to request data on MBean memory usage:
-
-    curl 'http://localhost:8080/metrics/v1/mbeans/java.lang:type=Memory'
-
-The response should contain a JSON object representing the data:
-
-``` json
-{
-  "ObjectPendingFinalizationCount" : 0,
-  "HeapMemoryUsage" : {
-    "committed" : 807403520,
-    "init" : 268435456,
-    "max" : 3817865216,
-    "used" : 129257096
-  },
-  "NonHeapMemoryUsage" : {
-    "committed" : 85590016,
-    "init" : 24576000,
-    "max" : 184549376,
-    "used" : 85364904
-  },
-  "Verbose" : false,
-  "ObjectName" : "java.lang:type=Memory"
-}
-```
