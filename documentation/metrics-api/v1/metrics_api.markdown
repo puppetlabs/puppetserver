@@ -46,7 +46,7 @@ The response format, though always JSON, depends on the request format:
     names.
 -   Requests with a JSON array return a JSON array where the items of the original
     array are transformed into the Mbeans' attributes for the metric names.
--   Requests with a JSON string return the a JSON object of the Mbean's attributes
+-   Requests with a JSON string return a JSON object of the Mbean's attributes
     for the given metric name.
 
 ### GET /metrics/v1/mbeans/<name>
