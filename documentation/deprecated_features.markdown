@@ -389,3 +389,25 @@ To retain the Puppet 4.x behavior, add the [`puppet.conf`](./configuration.markd
 #### Context
 
 This cache was used in workflows where external tooling needs a list of nodes. PuppetDB is the preferred source of node information.
+
+### JRuby's "compat-version" setting
+
+#### Now
+
+Puppet Server 5.0 removes the `jruby-puppet.compat-version` setting in [`puppetserver.conf`](./config_file_puppetserver.markdown), and exits the `puppetserver` service with an error if you start the service with that setting.
+
+#### Previously
+
+Puppet Server 2.7.x allowed you to set `compat-version` to `1.9` or `2.0` to choose a preferred Ruby interpreter version.
+
+#### Detecting and Updating
+
+Launching the `puppetserver` service with this setting enabled will cause it to exit with an error message. The error includes information on [switching from JRuby 1.7.x to JRuby 9k](./configuration.markdown).
+
+For Ruby language 2.x support in Puppet Server, configure Puppet Server to use JRuby 9k instead of JRuby 1.7.27. See the "Configuring the JRuby Version" section of [Puppet Server Configuration](./configuration.markdown) for details.
+
+#### Context
+
+Puppet Server 5.0 updated JRuby v1.7 to v1.7.27, which in turn updated the `jruby-openssl` gem to v0.9.19 and `bouncycastle` libraries to v1.55. JRuby 1.7.27 breaks setting `jruby-puppet.compat-version` to `2.0`.
+
+Server 5.0 also added optional, experimental support for JRuby 9k, which includes Ruby 2.x language support.
