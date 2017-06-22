@@ -9,8 +9,7 @@ canonical: "/puppetserver/latest/puppet_server_metrics.html"
 [Graphite]: https://graphiteapp.org
 [Grafana]: http://grafana.org
 [sample Grafana dashboard]: ./sample-puppetserver-metrics-dashboard.json
-[static catalogs]: ./static_catalogs.html
-[file sync]: ./cmgmt_filesync.html
+[static catalogs]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
 [`grafanadash`](https://forge.puppet.com/cprice404/grafanadash)
 [`metrics.conf`](./config_file_metrics.markdown)
 
@@ -51,7 +50,7 @@ The [`grafanadash`][] Puppet module quickly installs and configures a basic test
 
 Install the `grafanadash` Puppet module on a \*nix agent. The module's `grafanadash::dev` class installs and configures a Graphite server, the Grafana extension, and a default dashboard.
 
-1.  [Install a \*nix Puppet agent](/puppet/latest/install_linux.html) to serve as the Graphite server.
+1.  [Install a \*nix Puppet agent](http://docs.puppet.com/puppet/latest/install_linux.html) to serve as the Graphite server.
 
 2.  As root on the Puppet agent node, run `puppet module install cprice404-grafanadash`.
 
@@ -126,15 +125,13 @@ The [sample Grafana dashboard][] provides what we think is an interesting starti
 
 -   **Communications with PuppetDB:** This graph tracks the amount of time it takes Puppet Server to send data and requests for common operations to, and receive responses from, PuppetDB.
 
--   **File Sync:** This graph tracks how long Puppet Server spends on File Sync operations, for both its storage and client services.
-
 -   **JRubies**: This graph tracks how many JRubies are in use, how many are free, the mean number of free JRubies, and the mean number of requested JRubies.
 
     If the number of free JRubies is often less than one, or the mean number of free JRubies is less than one, Puppet Server is requesting and consuming more JRubies than are available. This overload reduces Puppet Server's performance. While this might simply be a symptom of an under-resourced server, it can also be caused by poorly optimized Puppet code or bottlenecks in the server's communications with PuppetDB if it is in use.
 
     If catalog compilation times have increased but PuppetDB performance remains the same, examine your Puppet code for potentially unoptimized code. If PuppetDB communication times have increased, tune PuppetDB for better performance or allocate more resources to it.
 
-    If neither catalog compilation nor PuppetDB communication times are degraded, the Puppet Server process might be under-resourced on your server. If you have available CPU time and memory, [increase the number of JRuby instances](https://docs.puppet.com/pe/latest/config_puppetserver.html#tuning-jruby-on-puppet-server) to allow it to allocate more JRubies. Otherwise, consider adding additional compile masters to distribute the catalog compilation load.
+    If neither catalog compilation nor PuppetDB communication times are degraded, the Puppet Server process might be under-resourced on your server. If you have available CPU time and memory, [increase the number of JRuby instances](./tuning_guide.markdown) to allow it to allocate more JRubies. Otherwise, consider adding additional compile masters to distribute the catalog compilation load.
 
 -   **JRuby Timers**: This graph tracks several JRuby pool metrics.
 
@@ -142,7 +139,7 @@ The [sample Grafana dashboard][] provides what we think is an interesting starti
 
     -   The wait time represents the total amount of time that Puppet Server waits for a free JRuby instance.
 
-    -   The lock held time represents the amount of time that Puppet Server holds a lock on the pool, during which JRubies cannot be borrowed. This occurs while Puppet Server synchronizes code for File Sync.
+    -   The lock held time represents the amount of time that Puppet Server holds a lock on the pool, during which JRubies cannot be borrowed.
 
     -   The lock wait time represents the amount of time that Puppet Server waits to acquire a lock on the pool.
 
@@ -241,20 +238,6 @@ Puppet Server exports each metric in the lists below by default.
 
     -   `puppetlabs.<MASTER-HOSTNAME>.compiler.static_compile_postprocessing`: The time spent post-processing static catalogs.
 
-#### File sync metrics
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-client.clone-timer`: The time spent by [file sync][] clients on compile masters initially cloning repositories on the master of masters.
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-client.fetch-timer`: The time spent by [file sync][] clients on compile masters fetching repository updates from the master of masters.
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-client.sync-clean-check-timer`: The time spent by [file sync][] clients on compile masters checking whether the repositories are clean.
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-client.sync-timer`: The time spent by [file sync][] clients on compile masters synchronizing code from the private datadir to the live codedir.
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-storage.commit-add-rm-timer`
-
--   `puppetlabs.<MASTER-HOSTNAME>.file-sync-storage.commit-timer`: The time spent committing code on the master of masters into the [file sync][] repository.
-
 #### Function metrics
 
 -   `puppetlabs.<MASTER-HOSTNAME>.functions`: The amount of time during catalog compilation spent in function calls. The `functions` metric can also report any of the [statistical metrics](#available-graphite-metrics) fields for a single function by specifying the function name as a field.
@@ -269,9 +252,9 @@ Puppet Server exports each metric in the lists below by default.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environment-/*/-requests`: The time Puppet Server has spent handling environment requests, including time spent waiting for an available JRuby instance.
 
--   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environment_classes-/*/-requests`: The time spent handling requests to the [`environment_classes` API endpoint]({{puppetserver}}/puppet-api/v3/environment_classes.html), which the Node Classifier uses to refresh classes.
+-   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environment_classes-/*/-requests`: The time spent handling requests to the [`environment_classes` API endpoint](./puppet-api/v3/environment_classes.markdown), which the Node Classifier uses to refresh classes.
 
--   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environments-requests`: The time spent handling requests to the [`environments` API endpoint]({{puppet}}/latest/reference/http_api/http_environments.html) requests made by the [Orchestrator](./orchestrator_intro.html)
+-   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environments-requests`: The time spent handling requests to the [`environments` API endpoint](http://docs.puppet.com/latest/reference/http_api/http_environments.html) requests.
 
 -   The following metrics measure the time spent handling file-related API endpoints:
 
@@ -287,17 +270,17 @@ Puppet Server exports each metric in the lists below by default.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-report-/*/-requests`: The time spent handling report requests. A bottleneck here might indicate an issue with PuppetDB.
 
--   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-static_file_content-/*/-requests`: The time spent handling requests to the [`static_file_content` API endpoint]({{puppetserver}}/puppet-api/v3/static_file_content.html) used by Direct Puppet with file sync.
+-   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-static_file_content-/*/-requests`: The time spent handling requests to the [`static_file_content` API endpoint](./puppet-api/v3/static_file_content.markdown) used by Direct Puppet with file sync.
 
 #### JRuby metrics
 
 Puppet Server uses an embedded JRuby interpreter to execute Ruby code. JRuby spawns parallel instances known as JRubies to execute Ruby code, which occurs during most Puppet Server activities.
 
-See [Tuning JRuby on Puppet Server](./config_puppetserver.html#tuning-jruby-on-puppet-server) for details on adjusting JRuby settings.
+See [Tuning JRuby on Puppet Server](./tuning_guide.markdown) for details on adjusting JRuby settings.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.jruby.borrow-timer`: The time spent with a borrowed JRuby.
 
--   `puppetlabs.<MASTER-HOSTNAME>.jruby.free-jrubies-histo`: A histogram of free JRubies over time. This metric's average value should greater than 1; if it isn't, [more JRubies](./config_puppetserver.html) or another compile master might be needed to keep up with requests.
+-   `puppetlabs.<MASTER-HOSTNAME>.jruby.free-jrubies-histo`: A histogram of free JRubies over time. This metric's average value should greater than 1; if it isn't, [more JRubies](./tuning_guide.markdown) or another compile master might be needed to keep up with requests.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.jruby.lock-held-timer`: The time spent holding the JRuby lock.
 
@@ -375,7 +358,7 @@ The following metrics measure the time that Puppet Server spends sending or rece
 
 -   `puppetlabs.<MASTER-HOSTNAME>.jruby.num-free-jrubies`: The number of free JRuby instances. If this number is often 0, more requests are coming in than the server has available JRuby instances. To alleviate this, increase the number of JRuby instances on the Server or add additional compile masters.
 
--   `puppetlabs.<MASTER-HOSTNAME>.jruby.num-jrubies`: The total number of JRuby instances on the server, governed by the `max-active-instances` setting. See [Tuning JRuby on Puppet Server](./config_puppetserver.html#tuning-jruby-on-puppet-server) for details.
+-   `puppetlabs.<MASTER-HOSTNAME>.jruby.num-jrubies`: The total number of JRuby instances on the server, governed by the `max-active-instances` setting. See [Tuning JRuby on Puppet Server](./tuning_guide.markdown) for details.
 
 ### Other metrics
 
