@@ -102,15 +102,17 @@ puppetlabs.services.ca.certificate-authority-service/certificate-authority-servi
 #puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
 ~~~
 
-## Configuring JRuby Version
+## Configuring the JRuby Version
 
-By default, Puppet Server utilizes a version of the JRuby 1.7.x series, running in a mode which conforms to MRI/Ruby language version 1.9. Starting with the Puppet Server 5.0 release, however, it is now possible to configure Puppet Server to instead use a version of the JRuby 9k series (9.x.y.z). The specific Ruby language version that each JRuby 9k release conforms to is expected to evolve over time, tracking newer Ruby 2.x language versions.  For example, the JRuby 9.1.8.0 release conforms to Ruby language version 2.3.1 whereas 9.1.9.0 conforms to Ruby language version 2.3.3.
+By default, Puppet Server uses a version of the JRuby 1.7.x series, running in a mode which conforms to MRI/Ruby language version 1.9. Starting with the Puppet Server 5.0 release, however, you can configure Puppet Server to instead use the JRuby 9k series (9.x.y.z). The Ruby language version supported by each JRuby 9k release is expected to evolve over time, tracking newer Ruby 2.x language versions. For example, the JRuby 9.1.8.0 release conforms to Ruby language version 2.3.1, whereas 9.1.9.0 conforms to Ruby language version 2.3.3.
 
-Note that the use of JRuby 9k with Puppet Server is still considered somewhat experimental.  We have not encountered any significant functional issues with it in internal testing so far and the JRuby community is solidly behind it as their base going forward. We have, however, observed some [targeted performance regressions](https://github.com/jruby/jruby/issues/4112#issuecomment-242504130) and increased memory usage as compared to the JRuby 1.7 series. We hope to see these issues improved upon over time, though, and at some point be able to switch to 9k as the default JRuby for Puppet Server. In the meantime, we are very interested in hearing about external users' experiences with JRuby 9k and hope to work with the JRuby community to make incremental improvements.
+Using JRuby 9k with Puppet Server is still considered somewhat experimental. We have not encountered any significant functional issues with it in internal testing so far, and the JRuby community is solidly behind it as their base going forward. We have, however, observed some [targeted performance regressions](https://github.com/jruby/jruby/issues/4112#issuecomment-242504130) and increased memory usage compared to the JRuby 1.7 series.
 
-Note also that with the ability to configure Puppet Server to use JRuby 9k for Ruby language 2.x support, we have also now removed support for the `jruby-puppet.compat-version` setting.  The JRuby community no longer supports the use of the `compat-version` setting for configuring Ruby language 2.0, which is [effectively broken](https://github.com/jruby/jruby/issues/4613) in the latest version in the JRuby 1.7 series, 1.7.27.  If the `compat-version` setting is present in your Puppet Server configuration, the puppetserver service will fail to startup with an error message which describes steps you can follow in order to configure the use of JRuby 9k instead.
+We hope to see these issues resolved over time, and at some point be able to switch to 9k as the default JRuby. In the meantime, we are very interested in hearing about external users' experiences with JRuby 9k and hope to work with the JRuby community to make incremental improvements.
 
-To provide configurable support for JRuby 1.7 vs. 9k, Puppet Server 5.0 and later packages include both versions of JRuby and their upstream dependencies.  Because of this, the size of the rpm and deb packages for Puppet Server 5.0 is significantly larger than for the Puppet Server 2.x series - around 30 MB.
+With the ability to configure Puppet Server to use JRuby 9k for Ruby language 2.x support, we have also removed support for the `jruby-puppet.compat-version` setting from `puppetserver.conf`. The JRuby community no longer supports the `compat-version` setting for configuring Ruby language 2.0, which is [effectively broken](https://github.com/jruby/jruby/issues/4613) as of JRuby 1.7.27. If the `compat-version` setting is present in your Puppet Server configuration, the `puppetserver` service exits with an error message that describes steps you can follow in order to configure the use of JRuby 9k instead.
+
+To provide configurable support for JRuby 1.7 vs. 9k, Puppet Server 5.0 and later packages include both versions of JRuby and their upstream dependencies. Because of this, the packages are about 30 MB larger than in the Puppet Server 2.x series.
 
 To change the JRuby version Puppet Server uses, you can edit the init config file.
 
@@ -121,55 +123,67 @@ To change the JRuby version Puppet Server uses, you can edit the init config fil
 
 ### Enabling JRuby 9k
 
-1. Open the init config file and add the following line:
+1.  Open the init config file and add the following line:
 
-        JRUBY_JAR="/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar"
+    ```
+    JRUBY_JAR="/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar"
+    ```
 
-This line causes a jar containing JRuby 9k and its upstream dependencies to be added to the java classpath in place of the default JRuby jar file which is used on the java classpath, `/opt/puppetlabs/server/apps/puppetserver/jruby-1_7.jar`.
+    This line causes a jar containing JRuby 9k and its upstream dependencies to be added to the java classpath in place of the default JRuby jar file which is used on the java classpath, `/opt/puppetlabs/server/apps/puppetserver/jruby-1_7.jar`.
 
-If the path to the jar file for the `JRUBY_JAR` setting does not exist, the puppetserver service will fail to start, with an error message like the following being written to the system journal or `/var/log/puppetlabs/puppetserver-daemon.log` file, depending upon the OS:
+    If the path to the jar file for the `JRUBY_JAR` setting does not exist, the puppetserver service will fail to start, with an error message like the following being written to the system journal or `/var/log/puppetlabs/puppetserver-daemon.log` file, depending upon the OS:
 
-~~~
-Jun 01 19:58:16 myhost puppetserver[24001]: Unable to find specified JRUBY_JAR: /opt/puppetlabs/server/apps/puppetserver/jruby-wrong.jar
-~~~
+    ```
+    Jun 01 19:58:16 myhost puppetserver[24001]: Unable to find specified JRUBY_JAR:/opt/puppetlabs/server/apps/puppetserver/jruby-wrong.jar
+    ```
 
-2. Restart the `puppetserver` service.
+2.  Restart the `puppetserver` service.
 
-Note that a full service restart is needed for the new JRuby version to be used. A service reload or `kill -HUP` is not sufficient.
+    You must fully restart the service to use the new JRuby version. A service reload or `kill -HUP` reload is not sufficient.
 
-Note that the `JRUBY_JAR` setting affects the version of JRuby that the puppetserver service and all subcommands (including foreground, gem, irb, and ruby) use.
+    The `JRUBY_JAR` setting changes the version of JRuby that the `puppetserver` service and all subcommands (including `foreground`, `gem`, `irb`, and `ruby`) use.
 
-To confirm that JRuby 9k is being used by puppetserver, you could run the following command:
+    To confirm that `puppetserver` is using JRuby 9k, run:
 
-~~~sh
-$ puppetserver ruby --version
-jruby 9.1.9.0 (2.3.3) 2017-05-15 28aa830 OpenJDK 64-Bit Server VM 25.131-b12 on 1.8.0_131-b12 +jit [linux-x86_64]
-~~~
+    ```sh
+    puppetserver ruby --version
+    ```
 
-In the puppetserver log file, `/var/log/puppetlabs/puppetserver/puppetserver.log`, you should also see an INFO log entry which outputs the same JRuby version info:
+    This returns the JRuby version in use. For JRuby 9k, the version starts with `9.`:
 
-~~~
-2017-06-01 18:41:49,563 INFO  [async-dispatch-2] [p.s.j.jruby-puppet-service] JRuby version info: jruby 9.1.9.0 (2.3.3) 2017-05-15 28aa830 OpenJDK 64-Bit Server VM 25.131-b12 on 1.8.0_131-b12 +jit [linux-x86_64]
-~~~
+    ```
+    jruby 9.1.9.0 (2.3.3) 2017-05-15 28aa830 OpenJDK 64-Bit Server VM 25.131-b12 on 1.8.0_131-b12 +jit [linux-x86_64]
+    ```
+
+    In `/var/log/puppetlabs/puppetserver/puppetserver.log`, you should also see an INFO log entry that outputs the same JRuby version info:
+
+    ```
+    2017-06-01 18:41:49,563 INFO  [async-dispatch-2] [p.s.j.jruby-puppet-service] JRuby version info: jruby 9.1.9.0 (2.3.3) 2017-05-15 28aa830 OpenJDK 64-Bit Server VM 25.131-b12 on 1.8.0_131-b12 +jit [linux-x86_64]
+    ```
 
 ### Reverting to the default JRuby, 1.7.x
 
-1. To return to using JRuby 1.7.x, open the init config file and remove the `JRUBY_JAR` line that had been previously been added to enable the use of JRuby 9k.
+1.  To return to using JRuby 1.7.x, open the init config file and remove the `JRUBY_JAR` line that had been previously been added to enable the use of JRuby 9k.
 
-2. Restart the `puppetserver` service.
+2.  Restart the `puppetserver` service.
 
-After doing this, the puppetserver service and all subcommands should again be using the default JRuby version.  To confirm this for the subcommands, you could run the following:
+    After doing this, the `puppetserver` service and all subcommands should again use the default JRuby version. To confirm this for the subcommands, run:
 
-~~~sh
-$ puppetserver ruby --version
-jruby 1.7.27 (1.9.3p551) 2017-05-11 8cdb01a on OpenJDK 64-Bit Server VM 1.8.0_131-b12 +jit [linux-amd64]
-~~~
+    ``` sh
+    puppetserver ruby --version
+    ```
 
-A jruby 1.7.x version line should also appear in the puppetserver.log file after the service restart as well:
+    This returns the JRuby version in use:
 
-~~~
-2017-06-01 18:49:52,198 INFO  [async-dispatch-2] [p.s.j.jruby-puppet-service] JRuby version info: jruby 1.7.27 (1.9.3p551) 2017-05-11 8cdb01a on OpenJDK 64-Bit Server VM 1.8.0_131-b12 +jit [linux-amd64]
-~~~
+    ```
+    jruby 1.7.27 (1.9.3p551) 2017-05-11 8cdb01a on OpenJDK 64-Bit Server VM 1.8.0_131-b12 +jit [linux-amd64]
+    ```
+
+    In `/var/log/puppetlabs/puppetserver/puppetserver.log`, you should also see an INFO log entry that outputs the same JRuby version info:
+
+    ```
+    2017-06-01 18:49:52,198 INFO  [async-dispatch-2] [p.s.j.jruby-puppet-service] JRuby version info: jruby 1.7.27 (1.9.3p551) 2017-05-11 8cdb01a on OpenJDK 64-Bit Server VM 1.8.0_131-b12 +jit [linux-amd64]
+    ```
 
 ## Enabling the Insecure SSLv3 Protocol
 

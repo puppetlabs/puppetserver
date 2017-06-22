@@ -44,8 +44,10 @@ You must also pass two parameters in the GET request:
 
 ### Response
 
-A successful request to this endpoint returns an `HTTP 200` response code, and the
-contents of the specified file's requested version in the response body. An unsuccessful request returns one of the following error response codes:
+A successful request to this endpoint returns an `HTTP 200` response code and
+`application/octet-stream` Content-Type header, and the contents of the specified file's
+requested version in the response body. An unsuccessful request returns an error response
+code with a `text/plain` Content-Type header:
 
 -   400: returned when any of the parameters are not provided.
 -   403: returned when requesting a file that is not within a module's `files`
@@ -91,7 +93,7 @@ is not configured on Puppet Server.
 
 > **Note:** The `code-content-command` and `code-id-command` scripts are not provided in a
 > default installation or upgrade. For more information about these scripts, see the
-> [static catalog documentation](/puppet/latest/reference/static_catalogs.html).
+> [static catalog documentation](//docs.puppet.com/puppet/latest/reference/static_catalogs.html).
 
 #### Authorization
 

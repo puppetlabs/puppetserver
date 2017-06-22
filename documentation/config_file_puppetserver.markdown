@@ -20,7 +20,9 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
 > **Note:** Under most conditions, you won't change the default settings for `master-conf-dir` or `master-code-dir`. However, if you do, also change the equivalent Puppet settings (`confdir` or `codedir`) to ensure that commands like `puppet cert` and `puppet module` use the same directories as Puppet Server. You must also specify the non-default `confdir` when running commands, since that setting must be set before Puppet tries to find its config file.
 
-* The `jruby-puppet` settings configure the interpreter:
+* The `jruby-puppet` settings configure the interpreter.
+
+    > **Deprecation Note:** Puppet Server 5.0 removed the `compat-version` setting, which is incompatible with JRuby 1.7.27, and the service won't start if `compat-version` is set. To use Ruby 2.x with Puppet Server, enable Puppet Server 5.x's JRuby 9k support by assigning the `JRUBY_JAR` environment variable. See [Puppet Server Configuration](./configuration.markdown) for details.
 
     * `ruby-load-path`: The location where Puppet Server expects to find Puppet, Facter, and other components.
 
@@ -54,7 +56,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
 
-    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api).
+    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api). As of Puppet Server 5.0, this setting's default value is false.
 
         If this setting is set to `true`, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
 
