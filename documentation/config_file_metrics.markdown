@@ -13,7 +13,7 @@ All settings in the file are contained in a HOCON `metrics` section.
 -   `server-id`: A unique identifier to be used as part of the namespace for metrics that this server produces.
 
 -   `registries`: A section that contains settings to control which metrics are reported, and how they're reported.
-    -   `puppetserver`: A section that wraps registries settings.
+    -   `<REGISTRY NAME>`: A section named for a registry that contains its settings. In Puppet Server's case, this section should be `puppetserver`.
         -   `metrics-allowed`: An array of metrics to report. See the [metrics documentation](./puppet_server_metrics.markdown) for details about individual metrics.
         -   `reporters`: Can contain `jmx` and `graphite` sections with a single Boolean `enabled` setting to enable or disable each reporter type.
 -   `reporters`: Configures reporters that distribute metrics to external services or viewers.

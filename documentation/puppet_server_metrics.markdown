@@ -84,7 +84,7 @@ This loads a dashboard with nine graphs that display various metrics exported fr
 
 Configure Puppet Server's [`metrics.conf`](./config_file_metrics.markdown) file to enable and use the Graphite server.
 
-1.  Set the `enabled` parameter to true in `metrics:registries:puppetserver:reporters:graphite`:
+1.  Set the `enabled` parameter to true in `metrics.registries.puppetserver.reporters.graphite`:
 
     ```
      metrics: {
@@ -104,12 +104,12 @@ Configure Puppet Server's [`metrics.conf`](./config_file_metrics.markdown) file 
     }
     ```
 
-2.  Configure the Graphite host settings in `metrics:reporters:graphite`:
+2.  Configure the Graphite host settings in `metrics.reporters.graphite`:
     -   **host:** The Graphite host's IP address as a string.
     -   **port:** The Graphite host's port number.
     -   **update-interval-seconds:** How frequently Puppet Server should send metrics ot Graphite.
 
-3.  Verify that `metrics:registries:puppetserver:reporters:jmx:enabled` is not set to false. Its default setting is true.
+3.  Verify that `metrics.registries.puppetserver.reporters.jmx.enabled` is not set to false. Its default setting is true.
 
 > **Tip:** In the Grafana UI, choose an appropriate time window from the drop-down menu.
 
@@ -398,7 +398,7 @@ These metrics measure raw resource availability and capacity.
 
 In addition to the above default metrics, you can also export metrics measuring specific environments and nodes.
 
-The `metrics:registries:puppetserver:metrics-allowed` parameter in [`metrics.conf`][] takes an array of strings representing the metrics you want to enable.
+The `metrics.registries.puppetserve.metrics-allowed` parameter in [`metrics.conf`][] takes an array of strings representing the metrics you want to enable.
 
 Omit the `puppetlabs.<MASTER-HOSTNAME>` prefix and field suffixes (such as `.count` or `.mean`) from metrics when adding them to this class. Instead, suffix the environment or node name as a field to the metric.
 
