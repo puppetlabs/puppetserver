@@ -21,6 +21,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [puppetserver.conf](./config_file_puppetserver.markdown)
     * [auth.conf](./config_file_auth.markdown)
         * [Migrating deprecated authentication rules](./config_file_auth_migration.markdown)
+    * [metrics.conf](./config_file_metrics.markdown)
     * [logback.xml](./config_file_logbackxml.markdown)
         * [Advanced logging configuration](./config_logging_advanced.markdown)
     * [master.conf](./config_file_master.markdown) (deprecated)
@@ -31,6 +32,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [Using Ruby gems](./gems.markdown)
     * [Using an external certificate authority](./external_ca_configuration.markdown)
     * [External SSL termination](./external_ssl_termination.markdown)
+    * [Monitoring Puppet Server metrics](./puppet_server_metrics.markdown)
     * [Tuning guide](./tuning_guide.markdown)
     * [Restarting Puppet Server](./restarting.markdown)
 * **Known issues and workarounds**
