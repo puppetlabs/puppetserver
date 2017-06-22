@@ -20,11 +20,11 @@ This is a major release of Puppet Server, and corresponds with the major release
 
 ### Platform changes
 
-Puppet Server 5.0 packages are available for RHEL 6 and 7, Debian 8 (Jessie), Ubuntu 16.04 (Xenial), and SLES 12 SP1.
+Puppet Server 5.0 packages are available for RHEL 6 and 7, Debian 8 (Jessie), Ubuntu 16.04 (Xenial), and SLES 12 (SP1 or later only).
 
-Puppet Server 5.0 is built with JDK 8, and therefore cannot run on a Java 7 runtime. Server 5.0 packages now depend exclusively upon the `openjdk-8-jre-headless` package. Since Ubuntu Precise and Trusty, and versions of Debian prior to 8 (Jessie), do not distribute that package, we do not provide Puppet Server packages for those operating systems.
+Puppet Server 5.0 is built with JDK 8, and therefore cannot run on a Java 7 runtime. Server 5.0 packages now depend exclusively upon the `openjdk-8-jre-headless` package. Because Ubuntu 12.04 (Precise) and 14.04 (Trusty), and versions of Debian prior to 8 (Jessie), do not distribute that package, we no longer provide Puppet Server packages for those operating systems.
 
-For SLES 12 SP1, install the `jessie-backports` repository to add access to Java 8. For details, see [Installing From Packages](./install_from_packages.markdown).
+For Debian 8, install the `jessie-backports` repository to add access to Java 8. For details, see [Installing From Packages](./install_from_packages.markdown).
 
 -   [SERVER-1738](https://tickets.puppetlabs.com/browse/SERVER-1738)
 -   [SERVER-1741](https://tickets.puppetlabs.com/browse/SERVER-1741)
