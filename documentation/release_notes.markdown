@@ -47,9 +47,9 @@ To retain the Puppet 4.x behavior, add the [`puppet.conf`](./configuration.markd
 
 Previous versions of Puppet exclusively used PSON, our vendored version of `pure_json`, for serializing communication between agents and masters. Testing showed that PSON serialization's performance was significantly worse than using JSON, and JSON adds opportunities for easier and better interoperability with other tools and programming languages.
 
-As part of this, Puppet Server 5.0 requests JSON over PSON from Puppet 5.0 agents by default, and consumes JSON facts and reports provided by Puppet 5.0 agents.
+Puppet Server 5.0 now produces `application/json` responses when a Puppet 5.x agent requests them, and consumes `application/json` request bodies sent from Puppet 5.x agents.
 
-Puppet 3 and 4 agents continue to use PSON, and Server 5.0 remains compatible with these agents.
+Server 5.0 remains compatible with Puppet 3.x and 4.x agents that use PSON, and Puppet 5.x agents attempt to request and send `text/pson` only when communicating with masters that don't support JSON communications, such as Puppet Server 2.7.x or earlier.
 
 For details, consult the [Puppet 5.0 documentation](https://docs.puppet.com/puppet/5.0/release_notes.html).
 
