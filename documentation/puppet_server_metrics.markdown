@@ -398,7 +398,7 @@ These metrics measure raw resource availability and capacity.
 
 In addition to the above default metrics, you can also export metrics measuring specific environments and nodes.
 
-The `metrics.registries.puppetserve.metrics-allowed` parameter in [`metrics.conf`][] takes an array of strings representing the metrics you want to enable.
+The `metrics.registries.puppetserver.metrics-allowed` parameter in [`metrics.conf`][] takes an array of strings representing the metrics you want to enable.
 
 Omit the `puppetlabs.<MASTER-HOSTNAME>` prefix and field suffixes (such as `.count` or `.mean`) from metrics when adding them to this class. Instead, suffix the environment or node name as a field to the metric.
 
