@@ -27,15 +27,15 @@ used when authorizing client requests.
 
 For a value of `false` (also the default if not specified), Puppet Server uses the `authorization` settings in
 its own "auth.conf" file, evaluated by the `trapperkeeper-authorization`
-service.  This "auth.conf" file is installed at
-`/etc/puppetlabs/puppetserver/conf.d/auth.conf`.  See the
+service. This "auth.conf" file is installed at
+`/etc/puppetlabs/puppetserver/conf.d/auth.conf`. See the
 [puppetserver "auth.conf"](./config_file_auth.markdown) page for more
 information.
 
 #### In a Future Major Release
 
 The `jruby-puppet.use-legacy-auth-conf` setting will be removed from
-Puppet Server configuration and Puppet Server will instead always use
+Puppet Server configuration, and Puppet Server will instead always use
 the new `trapperkeeper-authorization` "auth.conf" when authorizing client
 requests.
 
@@ -61,12 +61,12 @@ setting to `false` and restart the puppetserver service.
 #### Context
 
 In previous Puppet Server releases, there was no unified mechanism for
-controlling access to the various endpoints that Puppet Server hosts.  Puppet
+controlling access to the various endpoints that Puppet Server hosts. Puppet
 Server used core Puppet "auth.conf" to authorize requests handled by the master
 service and custom client whitelists for the CA and Admin endpoints.
 
 `trapperkeeper-authorization` unifies authorization configuration across all
-of these endpoints into a single file.  The newer "auth.conf" file also uses
+of these endpoints into a single file. The newer "auth.conf" file also uses
 the more flexible HOCON file format for compatibility with how Puppet Server
 configuration files are handled by the Trapperkeeper framework.
 
@@ -352,13 +352,13 @@ of these endpoints into a single file and provides more granular control.
 
 #### Now
 
+The `resource_type` and `resource_types` HTTP APIs were removed in Puppet Server 5.0.
+
+#### Previously
+
 The [`resource_type` and `resource_types` Puppet HTTP API endpoints](https://docs.puppet.com/puppet/4.6/reference/http_api/http_resource_type.html) return information about classes, defined types, and node definitions.
 
 The [`environment_classes` HTTP API in Puppet Server](./puppet-api/v3/environment_classes.markdown) serves as a replacement for the Puppet resource type API for classes.
-
-#### In a Future Major Release
-
-The `resource_type` and `resource_types` HTTP APIs will be removed.
 
 #### Detecting and Updating
 
@@ -371,3 +371,43 @@ The `environment_classes` endpoint ignores Puppet's Ruby-based authorization met
 Users often rely on the `resource_types` endpoint for lists of classes and associated parameters in an environment. For such requests, the `resource_types` endpoint is inefficient and can trigger problematic events, such as [manifests being parsed during a catalog request](https://tickets.puppetlabs.com/browse/SERVER-1200).
 
 To fulfill these requests more efficiently and safely, Puppet Server 2.3.0 introduced the narrowly defined `environment_classes` endpoint.
+
+### Puppet's node cache terminus
+
+#### Now
+
+Puppet 5.0 (and by extension, Puppet Server 5.0) no longer writes node YAML files to its cache by default.
+
+#### Previously
+
+Puppet wrote YAML to its node cache.
+
+#### Detecting and Updating
+
+To retain the Puppet 4.x behavior, add the [`puppet.conf`](./configuration.markdown) setting `node_cache_terminus = write_only_yaml`. The `write_only_yaml` option is deprecated.
+
+#### Context
+
+This cache was used in workflows where external tooling needs a list of nodes. PuppetDB is the preferred source of node information.
+
+### JRuby's "compat-version" setting
+
+#### Now
+
+Puppet Server 5.0 removes the `jruby-puppet.compat-version` setting in [`puppetserver.conf`](./config_file_puppetserver.markdown), and exits the `puppetserver` service with an error if you start the service with that setting.
+
+#### Previously
+
+Puppet Server 2.7.x allowed you to set `compat-version` to `1.9` or `2.0` to choose a preferred Ruby interpreter version.
+
+#### Detecting and Updating
+
+Launching the `puppetserver` service with this setting enabled will cause it to exit with an error message. The error includes information on [switching from JRuby 1.7.x to JRuby 9k](./configuration.markdown).
+
+For Ruby language 2.x support in Puppet Server, configure Puppet Server to use JRuby 9k instead of JRuby 1.7.27. See the "Configuring the JRuby Version" section of [Puppet Server Configuration](./configuration.markdown) for details.
+
+#### Context
+
+Puppet Server 5.0 updated JRuby v1.7 to v1.7.27, which in turn updated the `jruby-openssl` gem to v0.9.19 and `bouncycastle` libraries to v1.55. JRuby 1.7.27 breaks setting `jruby-puppet.compat-version` to `2.0`.
+
+Server 5.0 also added optional, experimental support for JRuby 9k, which includes Ruby 2.x language support.

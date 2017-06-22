@@ -22,7 +22,7 @@ Puppet Server also relies on Logback to manage, rotate, and archive Server log f
 
 #### `level`
 
-To modify Puppet Server's logging level, change the `level` attribute of the `root` tag. By default, the logging level is set to `info`:
+To modify Puppet Server's logging level, change the `level` attribute of the `root` element. By default, the logging level is set to `info`:
 
     <root level="info">
 
@@ -31,6 +31,10 @@ Supported logging levels, in order from most to least information logged, are `t
     <root level="debug">
 
 Puppet Server profiling data is included at the `debug` logging level.
+
+You can also change the logging level for JRuby logging from its defaults of `error` and `info` by setting the `level` attribute of the `jruby` element. For example, to enable debug logging for JRuby, set the attribute to `debug`:
+
+    <jruby level="debug">
 
 #### Logging location
 
