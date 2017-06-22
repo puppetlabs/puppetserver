@@ -16,7 +16,46 @@ For release notes on versions of Puppet Server prior to Puppet Server 5, see [do
 
 Released June 27, 2017.
 
-This is a major release of Puppet Server.
+This is a major release of Puppet Server, and corresponds with the major release of Puppet 5.0, which also includes many changes and new features relevant to Puppet Server users. 
+
+### Platform changes
+
+Puppet Server 5.0 packages are available for RHEL 6 and 7, Debian 8 (Jessie), Ubuntu 16.04 (Xenial), and SLES 12 SP1.
+
+Puppet Server 5.0 is built with JDK 8, and therefore cannot run on a Java 7 runtime. Server 5.0 packages now depend exclusively upon the `openjdk-8-jre-headless` package. Since Ubuntu Precise and Trusty, and versions of Debian prior to 8 (Jessie), do not distribute that package, we do not provide Puppet Server packages for those operating systems.
+
+For SLES 12 SP1, install the `jessie-backports` repository to add access to Java 8. For details, see [Installing From Packages](./install_from_packages.markdown).
+
+-   [SERVER-1738](https://tickets.puppetlabs.com/browse/SERVER-1738)
+-   [SERVER-1741](https://tickets.puppetlabs.com/browse/SERVER-1741)
+-   [SERVER-1800](https://tickets.puppetlabs.com/browse/SERVER-1800)
+
+### Upgrading from previous versions
+
+Consult the [Puppet 5.0 release notes](https://docs.puppet.com/puppet/5.0/release_notes.html) for more information about important new features and breaking changes. Some especially relevant Puppet 5.0 changes are also noted below.
+
+#### Deprecation: Puppet 5 no longer writes YAML node caches
+
+As of Puppet 5.0, Puppet no longer writes node YAML files to its cache by default. This cache has been used in workflows where external tooling needs a list of nodes, but PuppetDB is now the preferred source of node information.
+
+To retain the Puppet 4.x behavior, add the [`puppet.conf`](./configuration.markdown) setting `node_cache_terminus = write_only_yaml`. Note that `write_only_yaml` is deprecated, and users are encouraged to migrate to PuppetDB in order to retrieve node information.
+
+-   [SERVER-1819](https://tickets.puppetlabs.com/browse/SERVER-1819)
+-   [PUP-6060](https://tickets.puppetlabs.com/browse/PUP-6060)
+
+#### Deprecation/New Feature: Puppet 5 uses JSON serialization by default
+
+Previous versions of Puppet exclusively used PSON, our vendored version of `pure_json`, for serializing communication between agents and masters. Testing showed that PSON serialization's performance was significantly worse than using JSON, and JSON adds opportunities for easier and better interoperability with other tools and programming languages.
+
+As part of this, Puppet Server 5.0 requests JSON over PSON from Puppet 5.0 agents by default, and consumes JSON facts and reports provided by Puppet 5.0 agents.
+
+Puppet 3 and 4 agents continue to use PSON, and Server 5.0 remains compatible with these agents.
+
+For details, consult the [Puppet 5.0 documentation](https://docs.puppet.com/puppet/5.0/release_notes.html).
+
+-   [PUP-3852](https://tickets.puppetlabs.com/browse/PUP-3852)
+
+----
 
 ### Security Fix: Default `auth.conf` rules clarify what's allowed for `file_` endpoints
 
@@ -28,17 +67,11 @@ For clarity, the `file_` endpoint rules are now separated into definitions per e
 
 ### Deprecation: Puppet Server 5 no longer runs on JDK 7
 
-Puppet Server 5.0 is built with JDK 8, and therefore cannot run on a Java 7 runtime. Server 5.0 packages now depend exclusively upon the `openjdk-8-jre-headless` package.
-
--   [SERVER-1738](https://tickets.puppetlabs.com/browse/SERVER-1738)
--   [SERVER-1741](https://tickets.puppetlabs.com/browse/SERVER-1741)
--   [SERVER-1800](https://tickets.puppetlabs.com/browse/SERVER-1800)
-
 ### Deprecation: Legacy `auth.conf` settings are no longer enabled by default
 
 By default, Puppet Server uses the HOCON-based [`auth.conf`][auth.conf] file introduced in Puppet Server 2.4. This uses the `trapperkeeper-authorization` methods of evaluating access to HTTP endpoints, instead of the legacy Puppet `auth.conf` file.
 
-Puppet Server 5.0 completes this switch by changing the default value of the `use-legacy-auth-conf` setting in [`puppetserver.comf`](./config_file_puppetserver.markdown) from true to false.
+Puppet Server 5.0 completes this switch by changing the default value of the `use-legacy-auth-conf` setting in [`puppetserver.conf`](./config_file_puppetserver.markdown) from true to false.
 
 -   [SERVER-1732](https://tickets.puppetlabs.com/browse/SERVER-1732)
 
@@ -49,35 +82,28 @@ Puppet Server 5.0 removes the deprecated HTTP `resource_type` and `resource_type
 -   [SERVER-1251](https://tickets.puppetlabs.com/browse/SERVER-1251)
 -   [SERVER-1120](https://tickets.puppetlabs.com/browse/SERVER-1120)
 
-### Deprecation: Puppet 5 no longer writes YAML node caches
-
-As of Puppet 5.0, Puppet no longer writes node YAML files to its cache by default. This cache has been used in workflows where external tooling needs a list of nodes, but PuppetDB is now the preferred source of node information.
-
-To retain the Puppet 4.x behavior, add the [`puppet.conf`](./configuration.markdown) setting `node_cache_terminus = write_only_yaml`. Note that `write_only_yaml` is deprecated, and users are encouraged to migrate to PuppetDB in order to retrieve node information.
-
--   [SERVER-1819](https://tickets.puppetlabs.com/browse/SERVER-1819)
--   [PUP-6060](https://tickets.puppetlabs.com/browse/PUP-6060)
-
 ### New Feature: Performance metrics
 
-Puppet Server 5.0 includes metrics support previously released in Puppet Enterprise, including [Grafana and Graphite support](./puppet_server_metrics.markdown), both [PE-style](./metrics-api/v1/metrics_api.markdown) and [Jokola-powered](./metrics-api/v2/metrics_api.markdown) metrics API endpoints, and the developer dashboard.
+Puppet Server 5.0 includes metrics support previously released in Puppet Enterprise, including [Grafana and Graphite support](./puppet_server_metrics.markdown), both [PE-style](./metrics-api/v1/metrics_api.markdown) and [Jolokia-powered](./metrics-api/v2/metrics_api.markdown) metrics API endpoints, and the developer dashboard.
 
 -   [SERVER-1797](https://tickets.puppetlabs.com/browse/SERVER-1797)
 -   [SERVER-1752](https://tickets.puppetlabs.com/browse/SERVER-1752)
 -   [SERVER-1739](https://tickets.puppetlabs.com/browse/SERVER-1739)
 -   [SERVER-1737](https://tickets.puppetlabs.com/browse/SERVER-1737)
 -   [SERVER-1721](https://tickets.puppetlabs.com/browse/SERVER-1721)
-- [SERVER-1266](https://tickets.puppetlabs.com/browse/SERVER-1266)
-- [SERVER-1262](https://tickets.puppetlabs.com/browse/SERVER-1262)
-- [SERVER-1261](https://tickets.puppetlabs.com/browse/SERVER-1261)
-- [SERVER-1260](https://tickets.puppetlabs.com/browse/SERVER-1260)
-- [SERVER-1259](https://tickets.puppetlabs.com/browse/SERVER-1259)
+-   [SERVER-1266](https://tickets.puppetlabs.com/browse/SERVER-1266)
+-   [SERVER-1262](https://tickets.puppetlabs.com/browse/SERVER-1262)
+-   [SERVER-1261](https://tickets.puppetlabs.com/browse/SERVER-1261)
+-   [SERVER-1260](https://tickets.puppetlabs.com/browse/SERVER-1260)
+-   [SERVER-1259](https://tickets.puppetlabs.com/browse/SERVER-1259)
 
 ### New Feature: Optional support for JRuby 9k
 
 Puppet Server 5.0 packages include the dependencies for both JRuby 1.7 (running Ruby language version 1.9.3) and JRuby 9k (running Ruby language version 2.3 or later). Puppet Server 5.0 uses JRuby 1.7 by default.
 
 To instead run Puppet Server using JRuby 9k, see the "Configuring the JRuby Version" section of [Puppet Server Configuration](./configuration.markdown).
+
+To facilitate this, the Puppet Server packages include both JRuby 1.7.27 and JRuby 9k, increasing package sizes by about 30 MB.
 
 -   [SERVER-1630](https://tickets.puppetlabs.com/browse/SERVER-1630)
 
@@ -162,6 +188,5 @@ Puppet Server 5.0 resolves this by instead using `/dev/urandom` for CLI subcomma
 ### Other changes
 
 -   [SERVER-1807](https://tickets.puppetlabs.com/browse/SERVER-1807): Puppet Server 5.0 embeds `hocon` gem version 1.2.5 in the default Puppet Server gem path, an upgrade from v1.1.3 used in Server v2.7.2.
--   [SERVER-1772](https://tickets.puppetlabs.com/browse/SERVER-1772): Added ezbake option to specify additional uberjars to be built and installed with the main project, and allows `puppetserver` to include 2 jars for JRuby 1.7 and JRuby 9k dependencies.
 -   [SERVER-1671](https://tickets.puppetlabs.com/browse/SERVER-1671): Log only error output (stderr) to `puppetserver.log` for `generate()` function calls.
 - [SERVER-715](https://tickets.puppetlabs.com/browse/SERVER-715): Resolve intermittent 500 error status results and `isExpired(puppet_environments.clj:27)` logged errors on some HTTP API requests.

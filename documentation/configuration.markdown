@@ -114,16 +114,18 @@ With the ability to configure Puppet Server to use JRuby 9k for Ruby language 2.
 
 To provide configurable support for JRuby 1.7 vs. 9k, Puppet Server 5.0 and later packages include both versions of JRuby and their upstream dependencies. Because of this, the packages are about 30 MB larger than in the Puppet Server 2.x series.
 
-To change the JRuby version Puppet Server uses, you can edit the init config file.
+To change the JRuby version Puppet Server uses, you can add an environment variable to the init configuration file.
 
 ### Location
+
+The init configuration file location depends on your operating system.
 
 * For RHEL/CentOS, open `/etc/sysconfig/puppetserver`.
 * For Debian/Ubuntu, open `/etc/default/puppetserver`.
 
 ### Enabling JRuby 9k
 
-1.  Open the init config file and add the following line:
+1.  Open the init configuration file and add the following line:
 
     ```
     JRUBY_JAR="/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar"
