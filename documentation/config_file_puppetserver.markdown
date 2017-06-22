@@ -140,6 +140,9 @@ http-client: {
     # the timeout is infinite and if negative, the value is undefined in the
     # application and governed by the system default behavior.
     #connect-timeout-milliseconds: 120000
+
+    # Whether to enable http-client metrics; defaults to 'true'.
+    #metrics-enabled: true
 }
 
 # Settings related to profiling the puppet Ruby code.
