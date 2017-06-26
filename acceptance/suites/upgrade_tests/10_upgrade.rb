@@ -21,6 +21,12 @@ step "Upgrade Puppet Server." do
   on(master, puppet("resource service puppetserver ensure=running"))
 end
 
+step "Check that the master has Puppetserver 5.x installed" do
+  on(master, "puppetserver --version") do
+    assert_match(/\Apuppetserver version: 5\./i, stdout, "puppetserver --version does not start with major version 5.")
+  end
+end
+
 step "Verify that agents can connect to the server" do
   on hosts, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0]
 end
