@@ -16,7 +16,9 @@ step "Setup Puppet dev repository on the master." do
 end
 
 step "Upgrade Puppet Server." do
-  install_puppet_server master
+  install_puppet_server_deps
+  master.upgrade_package('puppetserver')
+  maybe_configure_jruby9k
   on(master, puppet("resource service puppetserver ensure=stopped"))
   on(master, puppet("resource service puppetserver ensure=running"))
 end
