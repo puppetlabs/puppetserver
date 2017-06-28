@@ -8,7 +8,7 @@ step "Initialize Test Config" do
   ]
 
   latest_options.each do |(option, fn)|
-    if PuppetServerExtensions.config[option] == 'LATEST'
+    if PuppetServerExtensions.config[option].upcase == 'LATEST'
       PuppetServerExtensions.config[option] = fn.call
       logger.info "Setting option #{option} to latest version #{PuppetServerExtensions.config[option]}"
     end
