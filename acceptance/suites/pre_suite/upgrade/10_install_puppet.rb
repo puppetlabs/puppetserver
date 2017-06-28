@@ -2,6 +2,13 @@ step "Install PC1 repository" do
   install_puppetlabs_release_repo(hosts, 'pc1')
 end
 
+hosts.each { |agent|
+  variant = agent['platform'].variant
+  if variant == 'sles'
+    on(agent, 'rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet')
+  end
+}
+
 step "Install legacy Puppet agents" do
   default_puppet_version = '1.10.1'
   puppet_version = ENV['PUPPET_LEGACY_VERSION']
