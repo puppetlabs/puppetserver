@@ -26,8 +26,7 @@ module PuppetServerExtensions
     puppet_version = get_option_value(options[:puppet_version],
                          nil, "Puppet Version", "PUPPET_VERSION",
                          "4.99.0.345.ge20bbc5",
-                         :string) ||
-                         get_puppet_version
+                         :string)
 
     # puppet-agent version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppet-agent/
@@ -102,18 +101,6 @@ module PuppetServerExtensions
     end
 
     value
-  end
-
-  def self.get_puppet_version
-    puppet_submodule = "ruby/puppet"
-    puppet_version = `git --work-tree=#{puppet_submodule} --git-dir=#{puppet_submodule}/.git describe | cut -d- -f1`
-    case puppet_version
-    when /(\d\.\d\.\d)\n/
-      return $1
-    else
-      logger.warn("Failed to discern Puppet version using `git describe` on #{puppet_submodule}")
-      return nil
-    end
   end
 
   def puppetserver_initialize_ssl
