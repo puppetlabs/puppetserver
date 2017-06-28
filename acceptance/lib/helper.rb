@@ -26,8 +26,7 @@ module PuppetServerExtensions
     puppet_version = get_option_value(options[:puppet_version],
                          nil, "Puppet Version", "PUPPET_VERSION",
                          "4.99.0.345.ge20bbc5",
-                         :string) ||
-                         get_puppet_version
+                         :string)
 
     # puppet-agent version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppet-agent/
@@ -52,9 +51,10 @@ module PuppetServerExtensions
       :puppet_build_version => puppet_build_version,
       :puppetdb_build_version => puppetdb_build_version,
     }
+  end
 
+  def self.print_config
     pp_config = PP.pp(@config, "")
-
     Beaker::Log.notify "Puppet Server Acceptance Configuration:\n\n#{pp_config}\n\n"
   end
 
@@ -101,18 +101,6 @@ module PuppetServerExtensions
     end
 
     value
-  end
-
-  def self.get_puppet_version
-    puppet_submodule = "ruby/puppet"
-    puppet_version = `git --work-tree=#{puppet_submodule} --git-dir=#{puppet_submodule}/.git describe | cut -d- -f1`
-    case puppet_version
-    when /(\d\.\d\.\d)\n/
-      return $1
-    else
-      logger.warn("Failed to discern Puppet version using `git describe` on #{puppet_submodule}")
-      return nil
-    end
   end
 
   def puppetserver_initialize_ssl
@@ -296,6 +284,30 @@ module PuppetServerExtensions
   def encode_key(key_host, key_file, silent = true)
     rawkey = on(key_host, "cat #{key_file}", {:silent => silent}).stdout.strip
     OpenSSL::PKey::RSA.new(rawkey)
+  end
+
+  def latest_pdb_build
+    url = "https://cinext-jenkinsmaster-enterprise-prod-1.delivery.puppetlabs.net/view/puppetdb/view/master/job/enterprise_puppetdb_integration-system-puppetdb_full-master/lastSuccessfulBuild/api/json"
+    param_from_build(url, "PUPPETDB_PACKAGE_BUILD_VERSION")
+  end
+
+  def latest_agent_build
+    url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/puppet-agent%20suite%20pipelines/job/platform_puppet-agent_intn-van-promote_suite-daily-promotion-master/lastSuccessfulBuild/api/json"
+    param_from_build(url, "SUITE_COMMIT")
+  end
+
+  def latest_puppet_version
+    url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/puppet-agent%20suite%20pipelines/job/platform_puppet-agent_intn-van-promote_suite-daily-promotion-master/lastSuccessfulBuild/api/json"
+    param_from_build(url, "SUITE_VERSION")
+  end
+
+  def param_from_build(url, param)
+    response = https_request(url, :git)
+    json = JSON.parse(response.body)
+    actions = json["actions"].find { |hash| hash["_class"] == "hudson.model.ParametersAction" }
+    parameters = actions["parameters"]
+    pkg_build_param = parameters.find { |hash| hash["name"] == param }
+    pkg_build_param["value"]
   end
 
   # Issue an HTTP request and return the Net::HTTPResponse object. Lifted from
