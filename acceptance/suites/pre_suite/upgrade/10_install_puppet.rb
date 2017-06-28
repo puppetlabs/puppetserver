@@ -18,11 +18,11 @@ step "Install legacy Puppet agents" do
     puppet_version = default_puppet_version
   end
 
-  hosts.each { |host| host.install_package('puppet-agent', '', puppet_version) }
+  hosts.each { |host| host.install_package('puppet-agent') }
 end
 
 step "Install legacy Puppetserver" do
-  master.install_package('puppetserver', '', '2.7.2')
+  master.install_package('puppetserver')
 end
 
 step "Configure puppet.conf" do
