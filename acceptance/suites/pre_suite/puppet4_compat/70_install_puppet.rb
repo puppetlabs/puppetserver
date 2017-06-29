@@ -7,7 +7,7 @@ require 'puppetserver/acceptance/compat_utils'
 step "Install Updated Puppet GPG key for Any SLES Agents."
 
 nonmaster_agents.each { |agent|
-  variant = master['platform'].variant
+  variant = agent['platform'].variant
   if variant == 'sles'
     on(agent, 'rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet')
   end
