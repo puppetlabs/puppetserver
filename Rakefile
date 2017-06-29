@@ -14,6 +14,8 @@ TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
 
 RAKE_ROOT = File.expand_path(File.dirname(__FILE__))
 
+GEM_SOURCE = ENV['GEM_SOURCE'] || "http://rubygems.delivery.puppetlabs.net"
+
 def assemble_default_beaker_config
   if ENV["BEAKER_CONFIG"]
     return ENV["BEAKER_CONFIG"]
@@ -78,7 +80,7 @@ namespace :spec do
       gem_install_bundler = <<-CMD
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
       lein run -m org.jruby.Main \
-      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler
+      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler --source '#{GEM_SOURCE}'
       CMD
       sh gem_install_bundler
 
