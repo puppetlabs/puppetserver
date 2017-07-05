@@ -147,6 +147,10 @@
                                       resp)))
             routes (comidi/context "/foo"
                      (comidi/routes
+                       ;; Route handler that isn't wrapped with the request
+                       ;; coordinator.
+                       (comidi/GET ["/uncoord/" :uncoord] request
+                         (handle-request request))
                        (comidi/GET ["/bar/" :bar] request
                          (app-request-handler request))
                        (comidi/GET ["/baz/" :baz] request
@@ -874,3 +878,36 @@
                                  :return-count 2
                                  :current-borrowed-instances -2})
         (is (= (expected-metrics-values) (current-metrics-values)))))))
+
+(deftest request-queue-limit
+  (with-metrics-test-env
+    test-env
+    (assoc-in default-test-config
+             [:jruby-puppet :max-queued-requests] 2)
+    (let [{:keys [current-metrics-values coordinator]} test-env
+          {:keys [requested-count requested-instances borrowed-instances]} (:metrics test-env)]
+      (testing "denies requests when rate limit hit"
+        ;; Block up two JRuby instances
+        (async-request coordinator 1 "/foo/bar/async1" :returning-jruby)
+        (async-request coordinator 2 "/foo/bar/async2" :returning-jruby)
+
+        ;; Create two pending requests
+        (async-request coordinator 3 "/foo/bar/async3")
+        (async-request coordinator 4 "/foo/bar/async4")
+        (coordinator/unblock-task-to coordinator 3 :borrowed-jruby)
+        (coordinator/unblock-task-to coordinator 4 :borrowed-jruby)
+
+        ; Wait for async requests to hit metrics.
+        (while (> 4 (.getCount requested-count)))
+
+        (let [resp        (http-get "http://127.0.0.1:8140/foo/uncoord/sync1")
+              status-code (:status resp)
+              retry-after (-> resp
+                              (get-in [:headers "retry-after"])
+                              Integer/parseInt)]
+          (is (= 503 status-code))
+          (is (<= 0 retry-after 1800)))
+
+        ;; unblock all requests
+        (doseq [i (range 1 5)]
+          (coordinator/final-result coordinator i))))))

@@ -1,10 +1,12 @@
 (ns puppetlabs.puppetserver.jruby-request
+  (:import [clojure.lang IFn])
   (:require [clojure.tools.logging :as log]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
             [puppetlabs.ring-middleware.core :as middleware]
             [puppetlabs.ring-middleware.utils :as ringutils]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
+            [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [puppetlabs.puppetserver.common :as ps-common]
@@ -44,6 +46,30 @@
     (jruby/with-jruby-puppet
      jruby-puppet jruby-service {:request (dissoc request :ssl-client-cert)}
      (handler (assoc request :jruby-instance jruby-puppet)))))
+
+(schema/defn ^:always-validate
+  wrap-with-request-queue-limit :- IFn
+  "Middleware fn that short-circuits incoming requests with a 503 'Service
+  Unavailable' response if the queue of outstanding requests for JRuby
+  instances exceeds the limit given by the max-queued-requests argument.
+  The response will include a Retry-After header set to a random fraction
+  of the value given by the max-retry-delay argument if set to a positive
+  non-zero number."
+  [handler :- IFn
+   metrics-service :- (schema/protocol jruby-metrics/JRubyMetricsService)
+   max-queued-requests :- schema/Int
+   max-retry-delay :- schema/Int]
+  (fn [request]
+    (let [metrics-map (jruby-metrics/get-metrics metrics-service)
+          requested-count (-> metrics-map :requested-instances deref count)]
+      (if (>= requested-count max-queued-requests)
+        (let [err-msg (i18n/trs "The number of requests waiting for a JRuby instance has exceeded the limit allowed by the max-queued-requests setting.")
+              response (output-error request {:msg err-msg} 503)]
+          (if (pos? max-retry-delay)
+            (assoc-in response [:headers "Retry-After"]
+                      (-> (rand) (* max-retry-delay) int str))
+            response))
+        (handler request)))))
 
 (defn get-environment-from-request
   "Gets the environment from the URL or query string of a request."
