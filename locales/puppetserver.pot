@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 26809fa701825ee23e47400e10bd512e2dc48e2f\n"
+"X-Git-Ref: 74337f8b5ef88eedf4ae6e9da43315f698ad8b55\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -262,6 +262,12 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/jruby_request.clj
 msgid "Error {0} on SERVER at {1}: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/jruby_request.clj
+msgid ""
+"The number of requests waiting for a JRuby instance has exceeded the limit "
+"allowed by the max-queued-requests setting."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/jruby_request.clj
