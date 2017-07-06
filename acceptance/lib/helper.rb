@@ -208,6 +208,7 @@ module PuppetServerExtensions
       create_remote_file(master, "/etc/apt/sources.list.d/jessie-backports.list", "deb http://ftp.debian.org/debian jessie-backports main")
       on master, 'apt-get update'
       master.install_package("openjdk-8-jre-headless", "-t jessie-backports")
+      on master, 'update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java'
     end
   end
 
