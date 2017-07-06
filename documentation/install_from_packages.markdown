@@ -4,18 +4,18 @@ title: "Puppet Server: Installing From Packages"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
-[repodocs]: https://docs.puppet.com/puppet/latest/reference/puppet_collections.html
+[repodocs]: https://docs.puppet.com/puppet/5.0/reference/puppet_platform.html
 [passengerguide]: https://docs.puppet.com/guides/passenger.html
 
 ## System Requirements
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/latest/#system-requirements).
+> If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/5.0/#system-requirements).
 
 ## Platforms with Packages
 
-Puppet provides official packages that install Puppet Server 2.4 and all of its prerequisites on the following platforms, as part of [Puppet Collections][repodocs].
+Puppet provides official packages that install Puppet Server 5.0 and all of its prerequisites on the following platforms, as part of [Puppet Platform][repodocs].
 
 ### Red Hat Enterprise Linux
 
@@ -28,12 +28,12 @@ Puppet provides official packages that install Puppet Server 2.4 and all of its 
 
 Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/), which includes openjdk-8:
 
-~~~
+```
 echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d
 apt-get update
 apt-get -t jessie-backports install "openjdk-8-jdk-headless"
 apt-get install puppetserver
-~~~~
+```
 
 ### Ubuntu
 
@@ -45,21 +45,21 @@ apt-get install puppetserver
 
 ## Quick Start
 
-1. [Enable the Puppet package repositories][repodocs], if you haven't already done so.
-2. Stop the existing Puppet master service. The method for doing this varies depending on how your system is set up.
+1.  [Enable the Puppet package repositories][repodocs], if you haven't already done so.
+2.  Stop the existing Puppet master service. The method for doing this varies depending on how your system is set up.
 
     If you're running a WEBrick Puppet master, use: `service puppetmaster stop`.
 
     If you're running Puppet under Apache, you'll instead need to disable the puppetmaster vhost and restart the Apache service. The exact method for this depends on what your Puppet master vhost file is called and how you enabled it. For full documentation, see the [Passenger guide][passengerguide].
 
-    * On a Debian system, the command might be something like `sudo a2dissite puppetmaster`.
-    * On RHEL/CentOS systems, the command might be something like `sudo mv /etc/httpd/conf.d/puppetmaster.conf ~/`. Alternatively, you can delete the file instead of moving it.
+    -   On a Debian system, the command might be something like `sudo a2dissite puppetmaster`.
+    -   On RHEL/CentOS systems, the command might be something like `sudo mv /etc/httpd/conf.d/puppetmaster.conf ~/`. Alternatively, you can delete the file instead of moving it.
 
     After you've disabled the vhost, restart Apache, which is a service called either `httpd` or `apache2`, depending on your OS.
 
     Alternatively, if you don't need to keep the Apache service running, you can stop Apache with `service httpd stop` or `service apache2 stop`.
 
-3. Install the Puppet Server package by running:
+3.  Install the Puppet Server package by running:
 
         yum install puppetserver
 
@@ -69,7 +69,7 @@ apt-get install puppetserver
 
     Note that there is no `-` in the package name.
 
-4. Start the Puppet Server service:
+4.  Start the Puppet Server service:
 
         systemctl start puppetserver
 
