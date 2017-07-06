@@ -35,6 +35,12 @@ apt-get -t jessie-backports install "openjdk-8-jdk-headless"
 apt-get install puppetserver
 ```
 
+If you upgraded on Debian from older versions of Puppet Server, or from Java 7 to Java 8, you must also configure your server to use Java 8 by default for Puppet Server 5.x:
+
+```
+update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+```
+
 ### Ubuntu
 
 -   Ubuntu 16.04 (Xenial)
