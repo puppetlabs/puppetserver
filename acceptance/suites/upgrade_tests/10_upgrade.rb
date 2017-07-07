@@ -1,6 +1,6 @@
 test_name "Upgrade Puppetserver"
 
-install_opts = options.merge({ :dev_builds_repos => ["PC1"]})
+install_opts = options.merge({ :dev_builds_repos => ["puppet"]})
 
 package_build_version = ENV['PACKAGE_BUILD_VERSION']
 if package_build_version.nil?

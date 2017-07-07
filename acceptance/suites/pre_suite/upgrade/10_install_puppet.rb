@@ -1,5 +1,5 @@
-step "Install PC1 repository" do
-  install_puppetlabs_release_repo(hosts, 'pc1')
+step "Install puppet repository" do
+  install_puppetlabs_release_repo(hosts, 'puppet')
 end
 
 hosts.each { |agent|

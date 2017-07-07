@@ -1,4 +1,4 @@
-install_opts = options.merge({ :dev_builds_repos => ["PC1"]})
+install_opts = options.merge({ :dev_builds_repos => ["puppet"]})
 
 if test_config[:puppetserver_install_type] == :package
   package_build_version = ENV['PACKAGE_BUILD_VERSION']
