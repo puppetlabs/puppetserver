@@ -1,3 +1,4 @@
+require 'puppetserver/acceptance/compat_utils'
 test_name "Upgrade Puppetserver"
 
 install_opts = options.merge({ :dev_builds_repos => ["PC1"]})
@@ -11,8 +12,10 @@ step "Setup Puppet Server dev repository on the master." do
   install_puppetlabs_dev_repo(master, 'puppetserver', package_build_version, nil, install_opts)
 end
 
-step "Setup Puppet dev repository on the master." do
-  install_puppetlabs_dev_repo(master, 'puppet-agent', test_config[:puppet_build_version], nil, install_opts)
+step "Setup Puppet dev repository on all nodes." do
+  hosts.each do |host|
+    install_puppetlabs_dev_repo(host, 'puppet-agent', test_config[:puppet_build_version], nil, install_opts)
+  end
 end
 
 step "Upgrade Puppet Server." do
@@ -21,6 +24,12 @@ step "Upgrade Puppet Server." do
   maybe_configure_jruby9k
   on(master, puppet("resource service puppetserver ensure=stopped"))
   on(master, puppet("resource service puppetserver ensure=running"))
+end
+
+step "Upgrade Puppet agents" do
+  nonmaster_agents.each do |agent|
+    agent.upgrade_package('puppet-agent')
+  end
 end
 
 step "Check that the master has Puppetserver 5.x installed" do
