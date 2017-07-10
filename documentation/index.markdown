@@ -33,6 +33,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [Using an external certificate authority](./external_ca_configuration.markdown)
     * [External SSL termination](./external_ssl_termination.markdown)
     * [Monitoring Puppet Server metrics](./puppet_server_metrics.markdown)
+        * [HTTP client metrics](./http_client_metrics.markdown)
     * [Tuning guide](./tuning_guide.markdown)
     * [Restarting Puppet Server](./restarting.markdown)
 * **Known issues and workarounds**
