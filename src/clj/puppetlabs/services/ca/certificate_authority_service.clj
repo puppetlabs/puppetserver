@@ -1,7 +1,9 @@
 (ns puppetlabs.services.ca.certificate-authority-service
   (:require [clojure.tools.logging :as log]
+            [me.raynes.fs :as fs]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.trapperkeeper.services.protocols.filesystem-watch-service :as watch-protocol]
             [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
@@ -12,7 +14,8 @@
   CaService
   [[:PuppetServerConfigService get-config get-in-config]
    [:WebroutingService add-ring-handler get-route]
-   [:AuthorizationService wrap-with-authorization-check]]
+   [:AuthorizationService wrap-with-authorization-check]
+   [:FilesystemWatchService create-watcher]]
   (init
    [this context]
    (let [path (get-route this)
@@ -20,7 +23,14 @@
          puppet-version (get-in-config [:puppetserver :puppet-version])
          custom-oid-file (get-in-config [:puppetserver :trusted-oid-mapping-file])
          oid-mappings (ca/get-oid-mappings custom-oid-file)
-         auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))]
+         auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))
+         ca-crl-file (.getCanonicalPath (fs/file
+                                         (get-in-config
+                                          [:puppetserver :cacrl])))
+         host-crl-file (.getCanonicalPath (fs/file
+                                           (get-in-config
+                                            [:puppetserver :hostcrl])))
+         watcher (create-watcher)]
      (ca/validate-settings! settings)
      (ca/initialize! settings)
      (log/info (i18n/trs "CA Service adding a ring handler"))
@@ -35,7 +45,20 @@
          auth-handler
          puppet-version)
        {:normalize-request-uri true})
-     (assoc context :auth-handler auth-handler)))
+     (when (not= ca-crl-file host-crl-file)
+       (watch-protocol/add-watch-dir! watcher
+                                      (fs/parent ca-crl-file)
+                                      {:recursive true})
+       (watch-protocol/add-callback!
+        watcher
+        (fn [events]
+          (when (some #(and (:changed-path %)
+                            (= (.getCanonicalPath (:changed-path %))
+                               ca-crl-file))
+                      events)
+            (ca/retrieve-ca-crl! ca-crl-file host-crl-file)))))
+     (assoc context :auth-handler auth-handler
+                    :watcher watcher)))
 
   (initialize-master-ssl!
    [this master-settings certname]

@@ -1,4 +1,4 @@
-test_name '(SERVER-1380) Server loads updated CRL after being reloaded'
+test_name 'Server reloads updated CRL without a restart'
 
 puppetservice=options['puppetservice']
 cert_to_revoke="reload_updated_crl"
@@ -78,24 +78,9 @@ step 'Revoke cert' do
   on(master, puppet('cert', 'revoke', cert_to_revoke))
 end
 
-if options[:type] == 'pe'
-  step 'Copy cacrl to hostcrl in order to work around SERVER-911' do
-    on(master, 'cp "$(puppet config print cacrl)" "$(puppet config print hostcrl)"')
-  end
-end
-
-step 'Validate that noop agent run successful after cert revoked but before reload' do
-  on(master, puppet('agent', '--test',
-                    '--server', server,
-                    '--certname', cert_to_revoke,
-                    '--noop'))
-end
-
-step 'Reload the server' do
-  reload_server
-end
-
-step 'Validate that noop run for revoked agent fails with SSL error after server reload' do
+step 'Validate that noop run for revoked agent fails with SSL error after CRL reload' do
+  # Sleep for a few seconds to give the server a chance to reload the updated CRL
+  sleep 5
   on(master, puppet('agent', '--test',
                     '--server', server,
                     '--certname', cert_to_revoke,

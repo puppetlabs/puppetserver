@@ -21,7 +21,8 @@
     [puppetlabs.dujour.version-check :as version-check]
     [me.raynes.fs :as fs]
     [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]))
+    [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
+    [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :as filesystem-watch-service]))
 
 (deftest ca-files-test
   (testing "CA settings from puppet are honored and the CA
@@ -43,7 +44,8 @@
              certificate-authority-service
              authorization-service
              versioned-code-service
-             scheduler-service]
+             scheduler-service
+             filesystem-watch-service/filesystem-watch-service]
 
             (-> (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
