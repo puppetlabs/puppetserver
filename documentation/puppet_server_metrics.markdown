@@ -10,9 +10,9 @@ canonical: "/puppetserver/latest/puppet_server_metrics.html"
 [Grafana]: http://grafana.org
 [sample Grafana dashboard]: ./sample-puppetserver-metrics-dashboard.json
 [static catalogs]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
-[`grafanadash`]: (https://forge.puppet.com/cprice404/grafanadash)
-[`metrics.conf`]: (./config_file_metrics.markdown)
-[HTTP client metrics]: (./http_client_metrics.markdown)
+[HTTP client metrics]: ./http_client_metrics.markdown
+[`grafanadash`]: https://forge.puppet.com/cprice404/grafanadash
+[`metrics.conf`]: ./config_file_metrics.markdown
 
 Puppet Server tracks several advanced performance and health metrics, all of which take advantage of the [metrics API][]. You can track these metrics using:
 
