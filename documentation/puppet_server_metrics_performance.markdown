@@ -18,6 +18,13 @@ canonical: "/puppetserver/latest/puppet_server_metrics_performance.html"
 Puppet Server produces [several types of metrics][metrics] that administrators can use to identify performance bottlenecks or capacity issues. Interpreting this data is largely up to you and depends on many factors unique to your installation and usage, but there are some common trends in metrics that you can use to make Puppet Server function better.
 
 > **Note:** This document assumes that you are already familiar with Puppet Server's [metrics tools][metrics], which report on relevant information, and its [tuning guide][], which provides instructions for modifying relevant settings. To put it another way, this guide attempts to explain questions about "why" Puppet Server performs the way it does for you, while your servers are the "who", Server [metrics][] help you track down exactly "what" is affecting performance, and the [tuning guide][] explains "how" you can improve performance.
+>
+> **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
+>
+> -   [Large environment installations (LEI)](https://docs.puppet.com/pe/latest/sys_req_hw.html#large-environment-installation-hardware-requirements)
+> -   [Compile masters](https://docs.puppet.com/pe/latest/install_multimaster.html)
+> -   [Load balancing](https://docs.puppet.com/pe/latest/install_lei_load.html)
+> -   [High availability](https://docs.puppet.com/pe/latest/ha_overview.html)
 
 ## Measuring capacity with JRubies
 

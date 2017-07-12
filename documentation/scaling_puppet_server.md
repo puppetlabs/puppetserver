@@ -6,6 +6,13 @@ canonical: "/puppetserver/latest/scaling_puppet_server.html"
 
 To scale Puppet Server for many thousands of nodes, you'll need to add Puppet masters dedicated to catalog compilation. These Servers are known as **compile masters**, and are simply additional load-balanced Puppet Servers that receive catalog requests from agents and synchronize the results with each other.
 
+> **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
+>
+> -   [Large environment installations (LEI)](https://docs.puppet.com/pe/latest/sys_req_hw.html#large-environment-installation-hardware-requirements)
+> -   [Compile masters](https://docs.puppet.com/pe/latest/install_multimaster.html)
+> -   [Load balancing](https://docs.puppet.com/pe/latest/install_lei_load.html)
+> -   [High availability](https://docs.puppet.com/pe/latest/ha_overview.html)
+
 ## Planning your load-balancing strategy
 
 The rest of your configuration depends on how you plan on distributing the agent load. Determine what your deployment will look like before you add any compile masters, but **implement load balancing as the last step** only after you have the infrastructure in place to support it.
