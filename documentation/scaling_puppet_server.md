@@ -12,6 +12,7 @@ To scale Puppet Server for many thousands of nodes, you'll need to add Puppet ma
 > -   [Compile masters](https://docs.puppet.com/pe/latest/install_multimaster.html)
 > -   [Load balancing](https://docs.puppet.com/pe/latest/install_lei_load.html)
 > -   [High availability](https://docs.puppet.com/pe/latest/ha_overview.html)
+> -   [Code Manager](https://docs.puppet.com/pe/latest/code_mgr.html)
 
 ## Planning your load-balancing strategy
 
