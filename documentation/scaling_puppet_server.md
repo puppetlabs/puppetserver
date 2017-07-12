@@ -122,7 +122,7 @@ See the [PuppetDB documentation](https://docs.puppet.com/puppetdb/latest/) for i
 
 You must ensure that all Puppet masters have identical copies of your manifests, modules, and [external node classifier](https://docs.puppet.com/puppet/5.0/nodes_external.html) data. Examples include:
 
--   Using a version control system such as Git, Mercurial, or Subversion to manage and sync your manifests, modules, and other data.
+-   Using a version control system such as [r10k](https://github.com/puppetlabs/r10k), Git, Mercurial, or Subversion to manage and sync your manifests, modules, and other data.
 -   Running an out-of-band `rsync` task via `cron`.
 -   Configuring `puppet agent` on each master node to point to a designated model Puppet master, then use Puppet itself to distribute the modules.
 

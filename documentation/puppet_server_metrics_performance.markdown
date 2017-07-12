@@ -12,8 +12,8 @@ canonical: "/puppetserver/latest/puppet_server_metrics_performance.html"
 [Graphite]: https://graphiteapp.org
 [Grafana]: http://grafana.org
 [sample Grafana dashboard]: ./sample-puppetserver-metrics-dashboard.json
-[`grafanadash`](https://forge.puppet.com/cprice404/grafanadash)
-[`metrics.conf`](./config_file_metrics.markdown)
+[puppetserver.conf]: ./config_file_puppetserver.markdown
+[HTTP client metrics]: ./http_client_metrics.markdown
 
 Puppet Server produces [several types of metrics][metrics] that administrators can use to identify performance bottlenecks or capacity issues. Interpreting this data is largely up to you and depends on many factors unique to your installation and usage, but there are some common trends in metrics that you can use to make Puppet Server function better.
 
@@ -38,13 +38,17 @@ If wait time increases but borrow time stays the same, your Server infrastructur
 
 If both wait and borrow times are increasing, something else on your server is causing requests to take longer to process. The longer borrow times suggest that Puppet Server is struggling more than before to process requests, which has a cascading effect on wait times. Correlate borrow time increases with other events whenever possible to isolate what activities might cause them, such as a Puppet code change.
 
-If you are setting up Puppet Server for the first time, start by increasing your Server infrastructure's capacity through additional JRubies (if your server has spare CPU and memory resources) or compile masters until your free JRubies are at least 0 and average number of free JRubies are at least 1. Once your system can handle its request volume, you can start looking into more specific performance improvements.
+If you are setting up Puppet Server for the first time, start by increasing your Server infrastructure's capacity through additional JRubies (if your server has spare CPU and memory resources) or compile masters until you have more than 0 free JRubies, and your average number of free JRubies are at least 1. Once your system can handle its request volume, you can start looking into more specific performance improvements.
 
 #### Adding more JRubies
 
-If you need to add JRubies, remember that Puppet Server is tuned by default to use one fewer than your total number of CPUs, with a maximum of 4 CPUs, for the number of available JRubies. You can change this by setting `max-active-instances` in [`puppetserver.conf`][], under the `jruby-puppet` section. Don' set this value to something greater than the number of CPUs, because if there aren't enough processes available, it won't matter how many JRubies in the pool there are — the server won't be able to use them.
+If you must add JRubies, remember that Puppet Server is tuned by default to use one fewer than your total number of CPUs, with a maximum of 4 CPUs, for the number of available JRubies. You can change this by setting `max-active-instances` in [`puppetserver.conf`][puppetserver.conf], under the `jruby-puppet` section.
 
-Each JRuby also has a certain amount of memory overhead that it needs in order to be able to load both Puppet's Ruby code and your Puppet code. In other words, your available memory limits how much Puppet code you can process. As a general rule, adding a JRuby requires a bare minimum of 40MB of memory --- the amount of memory for the scripting container, plus Puppet's Ruby code, plus an additional 5MB) --- just to compile an almost-empty catalog. For real-world catalogs, add at least an additional 15MB per additional JRuby.
+Each JRuby also has a certain amount of persistent memory overhead required in order to load both Puppet's Ruby code and your Puppet code. In other words, your available memory sets a baseline limit to how much Puppet code you can process. Catalog compilation can consume more memory, and Puppet Server's total memory usage depends on the number of agents being served, how frequently those agents check in, how many resources are being managed on each agent, and the complexity of the manifests and modules in use.
+
+As a general rule, adding a JRuby requires a bare minimum of 40MB of memory under JRuby 1.7, and at least 60MB under JRuby9k if the `jruby-puppet.compile-mode` setting in [`puppetserver.conf`][puppetserver.conf] is set to `off` --- the amount of memory for the scripting container, plus Puppet's Ruby code, plus additional memory overhead --- just to compile an nearly empty catalog.
+
+For real-world catalogs, you can generally add at least an additional 15MB for each JRuby you add. We calculated this amount by comparing a minimal catalog compilation to a catalog with a [basic role](https://github.com/puppetlabs/puppetlabs-puppetserver_perf_control/blob/production/site/role/manifests/by_size/small.pp) that installs Tomcat and Postgres servers. You can calculate a similar value unique to your infrastructure by measuring `puppetserver` memory usage during your infrastructure's catalog compilations and comparing it to compiling a minimal catalog for a similar number of nodes.
 
 The `jruby-metrics` section of the [status API][] endpoint also lists the `requested-instances`, which shows what requests have come in that are waiting to borrow a JRuby instance. This part of the status endpoint lists the lock's status, how many times it has been requested, and how long it has been held for. If it is currently being held and has been held for a while, you might see requests starting to stack up in the `requested-instances` section.
 
@@ -73,6 +77,6 @@ Puppet Server also requests facts as HTTP requests while handling a node request
 
 ### Memory leaks and usage
 
-A memory leak or increased memory pressure can stress Puppet Server's available resources. In this case, the Java VM will spend more time doing garbage collection, causing the GC time and GC CPU % metrics to increase. These metrics are available in the [developer dashboard][] and [status API][] endpoint, as well as in the `/metrics/v1/mbeans` endpoint.
+A memory leak or increased memory pressure can stress Puppet Server's available resources. In this case, the Java VM will spend more time doing garbage collection, causing the GC time and GC CPU % metrics to increase. These metrics are available in the [developer dashboard][] and [status API][] endpoint, as well as in the mbeans metrics available from both the [`/metrics/v1/mbeans`](./metrics-api/v1/metrics_api.markdown) or [`/metrics/v2/mbeans`](./metrics-api/v2/metrics_api.markdown) endpoints.
 
-If you can't identify the source of a memory leak, you might need to add more RAM to your Server or an additional compile master.
+If you can't identify the source of a memory leak, setting the `max-requests-per-instance` setting in [`puppetserver.conf`][puppetserver.conf] to something other than the default of 0 limits the number of requests a JRuby handles during its lifetime and enables automatic JRuby flushing. Enabling this setting reduces overall performance, but if you enable it and no longer see signs of persistent memory leaks, check your module code for inefficiencies or memory-consuming bugs.
