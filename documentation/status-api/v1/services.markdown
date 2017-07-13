@@ -16,6 +16,9 @@ for help interpreting the memory information.
 > **Note:** This is an experimental feature provided for troubleshooting
 purposes. In future releases, the `services` endpoint's response payload might
 change without warning.
+>
+> For information about HTTP client metrics, which are served from the status endpoint,
+> see [their documentation](../../http_client_metrics.markdown).
 
 ## `GET /status/v1/services`
 

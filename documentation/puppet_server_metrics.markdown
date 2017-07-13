@@ -10,16 +10,18 @@ canonical: "/puppetserver/latest/puppet_server_metrics.html"
 [Grafana]: http://grafana.org
 [sample Grafana dashboard]: ./sample-puppetserver-metrics-dashboard.json
 [static catalogs]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
-[`grafanadash`](https://forge.puppet.com/cprice404/grafanadash)
-[`metrics.conf`](./config_file_metrics.markdown)
+[`grafanadash`]: (https://forge.puppet.com/cprice404/grafanadash)
+[`metrics.conf`]: (./config_file_metrics.markdown)
+[HTTP client metrics]: (./http_client_metrics.markdown)
 
-Puppet Server tracks several advanced performance and health metrics. You can track these metrics using:
+Puppet Server tracks several advanced performance and health metrics, all of which take advantage of the [metrics API][]. You can track these metrics using:
 
 -   Customizable, networked [Graphite and Grafana instances](#getting-started-with-graphite)
 -   A built-in experimental [developer dashboard][]
+-   [HTTP client metrics][]
 -   [Metrics API][metrics API] endpoints
 
-> **Note:** The `grafanadash` and `puppet-graphite` modules referenced in this document are _not_ Puppet-supported modules. They are provided as testing and demonstration purposes _only_. Both of those methods take advantage of the metrics API.
+> **Note:** The `grafanadash` and `puppet-graphite` modules referenced in this document are _not_ Puppet-supported modules. They are provided as testing and demonstration purposes _only_.
 
 ## Getting started with Graphite
 
@@ -393,6 +395,8 @@ These metrics measure raw resource availability and capacity.
     -   `puppetlabs.<MASTER-HOSTNAME>.memory.non-heap.used`
 
     -   `puppetlabs.<MASTER-HOSTNAME>.memory.non-heap.max`
+
+For details about HTTP client metrics, which measure performance of Puppet Server's requests to other services, see [their documentation][HTTP client metrics].
 
 ### Modifying Puppet Server's exported metrics
 
