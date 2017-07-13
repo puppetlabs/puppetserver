@@ -22,6 +22,28 @@
         </encoder>
     </appender>
 
+    <appender name="STATUS" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/var/log/puppetlabs/puppetserver/puppetserver-status.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>/var/log/puppetlabs/puppetserver/puppetserver-status-%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <!-- each file should be at most 200MB, keep 90 days worth of history, but at most 1GB total-->
+            <maxFileSize>200MB</maxFileSize>
+            <maxHistory>90</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder>
+            <!-- note that this will only log the JSON message (%m) and a newline (%n)-->
+            <pattern>%m%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- without additivity="false", the status log messages will be sent to every other appender as well-->
+    <logger name="puppetlabs.trapperkeeper.services.status.status-debug-logging" level="debug" additivity="false">
+        <appender-ref ref="STATUS"/>
+    </logger>
+
     <logger name="org.eclipse.jetty" level="INFO"/>
     <logger name="org.apache.http" level="INFO"/>
     <logger name="jruby" level="info"/>
