@@ -35,6 +35,9 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [Monitoring Puppet Server metrics](./puppet_server_metrics.markdown)
         * [HTTP client metrics](./http_client_metrics.markdown)
     * [Tuning guide](./tuning_guide.markdown)
+    * [Monitoring Puppet Server metrics](./puppet_server_metrics.markdown)
+    * [Applying metrics to improve performance](./puppet_server_metrics_performance.markdown)
+    * [Scaling Puppet Server](./scaling_multiple_masters.markdown)
     * [Restarting Puppet Server](./restarting.markdown)
 * **Known issues and workarounds**
     * [Known issues](./known_issues.markdown)
