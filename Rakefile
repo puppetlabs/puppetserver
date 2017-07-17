@@ -1,13 +1,20 @@
 require 'open3'
+require 'open-uri'
+require 'json'
+require 'pp'
 
 PROJECT_ROOT = File.dirname(__FILE__)
 ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
   File.join(PROJECT_ROOT, 'acceptance')
+BEAKER_OPTIONS_FILE = File.join(ACCEPTANCE_ROOT, 'config', 'beaker', 'options.rb')
 PUPPET_SRC = File.join(PROJECT_ROOT, 'ruby', 'puppet')
 PUPPET_LIB = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'lib')
 PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
+PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
+CURRENT_BRANCH = '5.0.x'
+JENKINS_BRANCH = CURRENT_BRANCH
 
 TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
 TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
@@ -44,7 +51,7 @@ def basic_smoke_test(package_version)
   beaker += " --preserve-hosts always"
   beaker += " --type aio"
   beaker += " --helper acceptance/lib/helper.rb"
-  beaker += " --options-file acceptance/config/beaker/options.rb"
+  beaker += " --options-file #{BEAKER_OPTIONS_FILE}"
   beaker += " --load-path acceptance/lib"
   beaker += " --config acceptance/scripts/hosts.cfg"
   beaker += " --keyfile ~/.ssh/id_rsa-acceptance"
@@ -62,13 +69,101 @@ def re_run_basic_smoke_test
   beaker += " --preserve-hosts always"
   beaker += " --type aio"
   beaker += " --helper acceptance/lib/helper.rb"
-  beaker += " --options-file acceptance/config/beaker/options.rb"
+  beaker += " --options-file #{BEAKER_OPTIONS_FILE}"
   beaker += " --load-path acceptance/lib"
   beaker += " --config acceptance/scripts/hosts.cfg"
   beaker += " --keyfile ~/.ssh/id_rsa-acceptance"
   beaker += " --tests acceptance/suites/tests/00_smoke"
 
   sh beaker
+end
+
+def jenkins_passing_json_parsed
+  jenkins_url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/" \
+    "puppet-agent/view/#{JENKINS_BRANCH}/view/Suite/job/" \
+    "platform_puppet-agent_intn-van-promote_suite-daily-promotion-#{JENKINS_BRANCH}" \
+    "/lastSuccessfulBuild/api/json"
+  uri = URI.parse(jenkins_url)
+  begin
+    # DO NOT use uri-open if accepting user input for the uri
+    #   we've done some simple correction here,
+    #   but not enough to cleanse malicious user input
+    jenkins_result = uri.open(redirect: false)
+  rescue OpenURI::HTTPError => e
+    abort "ERROR: Could not get lastSuccessfulBuild for #{JENKINS_BRANCH} of puppet-agent: '#{e.message}'"
+  end
+
+  begin
+    jenkins_result_parsed = JSON.parse(jenkins_result.read)
+  rescue JSON::ParserError => e
+    abort "ERROR: Could not get lastSuccessfulBuild's valid json for #{JENKINS_BRANCH}: '#{e.message}'"
+  end
+
+  begin
+    jenkins_result_parameters = jenkins_result_parsed['actions'][0]['parameters']
+  rescue
+    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{JENKINS_BRANCH}"
+  end
+
+  jenkins_result_parsed['actions'][0]['parameters']
+end
+
+def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
+  begin
+    my_jenkins_passing_json.find{|x| x['name'] == 'SUITE_COMMIT'}['value']
+  rescue
+    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{JENKINS_BRANCH}"
+  end
+end
+def lookup_passing_puppet_sha(my_jenkins_passing_json)
+  begin
+    my_jenkins_passing_json.find{|x| x['name'] == 'puppet_COMPONENT_COMMIT'}['value']
+  rescue
+    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{JENKINS_BRANCH}"
+  end
+end
+
+def git_passing_puppet_version
+   #FIXME: this should be updated when the package yaml file contains the metadata we need
+   #  we have to replace the hyphens with dots because, vanagon
+  `cd #{PUPPET_SUBMODULE_PATH}; git describe`.strip.gsub(/-/,'.')
+end
+
+def replace_puppet_pins(passing_puppetagent_sha, passing_puppet_version)
+  # read beaker options hash from its file
+  puts("replacing puppet sha and version in #{BEAKER_OPTIONS_FILE} " \
+       "with agent sha: #{passing_puppetagent_sha} and puppet version: #{passing_puppet_version}")
+  beaker_options_from_file = eval(File.read(BEAKER_OPTIONS_FILE))
+  # add puppet version values
+  beaker_options_from_file[:puppet_version]       = passing_puppet_version
+  beaker_options_from_file[:puppet_build_version] = passing_puppetagent_sha
+  File.write(BEAKER_OPTIONS_FILE, beaker_options_from_file.pretty_inspect)
+end
+
+namespace :puppet_submodule do
+  desc 'update puppet submodule commit'
+  task :update_puppet_version do
+    #  ensure we fetch here, or the describe done later could be wrong
+    my_jenkins_passing_json = jenkins_passing_json_parsed
+    git_checkout_command = "cd #{PUPPET_SUBMODULE_PATH} && git fetch origin && " \
+      "git checkout #{lookup_passing_puppet_sha(my_jenkins_passing_json)}"
+    puts("checking out known passing puppet version in submodule: `#{git_checkout_command}`")
+    system(git_checkout_command)
+    # replace puppet version and sha pins in beaker options file
+    replace_puppet_pins(lookup_passing_puppetagent_sha(my_jenkins_passing_json), git_passing_puppet_version)
+  end
+  desc 'commit and push; CAUTION: WILL commit and push, upstream, local changes to the puppet submodule and acceptance options'
+  task :commit_push do
+    git_commit_command = "git checkout #{CURRENT_BRANCH} && git add #{PUPPET_SUBMODULE_PATH} " \
+      "&& git add #{BEAKER_OPTIONS_FILE} && git commit -m '(maint) update puppet submodule version and pins'"
+    git_push_command = "git checkout #{CURRENT_BRANCH} && git push origin HEAD:#{CURRENT_BRANCH}"
+    puts "committing submodule and pins via: `#{git_commit_command}`"
+    system(git_commit_command)
+    puts "pushing submodule and pins via: `#{git_push_command}`"
+    system(git_push_command)
+  end
+  desc 'update puppet versions and commit and push; CAUTION: WILL commit and push, upstream, local changes to the puppet submodule and acceptance options'
+  task :update_puppet_version_w_push => [:update_puppet_version, :commit_push]
 end
 
 namespace :spec do
