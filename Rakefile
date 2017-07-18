@@ -13,7 +13,7 @@ PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
 PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
-CURRENT_BRANCH = '5.0.x'
+CURRENT_BRANCH = 'master'
 JENKINS_BRANCH = CURRENT_BRANCH
 
 TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
