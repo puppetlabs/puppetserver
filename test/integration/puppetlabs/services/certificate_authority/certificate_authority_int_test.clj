@@ -328,11 +328,11 @@
                                            (client-request)
                                            false
                                            (catch ConnectionClosedException e
-                                             (is true)))]
-         (loop [times 30]
-           (cond
-             (ssl-exception-for-request?) (is true)
-             (zero? times) (is false "No exception thrown after revocation")
-             :else (do
-                     (Thread/sleep 500)
-                     (recur (dec times))))))))))
+                                             true))]
+         (is (loop [times 30]
+               (cond
+                 (ssl-exception-for-request?) true
+                 (zero? times) false
+                 :else (do
+                         (Thread/sleep 500)
+                         (recur (dec times)))))))))))
