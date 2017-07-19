@@ -767,8 +767,8 @@
   ([cacrl :- schema/Str
     localcacrl :- schema/Str]
    (when (not= cacrl localcacrl)
-     (let [max-attempts 5]
-       (when (and (fs/exists? cacrl))
+     (let [max-attempts 25]
+       (when (fs/exists? cacrl)
          (ks/mkdirs! (fs/parent localcacrl))
          ;; Make up to 'max-attempts' tries to copy the cacrl file to the
          ;; localcacrl file.  The content of the cacrl file is read into memory
@@ -777,8 +777,7 @@
          ;; validation is done to protect against a partially written (which could
          ;; happen if an asynchronous revocation is in process) or corrupt
          ;; cacrl file being copied.
-         (loop [attempts-left max-attempts
-                ca-crl-last-modified (fs/mod-time cacrl)]
+         (loop [attempts-left max-attempts]
            (let [cacrl-as-string (slurp cacrl)]
              (when-let [write-exception (write-local-cacrl!
                                          localcacrl
@@ -787,12 +786,8 @@
                  (log/error (i18n/trs "Unable to synchronize crl file {0} to {1}: {2}"
                                       cacrl localcacrl (.getMessage write-exception)))
                  (do
-                   (Thread/sleep 1000)
-                   (let [new-ca-crl-last-modified (fs/mod-time cacrl)]
-                     (recur (if (= ca-crl-last-modified new-ca-crl-last-modified)
-                              (dec attempts-left)
-                              max-attempts)
-                            new-ca-crl-last-modified))))))))))))
+                   (Thread/sleep 100)
+                   (recur (dec attempts-left))))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign
