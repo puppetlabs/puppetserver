@@ -34,7 +34,9 @@
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service
              :as tk-scheduler]
             [puppetlabs.services.versioned-code-service.versioned-code-service
-             :as vcs])
+             :as vcs]
+            [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :as filesystem-watch-service]
+            [clojure.string :as str])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
 
@@ -95,6 +97,10 @@
 (defn response-etag
   [request]
   (get-in request [:headers "etag"]))
+
+(defn etag-without-gzip-suffix
+  [etag]
+  (str/replace etag #"--gzip$" ""))
 
 (defn response->class-info-map
   [response]
@@ -181,7 +187,8 @@
                                               "default_source" "\"is foo\""}]}]}]
                                         "name" "production"}
              initial-response (get-env-classes "production")
-             initial-etag (response-etag initial-response)]
+             initial-etag (response-etag initial-response)
+             initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
          (testing "initial fetch of environment_classes info is good"
            (is (= 200 (:status initial-response))
                (str
@@ -203,12 +210,13 @@
                  "unexpected body for response")))
          (testing (str "HTTP 304 (not modified) returned when request "
                        "roundtrips last etag and code has not changed")
-           (let [response (get-env-classes "production" initial-etag)]
+           (let [response (get-env-classes "production"
+                                           initial-etag-without-gzip-suffix)]
              (is (= 304 (:status response))
                  (str
                   "unexpected status code for response for no code change and "
                   "original etag roundtripped"))
-             (is (= initial-etag (response-etag response))
+             (is (= initial-etag-without-gzip-suffix (response-etag response))
                  "etag changed even though code did not")
              (is (empty? (:body response))
                  "unexpected body for response")))
@@ -224,7 +232,7 @@
                  (str
                   "unexpected status code for response for no code change and "
                   "etag with '--gzip' suffix roundtripped"))
-             (is (= initial-etag (response-etag response))
+             (is (= initial-etag-without-gzip-suffix (response-etag response))
                  "etag changed even though code did not")
              (is (empty? (:body response))
                  "unexpected body for response")))
@@ -677,7 +685,8 @@
         authorization/authorization-service
         admin/puppet-admin-service
         vcs/versioned-code-service
-        tk-scheduler/scheduler-service]
+        tk-scheduler/scheduler-service
+        filesystem-watch-service/filesystem-watch-service]
        {:jruby-puppet {:max-active-instances 1
                        :environment-class-cache-enabled true}
         :webserver {:ssl-ca-cert (:localcacert puppetserver-settings)

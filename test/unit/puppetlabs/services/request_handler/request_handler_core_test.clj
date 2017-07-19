@@ -29,7 +29,8 @@
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]))
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
+            [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :as filesystem-watch-service]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -315,7 +316,8 @@
                       authorization-service/authorization-service
                       routing-service/webrouting-service
                       custom-vcs
-                      tk-scheduler/scheduler-service]]
+                      tk-scheduler/scheduler-service
+                      filesystem-watch-service/filesystem-watch-service]]
         (jruby-bootstrap/with-puppetserver-running-with-services
          app services {:jruby-puppet {:max-active-instances 1}}
          (jruby-testutils/wait-for-jrubies app)
