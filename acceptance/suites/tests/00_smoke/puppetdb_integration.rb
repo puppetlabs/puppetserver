@@ -25,6 +25,10 @@ if !master.is_pe?
     on(master, puppet('module install puppetlabs-puppetdb'))
   end
 
+  if master.platform.variant == 'debian'
+    master.install_package('apt-transport-https')
+  end
+
   step 'Configure PuppetDB via site.pp' do
     sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
     create_remote_file(master, sitepp, <<SITEPP)
