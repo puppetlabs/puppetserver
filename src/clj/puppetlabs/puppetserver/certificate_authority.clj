@@ -783,8 +783,14 @@
                                          localcacrl
                                          cacrl-as-string)]
                (if (zero? attempts-left)
-                 (log/error (i18n/trs "Unable to synchronize crl file {0} to {1}: {2}"
-                                      cacrl localcacrl (.getMessage write-exception)))
+                 (log/error (format "%s\n%s\n%s"
+                                    (i18n/trs
+                                     "Unable to synchronize crl file {0} to {1}: {2}."
+                                     cacrl localcacrl (.getMessage write-exception))
+                                    (i18n/trs
+                                     "Recent changes to the CRL may not have taken effect.")
+                                    (i18n/trs
+                                     "To load the updated CRL reload or restart the Puppet Server service.")))
                  (do
                    (Thread/sleep 100)
                    (recur (dec attempts-left))))))))))))
