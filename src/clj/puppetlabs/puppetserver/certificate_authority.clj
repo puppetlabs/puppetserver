@@ -938,7 +938,8 @@
    csr :- CertificateRequest
    {:keys [cacert cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [validity    (cert-validity-dates ca-ttl)
-        cacert      (utils/pem->cert cacert)
+        ;; if part of a CA bundle, the intermediate CA will be first in the chain
+        cacert      (first (utils/pem->certs cacert))
         signed-cert (utils/sign-certificate (utils/get-subject-from-x509-certificate
                                              cacert)
                                             (utils/pem->private-key cakey)
