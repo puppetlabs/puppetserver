@@ -29,7 +29,7 @@ Puppet provides official packages that install Puppet Server 5.0 and all of its 
 Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/), which includes openjdk-8:
 
 ```
-echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d
+echo "deb http://ftp.debian.org/debian jessie-backports main" > /etc/apt/sources.list.d/jessie-backports.list
 apt-get update
 apt-get -t jessie-backports install "openjdk-8-jdk-headless"
 apt-get install puppetserver
