@@ -121,7 +121,8 @@
   (testing "request with binary content type does not consume body"
     (let [body-string "some random text"]
       (doseq [content-type [nil "" "application/octet-stream"
-                            "APPLICATION/octet-Stream"]]
+                            "APPLICATION/octet-Stream"
+                            "application/x-msgpack"]]
         (let [body-reader (StringReader. body-string)
               wrapped-request (core/wrap-params-for-jruby
                                 {:body         body-reader

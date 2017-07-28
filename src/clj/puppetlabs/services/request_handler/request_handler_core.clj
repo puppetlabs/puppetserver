@@ -65,7 +65,7 @@
         content-type (if-let [raw-type (:content-type request)]
                        (string/lower-case raw-type))]
     (case content-type
-      (nil "" "application/octet-stream") body
+      (nil "" "application/octet-stream" "application/x-msgpack") body
       ; Treatment of the *default* encoding arguably should be much more
       ; intelligent than just choosing UTF-8.  Basing the default on the
       ; Content-Type would be an improvement although even this could lead to
