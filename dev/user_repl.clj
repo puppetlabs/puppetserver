@@ -15,6 +15,7 @@
             [puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service :refer [jruby-pool-manager-service]]
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :refer [scheduler-service]]
             [puppetlabs.trapperkeeper.services.status.status-service :refer [status-service]]
+            [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :refer [filesystem-watch-service]]
             [puppetlabs.trapperkeeper.core :as tk]
             [puppetlabs.trapperkeeper.app :as tka]
             [clojure.tools.namespace.repl :refer (refresh)]
@@ -63,6 +64,7 @@
                authorization-service
                versioned-code-service
                scheduler-service
+               filesystem-watch-service
                status-service]
               ((resolve 'user/puppetserver-conf)))))
   (alter-var-root #'system tka/init)
