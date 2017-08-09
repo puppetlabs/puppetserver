@@ -37,6 +37,8 @@
 (def autosign-confs-dir (str test-resources-dir "/autosign_confs"))
 (def autosign-exes-dir (str test-resources-dir "/autosign_exes"))
 (def csr-attributes-dir (str test-resources-dir "/csr_attributes"))
+(def bundle-dir (str test-pems-dir "/bundle"))
+(def bundle-cadir (str bundle-dir "/ca"))
 
 (defn test-pem-file
   [pem-file-name]
@@ -430,6 +432,22 @@
       (let [cert  (utils/pem->cert cert-path)
             capub (-> (:cacert settings)
                       (utils/pem->cert)
+                      (.getPublicKey))]
+        (is (nil? (.verify cert capub)))))))
+
+(deftest autosign-with-bundled-ca-certs
+  (testing "The CA public key file can be a bundle of certs"
+    (let [settings  (testutils/ca-sandbox! bundle-cadir)
+          csr       (-> (:csrdir settings)
+                        (path-to-cert-request "test-agent")
+                        (utils/pem->csr))
+          cert-path (path-to-cert (:signeddir settings) "test-agent")]
+      (autosign-certificate-request! "test-agent" csr settings)
+      (is (true? (fs/exists? cert-path)))
+      (let [cert  (utils/pem->cert cert-path)
+            capub (-> (:cacert settings)
+                      (utils/pem->certs)
+                      (first)
                       (.getPublicKey))]
         (is (nil? (.verify cert capub)))))))
 
