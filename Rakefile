@@ -100,12 +100,13 @@ def jenkins_passing_json_parsed
   end
 
   begin
-    jenkins_result_parameters = jenkins_result_parsed['actions'][0]['parameters']
+    jenkins_result_parameters = jenkins_result_parsed['actions'].find{|x| x['_class'] == 'hudson.model.ParametersAction' }['parameters']
+    raise "No parameters found" unless jenkins_result_parameters
   rescue
     abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{JENKINS_BRANCH}"
   end
 
-  jenkins_result_parsed['actions'][0]['parameters']
+  jenkins_result_parameters
 end
 
 def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
