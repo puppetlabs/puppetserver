@@ -102,8 +102,8 @@ def jenkins_passing_json_parsed
   begin
     jenkins_result_parameters = jenkins_result_parsed['actions'].find{|x| x['_class'] == 'hudson.model.ParametersAction' }['parameters']
     raise "No parameters found" unless jenkins_result_parameters
-  rescue
-    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{JENKINS_BRANCH}"
+  rescue => e
+    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{JENKINS_BRANCH}\n\n  #{e}"
   end
 
   jenkins_result_parameters
@@ -112,15 +112,15 @@ end
 def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
   begin
     my_jenkins_passing_json.find{|x| x['name'] == 'SUITE_COMMIT'}['value']
-  rescue
-    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{JENKINS_BRANCH}"
+  rescue => e
+    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{JENKINS_BRANCH}\n\n  #{e}"
   end
 end
 def lookup_passing_puppet_sha(my_jenkins_passing_json)
   begin
     my_jenkins_passing_json.find{|x| x['name'] == 'puppet_COMPONENT_COMMIT'}['value']
-  rescue
-    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{JENKINS_BRANCH}"
+  rescue => e
+    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{JENKINS_BRANCH}\n\n  #{e}"
   end
 end
 
