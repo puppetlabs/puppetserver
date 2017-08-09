@@ -18,16 +18,6 @@ describe 'Puppet::Server::Master' do
     end
   end
 
-  context "puppet version" do
-    subject do
-      master.puppetVersion
-    end
-
-    it "returns the correct puppet version number" do
-      expect(subject).to eq('5.0.0')
-    end
-  end
-
   class MasterTestProfiler
     def start(description, metric_id)
       metric_id
