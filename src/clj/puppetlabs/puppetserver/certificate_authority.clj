@@ -680,7 +680,7 @@
   (set-file-perms (:privatekeydir settings) private-key-dir-perms)
   (-> settings :certdir fs/file ks/mkdirs!)
   (-> settings :requestdir fs/file ks/mkdirs!)
-  (let [ca-cert        (utils/pem->cert (:cacert ca-settings))
+  (let [ca-cert        (utils/pem->ca-cert (:cacert ca-settings) (:cakey ca-settings))
         ca-public-key  (.getPublicKey ca-cert)
         ca-private-key (utils/pem->private-key (:cakey ca-settings))
         next-serial    (next-serial-number! (:serial ca-settings))
@@ -939,7 +939,7 @@
    {:keys [cacert cakey signeddir ca-ttl serial cert-inventory]} :- CaSettings]
   (let [validity    (cert-validity-dates ca-ttl)
         ;; if part of a CA bundle, the intermediate CA will be first in the chain
-        cacert      (first (utils/pem->certs cacert))
+        cacert      (utils/pem->ca-cert cacert cakey)
         signed-cert (utils/sign-certificate (utils/get-subject-from-x509-certificate
                                              cacert)
                                             (utils/pem->private-key cakey)
@@ -1203,7 +1203,7 @@
                     (utils/get-serial))
         new-crl (utils/revoke (utils/pem->crl cacrl)
                               (utils/pem->private-key cakey)
-                              (.getPublicKey (utils/pem->cert cacert))
+                              (.getPublicKey (utils/pem->ca-cert cacert cakey))
                               serial)]
     (utils/crl->pem! new-crl cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
