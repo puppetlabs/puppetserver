@@ -1,7 +1,7 @@
 test_name 'Default metrics are exported to graphite server'
 
-graphite = agents.find { |agent| agent['platform'] =~ /el-6-x86_64/ }
-skip_test 'This test requires an el6 agent' unless graphite
+graphite = agents.find { |agent| agent['platform'] =~ /el-7-x86_64/ }
+skip_test 'This test requires an el7 agent' unless graphite
 
 puppetserver_conf_file = options['puppetserver-config']
 metrics_conf_file = "#{options['puppetserver-confdir']}/metrics.conf"
@@ -67,7 +67,7 @@ APACHEPP
 end
 
 step 'Install graphite (and grafana)' do
-  on(graphite, "puppet module install cprice404-grafanadash --codedir #{tmp_module_dir}")
+  on(graphite, "puppet module install puppetlabs-grafanadash --codedir #{tmp_module_dir}")
   on(graphite, "puppet apply -e \"include grafanadash::dev\" --codedir #{tmp_module_dir}")
 
   # Set max_creates_per_minute to 'inf' (in place of smaller default) in order
@@ -78,7 +78,7 @@ step 'Install graphite (and grafana)' do
 class { 'graphite':
   gr_web_cors_allow_from_all => true,
   gr_max_creates_per_minute => inf,
-  gr_apache_port => #{graphite_port}
+  gr_web_server_port => #{graphite_port}
 }
 GRAPHITEPP
   on(graphite, "puppet apply #{graphitepp} --codedir #{tmp_module_dir}")
