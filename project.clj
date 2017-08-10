@@ -1,5 +1,5 @@
 (def ps-version "2.7.3-SNAPSHOT")
-(def tk-jetty9-version "1.8.0")
+(def tk-jetty9-version "1.8.1")
 
 (defn deploy-info
   [url]
@@ -64,7 +64,7 @@
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
-                 [puppetlabs/trapperkeeper-filesystem-watcher "1.0.1"]
+                 [puppetlabs/trapperkeeper-filesystem-watcher "1.1.0"]
                  [puppetlabs/kitchensink]
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
