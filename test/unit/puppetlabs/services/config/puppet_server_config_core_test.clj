@@ -31,7 +31,7 @@
                                               keyword))]
        (try
          (testing "usage of get-puppet-config-value"
-           (is (= "0.0.0.0" (get-puppet-config-value jruby-puppet :bindaddress)))
+           (is (= "ldap" (get-puppet-config-value jruby-puppet :ldapserver)))
            (is (= 8140 (get-puppet-config-value jruby-puppet :masterport)))
            (is (= false (get-puppet-config-value jruby-puppet :onetime)))
            (is (= true (get-puppet-config-value jruby-puppet :autoflush)))

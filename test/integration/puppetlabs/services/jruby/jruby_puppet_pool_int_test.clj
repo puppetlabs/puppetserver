@@ -508,7 +508,7 @@
            jruby-puppet (:jruby-puppet jruby-instance)]
        (try
          (testing "Various data types"
-           (is (= "0.0.0.0" (.getSetting jruby-puppet "bindaddress")))
+           (is (= "ldap" (.getSetting jruby-puppet "ldapserver")))
            (is (= 8140 (.getSetting jruby-puppet "masterport")))
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
