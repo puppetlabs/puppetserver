@@ -48,11 +48,9 @@
               host-crl-file (.getCanonicalPath (fs/file
                                            (get-in-config
                                              [:puppetserver :hostcrl])))
-              watcher (watch-protocol/create-watcher filesystem-watch-service)]
+              watcher (watch-protocol/create-watcher filesystem-watch-service {:recursive false})]
           (when (not= ca-crl-file host-crl-file)
-            (watch-protocol/add-watch-dir! watcher
-                                           (fs/parent ca-crl-file)
-                                           {:recursive true})
+            (watch-protocol/add-watch-dir! watcher (fs/parent ca-crl-file))
             (watch-protocol/add-callback!
               watcher
               (fn [events]
