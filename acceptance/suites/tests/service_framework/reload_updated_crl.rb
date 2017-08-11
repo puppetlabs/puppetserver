@@ -6,6 +6,11 @@ server = master.puppet['certname']
 host_crl_file = master.puppet['hostcrl']
 ca_crl_file = master.puppet['cacrl']
 inventory_file = master.puppet['cert_inventory']
+bootstrap = "/opt/puppetlabs/server/apps/#{options['puppetservice']}/config/services.d/bootstrap.cfg"
+watcher_service = 'puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service/filesystem-watch-service'
+java_version = on(master, 'java -version').stdout
+
+skip_test 'Feature only supported on Java 8' unless java_version =~ /.* version "?1.8.*/
 
 teardown do
   step 'Remove revoked CRL cert' do
@@ -25,8 +30,12 @@ teardown do
         "then mv -f #{inventory_file}.bak #{inventory_file}; fi")
   end
 
+  step 'Disable crl reloading in bootstrap.cfg' do
+    on(master, "sed -i 's,#{watcher_service},##{watcher_service},' #{bootstrap}")
+  end
+
   step 'Restart puppetserver service after testing revoked CRL agent' do
-    bounce_service(master, puppetservice)
+    on(master, "service #{puppetservice} restart")
   end
 end
 
@@ -63,8 +72,12 @@ step 'Generate cert to be revoked' do
   on(master, puppet('cert', 'generate', cert_to_revoke))
 end
 
+step 'Enable CRL reloading in bootstrap.cfg' do
+  on(master, "sed -i 's,##{watcher_service},#{watcher_service},' #{bootstrap}")
+end
+
 step 'Restart puppetserver service before testing revoked CRL agent' do
-  bounce_service(master, puppetservice)
+  on(master, "service #{puppetservice} restart")
 end
 
 step 'Validate that noop agent run successful before cert revoked' do
