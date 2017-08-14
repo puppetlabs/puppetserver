@@ -14,7 +14,8 @@
     [puppetlabs.puppetserver.certificate-authority :as ca]
     [me.raynes.fs :as fs]
     [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :as filesystem-watch-service])
-   (:import (org.apache.http ConnectionClosedException)))
+   (:import (org.apache.http ConnectionClosedException)
+            (java.io IOException)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/certificate_authority/certificate_authority_int_test")
@@ -330,7 +331,10 @@
                                            (client-request)
                                            false
                                            (catch ConnectionClosedException e
-                                             true))]
+                                             true)
+                                           ;; Some Java 7 implementations return this instead:
+                                           (catch IOException e
+                                             (= "Connection reset by peer" (.getMessage e))))]
          (is (loop [times 30]
                (cond
                  (ssl-exception-for-request?) true
