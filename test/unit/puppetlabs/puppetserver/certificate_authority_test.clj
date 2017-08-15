@@ -436,7 +436,7 @@
         (is (nil? (.verify cert capub)))))))
 
 (deftest autosign-with-bundled-ca-certs
-  (testing "The CA public key file can be a bundle of certs"
+  (testing "The CA certificate file can be a bundle of certs"
     (let [settings  (testutils/ca-sandbox! bundle-cadir)
           csr       (-> (:csrdir settings)
                         (path-to-cert-request "test-agent")
