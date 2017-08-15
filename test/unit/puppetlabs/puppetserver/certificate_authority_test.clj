@@ -466,6 +466,20 @@
       (revoke-existing-cert! settings "localhost")
       (is (true? (revoked? cert))))))
 
+(deftest revoke-with-bundled-ca-certs
+  (testing "The CA certificate file can be a bundle when revoking a certificate"
+    (let [settings (testutils/ca-sandbox! bundle-cadir)
+          cert     (-> (:signeddir settings)
+                       (path-to-cert "localhost")
+                       (utils/pem->cert))
+          revoked? (fn [cert]
+                     (-> (:cacrl settings)
+                         (utils/pem->crl)
+                         (utils/revoked? cert)))]
+      (is (false? (revoked? cert)))
+      (revoke-existing-cert! settings "localhost")
+      (is (true? (revoked? cert))))))
+
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."
     (let [crl (-> (get-certificate-revocation-list cacrl)
