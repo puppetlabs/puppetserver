@@ -1,5 +1,7 @@
 (ns puppetlabs.services.master.master-core-test
   (:require [clojure.test :refer :all]
+            [clojure.string :refer [split]]
+            [cheshire.core :as json]
             [puppetlabs.services.master.master-core :refer :all]
             [ring.mock.request :as mock]
             [schema.test :as schema-test]
@@ -18,6 +20,15 @@
 
 (def dummy-jruby-service
   (reify jruby/JRubyPuppetService))
+
+(defn construct-info-from-task-name
+  "Given a task name in format 'module::task', construct a data structure that
+  matches what the all-tasks function on the JRuby service would return. Also
+  accepts name of 'module', for the special-cased init tasks."
+  [task-name]
+  (let [[module _] (split task-name #"::")]
+    {:module {:name module}
+     :name task-name}))
 
 (defn build-ring-handler
   [request-handler puppet-version jruby-service]
@@ -331,3 +342,54 @@
                           "points the user to the EL config location")
       (assert-failure-msg #"/etc/default/puppetserver"
                           "points the user to the debian config location"))))
+
+(deftest all-tasks-response-test
+  (testing "all-tasks query"
+    (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
+                  jruby-core/return-to-pool (fn [_ _ _] #())]
+      (let [jruby-service (reify jruby/JRubyPuppetService
+                            (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
+                                                   (jruby-core/initialize-config {:gem-home "bar"
+                                                                                  :gem-path "bar:foobar"
+                                                                                  :ruby-load-path ["foo"]})))
+                            (get-tasks [_ _ env]
+                              (if (= env "production")
+                                [])))
+            handler (fn ([req] {:request req}))
+            app (build-ring-handler handler "1.2.3" jruby-service)
+            request (partial app-request app)
+            response (fn [info]
+                      (all-tasks-response!
+                        info
+                       "production"
+                       jruby-service))
+            response-format (fn [task-name]
+                                 {:name task-name
+                                  :environment [{:name "production"
+                                                 :code_id nil}]})
+            expected-response (fn [task-names]
+                                (map response-format task-names))
+            task-names ["apache" "apache::configure" "mongodb::uninstall"]]
+        (testing "returns 200 for environment that exists"
+          (is (= 200 (:status (request
+                               "/v3/tasks?environment=production")))))
+        (testing "returns 404 not found when non-existent environment supplied"
+          (is (= 404 (:status (request
+                               "/v3/tasks?environment=test")))))
+        (testing "returns 400 bad request when environment not supplied"
+          (logging/with-test-logging
+           (is (= 400 (:status (request "/v3/tasks"))))))
+
+        (testing (str "returns 400 bad request when environment has "
+                      "non-alphanumeric characters")
+          (logging/with-test-logging
+           (is (= 400 (:status (request
+                                "/v3/tasks?environment=~"))))))
+
+        (testing "formats response body properly"
+          (is (= (set (expected-response task-names))
+                 (-> (map construct-info-from-task-name task-names)
+                     response
+                     :body
+                     (json/decode true)
+                     set))))))))

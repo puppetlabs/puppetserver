@@ -319,6 +319,28 @@
       (middleware-utils/json-response 200 info-for-json))))
 
 (schema/defn ^:always-validate
+  all-tasks-response! :- ringutils/RingResponse
+  "Process the info, returning a Ring response to be propagated back up to the
+  caller of the endpoint.
+  Returns environment as a list of objects for an eventual future in which
+  tasks for all environments can be requested, and a given task will list all
+  the environments it is found in."
+  [info-from-jruby :- List
+   environment :- schema/Str
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (let [format-task (fn [task-object]
+                      {:name (:name task-object)
+                       :environment [{:name environment
+                                      :code_id nil}]})]
+    (->> (map format-task info-from-jruby)
+         (middleware-utils/json-response 200))))
+
+(defn environment-not-found
+  "Ring handler to provide a standard error when an environment is not found."
+  [environment]
+  (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment)))
+
+(schema/defn ^:always-validate
   environment-class-info-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
   request for environment_classes information."
@@ -341,7 +363,7 @@
                                      (if-none-match-from-request request)
                                      cache-generation-id
                                      environment-class-cache-enabled)
-        (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment))))))
+        (environment-not-found environment)))))
 
 (schema/defn ^:always-validate
   module-info-from-jruby->module-info-for-json  :- EnvironmentModulesInfo
@@ -391,6 +413,23 @@
         (environment-module-response! module-info)))))
 
 (schema/defn ^:always-validate
+  all-tasks-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for tasks information."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)]
+      (if-let [task-info-for-env
+               (jruby-protocol/get-tasks jruby-service
+                                         (:jruby-instance
+                                           request)
+                                         environment)]
+        (all-tasks-response! task-info-for-env
+                             environment
+                             jruby-service)
+        (environment-not-found environment)))))
+
+(schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
   header on an incoming environment_classes request matches the last Etag
@@ -434,6 +473,15 @@
    (jruby-request/wrap-with-jruby-instance jruby-service)
    (jruby-request/wrap-with-environment-validation true)
    jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  all-tasks-handler :- IFn
+  "Handler for processing an incoming all_tasks Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (all-tasks-fn jruby-service)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-environment-validation
+      jruby-request/wrap-with-error-handling))
 
 (schema/defn ^:always-validate valid-static-file-path?
   "Helper function to decide if a static_file_content path is valid.
@@ -539,6 +587,8 @@
                                    environment-class-cache-enabled)
         environment-module-handler
         (environment-module-handler jruby-service)
+        all-tasks-handler
+        (all-tasks-handler jruby-service)
         static-file-content-handler
         (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
@@ -546,6 +596,8 @@
                   (environment-class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
                   (environment-module-handler request))
+      (comidi/GET ["/tasks" [#".*" :rest]] request
+                  (all-tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                   (static-file-content-handler request)))))
 
