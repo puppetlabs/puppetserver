@@ -1,0 +1,2 @@
+0x0001 2014-10-07T18:03:58UTC 2019-10-07T18:03:58UTC /C=US/ST=Oregon/O=Puppet/CN=intermediateca.example.org/emailAddress=intermediateca@example.org
+0x0002 2017-08-16T19:15:24UTC 2022-08-16T19:15:24UTC /CN=localhost
