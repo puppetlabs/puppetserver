@@ -420,10 +420,11 @@
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)]
       (if-let [task-info-for-env
-               (jruby-protocol/get-tasks jruby-service
-                                         (:jruby-instance
-                                           request)
-                                         environment)]
+               (sort-nested-info-maps
+                 (jruby-protocol/get-tasks jruby-service
+                                           (:jruby-instance
+                                             request)
+                                           environment))]
         (all-tasks-response! task-info-for-env
                              environment
                              jruby-service)

@@ -125,6 +125,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Interacting with puppet code and catalogs
 
+(schema/defn ^:always-validate module-dir
+  [env-name :- schema/Str
+   module-name :- schema/Str]
+  (fs/file conf-dir "environments" env-name "modules" module-name))
+
+(schema/defn ^:always-validate create-module :- schema/Str
+  [module-name :- schema/Str
+   options :- {(schema/optional-key :env-name) schema/Str
+               (schema/optional-key :module-version) schema/Str}]
+  (let [default-options {:env-name "production"
+                         :module-version "1.0.0"}
+        options (merge default-options options)
+        module-dir (module-dir (:env-name options) module-name)
+        metadata-json {"name" module-name
+                       "version" (:module-version options)
+                       "author" "Puppet"
+                       "license" "apache"
+                       "dependencies" []
+                       "source" "https://github.com/puppetlabs"}]
+    (fs/mkdirs module-dir)
+    (spit (fs/file module-dir "metadata.json")
+          (json/generate-string metadata-json))
+    (.getCanonicalPath module-dir)))
+
 (schema/defn ^:always-validate write-pp-file :- schema/Str
   ([pp-contents :- schema/Str
     module-name :- schema/Str]
@@ -143,33 +167,31 @@
     pp-name :- schema/Str
     env-name :- schema/Str
     module-version :- schema/Str]
-   (let [pp-file (fs/file conf-dir
-                          "environments"
-                          env-name
-                          "modules"
-                          module-name
+   (let [pp-file (fs/file (module-dir env-name module-name)
                           "manifests"
-                          (str pp-name ".pp"))
-         module-dir (fs/file conf-dir
-                             "environments"
-                             env-name
-                             "modules"
-                             module-name)
-         metadata-json {"name" module-name
-                        "version" module-version
-                        "author" "Puppet"
-                        "license" "apache"
-                        "dependencies" []
-                        "source" "https://github.com/puppetlabs"}]
+                          (str pp-name ".pp"))]
+     (create-module module-name {:env-name env-name :module-version module-version})
      (fs/mkdirs (fs/parent pp-file))
      (spit pp-file pp-contents)
-     (spit (fs/file module-dir "metadata.json")
-           (json/generate-string metadata-json))
      (.getCanonicalPath pp-file))))
 
 (schema/defn ^:always-validate write-foo-pp-file :- schema/Str
   [foo-pp-contents]
   (write-pp-file foo-pp-contents "foo"))
+
+(schema/defn ^:always-validate write-tasks-files :- schema/Str
+  [module-name :- schema/Str
+   task-name :- schema/Str
+   task-file-contents :- schema/Str]
+  (let [metadata-contents {"description" "This is a description. It describes a thing."}
+        module-dir (create-module module-name {})
+        tasks-dir (fs/file module-dir "tasks")
+        metadata-file-path (fs/file tasks-dir task-name ".json")]
+    (create-file metadata-file-path
+                 (json/encode metadata-contents))
+    (create-file (fs/file tasks-dir task-name ".sh")
+                 task-file-contents)
+    (.getCanonicalPath metadata-file-path)))
 
 (defn create-env-conf
   [env-dir content]
