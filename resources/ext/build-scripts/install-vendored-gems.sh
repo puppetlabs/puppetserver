@@ -15,9 +15,11 @@ cat "${DIR}/gem-list.txt"
 
 echo "jruby-puppet: { gem-home: ${DESTDIR}/opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems }" > jruby.conf
 
+gem_list=()
 while read LINE
 do
   gem_name=$(echo $LINE |awk '{print $1}')
   gem_version=$(echo $LINE |awk '{print $2}')
-  java -cp puppet-server-release.jar:jruby-1_7.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install ${gem_name} --version ${gem_version}
+  gem_list+=("$gem_name:$gem_version")
 done < "${DIR}/gem-list.txt"
+java -cp puppet-server-release.jar:jruby-1_7.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf --no-ri --no-rdoc -- install "${gem_list[@]}"
