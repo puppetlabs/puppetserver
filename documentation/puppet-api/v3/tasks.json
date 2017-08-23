@@ -1,0 +1,38 @@
+{
+  "$schema":     "http://json-schema.org/draft-04/schema#",
+  "title":       "Tasks list",
+  "description": "List of task objects in a Puppet code environment",
+  "type":        "array",
+  "items": {
+    "title": "Task",
+    "type": "object",
+    "properties": {
+      "name": {
+        "description": "Name of the task object. Takes the form of '<module>::<task file name>'. Tasks with invalid characters in their files' names will not be listed.",
+        "type": "string"
+      },
+      "environment": {
+        "description": "A list of environments the task was found in. Will only contain one object when a specific environment is requested, which is all that is currently supported.",
+        "type": "array",
+        "items": {
+          "description": "The environment that the task was found in.",
+          "type": "object",
+          "properties": {
+            "name": {
+              "description": "The name of the environment the task was found in.",
+              "type": "string"
+            },
+            "code_id": {
+              "description": "The code_id for the environment, if it exists. Not yet implemented, so will always return null.",
+              "type": "null"
+            }
+          },
+          "required": ["name"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": ["name", "environment"],
+    "additionalProperties": false
+  }
+}
