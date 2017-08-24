@@ -325,7 +325,7 @@
   Returns environment as a list of objects for an eventual future in which
   tasks for all environments can be requested, and a given task will list all
   the environments it is found in."
-  [info-from-jruby :- List
+  [info-from-jruby :- [{schema/Any schema/Any}]
    environment :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (let [format-task (fn [task-object]
@@ -335,9 +335,9 @@
     (->> (map format-task info-from-jruby)
          (middleware-utils/json-response 200))))
 
-(defn environment-not-found
+(schema/defn environment-not-found :- ringutils/RingResponse
   "Ring handler to provide a standard error when an environment is not found."
-  [environment]
+  [environment :- schema/Str]
   (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment)))
 
 (schema/defn ^:always-validate

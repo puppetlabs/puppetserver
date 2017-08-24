@@ -125,7 +125,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Interacting with puppet code and catalogs
 
-(schema/defn ^:always-validate module-dir
+(schema/defn ^:always-validate module-dir :- File
   [env-name :- schema/Str
    module-name :- schema/Str]
   (fs/file conf-dir "environments" env-name "modules" module-name))
