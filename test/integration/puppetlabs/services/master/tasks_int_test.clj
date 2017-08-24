@@ -8,7 +8,7 @@
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/services/master/environment_classes_int_test")
+  "./dev-resources/puppetlabs/services/master/tasks_int_test")
 
 (defn purge-env-dir
   []
@@ -47,6 +47,10 @@
   [response]
   (-> response :body cheshire/parse-string))
 
+(defn sort-tasks
+  [tasks]
+  (sort-by #(get % "name") tasks))
+
 (deftest ^:integration all-tasks-with-env
   (testing "full stack smoke test"
     (bootstrap/with-puppetserver-running-with-config
@@ -70,5 +74,5 @@
                 "unexpected status code for response, response: "
                 (ks/pprint-to-string response))))
         (testing "the expected response body is returned"
-          (is (= expected-response
-                 (parse-response response))))))))
+          (is (= (sort-tasks expected-response)
+                 (sort-tasks (parse-response response)))))))))

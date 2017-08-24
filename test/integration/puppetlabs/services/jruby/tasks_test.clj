@@ -10,7 +10,8 @@
             [schema.test :as schema-test]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap])
+  (:import (java.io File)))
 
 (use-fixtures :once schema-test/validate-schemas)
 
@@ -18,19 +19,16 @@
   {:name schema/Str
    :module-name schema/Str
    :metadata? schema/Bool
-   :number-of-files schema/Num})
-
-(defn make-task-dir
-  [env-dir mod-name]
-  (fs/file env-dir "modules" mod-name "tasks"))
+   :number-of-files (schema/pred #(<= % 5))})
 
 (schema/defn gen-task
   "Assumes tasks dir already exists -- generates a set of task files for a
   single task."
-  [env-dir task :- TaskOptions]
+  [env-dir :- (schema/cond-pre File schema/Str)
+   task :- TaskOptions]
   (let [task-name (:name task)
-        extensions (cycle '(".rb" "" ".sh" ".exe" ".py"))
-        task-dir (make-task-dir env-dir (:module-name task))]
+        extensions '(".rb" "" ".sh" ".exe" ".py")
+        task-dir (fs/file env-dir "modules" (:module-name task) "tasks")]
     (fs/mkdirs task-dir)
     (when (:metadata? task)
       (fs/create (fs/file task-dir (str task-name ".json"))))
@@ -53,12 +51,12 @@
 
 (defn expected-tasks-info
   [tasks]
-  (->> tasks
-       (map (fn [{:keys [name module-name]}]
-              {:module {:name module-name}
-               :name (if (= "init" name)
-                       module-name
-                       (str module-name "::" name))}))))
+  (map (fn [{:keys [name module-name]}]
+         {:module {:name module-name}
+          :name (if (= "init" name)
+                  module-name
+                  (str module-name "::" name))})
+       tasks))
 
 (deftest ^:integration all-tasks-test
   (testing "requesting all tasks"
@@ -69,6 +67,9 @@
                      {:master-code-dir (.getAbsolutePath code-dir)
                       :master-conf-dir (.getAbsolutePath conf-dir)}))]
 
+      (testutils/create-file (fs/file conf-dir "puppet.conf")
+                             "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
+
       (tk-bootstrap/with-app-with-config
         app
         jruby-testutils/jruby-service-and-dependencies
@@ -77,8 +78,6 @@
               instance (jruby-testutils/borrow-instance jruby-service :test)
               jruby-puppet (:jruby-puppet instance)
               env-registry (:environment-registry instance)
-              _ (testutils/create-file (fs/file conf-dir "puppet.conf")
-                                       "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
 
               env-dir (fn [env-name]
                         (fs/file code-dir "environments" env-name))
@@ -101,12 +100,12 @@
 
           (try (create-env env-1-dir env-1-tasks)
                (testing "for environment that does exist"
-                 (is (= (-> env-1-tasks
+                 (is (= (->> env-1-tasks
                             expected-tasks-info
-                            set)
-                        (-> (get-tasks "env1")
-                            mc/sort-nested-info-maps
-                            set))
+                            (sort-by :name))
+                        (->> (get-tasks "env1")
+                             mc/sort-nested-info-maps
+                             (sort-by :name)))
                      "Unexpected info retrieved for 'env1'"))
 
                (testing "for environment that does not exist"
