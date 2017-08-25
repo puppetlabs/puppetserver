@@ -4,11 +4,11 @@ title: "Puppet Server: Automatic CRL refresh"
 canonical: "/puppetserver/latest/crl_refresh.html"
 ---
 
-Starting in version 2.8.0, Puppet Server can automatically reload an updated CRL into the running SSL context, so that the revocation of an agent's certificate no longer requires a restart of the service to take effect. Prior versions required an explicit restart or reload of this service to reload the CRL, resulting in some small amount of downtime to effect the revocation of a certificate. With automatic CRL refresh enabled, revocation is now transparent and requires no service downtime.
+Starting in version 2.8.0, Puppet Server can automatically reload an updated CRL into the running SSL context, so that the revocation of an agent's certificate no longer requires a restart of the service to take effect. Prior versions required an explicit restart or reload of this service to reload the CRL, resulting in some small amount of downtime to revoke a certificate. With automatic CRL refresh enabled, revocation is now transparent and requires no service downtime.
 
 ### Enabling
 
-To enable automatic CRL refresh, modify your Puppet Server services bootstrap configuration file to include the following line:
+To enable automatic CRL refresh, modify your Puppet Server services bootstrap configuration file, (`/etc/puppetlabs/puppetserver/services.d/ca.cfg` by default) to include the following line:
 
 `puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service/filesystem-watch-service`
 
@@ -20,7 +20,7 @@ _This feature is only recommended for systems running Java 8._ It exhibited some
 
 ### Implementation
 
-Automatic CRL refresh leverages the the [trapperkeeper file system watcher](https://github.com/puppetlabs/trapperkeeper-filesystem-watcher) to watch for changes to the CRL file, and loads the updated CRL on change.
+Automatic CRL refresh leverages the [trapperkeeper file system watcher](https://github.com/puppetlabs/trapperkeeper-filesystem-watcher) to watch for changes to the CRL file, and loads the updated CRL on change.
 
 ### Contributors
 
