@@ -12,6 +12,20 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 2.5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.4/release_notes.html).
 
+## Puppet Server 2.8.0
+
+Released August 31, 2017
+
+This is a feature release of Puppet Server.
+
+> **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
+
+-   [SERVER-1866](https://tickets.puppetlabs.com/browse/SERVER-1866) / [TK-149](https://tickets.puppetlabs.com/browse/TK-149)
+
+### New Feature: Automatic CRL refresh on certificate revocation
+
+Puppet Server 2.8.0 includes the ability to automatically refresh the CRL in the running SSL context when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required restarting the Puppet Server process before that revocation would be honored and the agent denied authentication. Now revocation will be effective psuedo-immediately (some threshold of milliseconds) without requiring a restart of the server. This feature is disabled by default in Puppet Server 2.8.0. See [automatic CRL refresh](./crl_refresh.markdown) for details on enabling.
+
 ## Puppet Server 2.7.2
 
 Released December 6, 2016.
