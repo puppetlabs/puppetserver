@@ -102,6 +102,14 @@ class Puppet::Server::Master
     Puppet::Server::Config.terminate_puppet_server
   end
 
+   # @return [Array, nil] an array of hashes describing tasks
+  def getTasks(env)
+    environment = @env_loader.get(env)
+    unless environment.nil?
+      Puppet::InfoService.tasks_per_environment(environment.name)
+    end
+  end
+
   private
 
   def self.getModules(env)

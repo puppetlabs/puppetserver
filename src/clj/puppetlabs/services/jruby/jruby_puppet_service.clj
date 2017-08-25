@@ -109,6 +109,10 @@
             tag
             cache-generation-id-before-tag-computed)))
 
+  (get-tasks
+    [this jruby-instance env-name]
+    (.getTasks jruby-instance env-name))
+
   (flush-jruby-pool!
    [this]
    (let [service-context (tk-services/service-context this)
