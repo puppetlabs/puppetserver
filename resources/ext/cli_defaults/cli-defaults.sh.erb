@@ -7,4 +7,4 @@ if [ ! -e "$JRUBY_JAR" ]; then
   return 1
 fi
 
-CLASSPATH="${CLASSPATH}:${JRUBY_JAR}"
+CLASSPATH="${CLASSPATH}:${JRUBY_JAR}:/opt/puppetlabs/server/data/<%= EZBake::Config[:real_name] %>/jars/*"
