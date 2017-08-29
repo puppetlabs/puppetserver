@@ -1,7 +1,7 @@
 ---
 layout: default
-title: "Puppet Server: Puppet API: Tasks"
-canonical: "/puppetserver/latest/puppet-api/v3/tasks.html"
+title: "Puppet Server: Puppet API: Task detail"
+canonical: "/puppetserver/latest/puppet-api/v3/task-detail.html"
 ---
 
 [deprecated WEBrick Puppet master]: https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html
@@ -17,6 +17,11 @@ added '.json' extension. For example, the "install" task in a module "apache" co
 consist of the executable file `install.rb` and the metadata file
 `install.json`. This task would have the display name "apache::install".
 
+This endpoint, `/puppet/v3/tasks/:module/:taskname`, allows you to fetch the
+details about a task: its metadata, if present, and its associated executable
+files. The file entries have additional data on how to fetch their contents so
+they can be downloaded and run.
+
 This endpoint is available only when the Puppet master is running Puppet Server, not
 on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It also ignores
 the Ruby-based Puppet master's authorization methods and configuration. See the
@@ -30,15 +35,16 @@ the regular expression `\A[a-z][a-z0-9_]*\z` (excluding extensions).
 A task will be listed if only metadata for it exists. How many files are
 associated with a task can be found by querying that task's details.
 
-### Does not read files
-This endpoint will not parse metadata or read any other files, only file names.
+### Does read files
+This endpoint will read in contents of metadata and other task files, so it may
+be more expensive than the `/tasks` endpoint.
 
 ### Uses `application/json` Content-Type
 
 The Content-Type in the response to an task API query is
 `application/json`.
 
-## `GET /puppet/v3/tasks?environment=:environment`
+## `GET /puppet/v3/tasks/:module/:task?environment=:environment`
 
 (Introduced in Puppet Server 5.1.0.)
 
@@ -65,32 +71,35 @@ environment will be returned for the call.
 #### GET request with results
 
 ```
-GET /puppet/v3/tasks?environment=env
+GET /puppet/v3/tasks/module/taskname?environment=env
 
 HTTP/1.1 200 OK
 Etag: b02ede6ecc432b134217a1cc681c406288ef9224
 Content-Type: application/json
 
-[
-  {
-    "name":"apache::install",
-    "environment":[
-      {
-        "name":"env",
-        "code_id":null
+{
+  "metadata": {
+    "description": "Install a package",
+    "parameters": {
+      "name": {
+        "description": "The package to install",
+        "type": "String[1]"
       }
-    ]
+    }
   },
-  {
-    "name":"dashboard::configure",
-    "environment":[
-      {
-        "name":"env",
-        "code_id":null
+  "files": [
+    {"filename": "taskname.rb",
+      "SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 1024,
+      "uri:" {
+        "path": "/puppet/v3/file_content/tasks/module/taskname.rb",
+        "params": {
+          "environment": "production"
+        }
       }
-    ]
-  }
-]
+    }
+  ]
+}
 ```
 
 #### Environment does not exist
@@ -99,7 +108,7 @@ If you send a request with an environment parameter that doesn't correspond to t
 directory environment on the server, the server returns an HTTP 404 (Not Found) error:
 
 ```
-GET /puppet/v3/tasks?environment=doesnotexist
+GET /puppet/v3/tasks/module/taskname?environment=doesnotexist
 
 HTTP/1.1 404 Not Found
 
@@ -109,7 +118,7 @@ Could not find environment 'doesnotexist'
 #### No environment given
 
 ```
-GET /puppet/v3/tasks
+GET /puppet/v3/tasks/module/taskname
 
 HTTP/1.1 400 Bad Request
 
@@ -119,7 +128,7 @@ You must specify an environment parameter.
 #### Environment parameter specified with no value
 
 ```
-GET /puppet/v3/tasks?environment=
+GET /puppet/v3/tasks/module/taskname?environment=
 
 HTTP/1.1 400 Bad Request
 
@@ -132,17 +141,45 @@ If the environment parameter in your request includes any characters that are
 not `A-Z`, `a-z`, `0-9`, or `_` (underscore), the server returns an HTTP 400 (Bad Request) error:
 
 ```
-GET /puppet/v3/tasks?environment=bog|us
+GET /puppet/v3/tasks/module/taskname?environment=bog|us
 
 HTTP/1.1 400 Bad Request
 
 The environment must be purely alphanumeric, not 'bog|us'
 ```
 
+#### Module does not exist
+
+If you send a request for a task in a module that doesn't correspond to the
+name of a module on the server, the server returns an HTTP 404 (Not Found)
+error:
+
+```
+GET /puppet/v3/tasks/doesnotexist/taskname?environment=env
+
+HTTP/1.1 404 Not Found
+
+Could not find module 'doesnotexist'
+```
+
+#### Task does not exist or does not have a valid name
+
+If you send a request for a task in that doesn't correspond to the name of a
+task on the server, but the module does exist, the server returns an HTTP 404
+(Not Found) error:
+
+```
+GET /puppet/v3/tasks/module/doesnotexist?environment=env
+
+HTTP/1.1 404 Not Found
+
+Could not find task 'doesnotexist'
+```
+
 ### Schema
 
-A tasks response body conforms to the
-[tasks schema](./tasks.json).
+A tasks detail response body conforms to the
+[task detail schema](./task_detail.json).
 
 ### Authorization
 
