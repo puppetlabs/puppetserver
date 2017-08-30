@@ -20,11 +20,25 @@ This is a feature release of Puppet Server.
 
 > **Warning:** If you're upgrading from Puppet Server 2.4 or earlier and have modified `bootstrap.cfg`, `/etc/sysconfig/puppetserver`, or `/etc/default/puppetserver`, see the [Puppet Server 2.5 release notes first](#potential-breaking-issues-when-upgrading-with-a-modified-bootstrapcfg) **before upgrading** for instructions on avoiding potential failures.
 
--   [SERVER-1866](https://tickets.puppetlabs.com/browse/SERVER-1866) / [TK-149](https://tickets.puppetlabs.com/browse/TK-149)
+
 
 ### New Feature: Automatic CRL refresh on certificate revocation
 
 Puppet Server 2.8.0 includes the ability to automatically refresh the CRL in the running SSL context when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required restarting the Puppet Server process before that revocation would be honored and the agent denied authentication. Now revocation will be effective psuedo-immediately (some threshold of milliseconds) without requiring a restart of the server. This feature is disabled by default in Puppet Server 2.8.0. See [automatic CRL refresh](./crl_refresh.markdown) for details on enabling.
+
+-   [SERVER-1866](https://tickets.puppetlabs.com/browse/SERVER-1866) / [TK-149](https://tickets.puppetlabs.com/browse/TK-149)
+
+### Bug fix: `generate()` function calls were logging `stdout`
+
+In a previous release, [SERVER-1571](https://tickets.puppetlabs.com/browse/SERVER-1571) updated the `generate()` function to merge `stdout` and `stderr` then return the combined value, but this change had an unintended side effect of logging both `stdout` and `stderr` to the `puppetserver` log file. This has been fixed so now only the `stderr` from a `generate()` function call is logged to `puppetserver.log`. If a command invoked through `generate()` does not write to `stderr` then no log will be generated.
+
+- [SERVER-1671](https://tickets.puppetlabs.com/browse/SERVER-1671)
+
+### Bug fix: The `puppetserver` service now only starts if the stop action was successful
+
+When the `sysvinit` script for Puppet Server was used to restart the `puppetserver` service, it would always try to start, even if stopping the service failed. In addition, there are some cases where `puppetserver` might not terminate immediately when sent a SIGKILL, which exacerbated the issue. This has been resolved with a grace period after the `puppetserver` service has been sent a SIGKILL to ensure that it did actually exit, and only attempting to start the service when the stop action succeeds.
+
+- [SERVER-1742](https://tickets.puppetlabs.com/browse/SERVER-1742)
 
 ## Puppet Server 2.7.2
 
