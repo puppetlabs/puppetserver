@@ -16,6 +16,7 @@ import java.util.List;
  *
  */
 public interface JRubyPuppet {
+    Map getTaskData(String environment, String module, String task);
     List getTasks(String environment);
     Map getClassInfoForEnvironment(String environment);
     List getModuleInfoForEnvironment(String environment);

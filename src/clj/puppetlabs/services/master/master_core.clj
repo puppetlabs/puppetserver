@@ -141,6 +141,12 @@
   {:name schema/Str
    :modules [EnvironmentModuleInfo]})
 
+(def TaskData
+  "Response from puppet's TaskInformationService for data on a single
+  task, *after* it has been converted to a Clojure map."
+  {:metadata_file (schema/maybe schema/Str)
+   :files [schema/Str]})
+
 (defn obj-or-ruby-symbol-as-string
   "If the supplied object is of type RubySymbol, returns a string
   representation of the RubySymbol.  Otherwise, just returns the original

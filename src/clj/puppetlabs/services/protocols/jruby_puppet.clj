@@ -58,6 +58,10 @@
     [this jruby-instance]
     "Get all module information for all environments")
 
+  (get-task-data
+    [this jruby-instance env-name module-name task-name]
+    "Get information (:metadata_file and :files) for a specific task. Returns a JRuby hash.")
+
   (get-tasks
     [this jruby-instance env-name]
     "Get list of task names and environment information.")
