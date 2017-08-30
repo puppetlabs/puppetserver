@@ -597,7 +597,7 @@
                   (environment-class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
                   (environment-module-handler request))
-      (comidi/GET ["/tasks" [#".*" :rest]] request
+      (comidi/GET ["/tasks"] request
                   (all-tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                   (static-file-content-handler request)))))
