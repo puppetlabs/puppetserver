@@ -1,4 +1,4 @@
-(def ps-version "2.8.0")
+(def ps-version "2.8.1-SNAPSHOT")
 (def tk-jetty9-version "1.8.1")
 
 (defn deploy-info
