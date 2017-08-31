@@ -28,7 +28,7 @@
                                        (get-in-config [:puppetserver :cacrl])))
           host-crl-file (.getCanonicalPath (fs/file
                                        (get-in-config [:puppetserver :hostcrl])))
-          watcher (create-watcher {:recursive true})]
+          watcher (create-watcher {:recursive false})]
       (ca/validate-settings! settings)
       (ca/initialize! settings)
       (log/info (i18n/trs "CA Service adding a ring handler"))
