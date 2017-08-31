@@ -12,7 +12,19 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.7/release_notes.html).
 
-## Puppet Server 5.0
+## Puppet Server 5.1.0
+
+Released September 12, 2017
+
+This is a feature release of Puppet Server.
+
+### New Feature: Automatic CRL refresh on certificate revocation
+
+Puppet Server 5.1.0 includes the ability to automatically refresh the CRL in the running SSL context when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required restarting the Puppet Server process before that revocation would be honored and the agent denied authentication. Now revocation will be effective psuedo-immediately (some threshold of milliseconds) without requiring a restart of the server.
+
+-   [SERVER-1933](https://tickets.puppetlabs.com/browse/SERVER-1933) / [TK-451](https://tickets.puppetlabs.com/browse/TK-451)
+
+# Puppet Server 5.0.0
 
 Released June 27, 2017.
 

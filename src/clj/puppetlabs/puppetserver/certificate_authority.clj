@@ -1,10 +1,11 @@
 (ns puppetlabs.puppetserver.certificate-authority
   (:import [org.apache.commons.io IOUtils]
            [java.util Date]
-           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File]
+           [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
            [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
-           (java.security KeyPair))
+           (java.security KeyPair)
+           (java.security.cert CRLException))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -371,6 +372,24 @@
   (fs/create (fs/file path))
   (spit path (format-serial-number 1)))
 
+(schema/defn write-local-cacrl! :- (schema/maybe Exception)
+  "Spits the contents of 'cacrl' string to the 'localcacrl' file location if
+  the 'cacrl' string contains valid CRL pem data. On success, return nil.
+  On failure, return the Exception captured from the failed attempt to parse
+  the CRL pem data."
+  [localcacrl :- schema/Str
+   cacrl :- schema/Str]
+  (let [crl-reader (StringReader. cacrl)]
+    (try
+      (when (zero? (count (utils/pem->crls crl-reader)))
+        (throw (CRLException. "No CRL data found")))
+      (spit localcacrl cacrl)
+      nil
+      (catch IOException e
+        e)
+      (catch CRLException e
+        e))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
 
@@ -730,26 +749,51 @@
   "Ensure a local copy of the CA cert is available on disk.  cacert is the base
   CA cert file to copy from and localcacert is where the CA cert file should be
   copied to."
-  ([cacert :- schema/Str
-    localcacert :- schema/Str]
-   (if (and (fs/exists? cacert) (not (fs/exists? localcacert)))
-     (do
-       (ks/mkdirs! (fs/parent localcacert))
-       (fs/copy cacert localcacert))
-     (if-not (fs/exists? localcacert)
-       (throw (IllegalStateException.
+  [cacert :- schema/Str
+   localcacert :- schema/Str]
+  (if (and (fs/exists? cacert) (not (fs/exists? localcacert)))
+    (do
+      (ks/mkdirs! (fs/parent localcacert))
+      (fs/copy cacert localcacert))
+    (if-not (fs/exists? localcacert)
+      (throw (IllegalStateException.
                (i18n/trs ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy it from"
-                    localcacert cacert)))))))
+                    localcacert cacert))))))
 
 (schema/defn ^:always-validate retrieve-ca-crl!
   "Ensure a local copy of the CA CRL, if one exists, is available on disk.
   cacrl is the base CRL file to copy from and localcacrl is where the CRL file
   should be copied to."
-  ([cacrl :- schema/Str
-    localcacrl :- schema/Str]
-    (when (fs/exists? cacrl)
-      (ks/mkdirs! (fs/parent localcacrl))
-      (fs/copy cacrl localcacrl))))
+  [cacrl :- schema/Str
+   localcacrl :- schema/Str]
+  (when (not= cacrl localcacrl)
+    (let [max-attempts 25]
+      (when (fs/exists? cacrl)
+        (ks/mkdirs! (fs/parent localcacrl))
+        ;; Make up to 'max-attempts' tries to copy the cacrl file to the
+        ;; localcacrl file. The content of the cacrl file is read into memory
+        ;; and parsed for valid CRL pem content during each attempt. The content
+        ;; in memory is written to the localcacrl file only if it is valid. This
+        ;; validation is done to protect against a partially written (which could
+        ;; happen if an asynchronous revocation is in progress) or currupt cacrl
+        ;; file being copied.
+        (loop [attempts-left max-attempts]
+           (let [cacrl-as-string (slurp cacrl)]
+             (when-let [write-exception (write-local-cacrl!
+                                          localcacrl
+                                          cacrl-as-string)]
+               (if (zero? attempts-left)
+                 (log/error (format "%s\n%s\n%s"
+                                    (i18n/trs
+                                      "Unable to synchronize crl file {0} to {1}: {2}"
+                                      cacrl localcacrl (.getMessage write-exception))
+                                    (i18n/trs
+                                      "Recent changes to the CRL may not have taken effect.")
+                                    (i18n/trs
+                                      "To load the updated CRL, reload or restart the Puppet Server service.")))
+                 (do
+                   (Thread/sleep 100)
+                   (recur (dec attempts-left)))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Autosign

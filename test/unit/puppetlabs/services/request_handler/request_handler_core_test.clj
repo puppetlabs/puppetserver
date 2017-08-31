@@ -31,7 +31,8 @@
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
-            [cheshire.core :as cheshire]))
+            [cheshire.core :as cheshire]
+            [puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service :as filesystem-watch-service]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Test Data
@@ -327,6 +328,7 @@
                      routing-service/webrouting-service
                      custom-vcs
                      tk-scheduler/scheduler-service
+                     filesystem-watch-service/filesystem-watch-service
                      metrics/metrics-service
                      jruby-metrics-service/jruby-metrics-service
                      status-service/status-service]]
