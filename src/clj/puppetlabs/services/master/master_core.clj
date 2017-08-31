@@ -3,6 +3,7 @@
            (clojure.lang IFn)
            (java.util List Map Map$Entry)
            (org.jruby RubySymbol)
+           (org.jruby.exceptions RaiseException)
            (com.codahale.metrics MetricRegistry Gauge)
            (java.lang.management ManagementFactory))
   (:require [me.raynes.fs :as fs]
@@ -25,7 +26,9 @@
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.http.client.metrics :as http-client-metrics]
             [puppetlabs.http.client.common :as http-client-common]
-            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
+            [clojure.java.io :as io]
+            [clojure.tools.logging :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -146,6 +149,15 @@
   task, *after* it has been converted to a Clojure map."
   {:metadata_file (schema/maybe schema/Str)
    :files [schema/Str]})
+
+(def TaskDetails
+  "A filled-in map of information about a task."
+  {:metadata {schema/Str schema/Any}
+   :files [{:filename schema/Str
+            :sha256 schema/Str
+            :size_bytes schema/Int
+            :uri {:path schema/Str
+                  :params {:environment schema/Str}}}]})
 
 (defn obj-or-ruby-symbol-as-string
   "If the supplied object is of type RubySymbol, returns a string
@@ -341,10 +353,48 @@
     (->> (map format-task info-from-jruby)
          (middleware-utils/json-response 200))))
 
+(defn describe-task-file
+  [env-name module-name file]
+  (let [size (fs/size file)
+        sha256 (ks/file->sha256 (io/file file))
+        base-name (fs/base-name file)]
+    {:filename base-name
+     :sha256 sha256
+     :size_bytes size
+     :uri {:path (str "/puppet/v3/file_content/tasks/" module-name "/" base-name)
+           :params {:environment env-name}}}))
+
+(schema/defn ^:always-validate
+  task-data->task-details :- TaskDetails
+  "Fills in a bare TaskData map by examining the files it refers to,
+  returning TaskDetails."
+  [task-data :- TaskData
+   env-name :- schema/Str
+   module-name :- schema/Str
+   task-name :- schema/Str]
+  (let [?metadata (try (some-> task-data :metadata_file slurp cheshire/decode)
+                    (catch Exception e
+                      (log/warn e
+                                (i18n/tru "An exception occurred while reading the metadata file for the ''{0}'' task"
+                                          (str module-name "::" task-name)))))]
+    {:metadata (or ?metadata {})
+     :files (mapv (partial describe-task-file env-name module-name)
+                  (:files task-data))}))
+
 (schema/defn environment-not-found :- ringutils/RingResponse
   "Ring handler to provide a standard error when an environment is not found."
   [environment :- schema/Str]
   (rr/not-found (i18n/tru "Could not find environment ''{0}''" environment)))
+
+(schema/defn module-not-found :- ringutils/RingResponse
+  "Ring handler to provide a standard error when a module is not found."
+  [module :- schema/Str]
+  (rr/not-found (i18n/tru "Could not find module ''{0}''" module)))
+
+(schema/defn task-not-found :- ringutils/RingResponse
+  "Ring handler to provide a standard error when a task is not found."
+  [task :- schema/Str]
+  (rr/not-found (i18n/tru "Could not find task ''{0}''" task)))
 
 (schema/defn ^:always-validate
   environment-class-info-fn :- IFn
@@ -437,6 +487,69 @@
         (environment-not-found environment)))))
 
 (schema/defn ^:always-validate
+  task-details :- TaskDetails
+  "Returns a TaskDetails map for the task matching the given environment,
+  module, and name.
+
+  Will throw a JRuby RaiseException with (EnvironmentNotFound),
+  (MissingModule), or (TaskNotFound) if any of those conditions occur."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   jruby-instance
+   environment-name :- schema/Str
+   module-name :- schema/Str
+   task-name :- schema/Str]
+  (-> (jruby-protocol/get-task-data jruby-service
+                                    jruby-instance
+                                    environment-name
+                                    module-name
+                                    task-name)
+      sort-nested-info-maps
+      (task-data->task-details environment-name module-name task-name)))
+
+(schema/defn exception-matches? :- schema/Bool
+  [^Exception e :- Exception
+   pattern :- schema/Regex]
+  (->> e
+       .getMessage
+       (re-find pattern)
+       boolean))
+
+(defn handle-task-details-exception
+  "Given a JRuby RaiseException arising from a call to task-details, constructs
+  a 4xx error response if appropriate, otherwise re-throws."
+  [jruby-exception environment module task]
+  (cond
+    (exception-matches? jruby-exception #"^\(EnvironmentNotFound\)")
+    (environment-not-found environment)
+
+    (exception-matches? jruby-exception #"^\(MissingModule\)")
+    (module-not-found module)
+
+    (exception-matches? jruby-exception #"^\(TaskNotFound\)")
+    (task-not-found task)
+
+    :else
+    (throw jruby-exception)))
+
+(schema/defn ^:always-validate
+  task-details-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for detailed task information."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)
+          module (get-in request [:route-params :module-name])
+          task (get-in request [:route-params :task-name])]
+      (try (->> (task-details jruby-service
+                              (:jruby-instance request)
+                              environment
+                              module
+                              task)
+                (middleware-utils/json-response 200))
+        (catch RaiseException e
+          (handle-task-details-exception e environment module task))))))
+
+(schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
   header on an incoming environment_classes request matches the last Etag
@@ -486,6 +599,15 @@
   "Handler for processing an incoming all_tasks Ring request"
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (-> (all-tasks-fn jruby-service)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-environment-validation
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  task-details-handler :- IFn
+  "Handler for processing an incoming /tasks/:module/:task-name Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (task-details-fn jruby-service)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-environment-validation
       jruby-request/wrap-with-error-handling))
@@ -591,11 +713,17 @@
    environment-class-cache-enabled :- schema/Bool]
   (let [environment-class-handler
         (environment-class-handler jruby-service
-                                   environment-class-cache-enabled)
+                                   environment-class-cache-enabled),
+
         environment-module-handler
         (environment-module-handler jruby-service)
+
         all-tasks-handler
         (all-tasks-handler jruby-service)
+
+        task-details-handler
+        (task-details-handler jruby-service)
+
         static-file-content-handler
         (static-file-content-request-handler get-code-content-fn)]
     (comidi/routes
@@ -603,6 +731,8 @@
                   (environment-class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
                   (environment-module-handler request))
+      (comidi/GET ["/tasks/" :module-name "/" :task-name] request
+                  (task-details-handler request))
       (comidi/GET ["/tasks"] request
                   (all-tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request

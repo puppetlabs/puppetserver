@@ -203,3 +203,80 @@
 
                (finally
                  (jruby-testutils/return-instance jruby-service instance :test))))))))
+
+(deftest ^:integration task-details-test
+  (testing "getting details for a specific task"
+    (let [code-dir (ks/temp-dir)
+          conf-dir (ks/temp-dir)]
+      (testutils/create-file (fs/file conf-dir "puppet.conf") puppet-conf-file-contents)
+
+      (tk-bootstrap/with-app-with-config
+        app
+        jruby-testutils/jruby-service-and-dependencies
+        (puppet-tk-config code-dir conf-dir)
+        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+              instance (jruby-testutils/borrow-instance jruby-service :test)
+              jruby-puppet (:jruby-puppet instance)
+              tasks [{:name "install_mods"
+                      :module-name "apache"
+                      :metadata? true
+                      :number-of-files 1}
+                     {:name "init"
+                      :module-name "apache"
+                      :metadata? false
+                      :number-of-files 1}
+                     {:name "about"
+                      :module-name "apache"
+                      :metadata? true
+                      :number-of-files 0}]
+              get-task-details (fn [env module task]
+                                 (mc/task-details jruby-service jruby-puppet env module task))]
+
+          (try (create-env (env-dir code-dir "production") tasks)
+
+            (testing "when the environment exists"
+              (testing "and the module exists"
+                (testing "and the task exists"
+                  (testing "with metadata and payload files"
+                    (let [expected-info {:metadata {"meta" "data"}
+                                         :files [{:filename "install_mods.rb"
+                                                  :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                                  :size_bytes 0
+                                                  :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
+                                                        :params {:environment "production"}}}]}]
+                      (is (= expected-info
+                             (get-task-details "production" "apache" "install_mods")))))
+
+                  (testing "without a metadata file"
+                    (let [expected-info {:metadata {}
+                                         :files [{:filename "init.rb"
+                                                  :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                                  :size_bytes 0
+                                                  :uri {:path "/puppet/v3/file_content/tasks/apache/init.rb"
+                                                        :params {:environment "production"}}}]}]
+                      (is (= expected-info
+                             (get-task-details "production" "apache" "init")))))
+
+                  (testing "with no payload files"
+                    (let [expected-info {:metadata {"meta" "data"}
+                                         :files []}]
+                      (is (= expected-info
+                             (get-task-details "production" "apache" "about"))))))
+
+                (testing "but the task doesn't exist"
+                  (is (thrown-with-msg? RaiseException
+                                        #"(TaskNotFound)"
+                                        (get-task-details "production" "apache" "refuel")))))
+
+              (testing "but the module doesn't exist"
+                (is (thrown-with-msg? RaiseException
+                                      #"(MissingModule)"
+                                      (get-task-details "production" "mahjoule" "heat")))))
+
+            (testing "when the environment doesn't exist"
+              (is (thrown-with-msg? RaiseException
+                                    #"(EnvironmentNotFound)"
+                                    (get-task-details "DNE" "module" "missing"))))
+
+            (finally
+              (jruby-testutils/return-instance jruby-service instance :test))))))))
