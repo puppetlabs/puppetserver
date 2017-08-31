@@ -75,16 +75,6 @@
        ~config
        ~@body)))
 
-(defmacro with-puppetserver-running-with-additional-services
-  [app extra-services config-overrides & body]
-  (let [config (load-dev-config-with-overrides config-overrides)]
-    `(let [services# (into (tk-bootstrap/parse-bootstrap-config! ~dev-bootstrap-file) ~extra-services)]
-       (tk-testutils/with-app-with-config
-         ~app
-         services#
-         ~config
-         ~@body))))
-
 (defmacro with-puppetserver-running-with-services-and-mock-jrubies
   "This macro should be used with caution; it makes tests run much more quickly,
   but you should be careful to make sure that the mocking won't be subverting
