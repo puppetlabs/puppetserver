@@ -180,18 +180,23 @@
   (write-pp-file foo-pp-contents "foo"))
 
 (schema/defn ^:always-validate write-tasks-files :- schema/Str
-  [module-name :- schema/Str
-   task-name :- schema/Str
-   task-file-contents :- schema/Str]
-  (let [metadata-contents {"description" "This is a description. It describes a thing."}
-        module-dir (create-module module-name {})
-        tasks-dir (fs/file module-dir "tasks")
-        metadata-file-path (fs/file tasks-dir task-name ".json")]
-    (create-file metadata-file-path
-                 (json/encode metadata-contents))
-    (create-file (fs/file tasks-dir task-name ".sh")
-                 task-file-contents)
-    (.getCanonicalPath metadata-file-path)))
+  ([module-name :- schema/Str
+    task-name :- schema/Str
+    task-file-contents :- schema/Str
+    task-metadata :- {schema/Str schema/Str}]
+   (let [module-dir (create-module module-name {})
+         tasks-dir (fs/file module-dir "tasks")
+         metadata-file-path (fs/file tasks-dir (str task-name ".json"))]
+     (create-file metadata-file-path
+                  (json/encode task-metadata))
+     (create-file (fs/file tasks-dir (str task-name ".sh"))
+                  task-file-contents)
+     (.getCanonicalPath metadata-file-path)))
+  ([module-name :- schema/Str
+    task-name :- schema/Str
+    task-file-contents :- schema/Str]
+   (write-tasks-files module-name task-name task-file-contents
+                      {"description" "This is a description. It describes a thing."})))
 
 (defn create-env-conf
   [env-dir content]

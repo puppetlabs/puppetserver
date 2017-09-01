@@ -109,6 +109,10 @@
             tag
             cache-generation-id-before-tag-computed)))
 
+  (get-task-data
+   [this jruby-instance env-name module-name task-name]
+   (.getTaskData jruby-instance env-name module-name task-name))
+
   (get-tasks
     [this jruby-instance env-name]
     (.getTasks jruby-instance env-name))

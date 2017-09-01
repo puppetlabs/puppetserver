@@ -110,6 +110,13 @@ class Puppet::Server::Master
     end
   end
 
+  def getTaskData(environment_name, module_name, task_name)
+    # the 'init' task is special-cased to be just the name of the module,
+    # otherwise we have to request 'module::taskname'
+    qualified_task_name = task_name == 'init' ? module_name : "#{module_name}::#{task_name}"
+    Puppet::InfoService.task_data(environment_name, module_name, qualified_task_name)
+  end
+
   private
 
   def self.getModules(env)
