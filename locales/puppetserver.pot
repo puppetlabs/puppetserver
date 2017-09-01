@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 96f8835d1c8e6326e715590c976abb797d43c75e\n"
+"X-Git-Ref: 145d492eb16ad0f6bdda63d000ea05e2f20b78e9\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -529,7 +529,20 @@ msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"An exception occurred while reading the metadata file for the ''{0}'' task"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Could not find environment ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Could not find module ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Could not find task ''{0}''"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
