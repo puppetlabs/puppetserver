@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 74337f8b5ef88eedf4ae6e9da43315f698ad8b55\n"
+"X-Git-Ref: 96f8835d1c8e6326e715590c976abb797d43c75e\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -135,6 +135,18 @@ msgstr ""
 msgid ""
 ":localcacert ({0}) could not be found and no file at :cacert ({1}) to copy "
 "it from"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Unable to synchronize crl file {0} to {1}: {2}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Recent changes to the CRL may not have taken effect."
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "To load the updated CRL, reload or restart the Puppet Server service."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
