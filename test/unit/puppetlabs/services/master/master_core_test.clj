@@ -3,7 +3,6 @@
             [clojure.string :refer [split]]
             [cheshire.core :as json]
             [puppetlabs.services.master.master-core :refer :all]
-            [ring.mock.request :as mock]
             [schema.test :as schema-test]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
@@ -41,7 +40,7 @@
 
 (defn app-request
   ([app path] (app-request app :get path))
-  ([app method path] (app (mock/request method path))))
+  ([app method path] (app (ring-mock/request method path))))
 
 (deftest test-master-routes
   (let [handler     (fn ([req] {:request req}))
@@ -52,7 +51,7 @@
     (is (= 200 (:status (app (-> {:request-method :post
                                   :uri "/v3/catalog/bar"
                                   :content-type "application/x-www-form-urlencoded"}
-                                 (mock/body "environment=environment1234"))))))
+                                 (ring-mock/body "environment=environment1234"))))))
     (is (nil? (request "/foo")))
     (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
@@ -279,7 +278,7 @@
           resp        (app (-> {:request-method :put
                                 :content-type "application/octet-stream"
                                 :uri "/v3/file_bucket_file/bar"}
-                               (mock/body "foo")))]
+                               (ring-mock/body "foo")))]
       (is (= "application/octet-stream"
              (get-in resp [:request :content-type])))
 
@@ -288,7 +287,7 @@
         (let [resp (app (-> {:request-method :put
                           :content-type "something-crazy/for-content-type"
                           :uri "/v3/file_bucket_file/bar"}
-                            (mock/body "foo")))]
+                            (ring-mock/body "foo")))]
           (is (= "something-crazy/for-content-type"
                  (get-in resp [:request :content-type]))))))))
 
