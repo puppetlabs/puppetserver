@@ -14,7 +14,7 @@ For release notes on versions of Puppet Server prior to Puppet Server 5, see [do
 
 ## Puppet Server 5.1.0
 
-Released September 12, 2017
+Released September 13, 2017
 
 This is a feature and bug-fix release of Puppet Server.
 
