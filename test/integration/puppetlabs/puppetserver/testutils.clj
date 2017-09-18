@@ -183,12 +183,11 @@
   ([module-name :- schema/Str
     task-name :- schema/Str
     task-file-contents :- schema/Str
-    task-metadata :- {schema/Str schema/Str}]
+    task-metadata :- schema/Any]
    (let [module-dir (create-module module-name {})
          tasks-dir (fs/file module-dir "tasks")
          metadata-file-path (fs/file tasks-dir (str task-name ".json"))]
-     (create-file metadata-file-path
-                  (json/encode task-metadata))
+     (create-file metadata-file-path task-metadata)
      (create-file (fs/file tasks-dir (str task-name ".sh"))
                   task-file-contents)
      (.getCanonicalPath metadata-file-path)))
@@ -196,7 +195,7 @@
     task-name :- schema/Str
     task-file-contents :- schema/Str]
    (write-tasks-files module-name task-name task-file-contents
-                      {"description" "This is a description. It describes a thing."})))
+                      (json/encode {"description" "This is a description. It describes a thing."}))))
 
 (defn create-env-conf
   [env-dir content]

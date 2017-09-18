@@ -5,7 +5,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.puppetserver.testutils :as testutils]
-            [cheshire.core :as cheshire]
+            [cheshire.core :as json]
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
@@ -53,7 +53,7 @@
 
 (defn parse-response
   [response]
-  (-> response :body cheshire/parse-string))
+  (-> response :body json/parse-string))
 
 (defn sort-tasks
   [tasks]
@@ -89,50 +89,58 @@
                    (sort-tasks (parse-response response))))))))))
 
 (deftest ^:integration task-details
-  (testing "full stack task metadata smoke test"
+  (testing "full stack task metadata smoke test:"
     (bootstrap/with-puppetserver-running-with-config
       app
       puppet-config
       (let [metadata {"description" "This is a test task"
-                      "output" "'Hello, world!'"}
-            _ (testutils/write-tasks-files "shell" "poc" "echo 'Hello, world!'" metadata)
-            response (get-task-details "production" "shell::poc")
-            code (:status response)]
-        (testing "a successful status code is returned"
-          (is (= 200 code)
-              (str "unexpected status code " code " for response: "
-                   (ks/pprint-to-string response))))
+                      "output" "'Hello, world!'"}]
+        (testutils/write-tasks-files "shell" "poc" "echo 'Hello, world!'" (json/encode metadata))
 
-        (testing "the expected response body is returned"
-          (let [expected-response {"metadata" metadata
-                                   "files" [{"filename" "poc.sh"
-                                             "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
-                                             "size_bytes" 20
-                                             "uri" {"path" "/puppet/v3/file_content/tasks/shell/poc.sh"
-                                                    "params" {"environment" "production"}}}]}]
-            (is (= expected-response (parse-response response)))))
+        (testing "on a successful request,"
+          (let [response (get-task-details "production" "shell::poc")
+                code (:status response)]
+            (testing "a successful status code is returned"
+              (is (= 200 code)
+                  (str "unexpected status code " code " for response: "
+                       (ks/pprint-to-string response))))
 
-        (testing "the expected error is returned"
-          (let [is-404-with? (fn [pattern env full-task-name]
+            (testing "the expected response body is returned"
+              (let [expected-response {"metadata" metadata
+                                       "files" [{"filename" "poc.sh"
+                                                 "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
+                                                 "size_bytes" 20
+                                                 "uri" {"path" "/puppet/v3/file_content/tasks/shell/poc.sh"
+                                                        "params" {"environment" "production"}}}]}]
+                (is (= expected-response (parse-response response)))))))
+
+        (testing "on a request that should error,"
+          (let [assert-task-error (fn [status pattern env full-task-name]
                                (let [result (get-task-details env full-task-name)]
-                                 (is (= 404 (:status result)))
+                                 (is (= status (:status result)))
                                  (is (re-find pattern (:body result)))))]
-            (testing "when the environment does not exist"
-              (is-404-with? #"Could not find environment"
-                            "nopers" "shell::poc"))
+            (testutils/write-tasks-files "mysql" "test" "echo 'Hello, world!'" "This isn't JSON.")
 
-            (testing "when the module does not exist"
-              (is-404-with? #"Could not find module"
-                            "production" "nomodule::poc"))
+            (testing "returns 404 when the environment does not exist"
+              (assert-task-error 404 #"Could not find environment"
+                                 "nopers" "shell::poc"))
 
-            (testing "when the module name is invalid"
-              (is-404-with? #"Could not find module"
-                            "production" "000::poc"))
+            (testing "returns 404 when the module does not exist"
+              (assert-task-error 404 #"Could not find module"
+                                 "production" "nomodule::poc"))
 
-            (testing "when the task does not exist"
-              (is-404-with? #"Could not find task"
-                            "production" "shell::notask"))
+            (testing "returns 404 when the module name is invalid"
+              (assert-task-error 404 #"Could not find module"
+                                 "production" "000::poc"))
 
-            (testing "when the task name is invalid"
-              (is-404-with? #"Could not find task"
-                            "production" "shell::..."))))))))
+            (testing "returns 404 when the task does not exist"
+              (assert-task-error 404 #"Could not find task"
+                                 "production" "shell::notask"))
+
+            (testing "returns 404 when the task name is invalid"
+              (assert-task-error 404 #"Could not find task"
+                                 "production" "shell::..."))
+
+            (testing "returns 500 when the metadata file is unparseable"
+              (assert-task-error 500 #"invalid-task-metadata"
+                                 "production" "mysql::test"))))))))
