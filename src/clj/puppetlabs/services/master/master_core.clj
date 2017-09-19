@@ -12,6 +12,7 @@
             [puppetlabs.comidi :as comidi]
             [ring.util.response :as rr]
             [schema.core :as schema]
+            [slingshot.slingshot :refer [try+ throw+]]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.kitchensink.core :as ks]
@@ -374,9 +375,10 @@
    task-name :- schema/Str]
   (let [?metadata (try (some-> task-data :metadata_file slurp cheshire/decode)
                     (catch Exception e
-                      (log/warn e
-                                (i18n/tru "An exception occurred while reading the metadata file for the ''{0}'' task"
-                                          (str module-name "::" task-name)))))]
+                      (throw+
+                        {:kind :invalid-task-metadata
+                         :msg (i18n/tru "The metadata file for the ''{0}'' task was not parseable as JSON"
+                                        (str module-name "::" task-name))})))]
     {:metadata (or ?metadata {})
      :files (mapv (partial describe-task-file env-name module-name)
                   (:files task-data))}))
@@ -514,7 +516,7 @@
        (re-find pattern)
        boolean))
 
-(defn handle-task-details-exception
+(defn handle-task-details-jruby-exception
   "Given a JRuby RaiseException arising from a call to task-details, constructs
   a 4xx error response if appropriate, otherwise re-throws."
   [jruby-exception environment module task]
@@ -540,14 +542,19 @@
     (let [environment (jruby-request/get-environment-from-request request)
           module (get-in request [:route-params :module-name])
           task (get-in request [:route-params :task-name])]
-      (try (->> (task-details jruby-service
-                              (:jruby-instance request)
-                              environment
-                              module
-                              task)
-                (middleware-utils/json-response 200))
-        (catch RaiseException e
-          (handle-task-details-exception e environment module task))))))
+      (try+ (->> (task-details jruby-service
+                               (:jruby-instance request)
+                               environment
+                               module
+                               task)
+                 (middleware-utils/json-response 200))
+            (catch [:kind :invalid-task-metadata]
+              {:keys [kind msg]}
+              (middleware-utils/json-response 500
+                                              {:kind kind
+                                               :msg msg}))
+            (catch RaiseException e
+              (handle-task-details-jruby-exception e environment module task))))))
 
 (schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
