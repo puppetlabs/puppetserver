@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 145d492eb16ad0f6bdda63d000ea05e2f20b78e9\n"
+"X-Git-Ref: ca5310480c9597a71adfba33b707061ca9aec8d2\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -529,8 +529,7 @@ msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
-msgid ""
-"An exception occurred while reading the metadata file for the ''{0}'' task"
+msgid "The metadata file for the ''{0}'' task was not parseable as JSON"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
