@@ -40,7 +40,7 @@ In previous versions of Puppet Server, there was no designed way to add Java JAR
 
 -   [SERVER-1755](https://tickets.puppetlabs.com/browse/SERVER-1755): Previous versions of Puppet Server did not correctly handle Puppet agent data sent in Msgpack format (`application/x-msgpack`), because Server interpreted the binary data as UTF-8 content. Server 5.1.0 resolves this issue by passing Msgpack content along as raw binary data, just as it came in.
 
-# Puppet Server 5.0.0
+## Puppet Server 5.0.0
 
 Released June 27, 2017.
 
