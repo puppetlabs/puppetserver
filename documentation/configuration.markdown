@@ -102,6 +102,12 @@ puppetlabs.services.ca.certificate-authority-service/certificate-authority-servi
 #puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service
 ~~~
 
+## Adding Java JARs
+
+Starting with Puppet Server 5.1.0, you can provide Java JARs to be loaded upon Puppet Server's startup.
+
+When launched, Server automatically loads any JARs placed in `/opt/puppetlabs/server/data/puppetserver/jars` into the `classpath`. JARs placed here will not be modified or removed when upgrading Puppet Server.
+
 ## Configuring the JRuby Version
 
 By default, Puppet Server uses a version of the JRuby 1.7.x series, running in a mode which conforms to MRI/Ruby language version 1.9. Starting with the Puppet Server 5.0 release, however, you can configure Puppet Server to instead use the JRuby 9k series (9.x.y.z). The Ruby language version supported by each JRuby 9k release is expected to evolve over time, tracking newer Ruby 2.x language versions. For example, the JRuby 9.1.8.0 release conforms to Ruby language version 2.3.1, whereas 9.1.9.0 conforms to Ruby language version 2.3.3.

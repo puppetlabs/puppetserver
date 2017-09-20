@@ -10,19 +10,35 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.7/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
 ## Puppet Server 5.1.0
 
-Released September 12, 2017
+Released September 13, 2017
 
-This is a feature release of Puppet Server.
+This is a feature and bug-fix release of Puppet Server.
 
 ### New Feature: Automatic CRL refresh on certificate revocation
 
-Puppet Server 5.1.0 includes the ability to automatically refresh the CRL in the running SSL context when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required restarting the Puppet Server process before that revocation would be honored and the agent denied authentication. Now revocation will be effective psuedo-immediately (some threshold of milliseconds) without requiring a restart of the server.
+Puppet Server 5.1.0 includes the ability to automatically refresh the certificate revocation list (CRL) when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required [restarting or reloading](./restarting.markdown) the Puppet Server process before that revocation would be honored and the agent denied authentication. Revocation is now effective within milliseconds and does not require restarting server.
 
 -   [SERVER-1933](https://tickets.puppetlabs.com/browse/SERVER-1933) / [TK-451](https://tickets.puppetlabs.com/browse/TK-451)
+
+### New Feature: Autosigning supports CA certificate bundles
+
+Previous version of Puppet Server did not support autosigning with certificate authority (CA) certificate bundles, which contain multiple certificates. When attempting to pass a bundle, Server would output an error indicating that "the PEM stream must contain exactly 1 certificate". Puppet Server 5.1.0 adds support for autosigning with CA certificate bundles.
+
+-   [SERVER-1315](https://tickets.puppetlabs.com/browse/SERVER-1315)
+
+### New Feature: Adminstrators can add Java JARs to be loaded on startup
+
+In previous versions of Puppet Server, there was no designed way to add Java JARs to be loaded by Puppet Server on startup, for instance to provide native extensions required by certain gems. Server 5.1.0 adds a new directory, `/opt/puppetlabs/server/data/puppetserver/jars`, and loads any JARs placed in this directory to the `classpath` when `puppetserver` is started. JARs placed here will not be modified or removed when upgrading Puppet Server.
+
+-   [SERVER-249](https://tickets.puppetlabs.com/browse/SERVER-249)
+
+### Bug fixes
+
+-   [SERVER-1755](https://tickets.puppetlabs.com/browse/SERVER-1755): Previous versions of Puppet Server did not correctly handle Puppet agent data sent in Msgpack format (`application/x-msgpack`), because Server interpreted the binary data as UTF-8 content. Server 5.1.0 resolves this issue by passing Msgpack content along as raw binary data, just as it came in.
 
 # Puppet Server 5.0.0
 
