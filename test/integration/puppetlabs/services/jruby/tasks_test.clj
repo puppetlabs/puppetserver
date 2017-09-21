@@ -14,7 +14,42 @@
   (:import [java.io File]
            [org.jruby.exceptions RaiseException]))
 
+(schema/defn puppet-tk-config
+  [code-dir :- File, conf-dir :- File]
+  (jruby-testutils/jruby-puppet-tk-config
+   (jruby-testutils/jruby-puppet-config
+    {:master-code-dir (.getAbsolutePath code-dir)
+     :master-conf-dir (.getAbsolutePath conf-dir)})))
+
+(def puppet-conf-file-contents
+  "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
+
+(def ^:dynamic *code-dir* nil)
+(def ^:dynamic *jruby-service* nil)
+(def ^:dynamic *jruby-puppet* nil)
+
+(defn with-running-server
+  [f]
+  (let [code-dir (ks/temp-dir)
+        conf-dir (ks/temp-dir)]
+    (testutils/create-file (fs/file conf-dir "puppet.conf") puppet-conf-file-contents)
+    (tk-bootstrap/with-app-with-config
+      app
+      jruby-testutils/jruby-service-and-dependencies
+      (puppet-tk-config code-dir conf-dir)
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            instance (jruby-testutils/borrow-instance jruby-service :test)
+            jruby-puppet (:jruby-puppet instance)]
+        (binding [*code-dir* code-dir
+                  *jruby-service* jruby-service
+                  *jruby-puppet* jruby-puppet]
+          (try
+            (f)
+            (finally
+              (jruby-testutils/return-instance jruby-service instance :test))))))))
+
 (use-fixtures :once schema-test/validate-schemas)
+(use-fixtures :each with-running-server)
 
 (def TaskOptions
   {:name schema/Str
@@ -74,209 +109,153 @@
                   (str module-name "::" name))})
        tasks))
 
-(schema/defn puppet-tk-config
-  [code-dir :- File, conf-dir :- File]
-  (jruby-testutils/jruby-puppet-tk-config
-   (jruby-testutils/jruby-puppet-config
-    {:master-code-dir (.getAbsolutePath code-dir)
-     :master-conf-dir (.getAbsolutePath conf-dir)})))
-
-(def puppet-conf-file-contents
-  "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
-
 (deftest ^:integration task-data-test
   (testing "requesting data about a specific task"
-    (let [code-dir (ks/temp-dir)
-          conf-dir (ks/temp-dir)]
+    (let [tasks [{:name "install"
+                  :module-name "apache"
+                  :metadata? true
+                  :number-of-files 2}
+                 {:name "init"
+                  :module-name "apache"
+                  :metadata? false
+                  :number-of-files 1}]
+          get-task-data (fn [env module task]
+                          (-> (.getTaskData *jruby-puppet* env module task)
+                              mc/sort-nested-info-maps))]
 
-      (testutils/create-file (fs/file conf-dir "puppet.conf") puppet-conf-file-contents)
+      (create-env (env-dir *code-dir* "env1") tasks)
+      (testing "when the environment, module, and task do exist"
+        (testing "with the init task"
+          (let [res (get-task-data "env1" "apache" "init")]
+            (is (nil? (schema/check mc/TaskData res)))
+            (is (some (fn [file-path] (.contains file-path "init"))
+                      (:files res)))))
 
-      (tk-bootstrap/with-app-with-config
-        app
-        jruby-testutils/jruby-service-and-dependencies
-        (puppet-tk-config code-dir conf-dir)
-        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-              instance (jruby-testutils/borrow-instance jruby-service :test)
-              jruby-puppet (:jruby-puppet instance)
-              env-1-dir (env-dir code-dir "env1")
-              env-1-tasks [{:name "install"
-                            :module-name "apache"
-                            :metadata? true
-                            :number-of-files 2}
-                           {:name "init"
-                            :module-name "apache"
-                            :metadata? false
-                            :number-of-files 1}]
-              get-task-data (fn [env module task]
-                              (-> (.getTaskData jruby-puppet env module task)
-                                  mc/sort-nested-info-maps))]
+        (testing "with another named task"
+          (let [res (get-task-data "env1" "apache" "install")]
+            (is (nil? (schema/check mc/TaskData res)))
+            (is (some (fn [file-path] (.contains file-path "install"))
+                      (:files res))))))
 
-          (try (create-env env-1-dir env-1-tasks)
-            (testing "when the environment, module, and task do exist"
-              (testing "with the init task"
-                (let [res (get-task-data "env1" "apache" "init")]
-                  (is (nil? (schema/check mc/TaskData res)))
-                  (is (some (fn [file-path] (.contains file-path "init"))
-                            (:files res)))))
+      (testing "when the environment does not exist"
+        (is (thrown-with-msg? RaiseException
+                              #"(EnvironmentNotFound)"
+                              (get-task-data "env2" "doesnotmatter" "whatever"))))
 
-              (testing "with another named task"
-                (let [res (get-task-data "env1" "apache" "install")]
-                  (is (nil? (schema/check mc/TaskData res)))
-                  (is (some (fn [file-path] (.contains file-path "install"))
-                            (:files res))))))
+      (testing "when the module does not exist"
+        (is (thrown-with-msg? RaiseException
+                              #"(MissingModule)"
+                              (get-task-data "env1" "notamodule" "install"))))
 
-            (testing "when the environment does not exist"
-              (is (thrown-with-msg? RaiseException
-                                    #"(EnvironmentNotFound)"
-                                    (get-task-data "env2" "doesnotmatter" "whatever"))))
+      (testing "when the module name is invalid"
+        (is (thrown-with-msg? RaiseException
+                              #"(MissingModule)"
+                              (get-task-data "env1" "7!" "install"))))
 
-            (testing "when the module does not exist"
-              (is (thrown-with-msg? RaiseException
-                                    #"(MissingModule)"
-                                    (get-task-data "env1" "notamodule" "install"))))
+      (testing "when the task does not exist"
+        (is (thrown-with-msg? RaiseException
+                              #"(TaskNotFound)"
+                              (get-task-data "env1" "apache" "recombobulate"))))
 
-            (testing "when the module name is invalid"
-              (is (thrown-with-msg? RaiseException
-                                    #"(MissingModule)"
-                                    (get-task-data "env1" "7!" "install"))))
+      (testing "when the task does not exist"
+        (is (thrown-with-msg? RaiseException
+                              #"(TaskNotFound)"
+                              (get-task-data "env1" "apache" "recombobulate"))))
 
-            (testing "when the task does not exist"
-              (is (thrown-with-msg? RaiseException
-                                    #"(TaskNotFound)"
-                                    (get-task-data "env1" "apache" "recombobulate"))))
-
-            (testing "when the task does not exist"
-              (is (thrown-with-msg? RaiseException
-                                    #"(TaskNotFound)"
-                                    (get-task-data "env1" "apache" "recombobulate"))))
-
-            (testing "when the task name is invalid"
-              (is (thrown-with-msg? RaiseException
-                                    #"(TaskNotFound)"
-                                    (get-task-data "env1" "apache" "&&&"))))
-
-            (finally
-              (jruby-testutils/return-instance jruby-service instance :test))))))))
+      (testing "when the task name is invalid"
+        (is (thrown-with-msg? RaiseException
+                              #"(TaskNotFound)"
+                              (get-task-data "env1" "apache" "&&&")))))))
 
 (deftest ^:integration all-tasks-test
   (testing "requesting all tasks"
-    (let [code-dir (ks/temp-dir)
-          conf-dir (ks/temp-dir)]
-      (testutils/create-file (fs/file conf-dir "puppet.conf") puppet-conf-file-contents)
+    (let [tasks [{:name "install"
+                  :module-name "apache"
+                  :metadata? true
+                  :number-of-files 2}
+                 {:name "init"
+                  :module-name "apache"
+                  :metadata? false
+                  :number-of-files 1}
+                 {:name "configure"
+                  :module-name "django"
+                  :metadata? true
+                  :number-of-files 0}]
+          get-tasks (fn [env]
+                      (.getTasks *jruby-puppet* env))]
 
-      (tk-bootstrap/with-app-with-config
-        app
-        jruby-testutils/jruby-service-and-dependencies
-        (puppet-tk-config code-dir conf-dir)
-        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-              instance (jruby-testutils/borrow-instance jruby-service :test)
-              jruby-puppet (:jruby-puppet instance)
-              env-1-dir (env-dir code-dir "env1")
-              env-1-tasks [{:name "install"
-                            :module-name "apache"
-                            :metadata? true
-                            :number-of-files 2}
-                           {:name "init"
-                            :module-name "apache"
-                            :metadata? false
-                            :number-of-files 1}
-                           {:name "configure"
-                            :module-name "django"
-                            :metadata? true
-                            :number-of-files 0}]
+      (create-env (env-dir *code-dir* "env1") tasks)
+      (testing "for environment that does exist"
+        (is (= (->> tasks
+                    expected-tasks-info
+                    (sort-by :name))
+               (->> (get-tasks "env1")
+                    mc/sort-nested-info-maps
+                    (sort-by :name)))
+            "Unexpected info retrieved for 'env1'"))
 
-              get-tasks (fn [env]
-                          (.getTasks jruby-puppet env))]
-
-          (try (create-env env-1-dir env-1-tasks)
-               (testing "for environment that does exist"
-                 (is (= (->> env-1-tasks
-                             expected-tasks-info
-                             (sort-by :name))
-                        (->> (get-tasks "env1")
-                             mc/sort-nested-info-maps
-                             (sort-by :name)))
-                     "Unexpected info retrieved for 'env1'"))
-
-               (testing "for environment that does not exist"
-                 (is (nil? (get-tasks "env2"))))
-
-               (finally
-                 (jruby-testutils/return-instance jruby-service instance :test))))))))
+      (testing "for environment that does not exist"
+        (is (nil? (get-tasks "env2")))))))
 
 (deftest ^:integration task-details-test
   (testing "getting details for a specific task"
-    (let [code-dir (ks/temp-dir)
-          conf-dir (ks/temp-dir)]
-      (testutils/create-file (fs/file conf-dir "puppet.conf") puppet-conf-file-contents)
+    (let [tasks [{:name "install_mods"
+                  :module-name "apache"
+                  :metadata? true
+                  :number-of-files 1}
+                 {:name "init"
+                  :module-name "apache"
+                  :metadata? false
+                  :number-of-files 1}
+                 {:name "about"
+                  :module-name "apache"
+                  :metadata? true
+                  :number-of-files 0}]
+          get-task-details (fn [env module task]
+                             (mc/task-details *jruby-service* *jruby-puppet* env module task))]
 
-      (tk-bootstrap/with-app-with-config
-        app
-        jruby-testutils/jruby-service-and-dependencies
-        (puppet-tk-config code-dir conf-dir)
-        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-              instance (jruby-testutils/borrow-instance jruby-service :test)
-              jruby-puppet (:jruby-puppet instance)
-              tasks [{:name "install_mods"
-                      :module-name "apache"
-                      :metadata? true
-                      :number-of-files 1}
-                     {:name "init"
-                      :module-name "apache"
-                      :metadata? false
-                      :number-of-files 1}
-                     {:name "about"
-                      :module-name "apache"
-                      :metadata? true
-                      :number-of-files 0}]
-              get-task-details (fn [env module task]
-                                 (mc/task-details jruby-service jruby-puppet env module task))]
+      (create-env (env-dir *code-dir* "production") tasks)
 
-          (try (create-env (env-dir code-dir "production") tasks)
+      (testing "when the environment exists"
+        (testing "and the module exists"
+          (testing "and the task exists"
+            (testing "with metadata and payload files"
+              (let [expected-info {:metadata {"meta" "data"}
+                                   :files [{:filename "install_mods.rb"
+                                            :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                            :size_bytes 0
+                                            :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
+                                                  :params {:environment "production"}}}]}]
+                (is (= expected-info
+                       (get-task-details "production" "apache" "install_mods")))))
 
-            (testing "when the environment exists"
-              (testing "and the module exists"
-                (testing "and the task exists"
-                  (testing "with metadata and payload files"
-                    (let [expected-info {:metadata {"meta" "data"}
-                                         :files [{:filename "install_mods.rb"
-                                                  :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                                                  :size_bytes 0
-                                                  :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
-                                                        :params {:environment "production"}}}]}]
-                      (is (= expected-info
-                             (get-task-details "production" "apache" "install_mods")))))
+            (testing "without a metadata file"
+              (let [expected-info {:metadata {}
+                                   :files [{:filename "init.rb"
+                                            :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                            :size_bytes 0
+                                            :uri {:path "/puppet/v3/file_content/tasks/apache/init.rb"
+                                                  :params {:environment "production"}}}]}]
+                (is (= expected-info
+                       (get-task-details "production" "apache" "init")))))
 
-                  (testing "without a metadata file"
-                    (let [expected-info {:metadata {}
-                                         :files [{:filename "init.rb"
-                                                  :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                                                  :size_bytes 0
-                                                  :uri {:path "/puppet/v3/file_content/tasks/apache/init.rb"
-                                                        :params {:environment "production"}}}]}]
-                      (is (= expected-info
-                             (get-task-details "production" "apache" "init")))))
+            (testing "with no payload files"
+              (let [expected-info {:metadata {"meta" "data"}
+                                   :files []}]
+                (is (= expected-info
+                       (get-task-details "production" "apache" "about"))))))
 
-                  (testing "with no payload files"
-                    (let [expected-info {:metadata {"meta" "data"}
-                                         :files []}]
-                      (is (= expected-info
-                             (get-task-details "production" "apache" "about"))))))
+          (testing "but the task doesn't exist"
+            (is (thrown-with-msg? RaiseException
+                                  #"(TaskNotFound)"
+                                  (get-task-details "production" "apache" "refuel")))))
 
-                (testing "but the task doesn't exist"
-                  (is (thrown-with-msg? RaiseException
-                                        #"(TaskNotFound)"
-                                        (get-task-details "production" "apache" "refuel")))))
+        (testing "but the module doesn't exist"
+          (is (thrown-with-msg? RaiseException
+                                #"(MissingModule)"
+                                (get-task-details "production" "mahjoule" "heat")))))
 
-              (testing "but the module doesn't exist"
-                (is (thrown-with-msg? RaiseException
-                                      #"(MissingModule)"
-                                      (get-task-details "production" "mahjoule" "heat")))))
-
-            (testing "when the environment doesn't exist"
-              (is (thrown-with-msg? RaiseException
-                                    #"(EnvironmentNotFound)"
-                                    (get-task-details "DNE" "module" "missing"))))
-
-            (finally
-              (jruby-testutils/return-instance jruby-service instance :test))))))))
+      (testing "when the environment doesn't exist"
+        (is (thrown-with-msg? RaiseException
+                              #"(EnvironmentNotFound)"
+                              (get-task-details "DNE" "module" "missing")))))))
