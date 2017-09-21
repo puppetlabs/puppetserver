@@ -11,7 +11,7 @@
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap])
-  (:import [java.io File]
+  (:import [java.io File ByteArrayInputStream]
            [org.jruby.exceptions RaiseException]))
 
 (schema/defn puppet-tk-config
@@ -210,52 +210,87 @@
                  {:name "about"
                   :module-name "apache"
                   :metadata? true
-                  :number-of-files 0}]
-          get-task-details (fn [env module task]
-                             (mc/task-details *jruby-service* *jruby-puppet* env module task))]
-
+                  :number-of-files 0}]]
       (create-env (env-dir *code-dir* "production") tasks)
 
-      (testing "when the environment exists"
-        (testing "and the module exists"
-          (testing "and the task exists"
-            (testing "with metadata and payload files"
-              (let [expected-info {:metadata {"meta" "data"}
-                                   :files [{:filename "install_mods.rb"
-                                            :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                                            :size_bytes 0
-                                            :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
-                                                  :params {:environment "production"}}}]}]
-                (is (= expected-info
-                       (get-task-details "production" "apache" "install_mods")))))
+      (testing "without code management"
+        (let [code-fn (fn [_ _ _] (throw (Exception. "Versioned code not supported.")))
+              get-task-details (fn [env module task]
+                                 (mc/task-details *jruby-service* *jruby-puppet* code-fn env nil module task))]
+          (testing "when the environment exists"
+            (testing "and the module exists"
+              (testing "and the task exists"
+                (testing "with metadata and payload files"
+                  (let [expected-info {:metadata {"meta" "data"}
+                                       :files [{:filename "install_mods.rb"
+                                                :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                                :size_bytes 0
+                                                :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
+                                                      :params {:environment "production"}}}]}]
+                    (is (= expected-info
+                           (get-task-details "production" "apache" "install_mods")))))
 
-            (testing "without a metadata file"
-              (let [expected-info {:metadata {}
-                                   :files [{:filename "init.rb"
-                                            :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-                                            :size_bytes 0
-                                            :uri {:path "/puppet/v3/file_content/tasks/apache/init.rb"
-                                                  :params {:environment "production"}}}]}]
-                (is (= expected-info
-                       (get-task-details "production" "apache" "init")))))
+                (testing "without a metadata file"
+                  (let [expected-info {:metadata {}
+                                       :files [{:filename "init.rb"
+                                                :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                                :size_bytes 0
+                                                :uri {:path "/puppet/v3/file_content/tasks/apache/init.rb"
+                                                      :params {:environment "production"}}}]}]
+                    (is (= expected-info
+                           (get-task-details "production" "apache" "init")))))
 
-            (testing "with no payload files"
-              (let [expected-info {:metadata {"meta" "data"}
-                                   :files []}]
-                (is (= expected-info
-                       (get-task-details "production" "apache" "about"))))))
+                (testing "with no payload files"
+                  (let [expected-info {:metadata {"meta" "data"}
+                                       :files []}]
+                    (is (= expected-info
+                           (get-task-details "production" "apache" "about"))))))
 
-          (testing "but the task doesn't exist"
+              (testing "but the task doesn't exist"
+                (is (thrown-with-msg? RaiseException
+                                      #"(TaskNotFound)"
+                                      (get-task-details "production" "apache" "refuel")))))
+
+            (testing "but the module doesn't exist"
+              (is (thrown-with-msg? RaiseException
+                                    #"(MissingModule)"
+                                    (get-task-details "production" "mahjoule" "heat")))))
+
+          (testing "when the environment doesn't exist"
             (is (thrown-with-msg? RaiseException
-                                  #"(TaskNotFound)"
-                                  (get-task-details "production" "apache" "refuel")))))
+                                  #"(EnvironmentNotFound)"
+                                  (get-task-details "DNE" "module" "missing"))))))
 
-        (testing "but the module doesn't exist"
-          (is (thrown-with-msg? RaiseException
-                                #"(MissingModule)"
-                                (get-task-details "production" "mahjoule" "heat")))))
-
-      (testing "when the environment doesn't exist"
-        (is (thrown-with-msg? RaiseException
-                              #"(EnvironmentNotFound)"
-                              (get-task-details "DNE" "module" "missing")))))))
+      (testing "with code management"
+        (let [get-task-details (fn [env module task code-fn code-id]
+                                 (mc/task-details *jruby-service* *jruby-puppet* code-fn env code-id module task))]
+          (testing "uses static-file-content endpoint when code is available"
+            (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "" "UTF-8")))
+                  expected-info {:metadata {"meta" "data"}
+                                 :files [{:filename "install_mods.rb"
+                                          :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                          :size_bytes 0
+                                          :uri {:path "/puppet/v3/static_file_content/modules/apache/tasks/install_mods.rb"
+                                                :params {:environment "production" :code_id "code-id"}}}]}]
+              (is (= expected-info
+                     (get-task-details "production" "apache" "install_mods" code-fn "code-id")))))
+          (testing "uses file-content endpoint when code content differs from content reported by Puppet"
+            (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "some script" "UTF-8")))
+                  expected-info {:metadata {"meta" "data"}
+                                 :files [{:filename "install_mods.rb"
+                                          :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                          :size_bytes 0
+                                          :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
+                                                :params {:environment "production"}}}]}]
+              (is (= expected-info
+                     (get-task-details "production" "apache" "install_mods" code-fn "code-id")))))
+          (testing "uses file-content endpoint when code is unavailable"
+            (let [code-fn (fn [_ _ _] (throw (Exception. "Versioned code not supported.")))
+                  expected-info {:metadata {"meta" "data"}
+                                 :files [{:filename "install_mods.rb"
+                                          :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+                                          :size_bytes 0
+                                          :uri {:path "/puppet/v3/file_content/tasks/apache/install_mods.rb"
+                                                :params {:environment "production"}}}]}]
+              (is (= expected-info
+                     (get-task-details "production" "apache" "install_mods" code-fn "code-id"))))))))))
