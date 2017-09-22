@@ -193,6 +193,10 @@ Puppet Server does not use this setting. It only considers the `ssl-ca-cert`
 setting from the webserver.conf file and the `cacert` setting from the
 puppet.conf file. See [`cacert`](#cacert) for more information.
 
+### [`static_catalogs`](https://docs.puppet.com/puppet/latest/static_catalogs.html)
+
+Puppet Server respects the `static_catalogs` setting when determining whether to attempt to compile [static catalogs](https://docs.puppet.com/puppet/latest/static_catalogs.html), and the setting is enabled by default. While this is a puppet.conf setting, Ruby Puppet never attempts to compile a static catalog. Even if this setting is enabled, Puppet Server doesn't compile static catalogs if the `code-id-command` and `code-content-command` settings of [`puppetserver.conf`](./config_file_puppetserver.markdown) are not configured.
+
 ### [`syslogfacility`](https://docs.puppet.com/puppet/latest/reference/configuration.html#syslogfacility)
 
 Puppet Server does not use this setting.
