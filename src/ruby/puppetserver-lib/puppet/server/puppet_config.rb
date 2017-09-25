@@ -29,9 +29,6 @@ class Puppet::Server::PuppetConfig
       Puppet[:always_retry_plugins] = false
     end
 
-    # Crank Puppet's log level all the way up and just control it via logback.
-    Puppet[:log_level] = "debug"
-
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
         merge({:name => "master",

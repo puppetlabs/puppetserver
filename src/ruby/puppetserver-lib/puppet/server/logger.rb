@@ -27,5 +27,25 @@ end
 class Puppet::Server::Logger
   def self.init_logging
     Puppet::Util::Log.newdestination(:logback)
+    Puppet[:log_level] = level_from_logback(get_logger)
+  end
+
+  def self.level_from_logback(logger)
+    case
+    when logger.isDebugEnabled()
+      'debug'
+    when logger.isInfoEnabled()
+      'info'
+    when logger.isWarnEnabled()
+      'warning'
+    when logger.isErrorEnabled()
+      'err'
+    else
+      'notice'
+    end
+  end
+
+  def self.get_logger
+    LoggerFactory.getLogger("puppetserver")
   end
 end
