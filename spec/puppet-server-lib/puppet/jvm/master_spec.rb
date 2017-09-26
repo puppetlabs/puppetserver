@@ -24,7 +24,7 @@ describe 'Puppet::Server::Master' do
     end
 
     it "returns the correct puppet version number" do
-      expect(subject).to eq('4.8.1')
+      expect(subject).to match(/\A4\.\d+.\d+/)
     end
   end
 
