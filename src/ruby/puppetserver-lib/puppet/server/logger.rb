@@ -27,6 +27,11 @@ end
 class Puppet::Server::Logger
   def self.init_logging
     Puppet::Util::Log.newdestination(:logback)
+  end
+
+  # @note This must be called after Puppet settings are configured; otherwise
+  #   the default log level will overwrite this setting.
+  def self.set_log_level_from_logback
     Puppet[:log_level] = level_from_logback(get_logger)
   end
 

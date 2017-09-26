@@ -1,4 +1,5 @@
 require 'puppet/server'
+require 'puppet/server/logger'
 
 class Puppet::Server::PuppetConfig
   def self.initialize_puppet(puppet_config)
@@ -20,6 +21,8 @@ class Puppet::Server::PuppetConfig
         end
     )
     Puppet[:trace] = true
+
+    Puppet::Server::Logger.set_log_level_from_logback
 
     # (SERVER-410) Cache features in puppetserver for performance.  Avoiding
     # the cache is intended for agents to reload features mid-catalog-run.
