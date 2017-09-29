@@ -13,8 +13,10 @@ PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
 PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
-CURRENT_BRANCH = 'master'
-JENKINS_BRANCH = CURRENT_BRANCH
+# Branch of puppetserver for which to update submodule pins
+PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || '5.1.x'
+# Branch of puppet-agent to track for passing puppet SHA
+PUPPET_AGENT_BRANCH = ENV['PUPPET_AGENT_BRANCH'] || '5.3.x'
 
 TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
 TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
@@ -80,8 +82,8 @@ end
 
 def jenkins_passing_json_parsed
   jenkins_url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/" \
-    "puppet-agent/view/#{JENKINS_BRANCH}/view/Suite/job/" \
-    "platform_puppet-agent_intn-van-promote_suite-daily-promotion-#{JENKINS_BRANCH}" \
+    "puppet-agent/view/#{PUPPET_AGENT_BRANCH}/view/Suite/job/" \
+    "platform_puppet-agent_intn-van-promote_suite-daily-promotion-#{PUPPET_AGENT_BRANCH}" \
     "/lastSuccessfulBuild/api/json"
   uri = URI.parse(jenkins_url)
   begin
@@ -90,20 +92,20 @@ def jenkins_passing_json_parsed
     #   but not enough to cleanse malicious user input
     jenkins_result = uri.open(redirect: false)
   rescue OpenURI::HTTPError => e
-    abort "ERROR: Could not get lastSuccessfulBuild for #{JENKINS_BRANCH} of puppet-agent: '#{e.message}'"
+    abort "ERROR: Could not get lastSuccessfulBuild for #{PUPPET_AGENT_BRANCH} of puppet-agent: '#{e.message}'"
   end
 
   begin
     jenkins_result_parsed = JSON.parse(jenkins_result.read)
   rescue JSON::ParserError => e
-    abort "ERROR: Could not get lastSuccessfulBuild's valid json for #{JENKINS_BRANCH}: '#{e.message}'"
+    abort "ERROR: Could not get lastSuccessfulBuild's valid json for #{PUPPET_AGENT_BRANCH}: '#{e.message}'"
   end
 
   begin
     jenkins_result_parameters = jenkins_result_parsed['actions'].find{|x| x['_class'] == 'hudson.model.ParametersAction' }['parameters']
     raise "No parameters found" unless jenkins_result_parameters
   rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{JENKINS_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 
   jenkins_result_parameters
@@ -113,14 +115,14 @@ def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
   begin
     my_jenkins_passing_json.find{|x| x['name'] == 'SUITE_COMMIT'}['value']
   rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{JENKINS_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 end
 def lookup_passing_puppet_sha(my_jenkins_passing_json)
   begin
     my_jenkins_passing_json.find{|x| x['name'] == 'puppet_COMPONENT_COMMIT'}['value']
   rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{JENKINS_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 end
 
@@ -155,9 +157,9 @@ namespace :puppet_submodule do
   end
   desc 'commit and push; CAUTION: WILL commit and push, upstream, local changes to the puppet submodule and acceptance options'
   task :commit_push do
-    git_commit_command = "git checkout #{CURRENT_BRANCH} && git add #{PUPPET_SUBMODULE_PATH} " \
+    git_commit_command = "git checkout #{PUPPETSERVER_BRANCH} && git add #{PUPPET_SUBMODULE_PATH} " \
       "&& git add #{BEAKER_OPTIONS_FILE} && git commit -m '(maint) update puppet submodule version and pins'"
-    git_push_command = "git checkout #{CURRENT_BRANCH} && git push origin HEAD:#{CURRENT_BRANCH}"
+    git_push_command = "git checkout #{PUPPETSERVER_BRANCH} && git push origin HEAD:#{PUPPETSERVER_BRANCH}"
     puts "committing submodule and pins via: `#{git_commit_command}`"
     system(git_commit_command)
     puts "pushing submodule and pins via: `#{git_push_command}`"

@@ -18,6 +18,17 @@ Released September 13, 2017
 
 This is a feature and bug-fix release of Puppet Server.
 
+### New feature: Puppet agents retry requests on a configurable delay if Puppet Server is busy
+
+When a group of Puppet agents start their Puppet runs together, they can form a "thundering herd" capable of exceeding Puppet Server's available resources. This results in a growing backlog of requests from Puppet agents waiting for a JRuby instance to become free before their request can be processed. If this backlog exceeds the size of the Server's Jetty thread pool, other requests (such as status checks) start timing out. (For more information about JRubies and Server performance, see [Applying metrics to improve performance](./puppet_server_metrics_performance.html#measuring-capacity-with-jrubies).)
+
+In previous versions of Puppet Server, administrators had to manually remediate this situation by separating groups of agent requests, for instance through rolling restarts. In Server 5.1.0, administrators can optionally have Server return a 503 response containing a `Retry-After` header to requests when the JRuby backlog exceeds a certain limit, causing agents to pause before retrying the request.
+
+Both the backlog limit and `Retry-After` period are configurable, as the `max-queued-requests` and `max-retry-delay` settings respectively under the `jruby-puppet` configuration in [puppetserver.conf][]. Both settings' default values do not change Puppet Server's behavior compared to Server 5.0.0, so to take advantage of this feature in Puppet Server 5.1.0, you must specify your own values for `max-queued-requests` and `max-retry-delay`. For details, see the [puppetserver.conf][] documentation. Also, Puppet agents must run Puppet 5.3.0 or newer to respect such headers.
+
+-   [PUP-7451](https://tickets.puppetlabs.com/browse/PUP-7902)
+-   [SERVER-1767](https://tickets.puppetlabs.com/browse/SERVER-1767)
+
 ### New Feature: Automatic CRL refresh on certificate revocation
 
 Puppet Server 5.1.0 includes the ability to automatically refresh the certificate revocation list (CRL) when any changes to that file have occurred, namely the addition of a revoked certificate. Prior to this release, revoking an agent's certificate required [restarting or reloading](./restarting.markdown) the Puppet Server process before that revocation would be honored and the agent denied authentication. Revocation is now effective within milliseconds and does not require restarting server.
