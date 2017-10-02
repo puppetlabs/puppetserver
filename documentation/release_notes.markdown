@@ -12,9 +12,21 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.1.3
+
+Released October 2, 2017.
+
+This is a bug-fix release of Puppet Server. Puppet Server 5.1.1 and 5.1.2 were not packaged for release.
+
+### Bug fix: Change logging level selection to improve performance
+
+Previous versions of Puppet Server set the default logging level to `debug`, then filtered the log output using Logback. Because Puppet generates a very large amount of output in debug mode, this behavior could significantly degrade Puppet Server's performance. Server 5.1.3 resolves this issue by producing `debug` output only when configured to do so. For details about setting logging levels, see [the logback.xml configuration documentation](./config_file_logbackxml.markdown).
+
+-   [SERVER-1922](https://tickets.puppetlabs.com/browse/SERVER-1922)
+
 ## Puppet Server 5.1.0
 
-Released September 13, 2017
+Released September 13, 2017.
 
 This is a feature and bug-fix release of Puppet Server.
 
