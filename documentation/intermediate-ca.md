@@ -14,7 +14,7 @@ See [PUP-3788](https://tickets.puppetlabs.com/browse/PUP-3788) for more informat
 
 ### Generate an intermediate CA certificate request
 
-Save the following ruby script to a file, csrgen.rb. Then run `ruby csrgen.rb`.
+Save the following ruby script to a file, `csrgen.rb`. Make it executable (with `chmod u+x csrgen.rb`), and then run `./csrgen.rb`.
 
     #!/opt/puppetlabs/puppet/bin/ruby
     require 'puppet'
