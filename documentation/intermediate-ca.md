@@ -61,6 +61,8 @@ Puppet Server needs to present the full certificate chain to clients in order fo
         org-intermediate-certificate.pem \
          org-root-certificate.pem > ca-bundle.pem
 
+In this example, `puppet-intermediate-certificate.pem` is signed CA certificate that you'll be using with your Puppet PKI, and will be given to you by your PKI administrators. The `org-intermediate-certificate.pem` and `org-root-certificate.pem` are the CA certificates in use by your organization; the exact number of CA certificates will depend on the structure of your organization's PKI.
+
 ### Verify the Puppet master host certificate against the CA bundle
 
 Before installing the new certificate bundle, verify that the bundle can be used to verify the existing host certificate on the CA server. If this step fails then the CA certificate bundle is invalid and cannot be installed.
