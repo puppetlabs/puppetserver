@@ -49,6 +49,10 @@ Save the following ruby script to a file, csrgen.rb. Then run `ruby csrgen.rb`.
 
 Use this CSR to generate the intermediate CA certificate that Puppet will be using.
 
+### Submit the generated CSR for signing
+
+The signing procedure will depend on the PKI that your organization is deployed; consult your PKI administrators for more information.
+
 ### Construct the CA certificate chain
 
 Puppet Server needs to present the full certificate chain to clients in order for the client to authenticate the server. The certificate chain is constructed by concatenating the CA certificates together, starting with the new intermediate CA certificate and descending to the root CA certificate.
