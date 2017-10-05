@@ -79,7 +79,7 @@ The Puppet agent caches the CA certificate and will not automatically fetch the 
 
     cp /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/certs/ca.pem
 
-If any Puppet agents have already been created, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem`.
+If any Puppet agents have already been created, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` for every Puppet agent that was created before the new CA certificate was generated.
 
 Note that due to [PUP-6697](https://tickets.puppetlabs.com/browse/PUP-6697) Puppet agents are unable to download CA certificate bundles and will only save the first certificate in the bundle. Since the first certificate in the bundle will be the Puppet intermediate CA certificate, if the Puppet agent downloads and saves this single CA certificate it will not be able to complete verification of the Puppet Server certificate and will fail to connect.
 
