@@ -148,6 +148,8 @@ If this behavior is unacceptable, you must [regenerate the entire Puppet PKI][re
 #### Error message
 
 ```
+[root@pe-agent ~]# puppet agent -t
+Info: Caching certificate for pe-agent.puppetdebug.vlan
 Error: Could not request certificate: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get issuer certificate for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
 ```
 
@@ -172,6 +174,7 @@ curl -k https://$(puppet agent --configprint server):8140/puppet-ca/v1/certifica
 #### Error message
 
 ```
+[root@pe-agent vagrant]# puppet agent -t
 Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
 ```
 
@@ -200,7 +203,7 @@ puppet config set --section main certificate_revocation false
 #### Error message
 
 ```
-Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=<Puppet Server fqdn]
+Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=<Puppet Server fqdn>]
 ```
 
 This error message looks similar to the error produced by an incorrect `certificate_revocation` setting. The difference between the two cases is that if `certificate_revocation` is incorrectly set, the subject/CN will be the subject of the CA certificate, while a CRL with the wrong issuer will generate an error mentioning the hostname of the Puppet Master.
@@ -223,7 +226,9 @@ Files /dev/fd/63 and /dev/fd/62 differ
 
 #### Solution
 
-If the wrong CRL has been copied onto the Puppet Server, certificate revocation information might be permanently lost. To remediate this issue:
+If the wrong CRL has been copied onto the Puppet Server, certificate revocation information might be permanently lost. Recovering the original CRL data will vary based on the site configuration and is out of the scope of this document.
+
+If it is acceptable to reset revocation information in your environment you can remediate this issue with the following:
 
 1.  Remove the CRL entirely.
 
@@ -235,10 +240,9 @@ If the wrong CRL has been copied onto the Puppet Server, certificate revocation 
 
     ```
     puppet cert generate revokeme
-    puppet cert clean revokeme
     ```
 
-    The output should indicate that the request is being removed.
+    The output should indicate that a certificate request was generated and signed.
 
     ```
     [root@pe-master ~]# puppet cert generate revokeme
@@ -246,7 +250,17 @@ If the wrong CRL has been copied onto the Puppet Server, certificate revocation 
     Notice: Signed certificate request for revokeme
     Notice: Removing file Puppet::SSL::CertificateRequest revokeme at '/etc/puppetlabs/puppet/ssl/ca/requests/revokeme.pem'
     Notice: Removing file Puppet::SSL::CertificateRequest revokeme at '/etc/puppetlabs/puppet/ssl/certificate_requests/revokeme.pem'
+    ```
 
+3.  Generate a new CRL by revoking the dummy certificate.
+
+    ```
+    puppet cert clean revokeme
+    ```
+
+    The output should indicate that the certificate was revoked and removed.
+
+    ```
     [root@pe-master ~]# puppet cert clean revokeme
     Notice: Revoked certificate with serial 7
     Notice: Removing file Puppet::SSL::Certificate revokeme at '/etc/puppetlabs/puppet/ssl/ca/signed/revokeme.pem'
@@ -254,27 +268,21 @@ If the wrong CRL has been copied onto the Puppet Server, certificate revocation 
     Notice: Removing file Puppet::SSL::Key revokeme at '/etc/puppetlabs/puppet/ssl/private_keys/revokeme.pem'
     ```
 
-3.  Generate a new CRL.
-
-    ```
-    puppet cert revoke
-    puppet cert clean
-    ```
 
 ### Puppet CA cannot generate certificates when the CA bundle has been installed
 
 #### Error message
 
 ```
-[root@pe- ~]# puppet cert generate failtosign
+[root@pe-master ~]# puppet cert generate failtosign
 Error: The certificate retrieved from the master does not match the agent's private key.
 Certificate fingerprint: 10:0C:DF:B0:41:91:46:BF:1B:A8:F4:F5:44:88:1D:99:F3:B3:AE:3C:3A:E4:24:66:FB:50:CB:4A:20:FE:4F:6D
 To fix this, remove the certificate from both the master and the agent and then start a puppet run, which will automatically regenerate a certificate.
 On the master:
-  puppet cert clean pe-20173nightly-master.puppetdebug.vlan
+  puppet cert clean pe-master.puppetdebug.vlan
 On the agent:
-  1a. On most platforms: find /etc/puppetlabs/puppet/ssl -name pe-20173nightly-master.puppetdebug.vlan.pem -delete
-  1b. On Windows: del "\etc\puppetlabs\puppet\ssl\certs\pe-20173nightly-master.puppetdebug.vlan.pem" /f
+  1a. On most platforms: find /etc/puppetlabs/puppet/ssl -name pe-master.puppetdebug.vlan.pem -delete
+  1b. On Windows: del "\etc\puppetlabs\puppet\ssl\certs\pe-master.puppetdebug.vlan.pem" /f
   2. puppet agent -t
 ```
 
@@ -282,7 +290,7 @@ On the agent:
 
 The `puppet cert generate` command should use the first certificate in the `cacert` file, but unintentionally uses the `localcacert` file. This is a [known issue](https://tickets.puppetlabs.com/browse/PUP-7985).
 
-If the first certificate in this file is not the Puppet intermediate CA certificate, Puppet loads the CA key and a mismatched CA certificate, then fails with a misleading error message. The logic for verifying that the key and certificate match is shared with the agent key/certificate verification, and it reports that the agent key and certificate are mismatched when the CA certificate and key are mismatched.
+If the first certificate in this file is not the Puppet intermediate CA certificate, Puppet loads the CA key and a mismatched CA certificate, then fails with a misleading error message. The logic for verifying that the key and certificate match is shared with the agent key/certificate verification, and it reports that the *agent* key and certificate are mismatched when the *CA* key and certificate are mismatched.
 
 #### Solution
 
