@@ -131,8 +131,6 @@ Before installing the new certificate chain, confirm that you can use the chain 
 
     > **Note:** Due to [a known issue](https://tickets.puppetlabs.com/browse/PUP-6697), Puppet agents cannot download CA certificate bundles and will only save the first certificate in the bundle. Since the first certificate in the bundle created by this process is the Puppet intermediate CA certificate, Puppet agents that download and save this single certificate cannot verify Puppet Server's certificate and will fail to connect.
 
-    There may be other settings in the `webserver.conf` file; the other settings should be left alone.
-
 6.  Once the new CA certificate is installed, restart the `puppetserver` service.
 
 ## Troubleshooting
