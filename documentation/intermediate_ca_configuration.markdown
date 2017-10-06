@@ -68,13 +68,11 @@ You can generate an intermediate CA certificate on Puppet Server by creating a c
 
 3.  Run `./csrgen.rb`.
 
-Running this command will write CSR to `req.pem` and will print the same CSR to stdout.
-
-This certificate signing request (CSR) generates the intermediate CA certificate that Puppet will use.
+Running this command writes CSR to `req.pem` and prints the same CSR to stdout.
 
 ## Submit the generated CSR for signing
 
-The signing procedure depends on the public key infrastructure (PKI) that your organization deploys. Ask your PKI administrators for more information.
+Take the CSR that was just generated and submit it for signing by your PKI. The signing procedure depends on the public key infrastructure (PKI) that your organization deploys; ask your PKI administrators for more information.
 
 ## Construct the CA certificate chain
 
