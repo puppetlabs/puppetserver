@@ -1,21 +1,34 @@
-# Intermediate CA support with Puppet Server
+---
+layout: default
+title: "Puppet Server: Intermediate CA Configuration"
+canonical: "/puppetserver/latest/intermediate_ca_configuration.html"
+---
 
-## Configuration guide
+Puppet Server automatically generates a number of certificate authority (CA) certificates upon installation. However, you might need to regenerate these certificates under certain circumstances, such as moving a Puppet Server to a different network in your infrastructure or recovering from an unforeseen security vulnerability that makes your existing certificates untrustworthy.
 
-When Puppet Server or PE is installed it will autogenerate a number of certificates. Regenerating all of these certificates can be a time consuming process, but this problem can be side stepped by generating an intermediate CA certificate that reuses the existing key pair that Puppet Server/PE has already created.
+Regenerating all of these certificates can be a time-consuming process. You can reduce the time spent regenerating certificates by generating an **intermediate CA certificate** that reuses the key pair created by Puppet Server.
 
-### Configure the Puppet agent `certificate_revocation` checking
+## Configure Puppet agent `certificate_revocation` checking
 
-Intermediate CA support is incompatible with full chain revocation checking, as Puppet is unable to load multiple CRLs. When an intermediate CA certificate is in use Puppet must have the `certificate_revocation` setting either set to `false`, or `leaf`. By default Puppet will attempt to perform full chain checking and will fail when encountering a non-root CA certificate, so this setting **must** be reconfigured on all Puppet agents before continuing.
+Puppet cannot load multiple certificate revocation lists (CRLs). Because Puppet attempts to perform full-chain checking by default, it will fail when encountering a non-root CA certificate, such as an intermediate CA certificate.
 
-    puppet config set --section main certificate_revocation leaf
+Therefore, when using an intermediate CA certificate you **must** set the [`certificate_revocation`](https://docs.puppet.com/puppet/latest/configuration.html#certificaterevocation) setting in each agent's `puppet.conf` file to either `false` or `leaf` before configuring intermediate CA certificates. This prevents agents from attempting to perform a chain check that it cannot complete.
 
-See [PUP-3788](https://tickets.puppetlabs.com/browse/PUP-3788) for more information on chain revocation checking.
+You can configure this setting with the `puppet config set` command:
 
-### Generate an intermediate CA certificate request
+```
+puppet config set --section main certificate_revocation leaf
+```
 
-Save the following ruby script to a file, `csrgen.rb`. Make it executable (with `chmod u+x csrgen.rb`), and then run `./csrgen.rb`.
+> **Note:** Puppet's incomplete support for chained CRLs is a [known limitation](https://tickets.puppetlabs.com/browse/PUP-3788). For details, see [the Puppet documentation](https://docs.puppet.com/puppet/latest/config_ssl_external_ca.html#option-2-puppet-server-functioning-as-an-intermediate-ca).
 
+## Generate an intermediate CA certificate request
+
+You can generate an intermediate CA certificate on Puppet Server by creating a certificate signing request (CSR).
+
+1.  Save the following Ruby script to a file. For the purposes of this task, we'll name it `csrgen.rb`.
+
+    ``` ruby
     #!/opt/puppetlabs/puppet/bin/ruby
     require 'puppet'
     require 'openssl'
@@ -46,154 +59,228 @@ Save the following ruby script to a file, `csrgen.rb`. Make it executable (with 
       end
     end
     Puppet::Application::GenCACSR.new.run
+    ```
 
-Use this CSR to generate the intermediate CA certificate that Puppet will be using.
+2.  Make the script executable by running `chmod u+x csrgen.rb`.
 
-### Submit the generated CSR for signing
+3.  Run `./csrgen.rb`.
 
-The signing procedure will depend on the PKI that your organization is deployed; consult your PKI administrators for more information.
+    This certificate signing request (CSR) generates the intermediate CA certificate that Puppet will use.
 
-### Construct the CA certificate chain
+## Submit the generated CSR for signing
 
-Puppet Server needs to present the full certificate chain to clients in order for the client to authenticate the server. The certificate chain is constructed by concatenating the CA certificates together, starting with the new intermediate CA certificate and descending to the root CA certificate.
+The signing procedure depends on the public key infrastructure (PKI) that your organization deploys. Ask your PKI administrators for more information.
 
-    cat puppet-intermediate-certificate.pem \
-        org-intermediate-certificate.pem \
-         org-root-certificate.pem > ca-bundle.pem
+## Construct the CA certificate chain
 
-In this example, `puppet-intermediate-certificate.pem` is signed CA certificate that you'll be using with your Puppet PKI, and will be given to you by your PKI administrators. The `org-intermediate-certificate.pem` and `org-root-certificate.pem` are the CA certificates in use by your organization; the exact number of CA certificates will depend on the structure of your organization's PKI.
+Puppet Server needs to present the full certificate chain to clients so the client can authenticate the server. You construct the certificate chain by concatenating the CA certificates, starting with the new intermediate CA certificate and descending to the root CA certificate.
 
-### Verify the Puppet master host certificate against the CA bundle
+In the following command:
 
-Before installing the new certificate bundle, verify that the bundle can be used to verify the existing host certificate on the CA server. If this step fails then the CA certificate bundle is invalid and cannot be installed.
+-   `puppet-intermediate-certificate.pem` is the output of [the `csrgen.rb` script](#generate-an-intermediate-ca-certificate-request), which you can find at <default location on disk>. This is the signed CA certificate that you'll be using with your Puppet PKI, and will be given to you by your PKI administrators.
+-   `org-intermediate-certificate.pem` and `org-root-certificate.pem` represent the CA certificates that your organization uses, though the number of CA certificates depend on the structure of your organization's PKI.
 
+To concatenate the certificate chain, run this command, using the filenames of your organization's certificates:
+
+```
+cat puppet-intermediate-certificate.pem \
+  org-intermediate-certificate.pem \
+  org-root-certificate.pem > ca-bundle.pem
+```
+
+## Verify and install the Server certificate chain
+
+Before installing the new certificate chain, confirm that you can use the chain to verify the existing host certificate on the CA server.
+
+1.  Run this command against [the chain you generated](#construct-the-ca-certificate-chain):
+
+    ```
     openssl verify -CAfile ca-bundle.pem $(puppet master --configprint hostcert)
+    ```
 
-### Update the Puppet CA certificate bundle
+    If this step fails, then the CA certificate bundle is invalid and cannot be installed. Try recreating the bundle, or check that the certificates used to create the bundle are correct.
 
+    If this step succeeds, you can continue by updating Puppet Server's CA certificate bundle.
+
+2.  Copy the certificate chain to Puppet Server.
+
+    ```
     cp ca-bundle.pem /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem
+    ```
 
-### Update the Puppet agent CA certificate bundle
+3.  Update the Puppet agent CA certificate bundle.
 
-The Puppet agent caches the CA certificate and will not automatically fetch the new CA certificate bundle from the master. This caveat applies to the Puppet CA server itself as well. On the CA server, copy the CA certificate bundle to the local CA certificate path:
+    Each Puppet agent caches the CA certificate and doesn't automatically fetch the new CA certificate bundle from the master. This caveat also applies to the agent on the Puppet Server acting as the CA server.
 
+    On the CA server, copy the certificate bundle to the local certificate path:
+
+    ```
     cp /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/certs/ca.pem
+    ```
 
-If any Puppet agents have already been created, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` for every Puppet agent that was created before the new CA certificate was generated.
+4.  If you already have Puppet agents, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` on every Puppet agent that was created before the new CA certificate was generated.
 
-Note that due to [PUP-6697](https://tickets.puppetlabs.com/browse/PUP-6697) Puppet agents are unable to download CA certificate bundles and will only save the first certificate in the bundle. Since the first certificate in the bundle will be the Puppet intermediate CA certificate, if the Puppet agent downloads and saves this single CA certificate it will not be able to complete verification of the Puppet Server certificate and will fail to connect.
+    > **Note:** Due to [a known issue](https://tickets.puppetlabs.com/browse/PUP-6697), Puppet agents cannot download CA certificate bundles and will only save the first certificate in the bundle. Since the first certificate in the bundle created by this process is the Puppet intermediate CA certificate, Puppet agents that download and save this single certificate cannot verify Puppet Server's certificate and will fail to connect.
 
-There may be other settings in the `webserver.conf` file; the other settings should be left alone.
+    There may be other settings in the `webserver.conf` file; the other settings should be left alone.
 
-### Restart Puppet Server
-
-Once the new CA certificate is installed, restart pe-puppetserver.
+5.  Once the new CA certificate is installed, restart the `puppetserver` service.
 
 ## Troubleshooting
 
-#### The Puppet agent continues to work with an outdated CA certificate
+### Puppet agent continues to work with an outdated CA certificate
 
 [regenerate-pki]: https://docs.puppet.com/puppet/latest/ssl_regenerate_certificates.html
 
-If a Puppet agent has a copy of the original Puppet root CA certificate it will still be able to authenticate the Puppet Server host certificate. This is intentional behavior on the part of X.509 because the intermediate CA certificate was created with information matching the old root CA certificate. If this behavior is unacceptable then the entire [Puppet PKI will need to be regenerated][regenerate-pki].
+If a Puppet agent has a copy of the original Puppet root CA certificate, it can still authenticate the Puppet Server host certificate. This is intentional behavior on the part of X.509, because the intermediate CA certificate was created with information matching the old root CA certificate.
 
-#### The Puppet agent only has the Puppet intermediate CA certificate
+If this behavior is unacceptable, you must [regenerate the entire Puppet PKI][regenerate-pki].
 
-##### Error message
+### Puppet agent only has the Puppet intermediate CA certificate
 
-    Error: Could not request certificate: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get issuer certificate for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
+#### Error message
 
-##### Cause
+```
+Error: Could not request certificate: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get issuer certificate for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
+```
 
-If the Puppet agent does not have a copy of the CA certificate bundle, when it downloads the CA cert from the Puppet Server it will only get the first certificate in the bundle. This will be the Puppet intermediate CA certificate, and without the rest of the certificate chain Puppet will not be able to validate the certificate.
+#### Cause
 
-##### Solution
+If the Puppet agent does not have a copy of the CA certificate bundle, when it downloads the CA cert from the Puppet Server, it receives only the first certificate in the bundle. In an intermediate CA certificate configuration, that certificate will be the Puppet intermediate CA certificate, and without the rest of the certificate chain Puppet will not be able to validate the certificate.
 
-Copy the full CA certificate bundle from the Puppet Server to `/etc/puppetlabs/puppet/ssl/certs/ca.pem`.
+#### Solution
 
-    curl -k https://$(puppet agent --configprint server):8140/puppet-ca/v1/certificate/ca > $(puppet agent --configprint localcacert)
+Copy the full CA certificate bundle from the Puppet Server to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` on the agent.
 
-Note that using curl to fetch the CA certificate bundle requires disabling SSL verification and is inherently insecure. If the security of this operation is a concern, an out of band mechanism should be used to copy the CA certificate bundle to agents.
+If the security of this operation is a concern, use an out-of-band mechanism to copy the CA certificate bundle to agents.
 
-#### The Puppet agent has `certificate_revocation` set to true
+Otherwise, you can use `curl` without SSL verification to fetch the certificate, which is inherently insecure.
 
-##### Error message
+```
+curl -k https://$(puppet agent --configprint server):8140/puppet-ca/v1/certificate/ca > $(puppet agent --configprint localcacert)
+```
 
-    Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
+### Puppet agent has `certificate_revocation` set to true
 
-##### Cause
+#### Error message
 
-The default value for `certificate_revocation` is set to true but cannot be used with an intermediate CA. Running Puppet with this setting misconfigured will cause SSL verification to fail.
+```
+Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=Puppet Enterprise CA generated on <CA server fqdn> at +2017-10-03 00:13:16 +0000]
+```
 
-##### Solution
+This error message looks similar to the error produced by a CRL with the wrong issuer. The difference between the two cases is that if `certificate_revocation` is incorrectly set, the subject/CN will be the subject of the CA certificate, while a CRL with the wrong issuer will generate an error mentioning the hostname of the Puppet Master.
 
-Configure the Puppet agent to perform only leaf certificate revocation checking.
+#### Cause
 
-    puppet config set --section main certificate_revocation leaf
+The default value for `certificate_revocation` is true, but running Puppet with this default setting with an intermediate CA causes SSL verification to fail.
 
-Alternately, configure the Puppet agent to disable certificate revocation checking.
+#### Solution
 
-    puppet config set --section main certificate_revocation false
+Configure the Puppet agent to perform only leaf certificate revocation checking by setting `certificate_revocation` to `leaf`.
 
-#### The Puppet agent has a CRL with the wrong issuer
+```
+puppet config set --section main certificate_revocation leaf
+```
 
-##### Error message
+As an insecure alternative, you can configure the Puppet agent to disable certificate revocation checking by setting `certificate_revocation` to `false`. However, this prevents Puppet Server from successfully revoking certificates, which can open your infrastructure to attacks from agents that have revoked credentials.
 
-    Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=<Puppet Server fqdn]
+```
+puppet config set --section main certificate_revocation false
+```
+
+### Puppet agent has a CRL with the wrong issuer
+
+#### Error message
+
+```
+Warning: SSL_connect returned=1 errno=0 state=error: certificate verify failed: [unable to get certificate CRL for /CN=<Puppet Server fqdn]
+```
 
 This error message looks similar to the error produced by an incorrect `certificate_revocation` setting. The difference between the two cases is that if `certificate_revocation` is incorrectly set, the subject/CN will be the subject of the CA certificate, while a CRL with the wrong issuer will generate an error mentioning the hostname of the Puppet Master.
 
-##### Cause
+#### Cause
 
-Puppet does not verify that a CRL was issued by a specific CA, so it's possible to distribute and update a CRL whose issuer is not the Puppet CA. In addition the `puppet cert revoke` and `puppet cert clean` will modify a CRL issued by a different CA and save the new CRL with the wrong issuer. Because the issuer of the CRL does not match the issuer of the Puppet Server host Puppet is unable to determine that the loaded CRL is associated with the certificate.
+Puppet does not verify that a CRL was issued by a specific CA, so it's possible to distribute and update a CRL whose issuer is not the Puppet CA. In addition, the `puppet cert revoke` and `puppet cert clean` commands will modify a CRL issued by a different CA and save the new CRL with the wrong issuer.
 
-This mismatch can be verified by comparing the issuer of the host certificate and the downloaded CRL
+Because the issuer of the CRL does not match the issuer of the Puppet Server host, Puppet is unable to determine that the loaded CRL is associated with the certificate. This mismatch can be verified by comparing the issuer of the host certificate and the downloaded CRL.
 
-    diff -q <(openssl x509 -in $(puppet agent --configprint hostcert) -noout -issuer) <(openssl crl -in $(puppet agent --configprint hostcrl) -noout -issuer)
-    Files /dev/fd/63 and /dev/fd/62 differ
+```
+diff -q <(openssl x509 -in $(puppet agent --configprint hostcert) -noout -issuer) <(openssl crl -in $(puppet agent --configprint hostcrl) -noout -issuer)
+```
 
-##### Solution
+If this command reports a difference, you have mismatched CRL issuers.
 
-Remediating this issue is tricky because if the wrong CRL has been copied onto the Puppet Server then it's possible for certificate revocation information to be permanently lost. The best way to remediate this issue is to remove the CRL entirely, issue a dummy certificate, and then revoke/clean it to generate a new CRL.
+```
+Files /dev/fd/63 and /dev/fd/62 differ
+```
 
+#### Solution
+
+If the wrong CRL has been copied onto the Puppet Server, certificate revocation information might be permanently lost. To remediate this issue:
+
+1.  Remove the CRL entirely.
+
+    ```
     rm $(puppet agent --configprint hostcrl) $(puppet master --configprint cacrl)
+    ```
+
+2.  Issue a dummy certificate.
+
+    ```
     puppet cert generate revokeme
     puppet cert clean revokeme
+    ```
 
+    The output should indicate that the request is being removed.
+
+    ```
     [root@pe-master ~]# puppet cert generate revokeme
     Notice: revokeme has a waiting certificate request
     Notice: Signed certificate request for revokeme
     Notice: Removing file Puppet::SSL::CertificateRequest revokeme at '/etc/puppetlabs/puppet/ssl/ca/requests/revokeme.pem'
     Notice: Removing file Puppet::SSL::CertificateRequest revokeme at '/etc/puppetlabs/puppet/ssl/certificate_requests/revokeme.pem'
+
     [root@pe-master ~]# puppet cert clean revokeme
     Notice: Revoked certificate with serial 7
     Notice: Removing file Puppet::SSL::Certificate revokeme at '/etc/puppetlabs/puppet/ssl/ca/signed/revokeme.pem'
     Notice: Removing file Puppet::SSL::Certificate revokeme at '/etc/puppetlabs/puppet/ssl/certs/revokeme.pem'
     Notice: Removing file Puppet::SSL::Key revokeme at '/etc/puppetlabs/puppet/ssl/private_keys/revokeme.pem'
+    ```
 
-#### The Puppet CA cannot generate certificates when the CA bundle has been installed
+3.  Generate a new CRL.
 
-##### Error message
+    ```
+    puppet cert revoke
+    puppet cert clean
+    ```
 
-    [root@pe- ~]# puppet cert generate failtosign
-    Error: The certificate retrieved from the master does not match the agent's private key.
-    Certificate fingerprint: 10:0C:DF:B0:41:91:46:BF:1B:A8:F4:F5:44:88:1D:99:F3:B3:AE:3C:3A:E4:24:66:FB:50:CB:4A:20:FE:4F:6D
-    To fix this, remove the certificate from both the master and the agent and then start a puppet run, which will automatically regenerate a certificate.
-    On the master:
-      puppet cert clean pe-20173nightly-master.puppetdebug.vlan
-    On the agent:
-      1a. On most platforms: find /etc/puppetlabs/puppet/ssl -name pe-20173nightly-master.puppetdebug.vlan.pem -delete
-      1b. On Windows: del "\etc\puppetlabs\puppet\ssl\certs\pe-20173nightly-master.puppetdebug.vlan.pem" /f
-      2. puppet agent -t
+### Puppet CA cannot generate certificates when the CA bundle has been installed
 
-##### Cause
+#### Error message
 
-The `puppet cert generate` command should use the first certificate in the `cacert` file, but unintentionally uses the `localcacert` file. If the first certificate in this file is not the Puppet intermediate CA certificate Puppet will load the CA key and a mismatched CA certificate, and will fail with a misleading error message. The logic for verifying that the key and certificate match is shared with the agent key/certificate verification and will report that the agent key and certificate are mismatched when the CA certificate and key are mismatched.
+```
+[root@pe- ~]# puppet cert generate failtosign
+Error: The certificate retrieved from the master does not match the agent's private key.
+Certificate fingerprint: 10:0C:DF:B0:41:91:46:BF:1B:A8:F4:F5:44:88:1D:99:F3:B3:AE:3C:3A:E4:24:66:FB:50:CB:4A:20:FE:4F:6D
+To fix this, remove the certificate from both the master and the agent and then start a puppet run, which will automatically regenerate a certificate.
+On the master:
+  puppet cert clean pe-20173nightly-master.puppetdebug.vlan
+On the agent:
+  1a. On most platforms: find /etc/puppetlabs/puppet/ssl -name pe-20173nightly-master.puppetdebug.vlan.pem -delete
+  1b. On Windows: del "\etc\puppetlabs\puppet\ssl\certs\pe-20173nightly-master.puppetdebug.vlan.pem" /f
+  2. puppet agent -t
+```
 
-See [PUP-7985](https://tickets.puppetlabs.com/browse/PUP-7985) for more details.
+#### Cause
 
-##### Solution
+The `puppet cert generate` command should use the first certificate in the `cacert` file, but unintentionally uses the `localcacert` file. This is a [known issue](https://tickets.puppetlabs.com/browse/PUP-7985).
+
+If the first certificate in this file is not the Puppet intermediate CA certificate, Puppet loads the CA key and a mismatched CA certificate, then fails with a misleading error message. The logic for verifying that the key and certificate match is shared with the agent key/certificate verification, and it reports that the agent key and certificate are mismatched when the CA certificate and key are mismatched.
+
+#### Solution
 
 Copy the CA certificate bundle from the `cacert` file to the `localcacert` file.
 
-    cp $(puppet master --configprint cacert) $(puppet agent --configprint localcacert)
+```
+cp $(puppet master --configprint cacert) $(puppet agent --configprint localcacert)
+```
