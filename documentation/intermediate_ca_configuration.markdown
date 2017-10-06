@@ -80,7 +80,7 @@ Puppet Server needs to present the full certificate chain to clients so the clie
 
 In the following command:
 
--   `puppet-intermediate-certificate.pem` is the output of [the `csrgen.rb` script](#generate-an-intermediate-ca-certificate-request), which you can find at <default location on disk>. This is the signed CA certificate that you'll be using with your Puppet PKI, and will be given to you by your PKI administrators.
+-   `puppet-intermediate-certificate.pem` is the CA certificate that was issued by your organization's PKI for Puppet and will be used as the issuing certificate for your Puppet infrastructure.
 -   `org-intermediate-certificate.pem` and `org-root-certificate.pem` represent the CA certificates that your organization uses, though the number of CA certificates depend on the structure of your organization's PKI.
 
 To concatenate the certificate chain, run this command, using the filenames of your organization's certificates:
