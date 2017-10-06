@@ -105,13 +105,19 @@ Before installing the new certificate chain, confirm that you can use the chain 
 
     If this step succeeds, you can continue by updating Puppet Server's CA certificate bundle.
 
-2.  Copy the certificate chain to Puppet Server.
+2. Back up the old root CA certificate.
+
+    ```
+    cp /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem.old
+    ```
+
+3.  Copy the certificate chain to Puppet Server.
 
     ```
     cp ca-bundle.pem /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem
     ```
 
-3.  Update the Puppet agent CA certificate bundle.
+4.  Update the Puppet agent CA certificate bundle.
 
     Each Puppet agent caches the CA certificate and doesn't automatically fetch the new CA certificate bundle from the master. This caveat also applies to the agent on the Puppet Server acting as the CA server.
 
@@ -121,13 +127,13 @@ Before installing the new certificate chain, confirm that you can use the chain 
     cp /etc/puppetlabs/puppet/ssl/ca/ca_crt.pem /etc/puppetlabs/puppet/ssl/certs/ca.pem
     ```
 
-4.  If you already have Puppet agents, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` on every Puppet agent that was created before the new CA certificate was generated.
+5.  If you already have Puppet agents, copy the CA certificate bundle to `/etc/puppetlabs/puppet/ssl/certs/ca.pem` on every Puppet agent that was created before the new CA certificate was generated.
 
     > **Note:** Due to [a known issue](https://tickets.puppetlabs.com/browse/PUP-6697), Puppet agents cannot download CA certificate bundles and will only save the first certificate in the bundle. Since the first certificate in the bundle created by this process is the Puppet intermediate CA certificate, Puppet agents that download and save this single certificate cannot verify Puppet Server's certificate and will fail to connect.
 
     There may be other settings in the `webserver.conf` file; the other settings should be left alone.
 
-5.  Once the new CA certificate is installed, restart the `puppetserver` service.
+6.  Once the new CA certificate is installed, restart the `puppetserver` service.
 
 ## Troubleshooting
 
