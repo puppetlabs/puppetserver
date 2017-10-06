@@ -12,7 +12,7 @@ Regenerating all of these certificates can be a time-consuming process. You can 
 
 Puppet cannot load multiple certificate revocation lists (CRLs). Because Puppet attempts to perform full-chain checking by default, it will fail when encountering a non-root CA certificate, such as an intermediate CA certificate.
 
-Therefore, when using an intermediate CA certificate you **must** set the [`certificate_revocation`](https://docs.puppet.com/puppet/latest/configuration.html#certificaterevocation) setting in each agent's `puppet.conf` file to either `false` or `leaf` before configuring intermediate CA certificates. This prevents agents from attempting to perform a chain check that it cannot complete.
+Therefore, when using an intermediate CA certificate you **must** set the [`certificate_revocation`](https://docs.puppet.com/puppet/latest/configuration.html#certificaterevocation) setting in the `puppet.conf` file on all Puppet managed nodes to either `false` or `leaf` before configuring intermediate CA certificates. This prevents agents from attempting to perform a chain check that it cannot complete.
 
 You can configure this setting with the `puppet config set` command:
 
