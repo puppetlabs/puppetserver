@@ -55,6 +55,9 @@ You can generate an intermediate CA certificate on Puppet Server by creating a c
         csr.add_attribute(ext_req)
         csr.sign(ca_key, OpenSSL::Digest::SHA256.new)
 
+        File.open("req.pem", "w") do |f|
+          f.write(csr.to_s)
+        end
         puts csr.to_s
       end
     end
@@ -65,7 +68,9 @@ You can generate an intermediate CA certificate on Puppet Server by creating a c
 
 3.  Run `./csrgen.rb`.
 
-    This certificate signing request (CSR) generates the intermediate CA certificate that Puppet will use.
+Running this command will write CSR to `req.pem` and will print the same CSR to stdout.
+
+This certificate signing request (CSR) generates the intermediate CA certificate that Puppet will use.
 
 ## Submit the generated CSR for signing
 
