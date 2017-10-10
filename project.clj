@@ -1,4 +1,4 @@
-(def ps-version "5.1.2-SNAPSHOT")
+(def ps-version "5.1.4-SNAPSHOT")
 (def jruby-1_7-version "1.7.27-1")
 (def jruby-9k-version "9.1.11.0-1")
 
@@ -211,7 +211,7 @@
                                                [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.6.2"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.6.3"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
