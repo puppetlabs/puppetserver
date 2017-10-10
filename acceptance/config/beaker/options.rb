@@ -12,4 +12,4 @@
  "puppetserver-config"=>
   "/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf",
  :puppet_version=>"5.3.2.25.g1b6a5aa",
- :puppet_build_version=>"f65f9efbb727c3d2d72d6799c0fc345a726f27b5"}
+ :puppet_build_version=>"5f10b8f895ab925b92740104c006f6acb4dc3a1a"}
