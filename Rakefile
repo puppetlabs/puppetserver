@@ -81,48 +81,36 @@ def re_run_basic_smoke_test
 end
 
 def jenkins_passing_json_parsed
-  jenkins_url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/" \
-    "puppet-agent/view/#{PUPPET_AGENT_BRANCH}/view/Suite/job/" \
-    "platform_puppet-agent_intn-van-promote_suite-daily-promotion-#{PUPPET_AGENT_BRANCH}" \
-    "/lastSuccessfulBuild/api/json"
-  uri = URI.parse(jenkins_url)
+  passing_url = "http://builds.delivery.puppetlabs.net/passing-agent-SHAs/api/v1/json/report-#{PUPPET_AGENT_BRANCH}"
+  uri = URI.parse(passing_url)
   begin
     # DO NOT use uri-open if accepting user input for the uri
     #   we've done some simple correction here,
     #   but not enough to cleanse malicious user input
     jenkins_result = uri.open(redirect: false)
   rescue OpenURI::HTTPError => e
-    abort "ERROR: Could not get lastSuccessfulBuild for #{PUPPET_AGENT_BRANCH} of puppet-agent: '#{e.message}'"
+    abort "ERROR: Could not get last passing run data for #{PUPPET_AGENT_BRANCH} of puppet-agent: '#{e.message}'"
   end
 
   begin
     jenkins_result_parsed = JSON.parse(jenkins_result.read)
   rescue JSON::ParserError => e
-    abort "ERROR: Could not get lastSuccessfulBuild's valid json for #{PUPPET_AGENT_BRANCH}: '#{e.message}'"
+    abort "ERROR: Could not get valid json for last passing run of #{PUPPET_AGENT_BRANCH}: '#{e.message}'"
   end
-
-  begin
-    jenkins_result_parameters = jenkins_result_parsed['actions'].find{|x| x['_class'] == 'hudson.model.ParametersAction' }['parameters']
-    raise "No parameters found" unless jenkins_result_parameters
-  rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's actions or parameters for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
-  end
-
-  jenkins_result_parameters
 end
 
 def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
   begin
-    my_jenkins_passing_json.find{|x| x['name'] == 'SUITE_COMMIT'}['value']
+    my_jenkins_passing_json['suite_commit']
   rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's SUITE_COMMIT value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get last passing suite_commit value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 end
 def lookup_passing_puppet_sha(my_jenkins_passing_json)
   begin
-    my_jenkins_passing_json.find{|x| x['name'] == 'puppet_COMPONENT_COMMIT'}['value']
+    my_jenkins_passing_json['puppet']
   rescue => e
-    abort "ERROR: Could not get lastSuccessfulBuild's puppet_COMPONENT_COMMIT value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get puppet's last passing SHA for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 end
 
