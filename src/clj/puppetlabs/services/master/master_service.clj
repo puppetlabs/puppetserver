@@ -89,7 +89,7 @@
    [:AuthorizationService wrap-with-authorization-check]
    [:SchedulerService interspaced]
    [:StatusService register-status]
-   [:VersionedCodeService get-code-content]]
+   [:VersionedCodeService get-code-content current-code-id]]
   (init
    [this context]
    (core/validate-memory-requirements!)
@@ -119,6 +119,7 @@
                                                use-legacy-auth-conf
                                                jruby-service
                                                get-code-content
+                                               current-code-id
                                                handle-request
                                                (get-auth-handler)
                                                environment-class-cache-enabled)

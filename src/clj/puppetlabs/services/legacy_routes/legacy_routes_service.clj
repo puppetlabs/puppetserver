@@ -40,6 +40,9 @@
                                         (master-core/root-routes handle-request
                                                                  (partial identity)
                                                                  jruby-service
+                                                                 (fn [_ _ _]
+                                                                   (throw (IllegalStateException.
+                                                                            (i18n/trs "Versioned code not supported."))))
                                                                  (constantly nil)
                                                                  false))
           master-route-handler (comidi/routes->handler master-routes)

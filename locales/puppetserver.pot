@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: ca5310480c9597a71adfba33b707061ca9aec8d2\n"
+"X-Git-Ref: c5ccc6c7068811e21e8ed727a48f1c2a266650fb\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -519,6 +519,10 @@ msgid "Marking environment ''{0}'' as expired."
 msgstr ""
 
 #: src/clj/puppetlabs/services/legacy_routes/legacy_routes_service.clj
+msgid "Versioned code not supported."
+msgstr ""
+
+#: src/clj/puppetlabs/services/legacy_routes/legacy_routes_service.clj
 msgid ""
 "The legacy routing service has successfully started and is now ready to "
 "handle requests"
@@ -526,6 +530,14 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Object cannot be coerced to a keyword: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "file did not match versioned file contents"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Static file unavailable for {0}: {1}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
@@ -553,7 +565,7 @@ msgstr ""
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
-"files directory of a module."
+"files or tasks directory of a module."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj

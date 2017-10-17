@@ -158,7 +158,8 @@
             :sha256 schema/Str
             :size_bytes schema/Int
             :uri {:path schema/Str
-                  :params {:environment schema/Str}}}]})
+                  :params {:environment schema/Str
+                           (schema/optional-key :code_id) schema/Str}}}]})
 
 (defn obj-or-ruby-symbol-as-string
   "If the supplied object is of type RubySymbol, returns a string
@@ -355,22 +356,35 @@
          (middleware-utils/json-response 200))))
 
 (defn describe-task-file
-  [env-name module-name file]
+  [get-code-content env-name code-id module-name file]
   (let [size (fs/size file)
         sha256 (ks/file->sha256 (io/file file))
-        base-name (fs/base-name file)]
+        base-name (fs/base-name file)
+        ;; we trust the file path from Puppet, so extract the subpath from file
+        static-path (re-find (re-pattern (str #"[^/]+/" module-name "/tasks/" base-name)) file)
+        uri (try
+              ;; if code content can be retrieved, then use static_file_content
+              (when (not= sha256 (ks/stream->sha256 (get-code-content env-name code-id static-path)))
+                (throw (Exception. (i18n/trs "file did not match versioned file contents"))))
+              {:path (str "/puppet/v3/static_file_content/" static-path)
+               :params {:environment env-name :code_id code-id}}
+              (catch Exception e
+                (log/debug (i18n/trs "Static file unavailable for {0}: {1}" file e))
+                {:path (format "/puppet/v3/file_content/tasks/%s/%s" module-name base-name)
+                 :params {:environment env-name}}))]
     {:filename base-name
      :sha256 sha256
      :size_bytes size
-     :uri {:path (str "/puppet/v3/file_content/tasks/" module-name "/" base-name)
-           :params {:environment env-name}}}))
+     :uri uri}))
 
 (schema/defn ^:always-validate
   task-data->task-details :- TaskDetails
   "Fills in a bare TaskData map by examining the files it refers to,
   returning TaskDetails."
   [task-data :- TaskData
+   get-code-content :- IFn
    env-name :- schema/Str
+   code-id :- (schema/maybe schema/Str)
    module-name :- schema/Str
    task-name :- schema/Str]
   (let [?metadata (try (some-> task-data :metadata_file slurp cheshire/decode)
@@ -380,7 +394,7 @@
                          :msg (i18n/tru "The metadata file for the ''{0}'' task was not parseable as JSON"
                                         (str module-name "::" task-name))})))]
     {:metadata (or ?metadata {})
-     :files (mapv (partial describe-task-file env-name module-name)
+     :files (mapv (partial describe-task-file get-code-content env-name code-id module-name)
                   (:files task-data))}))
 
 (schema/defn environment-not-found :- ringutils/RingResponse
@@ -497,7 +511,9 @@
   (MissingModule), or (TaskNotFound) if any of those conditions occur."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    jruby-instance
+   code-content-fn :- IFn
    environment-name :- schema/Str
+   code-id :- (schema/maybe schema/Str)
    module-name :- schema/Str
    task-name :- schema/Str]
   (-> (jruby-protocol/get-task-data jruby-service
@@ -506,7 +522,7 @@
                                     module-name
                                     task-name)
       sort-nested-info-maps
-      (task-data->task-details environment-name module-name task-name)))
+      (task-data->task-details code-content-fn environment-name code-id module-name task-name)))
 
 (schema/defn exception-matches? :- schema/Bool
   [^Exception e :- Exception
@@ -537,14 +553,18 @@
   task-details-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
   request for detailed task information."
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn
+   current-code-id-fn :- IFn]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
           module (get-in request [:route-params :module-name])
           task (get-in request [:route-params :task-name])]
       (try+ (->> (task-details jruby-service
                                (:jruby-instance request)
+                               get-code-content-fn
                                environment
+                               (current-code-id-fn environment)
                                module
                                task)
                  (middleware-utils/json-response 200))
@@ -613,8 +633,10 @@
 (schema/defn ^:always-validate
   task-details-handler :- IFn
   "Handler for processing an incoming /tasks/:module/:task-name Ring request"
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (-> (task-details-fn jruby-service)
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn
+   current-code-id-fn :- IFn]
+  (-> (task-details-fn jruby-service get-code-content-fn current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-environment-validation
       jruby-request/wrap-with-error-handling))
@@ -625,8 +647,8 @@
   [path :- schema/Str]
   ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
   ;; The second vector takes anything else that might be on the end of the path.
-  ;; Below, this corresponds to '*/*/files/**' in a filesystem glob.
-  (bidi.bidi/match-route [[#"[^/]+/" :module-name "/files/" [#".+" :rest]] :_]
+  ;; Below, this corresponds to '*/*/files/**' or '*/*/tasks/**' in a filesystem glob.
+  (bidi.bidi/match-route [[#"[^/]+/" :module-name #"/(files|tasks)/" [#".+" :rest]] :_]
                          path))
 
 (defn static-file-content-request-handler
@@ -657,7 +679,7 @@
         (not (valid-static-file-path? file-path))
         {:status 403
          :headers {"Content-Type" "text/plain"}
-         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files directory of a module.")}
+         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files or tasks directory of a module.")}
 
         :else
         {:status 200
@@ -717,6 +739,7 @@
   "v3 route tree for the clojure side of the master service."
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
+   current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool]
   (let [environment-class-handler
         (environment-class-handler jruby-service
@@ -729,7 +752,7 @@
         (all-tasks-handler jruby-service)
 
         task-details-handler
-        (task-details-handler jruby-service)
+        (task-details-handler jruby-service get-code-content-fn current-code-id-fn)
 
         static-file-content-handler
         (static-file-content-request-handler get-code-content-fn)]
@@ -754,12 +777,14 @@
    clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
+   current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
+                                      current-code-id-fn
                                       environment-class-cache-enabled)
                    clojure-request-wrapper )))
 
@@ -859,12 +884,14 @@
    clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
+   current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool]
   (comidi/routes
    (v3-routes ruby-request-handler
               clojure-request-wrapper
               jruby-service
               get-code-content-fn
+              current-code-id-fn
               environment-class-cache-enabled)))
 
 (schema/defn ^:always-validate
@@ -934,6 +961,7 @@
    use-legacy-auth-conf :- schema/Bool
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content :- IFn
+   current-code-id :- IFn
    handle-request :- IFn
    wrap-with-authorization-check :- IFn
    environment-class-cache-enabled :- schema/Bool]
@@ -950,6 +978,7 @@
                  clojure-request-wrapper
                  jruby-service
                  get-code-content
+                 current-code-id
                  environment-class-cache-enabled)))
 
 (def MasterStatusV1
