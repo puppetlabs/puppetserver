@@ -9,7 +9,11 @@
             [me.raynes.fs :as fs]))
 
 (def test-resources-dir
-  "./dev-resources/puppetlabs/services/master/tasks_int_test")
+  (ks/absolute-path "./dev-resources/puppetlabs/services/master/tasks_int_test"))
+
+(defn script-path
+  [script-name]
+  (str test-resources-dir "/" script-name))
 
 (defn purge-env-dir
   []
@@ -143,4 +147,77 @@
 
             (testing "returns 500 when the metadata file is unparseable"
               (assert-task-error 500 #"invalid-task-metadata"
-                                 "production" "mysql::test"))))))))
+                                 "production" "mysql::test")))))))
+
+  (testing "full stack task metadata smoke test with code management:"
+    (bootstrap/with-puppetserver-running-with-config
+      app
+      (assoc puppet-config :versioned-code {:code-id-command (script-path "echo")
+                                            :code-content-command (script-path "hello_world")})
+      (let [metadata {"description" "This is a test task"
+                      "output" "'Hello, world!'"}]
+        (testutils/write-tasks-files "shell" "echo" "echo 'Hello, world!'" (json/encode metadata))
+
+        (testing "on a successful request,"
+          (let [response (get-task-details "production" "shell::echo")
+                code (:status response)]
+            (testing "a successful status code is returned"
+              (is (= 200 code)
+                  (str "unexpected status code " code " for response: "
+                       (ks/pprint-to-string response))))
+
+            (testing "the expected response body is returned"
+              (let [expected-response {"metadata" metadata
+                                       "files" [{"filename" "echo.sh"
+                                                 "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
+                                                 "size_bytes" 20
+                                                 "uri" {"path" "/puppet/v3/static_file_content/modules/shell/tasks/echo.sh"
+                                                        "params" {"environment" "production" "code_id" "production"}}}]}]
+                (is (= expected-response (parse-response response))))))))
+
+      (let [metadata {"description" "This is a test task"
+                      "output" "'Hello; world!'"}]
+        (testutils/write-tasks-files "shell" "fail" "echo 'Hello; world!'" (json/encode metadata))
+
+        (testing "on a request that should error,"
+          (let [response (get-task-details "production" "shell::fail")
+                code (:status response)]
+            (testing "a successful status code is returned"
+              (is (= 200 code)
+                  (str "unexpected status code " code " for response: "
+                       (ks/pprint-to-string response))))
+
+            (testing "the expected response body is returned"
+              (let [expected-response {"metadata" metadata
+                                       "files" [{"filename" "fail.sh"
+                                                 "sha256" "02ac3362307a6d18d4aa718ffd9a4de31e0233148faf57c6a002c5d6a9c3e57c"
+                                                 "size_bytes" 20
+                                                 "uri" {"path" "/puppet/v3/file_content/tasks/shell/fail.sh"
+                                                        "params" {"environment" "production"}}}]}]
+                (is (= expected-response (parse-response response))))))))))
+
+  (testing "full stack task metadata smoke test with unmanaged code:"
+    (bootstrap/with-puppetserver-running-with-config
+      app
+      (assoc puppet-config :versioned-code {:code-id-command (script-path "echo")
+                                            :code-content-command (script-path "warn_echo_and_error")})
+      (let [metadata {"description" "This is a test task"
+                      "output" "'Hello, world!'"}]
+        (testutils/write-tasks-files "shell" "skip" "echo 'Hello, world!'" (json/encode metadata))
+
+        (testing "on a successful request,"
+          (let [response (get-task-details "production" "shell::skip")
+                code (:status response)]
+            (testing "a successful status code is returned"
+              (is (= 200 code)
+                  (str "unexpected status code " code " for response: "
+                       (ks/pprint-to-string response))))
+
+            (testing "the expected response body is returned"
+              (let [expected-response {"metadata" metadata
+                                       "files" [{"filename" "skip.sh"
+                                                 "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
+                                                 "size_bytes" 20
+                                                 "uri" {"path" "/puppet/v3/file_content/tasks/shell/skip.sh"
+                                                        "params" {"environment" "production"}}}]}]
+                (is (= expected-response (parse-response response)))))))))))
