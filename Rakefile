@@ -101,9 +101,9 @@ end
 
 def lookup_passing_puppetagent_sha(my_jenkins_passing_json)
   begin
-    my_jenkins_passing_json['suite_commit']
+    my_jenkins_passing_json['suite-commit']
   rescue => e
-    abort "ERROR: Could not get last passing suite_commit value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
+    abort "ERROR: Could not get last passing suite-commit value for #{PUPPET_AGENT_BRANCH}\n\n  #{e}"
   end
 end
 def lookup_passing_puppet_sha(my_jenkins_passing_json)
