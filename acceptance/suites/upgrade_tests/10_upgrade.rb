@@ -26,6 +26,19 @@ step "Upgrade Puppet Server." do
   on(master, puppet("resource service puppetserver ensure=running"))
 end
 
+logfile = "/var/log/puppetlabs/puppetserver/puppetserver.log"
+timestamp = ''
+
+step "Get timestamp from puppetserver log" do
+  res = on(master, "tail -1 #{logfile}")
+  m = res.stdout.match(/^(.*),/)
+  timestamp = if m
+                Time.parse(m[1])
+              else
+                Time.parse('9999-09-09')
+              end
+end
+
 step "Upgrade Puppet agents" do
   nonmaster_agents.each do |agent|
     agent.upgrade_package('puppet-agent')
@@ -36,6 +49,17 @@ step "Check that the master has Puppetserver 5.x installed" do
   on(master, "puppetserver --version") do
     assert_match(/\Apuppetserver version: 5\./i, stdout, "puppetserver --version does not start with major version 5.")
   end
+end
+
+step "Check that the puppetserver has been restarted since the agent upgrade" do
+  res = on(master, "tac #{logfile} | grep -m1 \"Server] Started\"")
+  m = res.stdout.match(/^(.*),/)
+  newtime = if m
+              Time.parse(m[1])
+            else
+              Time.parse('0000-01-01')
+            end
+  fail_test('puppetserver service was not restarted after agent upgrade') unless newtime > timestamp
 end
 
 step "Verify that agents can connect to the server" do
