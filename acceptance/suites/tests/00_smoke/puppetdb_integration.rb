@@ -22,6 +22,10 @@ test_name 'PuppetDB integration'
 ## report was sent from Puppet Server to PuppetDB
 if !master.is_pe?
   step 'Install PuppetDB module' do
+    # puppetlabs-postgresql 5.2.0 introduced some bad dependency specifications
+    # that broke ordering. When that's resolved we should switch to using the
+    # version of puppetlabs-postgresql that puppetlabs-puppetdb uses.
+    on(master, puppet('module install puppetlabs-postgresql -v 5.1.0'))
     on(master, puppet('module install puppetlabs-puppetdb'))
   end
 
