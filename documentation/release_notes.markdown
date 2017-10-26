@@ -24,6 +24,15 @@ Previous versions of Puppet Server set the default logging level to `debug`, the
 
 -   [SERVER-1922](https://tickets.puppetlabs.com/browse/SERVER-1922)
 
+### Packaging change: Use operating system codename in Debian packages' release field
+
+In Debian and Debian-derivative packages from Puppet Server 5.1.3 onward, the release field changes from "1puppetlabs" to "1<OS CODENAME>". For example, the `puppetserver` package version for Server 5.1.3 on Ubuntu 16.04 (Xenial Xerus) is "5.1.3-1xenial", whereas the package version for Server 5.1.0 was "5.1.0-1puppetlabs1".
+
+This fixes an issue where some repository mirroring tools failed to mirror our repositories because packages with different contents had the same name. This does not otherwise affect the package installation process.
+
+-   [CPR-292](https://tickets.puppetlabs.com/browse/CPR-292)
+-   [CPR-429](https://tickets.puppetlabs.com/browse/CPR-429)
+
 ## Puppet Server 5.1.0
 
 Released September 13, 2017.
