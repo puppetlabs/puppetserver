@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.1.4
+
+Released November 6, 2017.
+
+This is a minor feature release of Puppet Server.
+
+### New feature: Serve versioned tasks from static file content endpoint
+
+Tasks available from versioned code will be served via the static file content endpoint, rather than out of Puppet's file serving. This should reduce resources used to serve tasks.
+
+-   [SERVER-1993](https://tickets.puppetlabs.com/browse/SERVER-1993)
+
 ## Puppet Server 5.1.3
 
 Released October 2, 2017.
@@ -76,7 +88,7 @@ In previous versions of Puppet Server, there was no designed way to add Java JAR
 
 Released June 27, 2017.
 
-This is a major release of Puppet Server, and corresponds with the major release of Puppet 5.0, which also includes many changes and new features relevant to Puppet Server users. 
+This is a major release of Puppet Server, and corresponds with the major release of Puppet 5.0, which also includes many changes and new features relevant to Puppet Server users.
 
 ### Platform changes
 
