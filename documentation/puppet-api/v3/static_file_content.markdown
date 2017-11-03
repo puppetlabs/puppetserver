@@ -4,21 +4,21 @@ title: "Puppet Server: Puppet API: Static File Content"
 canonical: "/puppetserver/latest/puppet-api/v3/static_file_content.html"
 ---
 
-[`code-content-command`]: https://docs.puppet.com/puppetserver/latest/config_file_puppetserver.html
-[static catalog]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
-[catalog]: https://docs.puppet.com/puppet/latest/reference/subsystem_catalog_compilation.html
-[file resource]: https://docs.puppet.com/puppet/latest/reference/type.html#file
-[environment]: https://docs.puppet.com/puppet/latest/reference/environments.html
-[auth.conf]: https://docs.puppet.com/puppetserver/latest/config_file_auth.html
+[`code-content-command`]: https://puppet.com/docs/puppetserver/latest/config_file_puppetserver.html
+[static catalog]: https://puppet.com/docs/puppet/latest/static_catalogs.html
+[catalog]: https://puppet.com/docs/puppet/latest/subsystem_catalog_compilation.html
+[file resource]: https://puppet.com/docs/puppet/latest/type.html#file
+[environment]: https://puppet.com/docs/puppet/latest/environments.html
+[auth.conf]: https://puppet.com/docs/puppetserver/latest/config_file_auth.html
 
 The `static_file_content` endpoint returns the standard output of a
 [`code-content-command`][] script, which should output the contents of a specific version
 of a [file resource][] that has a `source` attribute with a `puppet:///` URI value. That
-source must be a file from the `files` directory of a module in a specific [environment][].
+source must be a file from the `files` or `tasks` directory of a module in a specific [environment][].
 
 Puppet Agent uses this endpoint only when applying a [static catalog][]. This endpoint
 is available only when the Puppet master is running Puppet Server, not Ruby Puppet masters, such as the
-[deprecated WEBrick Puppet master](https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html).
+[deprecated WEBrick Puppet master](https://puppet.com/docs/puppet/latest/services_master_webrick.html).
 
 ## `GET /puppet/v3/static_file_content/<FILE-PATH>`
 
@@ -29,7 +29,7 @@ request to this endpoint with the required parameters.
 
 The `<FILE-PATH>` segment of the endpoint is required. The path corresponds to the
 requested file's path on the Server relative to the given environment's root directory,
-and must point to a file in the `*/*/files/**` glob. For example, Puppet Server will
+and must point to a file in the `*/*/files/**` or `*/*/tasks/**` glob. For example, Puppet Server will
 inline metadata into static catalogs for file resources sourcing module files located by
 default in
 `/etc/puppetlabs/code/environments/<ENVIRONMENT>/modules/<MODULE NAME>/files/**`.
@@ -50,7 +50,7 @@ requested version in the response body. An unsuccessful request returns an error
 code with a `text/plain` Content-Type header:
 
 -   400: returned when any of the parameters are not provided.
--   403: returned when requesting a file that is not within a module's `files`
+-   403: returned when requesting a file that is not within a module's `files` or `tasks`
 directory.
 -   500: returned when `code-content-command` is not configured on the server, or
 when a requested file or version is not present in a repository.
@@ -93,7 +93,7 @@ is not configured on Puppet Server.
 
 > **Note:** The `code-content-command` and `code-id-command` scripts are not provided in a
 > default installation or upgrade. For more information about these scripts, see the
-> [static catalog documentation](//docs.puppet.com/puppet/latest/reference/static_catalogs.html).
+> [static catalog documentation](https://puppet.com/docs/puppet/latest/static_catalogs.html).
 
 #### Authorization
 
