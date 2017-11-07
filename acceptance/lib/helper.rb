@@ -71,6 +71,7 @@ module PuppetServerExtensions
     [
       /debian-7/,
       /debian-8/,
+      /debian-9/,
       /el/, # includes cent6,7 and redhat6,7
       /ubuntu-12/,
       /ubuntu-14/,

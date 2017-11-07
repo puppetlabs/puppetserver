@@ -1,4 +1,9 @@
 ---
-packaging_url: 'git://github.com/puppetlabs/packaging.git --branch=master'
+packaging_url: 'git://github.com/puppetlabs/packaging.git --branch=1.0.x'
 packaging_repo: 'packaging'
 project: 'puppetserver'
+
+repo_name: 'puppet5'
+nonfinal_repo_name: 'puppet5-nightly'
+repo_link_target: 'puppet'
+nonfinal_repo_link_target: 'puppet-nightly'

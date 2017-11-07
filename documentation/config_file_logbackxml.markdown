@@ -14,7 +14,7 @@ Puppet Server’s logging is routed through the Java Virtual Machine's [Logback 
 
 By default, Puppet Server logs messages and errors to `/var/log/puppetlabs/puppetserver/puppetserver.log`. The default log level is ‘INFO’, and Puppet Server sends nothing to `syslog`. You can change Puppet Server's logging behavior by editing `/etc/puppetlabs/puppetserver/logback.xml`, and you can specify a different Logback config file in [`global.conf`](#globalconf).
 
-Puppet Server picks up changes to `logback.xml` at runtime, so while you can restart the `puppetserver` service for changes to take effect, they should also take effect after a minute or so.
+You can restart the `puppetserver` service for changes to take effect, or enable [configuration scanning](#scan-and-scanperiod) to allow changes to be recognized at runtime.
 
 Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
@@ -40,20 +40,30 @@ You can also change the logging level for JRuby logging from its defaults of `er
 
 You can change the file to which Puppet Server writes its logs in the `appender` section named `F1`. By default, the location is set to `/var/log/puppetlabs/puppetserver/puppetserver.log`:
 
-~~~ xml
+``` xml
 ...
     <appender name="F1" class="ch.qos.logback.core.FileAppender">
         <file>/var/log/puppetlabs/puppetserver/puppetserver.log</file>
 ...
-~~~
+```
 
 To change this to `/var/log/puppetserver.log`, modify the contents of the `file` element:
 
-~~~ xml
+``` xml
         <file>/var/log/puppetserver.log</file>
-~~~
+```
 
-Note that the user account that owns the Puppet Server process must have write permissions to the destination path.
+The user account that owns the Puppet Server process must have write permissions to the destination path.
+
+#### `scan` and `scanPeriod`
+
+Logback supports noticing and reloading configuration changes without requiring a restart, a feature Logback calls **scanning**. To enable this, set the `scan` and `scanPeriod` attributes in the `<configuration>` element of `logback.xml`.  Scanning can potentially degrade logging performance and is not enabled by default.
+
+``` xml
+<configuration scan="true" scanPeriod="60 seconds">
+```
+
+Due to a [bug in Logback](https://tickets.puppetlabs.com/browse/TK-426), the `scanPeriod` must be set to a value; setting only `scan="true"` will not enable configuration scanning.
 
 ## HTTP request logging
 
