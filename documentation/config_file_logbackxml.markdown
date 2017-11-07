@@ -14,7 +14,7 @@ Puppet Server’s logging is routed through the Java Virtual Machine's [Logback 
 
 By default, Puppet Server logs messages and errors to `/var/log/puppetlabs/puppetserver/puppetserver.log`. The default log level is ‘INFO’, and Puppet Server sends nothing to `syslog`. You can change Puppet Server's logging behavior by editing `/etc/puppetlabs/puppetserver/logback.xml`, and you can specify a different Logback config file in [`global.conf`](#globalconf).
 
-Puppet Server picks up changes to `logback.xml` at runtime, so while you can restart the `puppetserver` service for changes to take effect, they should also take effect after a minute or so.
+You can restart the `puppetserver` service for changes to take effect, or enable [configuration scanning](#scan-and-scanperiod) to allow changes to be recognized in runtime.
 
 Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 10MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
