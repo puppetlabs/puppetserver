@@ -60,7 +60,7 @@ The user account that owns the Puppet Server process must have write permissions
 Logback supports noticing and reloading configuration changes without requiring a restart, a feature Logback calls **scanning**. To enable this, set the `scan` and `scanPeriod` attributes in the `<configuration>` element of `logback.xml`.  Scanning can potentially degrade logging performance and is not enabled by default.
 
 ``` xml
-<configuration scan="true" scanPeriod="60 seconds" >
+<configuration scan="true" scanPeriod="60 seconds">
 ```
 
 Due to a [bug in Logback](https://tickets.puppetlabs.com/browse/TK-426), the `scanPeriod` must be set to a value; setting only `scan="true"` will not enable configuration scanning.
