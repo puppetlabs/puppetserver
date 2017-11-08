@@ -4,8 +4,8 @@ title: "Puppet Server: Puppet API: Task detail"
 canonical: "/puppetserver/latest/puppet-api/v3/task-detail.html"
 ---
 
-[deprecated WEBrick Puppet master]: https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html
-[`environment_timeout`]: https://docs.puppet.com/puppet/latest/reference/config_file_environment.html#environmenttimeout
+[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/latest/services_master_webrick.html
+[`environment_timeout`]: https://puppet.com/docs/puppet/latest/config_file_environment.html#environmenttimeout
 
 [`auth.conf`]: ../../config_file_auth.markdown
 [`puppetserver.conf`]: ../../config_file_puppetserver.markdown
@@ -27,15 +27,20 @@ on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It als
 the Ruby-based Puppet master's authorization methods and configuration. See the
 [Authorization section](#authorization) for more information.
 
+> Note: Tasks file contents in versioned code can be retrieved using the [`static_file_content`](./static_file_content.markdown) endpoint.
+
 ### Does not return entries for task files with invalid names
+
 A task file name has the same restriction as puppet type names and must match
 the regular expression `\A[a-z][a-z0-9_]*\z` (excluding extensions).
 
 ### Returns entries for tasks with no executable files
+
 A task will be listed if only metadata for it exists. How many files are
 associated with a task can be found by querying that task's details.
 
 ### Does read files
+
 This endpoint will read in contents of metadata and other task files, so it may
 be more expensive than the `/tasks` endpoint.
 
@@ -178,8 +183,7 @@ Could not find task 'doesnotexist'
 
 ### Schema
 
-A tasks detail response body conforms to the
-[task detail schema](./task_detail.json).
+A tasks detail response body conforms to the [task detail schema](./task_detail.json).
 
 ### Authorization
 

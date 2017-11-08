@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.1.4
+
+Released November 6, 2017.
+
+This is a minor feature release of Puppet Server.
+
+### New feature: Serve versioned tasks from static file content endpoint
+
+Tasks available from versioned code will be served via the static file content endpoint, rather than out of Puppet's file serving. This should reduce resources used to serve tasks.
+
+-   [SERVER-1993](https://tickets.puppetlabs.com/browse/SERVER-1993)
+
 ## Puppet Server 5.1.3
 
 Released October 2, 2017.
@@ -23,6 +35,15 @@ This is a bug-fix release of Puppet Server. Puppet Server 5.1.1 and 5.1.2 were n
 Previous versions of Puppet Server set the default logging level to `debug`, then filtered the log output using Logback. Because Puppet generates a very large amount of output in debug mode, this behavior could significantly degrade Puppet Server's performance. Server 5.1.3 resolves this issue by producing `debug` output only when configured to do so. For details about setting logging levels, see [the logback.xml configuration documentation](./config_file_logbackxml.markdown).
 
 -   [SERVER-1922](https://tickets.puppetlabs.com/browse/SERVER-1922)
+
+### Packaging change: Use operating system codename in Debian packages' release field
+
+In Debian and Debian-derivative packages from Puppet Server 5.1.3 onward, the release field changes from "1puppetlabs" to "1<OS CODENAME>". For example, the `puppetserver` package version for Server 5.1.3 on Ubuntu 16.04 (Xenial Xerus) is "5.1.3-1xenial", whereas the package version for Server 5.1.0 was "5.1.0-1puppetlabs1".
+
+This fixes an issue where some repository mirroring tools failed to mirror our repositories because packages with different contents had the same name. This does not otherwise affect the package installation process.
+
+-   [CPR-292](https://tickets.puppetlabs.com/browse/CPR-292)
+-   [CPR-429](https://tickets.puppetlabs.com/browse/CPR-429)
 
 ## Puppet Server 5.1.0
 
@@ -67,7 +88,7 @@ In previous versions of Puppet Server, there was no designed way to add Java JAR
 
 Released June 27, 2017.
 
-This is a major release of Puppet Server, and corresponds with the major release of Puppet 5.0, which also includes many changes and new features relevant to Puppet Server users. 
+This is a major release of Puppet Server, and corresponds with the major release of Puppet 5.0, which also includes many changes and new features relevant to Puppet Server users.
 
 ### Platform changes
 
