@@ -8,7 +8,7 @@ canonical: "/puppetserver/latest/config_file_ca.html"
 [new `auth.conf`]: ./config_file_auth.markdown
 [deprecated]: ./deprecated_features.markdown
 
-The `ca.conf` file configures settings for the [deprecated][] Puppet Server Certificate Authority (CA) service. For an overview, see [Puppet Server Configuration](./configuration.markdown).
+The `ca.conf` file configures settings for the Puppet Server Certificate Authority (CA) service. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
 > **Deprecation Note:** This file supports only the `authorization-required` and `client-whitelist` settings, which are [deprecated][] as of Puppet Server 2.2 in favor of authorization that is configured in the [new `auth.conf`][] file. Because these settings are deprecated, a default `ca.conf` file is no longer included in the Puppet Server package.
 
