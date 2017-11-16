@@ -23,7 +23,7 @@ module PuppetServerExtensions
 
     puppet_version = get_option_value(options[:puppet_version],
                          nil, "Puppet Version", "PUPPET_VERSION",
-                         "1.10.8.46.g8b59b88",
+                         "1.10.9",
                          :string) ||
                          get_puppet_version
 
@@ -32,7 +32,7 @@ module PuppetServerExtensions
     puppet_build_version = get_option_value(options[:puppet_build_version],
                          nil, "Puppet Agent Development Build Version",
                          "PUPPET_BUILD_VERSION",
-                         "8b59b886d9ce0dc80bfc0cd2ef487924ceb21476",
+                         "1.10.9",
                          :string)
 
     # puppetdb version corresponds to packaged development version located at:
