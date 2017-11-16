@@ -94,7 +94,7 @@ Content-Type: application/json
   },
   "files": [
     {"filename": "taskname.rb",
-      "SHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "size_bytes": 1024,
       "uri:" {
         "path": "/puppet/v3/file_content/tasks/module/taskname.rb",
