@@ -111,6 +111,7 @@
 
             (testing "the expected response body is returned"
               (let [expected-response {"metadata" metadata
+                                       "name" "shell::poc"
                                        "files" [{"filename" "poc.sh"
                                                  "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
                                                  "size_bytes" 20
@@ -168,6 +169,7 @@
 
             (testing "the expected response body is returned"
               (let [expected-response {"metadata" metadata
+                                       "name" "shell::echo"
                                        "files" [{"filename" "echo.sh"
                                                  "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
                                                  "size_bytes" 20
@@ -189,6 +191,7 @@
 
             (testing "the expected response body is returned"
               (let [expected-response {"metadata" metadata
+                                       "name" "shell::fail"
                                        "files" [{"filename" "fail.sh"
                                                  "sha256" "02ac3362307a6d18d4aa718ffd9a4de31e0233148faf57c6a002c5d6a9c3e57c"
                                                  "size_bytes" 20
@@ -215,6 +218,7 @@
 
             (testing "the expected response body is returned"
               (let [expected-response {"metadata" metadata
+                                       "name" "shell::skip"
                                        "files" [{"filename" "skip.sh"
                                                  "sha256" "f24ce8f82408237beebf1fadd8a3da74ebd44512c02eee5ec24cf536871359f7"
                                                  "size_bytes" 20

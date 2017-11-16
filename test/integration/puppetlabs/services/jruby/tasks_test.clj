@@ -222,6 +222,7 @@
               (testing "and the task exists"
                 (testing "with metadata and payload files"
                   (let [expected-info {:metadata {"meta" "data"}
+                                       :name "apache::install_mods"
                                        :files [{:filename "install_mods.rb"
                                                 :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                                 :size_bytes 0
@@ -232,6 +233,7 @@
 
                 (testing "without a metadata file"
                   (let [expected-info {:metadata {}
+                                       :name "apache"
                                        :files [{:filename "init.rb"
                                                 :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                                 :size_bytes 0
@@ -242,6 +244,7 @@
 
                 (testing "with no payload files"
                   (let [expected-info {:metadata {"meta" "data"}
+                                       :name "apache::about"
                                        :files []}]
                     (is (= expected-info
                            (get-task-details "production" "apache" "about"))))))
@@ -267,6 +270,7 @@
           (testing "uses static-file-content endpoint when code is available"
             (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "" "UTF-8")))
                   expected-info {:metadata {"meta" "data"}
+                                 :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                           :size_bytes 0
@@ -277,6 +281,7 @@
           (testing "uses file-content endpoint when code content differs from content reported by Puppet"
             (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "some script" "UTF-8")))
                   expected-info {:metadata {"meta" "data"}
+                                 :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                           :size_bytes 0
@@ -287,6 +292,7 @@
           (testing "uses file-content endpoint when code is unavailable"
             (let [code-fn (fn [_ _ _] (throw (Exception. "Versioned code not supported.")))
                   expected-info {:metadata {"meta" "data"}
+                                 :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
                                           :size_bytes 0

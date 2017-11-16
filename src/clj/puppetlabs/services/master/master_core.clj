@@ -154,6 +154,7 @@
 (def TaskDetails
   "A filled-in map of information about a task."
   {:metadata {schema/Str schema/Any}
+   :name schema/Str
    :files [{:filename schema/Str
             :sha256 schema/Str
             :size_bytes schema/Int
@@ -377,6 +378,15 @@
      :size_bytes size
      :uri uri}))
 
+(defn full-task-name
+  "Construct a full task name from the two components. If the task's short name
+  is 'init', then the second component is omitted so the task name is just the
+  module's name."
+  [module-name task-shortname]
+  (if (= task-shortname "init")
+    module-name
+    (str module-name "::" task-shortname)))
+
 (schema/defn ^:always-validate
   task-data->task-details :- TaskDetails
   "Fills in a bare TaskData map by examining the files it refers to,
@@ -394,6 +404,7 @@
                          :msg (i18n/tru "The metadata file for the ''{0}'' task was not parseable as JSON"
                                         (str module-name "::" task-name))})))]
     {:metadata (or ?metadata {})
+     :name (full-task-name module-name task-name)
      :files (mapv (partial describe-task-file get-code-content env-name code-id module-name)
                   (:files task-data))}))
 
