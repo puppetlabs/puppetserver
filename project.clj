@@ -100,8 +100,8 @@
   :test-paths ["test/unit" "test/integration"]
   :resource-paths ["resources" "src/ruby" "target/js-resources"]
 
-  :repositories [["releases" "http://nexus.delivery.puppetlabs.net/content/repositories/releases/"]
-                 ["snapshots" "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/"]]
+  :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-releases__local/"]
+                 ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-snapshots__local/"]]
 
   :plugins [[lein-parent "0.3.1"]
             [puppetlabs/i18n "0.8.0"]]
@@ -122,8 +122,8 @@
                 :additional-uberjars [[puppetlabs/jruby-deps ~jruby-9k-version]
                                       [puppetlabs/jruby-deps ~jruby-1_7-version]]}
 
-  :deploy-repositories [["releases" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/releases/")]
-                        ["snapshots" ~(deploy-info "http://nexus.delivery.puppetlabs.net/content/repositories/snapshots/")]]
+  :deploy-repositories [["releases" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-releases__local/")]
+                        ["snapshots" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/list/clojure-snapshots__local/")]]
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar
   ;; during `lein jar` that has all the code in the test/ directory. Downstream projects can then
