@@ -10,6 +10,9 @@
 ## run made it into PuppetDB. Additionally, the STDOUT of the agent run is
 ## tested for the presence of a Notify resource that was exported by another
 ## node.
+##
+## Finally, the output of the Puppet Server HTTP /status API is tested
+## to ensure that metrics related to PuppetDB communication were recorded.
 #
 
 # We only run this test if we'll have puppetdb installed, which is gated in
@@ -34,6 +37,9 @@ node 'resource-exporter.test' {
 
 node '#{master_fqdn}' {
   Notify<<| title == '#{random_string}' |>>
+
+  # Dummy query to record a hit for the PuppetDB query API to metrics.
+  $_ = puppetdb_query(['from', 'nodes', ['extract', 'certname']])
 }
 EOM
   on(master, "chmod 644 #{sitepp}")
@@ -74,6 +80,28 @@ EOM
     on(master, puppet_agent("--test --server #{master_fqdn}"), :acceptable_exit_codes => [0,2]) do
       assert_match(/Notice: #{random_string}/, stdout,
                   'Puppet run collects exported Notify')
+    end
+  end
+
+  step 'Validate PuppetDB metrics captured by puppet-profiler service' do
+    query = "curl -k https://localhost:8140/status/v1/services/puppet-profiler?level=debug"
+    response = JSON.parse(on(master, query).stdout.chomp)
+    pdb_metrics = response['status']['experimental']['puppetdb-metrics']
+
+    # NOTE: If these tests fail, then likely someone changed a metric
+    # name passed to Puppet::Util::Profiler.profile over in the Ruby
+    # terminus code of the PuppetDB project without realizing that is a
+    # breaking change to metrics critical for measuring compiler performance.
+    %w[
+      facts_encode command_submit_replace_facts
+      catalog_munge command_submit_replace_catalog
+      report_convert_to_wire_format_hash command_submit_store_report
+      resource_search query
+    ].each do |metric_name|
+      metric_data = pdb_metrics.find({}) {|m| m['metric'] == metric_name }
+
+      assert_operator(metric_data.fetch('count', 0), :>, 0,
+                      "PuppetDB metrics recorded for: #{metric_name}")
     end
   end
 end

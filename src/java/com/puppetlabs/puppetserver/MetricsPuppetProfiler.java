@@ -25,6 +25,7 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
     private static final Pattern RESOURCE_PATTERN = Pattern.compile(".*\\.compiler\\.evaluate_resource\\.([\\w\\d_]+\\[([\\w\\d_]+::)*[\\w\\d_]+\\])$");
     private static final Pattern CATALOG_PATTERN = Pattern.compile(".*\\.compiler\\.(static_compile_postprocessing|static_compile|compile|find_node)$");
     private static final Pattern INLINING_PATTERN = Pattern.compile(".*\\.compiler\\.static_compile_inlining\\.(.*)$");
+    private static final Pattern PUPPETDB_PATTERN = Pattern.compile(".*\\.puppetdb\\.(resource\\.search|facts\\.encode|command\\.submit\\.replace facts|catalog\\.munge|command\\.submit\\.replace catalog|report\\.convert_to_wire_format_hash|command\\.submit\\.store report|query)$");
 
 
     public MetricsPuppetProfiler(String hostname, MetricRegistry registry) {
@@ -66,6 +67,10 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
 
     public Map<String, Timer> getInliningTimers() {
         return getTimers(INLINING_PATTERN);
+    }
+
+    public Map<String, Timer> getPuppetDBTimers() {
+        return getTimers(PUPPETDB_PATTERN);
     }
 
     @Override
