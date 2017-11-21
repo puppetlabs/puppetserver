@@ -882,10 +882,12 @@
 (deftest request-queue-limit
   (with-metrics-test-env
     test-env
-    (assoc-in default-test-config
-             [:jruby-puppet :max-queued-requests] 2)
+    (-> default-test-config
+        (assoc-in [:jruby-puppet :max-active-instances] 2)
+        (assoc-in [:jruby-puppet :max-queued-requests] 2))
     (let [{:keys [current-metrics-values coordinator]} test-env
-          {:keys [requested-count requested-instances borrowed-instances]} (:metrics test-env)]
+          {:keys [requested-count requested-instances
+                  borrowed-instances queue-limit-hit-meter]} (:metrics test-env)]
       (testing "denies requests when rate limit hit"
         ;; Block up two JRuby instances
         (async-request coordinator 1 "/foo/bar/async1" :returning-jruby)
@@ -910,4 +912,8 @@
 
         ;; unblock all requests
         (doseq [i (range 1 5)]
-          (coordinator/final-result coordinator i))))))
+          (coordinator/final-result coordinator i))
+
+        ;; Assert that one instance of the rate limit being applied was
+        ;; recorded to metrics.
+        (is (= 1 (.getCount queue-limit-hit-meter)))))))
