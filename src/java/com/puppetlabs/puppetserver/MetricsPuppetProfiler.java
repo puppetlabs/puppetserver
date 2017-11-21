@@ -23,7 +23,7 @@ public class MetricsPuppetProfiler implements PuppetProfiler {
 
     private static final Pattern FUNCTION_PATTERN = Pattern.compile(".*\\.functions\\.([\\w\\d_]+)$");
     private static final Pattern RESOURCE_PATTERN = Pattern.compile(".*\\.compiler\\.evaluate_resource\\.([\\w\\d_]+\\[([\\w\\d_]+::)*[\\w\\d_]+\\])$");
-    private static final Pattern CATALOG_PATTERN = Pattern.compile(".*\\.compiler\\.(static_compile_postprocessing|static_compile|compile)$");
+    private static final Pattern CATALOG_PATTERN = Pattern.compile(".*\\.compiler\\.(static_compile_postprocessing|static_compile|compile|find_node)$");
     private static final Pattern INLINING_PATTERN = Pattern.compile(".*\\.compiler\\.static_compile_inlining\\.(.*)$");
 
 
