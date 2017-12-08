@@ -686,3 +686,32 @@
      ;; SERVER-1954 - In bidi 1.25.0 and later, %20 in a URL would cause a 500 to be raised here instead
      (let [resp (http-get "/puppet/v3/enviro%20nment")]
        (is (= 404 (:status resp)))))))
+
+(deftest ^:integration facts-upload-api
+  (bootstrap-testutils/with-puppetserver-running
+   app
+   {:jruby-puppet {:max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
+                   :master-code-dir test-resources-code-dir
+                   :master-conf-dir master-service-test-runtime-dir
+                   :master-var-dir (fs/tmpdir)}}
+    (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+          jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
+          container (:scripting-container jruby-instance)]
+      (try
+        (let [facts (.runScriptlet container "facts = Puppet::Node::Facts.new('puppet.node.test')
+                                              facts.values['foo'] = 'bar'
+                                              facts.to_json")
+              response (http-put "/puppet/v3/facts/puppet.node.test?environment=production" facts)]
+
+          (testing "Puppet Server responds to PUT requests for /puppet/v3/facts"
+            (is (= 200 (:status response))))
+
+          (testing "Puppet Server saves facts to the configured facts terminus"
+            ;; Ensure the test is configured properly
+            (is (= "yaml" (.runScriptlet container "Puppet::Node::Facts.indirection.terminus_class")))
+            (let [stored-facts (-> (.runScriptlet container "facts = Puppet::Node::Facts.indirection.find('puppet.node.test')
+                                                             (facts.nil? ? {} : facts).to_json")
+                                   (json/parse-string))]
+              (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
+        (finally
+          (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test))))))
