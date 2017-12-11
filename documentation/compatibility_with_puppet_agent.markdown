@@ -5,10 +5,10 @@ canonical: "/puppetserver/latest/compatibility_with_puppet_agent.html"
 ---
 
 [ca.conf]: ./config_file_ca.markdown
-[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
-[future parser]: https://docs.puppet.com/puppet/3.8/reference/experiments_future.html
-[upgrade puppet]: https://docs.puppet.com/puppet/latest/reference/upgrade_major_pre.html
-[deprecated]: https://docs.puppet.com/puppetserver/2.2/deprecated_features.html
+[auth.conf]: https://puppet.com/docs/puppet/latest/config_file_auth.html
+[future parser]: https://docs.puppet.com/puppet/3.8/experiments_future.html
+[upgrade puppet]: https://puppet.com/docs/puppet/latest/upgrade_major_pre.html
+[deprecated]: https://puppet.com/docs/puppetserver/2.2/deprecated_features.html
 [Puppet Server `auth.conf` documentation]: ./config_file_auth.markdown
 
 Since version 2.1, Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agents. Once your Puppet 3 nodes work with a newer Puppet Server, start upgrading them to Puppet 4.
@@ -46,10 +46,10 @@ This means you must:
 
 For more information, see:
 
-* [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet 4 HTTPS API documentation](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html)
 * [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
 * [Puppet 4 `auth.conf` documentation][auth.conf]
-* [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
+* [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/config_file_auth.html)
 
 #### Example `auth.conf` Rules for Puppet 3 and 4 Agents
 

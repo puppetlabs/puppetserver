@@ -41,7 +41,7 @@ on the `puppetserver.conf` and `auth.conf` files.
 
 > **WARNING**: Setting `allow-header-cert-info` to 'true' puts Puppet Server in an incredibly vulnerable state. Take extra caution to ensure it is **absolutely not reachable** by an untrusted network.
 >
-> With `allow-header-cert-info` set to 'true', authorization code will use only the client HTTP header values---not an SSL-layer client certificate---to determine the client subject name, authentication status, and trusted facts. This is true even if the web server is hosting an HTTPS connection. This applies to validation of the client via rules in the [auth.conf](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html) file and any [trusted facts][trusted] extracted from certificate extensions.
+> With `allow-header-cert-info` set to 'true', authorization code will use only the client HTTP header values---not an SSL-layer client certificate---to determine the client subject name, authentication status, and trusted facts. This is true even if the web server is hosting an HTTPS connection. This applies to validation of the client via rules in the [auth.conf](https://puppet.com/docs/puppet/latest/config_file_auth.html) file and any [trusted facts][trusted] extracted from certificate extensions.
 >
 > If the `client-auth` setting in the `webserver` config block is set to `need` or `want`, the Jetty web server will still validate the client certificate against a certificate authority store, but it will only verify the SSL-layer client certificate---not a certificate in an  `X-Client-Cert` header.
 
@@ -60,7 +60,7 @@ The headers you'll need to set are `X-Client-Verify`, `X-Client-DN`, and `X-Clie
 
 Mandatory. Must be either `SUCCESS` if the certificate was validated, or something else if not. (The convention seems to be to use `NONE` for when a certificate wasn't presented, and `FAILED:reason` for other validation failures.) Puppet Server uses this to authorize requests; only requests with a value of `SUCCESS` will be considered authenticated.
 
-When using the `master.allow-header-cert-info: true` setting, you can change this header name with [the `ssl_client_verify_header` setting.](https://docs.puppet.com/puppet/latest/reference/configuration.html#sslclientverifyheader)
+When using the `master.allow-header-cert-info: true` setting, you can change this header name with [the `ssl_client_verify_header` setting.](https://puppet.com/docs/puppet/latest/configuration.html#sslclientverifyheader)
 
 This setting (and its twin, `ssl_client_header`) is a bit odd: its value should be the result of transforming the desired HTTP header name into a CGI-style environment variable name. That is, to change the HTTP header to `X-SSL-Client-Verify`, you would set the setting to `HTTP_X_SSL_CLIENT_VERIFY`. (Add `HTTP_` to the front, change hyphens to underscores, and uppercase everything.)
 
@@ -80,7 +80,7 @@ Mandatory. Must be the [Subject DN][] of the agent's certificate, if a certifica
  to true.  `trapperkeeper-authorization` supports decoding both the RFC-2253
  and OpenSSL "slash-delimited" DN formats.
 
-When using the `master.allow-header-cert-info: true` setting, you can change this header name with [the `ssl_client_header` setting.](https://docs.puppet.com/puppet/latest/reference/configuration.html#sslclientheader) See the note above for more info about this setting's expected values.
+When using the `master.allow-header-cert-info: true` setting, you can change this header name with [the `ssl_client_header` setting.](https://puppet.com/docs/puppet/latest/configuration.html#sslclientheader) See the note above for more info about this setting's expected values.
 
 Note that if you are using the `authorization.allow-header-cert-info: true`
 setting, the name of the client DN header in the request must be
@@ -100,4 +100,4 @@ Optional. Should contain the client's [PEM-formatted][pem format] (Base-64) cert
 The name of this header is not configurable.
 
 [pem format]: https://docs.puppet.com/background/ssl/cert_anatomy.html#pem-file
-[trusted]: https://docs.puppet.com/puppet/latest/reference/lang_facts_and_builtin_vars.html#trusted-facts
+[trusted]: https://puppet.com/docs/puppet/latest/lang_facts_and_builtin_vars.html#trusted-facts

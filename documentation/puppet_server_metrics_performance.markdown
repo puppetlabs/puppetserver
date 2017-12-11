@@ -21,10 +21,10 @@ Puppet Server produces [several types of metrics][metrics] that administrators c
 >
 > **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
 >
-> -   [Large environment installations (LEI)](https://docs.puppet.com/pe/latest/sys_req_hw.html#large-environment-installation-hardware-requirements)
-> -   [Compile masters](https://docs.puppet.com/pe/latest/install_multimaster.html)
-> -   [Load balancing](https://docs.puppet.com/pe/latest/install_lei_load.html)
-> -   [High availability](https://docs.puppet.com/pe/latest/ha_overview.html)
+> -   [Large environment installations (LEI)](https://puppet.com/docs/pe/2017.3/installing/hardware_requirements.html#large-environment-hardware-requirements)
+> -   [Compile masters](https://puppet.com/docs/pe/2017.3/installing/installing_compile_masters.html)
+> -   [Load balancing](https://puppet.com/docs/pe/2017.3/installing/installing_compile_masters.html#using-load-balancers-with-compile-masters)
+> -   [High availability](https://puppet.com/docs/pe/2017.3/high_availability/high_availability_overview.html)
 
 ## Measuring capacity with JRubies
 
@@ -57,7 +57,7 @@ As a general rule, adding a JRuby requires a bare minimum of 40MB of memory unde
 
 For real-world catalogs, you can generally add an absolute minimum of 15MB for each additional JRuby. We calculated this amount by comparing a minimal catalog compilation to compiling a catalog for a [basic role](https://github.com/puppetlabs/puppetlabs-puppetserver_perf_control/blob/production/site/role/manifests/by_size/small.pp) that installs Tomcat and Postgres servers.
 
-Your Puppet-managed infrastructure is probably larger and more complex than that test scenario, and every complication adds more to each additional JRuby's memory requirements. (For instance, we recommend assuming that Puppet Server will use [at least 512MB per JRuby](https://docs.puppet.com/pe/latest/config_puppetserver.html) while under load.) You can calculate a similar value unique to your infrastructure by measuring `puppetserver` memory usage during your infrastructure's catalog compilations and comparing it to compiling a minimal catalog for a similar number of nodes.
+Your Puppet-managed infrastructure is probably larger and more complex than that test scenario, and every complication adds more to each additional JRuby's memory requirements. (For instance, we recommend assuming that Puppet Server will use [at least 512MB per JRuby](https://puppet.com/docs/pe/2017.3/configuring/config_puppetserver.html) while under load.) You can calculate a similar value unique to your infrastructure by measuring `puppetserver` memory usage during your infrastructure's catalog compilations and comparing it to compiling a minimal catalog for a similar number of nodes.
 
 The `jruby-metrics` section of the [status API][] endpoint also lists the `requested-instances`, which shows what requests have come in that are waiting to borrow a JRuby instance. This part of the status endpoint lists the lock's status, how many times it has been requested, and how long it has been held for. If it is currently being held and has been held for a while, you might see requests starting to stack up in the `requested-instances` section.
 

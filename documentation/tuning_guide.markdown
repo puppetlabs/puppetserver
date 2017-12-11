@@ -87,7 +87,7 @@ case of Puppet Server, you'll find this setting in the "defaults" file for Puppe
 Server for your operating system; this will generally be something like
 `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`.)
 
-> **Upgrade note:** If you modified the defaults file in Puppet Server 2.4.x or earlier, then lost those modifications or see `Service ':PoolManagerService' not found` warnings after upgrading to Puppet Server 2.5, be aware that the package might have attempted to overwrite the file during the upgrade. See the [Puppet Server 2.5 release notes](https://docs.puppet.com/puppetserver/2.5/release_notes.html) for details.
+> **Upgrade note:** If you modified the defaults file in Puppet Server 2.4.x or earlier, then lost those modifications or see `Service ':PoolManagerService' not found` warnings after upgrading to Puppet Server 2.5, be aware that the package might have attempted to overwrite the file during the upgrade. See the [Puppet Server 2.5 release notes](https://puppet.com/docs/puppetserver/2.5/release_notes.html) for details.
 
 If your application's memory usage approaches this value, the JVM will try to
 get more aggressive with garbage collection to free up memory. In certain

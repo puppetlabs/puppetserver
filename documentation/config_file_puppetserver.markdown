@@ -4,14 +4,14 @@ title: "Puppet Server Configuration Files: puppetserver.conf"
 canonical: "/puppetserver/latest/config_file_puppetserver.html"
 ---
 
-[configuration directory]: https://docs.puppet.com/puppet/latest/reference/dirs_confdir.html
-[code directory]: https://docs.puppet.com/puppet/latest/reference/dirs_codedir.html
-[cache directory]: https://docs.puppet.com/puppet/latest/reference/dirs_vardir.html
+[configuration directory]: https://puppet.com/docs/puppet/latest/dirs_confdir.html
+[code directory]: https://puppet.com/docs/puppet/latest/dirs_codedir.html
+[cache directory]: https://puppet.com/docs/puppet/latest/dirs_vardir.html
 [`auth.conf` documentation]: ./config_file_auth.markdown
 [`environment_classes` API documentation]: ./puppet-api/v3/environment_classes.markdown
 [deprecated]: ./deprecated_features.markdown
-[static catalogs]: https://docs.puppet.com/puppet/latest/reference/static_catalogs.html
-[file resource]: https://docs.puppet.com/puppet/latest/reference/type.html#file
+[static catalogs]: https://puppet.com/docs/puppet/latest/static_catalogs.html
+[file resource]: https://puppet.com/docs/puppet/latest/type.html#file
 [`static_file_content`]: ./puppet-api/v3/static_file_content.markdown
 
 The `puppetserver.conf` file contains settings for Puppet Server software. For an overview, see [Puppet Server Configuration](./configuration.markdown).
@@ -60,7 +60,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `borrow-timeout`: Optional. The timeout in milliseconds, when attempting to borrow an instance from the JRuby pool. The default is 1200000.
 
-    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html#puppet-v3-http-api). As of Puppet Server 5.0, this setting's default value is false.
+    * `use-legacy-auth-conf`: Optional. The method to be used for authorizing access to the HTTP endpoints served by the master service. The applicable endpoints are listed in [Puppet v3 HTTP API](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html#puppet-v3-http-api). As of Puppet Server 5.0, this setting's default value is false.
 
         If this setting is set to `true`, Puppet uses the [deprecated][] Ruby `puppet-agent` authorization method and [Puppet `auth.conf`][`auth.conf` documentation] format, which will be removed in a future version of Puppet Server.
 

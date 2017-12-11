@@ -4,13 +4,13 @@ title: "Puppet Server: Puppet API: Environment Classes"
 canonical: "/puppetserver/latest/puppet-api/v3/environment_classes.html"
 ---
 
-[classes]: https://docs.puppet.com/puppet/latest/reference/lang_classes.html
-[deprecated WEBrick Puppet master]: https://docs.puppet.com/puppet/latest/reference/services_master_webrick.html
-[node definitions]: https://docs.puppet.com/puppet/latest/reference/lang_node_definitions.html
-[defined types]: https://docs.puppet.com/puppet/latest/reference/lang_defined_types.html
-[`environment_timeout`]: https://docs.puppet.com/puppet/latest/reference/config_file_environment.html#environmenttimeout
-[resource type API]: https://docs.puppet.com/puppet/latest/reference/http_api/http_resource_type.html
-[`manifest` setting]: https://docs.puppet.com/puppet/latest/reference/config_file_environment.html#manifest
+[classes]: https://puppet.com/docs/puppet/latest/lang_classes.html
+[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/latest/services_master_webrick.html
+[node definitions]: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
+[defined types]: https://puppet.com/docs/puppet/latest/lang_defined_types.html
+[`environment_timeout`]: https://puppet.com/docs/puppet/latest/config_file_environment.html#environmenttimeout
+[resource type API]: https://puppet.com/docs/puppet/latest/http_api/http_resource_type.html
+[`manifest` setting]: https://puppet.com/docs/puppet/latest/config_file_environment.html#manifest
 
 [`auth.conf`]: ../../config_file_auth.markdown
 [`puppetserver.conf`]: ../../config_file_puppetserver.markdown
@@ -376,14 +376,6 @@ entries on the server, do one of the following:
 
     For best performance, call this endpoint with a query parameter that specifies the
     environment whose cache should be flushed.
-
--   **PE only:** Perform a `commit` through the
-    [File Sync API endpoint](https://docs.puppet.com/pe/latest/cmgmt_filesync_api.html#post-file-syncv1commit).
-
-    When committing code through the file sync API, you don't need to invoke the
-    `environment-cache` API endpoint to flush the environment's cache. The environment's
-    cache is implicitly flushed as part of the sync of new commits to a master using
-    file sync.
 
 -   Restart Puppet Server.
 
