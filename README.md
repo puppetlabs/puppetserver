@@ -2,17 +2,17 @@
 
 [Puppet Server](./documentation/services_master_puppetserver.markdown) is the
 next-generation application for managing
-[Puppet](https://docs.puppet.com/puppet/) agents. This platform implements
+[Puppet](https://puppet.com/docs/puppet/) agents. This platform implements
 Puppet's server-side components in a more distributed, service-oriented
 architecture. We've built Puppet Server on top of the same technologies that
-make [PuppetDB](https://docs.puppet.com/puppetdb/) successful, and which
+make [PuppetDB](https://puppet.com/docs/puppetdb/) successful, and which
 allow us to greatly improve performance, scalability, advanced metrics
 collection, and fine-grained control over the Ruby runtime.
 
 While Puppet Server is designed to replace the
-[deprecated](https://docs.puppet.com/puppet/latest/reference/deprecated_servers.html)
+[deprecated](https://puppet.com/docs/puppet/latest/deprecated_servers.html)
 [Apache/Passenger Puppet master
-stack](https://docs.puppet.com/puppet/latest/reference/services_master_rack.html),
+stack](https://puppet.com/docs/puppet/latest/services_master_rack.html),
 they diverge in a handful of ways due to differences in Puppet Server's
 underlying architecture. See [Puppet Server vs. Apache/Passenger Puppet
 Master](./documentation/puppetserver_vs_passenger.markdown) for details.
@@ -26,7 +26,7 @@ see the [release notes](./documentation/release_notes.markdown).
 
 All versions of Puppet Server depend on at least Puppet 3.7.3, and since
 version 2.3 it depends on [Puppet Agent
-1.4.0](https://docs.puppet.com/puppet/4.4/reference/about_agent.html) or newer,
+1.4.0](https://docs.puppet.com/puppet/4.4/about_agent.html) or newer,
 which installs [Puppet 4.4](https://docs.puppet.com/puppet/4.4/) and compatible
 versions of its related tools and dependencies on the server. Puppet agents
 running older versions of Puppet Agent can connect to Puppet Server 2.3;
@@ -67,7 +67,7 @@ For more information on the differences between Puppet Server's support for
 ### Certificate authority configuration
 
 Much of the documentation on [External CA Support for the Ruby Puppet
-Master](https://docs.puppet.com/puppet/latest/reference/config_ssl_external_ca.html)
+Master](https://puppet.com/docs/puppet/latest/config_ssl_external_ca.html)
 still applies to using an external certificate authority in conjunction
 with Puppet Server. There are some differences to bear in mind, however; see the
 [External CA Configuration](./documentation/external_ca_configuration.markdown)
