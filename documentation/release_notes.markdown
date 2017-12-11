@@ -10,7 +10,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://puppet.com/docs/puppetserver/2.8/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
 ## Puppet Server 5.1.4
 

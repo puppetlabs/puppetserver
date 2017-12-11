@@ -256,7 +256,7 @@ Puppet Server exports each metric in the lists below by default.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environment_classes-/*/-requests`: The time spent handling requests to the [`environment_classes` API endpoint](./puppet-api/v3/environment_classes.markdown), which the Node Classifier uses to refresh classes.
 
--   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environments-requests`: The time spent handling requests to the [`environments` API endpoint](https://puppet.com/docs/latest/http_api/http_environments.html) requests.
+-   `puppetlabs.<MASTER-HOSTNAME>.http.puppet-v3-environments-requests`: The time spent handling requests to the [`environments` API endpoint](https://puppet.com/docs/puppet/latest/http_api/http_environments.html) requests.
 
 -   The following metrics measure the time spent handling file-related API endpoints:
 

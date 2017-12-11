@@ -4,7 +4,7 @@ title: "Puppet Server: Bootstrap Upgrade Notes"
 canonical: "/puppetserver/latest/bootstrap_upgrade_notes.html"
 ---
 
-[`bootstrap.cfg` file]: https://puppet.com/docs/puppetserver/2.4/external_ca_configuration.html#disabling-the-internal-puppet-ca-service
+[`bootstrap.cfg` file]: https://docs.puppet.com/puppetserver/2.4/external_ca_configuration.html#disabling-the-internal-puppet-ca-service
 
 > ### Potential breaking issues when upgrading with a modified `bootstrap.cfg`
 >
