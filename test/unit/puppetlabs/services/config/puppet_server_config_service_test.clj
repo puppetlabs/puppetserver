@@ -45,10 +45,12 @@
             service-config (get-config service)]
 
         (is (= (-> (:jruby-puppet service-config)
-                   (dissoc :master-conf-dir))
+                   (dissoc :master-conf-dir)
+                   (dissoc :profiler-output-file))
                (-> (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config
                                     (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
-                   (dissoc :master-conf-dir))))
+                   (dissoc :master-conf-dir)
+                   (dissoc :profiler-output-file))))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))
         (is (= (set (keys (:puppetserver service-config)))
