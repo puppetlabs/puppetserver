@@ -16,6 +16,8 @@ class Puppet::Server::Execution
   end
 
   private
+  SHELL_CHARACTERS = "*?{}[]<>()~&|\\$;'`\"\n#=".chars.to_a
+
   def self.execute(command, options)
     if command.is_a?(Array)
       orig_command_str = command.join(" ")
@@ -35,7 +37,11 @@ class Puppet::Server::Execution
     if args && !args.empty?
       result = ShellUtils.executeCommand(binary, args.to_java(:string), exe_options)
     else
-      result = ShellUtils.executeCommand(binary, exe_options)
+      if binary.index(Regexp.union(SHELL_CHARACTERS))
+        result = ShellUtils.executeCommand("/bin/sh", ["-c", binary].to_java(:string), exe_options)
+      else
+        result = ShellUtils.executeCommand(binary, exe_options)
+      end
     end
 
     # TODO - not all options from Puppet::Util::Execution are supported yet, see SERVER-74
