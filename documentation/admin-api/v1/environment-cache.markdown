@@ -5,8 +5,8 @@ canonical: "/puppetserver/latest/admin-api/v1/environment-cache.html"
 ---
 
 When using directory environments, the Puppet master
-[caches](https://puppet.com/docs/puppet/latest/environments_configuring.html)
-the data it loads from disk for each environment.  Puppet Server adds a new
+[caches](https://puppet.com/docs/puppet/latest/environments_creating.html)
+the data it loads from disk for each environment. Puppet Server adds a new
 endpoint to the master's HTTP API:
 
 ## `DELETE /puppet-admin-api/v1/environment-cache`

@@ -78,9 +78,7 @@ Right now, the main administrative task is forcing expiration of all environment
 - For API docs, see:
     - [The `environment-cache` endpoint](./admin-api/v1/environment-cache.markdown)
     - [The `jruby-pool` endpoint](./admin-api/v1/jruby-pool.markdown)
-- For details about environment caching, see [the page about environment limitations.][env_limits]
-
-[env_limits]: https://puppet.com/docs/puppet/latest/environments_limitations.html
+- For details about environment caching, see [the Puppet environments documentation](https://puppet.com/docs/puppet/latest/environments_about.html#environments-limitations).
 
 ### JRuby Interpreters
 
