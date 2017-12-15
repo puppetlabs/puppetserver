@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/services_master_puppetserver.html"
 
 [rack]: https://puppet.com/docs/puppet/latest/services_master_rack.html
 [external_ca]: ./external_ca_configuration.markdown
-[cert_manpage]: https://puppet.com/docs/references/latest/man/cert.html
+[cert_manpage]: https://puppet.com/docs/puppet/latest/man/cert.html
 [deprecated]: ./deprecated_features.markdown
 
 Puppet master is a Ruby application that compiles configurations for any number of Puppet agent nodes, using Puppet code and various other data sources. (For more info, see [Overview of Puppet's Architecture](https://puppet.com/docs/puppet/latest/architecture.html).)
@@ -17,7 +17,7 @@ Puppet Server is one of two recommended ways to run the Puppet master service; t
 
 > **Note:** Puppet Enterprise 3.7 and later use Puppet Server by default. You do not need to manually install or configure it.
 
-This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](https://puppet.com/docs/references/latest/man/master.html).
+This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](https://puppet.com/docs/puppet/latest/man/master.html).
 
 ## Supported Platforms
 
