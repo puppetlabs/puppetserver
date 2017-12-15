@@ -8,11 +8,11 @@ To scale Puppet Server for many thousands of nodes, you'll need to add Puppet ma
 
 > **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
 >
-> -   [Large environment installations (LEI)](https://puppet.com/docs/pe/2017.3/installing/hardware_requirements.html#large-environment-hardware-requirements)
-> -   [Compile masters](https://puppet.com/docs/pe/2017.3/installing/installing_compile_masters.html)
-> -   [Load balancing](https://puppet.com/docs/pe/2017.3/installing/installing_compile_masters.html#using-load-balancers-with-compile-masters)
-> -   [High availability](https://puppet.com/docs/pe/2017.3/high_availability/high_availability_overview.html)
-> -   [Code Manager](https://puppet.com/docs/pe/2017.3/code_management/code_mgr_how_it_works.html)
+> -   [Large environment installations (LEI)](https://puppet.com/docs/pe/latest/installing/hardware_requirements.html#large-environment-hardware-requirements)
+> -   [Compile masters](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html)
+> -   [Load balancing](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html#using-load-balancers-with-compile-masters)
+> -   [High availability](https://puppet.com/docs/pe/latest/high_availability/high_availability_overview.html)
+> -   [Code Manager](https://puppet.com/docs/pe/latest/code_management/code_mgr_how_it_works.html)
 
 ## Planning your load-balancing strategy
 
