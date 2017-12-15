@@ -78,6 +78,10 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
     * `compile-mode`: Optional, experimental. Used to control JRuby's "CompileMode", which may improve performance. The default value is `off`, which is the most conservative value. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
+    * `profiling-mode`: Optional. Used to enable JRuby's profiler and set it to one of the supported modes. The default value is `off`, but it can be set to one of `api`, `flat`, `graph`, `html`, `json`, `off`, and `service`. See [ruby-prof](https://github.com/ruby-prof/ruby-prof/blob/master/README.rdoc#reports) for details on what the various modes do.
+
+    * `profiling-output-file`: Optional. Used to set the output file to direct JRuby profiler output. Should be a fully qualified path writable by the service user. If not set will default to a random name inside the service working directory.
+
 * The `profiler` settings configure profiling:
 
     * `enabled`: If this is set to `true`, Puppet Server enables profiling for the Puppet Ruby code. The default is `true`.
