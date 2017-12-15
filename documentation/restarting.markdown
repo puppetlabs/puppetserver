@@ -5,7 +5,7 @@ canonical: "/puppetserver/latest/restarting.html"
 ---
 
 [logback.xml]: ./config_file_logbackxml.markdown
-[Hiera]: https://puppet.com/docs/puppet/5.3/hiera_intro.html
+[Hiera]: https://puppet.com/docs/puppet/latest/hiera_intro.html
 [gems]: ./gems.markdown
 [core dependencies]: https://puppet.com/docs/puppet/latest/about_agent.html#what-are-puppet-agent-and-puppet-server
 [environment]: https://puppet.com/docs/puppet/latest/environments.html
