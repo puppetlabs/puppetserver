@@ -4,18 +4,18 @@ title: "Puppet Server: Installing From Packages"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
-[repodocs]: https://docs.puppet.com/puppet/5.0/reference/puppet_platform.html
+[repodocs]: https://docs.puppet.com/puppet/5.3/reference/puppet_platform.html
 [passengerguide]: https://docs.puppet.com/guides/passenger.html
 
 ## System Requirements
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/5.0/#system-requirements).
+> If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/5.3/#system-requirements).
 
 ## Platforms with Packages
 
-Puppet provides official packages that install Puppet Server 5.0 and all of its prerequisites on the following platforms, as part of [Puppet Platform][repodocs].
+Puppet provides official packages that install Puppet Server 5.1 and all of its prerequisites on x86_64 architectures for the following platforms, as part of [Puppet Platform][repodocs].
 
 ### Red Hat Enterprise Linux
 
@@ -85,7 +85,7 @@ update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
 
 ## Platforms without Packages
 
-For platforms where no official packages are available, you can build Puppet Server from source. Such platforms are not tested, and running Puppet Server from source is not recommended for production use.
+For platforms and architectures where no official packages are available, you can build Puppet Server from source. Such platforms are not tested, and running Puppet Server from source is not recommended for production use.
 
 For details, see [Running from Source](./dev_running_from_source.markdown).
 

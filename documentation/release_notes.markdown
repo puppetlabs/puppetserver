@@ -191,7 +191,7 @@ For Ruby language 2.x support in Puppet Server, configure Puppet Server to use J
 
 Previous versions of Puppet Server logged JRuby errors to stderr, which Puppet Server wrote to either `/var/log/puppetlabs/puppetserver/puppetserver-daemon.log`, `syslog`, or `journalctl` (depending upon the OS). By default, JRuby also does not log debug messages.
 
-To take advantage of the [Logback](./configuration.markdown#Logback) logging infrastructure already in Puppet Server, JRuby now uses a custom `slf4j` logger that bridges logging from JRuby to Logback. As a result, Puppet Server now logs "info" and "error" messages from JRuby into `/var/log/puppetlabs/puppetserver/puppetserver.log` by default. To log debug-level JRuby messages, set the "level" attribute for the "jruby" element in [`/etc/puppetlabs/puppetserver/logback.xml`](./config_file_logback.xml) file to "debug".
+To take advantage of the [Logback](./configuration.markdown#Logback) logging infrastructure already in Puppet Server, JRuby now uses a custom `slf4j` logger that bridges logging from JRuby to Logback. As a result, Puppet Server now logs "info" and "error" messages from JRuby into `/var/log/puppetlabs/puppetserver/puppetserver.log` by default. To log debug-level JRuby messages, set the "level" attribute for the "jruby" element in [`/etc/puppetlabs/puppetserver/logback.xml`](./config_file_logbackxml.markdown) file to "debug".
 
 -   [SERVER-1475](https://tickets.puppetlabs.com/browse/SERVER-1475)
 
