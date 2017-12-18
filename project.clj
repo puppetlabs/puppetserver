@@ -113,7 +113,8 @@
                        :java-args ~(str "-Xms2g -Xmx2g "
                                      "-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger")
                        :create-dirs ["/opt/puppetlabs/server/data/puppetserver/jars"]
-                       :repo-target "PC1"
+                       :repo-target "puppet5"
+                       :nonfinal-repo-target "puppet5-nightly"
                        :bootstrap-source :services-d
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
@@ -211,7 +212,7 @@
                                                [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.7.3"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.7.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
