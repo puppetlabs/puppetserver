@@ -5,7 +5,7 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 ---
 
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
-[Puppet `auth.conf`]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
+[Puppet `auth.conf`]: https://puppet.com/docs/puppet/latest/config_file_auth.html
 [deprecated]: ./deprecated_features.markdown
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 
@@ -204,10 +204,10 @@ name: "my path"
 
 Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
 
--   [Puppet 4 HTTPS API documentation](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+-   [Puppet 4 HTTPS API documentation](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html)
 -   [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
--   [Puppet 4 `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html)
--   [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/reference/config_file_auth.html)
+-   [Puppet 4 `auth.conf` documentation](https://puppet.com/docs/puppet/latest/config_file_auth.html)
+-   [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/config_file_auth.html)
 
 Puppet Server allows agents to make requests at the old URLs and internally translates them as requests to the new endpoints. However, rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._ For more information, see [Backward Compatibility With Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
 
@@ -217,7 +217,7 @@ For backward compatibility, settings in [`puppetserver.conf`][] also control whe
 
 -   `use-legacy-auth-conf` in the `jruby-puppet` section: If `true`, Puppet Server uses the Ruby authorization methods and  [Puppet `auth.conf`][] rule format and warns you that this is [deprecated][]. If `false`, Puppet Server uses the new authorization method and HOCON `auth.conf` format. Default: `false`.
 -   `authorization-required` and `client-whitelist` in the `puppet-admin` section: If `authorization-required` is set to `false` or `client-whitelist` has at least one entry, Puppet Server authorizes requests to Puppet Server's administrative API according to the parameters' values. See the [`puppetserver.conf` documentation][`puppetserver.conf`] for more information on these settings. If `authorization-required` is set to `true` or not set and `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests to Puppet Server's administrative API using the authorization method introduced in Puppet Server 2.2.0.
--   `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
+-   `certificate-status.authorization-required` and `certificate-status.client-whitelist` in the `certificate-authority` section: If `authorization-required` is set to `false` or `client-whitelist` has one or more entries, Puppet Server handles requests made to its [Certificate Status](https://puppet.com/docs/puppet/latest/http_api/http_certificate_status.html) API according to the parameters' values. See the [`ca.conf` documentation](./config_file_ca.markdown) for more information on these settings. If `authorization-required` is set to `true` or not set and the `client-whitelist` is set to an empty list or not set, Puppet Server authorizes requests using the authorization method introduced in Puppet Server 2.2.0.
 
 ## Deprecated Ruby Parameters
 
@@ -246,7 +246,7 @@ search     | GET and POST, for endpoints with names that end in "s" or "_search"
 save       | PUT
 destroy    | DELETE
 
-For more details, see the [Puppet `auth.conf` documentation](https://docs.puppet.com/puppet/latest/reference/config_file_auth.html#method).
+For more details, see the [Puppet `auth.conf` documentation](https://puppet.com/docs/puppet/latest/config_file_auth.html#method).
 
 ```
 # Use GET and POST.

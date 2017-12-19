@@ -10,7 +10,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
 ## Puppet Server 5.1.4
 
@@ -104,7 +104,7 @@ For Debian 8, install the `jessie-backports` repository to add access to Java 8.
 
 ### Upgrading from previous versions
 
-Consult the [Puppet 5.0 release notes](https://docs.puppet.com/puppet/5.0/release_notes.html) for more information about important new features and breaking changes. Some especially relevant Puppet 5.0 changes are also noted below.
+Consult the [Puppet 5.0 release notes](https://puppet.com/docs/puppet/5.0/release_notes.html) for more information about important new features and breaking changes. Some especially relevant Puppet 5.0 changes are also noted below.
 
 #### Deprecation: Puppet 5 no longer writes YAML node caches
 
@@ -123,7 +123,7 @@ Puppet Server 5.0 now produces `application/json` responses when a Puppet 5.x ag
 
 Server 5.0 remains compatible with Puppet 3.x and 4.x agents that use PSON, and Puppet 5.x agents attempt to request and send `text/pson` only when communicating with masters that don't support JSON communications, such as Puppet Server 2.7.x or earlier.
 
-For details, consult the [Puppet 5.0 documentation](https://docs.puppet.com/puppet/5.0/release_notes.html).
+For details, consult the [Puppet 5.0 documentation](https://puppet.com/docs/puppet/5.0/release_notes.html).
 
 -   [PUP-3852](https://tickets.puppetlabs.com/browse/PUP-3852)
 

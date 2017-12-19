@@ -8,7 +8,7 @@ canonical: "/puppetserver/latest/puppet-api/v3/static_file_content.html"
 [static catalog]: https://puppet.com/docs/puppet/latest/static_catalogs.html
 [catalog]: https://puppet.com/docs/puppet/latest/subsystem_catalog_compilation.html
 [file resource]: https://puppet.com/docs/puppet/latest/type.html#file
-[environment]: https://puppet.com/docs/puppet/latest/environments.html
+[environment]: https://puppet.com/docs/puppet/latest/environments_about.html
 [auth.conf]: https://puppet.com/docs/puppetserver/latest/config_file_auth.html
 
 The `static_file_content` endpoint returns the standard output of a

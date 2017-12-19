@@ -5,11 +5,11 @@ canonical: "/puppetserver/latest/restarting.html"
 ---
 
 [logback.xml]: ./config_file_logbackxml.markdown
-[Hiera]: https://docs.puppet.com/hiera/latest/configuring.html
+[Hiera]: https://puppet.com/docs/puppet/latest/hiera_intro.html
 [gems]: ./gems.markdown
-[core dependencies]: https://docs.puppet.com/puppet/latest/reference/about_agent.html#what-are-puppet-agent-and-puppet-server
-[environment]: https://docs.puppet.com/puppet/latest/reference/environments.html
-[environment caching]: https://docs.puppet.com/puppet/latest/reference/configuration.html#environmenttimeout
+[core dependencies]: https://puppet.com/docs/puppet/latest/about_agent.html#what-are-puppet-agent-and-puppet-server
+[environment]: https://puppet.com/docs/puppet/latest/environments_about.html
+[environment caching]: https://puppet.com/docs/puppet/latest/configuration.html#environmenttimeout
 
 Starting in version 2.3.0, you can restart Puppet Server by sending a hangup signal, also known as a [HUP signal or SIGHUP](https://en.wikipedia.org/wiki/SIGHUP), to the running Puppet Server process. The HUP signal stops Puppet Server and reloads it gracefully, without terminating the JVM process. This is generally *much* faster than completely stopping and restarting the process. This allows you to quickly load changes to your Puppet Server master, including configuration changes.
 

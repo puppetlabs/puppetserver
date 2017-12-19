@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/"
 
 Puppet Server is the next-generation application for managing Puppet agents.
 
-> **Note:** For information about configuring and tuning settings specific to [Puppet Enterprise](https://docs.puppet.com/pe/), see [its documentation](https://docs.puppet.com/pe/latest/config_puppetserver.html).
+> **Note:** For information about configuring and tuning settings specific to [Puppet Enterprise](https://puppet.com/docs/pe/), see [its documentation](https://puppet.com/docs/pe/latest/configuring/config_puppetserver.html).
 
 * [**About Puppet Server**](./services_master_puppetserver.markdown)
     * [Release notes](./release_notes.markdown)

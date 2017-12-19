@@ -16,7 +16,7 @@ The `ca.conf` file configures settings for the Puppet Server Certificate Authori
 
 The `certificate-status` setting in `ca.conf` provides [deprecated][] configuration options for access to the `certificate_status` and `certificate_statuses` HTTP endpoints. These endpoints allow certificates to be signed, revoked, and deleted through HTTP requests, which provides full control over Puppet's ability to securely authorize access. Therefore, you should **always** restrict access to `ca.conf`.
 
-> **Puppet Enterprise Note:** Puppet Enterprise uses these endpoints to provide a console interface for certificate signing. For more information, see [Certificate Status](https://docs.puppet.com/puppet/latest/reference/http_api/http_certificate_status.html).
+> **Puppet Enterprise Note:** Puppet Enterprise uses these endpoints to provide a console interface for certificate signing. For more information, see [Certificate Status](https://puppet.com/docs/puppet/latest/http_api/http_certificate_status.html).
 
 The `certificate-status` setting takes two parameters: `authorization-required` and `client-whitelist`. If `authorization-required` is set to `true` or not set, **and** `client-whitelist` is set to an empty list or not set, Puppet Server uses the [authorization methods][`trapperkeeper-authorization`] and [new `auth.conf`][] format introduced in Puppet Server 2.2 to control access to the administration API endpoints.
 
