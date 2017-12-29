@@ -22,17 +22,16 @@ BEAKER="$BEAKER --options-file $BEAKER_OPTIONS"
 BEAKER="$BEAKER --post-suite $BEAKER_POSTSUITE"
 BEAKER="$BEAKER --load-path acceptance/lib"
 
+if [ -z "$PACKAGE_BUILD_VERSION" ];
+  #TODO: curl builds.puppetlabs.lan/puppetserver.  Parse HTML, find most recent folder name.
+  then echo "$0: PACKAGE_BUILD_VERSION not set.  Please export PACKAGE_BUILD_VERSION."
+  exit -1;
+fi
 
 case $1 in
   -p | --p* )
   bundle exec beaker-hostgenerator $GENCONFIG_LAYOUT > $BEAKER_CONFIG
-    
-  if [ -z "$PACKAGE_BUILD_VERSION" ]; 
-    #TODO: curl builds.puppetlabs.lan/puppetserver.  Parse HTML, find most recent folder name.
-    then echo "$0: PACKAGE_BUILD_VERSION not set.  Please export PACKAGE_BUILD_VERSION."
-    exit -1;
-  fi
-  
+
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   BEAKER="$BEAKER --config $BEAKER_CONFIG"
@@ -49,7 +48,7 @@ case $1 in
     Either provide a hosts_preserved.yml or use this script with -p to create new hosts and run the pre-suite against them."
     exit -1;
   fi
-  
+
   BEAKER="$BEAKER --config hosts_preserved.yml"
   BEAKER="$BEAKER --preserve-hosts always"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
@@ -58,6 +57,8 @@ case $1 in
 
 
 * )
+  bundle exec beaker-hostgenerator $GENCONFIG_LAYOUT > $BEAKER_CONFIG
+
   # run it with the old options.
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
   BEAKER="$BEAKER --config $BEAKER_CONFIG"

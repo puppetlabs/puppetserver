@@ -9,6 +9,9 @@ confdir = master.puppet['confdir']
 teardown do
   # restore the original tk auth.conf file
   on master, 'cp /etc/puppetlabs/puppetserver/conf.d/auth.bak /etc/puppetlabs/puppetserver/conf.d/auth.conf'
+
+  # re-enable puppetdb facts terminus
+  on master, puppet('config set route_file /etc/puppetlabs/puppet/routes.yaml')
 end
 
 step "Backup the tk auth.conf file" do
@@ -24,6 +27,10 @@ step "Confirm agent can connect with existing cert" do
               {:acceptable_exit_codes => [0,2]})
     end
   end
+end
+
+step "Disconnect the facts terminus from PuppetDB while we're munging certs" do
+  on master, puppet('config set route_file /tmp/nonexistant.yaml')
 end
 
 # Not anymore we don't
