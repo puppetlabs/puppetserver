@@ -2,7 +2,6 @@
 matching_puppetdb_platform = puppetdb_supported_platforms.select { |r| r =~ master.platform }
 skip_test unless matching_puppetdb_platform.length > 0
 
-require 'json'
 
 test_name 'PuppetDB setup'
 sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
