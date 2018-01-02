@@ -9,6 +9,14 @@
 ## API and asserting the agent's report timestamp is not null. This means that
 ## PuppetDB successfully received the agent's report sent from Puppet Server.
 ## We can just run the agent that's on the master for this.
+#
+
+# We only run this test if we'll have puppetdb installed, which is gated in
+# acceptance/suites/pre_suite/foss/95_install_pdb.rb using the same conditional
+matching_puppetdb_platform = puppetdb_supported_platforms.select { |r| r =~ master.platform }
+skip_test unless matching_puppetdb_platform.length > 0
+
+require 'json'
 
 step 'Submit agent report to PuppetDB via server' do
   with_puppet_running_on(master, {}) do
