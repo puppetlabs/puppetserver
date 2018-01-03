@@ -60,7 +60,7 @@ describe Puppet::Server::Execution do
       it "should support pipes" do
         result = test_execute("echo foo | wc -c")
         expect(result).to be_a Puppet::Util::Execution::ProcessOutput
-        expect(result.lstrip).to eq "4\n"
+        expect(result.strip).to eq "4"
         expect(result.exitstatus).to eq 0
       end
 
