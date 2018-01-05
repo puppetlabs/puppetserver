@@ -56,6 +56,30 @@ describe Puppet::Server::Execution do
       expect(result.exitstatus).not_to eq 0
     end
 
+    context "it should support other shellisms" do
+      it "should support pipes" do
+        result = test_execute("echo foo | wc -c")
+        expect(result).to be_a Puppet::Util::Execution::ProcessOutput
+        expect(result.strip).to eq "4"
+        expect(result.exitstatus).to eq 0
+      end
+
+      it "should support environment variables" do
+        result = test_execute(%(FOO=bar python -c "import os; print os.environ['FOO']"))
+        expect(result).to be_a Puppet::Util::Execution::ProcessOutput
+        expect(result).to eq "bar\n"
+        expect(result.exitstatus).to eq 0
+      end
+
+      it "should support environment newlines" do
+        result = test_execute(%(echo "foo\nbar"))
+        expect(result).to be_a Puppet::Util::Execution::ProcessOutput
+        expect(result.lines.count).to eq 2
+        expect(result.exitstatus).to eq 0
+      end
+    end
+
+
     it "should raise an error if `failonfail` is true and the process returns non-zero" do
       expect {
         test_execute("false", {:failonfail => true})

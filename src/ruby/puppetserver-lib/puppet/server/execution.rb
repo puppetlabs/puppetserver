@@ -16,6 +16,14 @@ class Puppet::Server::Execution
   end
 
   private
+  # In ruby 1.9 (which jruby 1.7 runs as, `chars` returns an enumerator
+  # [https://ruby-doc.org/core-1.9.3/String.html#method-i-chars], which is
+  # unsuitable for passing to `Regexp.union`, so we explicitly turn it into an
+  # array. In ruby 2.0 and later, `chars` returns an array
+  # [https://ruby-doc.org/core-2.0.0/String.html#method-i-chars], so the `to_a`
+  # call will essentially be a noop.
+  SHELL_CHARACTERS = "*?{}[]<>()~&|\\$;'`\"\n#=".chars.to_a
+
   def self.execute(command, options)
     if command.is_a?(Array)
       orig_command_str = command.join(" ")
@@ -35,7 +43,11 @@ class Puppet::Server::Execution
     if args && !args.empty?
       result = ShellUtils.executeCommand(binary, args.to_java(:string), exe_options)
     else
-      result = ShellUtils.executeCommand(binary, exe_options)
+      if binary.index(Regexp.union(SHELL_CHARACTERS))
+        result = ShellUtils.executeCommand("/bin/sh", ["-c", binary].to_java(:string), exe_options)
+      else
+        result = ShellUtils.executeCommand(binary, exe_options)
+      end
     end
 
     # TODO - not all options from Puppet::Util::Execution are supported yet, see SERVER-74
