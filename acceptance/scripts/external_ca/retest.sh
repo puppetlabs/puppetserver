@@ -1,7 +1,7 @@
 #!/bin/bash
 set -x
 
-export GEM_SOURCE=http://rubygems.delivery.puppetlabs.net
+export GEM_SOURCE=https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/
 
 export GENCONFIG_LAYOUT="${GENCONFIG_LAYOUT:-redhat6-64ma-redhat6-64a-redhat6-64u}"
 export BEAKER_TESTSUITE="${BEAKER_TESTSUITE:-acceptance/suites/tests/020-external-ca/}"
