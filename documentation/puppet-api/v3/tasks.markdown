@@ -4,7 +4,7 @@ title: "Puppet Server: Puppet API: Tasks"
 canonical: "/puppetserver/latest/puppet-api/v3/tasks.html"
 ---
 
-[deprecated WEBrick Puppet master]: https://puppet.com/puppet/latest/services_master_webrick.html
+[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/latest/services_master_webrick.html
 [`environment_timeout`]: https://puppet.com/docs/puppet/latest/config_file_environment.html#environmenttimeout
 
 [`auth.conf`]: ../../config_file_auth.markdown

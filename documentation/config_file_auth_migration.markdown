@@ -4,7 +4,7 @@ title: "Puppet Server Configuration Files: Migrating to the HOCON auth.conf Form
 canonical: "/puppetserver/latest/config_file_auth_migration.html"
 ---
 
-[Puppet `auth.conf`]: /puppet/latest/reference/config_file_auth.markdown
+[Puppet `auth.conf`]: https://puppet.com/docs/puppet/latest/config_file_auth.markdown
 [deprecated]: ./deprecated_features.markdown
 [Backward Compatibility with Puppet 3 Agents]: ./compatibility_with_puppet_agent.markdown
 
@@ -12,7 +12,7 @@ Puppet Server 2.2.0 introduced a significant change in how it manages authentica
 
 Use the following examples and methods to convert your authorization rules when upgrading to Puppet Server 2.2.0 and newer. For detailed information about using the new or deprecated `auth.conf` rules with Puppet Server, see the [Puppet Server `auth.conf` documentation](./config_file_auth.markdown).
 
-> **Note:** To continue using the deprecated [Puppet `auth.conf`][] file and authorization rule format, see the [Deprecated Ruby Parameters](/puppet/latest/reference/config_file_auth.markdown#deprecated-ruby-parameters) section of the `auth.conf` documentation. To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
+> **Note:** To continue using the deprecated [Puppet `auth.conf`][] file and authorization rule format, see the [Deprecated Ruby Parameters](https://puppet.com/docs/puppet/latest/config_file_auth.markdown#deprecated-ruby-parameters) section of the `auth.conf` documentation. To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
 
 ## Managing rules with Puppet modules
 

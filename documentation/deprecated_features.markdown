@@ -4,7 +4,7 @@ title: "Puppet Server: Deprecated Features"
 canonical: "/puppetserver/latest/deprecated_features.html"
 ---
 
-[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
+[auth.conf]: https://puppet.com/docs/puppet/latest/config_file_auth.html
 
 The following features / configuration settings are deprecated and will be
 removed in a future major release of Puppet Server.
@@ -18,7 +18,7 @@ The value of the `jruby-puppet.use-legacy-auth-conf` setting in the
 which mechanism Puppet Server uses to authorize requests to the following
 endpoints:
 
-* [Puppet's HTTPS API (current)](https://docs.puppet.com/puppet/latest/reference/http_api/http_api_index.html)
+* [Puppet's HTTPS API (current)](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html)
 * [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
 
 For a value of `true`, the core
@@ -356,7 +356,7 @@ The `resource_type` and `resource_types` HTTP APIs were removed in Puppet Server
 
 #### Previously
 
-The [`resource_type` and `resource_types` Puppet HTTP API endpoints](https://docs.puppet.com/puppet/4.6/reference/http_api/http_resource_type.html) return information about classes, defined types, and node definitions.
+The [`resource_type` and `resource_types` Puppet HTTP API endpoints](https://puppet.com/docs/puppet/4.6/http_api/http_resource_type.html) return information about classes, defined types, and node definitions.
 
 The [`environment_classes` HTTP API in Puppet Server](./puppet-api/v3/environment_classes.markdown) serves as a replacement for the Puppet resource type API for classes.
 

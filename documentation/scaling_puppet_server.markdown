@@ -8,11 +8,11 @@ To scale Puppet Server for many thousands of nodes, you'll need to add Puppet ma
 
 > **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
 >
-> -   [Large environment installations (LEI)](https://docs.puppet.com/pe/latest/sys_req_hw.html#large-environment-installation-hardware-requirements)
-> -   [Compile masters](https://docs.puppet.com/pe/latest/install_multimaster.html)
-> -   [Load balancing](https://docs.puppet.com/pe/latest/install_lei_load.html)
-> -   [High availability](https://docs.puppet.com/pe/latest/ha_overview.html)
-> -   [Code Manager](https://docs.puppet.com/pe/latest/code_mgr.html)
+> -   [Large environment installations (LEI)](https://puppet.com/docs/pe/latest/installing/hardware_requirements.html#large-environment-hardware-requirements)
+> -   [Compile masters](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html)
+> -   [Load balancing](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html#using-load-balancers-with-compile-masters)
+> -   [High availability](https://puppet.com/docs/pe/latest/high_availability/high_availability_overview.html)
+> -   [Code Manager](https://puppet.com/docs/pe/latest/code_management/code_mgr_how_it_works.html)
 
 ## Planning your load-balancing strategy
 
@@ -83,7 +83,7 @@ Before you centralize this functionality, ensure that the single server that you
 
 ### Directing individual agents to a central CA
 
-On every agent, set the [`ca_server`](https://docs.puppet.com/puppet/latest/reference/configuration.html#caserver) setting in [`puppet.conf`](https://docs.puppet.com/puppet/latest/reference/config_file_main.html) (in the `[main]` configuration block) to the hostname of the server acting as the certificate authority. If you have a large number of existing nodes, it is easiest to do this by managing `puppet.conf` with a Puppet module and a template.
+On every agent, set the [`ca_server`](https://puppet.com/docs/puppet/latest/configuration.html#caserver) setting in [`puppet.conf`](https://puppet.com/docs/puppet/latest/config_file_main.html) (in the `[main]` configuration block) to the hostname of the server acting as the certificate authority. If you have a large number of existing nodes, it is easiest to do this by managing `puppet.conf` with a Puppet module and a template.
 
 > **Note:** Set this setting *before* provisioning new nodes, or they won't be able to complete their initial agent run.
 
@@ -122,13 +122,13 @@ Before running `puppet agent` or `puppet master` on the new server:
 
 If you use an HTTP report processor, point all of your Puppet masters at the same shared report server in order to see all of your agents' reports.
 
-If you use the inventory service or exported resources, use [PuppetDB](https://docs.puppet.com/puppetdb/) and point all of your Puppet masters at a shared PuppetDB instance. A reasonably robust PuppetDB server can handle many Puppet masters and many thousands of agents.
+If you use the inventory service or exported resources, use PuppetDB and point all of your Puppet masters at a shared PuppetDB instance. A reasonably robust PuppetDB server can handle many Puppet masters and many thousands of agents.
 
-See the [PuppetDB documentation](https://docs.puppet.com/puppetdb/latest/) for instructions on deploying a PuppetDB server, then configure every Puppet master to use it. Note that every Puppet master will need to have its own [whitelist entry](https://docs.puppet.com/puppetdb/latest/configure.html#certificate-whitelist) if you're using HTTPS certificates for authorization.
+See the [PuppetDB documentation](https://puppet.com/docs/puppetdb/latest/) for instructions on deploying a PuppetDB server, then configure every Puppet master to use it. Note that every Puppet master will need to have its own [whitelist entry](https://puppet.com/docs/puppetdb/latest/configure.html#certificate-whitelist) if you're using HTTPS certificates for authorization.
 
 ## Keeping manifests and modules synchronized across masters
 
-You must ensure that all Puppet masters have identical copies of your manifests, modules, and [external node classifier](https://docs.puppet.com/puppet/5.0/nodes_external.html) data. Examples include:
+You must ensure that all Puppet masters have identical copies of your manifests, modules, and [external node classifier](https://puppet.com/docs/puppet/latest/nodes_external.html) data. Examples include:
 
 -   Using a version control system such as [r10k](https://github.com/puppetlabs/r10k), Git, Mercurial, or Subversion to manage and sync your manifests, modules, and other data.
 -   Running an out-of-band `rsync` task via `cron`.

@@ -4,14 +4,14 @@ title: "Puppet Server: Installing From Packages"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
-[repodocs]: https://docs.puppet.com/puppet/5.3/reference/puppet_platform.html
-[passengerguide]: https://docs.puppet.com/guides/passenger.html
+[repodocs]: https://puppet.com/docs/puppet/latest/puppet_platform.html
+[passengerguide]: https://puppet.com/docs/puppet/latest/passenger.html
 
 ## System Requirements
 
 Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
-> If you're also using PuppetDB, check its [requirements](https://docs.puppet.com/puppetdb/5.3/#system-requirements).
+> If you're also using PuppetDB, check its [requirements](https://puppet.com/docs/puppetdb/latest/index.html#system-requirements).
 
 ## Platforms with Packages
 
