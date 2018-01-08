@@ -20,6 +20,7 @@ notifications:
 branches:
   only:
     - master
+    - 5.1.x
     - stable
-    - 2.1.x
+    - 2.x
     - 1.x
