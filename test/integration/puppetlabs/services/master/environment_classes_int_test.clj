@@ -264,9 +264,9 @@
                                "error" (str "This Name has no effect. A value "
                                             "was produced and then forgotten ("
                                             "one or more preceding expressions "
-                                            "may have the wrong form) at "
+                                            "may have the wrong form) (file: "
                                             borked-file
-                                            ":1:1")}
+                                            ", line: 1, column: 1)")}
                               {"path" foo-file,
                                "classes" [{
                                            "name" "foo"
