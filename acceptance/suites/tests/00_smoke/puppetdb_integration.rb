@@ -9,46 +9,14 @@
 ## API and asserting the agent's report timestamp is not null. This means that
 ## PuppetDB successfully received the agent's report sent from Puppet Server.
 ## We can just run the agent that's on the master for this.
+#
 
+# We only run this test if we'll have puppetdb installed, which is gated in
+# acceptance/suites/pre_suite/foss/95_install_pdb.rb using the same conditional
 matching_puppetdb_platform = puppetdb_supported_platforms.select { |r| r =~ master.platform }
 skip_test unless matching_puppetdb_platform.length > 0
 
 require 'json'
-
-test_name 'PuppetDB integration'
-
-## PE comes with PuppetDB already installed and configured, so we can just
-## skip that part when testing PE and skip right to validating the agent
-## report was sent from Puppet Server to PuppetDB
-if !master.is_pe?
-  step 'Install PuppetDB module' do
-    on(master, puppet('module install puppetlabs-puppetdb'))
-  end
-
-  if master.platform.variant == 'debian'
-    master.install_package('apt-transport-https')
-  end
-
-  step 'Configure PuppetDB via site.pp' do
-    sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
-    create_remote_file(master, sitepp, <<SITEPP)
-node default {
-  class { 'puppetdb':
-    manage_firewall => false,
-  }
-  class { 'puppetdb::master::config':
-    puppet_service_name     => #{options['puppetservice']},
-    manage_report_processor => true,
-    enable_reports          => true,
-  }
-}
-SITEPP
-    on(master, "chmod 644 #{sitepp}")
-    teardown do
-      on(master, "rm -f #{sitepp}")
-    end
-  end
-end
 
 step 'Submit agent report to PuppetDB via server' do
   with_puppet_running_on(master, {}) do

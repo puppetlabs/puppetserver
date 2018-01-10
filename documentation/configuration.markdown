@@ -4,7 +4,7 @@ title: "Puppet Server Configuration"
 canonical: "/puppetserver/latest/configuration.html"
 ---
 
-[auth.conf]: https://docs.puppet.com/puppet/latest/reference/config_file_auth.html
+[auth.conf]: https://puppet.com/docs/puppet/latest/config_file_auth.html
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 [deprecated]: ./deprecated_features.markdown

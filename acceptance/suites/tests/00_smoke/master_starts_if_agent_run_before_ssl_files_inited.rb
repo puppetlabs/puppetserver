@@ -22,6 +22,10 @@ teardown do
     # Restart=on-failure loop.
     on(master, "service #{puppetservice} stop")
   end
+
+  # Re-enable PuppetDB facts terminus
+  on(master, puppet("config set route_file /etc/puppetlabs/puppet/routes.yaml"))
+
   step 'Restore the original server SSL config' do
     on(master, "rm -rf #{ssldir}")
     on(master, "mv #{backup_ssldir}/#{File.basename(ssldir)} #{File.dirname(ssldir)}")
@@ -29,6 +33,11 @@ teardown do
   step 'Restart the server with original SSL config before ending the test' do
     on(master, puppet("resource service #{puppetservice} ensure=running"))
   end
+
+end
+
+step 'Disable facts reporting to PuppetDB while we munge certs' do
+  on(master, puppet("config set route_file /tmp/nonexistant.yaml"))
 end
 
 step 'Ensure puppetserver has been stopped before nuking SSL directory' do

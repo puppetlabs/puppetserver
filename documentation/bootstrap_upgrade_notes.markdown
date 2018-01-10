@@ -14,7 +14,7 @@ canonical: "/puppetserver/latest/bootstrap_upgrade_notes.html"
 >
 > To ensure that CA services remain disabled after upgrading, create the `/etc/puppetlabs/puppetserver/services.d/ca.cfg` file with contents that disable the CA services _before_ you upgrade to Server 2.5.0. The `puppetserver` service restarts after the upgrade if the service is running before the upgrade, and the service restart also reloads the new `ca.cfg` file.
 >
-> Also, back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) _before_ you upgrade to ensure that you can restore your previous certificates and certificate revocation list, so you can restore them in case any mistakes or failures to disable the CA services in `ca.cfg` lead to a master unexpectedly enabling CA services and overwriting them.
+> Also, back up your masters' [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) (or at least your `crl.pem` file) _before_ you upgrade to ensure that you can restore your previous certificates and certificate revocation list, so you can restore them in case any mistakes or failures to disable the CA services in `ca.cfg` lead to a master unexpectedly enabling CA services and overwriting them.
 
 > ### Potential service failures when upgrading with a modified init configuration
 >
@@ -44,7 +44,7 @@ If you edited or manage your `bootstrap.cfg` file, do the following:
 
 ### Before you upgrade: `ca.cfg`
 
-> **Warning:** Back up your masters' [`ssldir`](https://docs.puppet.com/puppet/latest/reference/dirs_ssldir.html) (or at least your `crl.pem` file) before the upgrade. If a master unexpectedly enables CA services or an emergency rollback overwrites your certificates and certificate revocation list, you'll need to restore them from backups.
+> **Warning:** Back up your masters' [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) (or at least your `crl.pem` file) before the upgrade. If a master unexpectedly enables CA services or an emergency rollback overwrites your certificates and certificate revocation list, you'll need to restore them from backups.
 
 Puppet Server 2.5 and newer create a new configuration file, `/etc/puppetlabs/puppetserver/services.d/ca.cfg`, if it doesn't already exist, and this new file enables CA services by default.
 

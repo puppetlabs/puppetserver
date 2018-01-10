@@ -23,7 +23,7 @@ TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
 
 RAKE_ROOT = File.expand_path(File.dirname(__FILE__))
 
-GEM_SOURCE = ENV['GEM_SOURCE'] || "http://rubygems.delivery.puppetlabs.net"
+GEM_SOURCE = ENV['GEM_SOURCE'] || "https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/"
 
 def assemble_default_beaker_config
   if ENV["BEAKER_CONFIG"]
