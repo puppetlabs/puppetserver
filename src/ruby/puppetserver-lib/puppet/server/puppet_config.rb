@@ -1,4 +1,5 @@
 require 'puppet/server'
+require 'puppet/server/logger'
 
 class Puppet::Server::PuppetConfig
   def self.initialize_puppet(puppet_config)
@@ -21,6 +22,8 @@ class Puppet::Server::PuppetConfig
     )
     Puppet[:trace] = true
 
+    Puppet::Server::Logger.set_log_level_from_logback
+
     # (SERVER-410) Cache features in puppetserver for performance.  Avoiding
     # the cache is intended for agents to reload features mid-catalog-run.
     # As of (PUP-5482) setting always_retry_plugins to false implies that
@@ -28,9 +31,6 @@ class Puppet::Server::PuppetConfig
     if Puppet.settings.setting('always_retry_plugins')
       Puppet[:always_retry_plugins] = false
     end
-
-    # Crank Puppet's log level all the way up and just control it via logback.
-    Puppet[:log_level] = "debug"
 
     master_run_mode = Puppet::Util::RunMode[:master]
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
