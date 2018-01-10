@@ -2,6 +2,10 @@ require 'puppet/server'
 require 'puppet/server/logger'
 
 class Puppet::Server::PuppetConfig
+  def self.unset(config_setting)
+    !Puppet.settings.set_by_cli?(config_setting) && !Puppet.settings.set_by_config?(config_setting)
+  end
+
   def self.initialize_puppet(puppet_config)
     # It's critical that we initialize the run mode before allowing any of the
     # other settings to be loaded / accessed.
@@ -37,6 +41,18 @@ class Puppet::Server::PuppetConfig
         merge({:name => "master",
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
+
+    # (PUP-8141) Without these settings, puppetserver will call out to facter,
+    # which will in turn load all facts, which will in turn fail horribly on
+    # osx looking for cfpropertylist, which won't exist. This is only true
+    # when running from source on osx, for development and tests.
+    if unset(:digest_algorithm)
+      Puppet[:digest_algorithm] = 'md5'
+    end
+
+    if unset(:supported_checksum_types)
+      Puppet[:supported_checksum_types] = ['md5', 'sha256', 'sha384', 'sha512', 'sha224']
+    end
 
     Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
 
