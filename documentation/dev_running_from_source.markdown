@@ -97,6 +97,9 @@ the most frequently that would warrant the creation of this file, though, are:
  * `jruby-puppet.max-active-instances`: the number of JRuby instances to put into the
     pool.  This can usually be set to 1 for dev purposes, unless you're working on
     something that involves concurrency.
+ * `jruby-puppet.splay-instance-flush`: Do not attempt to splay JRuby flushing, set
+    when testing if using multiple JRuby instances and you need to control when they
+    are flushed from the pool
  * `jruby-puppet.master-conf-dir`: the puppet master confdir (where `puppet.conf`,
    `modules`, `manifests`, etc. should be located).
  * `jruby-puppet.master-code-dir`: the puppet master codedir
