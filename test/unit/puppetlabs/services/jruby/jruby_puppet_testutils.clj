@@ -107,6 +107,7 @@ create-mock-pool-instance :- JRubyInstance
                   {:id id
                    :internal {:pool pool
                               :max-borrows (:max-borrows-per-instance config)
+                              :initial-borrows nil
                               :flush-instance-fn flush-instance-fn
                               :state (atom {:borrow-count 0})}
                    :scripting-container (create-mock-scripting-container)})
