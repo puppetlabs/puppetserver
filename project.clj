@@ -64,7 +64,7 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "0.11.2"]
+                 [puppetlabs/jruby-utils "1.0.0"]
                  [puppetlabs/jruby-deps ~jruby-1_7-version]
 
                  ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
