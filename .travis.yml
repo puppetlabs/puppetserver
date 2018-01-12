@@ -1,5 +1,5 @@
 language: clojure
-lein: lein2
+lein: 2.7.1
 jdk:
 - oraclejdk7
 - openjdk7
@@ -15,9 +15,3 @@ notifications:
       - "%{repository}#%{build_number} (%{branch} - %{commit} : %{author}): %{message}"
       - "Change view: %{compare_url}"
       - "Build details: %{build_url}"
-branches:
-  only:
-    - master
-    - stable
-    - 2.1.x
-    - 1.x
