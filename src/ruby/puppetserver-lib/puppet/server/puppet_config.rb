@@ -42,6 +42,14 @@ class Puppet::Server::PuppetConfig
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
+    ################################################
+    ### BEGIN HACKY HACK WORKAROUND FOR PUP-8356 ###
+    ################################################
+    # digest_algorithm and supported_checksum_types must be overridden here until
+    # https://tickets.puppetlabs.com/browse/PUP-8356 is resolved and the puppet
+    # submodule is updated to include it. at that point these calls can be safely
+    # removed.
+    #
     # (PUP-8141) Without these settings, puppetserver will call out to facter,
     # which will in turn load all facts, which will in turn fail horribly on
     # osx looking for cfpropertylist, which won't exist. This is only true
@@ -53,6 +61,10 @@ class Puppet::Server::PuppetConfig
     if unset(:supported_checksum_types)
       Puppet[:supported_checksum_types] = ['md5', 'sha256', 'sha384', 'sha512', 'sha224']
     end
+
+    ################################################
+    #### END HACKY HACK WORKAROUND FOR PUP-8356 ####
+    ################################################
 
     Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
 
