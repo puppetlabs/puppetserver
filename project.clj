@@ -47,6 +47,7 @@
                  [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
+                 [bidi "1.23.1"]
 
                  [clj-time]
                  [prismatic/schema]
@@ -71,18 +72,22 @@
                  ;; asm dependencies.  Deferring to clj-parent to resolve the version.
                  [org.ow2.asm/asm-all]
 
+                 ;; These are required due to the bidi version specified above, which
+                 ;; differs from the version in clj-parent. If we move back to the
+                 ;; version in clj-parent, the exclusions can safely be removed.
+                 [puppetlabs/trapperkeeper-comidi-metrics nil :exclusions [bidi]]
+                 [puppetlabs/trapperkeeper-status nil :exclusions [bidi]]
+                 [puppetlabs/trapperkeeper-metrics nil :exclusions [bidi]]
+                 [puppetlabs/comidi nil :exclusions [bidi]]
+
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
-                 [puppetlabs/trapperkeeper-comidi-metrics]
-                 [puppetlabs/trapperkeeper-metrics]
                  [puppetlabs/trapperkeeper-scheduler]
-                 [puppetlabs/trapperkeeper-status]
                  [puppetlabs/kitchensink]
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
-                 [puppetlabs/comidi]
                  [puppetlabs/i18n]
 
                  ;; dependencies for clojurescript dashboard
@@ -146,7 +151,7 @@
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
-                                   [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
+                                   [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test" :exclusions [bidi]]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
                                    [ring-mock]
