@@ -4,6 +4,7 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as bootstrap]
+            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
@@ -902,13 +903,17 @@
         ; Wait for async requests to hit metrics.
         (while (> 4 (.getCount requested-count)))
 
-        (let [resp        (http-get "http://127.0.0.1:8140/foo/uncoord/sync1")
-              status-code (:status resp)
-              retry-after (-> resp
-                              (get-in [:headers "retry-after"])
-                              Integer/parseInt)]
-          (is (= 503 status-code))
-          (is (<= 0 retry-after 1800)))
+        (logging/with-test-logging
+          (let [resp        (http-get "http://127.0.0.1:8140/foo/uncoord/sync1")
+                status-code (:status resp)
+                retry-after (-> resp
+                                (get-in [:headers "retry-after"])
+                                Integer/parseInt)]
+            (is (= 503 status-code))
+            (is (<= 0 retry-after 1800))
+            (is (logged?
+                 #"The number of requests waiting for a JRuby instance has exceeded the limit"
+                 :error))))
 
         ;; unblock all requests
         (doseq [i (range 1 5)]
