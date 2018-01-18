@@ -47,7 +47,7 @@
                  [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
-                 [bidi "1.23.1"]
+                 [bidi "2.1.3"]
 
                  [clj-time]
                  [prismatic/schema]
@@ -88,6 +88,7 @@
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
+                 [puppetlabs/comidi "0.3.2"]
                  [puppetlabs/i18n]
 
                  ;; dependencies for clojurescript dashboard
