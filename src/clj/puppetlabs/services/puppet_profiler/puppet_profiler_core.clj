@@ -34,6 +34,10 @@
                        :count schema/Int
                        :mean schema/Num
                        :aggregate schema/Num}]
+    :puppetdb-metrics [{:metric schema/Str
+                        :count schema/Int
+                        :mean schema/Num
+                        :aggregate schema/Num}]
     :inline-metrics [{:metric schema/Str
                       :count schema/Int}]}})
 
@@ -72,6 +76,21 @@
      :mean mean
      :aggregate (* count mean)}))
 
+(defn puppetdb-metric
+  [[metric-name timer]]
+  (let [count (.getCount timer)
+        mean (metrics/mean-millis timer)
+        ;; Metric databases like Graphite and InfluxDB treat
+        ;; spaces and periods as delimiters.
+        ;;
+        ;; TODO: Should probably be abstracted into
+        ;; trapperkeeper-metrics as a general utility function.
+        munged-name (str/replace metric-name #"\.| " "_")]
+    {:metric munged-name
+     :count count
+     :mean mean
+     :aggregate (* count mean)}))
+
 (defn inline-metric
   [[metric-name timer]]
   (let [count (.getCount timer)]
@@ -91,6 +110,9 @@
           catalog-metrics (->> (map catalog-metric (.getCatalogTimers metrics-profiler))
                                (sort-by :aggregate)
                                reverse)
+          puppetdb-metrics (->> (map puppetdb-metric (.getPuppetDBTimers metrics-profiler))
+                                (sort-by :aggregate)
+                                reverse)
           inline-metrics (->> (map inline-metric (.getInliningTimers metrics-profiler))
                                (sort-by :count)
                                reverse)]
@@ -98,6 +120,7 @@
           (assoc-in [:experimental :function-metrics] (take 50 function-metrics))
           (assoc-in [:experimental :resource-metrics] (take 50 resource-metrics))
           (assoc-in [:experimental :catalog-metrics] catalog-metrics)
+          (assoc-in [:experimental :puppetdb-metrics] puppetdb-metrics)
           (assoc-in [:experimental :inline-metrics] inline-metrics)))
     status))
 

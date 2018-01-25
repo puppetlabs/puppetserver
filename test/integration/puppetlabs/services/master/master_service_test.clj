@@ -1,6 +1,7 @@
 (ns puppetlabs.services.master.master-service-test
   (:require
     [clojure.test :refer :all]
+    [clojure.set :as setutils]
     [puppetlabs.services.master.master-service :refer :all]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
@@ -124,11 +125,19 @@
        (is (= 0 (-> http-metrics :route-timers
                     (get "puppet-v3-report-/*/")
                     .getCount)))
-       (testing "Catalog compilation increments the catalog counter and adds timing data"
-         (let [catalog-metrics (map puppet-profiler-core/catalog-metric (.getCatalogTimers puppet-profiler))
-               compile-metric (->> catalog-metrics (filter #(= "compile" (:metric %))))]
-           (is (= 1 (count compile-metric)))
-           (let [metric (first compile-metric)]
+       (testing "Catalog compilation increments catalog metrics and adds timing data"
+         (let [profiler-status (puppet-profiler-core/v1-status puppet-profiler :debug)
+               catalog-metrics (get-in profiler-status [:status :experimental :catalog-metrics])
+               metric-names (map :metric catalog-metrics)
+               expected-metrics #{"compile" "find_node"}]
+           ;; NOTE: If this test fails, then likely someone changed a metric
+           ;; name passed to Puppet::Util::Profiler.profile over in the Puppet
+           ;; project without realizing that is a breaking change to metrics
+           ;; critical for measuring compiler performance.
+           (is (setutils/subset? expected-metrics (set metric-names)))
+           (doseq [metric-name expected-metrics
+                   :let [metric (first (filter #(= metric-name (:metric %))
+                                               catalog-metrics))]]
              (is (= 1 (metric :count)))
              (is (= (metric :aggregate) (metric :mean)))))))
 
