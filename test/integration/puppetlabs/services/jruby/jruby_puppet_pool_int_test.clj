@@ -33,7 +33,7 @@
             [puppetlabs.http.client.metrics :as metrics]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (org.jruby RubyInstanceConfig$CompileMode)
+  (:import (org.jruby RubyInstanceConfig$CompileMode RubyInstanceConfig$ProfilingMode)
            (com.codahale.metrics MetricRegistry)
            (org.jruby.runtime Constants)))
 
@@ -317,7 +317,11 @@
 
 (deftest ^:integration settings-plumbed-into-jruby-container
   (testing "setting plumbed into jruby container for"
-    (let [jruby-puppet-config (jruby-testutils/jruby-puppet-config {:compile-mode :jit})
+    (let [profiler-file (str (ks/temp-file-name "foo"))
+          jruby-puppet-config (jruby-testutils/jruby-puppet-config {:max-active-instances 1
+                                                                    :compile-mode :jit
+                                                                    :profiling-mode :flat
+                                                                    :profiler-output-file profiler-file})
           config (assoc
                   (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
                    :http-client {:connect-timeout-milliseconds 2
@@ -337,6 +341,9 @@
             (testing "compile mode"
               (is (= RubyInstanceConfig$CompileMode/JIT
                      (.getCompileMode container))))
+            (testing "profiling mode"
+              (is (= RubyInstanceConfig$ProfilingMode/FLAT
+                     (.getProfilingMode container))))
             (let [settings (into {} (.runScriptlet container
                                                    "java.util.HashMap.new
                                                       (Puppet::Server::HttpClient.settings)"))]
@@ -352,7 +359,13 @@
                 (is (= ["TLSv1" "TLSv1.2"]
                        (into [] (settings "ssl_protocols"))))))
             (finally
-              (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))))
+              (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)
+
+              ;; Because we add the current datetime and scripting container
+              ;; hashcode to the profiler filename we need to glob for it here.
+              (let [profiler-files (fs/glob (fs/parent profiler-file)
+                                            (str (fs/base-name profiler-file) "*"))]
+                (is (= 1 (count profiler-files))))))))))))
 
 (deftest ^:integration http-client-metrics-enabled-test
   (let [config (jruby-testutils/jruby-puppet-tk-config (jruby-testutils/jruby-puppet-config))]
