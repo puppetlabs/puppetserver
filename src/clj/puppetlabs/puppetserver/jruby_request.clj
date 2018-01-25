@@ -59,12 +59,14 @@
    metrics-service :- (schema/protocol jruby-metrics/JRubyMetricsService)
    max-queued-requests :- schema/Int
    max-retry-delay :- schema/Int]
-  (fn [request]
-    (let [metrics-map (jruby-metrics/get-metrics metrics-service)
-          requested-count (-> metrics-map :requested-instances deref count)]
-      (if (>= requested-count max-queued-requests)
-        (let [err-msg (i18n/trs "The number of requests waiting for a JRuby instance has exceeded the limit allowed by the max-queued-requests setting.")
-              response (output-error request {:msg err-msg} 503)]
+  (let [metrics-map (jruby-metrics/get-metrics metrics-service)
+        {:keys [requested-instances queue-limit-hit-meter]} metrics-map
+        err-msg (i18n/trs "The number of requests waiting for a JRuby instance has exceeded the limit allowed by the max-queued-requests setting.")]
+    (fn [request]
+      (if (>= (count @requested-instances) max-queued-requests)
+        (let [response (output-error request {:msg err-msg} 503)]
+          ;; Record an occurance of the rate limit being hit to metrics.
+          (.mark queue-limit-hit-meter)
           (if (pos? max-retry-delay)
             (assoc-in response [:headers "Retry-After"]
                       (-> (rand) (* max-retry-delay) int str))

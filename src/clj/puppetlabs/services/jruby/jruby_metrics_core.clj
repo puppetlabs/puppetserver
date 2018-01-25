@@ -9,7 +9,7 @@
             [clj-time.core :as time]
             [clj-time.format :as time-format]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol])
-  (:import (com.codahale.metrics MetricRegistry Gauge Counter Histogram Timer)
+  (:import (com.codahale.metrics MetricRegistry Gauge Counter Histogram Meter Timer)
            (clojure.lang Atom IFn)
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
            (java.util.concurrent TimeUnit)
@@ -59,7 +59,8 @@
    :lock-held-timer Timer
    :lock-requests Atom
    :lock-status Atom
-   :sampler-job-id schema/Any})
+   :sampler-job-id schema/Any
+   :queue-limit-hit-meter Meter})
 
 (def TimestampedReason
   {:time Long
@@ -102,7 +103,9 @@
               :borrowed-instances [InstanceRequestInfo]
               :num-pool-locks schema/Int
               :average-lock-wait-time schema/Num
-              :average-lock-held-time schema/Num}}})
+              :average-lock-held-time schema/Num
+              :queue-limit-hit-count schema/Int
+              :queue-limit-hit-rate schema/Num}}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Private
@@ -295,7 +298,8 @@
    :lock-requests (atom {})
    :lock-status (atom {:current-state jruby-pool-lock-not-in-use
                        :last-change-time (timestamp)})
-   :sampler-job-id nil})
+   :sampler-job-id nil
+   :queue-limit-hit-meter (.meter registry (metrics/host-metric-name hostname "jruby.queue-limit-hit-meter"))})
 
 (schema/defn jruby-event-callback
   [metrics :- JRubyMetrics
@@ -317,7 +321,7 @@
                 borrow-count borrow-timeout-count borrow-retry-count
                 return-count free-jrubies-histo num-free-jrubies borrow-timer
                 wait-timer requested-instances borrowed-instances lock-status
-                lock-wait-timer lock-held-timer]} metrics
+                lock-wait-timer lock-held-timer queue-limit-hit-meter]} metrics
         level>= (partial status-core/compare-levels >= level)]
     {:state :running
      :status (cond->
@@ -345,6 +349,8 @@
                                    :num-pool-locks (.getCount lock-held-timer)
                                    :average-lock-wait-time (metrics/mean-millis lock-wait-timer)
                                    :average-lock-held-time (metrics/mean-millis lock-held-timer)
+                                   :queue-limit-hit-count (.getCount queue-limit-hit-meter)
+                                   :queue-limit-hit-rate (.getFiveMinuteRate queue-limit-hit-meter)
                                    }}))}))
 
 ;; This function schedules some metrics sampling to happen on a background thread.
