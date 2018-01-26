@@ -59,6 +59,10 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
+                 ;; Override this version explicitly to remediate CVE-2017-15095
+                 [com.fasterxml.jackson.core/jackson-databind "2.9.1"]
+                 [com.fasterxml.jackson.core/jackson-core "2.9.1"]
+
                  [puppetlabs/jruby-utils "0.4.0"]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
