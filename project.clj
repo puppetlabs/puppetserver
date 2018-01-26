@@ -218,7 +218,7 @@
                                                [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.7.4"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.7.5"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
