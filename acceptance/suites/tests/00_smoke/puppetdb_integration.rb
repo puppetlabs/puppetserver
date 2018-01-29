@@ -50,15 +50,6 @@ EOM
 end
 
 with_puppet_running_on(master, {}) do
-  step 'Enable PuppetDB' do
-    apply_manifest_on(master, <<EOM)
-class{'puppetdb::master::config':
-  enable_reports          => true,
-  manage_report_processor => true,
-}
-EOM
-  end
-
   step 'Run agent to generate exported resources' do
     # This test compiles a catalog using a differnt certname so that
     # later runs can test collection.
