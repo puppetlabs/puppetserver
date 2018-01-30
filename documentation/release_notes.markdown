@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.1.5
+
+Released January 31, 2018.
+
+This is a minor bug-fix release of Puppet Server, and adds packages for Debian 9 ("Stretch").
+
+### Bug fixes
+
+-   Puppet Server correctly parses URIs with spaces in them, thanks to a bug fix in the `bidi` dependency.
+
+-   Puppet Server parses all Ruby source files as UTF-8 instead of ASCII when running under JRuby 1.7. This is the same behavior as MRI Ruby and JRuby 9K, and avoids corner-case bugs when interpolating translated strings with Unicode characters.
+
 ## Puppet Server 5.1.4
 
 Released November 6, 2017.
