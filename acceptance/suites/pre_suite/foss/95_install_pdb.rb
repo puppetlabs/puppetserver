@@ -4,7 +4,7 @@ skip_test unless matching_puppetdb_platform.length > 0
 
 
 test_name 'PuppetDB setup'
-sitepp = '/tmp/configure_puppetdb.pp'
+sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
 
 teardown do
   on(master, "rm -f #{sitepp}")
@@ -37,5 +37,7 @@ node default {
 SITEPP
 
   on(master, "chmod 644 #{sitepp}")
-  on master, puppet_apply(sitepp), :acceptable_exit_codes =>[0,2]
+  with_puppet_running_on(master, {}) do
+    on(master, puppet_agent("--test --server #{master}"), :acceptable_exit_codes => [0,2])
+  end
 end
