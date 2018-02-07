@@ -24,9 +24,7 @@ teardown do
   end
 
   # Re-enable PuppetDB facts terminus
-  on(master, puppet("config set --section master route_file /etc/puppetlabs/puppet/routes.yaml"))
-  on(master, puppet("config set --section master reports puppetdb"))
-  on(master, puppet("config set --section master storeconfigs true"))
+  on(master, puppet("config set route_file /etc/puppetlabs/puppet/routes.yaml"))
 
   step 'Restore the original server SSL config' do
     on(master, "rm -rf #{ssldir}")
@@ -38,10 +36,8 @@ teardown do
 
 end
 
-step 'Disable reporting to PuppetDB while we munge certs' do
-  on(master, puppet("config set --section master route_file /tmp/nonexistent.yaml"))
-  on(master, puppet("config set --section master reports store"))
-  on(master, puppet("config set --section master storeconfigs false"))
+step 'Disable facts reporting to PuppetDB while we munge certs' do
+  on(master, puppet("config set route_file /tmp/nonexistant.yaml"))
 end
 
 step 'Ensure puppetserver has been stopped before nuking SSL directory' do
