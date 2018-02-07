@@ -8,13 +8,6 @@ puppetservice=options['puppetservice']
 ssldir = master.puppet['ssldir']
 backup_ssldir = master.tmpdir("agent_run_before_master_init_ssldir_backup")
 
-# We don't set up and test PuppetDB integration on all OSes in our FOSS tests
-# so here we check if PuppetDB is enabled so we can disable as needed.
-reports_termini = on(master, puppet("config print --section master reports")).stdout.chomp
-puppetdb_enabled = reports_termini =~ /puppetdb/
-route_file_exists = master.file_exist?("/etc/puppetlabs/puppet/routes.yaml")
-
-
 step "Backup original SSL configuration so can be restored when test finishes" do
   on(master, "cp -pR #{ssldir} #{backup_ssldir}")
 end
@@ -31,13 +24,9 @@ teardown do
   end
 
   # Re-enable PuppetDB facts terminus
-  if route_file_exists
-    on(master, puppet("config set --section master route_file /etc/puppetlabs/puppet/routes.yaml"))
-  end
-  if puppetdb_enabled
-    on(master, puppet("config set --section master reports #{reports_termini}"))
-    on(master, puppet("config set --section master storeconfigs true"))
-  end
+  on(master, puppet("config set --section master route_file /etc/puppetlabs/puppet/routes.yaml"))
+  on(master, puppet("config set --section master reports puppetdb"))
+  on(master, puppet("config set --section master storeconfigs true"))
 
   step 'Restore the original server SSL config' do
     on(master, "rm -rf #{ssldir}")
@@ -49,14 +38,10 @@ teardown do
 
 end
 
-step 'Disable reporting to PuppetDB if needed while we munge certs' do
-  if route_file_exists
-    on(master, puppet("config set --section master route_file /tmp/nonexistent.yaml"))
-  end
-  if puppetdb_enabled
-    on(master, puppet("config set --section master reports store"))
-    on(master, puppet("config set --section master storeconfigs false"))
-  end
+step 'Disable reporting to PuppetDB while we munge certs' do
+  on(master, puppet("config set --section master route_file /tmp/nonexistent.yaml"))
+  on(master, puppet("config set --section master reports store"))
+  on(master, puppet("config set --section master storeconfigs false"))
 end
 
 step 'Ensure puppetserver has been stopped before nuking SSL directory' do
