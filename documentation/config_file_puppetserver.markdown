@@ -127,6 +127,9 @@ jruby-puppet: {
 }
 
 # Settings related to HTTP client requests made by Puppet Server.
+# These settings only apply to client connections using the Puppet::Network::HttpPool
+# classes. Client connections using net/http or net/https directly will not be
+# configured with these settings automatically.
 http-client: {
     # A list of acceptable protocols for making HTTP requests
     #ssl-protocols: [TLSv1, TLSv1.1, TLSv1.2]
