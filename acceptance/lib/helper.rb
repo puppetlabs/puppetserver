@@ -291,30 +291,6 @@ module PuppetServerExtensions
     OpenSSL::PKey::RSA.new(rawkey)
   end
 
-  def latest_pdb_build
-    url = "https://cinext-jenkinsmaster-enterprise-prod-1.delivery.puppetlabs.net/view/puppetdb/view/master/job/enterprise_puppetdb_integration-system-puppetdb_full-master/lastSuccessfulBuild/api/json"
-    param_from_build(url, "PUPPETDB_PACKAGE_BUILD_VERSION")
-  end
-
-  def latest_agent_build
-    url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/puppet-agent%20suite%20pipelines/job/platform_puppet-agent_intn-van-promote_suite-daily-promotion-master/lastSuccessfulBuild/api/json"
-    param_from_build(url, "SUITE_COMMIT")
-  end
-
-  def latest_puppet_version
-    url = "https://jenkins-master-prod-1.delivery.puppetlabs.net/view/puppet-agent%20suite%20pipelines/job/platform_puppet-agent_intn-van-promote_suite-daily-promotion-master/lastSuccessfulBuild/api/json"
-    param_from_build(url, "SUITE_VERSION")
-  end
-
-  def param_from_build(url, param)
-    response = https_request(url, :git)
-    json = JSON.parse(response.body)
-    actions = json["actions"].find { |hash| hash["_class"] == "hudson.model.ParametersAction" }
-    parameters = actions["parameters"]
-    pkg_build_param = parameters.find { |hash| hash["name"] == param }
-    pkg_build_param["value"]
-  end
-
   # Issue an HTTP request and return the Net::HTTPResponse object. Lifted from
   # https://github.com/puppetlabs/pe_acceptance_tests/blob/2015.3.x/lib/http_calls.rb
   # and slightly modified.

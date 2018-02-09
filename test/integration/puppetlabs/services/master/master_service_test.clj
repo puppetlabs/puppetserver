@@ -676,3 +676,13 @@
                       metric-name)))))
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :http-report-processor-metrics-test)))))))
+
+(deftest encoded-spaces-test
+  (testing "Encoded spaces should be routed correctly"
+    (bootstrap-testutils/with-puppetserver-running
+     _
+     {:jruby-puppet {:max-active-instances 1
+                     :master-conf-dir master-service-test-runtime-dir}}
+     ;; SERVER-1954 - In bidi 1.25.0 and later, %20 in a URL would cause a 500 to be raised here instead
+     (let [resp (http-get "/puppet/v3/enviro%20nment")]
+       (is (= 404 (:status resp)))))))

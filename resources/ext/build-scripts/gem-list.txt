@@ -3,6 +3,5 @@ hocon 1.2.5
 text 1.3.1
 locale 2.1.2
 gettext 3.2.2
-gettext-setup 0.28
-fast_gettext 1.1.0
+fast_gettext 1.1.2
 hiera-eyaml 2.1.0
