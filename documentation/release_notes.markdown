@@ -10,7 +10,25 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
+
+## Puppet Server 5.2.0
+
+Released February 13, 2018.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### Bug fixes
+
+-   Puppet Server 5.2.0 is much less prone than previous versions to a race condition where systemd could lose track of the `puppetserver` process.
+
+-   In Puppet Server 2.3.x and later, using shell redirection and other shell features in custom functions would result in failures because the command would not be run in a shell. Puppet Server 5.2.0 runs these commands in a shell.
+
+### New features
+
+-   The `hiera-eyaml` gem is installed with Puppet Server by default, enabling out-of-the-box use of this encrypted Hiera backend.
+
+-   The `status` endpoint in Puppet Server 5.2.0 includes metrics on time spent waiting for an ENC response, as well as all major PDB events (submitting, querying, and transforming data).
 
 ## Puppet Server 5.1.5
 
