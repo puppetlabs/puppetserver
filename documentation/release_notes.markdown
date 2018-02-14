@@ -10,7 +10,35 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-For release notes on versions of Puppet Server prior to Puppet Server 5, see [puppet.com/docs](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
+For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
+
+## Puppet Server 5.2.0
+
+Released February 13, 2018.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### Bug fixes
+
+-   Previous versions of Puppet Server assigned the same `max-requests-per-instance` interval to all JRuby worker instances, and when equally sharing the request load, all of the instances would be destroyed and recreated near the same time. This created a "thundering heard" problem with JRuby instance creation that could lead to a spike in request times.
+
+    Puppet Server 5.2.0 attempts to splay the destruction and recreation of JRuby instances equally over the `max-request-per-instance` interval to avoid this issue. This changes the operability metrics of the server by removing large spikes in request times in exchange for smaller but more frequent slowdowns.
+
+-   Puppet Server 5.2.0 is much less prone than previous versions to a race condition where systemd could lose track of the `puppetserver` process.
+
+-   In Puppet Server 2.3.x and later, using shell redirection and other shell features in custom functions would result in failures because the command would not be run in a shell. Puppet Server 5.2.0 runs these commands in a shell.
+
+### New features
+
+-   Profiling at the JRuby level can be enabled in the `jruby-puppet` section of `puppetserver.conf`. This can be used to profile all of Puppet, including custom Ruby code. Due to the amount of output, enabling profiling will degrade performance and should not be done in production.
+
+    There are two new settings for this feature: `profiling-mode` and `profiling-output-file`. For details, see the [puppetserver.conf documentation](./config_file_puppetserver.markdown).
+
+    The API profiling mode can be used to [profile custom user code](https://github.com/jruby/jruby/wiki/Profiling-JRuby#profiling-specific-code-in-an-application), and there are [resources for profiling JRuby code](https://github.com/jruby/jruby/wiki/Profiling-JRuby).
+
+-   The `hiera-eyaml` gem is installed with Puppet Server by default, enabling out-of-the-box use of this encrypted Hiera backend.
+
+-   The `status` endpoint in Puppet Server 5.2.0 includes metrics on time spent waiting for an ENC response, as well as all major PDB events (submitting, querying, and transforming data). It also reports the number of times Puppet Server has reached its `max-queued-requests` limit, which provides more insight into when, and how much, their request load is exceeding capacity.
 
 ## Puppet Server 5.1.5
 
