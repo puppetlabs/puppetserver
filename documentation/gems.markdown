@@ -69,6 +69,24 @@ Or, if you're running from source:
 
     $ lein gem -c ~/.puppetserver/puppetserver.conf list
 
+The `puppetserver gem` command also respects the `~/.gemrc` of the user it is
+running under. This is often used to configure upstream sources or configure
+proxy settings:
+
+    $ cat ~/.gemrc
+    ---
+    :sources: [ 'https://rubygems-mirror.megacorp.com', 'https://rubygems.org' ]
+    http_proxy: "http://proxy.megacorp.com:8888"
+
+
+    $ puppetserver gem environment | grep proxy
+        - "http_proxy" => "http://proxy.megacorp.com:8888"
+
+As with any of Puppet Server's configuration we recommend managing it with Puppet.
+To manage Puppet Server's gem dependencies we recommend using the package provider
+shipped in [`puppetlabs-puppetserver_gem`](https://github.com/puppetlabs/puppetlabs-puppetserver_gem).
+
+
 ## Installing Gems for use with development:
 
 When running from source, JRuby uses a `GEM_HOME` of `./target/jruby-gems`
