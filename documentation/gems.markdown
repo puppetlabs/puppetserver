@@ -69,23 +69,24 @@ Or, if you're running from source:
 
     $ lein gem -c ~/.puppetserver/puppetserver.conf list
 
-The `puppetserver gem` command also respects the `~/.gemrc` of the user it is
-running under. This is often used to configure upstream sources or configure
-proxy settings:
+The `puppetserver gem` command also respects the running user's `~/.gemrc` file,
+which you can use to configure upstream sources or proxy settings. For example,
+consider a `.gemrc` file containing:
 
-    $ cat ~/.gemrc
     ---
     :sources: [ 'https://rubygems-mirror.megacorp.com', 'https://rubygems.org' ]
     http_proxy: "http://proxy.megacorp.com:8888"
 
+This configures the listed `:sources` as the `puppetserver gem` command's
+upstream sources, and uses the listed `http_proxy`, which you can confirm:
 
     $ puppetserver gem environment | grep proxy
         - "http_proxy" => "http://proxy.megacorp.com:8888"
 
-As with any of Puppet Server's configuration we recommend managing it with Puppet.
-To manage Puppet Server's gem dependencies we recommend using the package provider
-shipped in [`puppetlabs-puppetserver_gem`](https://github.com/puppetlabs/puppetlabs-puppetserver_gem).
-
+As with the rest of Puppet Server's configuration, we recommend managing these
+settings with Puppet. You can manage Puppet Server's gem dependencies with the
+package provider shipped in [`puppetlabs-puppetserver_gem`](https://forge.puppet.com/puppetlabs/puppetserver_gem)
+module.
 
 ## Installing Gems for use with development:
 
