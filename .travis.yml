@@ -1,11 +1,14 @@
 language: clojure
 lein: 2.7.1
 dist: trusty
-jdk:
-- openjdk8
-- oraclejdk8
+matrix:
+  include:
+  - env: JRUBY_VERSION=9k
+    jdk: openjdk8
+  - env: JRUBY_VERSION=1.7
+    jdk: oraclejdk8
 script:
-  - "./ext/travisci/test.sh"
+  - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
 sudo: required
 notifications:
