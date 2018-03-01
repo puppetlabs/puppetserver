@@ -63,7 +63,7 @@ step "Install MRI Puppet Agents."
   end
 
 step "Upgrade nss to version that is hopefully compatible with jdk version puppetserver will use." do
-  nss_package=nil
+  nss_package_name=nil
   variant, _, _, _ = master['platform'].to_array
   case variant
   when /^(debian|ubuntu)$/
