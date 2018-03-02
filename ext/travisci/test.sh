@@ -6,6 +6,7 @@ export PUPPETSERVER_HEAP_SIZE=4G
 
 echo "Using heap size: $PUPPETSERVER_HEAP_SIZE"
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
+echo $(/bin/hostname)
 
 if [ "${JRUBY_VERSION}" = "1.7" ]; then
   echo "Running tests with default JRuby (1.7-based)"
