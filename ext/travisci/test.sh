@@ -8,7 +8,8 @@ echo "Using heap size: $PUPPETSERVER_HEAP_SIZE"
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 echo $(/bin/hostname)
 
-echo $(ulimit)
+echo "Here are all the limits"
+echo $(ulimit -a)
 
 if [ "${JRUBY_VERSION}" = "1.7" ]; then
   echo "Running tests with default JRuby (1.7-based)"
