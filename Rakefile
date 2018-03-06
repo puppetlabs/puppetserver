@@ -114,19 +114,12 @@ def lookup_passing_puppet_sha(my_jenkins_passing_json)
   end
 end
 
-def git_passing_puppet_version
-   #FIXME: this should be updated when the package yaml file contains the metadata we need
-   #  we have to replace the hyphens with dots because, vanagon
-  `cd #{PUPPET_SUBMODULE_PATH}; git describe`.strip.gsub(/-/,'.')
-end
-
-def replace_puppet_pins(passing_puppetagent_sha, passing_puppet_version)
+def replace_puppet_pins(passing_puppetagent_sha)
   # read beaker options hash from its file
-  puts("replacing puppet sha and version in #{BEAKER_OPTIONS_FILE} " \
-       "with agent sha: #{passing_puppetagent_sha} and puppet version: #{passing_puppet_version}")
+  puts("replacing puppet-agent SHA in #{BEAKER_OPTIONS_FILE} " \
+       "with #{passing_puppetagent_sha}")
   beaker_options_from_file = eval(File.read(BEAKER_OPTIONS_FILE))
-  # add puppet version values
-  beaker_options_from_file[:puppet_version]       = passing_puppet_version
+  # add puppet-agent version value
   beaker_options_from_file[:puppet_build_version] = passing_puppetagent_sha
   File.write(BEAKER_OPTIONS_FILE, beaker_options_from_file.pretty_inspect)
 end
@@ -140,17 +133,17 @@ namespace :puppet_submodule do
       "git checkout #{lookup_passing_puppet_sha(my_jenkins_passing_json)}"
     puts("checking out known passing puppet version in submodule: `#{git_checkout_command}`")
     system(git_checkout_command)
-    # replace puppet version and sha pins in beaker options file
-    replace_puppet_pins(lookup_passing_puppetagent_sha(my_jenkins_passing_json), git_passing_puppet_version)
+    # replace puppet-agent sha pin in beaker options file
+    replace_puppet_pins(lookup_passing_puppetagent_sha(my_jenkins_passing_json))
   end
   desc 'commit and push; CAUTION: WILL commit and push, upstream, local changes to the puppet submodule and acceptance options'
   task :commit_push do
     git_commit_command = "git checkout #{PUPPETSERVER_BRANCH} && git add #{PUPPET_SUBMODULE_PATH} " \
-      "&& git add #{BEAKER_OPTIONS_FILE} && git commit -m '(maint) update puppet submodule version and pins'"
+      "&& git add #{BEAKER_OPTIONS_FILE} && git commit -m '(maint) update puppet submodule version and agent pin'"
     git_push_command = "git checkout #{PUPPETSERVER_BRANCH} && git push origin HEAD:#{PUPPETSERVER_BRANCH}"
-    puts "committing submodule and pins via: `#{git_commit_command}`"
+    puts "committing submodule and agent pin via: `#{git_commit_command}`"
     system(git_commit_command)
-    puts "pushing submodule and pins via: `#{git_push_command}`"
+    puts "pushing submodule and agent pin via: `#{git_push_command}`"
     system(git_push_command)
   end
   desc 'update puppet versions and commit and push; CAUTION: WILL commit and push, upstream, local changes to the puppet submodule and acceptance options'
