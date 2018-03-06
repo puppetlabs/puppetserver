@@ -23,13 +23,6 @@ module PuppetServerExtensions
                          nil, "Puppet Server Version",
                          "PUPPETSERVER_VERSION", nil, :string)
 
-    # This value now comes from the beaker options file, or PUPPET_VERSION env var
-    #   the beaker options file can have this value updated via the rake task
-    puppet_version = get_option_value(options[:puppet_version],
-                         nil, "Puppet Version", "PUPPET_VERSION",
-                         "5.0.0.131.g88cc135",
-                         :string)
-
     # puppet-agent version corresponds to packaged development version located at:
     # http://builds.delivery.puppetlabs.net/puppet-agent/
     # This value now come from the beaker options file, or PUPPET_BUILD_VERSION env var
@@ -51,7 +44,6 @@ module PuppetServerExtensions
       :puppetserver_install_type => install_type,
       :puppetserver_install_mode => install_mode,
       :puppetserver_version => puppetserver_version,
-      :puppet_version => puppet_version,
       :puppet_build_version => puppet_build_version,
       :puppetdb_build_version => puppetdb_build_version,
     }
