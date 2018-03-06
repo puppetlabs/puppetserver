@@ -22,7 +22,7 @@
      :master-conf-dir (.getAbsolutePath conf-dir)})))
 
 (def puppet-conf-file-contents
-  "[main]\nenvironment_timeout=unlimited\nbasemodulepath=$codedir/modules\n")
+  "[main]\nenvironment_timeout=0\nbasemodulepath=$codedir/modules\n")
 
 (def ^:dynamic *code-dir* nil)
 (def ^:dynamic *jruby-service* nil)
@@ -93,7 +93,6 @@
 
 (defn create-env
   [env-dir tasks]
-  (testutils/create-env-conf env-dir "")
   (gen-empty-tasks env-dir tasks))
 
 (defn env-dir
