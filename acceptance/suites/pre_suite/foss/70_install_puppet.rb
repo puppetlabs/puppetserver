@@ -32,35 +32,20 @@ def install_puppet_from_msi( host, opts )
   on host, "#{ruby} --version"
 end
 
-step "Install MRI Puppet Agents."
+step "Install MRI Puppet Agents." do
   hosts.each do |host|
     platform = host.platform
-
-    puppet_version = test_config[:puppet_version]
 
     if /windows/.match(platform)
       arch = host[:ruby_arch] || 'x86'
       base_url = ENV['MSI_BASE_URL'] || "http://builds.delivery.puppetlabs.net/puppet-agent/#{test_config[:puppet_build_version]}/artifacts/windows"
       filename = ENV['MSI_FILENAME'] || "puppet-agent-#{arch}.msi"
       install_puppet_from_msi(host, :url => "#{base_url}/#{filename}")
-    elsif puppet_version
-      install_package host, 'puppet-agent'
     else
-      puppet_version = test_config[:puppet_version]
-
-      variant, _, _, _ = host['platform'].to_array
-
-      case variant
-      when /^(debian|ubuntu)$/
-        puppet_version += "-1puppetlabs1"
-        install_package host, "puppet-agent=#{puppet_version}"
-      when /^(redhat|el|centos)$/
-        install_package host, 'puppet-agent', puppet_version
-      end
-
+      install_package host, 'puppet-agent'
     end
-
   end
+end
 
 step "Upgrade nss to version that is hopefully compatible with jdk version puppetserver will use." do
   nss_package_name=nil
