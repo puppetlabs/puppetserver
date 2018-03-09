@@ -37,7 +37,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "1.7.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "1.7.3"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -54,6 +54,7 @@
                  [liberator]
                  [org.apache.commons/commons-exec]
                  [io.dropwizard.metrics/metrics-core]
+                 [com.fasterxml.jackson.module/jackson-module-afterburner]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
