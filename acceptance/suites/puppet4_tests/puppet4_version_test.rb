@@ -10,7 +10,7 @@ end
 
 step "Check that Puppet Server has Puppet 5.x installed"
 on(master, puppet("--version")) do
-  assert_match(/\A5\./, stdout, "puppet --version does not start with major version 5")
+  assert_match(/\A[56]/, stdout, "puppet --version does not start with major version 5.x or 6.x")
 end
 
 step "Check that the agent on the master runs against the master"
