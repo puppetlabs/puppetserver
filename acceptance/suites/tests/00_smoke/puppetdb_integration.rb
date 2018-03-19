@@ -107,13 +107,38 @@ EOM
   end
 end
 
-step 'Validate server sent agent data to PuppetDB' do
+step 'Validate PuppetDB successfully stored agent data' do
   query = "curl http://localhost:8080/pdb/query/v4/nodes/#{master_fqdn}"
-  response = JSON.parse(on(master, query).stdout.chomp)
-  %w[facts_timestamp catalog_timestamp report_timestamp].each do |dataset|
-    assert_operator(Time.iso8601(response[dataset]),
-                    :>,
-                    run_timestamp,
-                   "#{dataset} updated in PuppetDB")
+  agent_datasets = %w[facts_timestamp catalog_timestamp report_timestamp]
+  missing_datasets = [ ]
+  retries = 3
+
+  retries.times do |i|
+    logger.debug("PuppetDB query attempt #{i} for updated agent data...")
+
+    missing_datasets = [ ]
+    response = JSON.parse(on(master, query).stdout.chomp)
+
+    dataset_states = response.select {|k, v| agent_datasets.include?(k)}.map do |k, v|
+      t = Time.iso8601(v) rescue nil
+      [k, t]
+    end.to_h
+
+    missing_datasets = dataset_states.select {|k, v| v.nil? || (v < run_timestamp)}.keys
+    break if missing_datasets.empty?
   end
+
+  assert_empty(missing_datasets, <<-EOS)
+PuppetDB did not return updated data for #{master_fqdn} after
+#{retries} consecutive queries. The following timestamps were
+missing or not updated:
+
+  #{missing_datasets.join(' ')}
+
+Check puppetserver.log for errors that may have ocurred during
+data submission.
+
+Check puppetdb.log for errors that may have ocurred during
+data processing.
+EOS
 end
