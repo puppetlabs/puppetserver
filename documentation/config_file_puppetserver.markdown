@@ -22,7 +22,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
 * The `jruby-puppet` settings configure the interpreter.
 
-    > **Deprecation Note:** Puppet Server 5.0 removed the `compat-version` setting, which is incompatible with JRuby 1.7.27, and the service won't start if `compat-version` is set. To use Ruby 2.x with Puppet Server, enable Puppet Server 5.x's JRuby 9k support by assigning the `JRUBY_JAR` environment variable. See [Puppet Server Configuration](./configuration.markdown) for details.
+    > **Deprecation Note:** Puppet Server 5.0 removed the `compat-version` setting, which is incompatible with JRuby 1.7.27, and the service won't start if `compat-version` is set. Puppet Server 6.0 uses JRuby 9.1 which supports Ruby 2.3.
 
     * `ruby-load-path`: The location where Puppet Server expects to find Puppet, Facter, and other components.
 

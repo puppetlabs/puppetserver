@@ -167,10 +167,7 @@
                                     nil)]
 
       (testing "jruby-config default values are used if not provided"
-        ; jruby-utils defaults to jit when running 9k
-        (if jruby-schemas/using-jruby-9k?
-          (is (= :jit (:compile-mode initialized-jruby-config)))
-          (is (= :off (:compile-mode initialized-jruby-config))))
+        (is (= :jit (:compile-mode initialized-jruby-config)))
         (is (= jruby-core/default-borrow-timeout (:borrow-timeout initialized-jruby-config)))
         (is (= (jruby-core/default-pool-size (ks/num-cpus)) (:max-active-instances initialized-jruby-config)))
         (is (= 0 (:max-borrows-per-instance initialized-jruby-config))))

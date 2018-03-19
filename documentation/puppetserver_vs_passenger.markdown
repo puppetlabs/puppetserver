@@ -29,10 +29,6 @@ If you have server-side Ruby code in your modules, Puppet Server will run it via
 JRuby. Generally speaking, this only affects custom parser functions and report
 processors. For the vast majority of cases, this shouldn't pose any problems, as JRuby is highly compatible with vanilla Ruby.
 
-## Ruby Compatibility For Extensions
-
-Ruby extension code in your modules needs to run under both Ruby 1.9 and Ruby 2.1. This is because Puppet Server runs Puppet functions and custom resource types under JRuby 1.7 (which is a Ruby 1.9-compatible interpreter), and the official `puppet-agent` releases run custom facts and types/providers under MRI Ruby 2.1.
-
 ## Installing And Removing Gems
 
 We isolate the Ruby load paths that are accessible to Puppet Server's

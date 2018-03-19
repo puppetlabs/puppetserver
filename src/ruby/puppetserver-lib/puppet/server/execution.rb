@@ -16,13 +16,7 @@ class Puppet::Server::Execution
   end
 
   private
-  # In ruby 1.9 (which jruby 1.7 runs as, `chars` returns an enumerator
-  # [https://ruby-doc.org/core-1.9.3/String.html#method-i-chars], which is
-  # unsuitable for passing to `Regexp.union`, so we explicitly turn it into an
-  # array. In ruby 2.0 and later, `chars` returns an array
-  # [https://ruby-doc.org/core-2.0.0/String.html#method-i-chars], so the `to_a`
-  # call will essentially be a noop.
-  SHELL_CHARACTERS = "*?{}[]<>()~&|\\$;'`\"\n#=".chars.to_a
+  SHELL_CHARACTERS = "*?{}[]<>()~&|\\$;'`\"\n#=".chars
 
   def self.execute(command, options)
     if command.is_a?(Array)

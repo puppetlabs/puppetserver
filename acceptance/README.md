@@ -51,7 +51,13 @@ changes.
 
 ### PACKAGE_BUILD_VERSION when testing a new build with local changes
 
-1. Run `lein with-profile ezbake ezbake build`. This will take a while, and
+1. Run
+   ```
+   lein clean
+   lein install
+   lein with-profile ezbake ezbake build
+   ```
+   This will take a while, and
    will result in a build appearing on http://builds.delivery.puppetlabs.net/puppetserver.
 2. If successful, it will give you back a URL with the new puppetserver
    version at the end, which will look something like `2.2.2.master.SNAPSHOT.2016.02.18T1627`.

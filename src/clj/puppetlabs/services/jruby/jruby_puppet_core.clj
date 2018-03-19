@@ -32,14 +32,8 @@
   classpath.
 
   See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
-  ;; Under JRuby 9k (and presumably later JRuby versions as well), JRuby
-  ;; will fail to find resources from the classpath unless they are prefixed
-  ;; with "classpath:/".  JRuby 1.x will generally find resources when
-  ;; prefixed with "classpath:/" as well, but an invocation of JRuby's irb
-  ;; will error out with "java.lang.NullPointerException: 'in' is null"
-  ;; when the "classpath:/" prefix is included.  The code below ensures
-  ;; that the "classpath:/" prefix is only included for JRuby 9k.
-  (str (if jruby-schemas/using-jruby-9k? "classpath:/") "puppetserver-lib"))
+
+  "classpath:/puppetserver-lib")
 
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection
@@ -269,10 +263,8 @@
     warn-legacy-auth-conf? :- schema/Bool
     metrics-service]
    (when (get-in raw-config [:jruby-puppet :compat-version])
-     (log/errorf "%s %s %s"
-                 (i18n/trs "The jruby-puppet.compat-version setting is no longer supported.")
-                 (i18n/trs "To use Ruby language version 1.9.3, remove the jruby-puppet.compat-version setting.")
-                 (i18n/trs "To use a Ruby language version later than 2.0, remove the jruby-puppet.compat-version setting and add the line 'JRUBY_JAR=/opt/puppetlabs/server/apps/puppetserver/jruby-9k.jar' to the /etc/sysconfig/(pe-)puppet(-)server or /etc/default/(pe-)puppet(-)server file."))
+     (log/errorf "%s"
+                 (i18n/trs "The jruby-puppet.compat-version setting is no longer supported."))
      (throw (IllegalArgumentException.
              (i18n/trs "jruby-puppet.compat-version setting no longer supported"))))
    (let [jruby-puppet-config (initialize-puppet-config
