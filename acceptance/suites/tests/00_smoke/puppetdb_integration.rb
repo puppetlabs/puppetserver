@@ -77,7 +77,9 @@ EOM
   end
 
   step 'Run agent to trigger data submission to PuppetDB' do
-    run_timestamp = Time.now.utc
+    # ISO 8601 timestamp, with milliseconds and time zone. Local time is used
+    # instead of UTC as both PuppetDB and Puppet Server log in local time.
+    run_timestamp = Time.iso8601(on(master, 'date +"%Y-%m-%dT%H:%M:%S.%3N%:z"').stdout.chomp)
     on(master, puppet_agent("--test --server #{master_fqdn}"), :acceptable_exit_codes => [0,2]) do
       assert_match(/Notice: #{random_string}/, stdout,
                   'Puppet run collects exported Notify')
@@ -126,12 +128,14 @@ step 'Validate PuppetDB successfully stored agent data' do
 
     missing_datasets = dataset_states.select {|k, v| v.nil? || (v < run_timestamp)}.keys
     break if missing_datasets.empty?
+
+    sleep(1) # Give PuppetDB some time to catch up.
   end
 
   assert_empty(missing_datasets, <<-EOS)
 PuppetDB did not return updated data for #{master_fqdn} after
 #{retries} consecutive queries. The following timestamps were
-missing or not updated:
+missing or not updated to be later than: #{run_timestamp.iso8601(3)}:
 
   #{missing_datasets.join(' ')}
 
