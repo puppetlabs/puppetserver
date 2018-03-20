@@ -12,6 +12,22 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.0
+
+Released March 20, 2018.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### Bug fixes
+
+-   Puppet Server 5.3.0 compresses catalog response bodies with gzip when requested. Since previous versions of Puppet Server also gzipped all other response bodies, Puppet Server 5.3.0 can  gzip response bodies for _all_ POST requests.
+
+### New features
+
+-   When using JRuby 9k, Puppet Server 5.3.0 defaults to using a JRuby compile mode of "JIT", which provides the best performance.
+
+-   Puppet Server 5.3.0 can use some gems shipped by `puppet-agent`. The new shared directory is `/opt/puppetlabs/puppet/lib/ruby/vendor_gems`.
+
 ## Puppet Server 5.2.0
 
 Released February 13, 2018.
