@@ -20,13 +20,13 @@ This is a feature and bug-fix release of Puppet Server.
 
 ### Bug fixes
 
--   Puppet Server 5.3.0 compresses catalog response bodies with gzip when requested. Since previous versions of Puppet Server also gzipped all other response bodies, Puppet Server 5.3.0 can  gzip response bodies for _all_ POST requests.
+-   Puppet Server 5.3.0 compresses catalog response bodies with gzip when requested. Since previous versions of Puppet Server also gzipped all other response bodies, Puppet Server 5.3.0 can  gzip response bodies for _all_ POST requests. ([SERVER-2118](https://tickets.puppetlabs.com/browse/SERVER-2118))
 
 ### New features
 
--   When using JRuby 9k, Puppet Server 5.3.0 defaults to using a JRuby compile mode of "JIT", which provides the best performance.
+-   When using JRuby 9k, Puppet Server 5.3.0 defaults to using a JRuby compile mode of "JIT", which provides the best performance. ([SERVER-2130](https://tickets.puppetlabs.com/browse/SERVER-2130))
 
--   Puppet Server 5.3.0 can use some gems shipped by `puppet-agent`. The new shared directory is `/opt/puppetlabs/puppet/lib/ruby/vendor_gems`.
+-   Puppet Server 5.3.0 can use some gems shipped by `puppet-agent`. The new shared directory is `/opt/puppetlabs/puppet/lib/ruby/vendor_gems`. ([SERVER-2133](https://tickets.puppetlabs.com/browse/SERVER-2133))
 
 ## Puppet Server 5.2.0
 
