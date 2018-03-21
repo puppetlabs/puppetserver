@@ -178,7 +178,6 @@ module PuppetServerExtensions
     else
       abort("Invalid install type: " + test_config[:puppetserver_install_type])
     end
-    maybe_configure_jruby9k
   end
 
   def install_puppet_server_deps
@@ -189,28 +188,6 @@ module PuppetServerExtensions
       on master, 'apt-get update'
       master.install_package("openjdk-8-jre-headless", "-t jessie-backports")
       on master, 'update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java'
-    end
-  end
-
-  def maybe_configure_jruby9k
-    puppetservice = options['puppetservice']
-    defaults_file = get_defaults_file
-    use_jruby_9k = ENV['USE_JRUBY_9K']
-
-    if use_jruby_9k.to_s.empty? || use_jruby_9k[0].casecmp('y') != 0
-      logger.info("USE_JRUBY_9K not set to 'Y' so using default JRuby")
-    else
-      step 'Enable JRuby 9k and restart puppetserver' do
-        on(master, "echo 'JRUBY_JAR=${INSTALL_DIR}/jruby-9k.jar' >> #{defaults_file}")
-        on(master, "service #{puppetservice} restart")
-
-        puppet_server_pid=on(master, "pgrep -f puppet-server-release.jar").stdout.chomp
-        jruby_9k_pid=on(master, "pgrep -f jruby-9k.jar").stdout.chomp
-
-        refute_empty(puppet_server_pid, 'Unable to get puppetserver pid')
-        assert_equal(puppet_server_pid, jruby_9k_pid,
-                     'puppetserver process does not appear to be using JRuby 9k')
-      end
     end
   end
 

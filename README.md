@@ -46,12 +46,6 @@ use the Puppet Server-specific `gem` command to install them. See [Puppet
 Server and Gems](./documentation/gems.markdown) for more information about gems
 and Puppet Server.
 
-Ruby extension code in your modules needs to run under both Ruby 1.9 and Ruby
-2.1. This is because Puppet Server runs Puppet functions and custom resource
-types under JRuby 1.7 (which is a Ruby 1.9-compatible interpreter), and the
-official `puppet-agent` releases run custom facts and types/providers under MRI
-Ruby 2.1.
-
 ## Configuration
 
 Puppet Server honors almost all settings in `puppet.conf` and should pick them
@@ -120,7 +114,7 @@ Visit our [JIRA project](https://tickets.puppetlabs.com/browse/SERVER).
 
 ## License
 
-Copyright © 2013---2017 Puppet
+Copyright © 2013---2018 Puppet
 
 Distributed under the [Apache License, Version
 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).

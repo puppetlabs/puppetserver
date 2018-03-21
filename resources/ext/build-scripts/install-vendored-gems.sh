@@ -22,4 +22,4 @@ do
   gem_version=$(echo $LINE |awk '{print $2}')
   gem_list+=("$gem_name:$gem_version")
 done < "${DIR}/gem-list.txt"
-java -cp puppet-server-release.jar:jruby-1_7.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-ri --no-rdoc "${gem_list[@]}"
+java -cp puppet-server-release.jar:jruby-9k.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-ri --no-rdoc "${gem_list[@]}"
