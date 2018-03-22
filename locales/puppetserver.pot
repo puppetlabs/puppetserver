@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: c5ccc6c7068811e21e8ed727a48f1c2a266650fb\n"
+"X-Git-Ref: 6616aa2d3185922eb0f0b51bfd7f6fefb58a0476\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -453,20 +453,6 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
 msgid "The jruby-puppet.compat-version setting is no longer supported."
-msgstr ""
-
-#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
-msgid ""
-"To use Ruby language version 1.9.3, remove the jruby-puppet.compat-version "
-"setting."
-msgstr ""
-
-#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
-msgid ""
-"To use a Ruby language version later than 2.0, remove the jruby-puppet."
-"compat-version setting and add the line 'JRUBY_JAR=/opt/puppetlabs/server/"
-"apps/puppetserver/jruby-9k.jar' to the /etc/sysconfig/(pe-)puppet(-)server "
-"or /etc/default/(pe-)puppet(-)server file."
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
