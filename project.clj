@@ -228,7 +228,6 @@
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby" "--config" "./dev/puppetserver.conf" "--"]
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]}
 
-  ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
              "-XX:+UseG1GC"
              ~(str "-Xms" (heap-size "1G" "min"))
