@@ -5,3 +5,4 @@ locale 2.1.2
 gettext 3.2.2
 fast_gettext 1.1.2
 hiera-eyaml 2.1.0
+jrjackson 0.4.5
