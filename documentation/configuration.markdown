@@ -144,11 +144,9 @@ The init configuration file location depends on your operating system.
     ```
     Jun 01 19:58:16 myhost puppetserver[24001]: Unable to find specified JRUBY_JAR:/opt/puppetlabs/server/apps/puppetserver/jruby-wrong.jar
     ```
-2.  Set other configuration options for better performance
+2.  Set code cache size for better performance
 
-    To ensure good performance with JRuby 9k, the following settings should also be updated:
-    * In `puppetserver.conf`, `jruby-puppet.compile-mode` should be set to `jit`. This setting must be switched back when reverting to 1.7.
-    * Add `-XX:ReservedCodeCacheSize=512m` to `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`. This scales up the JVM's code cache to the size needed by JRuby 9k. This setting also behaves well when using JRuby 1.7, so it is safe to leave this setting on if you are switching back and forth.
+    To ensure good performance with JRuby 9k, add `-XX:ReservedCodeCacheSize=512m` to `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`. This scales up the JVM's code cache to the size needed by JRuby 9k. (If you have a very large heap and have already configured this setting to something larger than 512MB, you can skip this step.) This setting also behaves well when using JRuby 1.7, so it is safe to leave this setting on if you are switching back and forth.
 
 3.  Restart the `puppetserver` service.
 
@@ -176,7 +174,7 @@ The init configuration file location depends on your operating system.
 
 ### Reverting to the default JRuby, 1.7.x
 
-1.  To return to using JRuby 1.7.x, open the init config file and remove the `JRUBY_JAR` line that had been previously been added to enable the use of JRuby 9k. In `puppetserver.conf`, set `jruby-puppet.compile-mode` to `off`.
+1.  To return to using JRuby 1.7.x, open the init config file and remove the `JRUBY_JAR` line that had been previously been added to enable the use of JRuby 9k.
 
 2.  Restart the `puppetserver` service.
 
