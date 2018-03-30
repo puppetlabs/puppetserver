@@ -144,8 +144,11 @@ The init configuration file location depends on your operating system.
     ```
     Jun 01 19:58:16 myhost puppetserver[24001]: Unable to find specified JRUBY_JAR:/opt/puppetlabs/server/apps/puppetserver/jruby-wrong.jar
     ```
+2.  Set code cache size for better performance
 
-2.  Restart the `puppetserver` service.
+    To ensure good performance with JRuby 9k, add `-XX:ReservedCodeCacheSize=512m` to `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`. This scales up the JVM's code cache to the size needed by JRuby 9k. (If you have a very large heap and have already configured this setting to something larger than 512MB, you can skip this step.) This setting also behaves well when using JRuby 1.7, so it is safe to leave this setting on if you are switching back and forth.
+
+3.  Restart the `puppetserver` service.
 
     You must fully restart the service to use the new JRuby version. A service reload or `kill -HUP` reload is not sufficient.
 
