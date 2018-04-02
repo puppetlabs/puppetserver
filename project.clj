@@ -211,11 +211,12 @@
                                                [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.7.5"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.1.13"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
-             :ci {:plugins [[lein-pprint "1.1.1"]]}
+             :ci {:plugins [[lein-pprint "1.1.1"]
+                            [lein-exec "0.3.7"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
 
   :test-selectors {:integration :integration
@@ -225,7 +226,6 @@
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby" "--config" "./dev/puppetserver.conf" "--"]
             "irb" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.irb" "--config" "./dev/puppetserver.conf" "--"]}
 
-  ; tests use a lot of PermGen (jruby instances)
   :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
              "-XX:+UseG1GC"
              ~(str "-Xms" (heap-size "1G" "min"))

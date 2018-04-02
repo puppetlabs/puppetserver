@@ -66,3 +66,25 @@ logged using `Puppet.info` will be logged in Puppet Server and would not have
 been under Passenger. See
 [Puppet Server Configuration Files: logback.xml](./config_file_logbackxml.md)
 for more information, as well as instructions on how to set log levels in Puppet Server.
+
+
+## External Command Execution
+
+When writing extensions that target the server, extension authors should be
+careful to use Puppet's built in execution helper: `Puppet::Util::Execution.execute`
+rather than native Ruby methods (such as ``` `` ```, `system`, or `spawn`).
+
+Ruby's native methods for spawning processes will cause a fork of the JVM on
+most Linux servers, which in a large production environment can easily cause
+Out of Memory errors at the OS level. Puppet Server provides a lighter weight
+way of creating sub-processes which it exposes through
+`Puppet::Util::Execution.execute`.
+
+You should use this during development of all extensions unless there are
+better methods available. For example you should use
+`Puppet::Util::Execution.execute` when writing Ruby-based functions, custom
+report processors, Hiera backends, and faces. When writing custom providers
+the `commands` helper should be used if possible to help determine suitability.
+See
+[Provider Development](https://puppet.com/docs/puppet/latest/provider_development.html#suitability)
+for a more thorough discussion of its concepts and best practices.
