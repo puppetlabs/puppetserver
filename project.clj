@@ -1,5 +1,5 @@
 (def ps-version "6.0.0-master-SNAPSHOT")
-(def jruby-version "9.1.15.0-2")
+(def jruby-version "9.1.16.0-1")
 
 (defn deploy-info
   [url]
@@ -64,7 +64,7 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "1.1.0"]
+                 [puppetlabs/jruby-utils "2.0.0"]
                  [puppetlabs/jruby-deps ~jruby-version]
 
                  ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
