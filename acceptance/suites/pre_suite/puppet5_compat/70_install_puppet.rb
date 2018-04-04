@@ -23,4 +23,4 @@ if not puppet_version
   puppet_version = default_puppet_version
 end
 
-install_puppet_agent_on(nonmaster_agents, {:puppet_agent_version => puppet_version})
+install_puppet_agent_on(nonmaster_agents, {:puppet_agent_version => puppet_version, :puppet_collection => 'puppet5'})
