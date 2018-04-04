@@ -1,5 +1,4 @@
 (def ps-version "6.0.0-master-SNAPSHOT")
-(def jruby-version "9.1.16.0-1")
 
 (defn deploy-info
   [url]
@@ -65,7 +64,7 @@
                  [net.logstash.logback/logstash-logback-encoder]
 
                  [puppetlabs/jruby-utils "2.0.0"]
-                 [puppetlabs/jruby-deps ~jruby-version]
+                 [puppetlabs/jruby-deps "9.1.16.0-1"]
 
                  ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
                  ;; asm dependencies.  Deferring to clj-parent to resolve the version.
@@ -119,8 +118,7 @@
                        :logrotate-enabled false}
                 :resources {:dir "tmp/ezbake-resources"}
                 :config-dir "ezbake/config"
-                :system-config-dir "ezbake/system-config"
-                :additional-uberjars [[puppetlabs/jruby-deps ~jruby-version]]}
+                :system-config-dir "ezbake/system-config"}
 
   :deploy-repositories [["releases" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/")]
                         ["snapshots" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/")]]
@@ -208,7 +206,7 @@
                                                ;; brings in its own version, and older versions of
                                                ;; lein depend on clojure 1.6.
                                                [org.clojure/clojure nil]
-                                               [puppetlabs/puppetserver ~ps-version :exclusions [puppetlabs/jruby-deps]]
+                                               [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
                       :plugins [[puppetlabs/lein-ezbake "1.8.1"]]
