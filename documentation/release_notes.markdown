@@ -20,7 +20,6 @@ This is a feature release of Puppet Server.
 
 ### New features
 
--   Puppet Server 5.3.1 includes the JrJackson gem, a JRuby wrapper over Java's Jackson JSON parser. In combination with the update to use MultiJson in Puppet, Puppet Server 5.3.1 uses the much faster Jackson backend for manipulation JSON. ([SERVER-2098](https://tickets.puppetlabs.com/browse/SERVER-2098))
 -   We have updated the docs on enabling JRuby 9k to reflect the results of our performance research. Specifically, when using JRuby 9k, set the JVM's code cache to 512MB and enable JIT compilation. ([SERVER-2147](https://tickets.puppetlabs.com/browse/SERVER-2147))
 
 ### Known issues
