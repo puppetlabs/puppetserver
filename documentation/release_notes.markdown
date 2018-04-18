@@ -12,6 +12,38 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.1
+
+Released April 17, 2018.
+
+This is a feature release of Puppet Server.
+
+### New features
+
+-   We have updated the docs on enabling JRuby 9k to reflect the results of our performance research. Specifically, when using JRuby 9k, set the JVM's code cache to 512MB and enable JIT compilation. ([SERVER-2147](https://tickets.puppetlabs.com/browse/SERVER-2147))
+
+### Known issues
+
+-   YARD's rubygem integration is incompatible with the rubygems version we ship with JRuby 9k. It prints a warning during `puppetserver gem list` (called during Puppet runs applying updates via the `puppetserver_gem` provider). This is caused by using autosign 0.1.2. Upgrading to autosign 0.1.3 bumps the YARD requirement to a version compatible with the rubygems we ship in JRuby 9k-based puppetserver.
+
+    To resolve this issue, upgrade YARD to a 0.9.x version and look at bumping any server side gems that require YARD 0.8.x. The autosign gem specifically should be at >= 0.1.3. ([SERVER-2161](https://tickets.puppetlabs.com/browse/SERVER-2161))
+
+## Puppet Server 5.3.0
+
+Released March 20, 2018.
+
+This is a feature and bug-fix release of Puppet Server.
+
+### Bug fixes
+
+-   Puppet Server 5.3.0 compresses catalog response bodies with gzip when requested. Since previous versions of Puppet Server also gzipped all other response bodies, Puppet Server 5.3.0 can  gzip response bodies for _all_ POST requests.
+
+### New features
+
+-   When using JRuby 9k, Puppet Server 5.3.0 defaults to using a JRuby compile mode of "JIT", which provides the best performance.
+
+-   Puppet Server 5.3.0 can use some gems shipped by `puppet-agent`. The new shared directory is `/opt/puppetlabs/puppet/lib/ruby/vendor_gems`.
+
 ## Puppet Server 5.2.0
 
 Released February 13, 2018.
