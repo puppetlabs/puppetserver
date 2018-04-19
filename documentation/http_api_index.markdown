@@ -11,7 +11,7 @@ Many of these endpoints are the same as the [Puppet HTTP API](https://puppet.com
 
 The V1 and V2 APIs were removed in Puppet 4.0.0. The routes that were previously under `/` or `/v2.0` can now be found under the [`/puppet/v3`](#puppet-v3-http-api) API or [`/puppet-ca/v1`](#ca-v1-http-api) API.
 
-Starting with Puppet Server 2.1, Server provides both the current and previous API endpoints, and can serve nodes running Puppet agent 3.x and 4.x. However, Rack masters, WEBrick masters, and Puppet Server 2.0 and earlier cannot serve nodes running Puppet 3.x.
+Starting with Puppet Server 2.1, Server provides both the current and previous API endpoints, and can serve nodes running Puppet agent 3.x and 4.x. However, Rack masters, WEBrick masters, and Puppet Server 2.0 cannot serve nodes running Puppet 3.x.
 
 ## Puppet and Puppet CA APIs
 
