@@ -106,7 +106,11 @@ class Puppet::Server::Master
   def getTasks(env)
     environment = @env_loader.get(env)
     unless environment.nil?
-      Puppet::InfoService.tasks_per_environment(environment.name)
+      # Pass the original env string. environment.name is a symbol
+      # while the environment cache is primarily used with strings.
+      # Pass as a string to ensure we re-use a cached environment
+      # if available.
+      Puppet::InfoService.tasks_per_environment(env)
     end
   end
 
