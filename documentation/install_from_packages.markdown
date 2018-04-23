@@ -59,7 +59,7 @@ update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
     If you're running Puppet under Apache, you'll instead need to disable the puppetmaster vhost and restart the Apache service. The exact method for this depends on what your Puppet master vhost file is called and how you enabled it. For full documentation, see the [Passenger guide][passengerguide].
 
     -   On a Debian system, the command might be something like `sudo a2dissite puppetmaster`.
-    -   On RHEL/CentOS systems, the command might be something like `sudo mv /etc/httpd/conf.d/puppetmaster.conf ~/`. Alternatively, you can delete the file instead of moving it.
+    -   On RHEL or CentOS systems, the command might be something like `sudo mv /etc/httpd/conf.d/puppetmaster.conf ~/`. Alternatively, you can delete the file instead of moving it.
 
     After you've disabled the vhost, restart Apache, which is a service called either `httpd` or `apache2`, depending on your OS.
 
@@ -95,8 +95,8 @@ By default, Puppet Server is configured to use 2GB of RAM. However, if you want 
 
 ### Location
 
-* For RHEL/CentOS, open `/etc/sysconfig/puppetserver`
-* For Debian/Ubuntu, open `/etc/default/puppetserver`
+* For RHEL or CentOS, open `/etc/sysconfig/puppetserver`
+* For Debian or Ubuntu, open `/etc/default/puppetserver`
 
 ### Settings
 
