@@ -163,6 +163,9 @@
   If the JRuby instance was borrowed to service a HTTP request, then
   the timer name is generated from the sanitized Comidi :route-id.
 
+  If a Clojure Keyword was used as the JRuby borrow reason, then the
+  timer is generated from the Keyword's name and namespace.
+
   Returns a timer named 'other' if the borrow reason does not match
   one of the above cases."
   [{:keys [hostname metric-registry]} :- JRubyMetrics
@@ -180,6 +183,10 @@
                            ;; problems in downstream services that use regexes
                            ;; to search for or select metrics by name.
                            (str/replace #"-\/.*\/" ""))
+                     (keyword? reason)
+                       (if-let [name-space (namespace reason)]
+                         (str name-space "." (name reason))
+                         (name reason))
                      :else "other")]
     (->> timer-name
          (str "jruby.borrow-timer.")

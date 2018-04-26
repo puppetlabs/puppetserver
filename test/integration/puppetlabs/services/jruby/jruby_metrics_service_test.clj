@@ -846,7 +846,7 @@
         (is (= (expected-metrics-values) (current-metrics-values))))))
 
   (with-metrics-test-env test-env default-test-config
-    (let [{:keys [coordinator metrics]} test-env]
+    (let [{:keys [coordinator jruby-service metrics]} test-env]
       (testing "borrow times are tracked for each comidi route"
         (async-request coordinator 1 "/foo/bar/async1" :request-complete)
         (async-request coordinator 2 "/foo/baz/async2" :request-complete)
@@ -861,7 +861,25 @@
             (is (some? timer)
                 (str "Timer exists for borrow reason: " timer-name))
             (is (= 1 (.getCount timer))
-                (str "Timer has a accumulated a count for borrow reason: " timer-name))))))))
+                (str "Timer has a accumulated a count for borrow reason: " timer-name)))))
+
+      (testing "borrow times are tracked when keywords are given as a request reason"
+        (let [namespaced-kwd ::bar-reason
+              test-namespace (namespace ::bar-reason)]
+          (jruby-service/with-jruby-puppet jruby-instance jruby-service :foo-reason
+            true)
+          (jruby-service/with-jruby-puppet jruby-instance jruby-service namespaced-kwd
+            true)
+
+          (let [timers (jruby-metrics-core/borrow-timers metrics)]
+            (doseq [timer-name ["foo-reason" (str test-namespace ".bar-reason")]
+                    :let [[_ timer] (some (fn [[k v]]
+                                            (when (str/ends-with? k timer-name) [k v]))
+                                          timers)]]
+              (is (some? timer)
+                  (str "Timer exists for borrow reason: " timer-name))
+              (is (= 1 (.getCount timer))
+                  (str "Timer has a accumulated a count for borrow reason: " timer-name)))))))))
 
 (deftest ^:metrics borrow-timeout-test
   (with-metrics-test-env
