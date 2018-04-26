@@ -29,6 +29,7 @@
             [cemerick.url :as url]
             [puppetlabs.testutils.task-coordinator :as coordinator]
             [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [schema.core :as schema]
             [cheshire.core :as json])
@@ -842,7 +843,25 @@
         (update-expected-values {:requested-count 10
                                  :borrow-count 10
                                  :return-count 10})
-        (is (= (expected-metrics-values) (current-metrics-values)))))))
+        (is (= (expected-metrics-values) (current-metrics-values))))))
+
+  (with-metrics-test-env test-env default-test-config
+    (let [{:keys [coordinator metrics]} test-env]
+      (testing "borrow times are tracked for each comidi route"
+        (async-request coordinator 1 "/foo/bar/async1" :request-complete)
+        (async-request coordinator 2 "/foo/baz/async2" :request-complete)
+        (coordinator/final-result coordinator 1)
+        (coordinator/final-result coordinator 2)
+
+        (let [timers (jruby-metrics-core/borrow-timers metrics)]
+          (doseq [timer-name ["foo-bar-bar" "foo-baz-baz"]
+                  :let [[_ timer] (some (fn [[k v]]
+                                          (when (str/ends-with? k timer-name) [k v]))
+                                        timers)]]
+            (is (some? timer)
+                (str "Timer exists for borrow reason: " timer-name))
+            (is (= 1 (.getCount timer))
+                (str "Timer has a accumulated a count for borrow reason: " timer-name))))))))
 
 (deftest ^:metrics borrow-timeout-test
   (with-metrics-test-env
