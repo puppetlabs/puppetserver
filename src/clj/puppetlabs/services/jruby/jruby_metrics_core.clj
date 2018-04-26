@@ -88,6 +88,12 @@
    :reason RequestReasonInfo
    :time schema/Num})
 
+(def TimerSummary
+  {:count schema/Int
+   :mean schema/Num
+   :max schema/Num
+   :rate schema/Num})
+
 (def JRubyMetricsStatusV1
   {(schema/optional-key :experimental)
    {:jruby-pool-lock-status JRubyPoolLockStatus
@@ -102,6 +108,7 @@
               :average-free-jrubies schema/Num
               :average-borrow-time schema/Num
               :average-wait-time schema/Num
+              :borrow-timers {schema/Keyword TimerSummary}
               :requested-instances [InstanceRequestInfo]
               :borrowed-instances [InstanceRequestInfo]
               :num-pool-locks schema/Int
@@ -204,6 +211,36 @@
                                         (str/starts-with? k metric-namespace)))]
     (->> (.getTimers metric-registry)
          metric-filter
+         (into {}))))
+
+(schema/defn summarize-borrow-timers
+  "Generates a summary for each JRuby borrow timer
+
+  This function iterates through the list of registered JRuby borrow timers
+  and summarizes each one."
+  [{:keys [hostname] :as metrics} :- JRubyMetrics]
+  (let [timer-namespace (metrics/host-metric-name hostname "jruby.borrow-timer")
+        get-name (fn [timer-name]
+                   (if (= timer-namespace timer-name)
+                     "total"
+                     (str/replace-first timer-name
+                                        (str timer-namespace ".") "")))
+        timer-summary (fn [timer]
+                        (let [snapshot (.getSnapshot timer)]
+                        {:count (.getCount timer)
+                         :mean (->> snapshot
+                                   .getMean
+                                   (.toMillis TimeUnit/NANOSECONDS))
+                         :max  (->> snapshot
+                                    ;; Using 99.9th percentile instead of the
+                                    ;; max as it is properly weighted for the
+                                    ;; past 5 minutes.
+                                    (.get999thPercentile)
+                                    (.toMillis TimeUnit/NANOSECONDS))
+                         :rate (.getFiveMinuteRate timer)}))]
+    (->> (borrow-timers metrics)
+         (map (fn [[k v]] (vector (keyword (get-name k))
+                                  (timer-summary v))))
          (into {}))))
 
 (schema/defn track-successful-borrow-instance!
@@ -405,6 +442,7 @@
                                    :average-free-jrubies (metrics/mean free-jrubies-histo)
                                    :average-borrow-time (metrics/mean-millis borrow-timer)
                                    :average-wait-time (metrics/mean-millis wait-timer)
+                                   :borrow-timers (summarize-borrow-timers metrics)
                                    :requested-instances (requested-instances-info (vals @requested-instances))
                                    :borrowed-instances (requested-instances-info (vals @borrowed-instances))
                                    :num-pool-locks (.getCount lock-held-timer)
