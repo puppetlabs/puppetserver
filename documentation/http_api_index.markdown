@@ -24,11 +24,7 @@ All configuration endpoints are prefixed with `/puppet`, while all CA endpoints 
 
 ### Authorization
 
-Authorization for `/puppet` endpoints is still controlled with Puppet's `auth.conf` authorization system.
-
-Puppet Server ignores `auth.conf` for `/puppet-ca` endpoints. Access to the `certificate_status` endpoint is configured in Puppet Server's `ca.conf` file, and the remaining CA endpoints are always accessible. Rack Puppet master servers still use `auth.conf` for `/puppet-ca`.
-
-When specifying authorization in `auth.conf`, the prefix, and the version number (such as `/puppet/v3`) on the paths must be retained, since Puppet matches authorization rules against the full request path.
+Authorization for `/puppet` and `/puppet-ca` endpoints is controlled with [Puppet Server's `auth.conf` authorization system](./config_file_auth.markdown), which differs from Puppet's deprecated `auth.conf` system.
 
 ## Puppet V3 HTTP API
 
@@ -48,7 +44,9 @@ Using this API requires significant understanding of how Puppet's internal servi
 
 The Puppet agent application directly uses these servcies to manage the configuration of a node.
 
-These endpoints accept payload formats formatted as JSON or PSON (MIME types of `application/json` and `text/pson`, respectively) except for `File Content` and `File Bucket File`, which always use `application/octet-stream`.
+These endpoints accept payload formats formatted as JSON by default (MIME type of `application/json`), except for `File Content` and `File Bucket File`, which always use `application/octet-stream`.
+
+> **Note:** Legacy PSON (MIME type of `text/pson`) is still an available format, but should be used only as a fallback for binary content.
 
 -   [Facts](https://puppet.com/docs/puppet/latest/http_api/http_facts.html)
 -   [Catalog](https://puppet.com/docs/puppet/latest/http_api/http_catalog.html)
@@ -62,7 +60,9 @@ These endpoints accept payload formats formatted as JSON or PSON (MIME types of 
 
 These services are not directly used by Puppet agent, but can be used by other tools.
 
--   [Status](https://puppet.com/docs/puppet/latest/http_status.html)
+-   [Status](https://puppet.com/docs/puppet/latest/http_api/http_status.html)
+
+> **Note:** The [Puppet Server status API](#puppet-server-specific-endpoints) provides more detail and features than Puppet's.
 
 ### Environment endpoints
 
@@ -108,13 +108,22 @@ Except for HEAD requests, error responses contain a body of a uniform JSON objec
 -   `message`: (`String`) A human-readable message explaining the error.
 -   `issue_kind`: (`String`) A unique label to identify the error class.
 
-There is also a [JSON schema for error objects](../schemas/error.json).
+Puppet provides a [JSON schema for error objects](https://puppet.com/docs/puppet/latest/schemas/error.json). Endpoints implemented by Puppet Server have a different error schema:
+
+``` json
+{
+  "msg": "",
+  "kind": ""
+}
+```
 
 ## CA V1 HTTP API
 
 The certificate authority (CA) API contains all of the endpoints supporting Puppet's public key infrastructure (PKI) system.
 
-The CA V1 endpoints share the same basic format as the Puppet V3 API, since they are also based off of Puppet's internal "indirector". However, they have a different prefix and version. These endpoints follow the form `/puppet-ca/v1/:indirection/:key?environment=:environment`, where:
+The CA V1 endpoints share the same basic format as the Puppet V3 API, since they are based on the interface of Puppet's indirector-based CA. However, Puppet Server's CA is implemented in Clojure. Both have a different prefix and version than the V3 API.
+
+These endpoints follow the form `/puppet-ca/v1/:indirection/:key?environment=:environment`, where:
 
 -   `:environment` is an arbitrary placeholder word, required for historical reasons. No CA endpoints actually use an environment, but the query parameter must always be specified.
 -   `:indirection` is the indirection to which the request is dispatched.
