@@ -304,14 +304,19 @@
 (schema/defn jruby-event-callback
   [metrics :- JRubyMetrics
    event :- jruby-schemas/JRubyEvent]
-  (case (:type event)
-    :instance-requested (track-request-instance! metrics event)
-    :instance-borrowed (track-borrow-instance! metrics event)
-    :instance-returned (track-return-instance! metrics event)
-    :lock-requested (track-lock-requested! metrics (:reason event))
-    :lock-acquired (track-lock-acquired! metrics (:reason event))
-    :lock-released (track-lock-released! metrics (:reason event))
-
+  (if-let [[func & args] (case (:type event)
+                           :instance-requested [track-request-instance! metrics event]
+                           :instance-borrowed [track-borrow-instance! metrics event]
+                           :instance-returned [track-return-instance! metrics event]
+                           :lock-requested [track-lock-requested! metrics (:reason event)]
+                           :lock-acquired [track-lock-acquired! metrics (:reason event)]
+                           :lock-released [track-lock-released! metrics (:reason event)]
+                           nil)]
+    (try
+      (apply func args)
+      (catch Exception e
+        (log/error e (trs "Error ocurred while recording metrics for jruby event type: {0}" (:type event)))
+        (throw e)))
     (throw (IllegalStateException. (trs "Unrecognized jruby event type: {0}" (:type event))))))
 
 (schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
