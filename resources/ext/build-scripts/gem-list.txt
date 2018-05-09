@@ -1,4 +1,4 @@
-semantic_puppet 0.1.3
+semantic_puppet 1.0.2
 hocon 1.2.5
 text 1.3.1
 locale 2.1.2
