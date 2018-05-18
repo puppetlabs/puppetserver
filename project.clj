@@ -136,7 +136,6 @@
                                         :optimizations :none
                                         :pretty-print  true
                                         :main "puppetlabs.puppetserver.dashboard.production"}}}}
-  :hooks [leiningen.cljsbuild]
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
@@ -210,6 +209,7 @@
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
                       :plugins [[puppetlabs/lein-ezbake "1.8.1"]]
+                      :hooks [leiningen.cljsbuild]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
