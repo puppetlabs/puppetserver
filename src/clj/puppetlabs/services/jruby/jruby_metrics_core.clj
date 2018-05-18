@@ -143,7 +143,9 @@
     (assoc-in instance [:reason :request]
               {:uri (:uri request)
                :request-method (:request-method request)
-               :route-id (get-in request [:route-info :route-id])})
+               :route-id (get-in request
+                                 [:route-info :route-id]
+                                 "unknown-http-request")})
     instance))
 
 (schema/defn ^:always-validate requested-instances-info :- [InstanceRequestInfo]
