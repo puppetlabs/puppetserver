@@ -1,4 +1,4 @@
-<configuration debug="false" scan="true">
+<configuration debug="false">
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>/var/log/puppetlabs/puppetserver/puppetserver-access.log</file>
         <append>true</append>
