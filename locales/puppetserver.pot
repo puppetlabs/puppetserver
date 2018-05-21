@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: c5ccc6c7068811e21e8ed727a48f1c2a266650fb\n"
+"X-Git-Ref: 86e19066bd1a221abcdb88aff0bb93e6f7888d50\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -429,6 +429,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
 msgid "Sampling JRuby metrics"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Error ocurred while recording metrics for jruby event type: {0}"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
