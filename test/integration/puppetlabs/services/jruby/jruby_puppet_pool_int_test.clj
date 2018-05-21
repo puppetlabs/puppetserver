@@ -241,7 +241,7 @@
                      (str test-resources-dir "/localhost-cert.pem"))
                handler-service (tk-app/get-service app :RequestHandlerService)
                request {:uri "/puppet/v3/environments", :params {}, :headers {},
-                        :request-method :GET, :body "", :ssl-client-cert cert, :content-type ""}
+                        :request-method :get, :body "", :ssl-client-cert cert, :content-type ""}
                ping-environment #(->> request (handler-core/wrap-params-for-jruby) (handler/handle-request handler-service))
                ping-before-stop (ping-environment)
                stop-complete? (future (tk-app/stop app))]
