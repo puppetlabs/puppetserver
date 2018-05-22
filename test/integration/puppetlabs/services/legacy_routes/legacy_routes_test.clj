@@ -22,6 +22,9 @@
             [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse)))
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/legacy_routes/legacy_routes_test")
 
@@ -39,7 +42,7 @@
 (deftest ^:integration legacy-routes-http-metrics
   (bootstrap/with-puppetserver-running
    app
-   {}
+   {:jruby-puppet {:gem-path gem-path}}
 
    (testing "Requests made to legacy endpoints are routed to new endpoints"
      (let [env-response (http-get "/v2.0/environments")
@@ -200,7 +203,7 @@
   (testing "JRuby metrics computed via use of the legacy routes service actions are correct"
     (bootstrap/with-puppetserver-running
      app
-     {}
+     {:jruby-puppet {:gem-path gem-path}}
 
      (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
            svc-context (tk-services/service-context jruby-metrics-service)
@@ -353,7 +356,7 @@
     (bootstrap/with-puppetserver-running-with-mock-jrubies
      "Mocking JRubies because don't need real ones just to have SSL files created"
      _
-     {}
+     {:jruby-puppet {:gem-path gem-path}}
      ;; Sanity check to see that the server was started up the first time
      (is true))
     (bootstrap/with-puppetserver-running-with-services-and-mock-jrubies
@@ -362,7 +365,7 @@
      (->> bootstrap/services-from-dev-bootstrap
           (remove #(= :CaService (tk-services/service-def-id %)))
           (cons disabled-ca/certificate-authority-disabled-service))
-     {}
+     {:jruby-puppet {:gem-path gem-path}}
 
      (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
          (str "A 404 was not returned, indicating that the legacy CA routes "

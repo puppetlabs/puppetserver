@@ -8,6 +8,7 @@
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
             [puppetlabs.services.ca.ca-testutils :as testutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.kitchensink.core :as ks]
             [slingshot.test :refer :all]
             [schema.test :as schema-test]
@@ -140,11 +141,11 @@
 
 (defn assert-autosign [whitelist subject]
   (testing subject
-    (is (true? (autosign-csr? whitelist subject empty-stream [])))))
+    (is (true? (autosign-csr? whitelist subject empty-stream)))))
 
 (defn assert-no-autosign [whitelist subject]
   (testing subject
-    (is (false? (autosign-csr? whitelist subject empty-stream [])))))
+    (is (false? (autosign-csr? whitelist subject empty-stream)))))
 
 (defn contains-ext?
   "Does the provided extension list contain an extensions with the given OID."
@@ -219,13 +220,13 @@
 
 (deftest autosign-csr?-test
   (testing "boolean values"
-    (is (true? (autosign-csr? true "unused" empty-stream [])))
-    (is (false? (autosign-csr? false "unused" empty-stream []))))
+    (is (true? (autosign-csr? true "unused" empty-stream)))
+    (is (false? (autosign-csr? false "unused" empty-stream))))
 
   (testing "whitelist"
     (testing "autosign is false when whitelist doesn't exist"
       (is (false? (autosign-csr? "Foo/conf/autosign.conf" "doubleagent"
-                                 empty-stream []))))
+                                 empty-stream))))
 
     (testing "exact certnames"
       (doto (tmp-whitelist! "foo"
@@ -314,38 +315,39 @@
 (deftest autosign-csr?-ruby-exe-test
   (let [executable (autosign-exe-file "ruby-autosign-executable")
         csr-fn #(csr-stream "test-agent")
-        ruby-load-path ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]]
+        ruby-load-path jruby-testutils/ruby-load-path
+        ruby-gem-path jruby-testutils/gem-path]
 
     (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
-        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
         (is (logged? #"print to stdout" :debug))))
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+       (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
        (is (logged? #"generated output to stderr: print to stderr" :warn))))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "foo" (csr-fn) ruby-load-path)
+       (autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)
        (is (logged? #"rejected certificate 'foo'" :warn))))
 
     (testing "Ruby load path is configured and contains Puppet"
       (logutils/with-test-logging
-        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
         (is (logged? #"Ruby load path configured properly"))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging
-        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)
+        (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)
         (is (logged? #"subject: test-agent"))
         (is (logged? #"CSR for: test-agent"))))
 
     (testing "only exit code 0 results in autosigning"
       (logutils/with-test-logging
-        (is (true? (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path)))
-        (is (false? (autosign-csr? executable "foo" (csr-fn) ruby-load-path)))))))
+        (is (true? (autosign-csr? executable "test-agent" (csr-fn) ruby-load-path ruby-gem-path)))
+        (is (false? (autosign-csr? executable "foo" (csr-fn) ruby-load-path ruby-gem-path)))))))
 
 (deftest autosign-csr?-bash-exe-test
   (let [executable (autosign-exe-file "bash-autosign-executable")
@@ -353,29 +355,29 @@
 
     (testing "stdout is added to master's log at debug level"
       (logutils/with-test-logging
-        (autosign-csr? executable "test-agent" (csr-fn) [])
+        (autosign-csr? executable "test-agent" (csr-fn))
         (is (logged? #"print to stdout" :debug))))
 
     (testing "stderr is added to master's log at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "test-agent" (csr-fn) [])
+       (autosign-csr? executable "test-agent" (csr-fn))
        (is (logged? #"generated output to stderr: print to stderr" :warn))))
 
     (testing "non-zero exit-code generates a log entry at warn level"
       (logutils/with-test-logging
-       (autosign-csr? executable "foo" (csr-fn) [])
+       (autosign-csr? executable "foo" (csr-fn))
        (is (logged? #"rejected certificate 'foo'" :warn))))
 
     (testing "subject is passed as argument and CSR is provided on stdin"
       (logutils/with-test-logging
-        (autosign-csr? executable "test-agent" (csr-fn) [])
+        (autosign-csr? executable "test-agent" (csr-fn))
         (is (logged? #"subject: test-agent"))
         (is (logged? #"-----BEGIN CERTIFICATE REQUEST-----"))))
 
     (testing "only exit code 0 results in autosigning"
       (logutils/with-test-logging
-        (is (true? (autosign-csr? executable "test-agent" (csr-fn) [])))
-        (is (false? (autosign-csr? executable "foo" (csr-fn) [])))))))
+        (is (true? (autosign-csr? executable "test-agent" (csr-fn))))
+        (is (false? (autosign-csr? executable "foo" (csr-fn))))))))
 
 (deftest save-certificate-request!-test
   (testing "requests are saved to disk"

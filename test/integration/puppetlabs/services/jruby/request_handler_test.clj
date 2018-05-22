@@ -7,8 +7,10 @@
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [me.raynes.fs :as fs]
+            [puppetlabs.kitchensink.core :as ks]
             [schema.test :as schema-test]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]))
@@ -29,7 +31,9 @@
             successful (SERVER-269)"
     (let [bucket-dir (str bootstrap/master-var-dir "/bucket")]
       (fs/delete-dir bucket-dir)
-      (bootstrap/with-puppetserver-running app {}
+      (bootstrap/with-puppetserver-running
+        app
+        {:jruby-puppet {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}}
        (try
          (let [raw-byte-arr            (byte-array [(byte -128)
                                                     (byte -127)

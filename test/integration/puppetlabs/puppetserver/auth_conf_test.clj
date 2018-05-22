@@ -19,6 +19,9 @@
 (def test-resources-dir
   (ks/absolute-path "./dev-resources/puppetlabs/puppetserver/auth_conf_test"))
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (defn script-path
   [script-name]
   (str test-resources-dir "/" script-name))
@@ -33,7 +36,9 @@
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
         app
-        {:jruby-puppet {:use-legacy-auth-conf true}}
+        {:jruby-puppet
+          {:use-legacy-auth-conf true
+           :gem-path gem-path}}
         (logutils/with-test-logging
           (testing "for puppet 4 routes"
             (let [response (http-get "puppet/v3/node/public?environment=production")]
@@ -68,7 +73,9 @@
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
         app
-        {:jruby-puppet  {:use-legacy-auth-conf false}
+        {:jruby-puppet
+          {:use-legacy-auth-conf false
+           :gem-path gem-path}
          :authorization {:version 1
                          :allow-header-cert-info false
                          :rules
@@ -216,7 +223,8 @@
       (logutils/with-test-logging
        (bootstrap/with-puppetserver-running
         app
-        {:jruby-puppet  {:use-legacy-auth-conf false}
+        {:jruby-puppet  {:use-legacy-auth-conf false
+                         :gem-path gem-path}
          :authorization {:version 1
                          :allow-header-cert-info true
                          :rules
@@ -270,7 +278,8 @@
       "JRuby mocking is safe here because the static_file_content endpoint is
       implemented in Clojure."
       app
-      {:jruby-puppet {:use-legacy-auth-conf true}
+      {:jruby-puppet {:use-legacy-auth-conf true
+                      :gem-path gem-path}
        :authorization {:version 1
                        :rules
                        [{:match-request {:path "/puppet/v3/static_file_content"
@@ -299,7 +308,8 @@
        "JRuby mocking is safe here because these tests are strictly validating
        the Clojure tk-auth checks."
         app
-        {:authorization {:version 1
+        {:jruby-puppet  {:gem-path gem-path}
+         :authorization {:version 1
                          :allow-header-cert-info true
                          :rules
                          [{:match-request {:path "/"

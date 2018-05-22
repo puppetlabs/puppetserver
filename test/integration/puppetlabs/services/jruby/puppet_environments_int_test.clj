@@ -18,6 +18,9 @@
 
 (def num-jrubies 2)
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (defn get-catalog-and-borrow-jruby
   "Gets a catalog, and then borrows a JRuby instance from a pool to ensure that
   a subsequent catalog request will be directed to a different JRuby.  Returns a
@@ -77,7 +80,8 @@
     ;; two of them so that we can illustrate that the cache can
     ;; be out of sync between the two of them.
     (bootstrap/with-puppetserver-running app {:jruby-puppet
-                                              {:max-active-instances num-jrubies}}
+                                              {:gem-path gem-path
+                                               :max-active-instances num-jrubies}}
       (let [jruby-service   (tk-app/get-service app :JRubyPuppetService)
             borrow-jruby-fn (partial jruby-testutils/borrow-instance jruby-service
                               :environment-flush-integration-test)
@@ -148,7 +152,8 @@
     (testutils/write-site-pp-file "include foo")
     (testutils/write-foo-pp-file "class foo { notify {'hello1': } }")
     (bootstrap/with-puppetserver-running app {:jruby-puppet
-                                              {:max-active-instances 1}}
+                                              {:gem-path gem-path
+                                               :max-active-instances 1}}
       ;;; Validate that the catalog has `hello1`
       (let [catalog1 (get-catalog)]
         (is (testutils/catalog-contains? catalog1 "Notify" "hello1"))

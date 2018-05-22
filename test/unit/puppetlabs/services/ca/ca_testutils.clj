@@ -2,7 +2,8 @@
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
             [puppetlabs.kitchensink.core :as ks]
-            [puppetlabs.puppetserver.certificate-authority :as ca]))
+            [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]))
 
 (defn assert-subject [o subject]
   (is (= subject (-> o .getSubjectX500Principal .getName))))
@@ -48,7 +49,8 @@
    :manage-internal-file-permissions true
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
-   :ruby-load-path        ["ruby/puppet/lib" "ruby/facter/lib" "ruby/hiera/lib"]})
+   :ruby-load-path        jruby-testutils/ruby-load-path
+   :gem-path              jruby-testutils/gem-path})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

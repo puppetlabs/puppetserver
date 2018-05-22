@@ -4,6 +4,7 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [cheshire.core :as json]
             [me.raynes.fs :as fs]))
@@ -64,7 +65,9 @@
   (sort-by #(get % "name") tasks))
 
 (def puppet-config
-  (-> (bootstrap/load-dev-config-with-overrides {:jruby-puppet {:max-active-instances 1}})
+  (-> (bootstrap/load-dev-config-with-overrides {:jruby-puppet
+                                                 {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]
+                                                  :max-active-instances 1}})
       (ks/dissoc-in [:jruby-puppet
                      :environment-class-cache-enabled])))
 

@@ -1,6 +1,7 @@
 (ns puppetlabs.general-puppet.general-puppet-int-test
   (:require [clojure.test :refer :all]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [me.raynes.fs :as fs]
             [cheshire.core :as json]
             [puppetlabs.http.client.sync :as http-client]
@@ -19,6 +20,9 @@
   [script-name]
   (str test-resources-dir "/" script-name))
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (use-fixtures :once
               (testutils/with-puppet-conf
                (fs/file test-resources-dir "puppet.conf")))
@@ -35,7 +39,8 @@
      (format "$a = generate('%s'); notify {$a:}" (script-path "echo_foo")))
     (bootstrap/with-puppetserver-running
      app {:jruby-puppet
-          {:max-active-instances num-jrubies}}
+          {:max-active-instances num-jrubies
+           :gem-path gem-path}}
      (testing "calling generate successfully executes shell command"
        (let [catalog (testutils/get-catalog)]
          (is (testutils/catalog-contains? catalog "Notify" "foo\n")))))))
@@ -51,7 +56,8 @@
              (script-path "echo")))
     (bootstrap/with-puppetserver-running
      app {:jruby-puppet
-          {:max-active-instances num-jrubies}}
+          {:max-active-instances num-jrubies
+           :gem-path gem-path}}
      (testing "calling generate successfully executes shell command"
        (let [catalog (testutils/get-catalog)]
          (is (testutils/catalog-contains? catalog "Notify" "this command echoes a thing\n")))))))
@@ -67,7 +73,8 @@
              "/bin/sh"))
     (bootstrap/with-puppetserver-running
       app {:jruby-puppet
-           {:max-active-instances num-jrubies}}
+           {:max-active-instances num-jrubies
+            :gem-path gem-path}}
       (testing "calling generate successfully executes shell command"
         (let [catalog (testutils/get-catalog)]
           (is (testutils/catalog-contains? catalog "Notify" "foo\n")))))))
@@ -76,7 +83,8 @@
   (testing "when making catalog requests with get"
     (bootstrap/with-puppetserver-running
       app {:jruby-puppet
-           {:max-active-instances num-jrubies}
+           {:max-active-instances num-jrubies
+            :gem-path gem-path}
            :versioned-code
            {:code-id-command (script-path "echo")
             :code-content-command (script-path "echo")}}
@@ -101,7 +109,8 @@
   (testing "when making catalog requests with post"
     (bootstrap/with-puppetserver-running
      app {:jruby-puppet
-          {:max-active-instances num-jrubies}
+          {:max-active-instances num-jrubies
+           :gem-path gem-path}
           :versioned-code
           {:code-id-command (script-path "echo")
            :code-content-command (script-path "echo")}}
@@ -125,7 +134,8 @@
 (deftest ^:integration code-id-request-test-get-environment
   (bootstrap/with-puppetserver-running
     app {:jruby-puppet
-         {:max-active-instances num-jrubies}
+         {:max-active-instances num-jrubies
+          :gem-path gem-path}
          :versioned-code
          {:code-id-command (script-path "echo")
           :code-content-command (script-path "echo")}}
@@ -151,7 +161,8 @@
        the way through to the ruby layer due to the code-id-command failure in the
        Clojure layer."
        app {:jruby-puppet
-            {:max-active-instances num-jrubies}
+            {:max-active-instances num-jrubies
+             :gem-path gem-path}
             :versioned-code
             {:code-id-command (script-path "warn_echo_and_error")
              :code-content-command (script-path "echo")}}
@@ -171,7 +182,8 @@
       missing environment information before the request makes it through to the Ruby
       layer."
       app {:jruby-puppet
-           {:max-active-instances num-jrubies}
+           {:max-active-instances num-jrubies
+            :gem-path gem-path}
            :versioned-code
            {:code-content-command (script-path "echo")
             :code-id-command (script-path "echo")}}
@@ -187,7 +199,8 @@
       implemented in Clojure."
       app
       {:jruby-puppet
-       {:max-active-instances num-jrubies}
+       {:max-active-instances num-jrubies
+        :gem-path gem-path}
        :versioned-code
        {:code-content-command (script-path "echo")
         :code-id-command (script-path "echo")}}
@@ -279,7 +292,8 @@
       implemented in Clojure."
       app
       {:jruby-puppet
-       {:max-active-instances num-jrubies}
+       {:max-active-instances num-jrubies
+        :gem-path gem-path}
        :versioned-code
        {}}
       (let [response (testutils/get-static-file-content "modules/foo/files/bar/?code_id=foobar&environment=test")]
@@ -294,7 +308,8 @@
      (format "config_version = \"%s $environment\"" (script-path "echo")))
     (bootstrap/with-puppetserver-running
      app {:jruby-puppet
-          {:max-active-instances num-jrubies}}
+          {:max-active-instances num-jrubies
+           :gem-path gem-path}}
      (let [catalog (testutils/get-catalog)]
        (is (= "production" (get catalog "version")))))))
 
@@ -305,7 +320,8 @@
     (fs/delete-dir (fs/file testutils/conf-dir "ssl"))
     (bootstrap/with-puppetserver-running
       app
-      {}
+      {:jruby-puppet
+        {:gem-path gem-path}}
       (let [catalog (testutils/get-catalog)]
         (is (= "{sf => Burning Finger, short => 22}"
                (get-in (first (filter #(= (get % "title") "trusted_hash")

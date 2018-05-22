@@ -7,6 +7,7 @@
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.puppetserver.testutils :as testutils :refer
      [ca-cert localhost-cert localhost-key ssl-request-options]]
     [puppetlabs.trapperkeeper.app :as tk-app]
@@ -15,6 +16,9 @@
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")
+
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
 
 (use-fixtures :once
   schema-test/validate-schemas
@@ -36,7 +40,8 @@
        "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
         app
-        {:puppet-admin  {:client-whitelist ["notlocalhost"]}
+        {:jruby-puppet  {:gem-path gem-path}
+         :puppet-admin  {:client-whitelist ["notlocalhost"]}
          :authorization {:version 1 :rules []}}
         (doseq [endpoint endpoints]
           (testing (str "for " endpoint " endpoint")
@@ -52,7 +57,8 @@
        "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
         app
-        {:puppet-admin  {:client-whitelist ["localhost"]}
+        {:jruby-puppet  {:gem-path gem-path}
+         :puppet-admin  {:client-whitelist ["localhost"]}
          :authorization {:version 1 :rules []}}
         (doseq [endpoint endpoints]
           (testing (str "for " endpoint " endpoint")
@@ -68,7 +74,8 @@
       "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
       app
-      {:puppet-admin {:authorization-required false}
+      {:jruby-puppet  {:gem-path gem-path}
+       :puppet-admin  {:authorization-required false}
        :authorization {:version 1 :rules []}}
       (doseq [endpoint endpoints]
         (testing (str "for " endpoint " endpoint")
@@ -84,7 +91,8 @@
      "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
       app
-      {:puppet-admin  nil
+      {:jruby-puppet {:gem-path gem-path}
+       :puppet-admin  nil
        :authorization {:version 1
                        :rules [{:match-request
                                 {:path "/puppet-admin-api/v1"
@@ -114,7 +122,8 @@
      "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
       app
-      {:puppet-admin  nil
+      {:jruby-puppet {:gem-path gem-path}
+       :puppet-admin  nil
        :authorization {:version 1
                        :rules [{:match-request
                                 {:path "/puppet-admin-api/v1"
@@ -151,7 +160,8 @@
       "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
       app
-      {:puppet-admin {:client-whitelist []}
+      {:jruby-puppet {:gem-path gem-path}
+       :puppet-admin {:client-whitelist []}
        :authorization {:version 1
                        :rules [{:match-request
                                 {:path "/puppet-admin-api/v1"
@@ -172,7 +182,7 @@
      "JRuby mocking is safe here because the admin endpoint is implemented
        in Clojure."
      app
-     {}
+     {:jruby-puppet {:gem-path gem-path}}
      (doseq [endpoint endpoints]
        (testing (str "for " endpoint " endpoint")
          (let [response (http-client/delete
@@ -186,7 +196,8 @@
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running
        app
-       {:jruby-puppet {:flush-timeout 0}}
+       {:jruby-puppet {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]
+                       :flush-timeout 0}}
        ; Borrow a jruby instance so that the timeout of 0 is reached immediately
        (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
              pool-context (jruby-protocol/get-pool-context jruby-service)
