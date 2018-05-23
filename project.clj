@@ -35,10 +35,13 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "1.7.3"]
+  :parent-project {:coords [puppetlabs/clj-parent "2.0.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
+
+                 ;; See SERVER-2216
+                 [org.clojure/tools.nrepl "0.2.13"]
 
                  [slingshot]
                  [circleci/clj-yaml]
@@ -145,7 +148,7 @@
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
-                                   [ring-mock]
+                                   [ring/ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                                    [beckon]
                                    [com.cemerick/url "0.1.1"]
@@ -156,6 +159,11 @@
 
                                    ;; dependencies for cljs development
                                    [leiningen "2.7.1" :exclusions [org.codehaus.plexus/plexus-utils
+                                                                   ;; This exclusion doesn't seem to actually work (see
+                                                                   ;; comment where we explicitly define tools.nrepl's
+                                                                   ;; version above
+                                                                   ;; See SERVER-2216
+                                                                   org.clojure/tools.nrepl
                                                                    org.clojure/tools.cli]]
                                    [cljsbuild ~cljsbuild-version]
 
