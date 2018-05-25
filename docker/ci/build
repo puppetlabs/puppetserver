@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+set -eux
+
+BUNDLER_PATH=.bundle/gems
+
+: ===
+: === bundle install to get ready
+: ===
+bundle install --path $BUNDLER_PATH
+
+: ===
+: === pull updated base images
+: ===
+bundle exec puppet-docker update-base-images ubuntu:16.04
+
+# Haven't yet figured out how to run a container with a mounted file in pipelines
+# will probably end up adding an image with hadolint preloaded and update the
+# lint commands to optionally use a local installation if I don't hear back that
+# this is possible.
+#: ===
+#: === run linter on the docker files
+#: ===
+#bundle exec puppet-docker lint puppetserver-standalone
+#bundle exec puppet-docker lint puppetserver
+
+: ===
+: === build and test puppetserver-standalone
+: ===
+bundle exec puppet-docker rev-labels puppetserver-standalone
+bundle exec puppet-docker build puppetserver-standalone --repository pcr-internal.puppet.net/release-engineering
+bundle exec puppet-docker spec puppetserver-standalone
+
+: ===
+: === build and test puppetserver
+: ==
+bundle exec puppet-docker rev-labels puppetserver
+bundle exec puppet-docker build puppetserver --repository pcr-internal.puppet.net/release-engineering
+bundle exec puppet-docker spec puppetserver
+
+: ==
+: == push containers
+: ==
+bundle exec puppet-docker push puppetserver-standalone --repository pcr-internal.puppet.net/release-engineering
+bundle exec puppet-docker push puppetserver --repository pcr-internal.puppet.net/release-engineering
+
+: ===
+: === SUCCESS
+: ===
