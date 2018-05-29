@@ -12,12 +12,15 @@
             [cheshire.core :as cheshire]
             [me.raynes.fs :as fs]
             [clojure.tools.logging :as log]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-puppet-testutils])
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils])
   (:import (com.puppetlabs.puppetserver JRubyPuppetResponse JRubyPuppet)
            (java.util HashMap)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/master/environment_classes_int_test")
+
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
 
 (defn purge-env-dir
   []
@@ -92,7 +95,8 @@
   (testing "when environment classes cache is disabled for a class request"
     (bootstrap/with-puppetserver-running-with-config
      app
-     (-> {:jruby-puppet {:max-active-instances 1}}
+     (-> {:jruby-puppet {:gem-path gem-path
+                         :max-active-instances 1}}
          (bootstrap/load-dev-config-with-overrides)
          (ks/dissoc-in [:jruby-puppet
                         :environment-class-cache-enabled]))
@@ -133,7 +137,8 @@
                (str "./dev-resources/puppetlabs/services/"
                     "master/environment_classes_int_test/"
                     "logback-environment-classes-integration-cache-enabled-test.xml")}
-      :jruby-puppet {:max-active-instances 1
+      :jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
                      :environment-class-cache-enabled true}}
      (try
        (let [foo-file (testutils/write-pp-file
@@ -599,7 +604,7 @@
 
 (defn create-jruby-instance-with-mock-class-info
   [wait-atom class-info-atom config]
-  (let [puppet-config (jruby-puppet-testutils/mock-puppet-config-settings
+  (let [puppet-config (jruby-testutils/mock-puppet-config-settings
                        (:jruby-puppet config))]
     (reify JRubyPuppet
       (getSetting [_ setting]
@@ -626,7 +631,8 @@
   (let [class-info-atom (atom [{"name" "someclass" "params" []}])
         wait-atom (atom nil)
         config (bootstrap/load-dev-config-with-overrides
-                {:jruby-puppet {:max-active-instances 1
+                {:jruby-puppet {:gem-path gem-path
+                                :max-active-instances 1
                                 :environment-class-cache-enabled true}})
         mock-jruby-fn (partial create-jruby-instance-with-mock-class-info
                                wait-atom

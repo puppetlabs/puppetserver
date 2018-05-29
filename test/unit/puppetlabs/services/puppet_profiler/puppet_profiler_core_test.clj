@@ -7,6 +7,7 @@
   (:require [clojure.test :refer :all]
             [puppetlabs.services.puppet-profiler.puppet-profiler-core :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
@@ -64,7 +65,8 @@
   (let [sc      (jruby-internal/create-scripting-container
                  (jruby-core/initialize-config
                   {:ruby-load-path (jruby-puppet-core/managed-load-path ["./ruby/puppet/lib" "./ruby/facter/lib"])
-                   :gem-home "./target/jruby-gems"
+                   :gem-home jruby-testutils/gem-home
+                   :gem-path jruby-testutils/gem-path
                    :compile-mode :off}))]
     (try
       (let [script " require 'puppet'

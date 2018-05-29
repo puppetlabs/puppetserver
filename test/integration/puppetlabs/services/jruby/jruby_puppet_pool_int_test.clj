@@ -49,6 +49,9 @@
 
 (def default-borrow-timeout 300000)
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (defn timed-deref
   [ref]
   (deref ref 240000 :timed-out))
@@ -150,7 +153,8 @@
   (testing "Flushing the pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
-      {:jruby-puppet {:max-active-instances 4
+      {:jruby-puppet {:gem-path gem-path
+                      :max-active-instances 4
                       :borrow-timeout default-borrow-timeout}}
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             context (tk-services/service-context jruby-service)
@@ -281,7 +285,8 @@
       'real' response body to the successful environment request isn't
       essential to observing the transition from success to failure."
      app
-     {:jruby-puppet {:max-active-instances 2
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 2
                      :borrow-timeout default-borrow-timeout}}
      (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
       200

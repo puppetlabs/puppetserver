@@ -32,6 +32,9 @@
 
 (def master-service-test-runtime-dir "target/master-service-test")
 
+(def gem-path
+  [(ks/absolute-path jruby-testutils/gem-path)])
+
 (use-fixtures :once
               schema-test/validate-schemas
               (fn [f]
@@ -74,7 +77,8 @@
   (testing "HTTP metrics computed via use of the master service are correct"
     (bootstrap-testutils/with-puppetserver-running
      app
-     {:jruby-puppet {:max-active-instances 1
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
                      :master-code-dir test-resources-code-dir
                      :master-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
@@ -204,7 +208,8 @@
   (testing "JRuby metrics computed via use of the master service actions are correct"
     (bootstrap-testutils/with-puppetserver-running
      app
-     {:jruby-puppet {:max-active-instances 1
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
                      :master-code-dir test-resources-code-dir
                      :master-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
@@ -302,7 +307,8 @@
        (logutils/with-test-logging
         (bootstrap-testutils/with-puppetserver-running
          app
-         {:jruby-puppet {:master-conf-dir ca-files-test-runtime-dir
+         {:jruby-puppet {:gem-path gem-path
+                         :master-conf-dir ca-files-test-runtime-dir
                          :max-active-instances 1}
           :webserver {:port 8081}}
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
@@ -333,7 +339,8 @@
                                     :host "foo.localdomain"}}
              :registries {:puppetserver
                           {:reporters {:graphite {:enabled true}}}}}
-   :jruby-puppet {:master-code-dir test-resources-code-dir
+   :jruby-puppet {:gem-path gem-path
+                  :master-code-dir test-resources-code-dir
                   :master-conf-dir master-service-test-runtime-dir}})
 
 (defn get-puppetserver-registry-context
@@ -589,7 +596,8 @@
        app
        (conj bootstrap-testutils/services-from-dev-bootstrap
              test-service)
-       {:jruby-puppet {:max-active-instances 1
+       {:jruby-puppet {:gem-path gem-path
+                       :max-active-instances 1
                        :master-code-dir test-resources-code-dir
                        :master-conf-dir master-service-test-runtime-dir}
         :metrics {:server-id "localhost"}}
@@ -645,7 +653,8 @@
   (testing "HTTP client metrics from the http report processor are added to status"
     (bootstrap-testutils/with-puppetserver-running
      app
-     {:jruby-puppet {:max-active-instances 2 ; we need 2 jruby-instances since processing the report uses an instance
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 2 ; we need 2 jruby-instances since processing the report uses an instance
                      :master-code-dir test-resources-code-dir
                      :master-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
@@ -681,7 +690,8 @@
   (testing "Encoded spaces should be routed correctly"
     (bootstrap-testutils/with-puppetserver-running
      _
-     {:jruby-puppet {:max-active-instances 1
+     {:jruby-puppet {:gem-path gem-path
+                     :max-active-instances 1
                      :master-conf-dir master-service-test-runtime-dir}}
      ;; SERVER-1954 - In bidi 1.25.0 and later, %20 in a URL would cause a 500 to be raised here instead
      (let [resp (http-get "/puppet/v3/enviro%20nment")]
@@ -690,7 +700,8 @@
 (deftest ^:integration facts-upload-api
   (bootstrap-testutils/with-puppetserver-running
    app
-   {:jruby-puppet {:max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
+   {:jruby-puppet {:gem-path gem-path
+                   :max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
                    :master-code-dir test-resources-code-dir
                    :master-conf-dir master-service-test-runtime-dir
                    :master-var-dir (fs/tmpdir)}}

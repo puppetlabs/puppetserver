@@ -3,6 +3,7 @@
             [puppetlabs.http.client.sync :as http-client]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.puppetserver.testutils :as testutils]
             [cheshire.core :as cheshire]
@@ -63,7 +64,8 @@
   (testing "when environment modules cache is disabled for a module request"
     (bootstrap/with-puppetserver-running-with-config
      app
-     (-> {:jruby-puppet {:max-active-instances 1}}
+     (-> {:jruby-puppet {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]
+                         :max-active-instances 1}}
          (bootstrap/load-dev-config-with-overrides)
          (ks/dissoc-in [:jruby-puppet
                         :environment-class-cache-enabled]))

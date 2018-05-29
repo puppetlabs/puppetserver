@@ -38,7 +38,7 @@
    :hostpubkey     schema/Str
    :keylength      schema/Int
    :localcacert    schema/Str
-   :privatekeydir schema/Str
+   :privatekeydir  schema/Str
    :requestdir     schema/Str
    :csr-attributes schema/Str})
 
@@ -66,6 +66,7 @@
    :keylength                schema/Int
    :manage-internal-file-permissions schema/Bool
    :ruby-load-path           [schema/Str]
+   :gem-path                 schema/Str
    :signeddir                schema/Str
    :serial                   schema/Str})
 
@@ -259,7 +260,8 @@
           :ca-ttl
           :keylength
           :manage-internal-file-permissions
-          :ruby-load-path))
+          :ruby-load-path
+          :gem-path))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -864,7 +866,8 @@
   [executable :- schema/Str
    subject :- schema/Str
    csr-stream :- InputStream
-   ruby-load-path :- [schema/Str]]
+   ruby-load-path :- [schema/Str]
+   gem-path :- schema/Str]
   (log/debug (i18n/trs "Executing ''{0} {1}''" executable subject))
   (let [env     (into {} (System/getenv))
         rubylib (->> (if-let [lib (get env "RUBYLIB")]
@@ -872,11 +875,14 @@
                        ruby-load-path)
                      (map ks/absolute-path)
                      (str/join (System/getProperty "path.separator")))
+        gempath (->> (if-let [gems (get env "GEM_PATH")]
+                       (str gems (System/getProperty "path.separator") gem-path)
+                       gem-path))
         results (shell-utils/execute-command
                  executable
                  {:args [subject]
                   :in csr-stream
-                  :env (merge env {"RUBYLIB" rubylib})})]
+                  :env (merge env {"RUBYLIB" rubylib "GEM_PATH" gempath})})]
     (log/debug (i18n/trs "Autosign command ''{0} {1}'' exit status: {2}"
                 executable subject (:exit-code results)))
     (log/debug (i18n/trs "Autosign command ''{0} {1}'' output on stdout: {2}"
@@ -899,6 +905,8 @@
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
   (-> (select-keys puppetserver (keys CaSettings))
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
+      (assoc :gem-path (str/join (System/getProperty "path.separator")
+                                 (:gem-path jruby-puppet)))
       (assoc :access-control (select-keys certificate-authority
                                           [:certificate-status]))))
 
@@ -937,20 +945,25 @@
   autosign-csr? :- schema/Bool
   "Return true if the CSR should be automatically signed given
   Puppet's autosign setting, and false otherwise."
-  [autosign :- (schema/either schema/Str schema/Bool)
+  ([autosign :- (schema/either schema/Str schema/Bool)
+    subject :- schema/Str
+    csr-stream :- InputStream]
+   (autosign-csr? autosign subject csr-stream [] ""))
+  ([autosign :- (schema/either schema/Str schema/Bool)
    subject :- schema/Str
    csr-stream :- InputStream
-   ruby-load-path :- [schema/Str]]
+   ruby-load-path :- [schema/Str]
+   gem-path :- schema/Str]
   (if (ks/boolean? autosign)
     autosign
     (if (fs/exists? autosign)
       (if (fs/executable? autosign)
-        (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path)]
+        (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)]
           (-> command-result
               :exit-code
               zero?))
         (whitelist-matches? autosign subject))
-      false)))
+      false))))
 
 (schema/defn create-agent-extensions :- (schema/pred utils/extension-list?)
   "Given a certificate signing request, generate a list of extensions that
@@ -1078,7 +1091,7 @@
    Throws a slingshot exception if the CSR is invalid."
   [subject :- schema/Str
    certificate-request :- InputStream
-   {:keys [autosign csrdir ruby-load-path] :as settings} :- CaSettings]
+   {:keys [autosign csrdir ruby-load-path gem-path] :as settings} :- CaSettings]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1087,7 +1100,7 @@
       (validate-duplicate-cert-policy! csr settings)
       (validate-subject! subject (get-csr-subject csr))
       (save-certificate-request! subject csr csrdir)
-      (when (autosign-csr? autosign subject csr-stream ruby-load-path)
+      (when (autosign-csr? autosign subject csr-stream ruby-load-path gem-path)
         (ensure-no-dns-alt-names! csr)
         (ensure-no-authorization-extensions! csr)
         (validate-extensions! (utils/get-extensions csr))

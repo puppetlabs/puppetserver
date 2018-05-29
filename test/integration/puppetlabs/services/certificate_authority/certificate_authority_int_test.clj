@@ -3,6 +3,7 @@
     [clojure.test :refer :all]
     [puppetlabs.kitchensink.core :as ks]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.puppetserver.testutils :as testutils :refer
      [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
@@ -281,7 +282,9 @@
 (deftest ^:integration crl-reloaded-without-server-restart
          (bootstrap/with-puppetserver-running
            app
-           {:webserver
+           {:jruby-puppet
+            {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+            :webserver
             {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
              :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
              :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
