@@ -188,7 +188,7 @@ authorization: {
 
 #### Paths set by regular expressions
 
-To convert a regular expression path, enclose it in double quotation marks and solidus characters (`/`), and set the `type` to regex.
+To convert a regular expression path, enclose it in double quotation marks and slash characters (`/`), and set the `type` to regex.
 
 > **Note:** You must escape regular expressions to conform to HOCON standards, which are the same as JSON's and differ from the deprecated format's regular expressions. For instance, the digit-matching regular expression `\d` must be escaped with a second backslash, as `\\d`.
 
