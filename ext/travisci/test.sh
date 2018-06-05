@@ -4,7 +4,7 @@ set -e
 
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
-./install-test-gems
+./dev/install-test-gems.sh
 
 lein -U test :all
 
