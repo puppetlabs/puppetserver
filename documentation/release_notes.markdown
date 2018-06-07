@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.3
+
+Released June 7, 2018.
+
+This is a bug-fix release of Puppet Server. There was no public release of Puppet Server 5.3.2.
+
+-   [All issues resolved in Puppet Server 5.3.3](https://tickets.puppetlabs.com/issues/?jql=fixVersion%20%3D%20%27SERVER%205.3.3%27)
+
+### Bug fixes
+
+-   In Puppet Server 5.3.3, the `/puppet/v3/tasks` endpoint reuses cached environments instead of always creating a new environment. ([SERVER-2192](https://tickets.puppetlabs.com/browse/SERVER-2192))
+
 ## Puppet Server 5.3.1
 
 Released April 17, 2018.
