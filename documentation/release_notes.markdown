@@ -14,7 +14,7 @@ For release notes on versions of Puppet Server prior to Puppet Server 5, see [do
 
 ## Puppet Server 5.3.3
 
-Released June 2018.
+Released June 7, 2018.
 
 This is a bug-fix release of Puppet Server. There was no public release of Puppet Server 5.3.2.
 
