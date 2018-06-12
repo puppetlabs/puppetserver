@@ -69,7 +69,19 @@
    :ruby-load-path           [schema/Str]
    :gem-path                 schema/Str
    :signeddir                schema/Str
-   :serial                   schema/Str})
+   :serial                   schema/Str
+   ;; This would be list of compile master node names (FQDNs) including MoM
+   ;; It would either be provisioned by PE or created & maintained by user (input configuration)
+   :compile-masters          [schema/Str]    
+   ;; This would point to a file containing a list of serial numbers of compile master certificates
+   ;; corresponding to the nodes from the above file. This would be re-generated everytime the
+   ;; compile-masters list is updated.
+   :compile-master-serials-path   schema/Str
+   ;; Path to Infrastructure CRL file containing master certificates
+   :infra-crl-path                schema/Str
+   ;; Option to continue using full CRL instead of infrastructure CRL if desired
+   ;; Infrastructure CRL would be enabled by default.
+   :disable-infra-crl         schema/Bool })
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -262,7 +274,16 @@
           :keylength
           :manage-internal-file-permissions
           :ruby-load-path
-          :gem-path))
+          :gem-path
+          :compile-masters
+          ;; We plan to use one of the existing directories for maintaining the
+          ;; compile master serials and infra-crl so removing them from here
+          ;; TODO - However if these are explicitly configured to be different then
+          ;; they would need to be created 
+          :compile-master-serials-path
+          :infra-crl-path
+          :disable-infra-crl
+          ))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -329,6 +350,8 @@
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
+(defn seq-contains? [coll target] (some #(= target %) coll))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -392,6 +415,21 @@
         e)
       (catch CRLException e
         e))))
+
+(schema/defn set-ca-config-defaults
+  "Sets defaults for any of the missing config parameters for infra CRL"
+  [infraCrlConfig
+   cadir]
+  (log/debug (str (i18n/trs "set-ca-config-defaults received input:")
+                  "\n"
+                  (ks/pprint-to-string infraCrlConfig)))
+  ;; TODO - We want to use the current node/certificate as the default in here instead of starting empty
+  (-> (assoc infraCrlConfig :compile-masters (if (nil? (:compile-masters infraCrlConfig)) [] (:compile-masters infraCrlConfig)))
+      (assoc :compile-master-serials-path (if (nil? (:compile-master-serials-path infraCrlConfig)) (str cadir "/cm-serials.txt") (:compile-master-serials-path infraCrlConfig)))
+      (assoc :infra-crl-path (if (nil? (:infra-crl-path infraCrlConfig)) (str cadir "/infra-crl.pem") (:infra-crl-path infraCrlConfig)))
+      (assoc :disable-infra-crl (if (nil? (:disable-infra-crl infraCrlConfig)) false (:disable-infra-crl infraCrlConfig)))
+      (dissoc :certificate-status))
+)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
@@ -470,6 +508,32 @@
            netscape-comment-value)
           (utils/create-ca-extensions ca-name ca-serial ca-public-key))))
 
+(schema/defn read-compile-masters
+    "Returns a list of compile master serials from the specified file organized as one item per line."
+    [cm-file :- schema/Str]
+    (line-seq (io/reader cm-file)))
+
+(schema/defn generate-compile-master-serials
+  "Given a list of compile master nodes it will create a file containing 
+   serial numbers of their certificates (listed on separate lines).
+   Compile masters is expected have at least one entry (MoM)"
+   [cm-nodes :- [schema/Str]
+    compile-masters-serials-file :- schema/Str
+    signeddir :- schema/Str]
+
+   (log/debug (format "%s\n%s" (i18n/trs "generate-compile-master invoked ") compile-masters-serials-file))
+   (with-open [wtr (clojure.java.io/writer compile-masters-serials-file)]
+     (doseq [cm-node cm-nodes]
+       (try
+         (let [cm-serial  (-> (path-to-cert signeddir cm-node)
+                           (utils/pem->cert)
+                           (utils/get-serial))]
+            (log/debug (format "%s: %3d\n" "Serial " cm-serial))
+            (.write wtr (str cm-serial))
+            (.newLine wtr))
+         (catch Exception ex 
+           (log/warn (i18n/trs (str "Failed to find/load certificate for compile master: " cm-node))))))))
+
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -501,13 +565,18 @@
                       ca-exts)
         cacrl       (utils/generate-crl (.getIssuerX500Principal cacert)
                                         private-key
+                                        public-key)
+        infra-crl-path   (utils/generate-crl (.getIssuerX500Principal cacert)
+                                        private-key
                                         public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key
       (create-file-with-perms (:cakey ca-settings) private-key-perms))
     (utils/cert->pem! cacert (:cacert ca-settings))
-    (utils/crl->pem! cacrl (:cacrl ca-settings))))
+    (utils/crl->pem! cacrl (:cacrl ca-settings))
+    (utils/crl->pem! infra-crl-path (:infra-crl-path ca-settings)))
+)
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
@@ -740,7 +809,11 @@
            hostprivkey)))
 
     :else
-    (generate-master-ssl-files! settings certname ca-settings)))
+    (generate-master-ssl-files! settings certname ca-settings))
+  (log/debug (format "%s\n%s" (i18n/trs "initialize-master-ssl invoked. CA Settings: ") (ks/pprint-to-string ca-settings)))
+  ;; Generate a file containing serial numbers of the configured compiler master certificates, if any.
+  (generate-compile-master-serials (:compile-masters ca-settings) (:compile-master-serials-path ca-settings) (:signeddir ca-settings))
+)
 
 (schema/defn ^:always-validate retrieve-ca-cert!
   "Ensure a local copy of the CA cert is available on disk.  cacert is the base
@@ -898,12 +971,19 @@
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings."
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
-  (-> (select-keys puppetserver (keys CaSettings))
-      (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
-      (assoc :gem-path (str/join (System/getProperty "path.separator")
-                                 (:gem-path jruby-puppet)))
-      (assoc :access-control (select-keys certificate-authority
-                                          [:certificate-status]))))
+    (let [certificate-authority-defaults (set-ca-config-defaults certificate-authority (fs/parent (:cacrl puppetserver)))]
+      (log/debug (str (i18n/trs "config->ca-settings value of certificate-authority-defaults :")
+                  "\n"
+                  (ks/pprint-to-string certificate-authority-defaults )))
+      (-> 
+        (merge (select-keys puppetserver (keys CaSettings)) certificate-authority-defaults)
+        (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
+        (assoc :gem-path (str/join (System/getProperty "path.separator")
+                                   (:gem-path jruby-puppet)))
+        (assoc :access-control (select-keys certificate-authority
+                                            [:certificate-status])))
+    )
+)
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1124,6 +1204,7 @@
         {:outcome :not-found
          :message msg }))))
 
+;; TODO - Once we have the infra-crl functioning then this would need to be updated
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
@@ -1160,6 +1241,7 @@
                              ca-p-key cur-perms)
                         (i18n/trs "This has been corrected to ''{0}''."
                              private-key-perms))))))
+
 
 (schema/defn ^:always-validate
   initialize!
@@ -1256,7 +1338,7 @@
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
    The certificate will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacert cacrl cakey]} :- CaSettings
+  [{:keys [signeddir cacert cacrl cakey infra-crl-path compile-master-serials-path]} :- CaSettings
    subject :- schema/Str]
   (let [serial  (-> (path-to-cert signeddir subject)
                     (utils/pem->cert)
@@ -1267,7 +1349,19 @@
                               (.getPublicKey (utils/pem->ca-cert cacert cakey))
                               serial)]
     (utils/objs->pem! (cons new-crl (vec rest-of-chain)) cacrl)
-    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
+    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
+   
+    ;; Publish infra-crl if a compile-master is getting revoked.
+    ;; (when  (seq-contains? (read-compile-masters compile-master-serials-path) (str serial)) (log/debug "Found serial number in compile masters serial"))
+    (when (and (fs/exists? compile-master-serials-path) (seq-contains? (read-compile-masters compile-master-serials-path) (str serial)))
+        (let [new-infra-crl (utils/revoke (utils/pem->crl infra-crl-path)
+                            (utils/pem->private-key cakey)
+                            (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                            serial)]
+          (utils/crl->pem! new-infra-crl infra-crl-path)
+        (log/info (i18n/trs "Compile master certificate being revoked; publishing updated infrastructure CRL"))))
+  )
+)
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."

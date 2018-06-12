@@ -50,7 +50,10 @@
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
    :ruby-load-path        jruby-testutils/ruby-load-path
-   :gem-path              jruby-testutils/gem-path})
+   :gem-path              jruby-testutils/gem-path
+   :compile-masters       []
+   :compile-master-serials-path (str cadir "/cm-serials.txt")
+   :infra-crl-path (str cadir "/infra-crl.pem")})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return
