@@ -89,7 +89,7 @@
                  [puppetlabs/i18n]
 
                  ;; dependencies for clojurescript dashboard
-                 [puppetlabs/cljs-dashboard-widgets]
+                 [puppetlabs/cljs-dashboard-widgets "0.1.1"]
                  [org.clojure/clojurescript ~clojurescript-version]
                  [cljs-http "0.1.36"]]
 
@@ -154,24 +154,12 @@
                                    [beckon]
                                    [com.cemerick/url "0.1.1"]
 
-                                   ;; Including this to avoid a logback version conflict when running
-                                   ;; 'lein figwheel'.
-                                   [ch.qos.logback/logback-classic]
-
                                    ;; dependencies for cljs development
-                                   [leiningen "2.7.1" :exclusions [org.codehaus.plexus/plexus-utils
-                                                                   ;; This exclusion doesn't seem to actually work (see
-                                                                   ;; comment where we explicitly define tools.nrepl's
-                                                                   ;; version above
-                                                                   ;; See SERVER-2216
-                                                                   org.clojure/tools.nrepl
-                                                                   org.clojure/tools.cli]]
-
-                                   [figwheel ~figwheel-version :exclusions [org.clojure/clojure]]]
+                                   [figwheel-sidecar "0.5.4-6" :exclusions [org.clojure/clojure]]]
                    ;; dev profile config for clojurescript dev
                    :plugins [[lein-cljsbuild ~cljsbuild-version
                               :exclusions [org.clojure/clojurescript]]
-                             [lein-figwheel ~figwheel-version
+                             [lein-figwheel "0.5.4-6"
                               :exclusions [org.clojure/clojure
                                            org.clojure/core.cache
                                            commons-io
