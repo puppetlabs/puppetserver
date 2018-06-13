@@ -1,8 +1,10 @@
-FROM puppet/puppetserver-standalone:5.3.1
+ARG version='5.3.1'
+FROM puppet/puppetserver-standalone:$version
 
 ARG vcs_ref
 ARG build_date
-ENV PUPPETDB_TERMINUS_VERSION="5.2.2"
+ARG puppetdb_terminus_version
+ENV PUPPETDB_TERMINUS_VERSION=${puppetdb_terminus_version:-5.2.2}
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
