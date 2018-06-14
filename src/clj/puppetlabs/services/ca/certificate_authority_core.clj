@@ -1,6 +1,7 @@
 (ns puppetlabs.services.ca.certificate-authority-core
   (:import [java.io InputStream]
-           (clojure.lang IFn))
+           (clojure.lang IFn)
+           (org.joda.time DateTime))
   (:require [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ring-middleware.core :as middleware]
@@ -12,6 +13,8 @@
             [clojure.tools.logging :as log]
             [clojure.java.io :as io]
             [clojure.string :as string]
+            [clj-time.core :as time]
+            [clj-time.format :as time-format]
             [schema.core :as schema]
             [cheshire.core :as cheshire]
             [liberator.core :refer [defresource]]
@@ -56,11 +59,35 @@
       ;; Respond to all CSR validation failures with a 400
       (middleware-utils/plain-response 400 msg))))
 
-(defn handle-get-certificate-revocation-list
-  [{:keys [cacrl]}]
-  (-> (ca/get-certificate-revocation-list cacrl)
-      (rr/response)
-      (rr/content-type "text/plain")))
+  (schema/defn format-http-date :- (schema/maybe DateTime)
+    "Formats an http-date into joda time.  Returns nil for malformed or nil
+     http-dates"
+    [http-date :- (schema/maybe schema/Str)]
+    (when http-date
+      (try
+        (time-format/parse
+          (time-format/formatters :rfc822)
+          (string/replace http-date #"GMT" "+0000"))
+        (catch IllegalArgumentException e
+          nil))))
+
+  (defn handle-get-certificate-revocation-list
+    "Always return the crl if no 'If-Modified-Since' header is provided or
+    if that header is not in correct http-date format. If the header is
+    present and has correct format, only return the crl if the master
+    cacrl is newer than the agent crl."
+    [request {:keys [cacrl]}]
+    (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
+          agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
+          master-crl-last-modified-date-time (ca/get-crl-last-modified cacrl)]
+      (if (or (nil? agent-crl-last-modified-date-time)
+              (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
+        (-> (ca/get-certificate-revocation-list cacrl)
+            (rr/response)
+            (rr/content-type "text/plain"))
+        (-> (rr/response nil)
+            (rr/status 304)
+            (rr/content-type "text/plain")))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -294,8 +321,8 @@
           (handle-put-certificate-request! subject body ca-settings)))
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings))
-      (GET ["/certificate_revocation_list/" :ignored-node-name] []
-        (handle-get-certificate-revocation-list ca-settings)))
+      (GET ["/certificate_revocation_list/" :ignored-node-name] request
+        (handle-get-certificate-revocation-list request ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
