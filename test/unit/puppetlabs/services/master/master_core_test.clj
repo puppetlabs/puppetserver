@@ -76,7 +76,7 @@
 
 (deftest if-none-match-test
   (testing "if-none-match returns expected value when"
-    (let [mock-request (ring-mock/request "get" "env_classes")]
+    (let [mock-request (ring-mock/request :get "env_classes")]
       (testing "header present without '--gzip' suffix"
         (is (= "abc123"
                (if-none-match-from-request

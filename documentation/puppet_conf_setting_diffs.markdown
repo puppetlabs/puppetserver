@@ -38,7 +38,7 @@ This is true regardless of the configuration of the `ssl-` settings in
 
 ### [`cacrl`](https://puppet.com/docs/puppet/latest/configuration.html#cacrl)
 
-If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, or `ssl-crl-path` in
 [webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the
 file at `ssl-crl-path` as the CRL for authenticating clients via SSL. If at least
 one of the `ssl-` settings in webserver.conf is set but `ssl-crl-path` is not set,
@@ -72,7 +72,7 @@ Puppet Server does not use this setting.
 
 ### [`hostcert`](https://puppet.com/docs/puppet/latest/configuration.html#hostcert)
 
-If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, or `ssl-crl-path` in
 [webserver.conf](./configuration.markdown#webserverconf), Puppet Server presents the file at `ssl-cert` to clients as the server certificate via
 SSL.
 
@@ -88,7 +88,7 @@ location of the server host certificate to generate.
 
 ### [`hostcrl`](https://puppet.com/docs/puppet/latest/configuration.html#hostcrl)
 
-If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, or `ssl-crl-path` in
 [webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the
 file at `ssl-crl-path` as the CRL for authenticating clients via SSL. If at least
 one of the `ssl-` settings in webserver.conf is set but `ssl-crl-path` is not set,
@@ -107,7 +107,7 @@ regardless of the `ssl-` settings in webserver.conf.
 
 ### [`hostprivkey`](https://puppet.com/docs/puppet/latest/configuration.html#hostprivkey)
 
-If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, and/or `ssl-crl-path` in
+If you define `ssl-cert`, `ssl-key`, `ssl-ca-cert`, or `ssl-crl-path` in
 [webserver.conf](./configuration.markdown#webserverconf), Puppet Server uses the file at `ssl-key` as the server private key during SSL transactions.
 
 If at least one of the `ssl-` settings in webserver.conf is set but `ssl-key`
