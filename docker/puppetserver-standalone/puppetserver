@@ -1,0 +1,17 @@
+###########################################
+# Init settings for puppetserver
+###########################################
+
+# Location of your Java binary (version 7 or higher)
+JAVA_BIN="/usr/bin/java"
+
+# Modify this if you'd like to change the memory allocation, enable JMX, etc
+JAVA_ARGS=$PUPPETSERVER_JAVA_ARGS
+
+# These normally shouldn't need to be edited if using OS packages
+USER="puppet"
+GROUP="puppet"
+INSTALL_DIR="/opt/puppetlabs/server/apps/puppetserver"
+CONFIG="/etc/puppetlabs/puppetserver/conf.d"
+BOOTSTRAP_CONFIG="/etc/puppetlabs/puppetserver/services.d/,/opt/puppetlabs/server/apps/puppetserver/config/services.d/"
+SERVICE_STOP_RETRIES=60

@@ -432,6 +432,10 @@ msgid "Sampling JRuby metrics"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
+msgid "Error ocurred while recording metrics for jruby event type: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_metrics_core.clj
 msgid "Unrecognized jruby event type: {0}"
 msgstr ""
 

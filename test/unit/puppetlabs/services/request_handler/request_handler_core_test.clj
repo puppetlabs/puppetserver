@@ -54,7 +54,7 @@
   [cert]
   (core/as-jruby-request
     (puppetserver-config true)
-    {:request-method :GET
+    {:request-method :get
      :headers {"x-client-cert" cert}}))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -157,7 +157,7 @@
         (testing (str "for allow-header-cert-info " allow-header-cert-info)
           (let [req (core/as-jruby-request
                      (puppetserver-config allow-header-cert-info)
-                     {:request-method :GET
+                     {:request-method :get
                       :authorization {:name "authorization-client"
                                       :authenticated true
                                       :certificate cert-from-authorization}
@@ -189,7 +189,7 @@
       (testing "providing headers but not the puppet server config won't work."
         (let [req (core/as-jruby-request
                    (puppetserver-config false)
-                   {:request-method :GET
+                   {:request-method :get
                     :headers        {"x-client-verify" "SUCCESS"
                                      "x-client-dn"     "CN=puppet"
                                      "x-client-cert"   single-cert-url-encoded}})]
@@ -200,7 +200,7 @@
       (testing "providing headers and allow-header-cert-info to true works"
         (let [req (core/as-jruby-request
                    (puppetserver-config true)
-                   {:request-method :GET
+                   {:request-method :get
                     :headers        {"x-client-verify" "SUCCESS"
                                      "x-client-dn"     "CN=puppet"
                                      "x-client-cert"   single-cert-url-encoded}})]
@@ -213,7 +213,7 @@
       (testing "a malformed DN string fails"
         (let [req (core/as-jruby-request
                    (puppetserver-config true)
-                   {:request-method :GET
+                   {:request-method :get
                     :headers        {"x-client-verify" "SUCCESS"
                                      "x-client-dn"     "invalid-dn"}})]
           (is (not (get req :authenticated)))
@@ -223,7 +223,7 @@
       (testing "Setting the auth header to something other than 'SUCCESS' fails"
         (let [req (core/as-jruby-request
                    (puppetserver-config true)
-                   {:request-method :GET
+                   {:request-method :get
                     :headers        {"x-client-verify" "fail"
                                      "x-client-dn"     "CN=puppet"}})]
           (is (not (get req :authenticated)))
@@ -235,7 +235,7 @@
                      (str test-resources-dir "/localhost.pem"))
               req (core/as-jruby-request
                    (puppetserver-config true)
-                   {:request-method  :GET
+                   {:request-method  :get
                     :ssl-client-cert cert
                     :headers         {"x-client-verify" "SUCCESS"
                                       "x-client-dn"     "CN=puppet"
@@ -251,7 +251,7 @@
                      (str test-resources-dir "/localhost.pem"))
               req (core/as-jruby-request
                    (puppetserver-config false)
-                   {:request-method  :GET
+                   {:request-method  :get
                     :ssl-client-cert cert
                     :headers         {"x-client-verify" "SUCCESS"
                                       "x-client-dn"     "CN=puppet"

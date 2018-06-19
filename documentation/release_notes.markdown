@@ -12,6 +12,35 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.3
+
+Released June 7, 2018.
+
+This is a bug-fix release of Puppet Server. There was no public release of Puppet Server 5.3.2.
+
+-   [All issues resolved in Puppet Server 5.3.3](https://tickets.puppetlabs.com/issues/?jql=fixVersion%20%3D%20%27SERVER%205.3.3%27)
+
+### Bug fixes
+
+-   In Puppet Server 5.3.3, the `/puppet/v3/tasks` endpoint reuses cached environments instead of always creating a new environment. ([SERVER-2192](https://tickets.puppetlabs.com/browse/SERVER-2192))
+
+## Puppet Server 5.3.1
+
+Released April 17, 2018.
+
+This is a feature release of Puppet Server.
+
+### New features
+
+-   We have updated the docs on enabling JRuby 9k to reflect the results of our performance research. Specifically, when using JRuby 9k, set the JVM's code cache to 512MB and enable JIT compilation. ([SERVER-2147](https://tickets.puppetlabs.com/browse/SERVER-2147))
+
+### Known issues
+
+-   YARD's rubygem integration is incompatible with the rubygems version we ship with JRuby 9k. It prints a warning during `puppetserver gem list` (called during Puppet runs applying updates via the `puppetserver_gem` provider). This is caused by using autosign 0.1.2. Upgrading to autosign 0.1.3 bumps the YARD requirement to a version compatible with the rubygems we ship in JRuby 9k-based puppetserver.
+
+    To resolve this issue, upgrade YARD to a 0.9.x version and look at bumping any server side gems that require YARD 0.8.x. The autosign gem specifically should be at >= 0.1.3. ([SERVER-2161](https://tickets.puppetlabs.com/browse/SERVER-2161))
+
+>>>>>>> upstream/5.3.x
 ## Puppet Server 5.3.0
 
 Released March 20, 2018.
