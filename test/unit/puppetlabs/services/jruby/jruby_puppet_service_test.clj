@@ -33,7 +33,7 @@
         (jruby-testutils/jruby-service-and-dependencies-with-mocking config)
         config
         (is (true? (some #(= facter-jar (.getFile %))
-                     (.getURLs (ClassLoader/getSystemClassLoader)))))))))
+                     (.getURLs (.. Thread currentThread getContextClassLoader)))))))))
 
 (deftest environment-class-info-tags
   (testing "environment-class-info-tags cache has proper data"

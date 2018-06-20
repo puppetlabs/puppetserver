@@ -18,6 +18,7 @@
             [puppetlabs.trapperkeeper.services.scheduler.scheduler-service :as scheduler-service]
             [puppetlabs.trapperkeeper.services.status.status-service :as status-service]
             [puppetlabs.trapperkeeper.services.webrouting.webrouting-service :as webrouting-service]
+            [puppetlabs.kitchensink.classpath :as ks-classpath]
             [puppetlabs.trapperkeeper.services :as tk-services])
   (:import (clojure.lang IFn)
            (com.puppetlabs.jruby_utils.jruby ScriptingContainer)
@@ -367,6 +368,7 @@ create-mock-pool-instance :- JRubyInstance
   ([services config]
    (add-mock-jruby-pool-manager-service services config create-mock-jruby-puppet))
   ([services config mock-jruby-puppet-fn]
+   (#'ks-classpath/ensure-modifiable-classloader)
    (->> services
         (remove #(= :PoolManagerService (tk-services/service-def-id %)))
         vec
