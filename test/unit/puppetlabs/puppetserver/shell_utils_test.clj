@@ -87,7 +87,7 @@
 
     (let [env-output (:stdout (sh-utils/execute-command
                                (script-path "list_env_var_names")
-                               {:env {"FOO" "foo"}}))
+                               {:env {"FOO" "foo\nbar"}}))
           env (parse-env-output env-output)
           ;; it seems that the JVM always includes a PWD env var, no
           ;; matter what, and in certain terminals it may also include a few
