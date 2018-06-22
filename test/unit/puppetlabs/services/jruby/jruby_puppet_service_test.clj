@@ -16,25 +16,6 @@
   (jruby-testutils/jruby-puppet-tk-config
     (jruby-testutils/jruby-puppet-config {:max-active-instances pool-size})))
 
-(deftest facter-jar-loaded-during-init
-  (testing (str "facter jar found from the ruby load path is properly "
-             "loaded into the system classpath")
-    (let [temp-dir (ks/temp-dir)
-          facter-jar (-> temp-dir
-                       (fs/file jruby-puppet-core/facter-jar)
-                       (ks/absolute-path))
-          config (assoc-in (jruby-service-test-config 1)
-                           [:jruby-puppet :ruby-load-path]
-                           (into [] (cons (ks/absolute-path temp-dir)
-                                          jruby-testutils/ruby-load-path)))]
-      (fs/touch facter-jar)
-      (bootstrap/with-app-with-config
-        app
-        (jruby-testutils/jruby-service-and-dependencies-with-mocking config)
-        config
-        (is (true? (some #(= facter-jar (.getFile %))
-                     (.getURLs (.. Thread currentThread getContextClassLoader)))))))))
-
 (deftest environment-class-info-tags
   (testing "environment-class-info-tags cache has proper data"
     ;; This test uses a mock JRubyPoolManagerService.  Where these tests are
