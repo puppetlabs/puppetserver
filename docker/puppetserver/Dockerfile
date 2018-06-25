@@ -1,5 +1,6 @@
 ARG version='5.3.1'
-FROM puppet/puppetserver-standalone:$version
+ARG namespace='puppet'
+FROM $namespace/puppetserver-standalone:$version
 
 ARG vcs_ref
 ARG build_date
