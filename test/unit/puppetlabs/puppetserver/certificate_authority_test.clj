@@ -437,7 +437,7 @@
                       (.getPublicKey))]
         (is (nil? (.verify cert capub)))))))
 
-(deftest autosign-with-bundled-ca-certs
+(deftest autosign-as-intermediate-ca
   (testing "The CA certificate file can be a bundle of certs"
     (let [settings  (testutils/ca-sandbox! bundle-cadir)
           csr       (-> (:csrdir settings)
@@ -468,7 +468,7 @@
       (revoke-existing-cert! settings "localhost")
       (is (true? (revoked? cert))))))
 
-(deftest revoke-with-bundled-ca-certs
+(deftest revoke-as-intermediate-ca
   (testing "The CA certificate file can be a bundle when revoking a certificate"
     (let [settings (testutils/ca-sandbox! bundle-cadir)
           cert     (-> (:signeddir settings)
@@ -476,7 +476,7 @@
                        (utils/pem->cert))
           revoked? (fn [cert]
                      (-> (:cacrl settings)
-                         (utils/pem->crl)
+                         (utils/pem->ca-crl)
                          (utils/revoked? cert)))]
       (is (false? (revoked? cert)))
       (revoke-existing-cert! settings "localhost")

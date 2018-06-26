@@ -464,16 +464,10 @@
   [ca-name :- (schema/pred utils/valid-x500-name?)
    ca-serial :- (schema/pred number?)
    ca-public-key :- (schema/pred utils/public-key?)]
-  [(utils/netscape-comment
-     netscape-comment-value)
-   (utils/authority-key-identifier
-     ca-name ca-serial false)
-   (utils/basic-constraints-for-ca)
-   (utils/key-usage
-     #{:key-cert-sign
-       :crl-sign} true)
-   (utils/subject-key-identifier
-     ca-public-key false)])
+  (vec
+    (cons (utils/netscape-comment
+           netscape-comment-value)
+          (utils/create-ca-extensions ca-name ca-serial ca-public-key))))
 
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
@@ -1037,7 +1031,7 @@
     (when (or existing-cert? existing-csr?)
       (let [status (if existing-cert?
                      (if (utils/revoked?
-                           (utils/pem->crl cacrl) (utils/pem->cert cert))
+                           (utils/pem->ca-crl cacrl) (utils/pem->cert cert))
                        "revoked"
                        "signed")
                      "requested")]
@@ -1228,13 +1222,13 @@
    DNS alt names, and several different fingerprint hashes of the certificate."
   [{:keys [csrdir signeddir cacrl]} :- CaSettings
    subject :- schema/Str]
-  (let [crl (utils/pem->crl cacrl)]
+  (let [crl (utils/pem->ca-crl cacrl)]
     (get-certificate-status* signeddir csrdir crl subject)))
 
 (schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
   [{:keys [csrdir signeddir cacrl]} :- CaSettings]
-  (let [crl           (utils/pem->crl cacrl)
+  (let [crl           (utils/pem->ca-crl cacrl)
         pem-pattern   #"^.+\.pem$"
         all-subjects  (map #(fs/base-name % ".pem")
                            (concat (fs/find-files csrdir pem-pattern)
@@ -1258,11 +1252,12 @@
   (let [serial  (-> (path-to-cert signeddir subject)
                     (utils/pem->cert)
                     (utils/get-serial))
-        new-crl (utils/revoke (utils/pem->crl cacrl)
+        [our-crl & rest-of-chain] (utils/pem->crls cacrl)
+        new-crl (utils/revoke our-crl
                               (utils/pem->private-key cakey)
                               (.getPublicKey (utils/pem->ca-cert cacert cakey))
                               serial)]
-    (utils/crl->pem! new-crl cacrl)
+    (utils/objs->pem! (cons new-crl (vec rest-of-chain)) cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
 
 (schema/defn ^:always-validate set-certificate-status!
