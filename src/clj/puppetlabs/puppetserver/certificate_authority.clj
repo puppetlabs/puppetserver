@@ -5,6 +5,7 @@
            [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security KeyPair)
+           (org.joda.time DateTime)
            (java.security.cert CRLException))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -1129,6 +1130,14 @@
   return the CRL from the .pem file on disk."
   [cacrl :- schema/Str]
   (slurp cacrl))
+
+(schema/defn ^:always-validate
+  get-crl-last-modified :- DateTime
+  "Given the value of the 'cacrl' setting from Puppet, return
+  a Joda DateTime instance of when the CRL file was last modified."
+  [cacrl :- schema/Str]
+  (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
+       (time-coerce/from-long last-modified-milliseconds)))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."

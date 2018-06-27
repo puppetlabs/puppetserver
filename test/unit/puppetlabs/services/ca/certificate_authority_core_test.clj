@@ -109,13 +109,39 @@
 ;;; Tests
 
 (deftest crl-endpoint-test
-  (testing "implementation of the CRL endpoint"
-    (let [response (handle-get-certificate-revocation-list
-                     {:cacrl (test-pem-file "crl.pem")})]
+  (testing "implementation of the CRL endpoint with no 'If-Modified-Since' header"
+    (let [request (mock/request :get
+                            "/v1/certificate_revocation_list/mynode")
+          response (handle-get-certificate-revocation-list
+                     request {:cacrl (test-pem-file "crl.pem")})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
       (is (string? (:body response))))))
+  (testing "with a malformed http-date 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request {:uri "/v1/certificate_revocation_list/mynode"
+                   :request-method :get
+                   :headers {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00"}}
+          response (ring-app request)]
+      (is (= 200 (:status response))
+      (is (string? (:body response))))))
+  (testing "with older 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request {:uri "/v1/certificate_revocation_list/mynode"
+                   :request-method :get
+                   :headers {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00 GMT"}}
+          response (ring-app request)]
+      (is (= 200 (:status response))
+      (is (string? (:body response))))))
+  (testing "with newer 'If-Modified-Since' header"
+    (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
+          request {:uri "/v1/certificate_revocation_list/mynode"
+                   :request-method :get
+                   :headers {"If-Modified-Since" "Wed, 21 Oct 3015 07:28:00 GMT"}}
+          response (ring-app request)]
+      (is (= 304 (:status response))
+      (is (nil? (:body response))))))
 
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
