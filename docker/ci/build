@@ -6,8 +6,6 @@ BUNDLER_PATH=.bundle/gems
 
 function build_and_test_image() {
   container_name=$1
-  git_describe=`git describe`
-  version=${git_describe%%-*}
 
   : ===
   : === run linter on the docker files
@@ -33,6 +31,13 @@ function push_image() {
 : === bundle install to get ready
 : ===
 bundle install --path $BUNDLER_PATH
+
+: ===
+: === make sure we fetch tags for versioning
+: ===
+git fetch origin 'refs/tags/*:refs/tags/*'
+git_describe=`git describe`
+version=${git_describe%%-*}
 
 : ===
 : === pull updated base images
