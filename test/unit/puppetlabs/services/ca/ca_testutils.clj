@@ -53,7 +53,8 @@
    :gem-path              jruby-testutils/gem-path
    :compile-masters       []
    :compile-master-serials-path (str cadir "/cm-serials.txt")
-   :infra-crl-path (str cadir "/infra-crl.pem")})
+   :infra-crl-path (str cadir "/infra-crl.pem")
+   :disable-infra-crl    false})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return

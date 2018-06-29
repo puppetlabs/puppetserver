@@ -2,6 +2,7 @@
   (:require
     [clojure.test :refer :all]
     [puppetlabs.kitchensink.core :as ks]
+    [puppetlabs.ssl-utils.core :as utils]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.puppetserver.testutils :as testutils :refer

@@ -113,7 +113,7 @@
     (let [request (mock/request :get
                             "/v1/certificate_revocation_list/mynode")
           response (handle-get-certificate-revocation-list
-                     request {:cacrl (test-pem-file "crl.pem")})]
+                     request {:cacrl (test-pem-file "crl.pem") :infra-crl-path (test-pem-file "crl.pem") :disable-infra-crl true})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
