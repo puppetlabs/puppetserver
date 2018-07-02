@@ -53,7 +53,7 @@
 (deftest add-facter-to-classpath-test
   (letfn [(class-loader-files [] (map #(.getFile %)
                                    (.getURLs
-                                     (ClassLoader/getSystemClassLoader))))
+                                     (.. Thread currentThread getContextClassLoader))))
           (create-temp-facter-jar [] (-> (ks/temp-dir)
                                        (fs/file jruby-puppet-core/facter-jar)
                                        (fs/touch)
