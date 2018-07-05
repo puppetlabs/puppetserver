@@ -46,7 +46,7 @@ COPY docker-entrypoint.sh /
 EXPOSE 8140
 
 ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
-CMD ["foreground" ]
+CMD ["foreground"]
 
 HEALTHCHECK --interval=10s --timeout=10s --retries=90 CMD \
   curl --fail -H 'Accept: pson' \
