@@ -2,7 +2,7 @@ FROM ubuntu:16.04
 
 ARG vcs_ref
 ARG build_date
-ARG version='5.3.1'
+ARG version="5.3.1"
 ENV PUPPET_SERVER_VERSION=$version
 ENV DUMB_INIT_VERSION="1.2.1"
 ENV UBUNTU_CODENAME="xenial"
