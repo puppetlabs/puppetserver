@@ -4,8 +4,6 @@ FROM $namespace/puppetserver-standalone:$version
 
 ARG vcs_ref
 ARG build_date
-ARG puppetdb_terminus_version
-ENV PUPPETDB_TERMINUS_VERSION=${puppetdb_terminus_version:-5.2.2}
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
@@ -20,7 +18,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.dockerfile="/Dockerfile"
 
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y puppetdb-termini="$PUPPETDB_TERMINUS_VERSION"-1"$UBUNTU_CODENAME" && \
+    apt-get install --no-install-recommends -y puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
