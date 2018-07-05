@@ -22,10 +22,11 @@ function build_and_test_image() {
 
 function push_image() {
   container_name=$1
+  container_version=$2
   : ===
   : === push $container_name
   : ===
-  bundle exec puppet-docker push $container_name --repository pcr-internal.puppet.net/release-engineering
+  bundle exec puppet-docker push $container_name --repository pcr-internal.puppet.net/release-engineering --version $container_version
 }
 
 : ===
@@ -58,7 +59,7 @@ done
 : === push all the images
 : ===
 for container in ${container_list[@]}; do
-  push_image $container
+  push_image $container $version
 done
 
 : ===
