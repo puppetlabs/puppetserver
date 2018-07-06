@@ -353,6 +353,7 @@
                                  (Thread/sleep 500)
                                  (recur (dec times)))))))))))
 
+;; This may need to be moved to one of the utils file/ns
 (defn get-ca-signed-cert
   [ca-cert
    certname
@@ -454,7 +455,45 @@
                (is (= 200 (:status full-crl-response)))
                (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
                (is (and (string? full-crl-response-body) (= full-crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))
+          )))
 
-))
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+         "JRuby mocking is safe here because all of the requests are to the CA
+         endpots, which are implemented in Clojure."
+          app
+          {:jruby-puppet {:master-conf-dir master-conf-dir}
+           :certificate-authority {:compile-masters ["compile-master"]
+                                   :disable-infra-crl false}}
+          (testing "Verify infrastructure CRL is returned "
+            (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                           :as :text}
+                  crl-response (http-client/get
+                                   "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
+                                   (merge options {:headers {"Accept" "text/plain"}}))
+                  crl-response-body (:body crl-response)]
+              (is (map? crl-response))
+              (is (= 200 (:status crl-response)))
+              ;; (is (= "text/plain" (get-in crl-response [:headers "Content-Type"])))  ;; CA does not return this
+              (is (and (string? crl-response-body) (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra-crl.pem")))))
+          )))
 
-))))
+        (bootstrap/with-puppetserver-running-with-mock-jrubies
+         "JRuby mocking is safe here because all of the requests are to the CA
+         endpots, which are implemented in Clojure."
+          app
+          {:jruby-puppet {:master-conf-dir master-conf-dir}
+           :certificate-authority {:compile-masters ["compile-master"]
+                                   :disable-infra-crl true}}
+          (testing "Verify full CRL is returned "
+            (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                           :as :text}
+                  crl-response (http-client/get
+                                   "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
+                                   (merge options {:headers {"Accept" "text/plain"}}))
+                  crl-response-body (:body crl-response)]
+              (is (map? crl-response))
+              (is (= 200 (:status crl-response)))
+              ;; (is (= "text/plain" (get-in crl-response [:headers "Content-Type"])))  ;; CA does not return this
+              (is (and (string? crl-response-body) (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))
+          )))
+)))
