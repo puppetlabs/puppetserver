@@ -3,7 +3,7 @@ FROM ubuntu:16.04
 ARG vcs_ref
 ARG build_date
 ARG version="5.3.1"
-ENV PUPPET_SERVER_VERSION=$version
+ENV PUPPET_SERVER_VERSION="$version"
 ENV DUMB_INIT_VERSION="1.2.1"
 ENV UBUNTU_CODENAME="xenial"
 ENV PUPPETSERVER_JAVA_ARGS="-Xms256m -Xmx256m"
@@ -15,10 +15,10 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
       org.label-schema.name="Puppet Server (No PuppetDB)" \
       org.label-schema.license="Apache-2.0" \
-      org.label-schema.version=$PUPPET_SERVER_VERSION \
+      org.label-schema.version="$PUPPET_SERVER_VERSION" \
       org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
-      org.label-schema.vcs-ref=$vcs_ref \
-      org.label-schema.build-date=$build_date \
+      org.label-schema.vcs-ref="$vcs_ref" \
+      org.label-schema.build-date="$build_date" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.dockerfile="/Dockerfile"
 
