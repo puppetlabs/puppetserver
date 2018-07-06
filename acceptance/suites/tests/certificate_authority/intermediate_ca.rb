@@ -68,8 +68,8 @@ test_name 'Intermediate CA setup' do
   end
 
   step 'Import External CA infrastructure and restart Puppet Server' do
-    ca_cli = '/opt/puppetlabs/bin/puppetserver ca'
-    on master, [ca_cli, 'import',
+    ca_cli = '/opt/puppetlabs/bin/puppetserver'
+    on master, [ca_cli, 'ca', 'import',
                 private_key_path,
                 cert_bundle_path,
                 crl_chain_path].join(' ')
@@ -110,9 +110,5 @@ test_name 'Intermediate CA setup' do
   on test_agent,
      puppet("agent -t --certname fake_agent_name --server #{master}"),
      :acceptable_exit_codes => [1]
-
-  # Remove the fake agent and get a new cert
-  on test_agent, "rm -rf #{test_agent.puppet['ssldir']}"
-  on test_agent, puppet("agent -t --server #{master}")
 
 end

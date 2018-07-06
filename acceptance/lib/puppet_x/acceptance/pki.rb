@@ -134,47 +134,10 @@ module PuppetX
         crl
       end
 
-      # Creates a self-signed root ca, then signs two node certs, revoking one of them.
-      # Creates an intermediate CA and one node cert off of it.
-      # Creates a second intermediate CA and one node cert off if it.
-      # Creates a leaf CA off of the intermediate CA, then signs two node certs revoking one of them.
-      # Revokes an intermediate CA.
-      # Returns the ca bundle, crl chain, and all the node certs
-      #
-      #            -----
-      #           /     \
-      #          /       \
-      #          | root  +-------------------o------------------o
-      #          \  CA   /                   |                  |
-      #           \     /                    |                  |
-      #            --+--                     |                  |
-      #              |                       |                  |
-      #              |                       |                  |
-      #              |                       |                  |
-      #              |                     --+--              --+--
-      # +---------+  |   +---------+      /     \            /     \
-      # | revoked |  |   |         |     /revoked\          /       \
-      # |   node  +--o---+   node  |     |  int  |          | int   |
-      # |         |      |         |     \  CA   /          \  CA   /
-      # +---------+      +---------+      \     /            \     /
-      #                                    --+--              --+--
-      #                                      |                  |
-      #                                      |                  |
-      #                                      |                  |
-      #                                    --+--                |
-      #                                   /     \           +---+-----+
-      #                                  /       \          |         |
-      #                                  | leaf  |          |  node   |
-      #                                  \  CA   /          |         |
-      #                                   \     /           +---------+
-      #                                    --+--
-      #                                      |
-      #                                      |
-      #                         +---------+  |  +----------+
-      #                         | revoked |  |  |          |
-      #                         |   node  +--o--+  node    |
-      #                         |         |     |          |
-      #                         +---------+     +----------+
+      # Creates a self-signed root ca, an intermediate ca, and a leaf ca.
+      # Creates CRLs for each ca
+      # Returns the certs in a bundle, the crls in a bundle and the
+      # private key for the leaf ca
       def self.create_chained_pki(leaf_name)
         root_key = create_private_key
         root_cert = self_signed_ca(root_key, ROOT_CA_NAME)
@@ -203,7 +166,8 @@ module PuppetX
      private
 
       def self.just_now
-        Time.now - 1
+        # Give us some slack in possible clock skew between hosts
+        Time.now - 300
       end
 
       def self.extension_factory_for(ca, cert = nil)
