@@ -89,7 +89,7 @@ discussion in this document assumes the content of
 To use one of the pre-defined config files, specify the path to it
 using `beaker`'s `--config` option. For example:
 
-    bundle exec beaker --config acceptance/beaker/jenkins/redhat7-64m-64a.cfg ...
+    bundle exec beaker --config acceptance/config/beaker/jenkins/redhat7-64m-64a.cfg ...
 
 ### Using beaker-hostgenerator
 

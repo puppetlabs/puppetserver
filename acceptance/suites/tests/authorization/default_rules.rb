@@ -135,6 +135,11 @@ with_puppet_running_on(master, {}) do
     assert_allowed
   end
 
+  step 'status service endpoint' do
+    curl_unauthenticated('/status/v1/services')
+    assert_allowed
+  end
+
   step 'static file content endpoint' do
     # We'd actually need to perform a commit and use its code-id in order to
     # get back a 200, but we know that a 400 means we got past authorization
