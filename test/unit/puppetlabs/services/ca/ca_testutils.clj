@@ -41,6 +41,7 @@
    :allow-subject-alt-names          false
    :ca-name                          "test ca"
    :ca-ttl                           1
+   :cadir                            (str cadir)
    :cacrl                            (str cadir "/ca_crl.pem")
    :cacert                           (str cadir "/ca_crt.pem")
    :cakey                            (str cadir "/ca_key.pem")

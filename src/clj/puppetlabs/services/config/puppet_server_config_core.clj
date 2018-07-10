@@ -6,7 +6,6 @@
             [clojure.tools.logging :as log]
             [puppetlabs.kitchensink.core :refer [keyset]]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-            [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
             [schema.core :as schema]
             [clojure.string :as str]
             [puppetlabs.i18n.core :as i18n])
@@ -20,17 +19,11 @@
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
   #{:allow-duplicate-certs
     :autosign
-    :cacert
-    :cacrl
-    :cakey
     :ca-name
-    :capub
     :ca-ttl
     :certdir
     :certname
-    :cert-inventory
     :codedir ; This is not actually needed in Puppet Server, but it's needed in PE (file sync)
-    :csrdir
     :csr-attributes
     :dns-alt-names
     :hostcert
@@ -42,8 +35,6 @@
     :manage-internal-file-permissions
     :privatekeydir
     :requestdir
-    :serial
-    :signeddir
     :ssl-client-header
     :ssl-client-verify-header
     :trusted-oid-mapping-file})
@@ -110,12 +101,13 @@
 
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."
-  [override-webserver-settings! webserver-settings puppet-config]
-  (let [{:keys [hostcert localcacert cacrl hostprivkey]} puppet-config
+  [override-webserver-settings! webserver-settings ca-settings puppet-config]
+  (let [{:keys [hostcert localcacert hostprivkey]} puppet-config
         overrides {:ssl-cert     hostcert
                    :ssl-key      hostprivkey
                    :ssl-ca-cert  localcacert
-                   :ssl-crl-path cacrl}]
+                   :ssl-crl-path (:cacrl ca-settings)
+                   }]
     (if (some #((key %) webserver-settings) overrides)
       (log/info (i18n/trs "Not overriding webserver settings with values from core Puppet"))
       (do

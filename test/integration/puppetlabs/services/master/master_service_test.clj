@@ -294,43 +294,64 @@
        (is (re-find #"Puppet Server Developer Dashboard" (:body resp)))))))
 
 (deftest ^:integration ca-files-test
-  (testing "CA settings from puppet are honored and the CA
-            files are created when the service starts up"
+  (testing "The CA files are created when the service starts up"
     (let [ca-files-test-runtime-dir (str master-service-test-runtime-dir
-                                         "/ca-files-test")
-          ca-files-test-puppet-conf (fs/file test-resources-path
-                                             "ca_files_test/puppet.conf")]
+                                         "/ca-files-test")]
       (fs/delete-dir ca-files-test-runtime-dir)
-      (testutils/with-puppet-conf-files
-       {"puppet.conf" ca-files-test-puppet-conf}
-       ca-files-test-runtime-dir
-       (logutils/with-test-logging
-        (bootstrap-testutils/with-puppetserver-running
-         app
-         {:jruby-puppet {:gem-path gem-path
-                         :master-conf-dir ca-files-test-runtime-dir
-                         :max-active-instances 1}
-          :webserver {:port 8081}}
-         (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (jruby/with-jruby-puppet
-            jruby-puppet jruby-service :ca-files-test
-            (letfn [(test-path!
-                      [setting expected-path]
-                      (is (= (ks/absolute-path expected-path)
-                             (.getSetting jruby-puppet setting)))
-                      (is (fs/exists? (ks/absolute-path expected-path))))]
+        (logutils/with-test-logging
+          (bootstrap-testutils/with-puppetserver-running
+            app
+            {:jruby-puppet          {:gem-path             gem-path
+                                     :max-active-instances 1}
+             :webserver             {:port 8081}
+             :certificate-authority {:cadir     (str ca-files-test-runtime-dir "/ca")
+                                     :cert-inventory (str ca-files-test-runtime-dir "/inventory.txt")
+                                     :serial    (str ca-files-test-runtime-dir "/certs/serial")}
+             }
+            (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+              (jruby/with-jruby-puppet
+                jruby-puppet jruby-service :ca-files-test
+                (letfn [(test-path!
+                          [expected-path]
+                          (is (fs/exists? (ks/absolute-path expected-path))))]
+                  (test-path! (str ca-files-test-runtime-dir "/ca/ca_pub.pem"))
+                  (test-path! (str ca-files-test-runtime-dir "/ca/ca_key.pem"))
+                  (test-path! (str ca-files-test-runtime-dir "/ca/ca_crt.pem"))
+                  (test-path! (str ca-files-test-runtime-dir "/ca/ca_crl.pem"))
+                  (test-path! (str ca-files-test-runtime-dir "/certs/serial"))
+                  (test-path! (str ca-files-test-runtime-dir "/inventory.txt"))))))))))
 
-              (test-path! "capub" (str ca-files-test-runtime-dir "/ca/ca_pub.pem"))
-              (test-path! "cakey" (str ca-files-test-runtime-dir "/ca/ca_key.pem"))
-              (test-path! "cacert" (str ca-files-test-runtime-dir "/ca/ca_crt.pem"))
-              (test-path! "localcacert" (str ca-files-test-runtime-dir "/ca/ca.pem"))
-              (test-path! "cacrl" (str ca-files-test-runtime-dir "/ca/ca_crl.pem"))
-              (test-path! "hostcrl" (str ca-files-test-runtime-dir "/ca/crl.pem"))
-              (test-path! "hostpubkey" (str ca-files-test-runtime-dir "/public_keys/localhost.pem"))
-              (test-path! "hostprivkey" (str ca-files-test-runtime-dir "/private_keys/localhost.pem"))
-              (test-path! "hostcert" (str ca-files-test-runtime-dir "/certs/localhost.pem"))
-              (test-path! "serial" (str ca-files-test-runtime-dir "/certs/serial"))
-              (test-path! "cert_inventory" (str ca-files-test-runtime-dir "/inventory.txt")))))))))))
+(deftest ^:integration hostcert-files-test
+  (testing "Settings from puppet are honored and the hostcert
+            files are created when the service starts up"
+    (let [hostcert-files-test-runtime-dir (str master-service-test-runtime-dir
+                                         "/ca-files-test")
+          hostcert-files-test-puppet-conf (fs/file test-resources-path
+                                             "ca_files_test/puppet.conf")]
+      (fs/delete-dir hostcert-files-test-runtime-dir)
+      (testutils/with-puppet-conf-files
+        {"puppet.conf" hostcert-files-test-puppet-conf}
+        hostcert-files-test-runtime-dir
+        (logutils/with-test-logging
+          (bootstrap-testutils/with-puppetserver-running
+            app
+            {:jruby-puppet {:gem-path gem-path
+                            :master-conf-dir hostcert-files-test-runtime-dir
+                            :max-active-instances 1}
+             :webserver {:port 8081}}
+            (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
+              (jruby/with-jruby-puppet
+                jruby-puppet jruby-service :hostcert-files-test
+                (letfn [(test-path!
+                          [setting expected-path]
+                          (is (= (ks/absolute-path expected-path)
+                                 (.getSetting jruby-puppet setting)))
+                          (is (fs/exists? (ks/absolute-path expected-path))))]
+                  (test-path! "localcacert" (str hostcert-files-test-runtime-dir "/ca/ca.pem"))
+                  (test-path! "hostcrl" (str hostcert-files-test-runtime-dir "/ca/crl.pem"))
+                  (test-path! "hostpubkey" (str hostcert-files-test-runtime-dir "/public_keys/localhost.pem"))
+                  (test-path! "hostprivkey" (str hostcert-files-test-runtime-dir "/private_keys/localhost.pem"))
+                  (test-path! "hostcert" (str hostcert-files-test-runtime-dir "/certs/localhost.pem")))))))))))
 
 (def graphite-enabled-config
   {:metrics {:server-id "localhost"

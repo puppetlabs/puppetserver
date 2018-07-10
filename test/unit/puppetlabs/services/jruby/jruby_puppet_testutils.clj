@@ -228,18 +228,12 @@ create-mock-pool-instance :- JRubyInstance
     {"allow_duplicate_certs" false
      "autosign" true
      "keylength" 2048
-     "cacert" (str cadir "/ca_crt.pem")
      "ca_name" (str "Puppet CA: " certname)
-     "cacrl" (str cadir "/ca_crl.pem")
-     "cakey" (str cadir "/ca_key.pem")
-     "capub" (str cadir "/ca_pub.pem")
      "ca_ttl" 157680000
      "certdir" certdir
      "certname" certname
-     "cert_inventory" (str cadir "/inventory.txt")
      "codedir" (:master-code-dir jruby-puppet-config)
      "csr_attributes" (str confdir "/csr_attributes.yaml")
-     "csrdir" (str cadir "/requests")
      "dns_alt_names" ""
      "hostcert" (str certdir "/" certname ".pem")
      "hostcrl" (str ssldir "/crl.pem")
@@ -249,8 +243,6 @@ create-mock-pool-instance :- JRubyInstance
      "manage_internal_file_permissions" true
      "privatekeydir" private-key-dir
      "requestdir" (str ssldir "/certificate_requests")
-     "serial" (str cadir "/serial")
-     "signeddir" (str cadir "/signed")
      "ssl_client_header" "HTTP_X_CLIENT_DN"
      "ssl_client_verify_header" "HTTP_X_CLIENT_VERIFY"
      "trusted_oid_mapping_file" (str confdir

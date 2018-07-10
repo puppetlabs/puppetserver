@@ -59,6 +59,7 @@
    :allow-subject-alt-names          schema/Bool
    :autosign                         (schema/either schema/Str schema/Bool)
    :cacert                           schema/Str
+   :cadir                            schema/Str
    :cacrl                            schema/Str
    :cakey                            schema/Str
    :capub                            schema/Str
@@ -118,13 +119,58 @@
 (def default-allow-auth-extensions
   false)
 
+(def default-cadir
+  "/etc/puppetlabs/puppetserver/ca")
+
+(defn default-cacert
+  [cadir]
+  (str cadir "/ca_crt.pem"))
+
+(defn default-cacrl
+  [cadir]
+  (str cadir "/ca_crl.pem"))
+
+(defn default-cakey
+  [cadir]
+  (str cadir "/ca_key.pem"))
+
+(defn default-capub
+  [cadir]
+  (str cadir "/ca_pub.pem"))
+
+(defn default-cert-inventory
+  [cadir]
+  (str cadir "/inventory.txt"))
+
+(defn default-csrdir
+  [cadir]
+  (str cadir "/requests"))
+
+(defn default-signeddir
+  [cadir]
+  (str cadir "/signed"))
+
+(defn default-serial
+  [cadir]
+  (str cadir "/serial"))
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
   [ca-data]
   (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names
-                  :allow-authorization-extensions default-allow-auth-extensions}]
+                  :allow-authorization-extensions default-allow-auth-extensions
+                  :cacert default-cacert
+                  :cacrl default-cacrl
+                  :cadir default-cadir
+                  :cakey default-cakey
+                  :capub default-capub
+                  :cert-inventory default-cert-inventory
+                  :csrdr default-csrdir
+                  :serial default-serial
+                  :signeddir default-signeddir}]
     (merge defaults ca-data)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -285,6 +331,7 @@
           :autosign
           :ca-name
           :ca-ttl
+          :cadir
           :keylength
           :manage-internal-file-permissions
           :ruby-load-path

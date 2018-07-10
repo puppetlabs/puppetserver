@@ -66,12 +66,13 @@
                                (reset! settings-passed settings))
         puppet-config        {:hostcert    "thehostcert"
                               :hostprivkey "thehostprivkey"
-                              :cacrl       "thecacrl"
                               :localcacert "thelocalcacert"}
+        ca-settings          {:cacrl       "thecacrl"}
         init-webserver-fn    (fn [webserver-settings]
                                (reset! settings-passed nil)
                                (init-webserver! override-fn
                                                 webserver-settings
+                                                ca-settings
                                                 puppet-config)
                                @settings-passed)
         webserver-ssl-config {:ssl-cert     "thehostcert"
