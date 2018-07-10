@@ -39,6 +39,9 @@
 (def master-log-dir
   "./target/master-var/log")
 
+(def ca-dir
+  "./target/ca")
+
 (defn load-dev-config-with-overrides
   [overrides]
   (let [tmp-conf (ks/temp-file "puppetserver" ".conf")]
@@ -50,6 +53,7 @@
         (assoc-in [:jruby-puppet :master-var-dir] master-var-dir)
         (assoc-in [:jruby-puppet :master-run-dir] master-run-dir)
         (assoc-in [:jruby-puppet :master-log-dir] master-log-dir)
+        (assoc-in [:certificate-authority :cadir] ca-dir)
         (ks/deep-merge overrides))))
 
 (def services-from-dev-bootstrap
@@ -171,14 +175,14 @@
 
 (schema/defn get-ca-cert-for-running-server :- ca/Certificate
   []
-  (ssl-utils/pem->cert "./target/master-conf/ssl/ca/ca_crt.pem"))
+  (ssl-utils/pem->cert "./target/ca/ca_crt.pem"))
 
 (schema/defn get-cert-signed-by-ca-for-running-server
   :- (schema/pred ssl-simple/ssl-cert?)
   [ca-cert :- ca/Certificate
    certname :- schema/Str]
   (let [ca-private-key (ssl-utils/pem->private-key
-                        (str "./target/master-conf/ssl/ca/ca_key.pem"))
+                        (str "./target/ca/ca_key.pem"))
         ca-dn (-> ca-cert
                   (.getSubjectX500Principal)
                   (.getName))

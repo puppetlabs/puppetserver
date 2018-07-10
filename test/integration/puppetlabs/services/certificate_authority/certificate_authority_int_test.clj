@@ -200,7 +200,8 @@
        "JRuby mocking is safe here because all of the requests are to the CA
        endpoints, which are implemented in Clojure."
         app
-        {:jruby-puppet {:master-conf-dir master-conf-dir}}
+        {:certificate-authority {:cadir (str master-conf-dir "/ssl/ca")}
+         :jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
                        (str "https://localhost:8140"
                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
@@ -287,7 +288,7 @@
             :webserver
             {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
              :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
-             :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+             :ssl-ca-cert (str bootstrap/ca-dir "/ca_crt.pem")
              :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
            (let [key-pair (ssl-utils/generate-key-pair)
                  subject "crl_reload"
@@ -296,16 +297,16 @@
                  private-key (ssl-utils/get-private-key key-pair)
                  private-key-file (ks/temp-file)
                  csr (ssl-utils/generate-certificate-request key-pair subject-dn)
-                 options {:ssl-cert (str bootstrap/master-conf-dir
-                                         "/ssl/ca/ca_crt.pem")
-                          :ssl-key (str bootstrap/master-conf-dir
-                                        "/ssl/ca/ca_key.pem")
-                          :ssl-ca-cert (str bootstrap/master-conf-dir
-                                            "/ssl/ca/ca_crt.pem")
+                 options {:ssl-cert (str bootstrap/ca-dir
+                                         "/ca_crt.pem")
+                          :ssl-key (str bootstrap/ca-dir
+                                        "/ca_key.pem")
+                          :ssl-ca-cert (str bootstrap/ca-dir
+                                            "/ca_crt.pem")
                           :as :text}
                  _ (ssl-utils/key->pem! private-key private-key-file)
-                 _ (ssl-utils/obj->pem! csr (str bootstrap/master-conf-dir
-                                                "/ssl/ca/requests/"
+                 _ (ssl-utils/obj->pem! csr (str bootstrap/ca-dir
+                                                "/requests/"
                                                 subject
                                                 ".pem"))
                  cert-status-request (fn [action]
@@ -323,8 +324,8 @@
                                   "https://localhost:8140/status/v1/services"
                                    (merge options
                                           {:ssl-key (str private-key-file)
-                                           :ssl-cert (str bootstrap/master-conf-dir
-                                                          "/ssl/ca/signed/"
+                                           :ssl-cert (str bootstrap/ca-dir
+                                                          "/signed/"
                                                           subject
                                                           ".pem")}))]
              (testing "node certificate request can be signed successfully"

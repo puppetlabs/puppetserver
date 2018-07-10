@@ -25,7 +25,7 @@
           oid-mappings (ca/get-oid-mappings custom-oid-file)
           auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))
           ca-crl-file (.getCanonicalPath (fs/file
-                                       (get-in-config [:puppetserver :cacrl])))
+                                           (:cacrl settings)))
           host-crl-file (.getCanonicalPath (fs/file
                                        (get-in-config [:puppetserver :hostcrl])))
           watcher (create-watcher {:recursive false})]
@@ -64,13 +64,13 @@
 
   (retrieve-ca-cert!
     [this localcacert]
-    (ca/retrieve-ca-cert! (get-in-config [:puppetserver :cacert])
-                          localcacert))
+    (let [settings (ca/config->ca-settings (get-config))]
+      (ca/retrieve-ca-cert! (:cacert settings) localcacert)))
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (ca/retrieve-ca-crl! (get-in-config [:puppetserver :cacrl])
-                         localcacrl))
+    (let [settings (ca/config->ca-settings (get-config))]
+      (ca/retrieve-ca-crl! (:cacrl settings) localcacrl)))
 
   (get-auth-handler
     [this]

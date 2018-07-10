@@ -59,6 +59,7 @@
    :cacrl                    schema/Str
    :cakey                    schema/Str
    :capub                    schema/Str
+   :cadir                    schema/Str
    :ca-name                  schema/Str
    :ca-ttl                   schema/Int
    :cert-inventory           schema/Str
@@ -108,6 +109,55 @@
 
 (def OIDMappings
   {schema/Str schema/Keyword})
+
+(def default-cadir
+  "/etc/puppetlabs/puppetserver/ca")
+
+(defn default-cacert
+  [cadir]
+  (str cadir "/ca_crt.pem"))
+
+(defn default-cacrl
+  [cadir]
+  (str cadir "/ca_crl.pem"))
+
+(defn default-cakey
+  [cadir]
+  (str cadir "/ca_key.pem"))
+
+(defn default-capub
+  [cadir]
+  (str cadir "/ca_pub.pem"))
+
+(defn default-cert-inventory
+  [cadir]
+  (str cadir "/inventory.txt"))
+
+(defn default-csrdir
+  [cadir]
+  (str cadir "/requests"))
+
+(defn default-signeddir
+  [cadir]
+  (str cadir "/signed"))
+
+(defn default-serial
+  [cadir]
+  (str cadir "/serial"))
+
+(schema/defn ^:always-validate
+initialize-ca-config
+  [ca-data-structure]
+  (-> ca-data-structure
+      (update-in [:cadir] #(or % default-cadir))
+      (update-in [:cacert] #(or % (default-cacert (:cadir ca-data-structure))))
+      (update-in [:cacrl] #(or % (default-cacrl  (:cadir ca-data-structure))))
+      (update-in [:cakey] #(or % (default-cakey  (:cadir ca-data-structure))))
+      (update-in [:capub] #(or % (default-capub  (:cadir ca-data-structure))))
+      (update-in [:cert-inventory] #(or % (default-cert-inventory  (:cadir ca-data-structure))))
+      (update-in [:csrdir] #(or % (default-csrdir (:cadir ca-data-structure))))
+      (update-in [:signeddir] #(or % (default-signeddir  (:cadir ca-data-structure))))
+      (update-in [:serial] #(or % (default-serial  (:cadir ca-data-structure))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -258,6 +308,7 @@
           :autosign
           :ca-name
           :ca-ttl
+          :cadir
           :keylength
           :manage-internal-file-permissions
           :ruby-load-path
@@ -904,6 +955,8 @@
    service return a map with of all the CA settings."
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
   (-> (select-keys puppetserver (keys CaSettings))
+      (merge (select-keys certificate-authority (keys CaSettings)))
+      (initialize-ca-config)
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
       (assoc :gem-path (str/join (System/getProperty "path.separator")
                                  (:gem-path jruby-puppet)))

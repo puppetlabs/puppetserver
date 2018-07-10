@@ -88,13 +88,13 @@
              "in an error that mentions all offending config keys.")
     (with-test-logging
       (ks-testutils/with-no-jvm-shutdown-hooks
-       (let [config (assoc required-config :cacrl "bogus" :cacert "meow")
+       (let [config (assoc required-config :keylength "bogus" :ca-ttl "meow")
              app (tk/boot-services-with-config
                   (service-and-deps-with-mock-jruby config)
                   config)]
          (is (thrown-with-msg?
               Exception
-              #".*configuration.*conflict.*:cacert, :cacrl"
+              #".*configuration.*conflict.*:ca-ttl, :keylength"
               (tk-internal/throw-app-error-if-exists! app)))
          (tk-app/stop app))))))
 

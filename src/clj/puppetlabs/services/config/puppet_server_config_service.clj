@@ -9,6 +9,7 @@
              :refer [PuppetServerConfigService]]
             [puppetlabs.services.config.puppet-server-config-core :as core]
             [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.puppetserver.certificate-authority :as ca]
             [puppetlabs.i18n.core :as i18n]))
 
 (tk/defservice puppet-server-config-service
@@ -28,6 +29,8 @@
                               (get-in tk-config
                                       [:webserver :puppet-server]
                                       (get-in tk-config [:webserver]))
+                              (ca/initialize-ca-config (get-in tk-config
+                                      [:certificate-authority]))
                               puppet-config)
         (assoc context :puppet-config
                        {:puppetserver puppet-config}))))
@@ -35,7 +38,8 @@
   (get-config
     [this]
     (let [context        (tk-services/service-context this)
-          puppet-config  (:puppet-config context)]
+          puppet-config  (:puppet-config context)
+          tk-config      (get-config)]
       (merge puppet-config (get-config))))
 
   (get-in-config
