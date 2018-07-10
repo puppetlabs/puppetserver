@@ -355,11 +355,11 @@
 
 ;; This may need to be moved to one of the utils file/ns
 (defn get-ca-signed-cert
-  [ca-cert
-   certname
+  [certname
    serial
    master-conf-dir]
-  (let [ca-public-key  (.getPublicKey ca-cert)
+  (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem")) 
+        ca-public-key  (.getPublicKey ca-cert)
         ca-private-key (ssl-utils/pem->private-key
                         (str master-conf-dir "/ssl/ca/ca_key.pem"))
         keypair     (utils/generate-key-pair 1024)
@@ -396,15 +396,16 @@
           {:jruby-puppet {:master-conf-dir master-conf-dir}}
           (testing "Create/sign compile master certificate"
             (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem"))
-                  cm-cert (get-ca-signed-cert ca-cert subject 23 master-conf-dir)
-                  node-cert (get-ca-signed-cert ca-cert node-subject 24 master-conf-dir)])))
+                  ; cm-cert (get-ca-signed-cert ca-cert subject 23 master-conf-dir)
+                  cm-cert (get-ca-signed-cert subject 23 master-conf-dir)
+                  node-cert (get-ca-signed-cert node-subject 24 master-conf-dir)])))
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:compile-masters ["compile-master"]
-                                   :disable-infra-crl false}}   ;; Got to be able to use subject here
+           :certificate-authority {:infra-nodes ["compile-master"];; Got to be able to use subject, defined above, here
+                                   :enable-infra-crl true}}   
           (testing "should update infrastructure CRL"
             (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem"))
                   cm-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ssl/ca/signed") subject))
@@ -428,42 +429,46 @@
               (testing "Infra CRL should contain the revoked compile master certificate"
                  (let [revoke-response (cert-status-request "revoked" subject)]
                    ;; If the revocation was successful infra CRL should contain above revoked compile master cert
-                   (is (and (= 204 (:status revoke-response)) (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra-crl.pem")) cm-cert)))
-))
+                   (is (= 204 (:status revoke-response)))
+                   (is (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra-crl.pem")) cm-cert))))
+
               (testing "Infra CRL should NOT contain a revoked non compile master certificate"
                  (let [revoke-response (cert-status-request "revoked" node-subject)]
-                   (is (and (= 204 (:status revoke-response)) (not (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra-crl.pem")) node-cert))))
-            ))))
-           (testing "Verify correct CRL is returned depending on disable-infra-crl"
+                   (is (= 204 (:status revoke-response)))
+                   (is (not (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra-crl.pem")) node-cert)))))))
+
+           (testing "Verify correct CRL is returned depending on enable-infra-crl"
              (let [request (mock/request :get               
                                      "/v1/certificate_revocation_list/mynode")
                    infra-crl-response (handle-get-certificate-revocation-list
                               request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem") 
                                        :infra-crl-path (str master-conf-dir "/ssl/ca/infra-crl.pem")
-                                       :disable-infra-crl false })
+                                       :enable-infra-crl true })
                    infra-crl-response-body (:body infra-crl-response)
                    full-crl-response (handle-get-certificate-revocation-list
                               request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem") 
                                        :infra-crl-path (str master-conf-dir "/ssl/ca/infra-crl.pem")
-                                       :disable-infra-crl true })
+                                       :enable-infra-crl false })
                    full-crl-response-body (:body full-crl-response)]
                (is (map? infra-crl-response))
                (is (= 200 (:status infra-crl-response)))
                (is (= "text/plain" (get-in infra-crl-response [:headers "Content-Type"])))
-               (is (and (string? infra-crl-response-body) (= infra-crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra-crl.pem")))))
+               (is (string? infra-crl-response-body))
+               (is (= infra-crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra-crl.pem"))))
+
                (is (map? full-crl-response))
                (is (= 200 (:status full-crl-response)))
                (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
-               (is (and (string? full-crl-response-body) (= full-crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))
-          )))
+               (is (string? full-crl-response-body))
+               (is (= full-crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))))
 
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:compile-masters ["compile-master"]
-                                   :disable-infra-crl false}}
+           :certificate-authority {:infra-nodes ["compile-master"]
+                                   :enable-infra-crl true}}
           (testing "Verify infrastructure CRL is returned "
             (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
                            :as :text}
@@ -474,16 +479,16 @@
               (is (map? crl-response))
               (is (= 200 (:status crl-response)))
               ;; (is (= "text/plain" (get-in crl-response [:headers "Content-Type"])))  ;; CA does not return this
-              (is (and (string? crl-response-body) (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra-crl.pem")))))
-          )))
+              (is (string? crl-response-body))
+              (is (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra-crl.pem")))))))
 
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:compile-masters ["compile-master"]
-                                   :disable-infra-crl true}}
+           :certificate-authority {:infra-nodes ["compile-master"]
+                                   :enable-infra-crl false}}
           (testing "Verify full CRL is returned "
             (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
                            :as :text}
@@ -494,6 +499,5 @@
               (is (map? crl-response))
               (is (= 200 (:status crl-response)))
               ;; (is (= "text/plain" (get-in crl-response [:headers "Content-Type"])))  ;; CA does not return this
-              (is (and (string? crl-response-body) (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))
-          )))
-)))
+              (is (string? crl-response-body))
+              (is (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem"))))))))))
