@@ -1,0 +1,30 @@
+#!/opt/puppetlabs/puppet/bin/ruby
+
+require 'fileutils'
+require 'puppetserver/ca/stub'
+
+command = ARGV[0]
+
+unless command == "import"
+  STDERR.puts "  'import' is the only valid subcommand, try:"
+  STDERR.puts "    `puppetserver ca import <key> <bundle> <crl>"
+  exit 1
+end
+
+private_key = ARGV[1]
+cert_bundle = ARGV[2]
+crl_chain   = ARGV[3]
+
+unless private_key && cert_bundle && crl_chain
+  STDERR.puts "The import subcommand requires three arguments: private-key, cert-bundle, crl, in that order."
+  exit 1
+end
+
+ca_dir = '/etc/puppetlabs/puppet/ssl/ca'
+FileUtils.mkdir_p ca_dir
+Puppetserver::Ca::Stub.import(private_key, cert_bundle, crl_chain)
+FileUtils.touch(ca_dir + '/inventory.txt')
+File.open(ca_dir + '/serial', 'w+') {|f| f.puts '003' }
+FileUtils.chown_R 'puppet', 'puppet', ca_dir
+
+STDOUT.puts "Import complete"
