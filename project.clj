@@ -212,7 +212,7 @@
                       :plugins [[lein-cljsbuild ~cljsbuild-version
                                  :exclusions [org.clojure/clojurescript
                                               org.apache.commons/commons-compress]]
-                                [puppetlabs/lein-ezbake "1.8.1"]]
+                                [puppetlabs/lein-ezbake "1.8.5"]]
                       :hooks [leiningen.cljsbuild]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
