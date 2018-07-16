@@ -157,18 +157,18 @@
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
-  [ca-data]
+  [{:keys [cadir] :or {cadir default-cadir} :as ca-data}]
   (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions
-                  :cacert default-cacert
-                  :cacrl default-cacrl
-                  :cadir default-cadir
-                  :cakey default-cakey
-                  :capub default-capub
-                  :cert-inventory default-cert-inventory
-                  :csrdr default-csrdir
-                  :serial default-serial
-                  :signeddir default-signeddir}]
+                  :cadir cadir
+                  :cacert (default-cacert cadir)
+                  :cacrl (default-cacrl cadir)
+                  :cakey (default-cakey cadir)
+                  :capub (default-capub cadir)
+                  :cert-inventory (default-cert-inventory cadir)
+                  :csrdir (default-csrdir cadir)
+                  :signeddir (default-signeddir cadir)
+                  :serial (default-serial cadir)}]
     (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

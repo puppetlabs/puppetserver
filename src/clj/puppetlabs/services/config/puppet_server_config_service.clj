@@ -38,8 +38,7 @@
   (get-config
     [this]
     (let [context        (tk-services/service-context this)
-          puppet-config  (:puppet-config context)
-          tk-config      (get-config)]
+          puppet-config  (:puppet-config context)]
       (merge puppet-config (get-config))))
 
   (get-in-config

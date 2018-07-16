@@ -183,7 +183,7 @@
   (testing (str "Validates that the server rejects a csr for signing"
                 " that has the v3 CA:TRUE extension")
     (let [master-conf-dir (str test-resources-dir "/ca_true_test/master/conf")
-          req-dir (str master-conf-dir "/ssl/ca/requests")
+          req-dir (str master-conf-dir "/ca/requests")
           key-pair (ssl-utils/generate-key-pair)
           subjectDN (ssl-utils/cn "test_cert_ca_true")
           serial 1
@@ -200,14 +200,14 @@
        "JRuby mocking is safe here because all of the requests are to the CA
        endpoints, which are implemented in Clojure."
         app
-        {:certificate-authority {:cadir (str master-conf-dir "/ssl/ca")}
+        {:certificate-authority {:cadir (str master-conf-dir "/ca")}
          :jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
                        (str "https://localhost:8140"
                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
-                       {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                        :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
-                        :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                       {:ssl-cert (str master-conf-dir "/ca/ca_crt.pem")
+                        :ssl-key (str master-conf-dir "/ca/ca_key.pem")
+                        :ssl-ca-cert (str master-conf-dir "/ca/ca_crt.pem")
                         :as :text
                         :body "{\"desired_state\": \"signed\"}"
                         :headers {"content-type" "application/json"}})]

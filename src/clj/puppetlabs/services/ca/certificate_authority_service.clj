@@ -55,22 +55,23 @@
                        events)
              (ca/retrieve-ca-crl! ca-crl-file host-crl-file)))))
       (assoc context :auth-handler auth-handler
-                     :watcher watcher)))
+                     :watcher watcher
+                     :ca-settings settings)))
 
   (initialize-master-ssl!
-   [this master-settings certname]
-   (let [settings (ca/config->ca-settings (get-config))]
-     (ca/initialize-master-ssl! master-settings certname settings)))
+    [this master-settings certname]
+    (let [settings (tk-services/service-context this)]
+       (ca/initialize-master-ssl! master-settings certname (:ca-settings settings))))
 
   (retrieve-ca-cert!
     [this localcacert]
-    (let [settings (ca/config->ca-settings (get-config))]
-      (ca/retrieve-ca-cert! (:cacert settings) localcacert)))
+    (let [cacert (-> this tk-services/service-context :ca-settings :cacert)]
+       (ca/retrieve-ca-cert! cacert localcacert)))
 
   (retrieve-ca-crl!
     [this localcacrl]
-    (let [settings (ca/config->ca-settings (get-config))]
-      (ca/retrieve-ca-crl! (:cacrl settings) localcacrl)))
+    (let  [cacrl (-> this tk-services/service-context :ca-settings :cacrl)]
+       (ca/retrieve-ca-crl! cacrl localcacrl)))
 
   (get-auth-handler
     [this]

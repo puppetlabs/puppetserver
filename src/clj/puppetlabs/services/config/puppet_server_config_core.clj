@@ -106,8 +106,7 @@
         overrides {:ssl-cert     hostcert
                    :ssl-key      hostprivkey
                    :ssl-ca-cert  localcacert
-                   :ssl-crl-path (:cacrl ca-settings)
-                   }]
+                   :ssl-crl-path (:cacrl ca-settings)}]
     (if (some #((key %) webserver-settings) overrides)
       (log/info (i18n/trs "Not overriding webserver settings with values from core Puppet"))
       (do
