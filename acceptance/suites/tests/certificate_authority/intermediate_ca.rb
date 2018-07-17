@@ -85,7 +85,7 @@ test_name 'Intermediate CA setup' do
                 cert_bundle_path,
                 crl_chain_path].join(' ')
 
-    on master, "service puppetserver start"
+    on master, "service #{master['puppetservice']} start"
   end
 
   test_agent = (agents - [master]).first
