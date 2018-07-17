@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.4
+
+Released July 17, 2018.
+
+This is a platform support release of Puppet Server.
+
+-   [All issues resolved in Puppet Server 5.3.4](https://tickets.puppetlabs.com/issues/?jql=fixVersion%20%3D%20%27SERVER%205.3.4%27)
+
+### New platforms
+
+This release adds Puppet Server packages for Ubuntu 18.04 (Bionic Beaver).
+
 ## Puppet Server 5.3.3
 
 Released June 7, 2018.
