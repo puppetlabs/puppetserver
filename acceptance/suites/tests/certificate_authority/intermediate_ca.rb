@@ -31,7 +31,13 @@ test_name 'Intermediate CA setup' do
     on master, "cp -pR #{ssl_directory}/* #{backup_directory}/ssl"
     on master, "rm -rf #{ssl_directory}/*"
 
-    on master, puppet("config set route_file /tmp/nonexistent.yaml")
+    # Disable communication to services already configured to use older PKI
+    on master, puppet('config set --section master route_file /tmp/nonexistent.yaml')
+    if master.is_pe?
+      on master, puppet('config set --section master report false')
+      on master, puppet('config set --section master storeconfigs false')
+      on master, puppet('config set --section master node_terminus plain')
+    end
     on master, "mv #{auth_conf} #{backup_directory}/"
 
     create_remote_file master, auth_conf, <<-AUTHCONF
@@ -63,7 +69,12 @@ test_name 'Intermediate CA setup' do
     on master, "cp -pR #{backup_directory}/ssl/* #{ssl_directory}/"
     on master, "rm -rf #{ca_directory}/*"
     on master, "cp -pR #{backup_directory}/ca/* #{ca_directory}/"
-    on master, puppet("config set route_file /etc/puppetlabs/puppet/routes.yaml")
+    on master, puppet('config set --section master route_file /etc/puppetlabs/puppet/routes.yaml')
+    if master.is_pe?
+      on master, puppet('config set --section master report true')
+      on master, puppet("config set --section master storeconfigs true")
+      on master, puppet("config set --section master node_terminus classifier")
+    end
     on master, "service #{master['puppetservice']} start"
   end
 
