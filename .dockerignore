@@ -1,0 +1,10 @@
+.git
+.bundle
+.meghanada
+target
+vendor
+ext/packaging
+junit
+log
+tmp
+Dockerfile
