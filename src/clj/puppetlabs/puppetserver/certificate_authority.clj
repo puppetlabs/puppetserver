@@ -147,17 +147,17 @@
 
 (schema/defn ^:always-validate
 initialize-ca-config
-  [ca-data-structure]
-  (-> ca-data-structure
-      (update-in [:cadir] #(or % default-cadir))
-      (update-in [:cacert] #(or % (default-cacert (:cadir ca-data-structure))))
-      (update-in [:cacrl] #(or % (default-cacrl  (:cadir ca-data-structure))))
-      (update-in [:cakey] #(or % (default-cakey  (:cadir ca-data-structure))))
-      (update-in [:capub] #(or % (default-capub  (:cadir ca-data-structure))))
-      (update-in [:cert-inventory] #(or % (default-cert-inventory  (:cadir ca-data-structure))))
-      (update-in [:csrdir] #(or % (default-csrdir (:cadir ca-data-structure))))
-      (update-in [:signeddir] #(or % (default-signeddir  (:cadir ca-data-structure))))
-      (update-in [:serial] #(or % (default-serial  (:cadir ca-data-structure))))))
+  [{:keys [cadir] :or {cadir default-cadir} :as ca-data}]
+  (let [defaults {:cadir cadir
+                  :cacert (default-cacert cadir)
+                  :cacrl (default-cacrl cadir)
+                  :cakey (default-cakey cadir)
+                  :capub (default-capub cadir)
+                  :cert-inventory (default-cert-inventory cadir)
+                  :csrdir (default-csrdir cadir)
+                  :signeddir (default-signeddir cadir)
+                  :serial (default-serial cadir)}]
+    (merge defaults ca-data)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
