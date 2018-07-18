@@ -119,7 +119,7 @@ master_opts = {
 # https://github.com/puppetlabs/puppetserver/blob/master/documentation/configuration.markdown#service-bootstrapping
 create_remote_file master, "#{jetty_confdir}/../services.d/ca.cfg", "puppetlabs.services.ca.certificate-authority-disabled-service/certificate-authority-disabled-service"
 # disable pdb connectivity
-on master, puppet('config set route_file /tmp/nonexistent.yaml')
+on master, puppet('config set --section master route_file /tmp/nonexistent.yaml')
 # restart master
 on(master, "service #{master['puppetservice']} restart")
 
