@@ -80,10 +80,10 @@ test_name 'Intermediate CA setup' do
 
   step 'Import External CA infrastructure and restart Puppet Server' do
     ca_cli = '/opt/puppetlabs/bin/puppetserver'
-    on master, [ca_cli, 'ca', 'import',
-                private_key_path,
-                cert_bundle_path,
-                crl_chain_path].join(' ')
+    on master, [ca_cli, 'ca', 'setup',
+                '--private-key', private_key_path,
+                '--cert-bundle', cert_bundle_path,
+                '--crl-chain', crl_chain_path].join(' ')
 
     on master, "service #{master['puppetservice']} start"
   end
