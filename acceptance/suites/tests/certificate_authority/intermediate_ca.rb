@@ -5,6 +5,9 @@ require 'puppet_x/acceptance/pki'
 
 test_name 'Intermediate CA setup' do
 
+  test_agent = (agents - [master]).first
+  skip_test 'requires an agent not running on the CA' unless test_agent
+
   def fixture(filename)
     File.read(
       File.expand_path(
@@ -88,7 +91,6 @@ test_name 'Intermediate CA setup' do
     on master, "service #{master['puppetservice']} start"
   end
 
-  test_agent = (agents - [master]).first
 
   # Remove the old CA infrastructure from an agent
   on test_agent, "rm -rf #{test_agent.puppet['ssldir']}"
