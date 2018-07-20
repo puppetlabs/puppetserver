@@ -15,8 +15,8 @@ test_name 'Intermediate CA setup' do
         __FILE__))
   end
 
-  ssl_directory    = master.puppet['ssldir']
-  ca_directory     = master.puppet['cadir']
+  ssl_directory    = puppet_config(master, 'ssldir', section: 'master')
+  ca_directory     = puppet_config(master, 'cadir', section: 'master')
   auth_conf        = "/etc/puppetlabs/puppetserver/conf.d/auth.conf"
   test_directory   = master.tmpdir('intermediate_ca_files')
   backup_directory = master.tmpdir('intermediate_ca_backup')
@@ -93,11 +93,13 @@ test_name 'Intermediate CA setup' do
 
 
   # Remove the old CA infrastructure from an agent
-  on test_agent, "rm -rf #{test_agent.puppet['ssldir']}"
+  ssldir = puppet_config(test_agent, 'ssldir', section: 'agent')
+  cert = puppet_config(master, 'hostcert', section: 'master')
+  cacert = puppet_config(master, 'localcacert', section: 'master')
+  key = puppet_config(master, 'hostprivkey', section: 'master')
 
-  ssl_options = "--cert #{master.puppet['hostcert']} " +
-                "--cacert #{master.puppet['localcacert']} " +
-                "--key #{master.puppet['hostprivkey']}"
+  on test_agent, "rm -rf #{ssldir}"
+  ssl_options = "--cert #{cert} --cacert #{cacert} --key #{key}"
 
   # Create a dummy agent
   on test_agent,
