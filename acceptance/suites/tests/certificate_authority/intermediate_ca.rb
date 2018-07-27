@@ -3,7 +3,7 @@
 
 require 'puppet_x/acceptance/pki'
 
-test_name 'Intermediate CA setup' do
+test_name 'Intermediate CA import' do
 
   test_agent = (agents - [master]).first
   skip_test 'requires an agent not running on the CA' unless test_agent
@@ -90,7 +90,7 @@ test_name 'Intermediate CA setup' do
 
   step 'Import External CA infrastructure and restart Puppet Server' do
     ca_cli = '/opt/puppetlabs/bin/puppetserver'
-    on master, [ca_cli, 'ca', 'setup',
+    on master, [ca_cli, 'ca', 'import',
                 '--private-key', private_key_path,
                 '--cert-bundle', cert_bundle_path,
                 '--crl-chain', crl_chain_path].join(' ')
