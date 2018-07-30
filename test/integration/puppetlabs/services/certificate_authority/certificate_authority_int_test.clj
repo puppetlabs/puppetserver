@@ -387,7 +387,8 @@
   (testing "Compile master certificate revocation "
     (let [master-conf-dir (str test-resources-dir "/infracrl_test/master/conf")
           subject "compile-master"
-          node-subject "agent-node"]
+          node-subject "agent-node"
+          test-infra-nodes-path "/tmp/infra-nodes.txt"]
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
          endpoints, which are implemented in Clojure."
@@ -398,13 +399,14 @@
             (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem"))
                   ; cm-cert (get-ca-signed-cert ca-cert subject 23 master-conf-dir)
                   cm-cert (get-ca-signed-cert subject 23 master-conf-dir)
-                  node-cert (get-ca-signed-cert node-subject 24 master-conf-dir)])))
+                  node-cert (get-ca-signed-cert node-subject 24 master-conf-dir)]
+                (spit test-infra-nodes-path subject))))
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:infra-nodes ["compile-master"];; Got to be able to use subject, defined above, here
+           :certificate-authority {:infra-nodes-path test-infra-nodes-path
                                    :enable-infra-crl true}}   
           (testing "should update infrastructure CRL"
             (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem"))
@@ -467,7 +469,7 @@
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:infra-nodes ["compile-master"]
+           :certificate-authority {:infra-nodes-path test-infra-nodes-path
                                    :enable-infra-crl true}}
           (testing "Verify infrastructure CRL is returned "
             (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
@@ -487,7 +489,7 @@
          endpots, which are implemented in Clojure."
           app
           {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:infra-nodes ["compile-master"]
+           :certificate-authority {:infra-nodes-path test-infra-nodes-path
                                    :enable-infra-crl false}}
           (testing "Verify full CRL is returned "
             (let [options {:ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")

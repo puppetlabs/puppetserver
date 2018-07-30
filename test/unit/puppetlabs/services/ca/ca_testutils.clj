@@ -51,7 +51,7 @@
    :serial                (str cadir "/serial")
    :ruby-load-path        jruby-testutils/ruby-load-path
    :gem-path              jruby-testutils/gem-path
-   :infra-nodes           []
+   :infra-nodes-path      (str "/tmp/puppetlabs/puppetserver/ca/infra-nodes.txt")
    :infra-node-serials-path (str cadir "/cm-serials.txt")
    :infra-crl-path        (str cadir "/infra-crl.pem")
    :enable-infra-crl      true})
