@@ -19,6 +19,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
+            [clojure.set :as cset :refer [union]]
             [clj-yaml.core :as yaml]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.i18n.core :as i18n]))
@@ -197,9 +198,11 @@
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
-(def required-ca-files
+(defn required-ca-files
   "The set of SSL related files that are required on the CA."
-  #{:cacert :cacrl :cakey :cert-inventory :serial :infra-node-serials-path :infra-crl-path})
+  [enable-infra-crl]
+  (union #{:cacert :cacrl :cakey :cert-inventory :serial}
+     (if enable-infra-crl #{:infra-node-serials-path :infra-crl-path} #{})))
 
 (def max-ca-ttl
   "The longest valid duration for CA certs, in seconds. 50 standard years."
@@ -273,7 +276,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings
+  (-> (dissoc ca-settings
           :access-control
           :allow-duplicate-certs
           :autosign
@@ -284,7 +287,8 @@
           :ruby-load-path
           :gem-path
           ;; :infra-nodes
-          :enable-infra-crl))
+          :enable-infra-crl)
+      (dissoc (if (:enable-infra-crl ca-settings) #{:infra-crl-path :infra-node-serials-path} #{}))))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -428,6 +432,7 @@
                   :infra-node-serials-path (str cadir "/cm-serials.txt")
                   :infra-crl-path (str cadir "/infra-crl.pem")
                   :enable-infra-crl true}]
+    (log/debug (i18n/trs "Inside set-ca-config-defaults" ))
     (-> (merge defaults infra-crl-config)
         (dissoc :certificate-status))))
 
@@ -1199,7 +1204,6 @@
         {:outcome :not-found
          :message msg }))))
 
-;; TODO - Once we have the infra-crl functioning then this would need to be updated
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
   "Given the value of the 'cacrl' setting from Puppet,
@@ -1246,7 +1250,7 @@
   [settings :- CaSettings]
     (ensure-directories-exist! settings)
     (let [required-files (-> (settings->cadir-paths settings)
-                            (select-keys required-ca-files)
+                            (select-keys (required-ca-files (:enable-infra-crl settings)))
                             (vals))]
      (if (every? fs/exists? required-files)
        (do
