@@ -10,7 +10,6 @@ def location_for(place, fake_version = nil)
   end
 end
 
-gem 'packaging', *location_for(ENV['PACKAGING_LOCATION'] || '~> 0.99')
 gem 'rake', :group => [:development, :test]
 gem 'jira-ruby', :group => :development
 
