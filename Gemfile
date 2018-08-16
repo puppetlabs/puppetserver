@@ -1,4 +1,4 @@
-source ENV['GEM_SOURCE'] || "https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/"
+source ENV['GEM_SOURCE'] || 'https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/'
 
 def location_for(place, fake_version = nil)
   if place =~ /^(git[:@][^#]*)#(.*)/
@@ -10,6 +10,7 @@ def location_for(place, fake_version = nil)
   end
 end
 
+gem 'packaging', *location_for(ENV['PACKAGING_LOCATION'] || '~> 0.99')
 gem 'rake', :group => [:development, :test]
 gem 'jira-ruby', :group => :development
 
