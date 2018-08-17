@@ -33,18 +33,19 @@
    All file and directory paths will be rooted at the static 'cadir'
    in dev-resources, unless a different `cadir` is provided."
   [cadir]
-  {:access-control        {:certificate-status {:client-whitelist ["localhost"]}}
-   :autosign              true
-   :allow-duplicate-certs false
-   :ca-name               "test ca"
-   :ca-ttl                1
-   :cacrl                 (str cadir "/ca_crl.pem")
-   :cacert                (str cadir "/ca_crt.pem")
-   :cakey                 (str cadir "/ca_key.pem")
-   :capub                 (str cadir "/ca_pub.pem")
-   :cert-inventory        (str cadir "/inventory.txt")
-   :csrdir                (str cadir "/requests")
-   :keylength             512
+  {:access-control          {:certificate-status {:client-whitelist ["localhost"]}}
+   :autosign                true
+   :allow-duplicate-certs   false
+   :allow-subject-alt-names false
+   :ca-name                 "test ca"
+   :ca-ttl                  1
+   :cacrl                   (str cadir "/ca_crl.pem")
+   :cacert                  (str cadir "/ca_crt.pem")
+   :cakey                   (str cadir "/ca_key.pem")
+   :capub                   (str cadir "/ca_pub.pem")
+   :cert-inventory          (str cadir "/inventory.txt")
+   :csrdir                  (str cadir "/requests")
+   :keylength               512
    :manage-internal-file-permissions true
    :signeddir             (str cadir "/signed")
    :serial                (str cadir "/serial")
