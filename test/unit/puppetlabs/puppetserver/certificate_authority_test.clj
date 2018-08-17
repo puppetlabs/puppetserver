@@ -1059,7 +1059,9 @@
                       #(= {:kind :disallowed-extension
                            :msg (str "CSR 'hostwithaltnames' contains subject alternative names "
                                    "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
-                                   "Use `puppet cert --allow-dns-alt-names sign hostwithaltnames` to sign this request.")}
+                                   "To allow subject alternative names, set allow-subject-alt-names to "
+                                   "true in your puppetserver.conf file, restart the puppetserver, "
+                                   "and try signing this certificate again.")}
                           (select-keys % [:kind :msg]))]
                      ["unknown extension exists" "meow" "meow-bad-extension.pem"
                       #(= {:kind :disallowed-extension
