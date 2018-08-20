@@ -19,6 +19,7 @@
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
+            [clojure.set :as cset :refer [union]]
             [clj-yaml.core :as yaml]
             [puppetlabs.puppetserver.shell-utils :as shell-utils]
             [puppetlabs.i18n.core :as i18n]))
@@ -69,7 +70,18 @@
    :ruby-load-path           [schema/Str]
    :gem-path                 schema/Str
    :signeddir                schema/Str
-   :serial                   schema/Str})
+   :serial                   schema/Str
+   ;; Path to file containing list of infra node certificates including MoM
+   ;; provisioned by PE or user in case of FOSS
+   :infra-nodes-path          schema/Str    
+   ;; Path to file containing serial numbers of infra node certificates
+   ;; This would be re-generated anytime the infra-nodes list is updated.
+   :infra-node-serials-path   schema/Str
+   ;; Path to Infrastructure CRL file containing infra certificates
+   :infra-crl-path                schema/Str
+   ;; Option to continue using full CRL instead of infra CRL if desired
+   ;; Infra CRL would be enabled by default.
+   :enable-infra-crl         schema/Bool })
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -109,6 +121,15 @@
 
 (def OIDMappings
   {schema/Str schema/Keyword})
+
+;; This would be merged with and/or removed once after PR for SERVER-2225 merges
+;; Needed for infra-nodes-path below
+(def default-cadir
+  "/tmp/puppetlabs/puppetserver/ca")
+
+(defn default-infra-nodes-file
+  [cadir]
+  (str cadir "/infra-nodes.txt"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -177,9 +198,11 @@
   "Standard value applied to the Netscape Comment extension for certificates"
   "Puppet Server Internal Certificate")
 
-(def required-ca-files
+(defn required-ca-files
   "The set of SSL related files that are required on the CA."
-  #{:cacert :cacrl :cakey :cert-inventory :serial})
+  [enable-infra-crl]
+  (union #{:cacert :cacrl :cakey :cert-inventory :serial}
+     (if enable-infra-crl #{:infra-node-serials-path :infra-crl-path} #{})))
 
 (def max-ca-ttl
   "The longest valid duration for CA certs, in seconds. 50 standard years."
@@ -253,7 +276,7 @@
   These paths are necessary during CA initialization for determining what needs
   to be created and where they should be placed."
   [ca-settings :- CaSettings]
-  (dissoc ca-settings
+  (-> (dissoc ca-settings
           :access-control
           :allow-duplicate-certs
           :autosign
@@ -262,7 +285,10 @@
           :keylength
           :manage-internal-file-permissions
           :ruby-load-path
-          :gem-path))
+          :gem-path
+          ;; :infra-nodes
+          :enable-infra-crl)
+      (dissoc (if (:enable-infra-crl ca-settings) #{:infra-crl-path :infra-node-serials-path} #{}))))
 
 (schema/defn settings->ssldir-paths
   "Remove all keys from the master settings map which are not file or directory
@@ -329,6 +355,8 @@
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
+(defn seq-contains? [coll target] (some #(= target %) coll))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -392,6 +420,21 @@
         e)
       (catch CRLException e
         e))))
+
+(schema/defn set-ca-config-defaults
+  "Sets defaults for any of the missing config parameters for infra CRL"
+  [infra-crl-config
+   cadir]
+  ;; TODO - We want to use the current node/certificate as the default in here instead of starting empty
+  ;; infra-nodes-path is hardcoded since it needs to be in sync with where PE would be provision it at
+  ;; PE module cannot follow cadir if it changes in ca.conf file
+  (let [defaults {:infra-nodes-path (default-infra-nodes-file default-cadir)
+                  :infra-node-serials-path (str cadir "/cm-serials.txt")
+                  :infra-crl-path (str cadir "/infra-crl.pem")
+                  :enable-infra-crl true}]
+    (log/debug (i18n/trs "Inside set-ca-config-defaults" ))
+    (-> (merge defaults infra-crl-config)
+        (dissoc :certificate-status))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Inventory File
@@ -470,6 +513,34 @@
            netscape-comment-value)
           (utils/create-ca-extensions ca-name ca-serial ca-public-key))))
 
+(schema/defn read-infra-nodes
+    "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
+    [cm-file :- schema/Str]
+    (line-seq (io/reader cm-file)))
+
+(schema/defn generate-compile-master-serials
+  "Given a list of infra nodes it will create a file containing 
+   serial numbers of their certificates (listed on separate lines).
+   It is expected have at least one entry (MoM)"
+   [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
+
+   (with-open [wtr (io/writer infra-node-serials-path)]
+     (try                                
+       (let [infra-nodes (read-infra-nodes infra-nodes-path)]
+         (doseq [cm-node infra-nodes]
+           (try
+           (let [cm-serial  (-> (path-to-cert signeddir cm-node)
+                            (utils/pem->cert)
+                            (utils/get-serial))]
+             (.write wtr (str cm-serial))
+             (.newLine wtr))
+          (catch java.io.FileNotFoundException ex 
+             (log/warn (i18n/trs (str "Failed to find/load certificate for compile master: " cm-node)))))
+         ))
+          (catch java.io.FileNotFoundException ex 
+             (log/warn (i18n/trs (str infra-nodes-path " does not exist")))))
+         ))
+
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -501,13 +572,17 @@
                       ca-exts)
         cacrl       (utils/generate-crl (.getIssuerX500Principal cacert)
                                         private-key
+                                        public-key)
+        infra-crl-path   (utils/generate-crl (.getIssuerX500Principal cacert)
+                                        private-key
                                         public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
     (utils/key->pem! public-key (:capub ca-settings))
     (utils/key->pem! private-key
       (create-file-with-perms (:cakey ca-settings) private-key-perms))
     (utils/cert->pem! cacert (:cacert ca-settings))
-    (utils/crl->pem! cacrl (:cacrl ca-settings))))
+    (utils/crl->pem! cacrl (:cacrl ca-settings))
+    (utils/crl->pem! infra-crl-path (:infra-crl-path ca-settings))))
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
@@ -740,7 +815,8 @@
            hostprivkey)))
 
     :else
-    (generate-master-ssl-files! settings certname ca-settings)))
+    (generate-master-ssl-files! settings certname ca-settings))
+  (generate-compile-master-serials ca-settings))
 
 (schema/defn ^:always-validate retrieve-ca-cert!
   "Ensure a local copy of the CA cert is available on disk.  cacert is the base
@@ -898,12 +974,16 @@
   "Given the configuration map from the Puppet Server config
    service return a map with of all the CA settings."
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
-  (-> (select-keys puppetserver (keys CaSettings))
-      (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
-      (assoc :gem-path (str/join (System/getProperty "path.separator")
-                                 (:gem-path jruby-puppet)))
-      (assoc :access-control (select-keys certificate-authority
-                                          [:certificate-status]))))
+    (let [certificate-authority-defaults (set-ca-config-defaults certificate-authority (fs/parent (:cacrl puppetserver)))]
+      (-> 
+        (merge (select-keys puppetserver (keys CaSettings)) certificate-authority-defaults)
+        (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
+        (assoc :gem-path (str/join (System/getProperty "path.separator")
+                                   (:gem-path jruby-puppet)))
+        (assoc :access-control (select-keys certificate-authority
+                                            [:certificate-status])))
+    )
+)
 
 (schema/defn ^:always-validate
   config->master-settings :- MasterSettings
@@ -1170,7 +1250,7 @@
   [settings :- CaSettings]
     (ensure-directories-exist! settings)
     (let [required-files (-> (settings->cadir-paths settings)
-                            (select-keys required-ca-files)
+                            (select-keys (required-ca-files (:enable-infra-crl settings)))
                             (vals))]
      (if (every? fs/exists? required-files)
        (do
@@ -1256,7 +1336,7 @@
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
    The certificate will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacert cacrl cakey]} :- CaSettings
+  [{:keys [signeddir cacert cacrl cakey infra-crl-path infra-node-serials-path]} :- CaSettings
    subject :- schema/Str]
   (let [serial  (-> (path-to-cert signeddir subject)
                     (utils/pem->cert)
@@ -1267,7 +1347,17 @@
                               (.getPublicKey (utils/pem->ca-cert cacert cakey))
                               serial)]
     (utils/objs->pem! (cons new-crl (vec rest-of-chain)) cacrl)
-    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
+    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
+   
+    ;; Publish infra-crl if an infra node is getting revoked.
+    (when (and (fs/exists? infra-node-serials-path) 
+               (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
+       (let [new-infra-crl (utils/revoke (utils/pem->crl infra-crl-path)
+                           (utils/pem->private-key cakey)
+                           (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                           serial)]
+         (utils/crl->pem! new-infra-crl infra-crl-path)
+         (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
