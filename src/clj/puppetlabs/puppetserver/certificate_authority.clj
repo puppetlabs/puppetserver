@@ -55,6 +55,7 @@
    Most of these are Puppet configuration settings."
   {:access-control           (schema/maybe AccessControl)
    :allow-duplicate-certs    schema/Bool
+   :allow-subject-alt-names  schema/Bool
    :autosign                 (schema/either schema/Str schema/Bool)
    :cacert                   schema/Str
    :cacrl                    schema/Str
@@ -110,6 +111,15 @@
 (def OIDMappings
   {schema/Str schema/Keyword})
 
+(def default-allow-subj-alt-names
+  false)
+
+(schema/defn ^:always-validate initialize-ca-config
+  "Adds in default ca config keys/values, which may be overwritten if a value for
+  any of those keys already exists in the ca-data"
+  [ca-data]
+  (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names}]
+    (merge defaults ca-data)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
 
@@ -141,6 +151,9 @@
 (def ppAuthCertExt
   "The OID for the extension with shortname 'ppPrivCertExt'."
   "1.3.6.1.4.1.34380.1.3")
+
+(def subject-alt-names-oid
+  "2.5.29.17")
 
 (def puppet-short-names
   "A mapping of Puppet extension short names to their OIDs. These appear in
@@ -256,6 +269,7 @@
   (dissoc ca-settings
           :access-control
           :allow-duplicate-certs
+          :allow-subject-alt-names
           :autosign
           :ca-name
           :ca-ttl
@@ -564,6 +578,7 @@
   [extension :- Extension]
   (let [oid (:oid extension)]
     (or
+      (= subject-alt-names-oid oid)
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
@@ -899,6 +914,8 @@
    service return a map with of all the CA settings."
   [{:keys [puppetserver jruby-puppet certificate-authority]}]
   (-> (select-keys puppetserver (keys CaSettings))
+      (merge (select-keys certificate-authority (keys CaSettings)))
+      (initialize-ca-config)
       (assoc :ruby-load-path (:ruby-load-path jruby-puppet))
       (assoc :gem-path (str/join (System/getProperty "path.separator")
                                  (:gem-path jruby-puppet)))
@@ -1068,25 +1085,28 @@
                      (format "`puppet cert --allow-authorization-extensions sign %s`"
                              (get-csr-subject csr))))})))))
 
-(schema/defn ensure-no-dns-alt-names!
-  "Throws an exception if the CSR contains DNS alt-names."
-  [csr :- CertificateRequest]
+(schema/defn ensure-subject-alt-names-allowed!
+  "Throws an exception if the CSR contains DNS alt-names AND the user has
+   chosen to disallow subject-alt-names. Subject alt names can be allowed by
+   setting allow-subject-alt-names to true in the puppetserver.conf file."
+  [csr :- CertificateRequest
+   allow-subject-alt-names :- schema/Bool]
   (when-let [dns-alt-names (not-empty (dns-alt-names csr))]
-    (let [subject (get-csr-subject csr)]
-      (sling/throw+
-       {:kind :disallowed-extension
-        :msg (format "%s %s"
-                     (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
-                     (i18n/tru "Use `puppet cert --allow-dns-alt-names sign {0}` to sign this request." subject))}))))
-
-
+    (if (false? allow-subject-alt-names)
+      (let [subject (get-csr-subject csr)]
+        (sling/throw+
+         {:kind :disallowed-extension
+          :msg (format "%s %s %s"
+                       (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
+                       (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file,")
+                       (i18n/tru "restart the puppetserver, and try signing this certificate again."))})))))
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
    Throws a slingshot exception if the CSR is invalid."
   [subject :- schema/Str
    certificate-request :- InputStream
-   {:keys [autosign csrdir ruby-load-path gem-path] :as settings} :- CaSettings]
+   {:keys [autosign csrdir ruby-load-path gem-path allow-subject-alt-names] :as settings} :- CaSettings]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1096,7 +1116,7 @@
       (validate-subject! subject (get-csr-subject csr))
       (save-certificate-request! subject csr csrdir)
       (when (autosign-csr? autosign subject csr-stream ruby-load-path gem-path)
-        (ensure-no-dns-alt-names! csr)
+        (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
         (ensure-no-authorization-extensions! csr)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
@@ -1309,7 +1329,7 @@
    certificate policy will not be checked.
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
-  [{:keys [csrdir] :as settings} :- CaSettings
+  [{:keys [csrdir allow-subject-alt-names] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
         csr-subject (get-csr-subject csr)
@@ -1318,7 +1338,7 @@
       ;; Matching the order of validations here with
       ;; 'process-csr-submission!' when autosigning
       (validate-subject! subject csr-subject)
-      (ensure-no-dns-alt-names! csr)
+      (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
       (ensure-no-authorization-extensions! csr)
       (validate-extensions! extensions)
       (validate-csr-signature! csr)
