@@ -24,8 +24,9 @@ RUN apt-get update && \
 
 RUN puppet config set storeconfigs_backend puppetdb --section main && \
     puppet config set storeconfigs true --section main && \
-    puppet config set reports puppetdb --section main
+    puppet config set reports puppetdb --section main && \
+    cp -p /etc/puppetlabs/puppet/puppet.conf /var/tmp/puppet
 
-COPY puppetdb.conf /etc/puppetlabs/puppet/
+COPY puppetdb.conf /var/tmp/puppet/
 
 COPY Dockerfile /

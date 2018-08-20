@@ -39,7 +39,9 @@ COPY puppetserver /etc/default/puppetserver
 COPY logback.xml /etc/puppetlabs/puppetserver/
 COPY request-logging.xml /etc/puppetlabs/puppetserver/
 
-RUN puppet config set autosign true --section master
+RUN puppet config set autosign true --section master && \
+    cp -pr /etc/puppetlabs/puppet /var/tmp && \
+    rm -rf /var/tmp/puppet/ssl
 
 COPY docker-entrypoint.sh /
 
