@@ -18,7 +18,7 @@ Released 21 August, 2018
 
 ### New features
 
-- We have added a new command line tool for interacting with the Puppet CA, under the `puppetserver ca` command. This tool can be used to generate an intermediate CA for Puppet Server, and to generate, sign, revoke, clean, and list certs. The Puppet 5 series still contains caveats about manually copying these certs to agents. All of these actions are executed by making requests to Puppet Server's CA API, in particular the `certificate_status` and `certificate_statuses` endpoints. 
+- We have added a new command line tool for interacting with the Puppet CA, under the `puppetserver ca` command. This tool can be used to generate an intermediate CA for Puppet Server, and to generate, sign, revoke, clean, and list certs. The Puppet 5 series still contains all of the old caveats about using an intermediate CA, including the need to manually copy the certs to the agent, and the need to configure CRL checking. See [Puppet Server: Intermediate CA Configuration](/puppetserver/5.3/intermediate_ca_configuration.html) for details. Therefore the `generate` and `import` commands that create intermediate CAs should be used with caution. All of these actions are executed by making requests to Puppet Server's CA API, in particular the `certificate_status` and `certificate_statuses` endpoints. 
 
     Currently, requests to these endpoints are denied by the blanket rule in `auth.conf`, so if you would like to try out the new tool, you should first add two rules to `auth.conf` whitelisting your master's certname to talk to those two endpoints. 
 
