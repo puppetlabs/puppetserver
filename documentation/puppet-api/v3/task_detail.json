@@ -52,11 +52,11 @@
               }
             },
             "required": ["path", "params"],
-            "additionalProperties": false
+            "additionalProperties": true
           }
         },
         "required": ["metadata", "files", "code_id"],
-        "additionalProperties": false
+        "additionalProperties": true
       }
     }
   }

@@ -148,12 +148,15 @@
 (def TaskData
   "Response from puppet's TaskInformationService for data on a single
   task, *after* it has been converted to a Clojure map."
-  {:metadata_file (schema/maybe schema/Str)
-   :files [schema/Str]})
+  {:metadata (schema/maybe {schema/Keyword schema/Any})
+   :files [{:name schema/Str :path schema/Str}]
+   (schema/optional-key :error) {:msg schema/Str
+                                 :kind schema/Str
+                                 :details {schema/Keyword schema/Any}}})
 
 (def TaskDetails
   "A filled-in map of information about a task."
-  {:metadata {schema/Str schema/Any}
+  {:metadata {schema/Keyword schema/Any}
    :name schema/Str
    :files [{:filename schema/Str
             :sha256 schema/Str
@@ -357,10 +360,11 @@
          (middleware-utils/json-response 200))))
 
 (defn describe-task-file
-  [get-code-content env-name code-id module-name file]
-  (let [size (fs/size file)
+  [get-code-content env-name code-id module-name file-data]
+  (let [file (:path file-data)
+        base-name (:name file-data)
+        size (fs/size file)
         sha256 (ks/file->sha256 (io/file file))
-        base-name (fs/base-name file)
         ;; we trust the file path from Puppet, so extract the subpath from file
         static-path (re-find (re-pattern (str #"[^/]+/" module-name "/tasks/" base-name)) file)
         uri (try
@@ -397,13 +401,9 @@
    code-id :- (schema/maybe schema/Str)
    module-name :- schema/Str
    task-name :- schema/Str]
-  (let [?metadata (try (some-> task-data :metadata_file slurp cheshire/decode)
-                    (catch Exception e
-                      (throw+
-                        {:kind :invalid-task-metadata
-                         :msg (i18n/tru "The metadata file for the ''{0}'' task was not parseable as JSON"
-                                        (str module-name "::" task-name))})))]
-    {:metadata (or ?metadata {})
+  (if (:error task-data)
+    (throw+ (:error task-data))
+    {:metadata (or (:metadata task-data) {})
      :name (full-task-name module-name task-name)
      :files (mapv (partial describe-task-file get-code-content env-name code-id module-name)
                   (:files task-data))}))
@@ -560,6 +560,13 @@
     :else
     (throw jruby-exception)))
 
+(defn is-task-error?
+  [err]
+  (and
+   (map? err)
+   (:kind err)
+   (str/starts-with? (:kind err) "puppet.task")))
+
 (schema/defn ^:always-validate
   task-details-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
@@ -579,11 +586,12 @@
                                module
                                task)
                  (middleware-utils/json-response 200))
-            (catch [:kind :invalid-task-metadata]
-              {:keys [kind msg]}
+            (catch is-task-error?
+              {:keys [kind msg details]}
               (middleware-utils/json-response 500
                                               {:kind kind
-                                               :msg msg}))
+                                               :msg msg
+                                               :details details}))
             (catch RaiseException e
               (handle-task-details-jruby-exception e environment module task))))))
 

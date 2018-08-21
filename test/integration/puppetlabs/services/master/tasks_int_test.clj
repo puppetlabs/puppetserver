@@ -150,7 +150,7 @@
                                  "production" "shell::..."))
 
             (testing "returns 500 when the metadata file is unparseable"
-              (assert-task-error 500 #"invalid-task-metadata"
+              (assert-task-error 500 #"puppet\.tasks/unparseable-metadata"
                                  "production" "mysql::test")))))))
 
   (testing "full stack task metadata smoke test with code management:"
