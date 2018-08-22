@@ -52,23 +52,24 @@
   "Settings from Puppet that are necessary for CA initialization
    and request handling during normal Puppet operation.
    Most of these are Puppet configuration settings."
-  {:access-control           (schema/maybe AccessControl)
-   :allow-duplicate-certs    schema/Bool
-   :allow-subject-alt-names  schema/Bool
-   :autosign                 (schema/either schema/Str schema/Bool)
-   :cacert                   schema/Str
-   :cacrl                    schema/Str
-   :cakey                    schema/Str
-   :capub                    schema/Str
-   :ca-name                  schema/Str
-   :ca-ttl                   schema/Int
-   :cert-inventory           schema/Str
-   :csrdir                   schema/Str
-   :keylength                schema/Int
+  {:access-control                   (schema/maybe AccessControl)
+   :allow-authorization-extensions   schema/Bool
+   :allow-duplicate-certs            schema/Bool
+   :allow-subject-alt-names          schema/Bool
+   :autosign                         (schema/either schema/Str schema/Bool)
+   :cacert                           schema/Str
+   :cacrl                            schema/Str
+   :cakey                            schema/Str
+   :capub                            schema/Str
+   :ca-name                          schema/Str
+   :ca-ttl                           schema/Int
+   :cert-inventory                   schema/Str
+   :csrdir                           schema/Str
+   :keylength                        schema/Int
    :manage-internal-file-permissions schema/Bool
-   :ruby-load-path           [schema/Str]
-   :signeddir                schema/Str
-   :serial                   schema/Str})
+   :ruby-load-path                   [schema/Str]
+   :signeddir                        schema/Str
+   :serial                           schema/Str})
 
 (def DesiredCertificateState
   "The pair of states that may be submitted to the certificate
@@ -112,11 +113,15 @@
 (def default-allow-subj-alt-names
   false)
 
+(def default-allow-auth-extensions
+  false)
+
 (schema/defn ^:always-validate initialize-ca-config
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
   [ca-data]
-  (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names}]
+  (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names
+                  :allow-authorization-extensions default-allow-auth-extensions}]
     (merge defaults ca-data)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Definitions
@@ -147,7 +152,7 @@
   "1.3.6.1.4.1.34380.1.2")
 
 (def ppAuthCertExt
-  "The OID for the extension with shortname 'ppPrivCertExt'."
+  "The OID for the extension with shortname 'ppAuthCertExt'."
   "1.3.6.1.4.1.34380.1.3")
 
 ;; Extension that is checked when allowing access to the certificate_status(es)
@@ -272,6 +277,7 @@
   [ca-settings :- CaSettings]
   (dissoc ca-settings
           :access-control
+          :allow-authorization-extensions
           :allow-duplicate-certs
           :allow-subject-alt-names
           :autosign
@@ -589,6 +595,7 @@
     (or
       (= subject-alt-names-oid oid)
       (and (utils/subtree-of? ppAuthCertExt oid) (not (= cli-auth-oid oid)))
+      (utils/subtree-of? ppAuthCertExt oid)
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
@@ -1071,21 +1078,21 @@
        :msg (i18n/tru "CSR contains a public key that does not correspond to the signing key")})))
 
 (schema/defn ensure-no-authorization-extensions!
-  "Throws an exception if the CSR contains authorization exceptions. These
-  extensions need to be signed using the puppet cert tool. This may change in
-  the future, but for now, it's too risky that certificates with authentication
-  extensions could be signed unintentionally."
-  [csr :- CertificateRequest]
+  "Throws an exception if the CSR contains authorization exceptions AND the user
+   has chosen to disallow authorization-extensions.  This ensures that
+   certificates with authentication extensions can only be signed intentionally."
+  [csr :- CertificateRequest
+   allow-authorization-extensions :- schema/Bool]
   (let [extensions (utils/get-extensions csr)]
     (doseq [extension extensions]
       (when (utils/subtree-of? ppAuthCertExt (:oid extension))
-        (sling/throw+
-         {:kind :disallowed-extension
-          :msg (format "%s %s"
-                (i18n/trs "CSR ''{0}'' contains an authorization extension, which is disallowed." csr)
-                (i18n/trs "Use {0} to sign this request."
-                     (format "`puppet cert --allow-authorization-extensions sign %s`"
-                             (get-csr-subject csr))))})))))
+        (if (false? allow-authorization-extensions)
+          (sling/throw+
+            {:kind :disallowed-extension
+             :msg (format "%s %s %s"
+                          (i18n/trs "CSR ''{0}'' contains an authorization extension, which is disallowed." (get-csr-subject csr))
+                          (i18n/trs "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file,")
+                          (i18n/trs "restart the puppetserver, and try signing this certificate again."))}))))))
 
 (schema/defn ensure-subject-alt-names-allowed!
   "Throws an exception if the CSR contains DNS alt-names AND the user has
@@ -1097,18 +1104,18 @@
     (if (false? allow-subject-alt-names)
       (let [subject (get-csr-subject csr)]
         (sling/throw+
-         {:kind :disallowed-extension
-          :msg (format "%s %s %s"
-                       (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
-                       (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file,")
-                       (i18n/tru "restart the puppetserver, and try signing this certificate again."))})))))
+          {:kind :disallowed-extension
+           :msg (format "%s %s %s"
+                        (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
+                        (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file,")
+                        (i18n/tru "restart the puppetserver, and try signing this certificate again."))})))))
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
    Throws a slingshot exception if the CSR is invalid."
   [subject :- schema/Str
    certificate-request :- InputStream
-   {:keys [autosign csrdir ruby-load-path allow-subject-alt-names] :as settings} :- CaSettings]
+   {:keys [autosign csrdir ruby-load-path allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings]
   (with-open [byte-stream (-> certificate-request
                               input-stream->byte-array
                               ByteArrayInputStream.)]
@@ -1119,7 +1126,7 @@
       (save-certificate-request! subject csr csrdir)
       (when (autosign-csr? autosign subject csr-stream ruby-load-path)
         (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
-        (ensure-no-authorization-extensions! csr)
+        (ensure-no-authorization-extensions! csr allow-authorization-extensions)
         (validate-extensions! (utils/get-extensions csr))
         (validate-csr-signature! csr)
         (autosign-certificate-request! subject csr settings)
@@ -1322,7 +1329,7 @@
    certificate policy will not be checked.
    If the CSR is invalid, returns a user-facing message.
    Otherwise, returns nil."
-  [{:keys [csrdir allow-subject-alt-names] :as settings} :- CaSettings
+  [{:keys [csrdir allow-subject-alt-names allow-authorization-extensions] :as settings} :- CaSettings
    subject :- schema/Str]
   (let [csr         (utils/pem->csr (path-to-cert-request csrdir subject))
         csr-subject (get-csr-subject csr)
@@ -1332,7 +1339,7 @@
       ;; 'process-csr-submission!' when autosigning
       (validate-subject! subject csr-subject)
       (ensure-subject-alt-names-allowed! csr allow-subject-alt-names)
-      (ensure-no-authorization-extensions! csr)
+      (ensure-no-authorization-extensions! csr allow-authorization-extensions)
       (validate-extensions! extensions)
       (validate-csr-signature! csr)
 

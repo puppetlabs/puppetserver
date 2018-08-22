@@ -348,7 +348,30 @@
              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
              (is (nil? (:body response))))
            (finally
-             (fs/delete expected-path))))))))
+             (fs/delete expected-path)))))
+
+     (testing "a CSR w/ auth extensions and allowed auth extensions returns 200"
+       (let [csr (io/input-stream (test-pem-file "csr-auth-extension.pem"))
+             settings (assoc settings :allow-authorization-extensions true)
+             expected-path (ca/path-to-cert-request (:csrdir settings) "csr-auth-extension")]
+         (try
+           (let [response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
+             (is (= 200 (:status response)))
+             (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+             (is (nil? (:body response))))
+           (finally
+             (fs/delete expected-path)))))
+
+     (testing "a CSR w/ auth extensions and disallowed auth extensions gets a specific error response"
+       (let [csr (io/input-stream (test-pem-file "csr-auth-extension.pem"))
+             settings (assoc settings :allow-authorization-extensions false)
+             response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
+         (is (= 400 (:status response)))
+         (is (= (:body response)
+                (str "CSR 'csr-auth-extension' contains an authorization extension, which is disallowed. "
+                     "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file, "
+                     "restart the puppetserver, and try signing this certificate again."))))))))
+
 
 (deftest certificate-status-test
   (testing "read requests"
