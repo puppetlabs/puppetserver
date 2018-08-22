@@ -43,7 +43,10 @@ update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
 
 ### Ubuntu
 
+-   Ubuntu 18.04 (Bionic)
 -   Ubuntu 16.04 (Xenial)
+
+On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu), which contains packages necessary for Puppet Server.
 
 ### SUSE Linux Enterprise Server
 

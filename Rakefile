@@ -174,8 +174,8 @@ namespace :spec do
       PATH='#{TEST_GEMS_DIR}/bin:#{path}' \
       BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
-      lein run -m org.jruby.Main \
-        -S bundle install --without extra development --path='#{TEST_BUNDLE_DIR}' --retry=3
+      lein #{profile} run -m org.jruby.Main \
+        -S bundle install --without extra development packaging --path='#{TEST_BUNDLE_DIR}' --retry=3
       CMD
       sh bundle_install
     end

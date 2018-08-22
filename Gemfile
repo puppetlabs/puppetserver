@@ -1,4 +1,4 @@
-source ENV['GEM_SOURCE'] || "https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/"
+source ENV['GEM_SOURCE'] || 'https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/'
 
 def location_for(place, fake_version = nil)
   if place =~ /^(git[:@][^#]*)#(.*)/

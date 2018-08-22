@@ -26,7 +26,6 @@ lein gem install --install-dir "${VENDORED_GEMS_HOME}" --no-ri --no-rdoc "${gem_
 
 ./dev/install-test-gems.sh
 
-
 echo "Setting up puppet.conf for dev environment"
 
 # TODO: current implementation will simply overwrite puppet.conf.  Might be better
