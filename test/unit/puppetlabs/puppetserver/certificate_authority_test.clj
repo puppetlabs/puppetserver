@@ -1303,13 +1303,13 @@
       (testing "pp_authorization is caught"
         (is (thrown+-with-msg?
              [:kind :disallowed-extension]
-              #".*contains an authorization extension.*borges.*"
-             (ensure-no-authorization-extensions! auth-csr))))
+              #".*borges.*contains an authorization extension.*"
+             (ensure-no-authorization-extensions! auth-csr false))))
       (testing "pp_auth_role is caught"
         (is (thrown+-with-msg?
              [:kind :disallowed-extension]
-              #".*contains an authorization extension.*borges.*"
-             (ensure-no-authorization-extensions! auth-role-csr)))))))
+              #".*borges.*contains an authorization extension..*"
+             (ensure-no-authorization-extensions! auth-role-csr false)))))))
 
 (deftest validate-subject!-test
   (testing "an exception is thrown when the hostnames don't match"
