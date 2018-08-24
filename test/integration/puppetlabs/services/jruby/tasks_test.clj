@@ -8,6 +8,7 @@
             [cheshire.core :as cheshire]
             [schema.core :as schema]
             [schema.test :as schema-test]
+            [slingshot.test :refer :all]
             [puppetlabs.puppetserver.testutils :as testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap])
@@ -54,7 +55,7 @@
 (def TaskOptions
   {:name schema/Str
    :module-name schema/Str
-   :metadata? schema/Bool
+   (schema/optional-key :metadata) schema/Any
    :number-of-files (schema/pred #(<= % 5))})
 
 (schema/defn gen-empty-task
@@ -71,8 +72,8 @@
         extensions '(".rb" "" ".sh" ".exe" ".py")
         task-dir (fs/file env-dir "modules" (:module-name task) "tasks")]
     (fs/mkdirs task-dir)
-    (when (:metadata? task)
-      (spit (fs/file task-dir (str task-name ".json")) "{\"meta\": \"data\"}"))
+    (when-let [metadata (:metadata task)]
+      (spit (fs/file task-dir (str task-name ".json")) (cheshire/generate-string metadata)))
     (dotimes [n (:number-of-files task)]
       (fs/create (fs/file task-dir (str task-name (nth extensions n ".rb")))))))
 
@@ -80,7 +81,7 @@
   "Tasks is a list of task maps, with keys:
   :name String, file name of task
   :module-name String, name of module task is in
-  :metadata? Boolean, whether to generate a metadata file
+  :metadata Map of metadata to write
   :number-of-files Number, how many executable files to generate for the task (0 or more)
 
   All generated files are empty, except metadata files, which contain the empty JSON object.
@@ -108,15 +109,18 @@
                   (str module-name "::" name))})
        tasks))
 
+(defn simple-impl-metadata
+  [task]
+  {"implemenations" [{"name" (str task ".rb")}]})
+
 (deftest ^:integration task-data-test
   (testing "requesting data about a specific task"
     (let [tasks [{:name "install"
                   :module-name "apache"
-                  :metadata? true
+                  :metadata (simple-impl-metadata "install")
                   :number-of-files 2}
                  {:name "init"
                   :module-name "apache"
-                  :metadata? false
                   :number-of-files 1}]
           get-task-data (fn [env module task]
                           (-> (.getTaskData *jruby-puppet* env module task)
@@ -127,14 +131,13 @@
         (testing "with the init task"
           (let [res (get-task-data "env1" "apache" "init")]
             (is (nil? (schema/check mc/TaskData res)))
-            (is (some (fn [file-path] (.contains file-path "init"))
-                      (:files res)))))
+            (is (= "init.rb" (-> res :files first :name))
+            (is (re-matches #".*init\.rb" (-> res :files first :path))))))
 
         (testing "with another named task"
           (let [res (get-task-data "env1" "apache" "install")]
             (is (nil? (schema/check mc/TaskData res)))
-            (is (some (fn [file-path] (.contains file-path "install"))
-                      (:files res))))))
+            (is (= [] (:files res))))))
 
       (testing "when the environment does not exist"
         (is (thrown-with-msg? RaiseException
@@ -170,15 +173,14 @@
   (testing "requesting all tasks"
     (let [tasks [{:name "install"
                   :module-name "apache"
-                  :metadata? true
+                  :metadata (simple-impl-metadata "apache")
                   :number-of-files 2}
                  {:name "init"
                   :module-name "apache"
-                  :metadata? false
                   :number-of-files 1}
                  {:name "configure"
                   :module-name "django"
-                  :metadata? true
+                  :metadata { }
                   :number-of-files 0}]
           get-tasks (fn [env]
                       (.getTasks *jruby-puppet* env))]
@@ -200,15 +202,14 @@
   (testing "getting details for a specific task"
     (let [tasks [{:name "install_mods"
                   :module-name "apache"
-                  :metadata? true
+                  :metadata {"meta" "data"}
                   :number-of-files 1}
                  {:name "init"
                   :module-name "apache"
-                  :metadata? false
                   :number-of-files 1}
                  {:name "about"
+                  :metadata {}
                   :module-name "apache"
-                  :metadata? true
                   :number-of-files 0}]]
       (create-env (env-dir *code-dir* "production") tasks)
 
@@ -220,7 +221,7 @@
             (testing "and the module exists"
               (testing "and the task exists"
                 (testing "with metadata and payload files"
-                  (let [expected-info {:metadata {"meta" "data"}
+                  (let [expected-info {:metadata {:meta "data"}
                                        :name "apache::install_mods"
                                        :files [{:filename "install_mods.rb"
                                                 :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -242,11 +243,10 @@
                            (get-task-details "production" "apache" "init")))))
 
                 (testing "with no payload files"
-                  (let [expected-info {:metadata {"meta" "data"}
+                  (let [expected-info {:metadata {:meta "data"}
                                        :name "apache::about"
                                        :files []}]
-                    (is (= expected-info
-                           (get-task-details "production" "apache" "about"))))))
+                    (is (thrown+? [:kind "puppet.tasks/no-implementation"] (get-task-details "production" "apache" "about"))))))
 
               (testing "but the task doesn't exist"
                 (is (thrown-with-msg? RaiseException
@@ -268,7 +268,7 @@
                                  (mc/task-details *jruby-service* *jruby-puppet* code-fn env code-id module task))]
           (testing "uses static-file-content endpoint when code is available"
             (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "" "UTF-8")))
-                  expected-info {:metadata {"meta" "data"}
+                  expected-info {:metadata {:meta "data"}
                                  :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -279,7 +279,7 @@
                      (get-task-details "production" "apache" "install_mods" code-fn "code-id")))))
           (testing "uses file-content endpoint when code content differs from content reported by Puppet"
             (let [code-fn (fn [_ _ _] (ByteArrayInputStream. (.getBytes "some script" "UTF-8")))
-                  expected-info {:metadata {"meta" "data"}
+                  expected-info {:metadata {:meta "data"}
                                  :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -290,7 +290,7 @@
                      (get-task-details "production" "apache" "install_mods" code-fn "code-id")))))
           (testing "uses file-content endpoint when code is unavailable"
             (let [code-fn (fn [_ _ _] (throw (Exception. "Versioned code not supported.")))
-                  expected-info {:metadata {"meta" "data"}
+                  expected-info {:metadata {:meta "data"}
                                  :name "apache::install_mods"
                                  :files [{:filename "install_mods.rb"
                                           :sha256 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"

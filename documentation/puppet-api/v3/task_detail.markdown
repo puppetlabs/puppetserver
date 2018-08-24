@@ -34,10 +34,11 @@ the Ruby-based Puppet master's authorization methods and configuration. See the
 A task file name has the same restriction as puppet type names and must match
 the regular expression `\A[a-z][a-z0-9_]*\z` (excluding extensions).
 
-### Returns entries for tasks with no executable files
+### Will error if the tasks implementations are invalid
 
-A task will be listed if only metadata for it exists. How many files are
-associated with a task can be found by querying that task's details.
+Since the returning file information requires parsing metadata and finding
+implementation files this endpoint will error if the metadata cannot be parsed
+or the implementation content is invalid.
 
 ### Does read files
 
@@ -104,6 +105,24 @@ Content-Type: application/json
       }
     }
   ]
+}
+```
+
+#### GET request for invalid module
+
+If you request details for a task which cannot be computed because the metadata
+is unreadable or it's implementations are not usable Bolt will return an error
+response with a status code of 500 containing `kind`, `msg`, and `details` keys.
+
+```
+GET /puppet/v3/tasks/modulename/taskname?environment=env
+HTTP/1.1 500 Server Error
+Content-Type: application/json
+
+{
+    "details": {},
+    "kind": "puppet.tasks/unparseable-metadata",
+    "msg": "unexpected token at '{ \"name\": \"init.sh\" , }\n  ]\n}\n'"
 }
 ```
 

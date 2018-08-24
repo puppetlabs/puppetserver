@@ -28,11 +28,11 @@
             }
           },
           "required": ["name"],
-          "additionalProperties": false
+          "additionalProperties": true
         }
       }
     },
     "required": ["name", "environment"],
-    "additionalProperties": false
+    "additionalProperties": true
   }
 }
