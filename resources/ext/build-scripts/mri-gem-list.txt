@@ -1,1 +1,1 @@
-puppetserver-ca 0.4.1
+puppetserver-ca 0.4.2
