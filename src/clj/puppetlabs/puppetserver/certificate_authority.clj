@@ -50,9 +50,9 @@
   {(schema/optional-key :certificate-status) ringutils/WhitelistSettings})
 
 (def CaSettings
-  "Settings from Puppet that are necessary for CA initialization
+  "Settings that are necessary for CA initialization
    and request handling during normal Puppet operation.
-   Most of these are Puppet configuration settings."
+   Most of these are puppeterver configuration settings."
   {:access-control                   (schema/maybe AccessControl)
    :allow-authorization-extensions   schema/Bool
    :allow-duplicate-certs            schema/Bool
@@ -134,6 +134,22 @@
   [cadir]
   (str cadir "/ca_key.pem"))
 
+;; TODO how do we get certname here?
+(def default-caname
+  "Puppet CA: $certname")
+
+;; TODO where should this actually live?
+(defn default-autosign
+  [cadir]
+  (str cadir "/autosign.conf"))
+
+(def default-allow-duplicate-certs
+  false)
+
+;; 15 years in seconds
+(def default-ca-ttl
+  473000000)
+
 (defn default-capub
   [cadir]
   (str cadir "/ca_pub.pem"))
@@ -160,11 +176,15 @@
   [{:keys [cadir] :or {cadir default-cadir} :as ca-data}]
   (let [defaults {:allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions
+                  :allow-duplicate-certs default-allow-duplicate-certs
+                  :autosign (default-autosign cadir)
                   :cadir cadir
                   :cacert (default-cacert cadir)
                   :cacrl (default-cacrl cadir)
                   :cakey (default-cakey cadir)
+                  :ca-name default-caname
                   :capub (default-capub cadir)
+                  :ca-ttl default-ca-ttl
                   :cert-inventory (default-cert-inventory cadir)
                   :csrdir (default-csrdir cadir)
                   :signeddir (default-signeddir cadir)

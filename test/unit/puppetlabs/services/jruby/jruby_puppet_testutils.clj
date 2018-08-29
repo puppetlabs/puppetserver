@@ -225,11 +225,7 @@ create-mock-pool-instance :- JRubyInstance
         certdir (str ssldir "/certs")
         cadir (str ssldir "/ca")
         private-key-dir (str ssldir "/private_keys")]
-    {"allow_duplicate_certs" false
-     "autosign" true
-     "keylength" 2048
-     "ca_name" (str "Puppet CA: " certname)
-     "ca_ttl" 157680000
+    {"keylength" 2048
      "certdir" certdir
      "certname" certname
      "codedir" (:master-code-dir jruby-puppet-config)

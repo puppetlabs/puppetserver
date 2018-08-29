@@ -17,11 +17,7 @@
 (def puppet-config-keys
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
-  #{:allow-duplicate-certs
-    :autosign
-    :ca-name
-    :ca-ttl
-    :certdir
+  #{:certdir
     :certname
     :codedir ; This is not actually needed in Puppet Server, but it's needed in PE (file sync)
     :csr-attributes
