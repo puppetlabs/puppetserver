@@ -160,6 +160,11 @@
 (def subject-alt-names-oid
   "2.5.29.17")
 
+;; Extension that is checked when allowing access to the certificate_status(es)
+;; endpoint. Should only be present on the puppet master cert.
+(def cli-auth-oid
+  "1.3.6.1.4.1.34380.1.3.39")
+
 (def puppet-short-names
   "A mapping of Puppet extension short names to their OIDs. These appear in
   csr_attributes.yaml."
@@ -189,7 +194,8 @@
    :pp_apptier          "1.3.6.1.4.1.34380.1.1.24"
    :pp_hostname         "1.3.6.1.4.1.34380.1.1.25"
    :pp_authorization    "1.3.6.1.4.1.34380.1.3.1"
-   :pp_auth_role        "1.3.6.1.4.1.34380.1.3.13"})
+   :pp_auth_role        "1.3.6.1.4.1.34380.1.3.13"
+   :pp_cli_auth         cli-auth-oid})
 
 (def netscape-comment-value
   "Standard value applied to the Netscape Comment extension for certificates"
@@ -585,7 +591,7 @@
   (let [oid (:oid extension)]
     (or
       (= subject-alt-names-oid oid)
-      (utils/subtree-of? ppAuthCertExt oid)
+      (and (utils/subtree-of? ppAuthCertExt oid) (not (= cli-auth-oid oid)))
       (utils/subtree-of? ppRegCertExt oid)
       (utils/subtree-of? ppPrivCertExt oid))))
 
