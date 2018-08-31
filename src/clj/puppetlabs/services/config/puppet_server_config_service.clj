@@ -21,7 +21,7 @@
   (init
     [this context]
     (let [tk-config (get-config)]
-      (core/validate-tk-config! tk-config)
+;;      (core/validate-tk-config! tk-config)
       (let [jruby-service (tk-services/get-service this :JRubyPuppetService)
             puppet-config (core/get-puppet-config jruby-service)]
         (log/debug (format "%s\n%s" (i18n/trs "Initializing with the following settings from core Puppet:") (ks/pprint-to-string puppet-config)))

@@ -16,10 +16,11 @@ gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
-  gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 3.27')
+  gem 'beaker', *location_for(ENV['BEAKER_VERSION'] || '~> 4.0')
   gem "beaker-hostgenerator", *location_for(ENV['BEAKER_HOSTGENERATOR_VERSION'] || "~> 1.1")
   gem "beaker-abs", *location_for(ENV['BEAKER_ABS_VERSION'] || "~> 0.1")
-  gem "beaker-puppet", *location_for(ENV['BEAKER_PUPPET_VERSION'] || "~> 0.8")
+  gem "beaker-puppet", :git => 'https://github.com/magisus/beaker-puppet.git', :branch => 'remove-puppet-cert'
+  gem "beaker-vmpooler", *location_for(ENV['BEAKER_VMPOOLER_VERSION'] || "~> 1.3")
   gem 'uuidtools'
   gem 'httparty'
   gem 'master_manipulator'

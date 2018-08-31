@@ -1,4 +1,5 @@
 require 'beaker/dsl/install_utils'
+require 'beaker-puppet'
 require 'net/http'
 require 'json'
 
@@ -112,7 +113,9 @@ module PuppetServerExtensions
     step "Server: Start Puppet Server"
       old_retries = master['master-start-curl-retries']
       master['master-start-curl-retries'] = 300
-      with_puppet_running_on(master, "main" => { "autosign" => true, "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true }) do
+      ca_opts = { "allow-subject-alt-names" => true, "autosign" => true }
+      with_puppet_running_on(master, { "main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}", "verbose" => true, "daemonize" => true } },
+                                     ca_opts) do
 
         hosts.each do |host|
           step "Agents: Run agent --test first time to gen CSR"
