@@ -60,6 +60,7 @@ step 'Ensure puppetserver can start successfully with the public/private key but
   # 'running' can return a 0 exit code whether or not the service is actually
   # started whereas 'service start' should only return a 0 exit code if the
   # startup was successful.
+  on(master, 'puppetserver ca setup')
   on(master, "service #{puppetservice} start")
 end
 

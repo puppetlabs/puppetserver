@@ -12,9 +12,11 @@ step "(SERVER-414) Make sure puppetserver can start without puppet resource, "\
   "apply, or agent affecting the known good state of the SUT in a way that "\
   "causes the tests to pass with false positive successful results."
 
+
 variant = master['platform'].to_array.first
 case variant
   when /^(redhat|el|centos)$/
+    on(master, "puppetserver ca setup")
     on(master, "service puppetserver start")
     on(master, "service puppetserver status")
     on(master, "service puppetserver stop")

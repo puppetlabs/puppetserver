@@ -63,11 +63,11 @@ EOM
   step 'Run agent to generate exported resources' do
     # This test compiles a catalog using a differnt certname so that
     # later runs can test collection.
-    on(master, puppet('cert', 'generate', 'resource-exporter.test'))
+    on(master, 'puppetserver ca generate --certname=resource-exporter.test')
 
     teardown do
       on(master, puppet('node', 'deactivate', 'resource-exporter.test'))
-      on(master, puppet('cert', 'clean', 'resource-exporter.test'))
+      on(master, 'puppetserver ca clean --certname=resource-exporter.test')
     end
 
     on(master, puppet_agent('--test', '--noop',

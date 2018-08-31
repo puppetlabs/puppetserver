@@ -35,10 +35,10 @@ end
 
 # Not anymore we don't
 step "Revoke and destroy the existing cert on the server" do
-  agents.each do |a| 
+  agents.each do |a|
     if (not_controller(a))
-      rc = on(master, 
-              puppet("cert destroy #{a.hostname}"),
+      rc = on(master,
+              "puppetserver ca clean --certname=#{a.hostname}",
               {:acceptable_exit_codes => [0,2]})
     end
   end
@@ -95,19 +95,19 @@ step "Generate a new cert with a cert extension" do
 end
 
 step "Sign the certs" do
-  rc = on(master, 
-          puppet("cert sign --all"),
+  rc = on(master,
+          'puppetserver ca sign --all',
           {:accept_all_exit_codes => true})
 end
 
 # tk_auth file that allows catalogs based on extensions rather than node names.
-# This will create a weakness in that if the DEFAULT tk_auth.conf file is 
-# modified in the future, 
+# This will create a weakness in that if the DEFAULT tk_auth.conf file is
+# modified in the future,
 # we may need to modify our test tk_auth.conf file.
 # FIXME / TODO: create helper methods so that we can modify the tk auth.conf
 # file in place (and therefore test more use cases.)
 step "Lay down a test tk-auth.conf file" do
-  scp_to( master, 
+  scp_to( master,
     'acceptance/suites/tests/authorization/fixtures/extensions_test_auth.conf',
     '/etc/puppetlabs/puppetserver/conf.d/auth.conf',
     :acceptable_exit_codes => 0 )
