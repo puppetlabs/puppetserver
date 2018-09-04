@@ -29,8 +29,8 @@
                               (get-in tk-config
                                       [:webserver :puppet-server]
                                       (get-in tk-config [:webserver]))
-                              (ca/initialize-ca-config (get-in tk-config
-                                      [:certificate-authority]))
+                              (get-in tk-config
+                                      [:certificate-authority])
                               puppet-config)
         (assoc context :puppet-config
                        {:puppetserver puppet-config}))))

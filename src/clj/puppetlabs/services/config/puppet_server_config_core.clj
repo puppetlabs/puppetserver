@@ -17,9 +17,19 @@
 (def puppet-config-keys
   "The configuration values which, instead of being configured through
   Trapperkeeper's normal configuration service, are read from JRubyPuppet."
-  #{:certdir
+  #{:allow-duplicate-certs
+    :autosign
+    :cacert
+    :cacrl
+    :cakey
+    :ca-name
+    :capub
+    :ca-ttl
+    :certdir
     :certname
+    :cert-inventory
     :codedir ; This is not actually needed in Puppet Server, but it's needed in PE (file sync)
+    :csrdir
     :csr-attributes
     :dns-alt-names
     :hostcert
@@ -31,6 +41,8 @@
     :manage-internal-file-permissions
     :privatekeydir
     :requestdir
+    :serial
+    :signeddir
     :ssl-client-header
     :ssl-client-verify-header
     :trusted-oid-mapping-file})
@@ -102,7 +114,8 @@
         overrides {:ssl-cert     hostcert
                    :ssl-key      hostprivkey
                    :ssl-ca-cert  localcacert
-                   :ssl-crl-path (:cacrl ca-settings)}]
+                   ;; Fall back to the setting in puppet if not specified in puppetserver's config
+                   :ssl-crl-path (or (:cacrl ca-settings) (:cacrl puppet-config))}]
     (if (some #((key %) webserver-settings) overrides)
       (log/info (i18n/trs "Not overriding webserver settings with values from core Puppet"))
       (do
