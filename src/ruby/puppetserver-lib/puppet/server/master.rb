@@ -90,6 +90,10 @@ class Puppet::Server::Master
     Puppet[setting]
   end
 
+  def isDefault(setting)
+    !Puppet.settings.set_by_config?(setting)
+  end
+
   def puppetVersion()
     Puppet.version
   end

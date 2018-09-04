@@ -55,6 +55,13 @@
   (-> (name k)
       (.replace "-" "_")))
 
+(defn is-default?
+  "For a given keyword `k`, returns whether the setting from JRubyPuppet
+  was explicitly set in a config file."
+  [jruby-puppet k]
+  (->> (keyword->setting k)
+       (.isDefault jruby-puppet)))
+
 (defn get-puppet-config-value
   "For a given keyword `k`, returns the configuration value (setting) from
   JRubyPuppet.  Returns `nil` if Puppet does not have a setting for the given
@@ -71,6 +78,26 @@
   (into {}
         (for [k puppet-config-keys]
           {k (get-puppet-config-value jruby-puppet k)})))
+
+(defn update-ca-path
+  [puppet-config setting filename cadir]
+  (if (is-default? setting)
+    (assoc puppet-config setting (str cadir filename))
+    puppet-config))
+
+(defn interpolate-cadir
+  [cadir puppet-config]
+  (if cadir
+    (-> (update-ca-path puppet-config :cacert "/ca_crt.pem" cadir)
+        (update-ca-path puppet-config :cacrl "/ca_crl.pem" cadir)
+        (update-ca-path puppet-config :cakey "/ca_key.pem" cadir)
+        (update-ca-path puppet-config :capub "/ca_pub.pem" cadir)
+        (update-ca-path puppet-config :cert-inventory "/inventory.txt" cadir)
+        (update-ca-path puppet-config :csrdir "/requests" cadir)
+        (update-ca-path puppet-config :signeddir "/signed" cadir)
+        (update-ca-path puppet-config :serial "/serial" cadir))
+    (puppet-config)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Schemas
@@ -106,6 +133,12 @@
    jruby-puppet jruby-service :get-puppet-config
    (let [config (get-puppet-config* jruby-puppet)]
      (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
+
+(defn resolve-ca-settings
+  [puppet-config server-ca-settings]
+  (when-let [cadir (:cadir server-ca-settings)]
+    (-> (interpolate-cadir cadir puppet-config)
+        (merge server-ca-settings))))
 
 (defn init-webserver!
   "Initialize Jetty with paths to the master's SSL certs."
