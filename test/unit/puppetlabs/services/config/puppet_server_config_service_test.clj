@@ -82,22 +82,6 @@
                    (get-in-config service [:puppetserver :certname]
                                   "default value, should not be returned")))))))))
 
-(deftest config-key-conflicts
-  (testing (str
-             "Providing config values that should be read from Puppet results "
-             "in an error that mentions all offending config keys.")
-    (with-test-logging
-      (ks-testutils/with-no-jvm-shutdown-hooks
-       (let [config (assoc required-config :keylength "bogus" :dns-alt-names "foo")
-             app (tk/boot-services-with-config
-                  (service-and-deps-with-mock-jruby config)
-                  config)]
-         (is (thrown-with-msg?
-              Exception
-              #".*configuration.*conflict.*:dns-alt-names, :keylength"
-              (tk-internal/throw-app-error-if-exists! app)))
-         (tk-app/stop app))))))
-
 (deftest multi-webserver-setting-override
   (let [webserver-config {:ssl-cert "thehostcert"
                           :ssl-key "thehostprivkey"
