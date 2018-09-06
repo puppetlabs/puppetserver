@@ -123,15 +123,13 @@ Content-Type: application/json
 
 ### Authorization
 
-Requests to the `services` endpoint are not authorized by either the
-[Trapperkeeper-based authorization process][`auth.conf`] introduced in Puppet
-Server 2.3.0, or the deprecated Ruby-based authorization process. For more
-information about the supported and deprecated Puppet Server authorization
-processes and configuration settings, see the
+Requests to the `services` endpoint are authorized by the
+[Trapperkeeper-based authorization process][`auth.conf`] as of Puppet
+Server 5.3.0. For more information about the supported Puppet Server
+authorization processes and configuration settings, see the
 [`auth.conf` documentation][`auth.conf`].
 
-Unless the `client-auth` setting is set to `required` for the webserver, a
-client should be permitted to make a request to this endpoint via SSL with or
-without the use of a client certificate. See
+One may also restrict access to the status service by changing the
+`client-auth` setting to `required` for the webserver. See
 [Configuring the Webserver Service](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/master/doc/jetty-config.md#client-auth)
 for more information on the `client-auth` setting.
