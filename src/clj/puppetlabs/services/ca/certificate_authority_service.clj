@@ -28,6 +28,7 @@
                                        (get-in-config [:puppetserver :cacrl])))
           host-crl-file (.getCanonicalPath (fs/file
                                        (get-in-config [:puppetserver :hostcrl])))
+          infra-nodes-file (.getCanonicalPath (fs/file (str (fs/parent ca-crl-file) "/infra_inventory.txt")))
           watcher (create-watcher {:recursive false})]
       (ca/validate-settings! settings)
       (ca/initialize! settings)
@@ -54,6 +55,16 @@
                                 ca-crl-file))
                        events)
              (ca/retrieve-ca-crl! ca-crl-file host-crl-file)))))
+      (watch-protocol/add-watch-dir! watcher
+                                     (fs/parent infra-nodes-file))
+      (watch-protocol/add-callback!
+       watcher
+       (fn [events]
+         (when (some #(and (:changed-path %)
+                           (= (.getCanonicalPath (:changed-path %))
+                              infra-nodes-file))
+                     events)
+           (ca/generate-infra-serials settings))))
       (assoc context :auth-handler auth-handler
                      :watcher watcher)))
 

@@ -495,7 +495,10 @@
     (initialize! settings)
 
     (testing "Generated SSL file"
-      (doseq [file (vals (settings->cadir-paths settings))]
+      (doseq [file (-> (settings->cadir-paths settings)
+                       (select-keys (required-ca-files
+                                      (:enable-infra-crl settings)))
+                       (vals))]
         (testing file
           (is (fs/exists? file)))))
 
@@ -532,13 +535,13 @@
       (is (fs/exists? (:serial settings))))
 
     (testing "Does not replace files if they all exist"
-      (let [files (-> (settings->cadir-paths settings)
+      (let [files (-> (settings->cadir-paths (assoc settings :enable-infra-crl false))
                       (dissoc :csrdir :signeddir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
         (initialize! settings)
         (doseq [f files] (is (= "testable string" (slurp f))
-                             "File was replaced"))))))
+                             (str "File " f " was replaced")))))))
 
 (deftest initialize!-test-with-keylength-in-settings
   (let [settings (assoc (testutils/ca-settings (ks/temp-dir)) :keylength 768)]
@@ -568,9 +571,9 @@
       (is (nil? (initialize! settings)))))
 
   (testing "Exception is thrown when required file is missing"
-    (doseq [file required-ca-files]
+    (doseq [file (required-ca-files true)]
       (testing file
-        (let [settings (testutils/ca-sandbox! cadir)
+        (let [settings (assoc (testutils/ca-sandbox! cadir) :enable-infra-crl true)
               path     (get settings file)]
           (fs/delete path)
           (is (thrown-with-msg?

@@ -76,13 +76,14 @@
     if that header is not in correct http-date format. If the header is
     present and has correct format, only return the crl if the master
     cacrl is newer than the agent crl."
-    [request {:keys [cacrl]}]
+    [request {:keys [cacrl infra-crl-path enable-infra-crl]}]
     (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
           agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
-          master-crl-last-modified-date-time (ca/get-crl-last-modified cacrl)]
+          master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
+          master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
       (if (or (nil? agent-crl-last-modified-date-time)
               (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
-        (-> (ca/get-certificate-revocation-list cacrl)
+        (-> (ca/get-certificate-revocation-list master-crl-to-use)
             (rr/response)
             (rr/content-type "text/plain"))
         (-> (rr/response nil)

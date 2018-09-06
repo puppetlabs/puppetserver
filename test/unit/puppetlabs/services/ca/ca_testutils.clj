@@ -52,7 +52,11 @@
    :signeddir                        (str cadir "/signed")
    :serial                           (str cadir "/serial")
    :ruby-load-path                   jruby-testutils/ruby-load-path
-   :gem-path                         jruby-testutils/gem-path})
+   :gem-path                         jruby-testutils/gem-path
+   :infra-nodes-path                 (str cadir "/ca/infra_inventory.txt")
+   :infra-node-serials-path          (str cadir "/infra_serials")
+   :infra-crl-path                   (str cadir "/infra_crl.pem")
+   :enable-infra-crl                 false})
 
 (defn ca-sandbox!
   "Copy the `cadir` to a temporary directory and return
