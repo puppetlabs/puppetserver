@@ -285,7 +285,9 @@
   :put!
   (fn [context]
     (let [desired-state (get-desired-state context)]
-      (ca/set-certificate-status! settings subject desired-state))))
+      (ca/set-certificate-status! settings subject desired-state)
+      (-> context
+        (assoc-in [:representation :media-type] "text/plain")))))
 
 (defresource certificate-statuses
   [settings]

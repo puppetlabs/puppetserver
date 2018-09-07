@@ -568,7 +568,7 @@
                 (is (= 204 (:status response))
                     (ks/pprint-to-string response))
                 (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-                (is (nil? (:body response)))
+                (is (= "" (:body response)))
                 (is (= (seq ca-subject-bytes)
                        (seq signed-cert-issuer-bytes))))
               (finally
