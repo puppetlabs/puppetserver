@@ -1,7 +1,7 @@
 # based off of the code at
 # https://github.com/appveyor-tests/docker-ce/blob/master/appveyor.yml
 build: off
-image: Visual Studio 2017
+image: Visual Studio 2017 Preview
 matrix:
   fast_finish: true
 
@@ -14,6 +14,8 @@ init:
 
 install:
   - ps: |
+      ver
+      Get-ComputerInfo | select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer
       ruby --version
       gem --version
       bundle --version
@@ -22,6 +24,7 @@ install:
       docker images
       docker info
       sc.exe qc docker
+      ./docker/ci/enable-lcow.ps1
       # retrieve the path to daemon.json from docker service config
       sc.exe qc docker | ? { $_ -match 'BINARY_PATH_NAME\s*:\s*(.*)' }
       $binPath = $Matches[1]
