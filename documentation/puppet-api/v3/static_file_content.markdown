@@ -29,9 +29,9 @@ request to this endpoint with the required parameters.
 
 The `<FILE-PATH>` segment of the endpoint is required. The path corresponds to the
 requested file's path on the Server relative to the given environment's root directory,
-and must point to a file in the `*/*/files/**` or `*/*/tasks/**` glob. For example, Puppet Server will
-inline metadata into static catalogs for file resources sourcing module files located by
-default in
+and must point to a file in the `*/*/files/**`, `*/*/lib/**`, or `*/*/tasks/**` glob. For
+example, Puppet Server will inline metadata into static catalogs for file resources
+sourcing module files located by default in
 `/etc/puppetlabs/code/environments/<ENVIRONMENT>/modules/<MODULE NAME>/files/**`.
 
 ### Query parameters
