@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 9cc1990270ec28e40bfffcbcd41025df7c2a9ba1\n"
+"X-Git-Ref: dcd14ebc8a892782c59dfd2c77bcdc38e14248e7\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -252,6 +252,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Revoked {0} certificate with serial {1}"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "Infra node certificate being revoked; publishing updated infra CRL"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
