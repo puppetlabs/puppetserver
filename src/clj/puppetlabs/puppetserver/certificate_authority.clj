@@ -138,7 +138,7 @@
         defaults {:infra-nodes-path (str cadir "/infra_inventory.txt")
                   :infra-node-serials-path (str cadir "/infra_serials")
                   :infra-crl-path (str cadir "/infra_crl.pem")
-                  :enable-infra-crl true
+                  :enable-infra-crl false
                   :allow-subject-alt-names default-allow-subj-alt-names
                   :allow-authorization-extensions default-allow-auth-extensions}]
     (merge defaults ca-data)))
