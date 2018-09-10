@@ -644,7 +644,10 @@
                          #{:key-encipherment
                            :digital-signature} true)
                        (utils/subject-key-identifier
-                         master-public-key false)]]
+                         master-public-key false)
+                       {:oid cli-auth-oid
+                        :critical false
+                        :value "true"}]]
     (validate-dns-alt-names! alt-names-ext)
     (when csr-attr-exts
       (validate-extensions! csr-attr-exts))
