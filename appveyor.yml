@@ -1,0 +1,64 @@
+# based off of the code at
+# https://github.com/appveyor-tests/docker-ce/blob/master/appveyor.yml
+build: off
+image: Visual Studio 2017 Preview
+matrix:
+  fast_finish: true
+
+environment:
+  matrix:
+    - ruby_version: 24-x64
+
+init:
+  - set PATH=C:\Ruby%ruby_version%\bin;%PATH%
+
+install:
+  - ps: |
+      ver
+      Get-ComputerInfo | select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer
+      ruby --version
+      gem --version
+      bundle --version
+      Get-ChildItem Env: | % { Write-Output "$($_.Key): $($_.Value)"  }
+      docker version
+      docker images
+      docker info
+      sc.exe qc docker
+      ./docker/ci/enable-lcow.ps1
+      # retrieve the path to daemon.json from docker service config
+      sc.exe qc docker | ? { $_ -match 'BINARY_PATH_NAME\s*:\s*(.*)' }
+      $binPath = $Matches[1]
+      $binPath -match '--config-file\s*(.*daemon\.json)'
+      $configFilePath = $Matches[1]
+      # read the existing file
+      $json = Get-Content $configFilePath
+      Write-Host "Existing config file at ${configFilePath}:`n`n$json"
+      # add the tcp listener on loopback for docker-api gem
+      $json = $json | ConvertFrom-Json
+      $json.hosts += 'tcp://127.0.0.1:2375'
+      $utf8NoBom = New-Object System.Text.UTF8Encoding $False
+      # making sure to write a UTF-8 file with NO BOM
+      [System.IO.File]::WriteAllLines($configFilePath, ($json | ConvertTo-Json), $utf8NoBom)
+      Write-Host "Updated config file:`n`n$(Get-Content $configFilePath)"
+      #sc.exe config docker binPath= "$binpath -H tcp://0.0.0.0:2375"
+      Restart-Service docker
+
+test_script:
+  - ps: |
+      $ENV:DOCKER_URL='tcp://127.0.0.1:2375'
+      Switch-DockerLinux
+      # trigger basic build / run smoke tests
+      cd docker
+      ./ci/build.ps1
+      $exitCode = $LASTEXITCODE
+      Write-Output "Spec run exited with $exitCode"
+      $host.SetShouldExit($exitCode)
+      docker ps
+
+notifications:
+  - provider: Email
+    to:
+    - nobody@nowhere.com
+    on_build_success: false
+    on_build_failure: false
+    on_build_status_changed: false
