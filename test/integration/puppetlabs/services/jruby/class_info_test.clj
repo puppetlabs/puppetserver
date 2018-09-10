@@ -1,5 +1,6 @@
 (ns puppetlabs.services.jruby.class-info-test
   (:require [clojure.test :refer :all]
+            [clojure.string :as str]
             [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby.puppet-environments :as puppet-env]
@@ -9,9 +10,24 @@
             [puppetlabs.trapperkeeper.app :as tk-app]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-bootstrap]))
 
-(defn gen-classes
+(defn gen-module-classes
   [[mod-dir manifests]]
-  (let [manifest-dir (fs/file mod-dir "manifests")]
+  (let [manifest-dir (fs/file mod-dir "manifests")
+        mod-name (fs/base-name mod-dir)]
+    (ks/mkdirs! manifest-dir)
+    (doseq [manifest manifests]
+      (spit (fs/file manifest-dir (str manifest ".pp"))
+            (str
+              "class " mod-name "::" manifest "($" manifest "_a, Integer $"
+              manifest "_b, String $" manifest
+              "_c = 'c default value') { }\n"
+              "class " mod-name "::" manifest "2($" manifest "2_a, Integer $"
+              manifest "2_b, String $" manifest
+              "2_c = 'c default value') { }\n")))))
+
+(defn gen-classes
+  [[env-dir manifests]]
+  (let [manifest-dir (fs/file env-dir "manifests")]
     (ks/mkdirs! manifest-dir)
     (doseq [manifest manifests]
       (spit (fs/file manifest-dir (str manifest ".pp"))
@@ -35,31 +51,42 @@
       (cheshire/parse-string)))
 
 (defn expected-class-info
-  [class]
-    {"name" class
-     "params" [{"name" (str class "_a")}
-               {"name" (str class "_b"),
+  ([class-name]
+    {"name" class-name
+     "params" [{"name" (str class-name "_a")}
+               {"name" (str class-name "_b"),
                 "type" "Integer"}
-               {"name" (str class "_c"),
+               {"name" (str class-name "_c"),
                 "type" "String",
                 "default_literal" "c default value"
                 "default_source" "'c default value'"}]})
+  ([mod-name class-name]
+    {"name" (str mod-name "::" class-name)
+     "params" [{"name" (str class-name "_a")}
+               {"name" (str class-name "_b"),
+                "type" "Integer"}
+               {"name" (str class-name "_c"),
+                "type" "String",
+                "default_literal" "c default value"
+                "default_source" "'c default value'"}]}))
 
 (defn expected-manifests-info
   [manifests]
   (into {}
         (apply concat
                (for [[dir names] manifests]
-                 (do
-                   (for [name names]
+                 (let [mod-name (fs/base-name dir)]
+                   (for [class-name names]
                      [(.getAbsolutePath
                         (fs/file dir
                                  "manifests"
-                                 (str name ".pp")))
+                                 (str class-name ".pp")))
                       {"classes"
-                       [(expected-class-info name)
-                        (expected-class-info
-                         (str name "2"))]}]))))))
+                       (if (str/starts-with? mod-name "mod")
+                          [(expected-class-info mod-name class-name)
+                           (expected-class-info mod-name (str class-name "2"))]
+                          [(expected-class-info class-name)
+                           (expected-class-info (str class-name "2"))])}]))))))
 
 (deftest ^:integration class-info-test
   (testing "class info properly enumerated for"
@@ -94,25 +121,25 @@
 
              env-1-mod-dir (fs/file env-1-dir "modules")
              env-1-mod-1-dir-and-manifests [(fs/file env-1-mod-dir
-                                                     "envmod1")
-                                            ["envmod1baz" "envmod1bim"]]
-             _ (gen-classes env-1-mod-1-dir-and-manifests)
-             env-1-mod-2-dir (fs/file env-1-mod-dir "envmod2")
+                                                     "mod1env1")
+                                            ["baz" "bim"]]
+             _ (gen-module-classes env-1-mod-1-dir-and-manifests)
+             env-1-mod-2-dir (fs/file env-1-mod-dir "mod2env1")
              env-1-mod-2-dir-and-manifests [env-1-mod-2-dir
-                                            ["envmod2baz" "envmod2bim"]]
-             _ (gen-classes env-1-mod-2-dir-and-manifests)
+                                            ["baz" "bim"]]
+             _ (gen-module-classes env-1-mod-2-dir-and-manifests)
 
              env-3-dir-and-manifests [(env-dir "env3") ["dip" "dap" "dup"]]
 
              base-mod-dir (fs/file code-dir "modules")
-             base-mod-1-and-manifests [(fs/file base-mod-dir "basemod1")
-                                       ["basemod1bap"]]
-             _ (gen-classes base-mod-1-and-manifests)
+             base-mod-1-and-manifests [(fs/file base-mod-dir "mod1envbase")
+                                       ["bap"]]
+             _ (gen-module-classes base-mod-1-and-manifests)
 
              bogus-env-dir (env-dir "bogus-env")
              _ (create-env [bogus-env-dir []])
              _ (gen-classes [bogus-env-dir ["envbogus"]])
-             _ (gen-classes [(fs/file base-mod-dir "base-bogus") ["base-bogus1"]])
+             _ (gen-module-classes [(fs/file base-mod-dir "base-bogus") ["base-bogus1"]])
 
              get-class-info-for-env (fn [env]
                                       (-> (.getClassInfoForEnvironment jruby-puppet
