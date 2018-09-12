@@ -1,0 +1,33 @@
+pool:
+  # self-hosted agent environment with LCOW
+  name: Default
+
+steps:
+- powershell: |
+    # basic diagnostic host info
+    Get-ComputerInfo | select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer
+    Get-ChildItem Env: | % { Write-Host "$($_.Key): $($_.Value)"  }
+    docker version
+    docker images
+    docker info
+    sc.exe qc docker
+    # Go 1.10 and Ruby 2.5 are already in PATH
+    #
+    # validate ENV vars
+    #
+    Get-ChildItem Env: | % { Write-Host "$($_.Key): $($_.Value)"  }
+    #
+    # validate the Ruby install
+    #
+    ruby --version
+    gem --version
+    gem install bundler --no-ri --no-rdoc
+    bundle --version
+    #
+    # run Morgan fork that doesn't rely on docker-api for now
+    $Env:PUPPET_DOCKER_LOCATION = 'git://github.com/underscorgan/puppet_docker_tools#undo-docker-gem-2'
+    #
+    # Build container
+    #
+    cd docker
+    ./ci/build.ps1
