@@ -360,13 +360,16 @@
          (middleware-utils/json-response 200))))
 
 (defn describe-task-file
-  [get-code-content env-name code-id module-name file-data]
+  [get-code-content env-name code-id file-data]
   (let [file (:path file-data)
-        base-name (:name file-data)
+        subpath (:name file-data)
+        basename (fs/base-name subpath)
         size (fs/size file)
         sha256 (ks/file->sha256 (io/file file))
         ;; we trust the file path from Puppet, so extract the subpath from file
-        static-path (re-find (re-pattern (str #"[^/]+/" module-name "/tasks/" base-name)) file)
+        static-path (re-find (re-pattern (str #"[^/]+/[a-z][a-z0-9_]*/(?:tasks|files|lib)/.*" basename)) file)
+        [_ module-name mount rest] (str/split static-path #"/" 4)
+        file-content (case mount "files" "modules" "tasks" "tasks" "lib" "plugins")
         uri (try
               ;; if code content can be retrieved, then use static_file_content
               (when (not= sha256 (ks/stream->sha256 (get-code-content env-name code-id static-path)))
@@ -375,9 +378,9 @@
                :params {:environment env-name :code_id code-id}}
               (catch Exception e
                 (log/debug (i18n/trs "Static file unavailable for {0}: {1}" file e))
-                {:path (format "/puppet/v3/file_content/tasks/%s/%s" module-name base-name)
+                {:path (format "/puppet/v3/file_content/%s/%s/%s" file-content module-name rest)
                  :params {:environment env-name}}))]
-    {:filename base-name
+    {:filename subpath
      :sha256 sha256
      :size_bytes size
      :uri uri}))
@@ -405,7 +408,7 @@
     (throw+ (:error task-data))
     {:metadata (or (:metadata task-data) {})
      :name (full-task-name module-name task-name)
-     :files (mapv (partial describe-task-file get-code-content env-name code-id module-name)
+     :files (mapv (partial describe-task-file get-code-content env-name code-id)
                   (:files task-data))}))
 
 (schema/defn environment-not-found :- ringutils/RingResponse
@@ -667,7 +670,7 @@
   ;; Here, keywords represent a single element in the path. Anything between two '/' counts.
   ;; The second vector takes anything else that might be on the end of the path.
   ;; Below, this corresponds to '*/*/files/**' or '*/*/tasks/**' in a filesystem glob.
-  (bidi.bidi/match-route [[#"[^/]+/" :module-name #"/(files|tasks)/" [#".+" :rest]] :_]
+  (bidi.bidi/match-route [[#"[^/]+/" :module-name #"/(files|tasks|lib)/" [#".+" :rest]] :_]
                          path))
 
 (defn static-file-content-request-handler
@@ -698,7 +701,7 @@
         (not (valid-static-file-path? file-path))
         {:status 403
          :headers {"Content-Type" "text/plain"}
-         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files or tasks directory of a module.")}
+         :body (i18n/tru "Request Denied: A /static_file_content request must be a file within the files, lib, or tasks directory of a module.")}
 
         :else
         {:status 200

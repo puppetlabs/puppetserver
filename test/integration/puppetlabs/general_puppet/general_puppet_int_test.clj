@@ -214,6 +214,11 @@
           (is (= 200 (:status response)))
           (is (= "application/octet-stream" (get-in response [:headers "content-type"])))
           (is (= "test foobar modules/foo/tasks/bar.txt\n" (:body response)))))
+      (testing "the /static_file_content endpoint successfully streams lib content"
+        (let [response (testutils/get-static-file-content "plugins/foo/lib/bar.txt?code_id=foobar&environment=test")]
+          (is (= 200 (:status response)))
+          (is (= "application/octet-stream" (get-in response [:headers "content-type"])))
+          (is (= "test foobar plugins/foo/lib/bar.txt\n" (:body response)))))
       (testing (str "the /static_file_content endpoint successfully streams file content "
                     "from directories other than /modules")
         (let [response (testutils/get-static-file-content "site/foo/files/bar.txt?code_id=foobar&environment=test")]
@@ -272,7 +277,7 @@
                              "environment=test&code_id=foobar"))]
           (is (= 403 (:status response)))
           (is (= (str "Request Denied: A /static_file_content request must be "
-                      "a file within the files or tasks directory of a module.")
+                      "a file within the files, lib, or tasks directory of a module.")
                  (:body response)))))
       (testing "the /static_file_content endpoint returns an error (400) for attempted traversals"
         (let [response (testutils/get-static-file-content "modules/foo/files/bar/../../../..?environment=test&code_id=foobar")]
