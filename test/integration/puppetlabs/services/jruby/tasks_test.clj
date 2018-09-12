@@ -227,7 +227,8 @@
                  {:name "files"
                   :module-name "apache"
                   :metadata {:files ["othermod/files/helper.rb",
-                                     "othermod/files/morefiles/"]
+                                     "othermod/files/morefiles/"
+                                     "apache/lib/puppet/ruby_file.rb"]
                              :implementations [{:name "files.rb"
                                                 :files ["othermod/files/impl_helper.rb"]}]}
                   :number-of-files 1}
@@ -264,6 +265,13 @@
                                                 :uri
                                                 {:path "/puppet/v3/file_content/tasks/apache/files.rb",
                                                  :params {:environment "production"}}}
+                                              {:filename "apache/lib/puppet/ruby_file.rb",
+                                                :sha256
+                                                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                                                :size_bytes 0,
+                                                :uri
+                                                {:path "/puppet/v3/file_content/plugins/puppet/ruby_file.rb",
+                                                 :params {:environment "production"}}}
                                                {:filename "othermod/files/impl_helper.rb",
                                                 :sha256
                                                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -287,13 +295,16 @@
                                                 {:path "/puppet/v3/file_content/modules/othermod/morefiles/temp.rb",
                                                  :params {:environment "production"}}}])
                                expected-info {:metadata
-                                              {:files (seq ["othermod/files/helper.rb" "othermod/files/morefiles/"]),
+                                              {:files (seq ["othermod/files/helper.rb" "othermod/files/morefiles/" "apache/lib/puppet/ruby_file.rb"]),
                                                :implementations
                                                (seq [{:files (seq ["othermod/files/impl_helper.rb"]), :name "files.rb"}])},
                                               :name "apache::files",
-                                              :files sorted}]
-                    (is (= expected-info
-                           (update (get-task-details "production" "apache" "files") :files (partial sort-by :filename))))))
+                                              :files sorted}
+                               actual-info (update (get-task-details "production" "apache" "files") :files (partial sort-by :filename))]
+                    (is (= (keys expected-info) (keys actual-info)))
+                    (is (= (:metadata expected-info) (:metadata actual-info)))
+                    (is (= sorted (:files actual-info)))
+                    (doall (map (fn [expected actual] (is (= expected actual))) sorted (:files actual-info)))))
                 (testing "without a metadata file"
                   (let [expected-info {:metadata {}
                                        :name "apache"
