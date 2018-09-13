@@ -369,7 +369,6 @@
         ;; we trust the file path from Puppet, so extract the subpath from file
         static-path (re-find (re-pattern (str #"[^/]+/[a-z][a-z0-9_]*/(?:tasks|files|lib)/.*" basename)) file)
         [_ module-name mount rest] (str/split static-path #"/" 4)
-        file-content (case mount "files" "modules" "tasks" "tasks" "lib" "plugins")
         uri (try
               ;; if code content can be retrieved, then use static_file_content
               (when (not= sha256 (ks/stream->sha256 (get-code-content env-name code-id static-path)))
@@ -378,7 +377,10 @@
                :params {:environment env-name :code_id code-id}}
               (catch Exception e
                 (log/debug (i18n/trs "Static file unavailable for {0}: {1}" file e))
-                {:path (format "/puppet/v3/file_content/%s/%s/%s" file-content module-name rest)
+                {:path (case mount
+                         "files" (format "/puppet/v3/file_content/modules/%s/%s" module-name rest)
+                         "tasks" (format "/puppet/v3/file_content/tasks/%s/%s" module-name rest)
+                         "lib" (format "/puppet/v3/file_content/plugins/%s" rest))
                  :params {:environment env-name}}))]
     {:filename subpath
      :sha256 sha256
