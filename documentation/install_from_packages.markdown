@@ -78,7 +78,11 @@ On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/commun
 
     Note that there is no `-` in the package name.
 
-4.  Start the Puppet Server service:
+4. Generate a root and intermediate signing CA for Puppet Server
+
+        service puppetserver ca generate
+
+5.  Start the Puppet Server service:
 
         systemctl start puppetserver
 
