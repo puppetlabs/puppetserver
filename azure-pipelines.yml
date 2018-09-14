@@ -64,11 +64,25 @@ steps:
     Invoke-ContainerTest -Name puppetserver-standalone -Repository $ENV:BUILD_REPOSITORY
   displayName: Test Puppetserver Standalone
   name: test_puppetserver_standalone
+- task: PublishTestResults@2
+  displayName: Publish Puppetserver Standalone test results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: 'docker/**/TEST-*.xml'
+    #mergeTestResults: false # Optional
+    testRunTitle: Puppetserver Standalone Test Results
 - powershell: |
     . ./docker/ci/build.ps1
     Invoke-ContainerTest -Name puppetserver -Repository $ENV:BUILD_REPOSITORY
   displayName: Test Puppetserver
   name: test_puppetserver
+- task: PublishTestResults@2
+  displayName: Publish Puppetserver test results
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: 'docker/**/TEST-*.xml'
+    #mergeTestResults: false # Optional
+    testRunTitle: Puppetserver Test Results
 - powershell: |
     . ./docker/ci/build.ps1
     Clear-ContainerBuilds
