@@ -69,3 +69,8 @@ steps:
     Invoke-ContainerTest -Name puppetserver -Repository $ENV:BUILD_REPOSITORY
   displayName: Test Puppetserver
   name: test_puppetserver
+- powershell: |
+    . ./docker/ci/build.ps1
+    Clear-ContainerBuilds
+  displayName: Container Cleanup
+  condition: always()
