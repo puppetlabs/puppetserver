@@ -1,0 +1,72 @@
+pool:
+  # vmImage: 'VS2017-Win2016'
+  vmImage: Vs2017-Server2016
+  # vmImage: 'win1803'
+
+# strategy:
+#   matrix:
+#     - ruby_version: 24-x64
+
+steps:
+- powershell: |
+    # basic diagnostic host info
+    Get-ComputerInfo | select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer
+    Get-ChildItem Env: | % { Write-Host "$($_.Key): $($_.Value)"  }
+    docker version
+    docker images
+    docker info
+    sc.exe qc docker
+    # install Chocolatey - not necessary since image has it
+    # Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+    # install Ruby 2.5 and Go (for building LCOW)
+    choco install -y --no-progress ruby golang
+    #
+    # add to path
+    #
+    refreshenv
+    $Env:PATH += ';C:\tools\ruby25\bin'
+    #
+    # config the Go install
+    #
+    # Env:GOROOT already defaults to c:\tools\go
+    $Env:GOPATH = 'c:\go'
+    New-Item -Type Directory $Env:GOPATH
+    $Env:GOROOT = 'c:\tools\go'
+    $Env:PATH += ";${Env:GOPATH}\bin;${ENV:GOROOT}\bin;${Env:GOPATH}\go\bin"
+    #
+    # validate ENV vars
+    #
+    Get-ChildItem Env: | % { Write-Host "$($_.Key): $($_.Value)"  }
+    #
+    # validate Go environment
+    #
+    go version
+    go env
+    #
+    # validate the Ruby install
+    #
+    ruby --version
+    gem --version
+    gem install bundler --no-ri --no-rdoc
+    bundle --version
+    #
+    # build / config / install LCOW support
+    #
+    . ./docker/ci/docker-helpers.ps1
+    ./docker/ci/enable-lcow.ps1
+    #
+    # run Morgan fork that doesn't rely on docker-api for now
+    $Env:PUPPET_DOCKER_LOCATION='https://github.com/underscorgan/puppet_docker_tools#undo-docker-gem'
+    #
+    #
+    #
+    # $ENV:DOCKER_URL='tcp://127.0.0.1:2375'
+    # trigger basic build / run smoke tests
+    cd docker
+    # run a local container registry
+    # ./ci/setup-docker-registry.ps1
+    ./ci/build.ps1
+    # $exitCode = $LASTEXITCODE
+    # # Write-Output "Spec run exited with $exitCode"
+    # # $host.SetShouldExit($exitCode)
+    docker ps
