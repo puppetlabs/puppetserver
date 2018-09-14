@@ -59,3 +59,13 @@ steps:
     Build-Container -Name puppetserver -Repository $ENV:BUILD_REPOSITORY
   displayName: Build Puppetserver
   name: build_puppetserver
+- powershell: |
+    . ./docker/ci/build.ps1
+    Invoke-ContainerTest -Name puppetserver-standalone -Repository $ENV:BUILD_REPOSITORY
+  displayName: Test Puppetserver Standalone
+  name: test_puppetserver_standalone
+- powershell: |
+    . ./docker/ci/build.ps1
+    Invoke-ContainerTest -Name puppetserver -Repository $ENV:BUILD_REPOSITORY
+  displayName: Test Puppetserver
+  name: test_puppetserver
