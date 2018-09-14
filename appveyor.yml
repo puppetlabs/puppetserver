@@ -1,0 +1,54 @@
+# based off of the code at
+# https://github.com/appveyor-tests/docker-ce/blob/master/appveyor.yml
+build: off
+image: Visual Studio 2017 Preview
+# Preview has Docker binaries in different location, doesn't have Switch-DockerLinux??
+# image: Visual Studio 2017 Preview
+matrix:
+  fast_finish: true
+
+environment:
+  matrix:
+    - ruby_version: 24-x64
+
+init:
+  - set PATH=C:\Ruby%ruby_version%\bin;%PATH%
+  # run Morgan fork that doesn't rely on docker-api for now
+  - set PUPPET_DOCKER_LOCATION=https://github.com/underscorgan/puppet_docker_tools#undo-docker-gem
+
+install:
+  - ps: |
+      # basic diagnostic host info
+      Get-ComputerInfo | select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer
+      ruby --version
+      gem --version
+      bundle --version
+      Get-ChildItem Env: | % { Write-Output "$($_.Key): $($_.Value)"  }
+      docker version
+      docker images
+      docker info
+      sc.exe qc docker
+      docker pull alpine
+
+test_script:
+  - ps: |
+      # $ENV:DOCKER_URL='tcp://127.0.0.1:2375'
+      # Switch-DockerLinux
+      # docker-switch-linux
+      # trigger basic build / run smoke tests
+      cd docker
+      # run a local container registry
+      # ./ci/setup-docker-registry.ps1
+      ./ci/build.ps1
+      $exitCode = $LASTEXITCODE
+      Write-Output "Spec run exited with $exitCode"
+      $host.SetShouldExit($exitCode)
+      docker ps
+
+notifications:
+  - provider: Email
+    to:
+    - nobody@nowhere.com
+    on_build_success: false
+    on_build_failure: false
+    on_build_status_changed: false
