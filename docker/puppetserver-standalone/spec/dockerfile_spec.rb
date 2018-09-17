@@ -4,53 +4,46 @@ CURRENT_DIRECTORY = File.dirname(File.dirname(__FILE__))
 
 describe 'Dockerfile' do
   include_context 'with a docker image'
+  include_context 'with a docker container'
 
-  it 'uses the correct version of Ubuntu' do
-    os_version = command('cat /etc/lsb-release').stdout
-    expect(os_version).to include('16.04')
-    expect(os_version).to include('Ubuntu')
+  describe 'uses the correct version of Ubuntu' do
+    it_should_behave_like 'a running container', 'cat /etc/lsb-release', nil, 'Ubuntu 16.04'
   end
 
-  describe package('puppetserver') do
-    it { is_expected.to be_installed }
+  describe 'has puppetserver installed' do
+    it_should_behave_like 'a running container', 'dpkg -l puppetserver', 0
   end
 
-  describe user('puppet') do
-    it { should exist }
+  describe 'has the puppet user' do
+    it_should_behave_like 'a running container', 'id puppet', 0
   end
 
-  describe file('/opt/puppetlabs/bin/puppetserver') do
-    it { should exist }
-    it { should be_executable }
+  describe 'has /opt/puppetlabs/bin/puppetserver' do
+    it_should_behave_like 'a running container', 'stat -L /opt/puppetlabs/bin/puppetserver', 0, 'Access: \(0755\/\-rwxr\-xr\-x\)'
   end
 
   describe 'Dockerfile#config' do
     it 'should expose the puppetserver port' do
-      expect(@image.json['ContainerConfig']['ExposedPorts']).to include('8140/tcp')
+      expect("#{@image_json.first['ContainerConfig']['ExposedPorts']}").to include('8140/tcp')
     end
   end
 
   describe 'Dockerfile#running' do
-    include_context 'with a docker container'
 
-    describe process('dumb-init') do
-      its(:user) { should eq 'root' }
-      its(:pid) { should eq 1 }
-      its(:args) { should match(/foreground/) }
-      it { should be_running }
+    describe 'dumb-init' do
+      it_should_behave_like 'a service in a container', 'dumb-init', 'root', 'foreground', '1'
     end
 
-    describe process('java') do
-      its(:user) { should eq 'puppet' }
-      it { should be_running }
+    describe 'java' do
+      it_should_behave_like 'a service in a container', 'java', 'puppet'
     end
 
-    describe command('/opt/puppetlabs/bin/puppetserver --help') do
-      its(:exit_status) { should eq 0 }
+    describe 'puppetserver --help' do
+      it_should_behave_like 'a running container', 'puppetserver --help', 0
     end
 
-    describe command('r10k --help') do
-      its(:exit_status) { should eq 0 }
+    describe 'r10k --help' do
+      it_should_behave_like 'a running container', 'r10k --help', 0
     end
   end
 end
