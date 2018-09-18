@@ -4,9 +4,6 @@ title: "Puppet Server: Intermediate CA"
 canonical: "/puppetserver/latest/intermediate_ca.html"
 ---
 
-Manage the Private Key Infrastructure for
-Puppet Server's built-in Certificate Authority
-
 Puppet Server has a workflow and API for certificate issuance. By default, the server generates a root and intermediate signing CA cert, rather than signing everything off the root. If you have an external certificate authority, you can generate an intermediate signing CA from it, using the `puppetserver ca` subcommand. This way, Puppet agents handle an intermediate CA setup out of the box. No need to copy files around by hand or configure CRL checking. The new CA CLI tool provides two commands to aid in setting up an intermediate CA: `import` and `setup`, as well as other commands for managing an intermediate CA. 
 
 ## Available actions
