@@ -70,7 +70,7 @@ of these endpoints into a single file. The newer "auth.conf" file also uses
 the more flexible HOCON file format for compatibility with how Puppet Server
 configuration files are handled by the Trapperkeeper framework.
 
-### `certificate-authority` Settings
+### `certificate-status` settings
 
 #### Now
 

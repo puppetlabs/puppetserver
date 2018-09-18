@@ -53,12 +53,12 @@ There are three ways to trigger your Puppet Server environment to refresh and pi
 * Changes to Puppet modules in an [environment][] where you've enabled [environment
   caching][]. You can also achieve this by making a request to the
   [Admin API endpoint for flushing the environment cache](./admin-api/v1/environment-cache.markdown).
-* Changes to the CA CRL file.  For example, a `puppet cert clean`
+* Changes to the CA CRL file.  For example, a `puppetserver ca clean`
 
 ### Changes applied after a HUP signal, service reload, or full Server restart
 
 * Changes to Puppet Server [configuration files](./configuration.markdown) in its `conf.d` directory.
-* Changes to the CA CRL file.  For example, a `puppet cert clean`
+* Changes to the CA CRL file.  For example, a `puppetserver ca clean`
 
 ### Changes that require a full Server restart
 

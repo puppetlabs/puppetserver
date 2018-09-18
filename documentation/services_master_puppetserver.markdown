@@ -67,7 +67,7 @@ for more information on these APIs.
 
 Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file (or deprecated [`ca.conf`](./config_file_ca.markdown) file) to let specific certificate owners issue commands.
 
-The CA service uses .pem files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard [`puppet cert` command][cert_manpage] to interact with these credentials, including listing, signing, and revoking certificates.
+The CA service uses .pem files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
 
 ### Admin API Service
 
