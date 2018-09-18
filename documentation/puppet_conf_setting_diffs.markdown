@@ -223,7 +223,7 @@ your `puppet.conf` file. On installation, these five settings will be set to the
 
 While you are free to change these settings at will, please note that any changes made to the `master-conf-dir` and `master-code-dir` settings
 absolutely MUST be made to the corresponding Puppet settings (`confdir` and `codedir`) as well to ensure that Puppet Server and the Puppet
-cli tools (such as `puppet cert` and `puppet module`) use the same directories. The `master-conf-dir` and `master-code-dir`
+cli tools (such as `puppetserver ca` and `puppet module`) use the same directories. The `master-conf-dir` and `master-code-dir`
 settings apply to Puppet Server only, and will be ignored by the ruby code that runs when the Puppet CLI tools are run.
 
 For example, say you have the `codedir` setting left unset in your `puppet.conf` file, and you change the `master-code-dir` setting to

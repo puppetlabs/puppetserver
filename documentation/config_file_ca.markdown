@@ -10,9 +10,9 @@ canonical: "/puppetserver/latest/config_file_ca.html"
 
 The `ca.conf` file configures settings for the Puppet Server Certificate Authority (CA) service. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
-> **Deprecation Note:** This file supports only the `authorization-required` and `client-whitelist` settings, which are [deprecated][] as of Puppet Server 2.2 in favor of authorization that is configured in the [new `auth.conf`][] file. Because these settings are deprecated, a default `ca.conf` file is no longer included in the Puppet Server package.
+> **Deprecation Note:** This file supports only the `authorization-required` and `client-whitelist` settings.
 
-## Settings
+## Status settings
 
 The `certificate-status` setting in `ca.conf` provides [deprecated][] configuration options for access to the `certificate_status` and `certificate_statuses` HTTP endpoints. These endpoints allow certificates to be signed, revoked, and deleted through HTTP requests, which provides full control over Puppet's ability to securely authorize access. Therefore, you should **always** restrict access to `ca.conf`.
 
@@ -36,3 +36,9 @@ certificate-authority: {
    }
 }
 ~~~
+
+## Signing settings
+
+The setting, `allow-authorization-extensions` in the `certificate-authority` section of Puppet Server's config enables you to sign certs with authorization extensions. It is false by default for security reasons, can be enabled if you know you need to sign certs this way. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configued in the config file. 
+
+The setting, `allow-subject-alt-names` in the `certificate-authority` section of the Puppet Server config enables you to sign certs with subject alternative names. It is false by default for security reasons, but can be enabled if you need to sign certs with subject alternative names. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configured in the config file. 

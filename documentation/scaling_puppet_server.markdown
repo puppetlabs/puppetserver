@@ -110,11 +110,11 @@ Before running `puppet agent` or `puppet master` on the new server:
         dns_alt_names = puppet,puppet.example.com,puppet.site-a.example.com
         ```
 
-    -   If the agent or master has been run and already created a certificate, remove it by running `sudo rm -r $(puppet master --configprint ssldir)`. If an agent has requested a certificate from the master, delete it there to re-issue a new one with the alt names: `puppet cert clean master-2.example.com`.
+    -   If the agent or master has been run and already created a certificate, remove it by running `sudo rm -r $(puppet master --configprint ssldir)`. If an agent has requested a certificate from the master, delete it there to re-issue a new one with the alt names: `puppetserver ca clean master-2.example.com`.
 
 -   Request a new certificate by running `puppet agent --test --waitforcert 10`.
 
--   Log into the CA server and run `puppet cert sign master-2.example.com`.
+-   Log into the CA server and run `puppetserver ca sign master-2.example.com`.
 
     Add `--allow-dns-alt-names` to the command if `dns_alt_names` were in the certificate request.
 
