@@ -10,7 +10,13 @@ canonical: "/puppetserver/latest/config_file_ca.html"
 
 The `ca.conf` file configures settings for the Puppet Server Certificate Authority (CA) service. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
-> **Deprecation Note:** This file supports only the `authorization-required` and `client-whitelist` settings.
+> **Deprecation Note:** The `authorization-required` and `client-whitelist` settings are [deprecated][] as of Puppet Server 2.2 in favor of authorization that is configured in the [new `auth.conf`][] file.
+
+## Signing settings
+
+The `allow-subject-alt-names` setting in the `certificate-authority` section enables you to sign certs with subject alternative names. It is false by default for security reasons, but can be enabled if you need to sign certs with subject alternative names. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configured in the config file.
+
+The `allow-authorization-extensions` setting in the `certificate-authority` section enables you to sign certs with authorization extensions. It is false by default for security reasons, but can be enabled if you know you need to sign certs this way. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configued in the config file.
 
 ## Status settings
 
@@ -28,17 +34,11 @@ The `certificate-status` setting takes two parameters: `authorization-required` 
 If you are using the deprecated authorization methods, follow this structure to configure `certificate_status` and `certificate_statuses` endpoint access in `ca.conf`, whitelisting a client named `host1`:
 
 ~~~
-# CA-related settings - deprecated in favor of "auth.conf"
 certificate-authority: {
+   # deprecated in favor of auth.conf
    certificate-status: {
        authorization-required: true
        client-whitelist: [host1]
    }
 }
 ~~~
-
-## Signing settings
-
-The setting, `allow-authorization-extensions` in the `certificate-authority` section of Puppet Server's config enables you to sign certs with authorization extensions. It is false by default for security reasons, can be enabled if you know you need to sign certs this way. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configued in the config file. 
-
-The setting, `allow-subject-alt-names` in the `certificate-authority` section of the Puppet Server config enables you to sign certs with subject alternative names. It is false by default for security reasons, but can be enabled if you need to sign certs with subject alternative names. `puppet cert sign` used to allow this via a flag, but `puppetserver ca sign` requires it to be configured in the config file. 

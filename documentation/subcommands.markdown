@@ -12,6 +12,7 @@ against Puppet Server's JRuby installation and gems instead of your system Ruby.
 
 The following subcommands are provided:
 
+* [ca](#ca)
 * [gem](#gem)
 * [ruby](#ruby)
 * [irb](#irb)
@@ -31,6 +32,43 @@ lein <subcommand> -c /path/to/puppetserver.conf [--] [<args>]
 
 Note that if you are running from source, you need to separate flag arguments (such as `--version` or `-e`) with `--`, as shown above. Otherwise, those arguments will be applied to Leiningen instead of to Puppet Server. This isn't necessary when running from
 packages (i.e., `puppetserver <subcommand>`).
+
+## ca
+
+## Available actions
+CA subcommand usage: `puppetserver ca <action> [options]`
+The available actions:
+- `clean`: clean files from the CA for certificates
+- `generate`: create a new certificate signed by the CA
+- `setup`: generate a root and intermediate signing CA for Puppet Server
+- `import`: import the CA's key, certs, and CRLs
+- `list`: list all certificate requests
+- `revoke`: revoke a given certificate
+- `sign`: sign a given certificate
+
+Because these commands utilize Puppet Server’s API, all except `setup` and `import` need the server to be running in order to work.
+
+Since these commands are shipped as a gem alongside Puppet Server, it can be updated out-of-band to pick up improvements and bug fixes. To upgrade it, run this command: `/opt/puppetlabs/puppet/bin/gem install -i /opt/puppetlabs/puppet/lib/ruby/vendor_gems puppetserver-ca`
+
+**Note:** These commands are available in Puppet 5, but in order to use them, you must update Puppet Server’s `auth.conf` to include a rule allowing the master’s certname to access the `certificate_status` and `certificate_statuses` endpoints. The same applies to upgrading in open source Puppet: if you're upgrading from Puppet 5 to Puppet 6 and are not regenerating your CA, you must whitelist the master’s certname. See [Puppet Server Configuration Files: auth.conf](/puppetserver/latest/config_file_auth.html) for details on how to use `auth.conf`.
+
+Example:
+```
+{
+    # Allow the CA CLI to access the certificate_status endpoint
+    match-request: {
+        path: "/puppet-ca/v1/certificate_status"
+        type: path
+        method: [get, put, delete]
+    }
+    allow: master.example.com
+    sort-order: 500
+    name: "puppetlabs cert status"
+},
+```
+
+### Signing certs with SANs or auth extensions
+With the removal of `puppet cert sign`, it's possible for Puppet Server’s CA API to sign certificates with subject alternative names or auth extensions, which was previously completely disallowed. This is disabled by default for security reasons, but you can turn it on by setting `allow-subject-alt-names` or `allow-authorization-extensions` to true in the `certificate-authority` section of Puppet Server’s config (usually located in `ca.conf`). Once these have been configured, you can use `puppetserver ca sign --certname <name>` to sign certificates with these additions.
 
 ## gem
 
