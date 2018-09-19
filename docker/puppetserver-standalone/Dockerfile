@@ -6,7 +6,7 @@ ARG version="6.0.0"
 ENV PUPPET_SERVER_VERSION="$version"
 ENV DUMB_INIT_VERSION="1.2.1"
 ENV UBUNTU_CODENAME="xenial"
-ENV PUPPETSERVER_JAVA_ARGS="-Xms256m -Xmx256m"
+ENV PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m"
 ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
 ENV PUPPET_HEALTHCHECK_ENVIRONMENT="production"
 
