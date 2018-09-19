@@ -19,7 +19,7 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 ### New features
 
-- There is now a CLI tool for setting up the certificate authority. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
+- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
 
 - The Puppet master's cert is now authorized to connect to the `certificate-status` endpoint out of the box. This allows the new CA CLI tool to perform CA tasks via Puppet Server's CA API. ([SERVER-2308](https://tickets.puppetlabs.com/browse/SERVER-2308))
 
@@ -31,7 +31,13 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 - We've added an infrastructure-only CRL in addition to the full CRL, that provides a list of certs that, when revoked, should be added to a separate CRL (useful for specifying special nodes in your infrastructure like compile masters). You can configure Whether this special CRL or the default CRL are distributed to agents. ([SERVER-2231](https://tickets.puppetlabs.com/browse/SERVER-2231))
 
-- Puppet Server now bundles its `JRuby jar` inside the main uberjar. This means the `JRUBY_JAR` setting is no longer valid, and a warning will be issued if it is set. ([SERVER-2157](https://tickets.puppetlabs.com/browse/SERVER-2157))
+- Puppet Server now bundles its `JRuby jar` inside the main uberjar. This means the `JRUBY_JAR` setting is no longer valid, and a warning will be issued if it is set.
+
+    When upgrading from Puppet Server 5 using JRuby 1.7 (9k was optional in those releases), Server-side gems that were installed manually with the `puppetserver gem` command or using the `puppetserver_gem` package provider might need to be updated to work with the newer JRuby. In most cases gems do not have APIs that break when upgrading from the Ruby versions implemented between JRuby 1.7 and JRuby 9k, so there might be no necessary updates. However, two notable exceptions are that the autosign gem should be 0.1.3 or later and yard-doc must be 0.9 or later. 
+
+    If you're working outside of lab environment, increase `ReservedCodeCache` to `512m` under normal load. If you're working with 6-12 JRuby instances (or a `max-requests-per-instance` value significantly less than 100k), run with a `ReservedCodeCache` of 1G. Twelve or more JRuby instances in a single server might require 2G or more. 
+
+    Similar caveats regarding scaling `ReservedCodeCache` might apply if users are managing `MaxMetaspace`. ([SERVER-2157](https://tickets.puppetlabs.com/browse/SERVER-2157))
 
 - The version of semantic_puppet has been updated in Puppet Server to ensure backwards compatibility in preparation for future major releases of Puppet Platform. ([SERVER-2132](https://tickets.puppetlabs.com/browse/SERVER-2132))
 
