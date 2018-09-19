@@ -9,6 +9,14 @@ For a list of all known issues, visit our [Issue Tracker](https://tickets.puppet
 
 Here are a few specific issues that we're aware of that might affect certain users:
 
+## Server-side Ruby gems might need to be updated for upgrading with JRuby 1.7
+
+When upgrading from Puppet Server 5 using JRuby 1.7 (9k was optional in those releases), Server-side gems that were installed manually with the `puppetserver gem` command or using the `puppetserver_gem` package provider might need to be updated to work with the newer JRuby. In most cases gems do not have APIs that break when upgrading from the Ruby versions implemented between JRuby 1.7 and JRuby 9k, so there might be no necessary updates. However, two notable exceptions are that the autosign gem should be 0.1.3 or later and yard-doc must be 0.9 or later. 
+
+    If you're working outside of lab environment, increase `ReservedCodeCache` to `512m` under normal load. If you're working with 6-12 JRuby instances (or a `max-requests-per-instance` value significantly less than 100k), run with a `ReservedCodeCache` of 1G. Twelve or more JRuby instances in a single server might require 2G or more. 
+
+    Similar caveats regarding scaling `ReservedCodeCache` might apply if users are managing `MaxMetaspace`.
+
 ## Ruby 1.8 vs Ruby 1.9
 
 Puppet Server uses an embedded JRuby interpreter to execute Ruby code. This
