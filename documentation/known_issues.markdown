@@ -51,13 +51,6 @@ to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
 or `/etc/default/puppetserver`, depending on upon your distribution. Note that
 the service will need to be restarted in order for this change to take effect.
 
-## Uberjar Leiningen Version Issues
-
-If you try to build an uberjar on your own, you need to use leiningen 2.4.3
-or later. Earlier versions of leiningen fail to include some of JRuby's
-dependencies in the uberjar, which can cause failures that say
-`Puppet::Error: Cannot determine basic system flavour` on startup.
-
 ## OpenBSD JRuby Compatibility Issues
 
 [SERVER-14](https://tickets.puppet.com/browse/SERVER-14): While we don't ship
