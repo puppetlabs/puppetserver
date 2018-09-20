@@ -51,16 +51,6 @@ to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
 or `/etc/default/puppetserver`, depending on upon your distribution. Note that
 the service will need to be restarted in order for this change to take effect.
 
-## OpenBSD JRuby Compatibility Issues
-
-[SERVER-14](https://tickets.puppet.com/browse/SERVER-14): While we don't ship
-official packages or provide official support for OpenBSD, we would very much
-like for users to be able to run Puppet Server on it. Current versions of JRuby
-have a bug in their POSIX support on OpenBSD that prevents Puppet Server from
-running. We will try to work with the JRuby team to see if they can get a fix
-in for this, and upgrade to a newer JRuby when a fix becomes available. It might
-also be possible to patch the Puppet Ruby code to work around this issue.
-
 ## Puppet Server Master Fails to Connect to Load-Balanced Servers with Different SSL Certificates
 
 [SERVER-207](https://tickets.puppet.com/browse/SERVER-207): Intermittent
