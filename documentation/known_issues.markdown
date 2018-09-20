@@ -9,19 +9,15 @@ For a list of all known issues, visit our [Issue Tracker](https://tickets.puppet
 
 Here are a few specific issues that we're aware of that might affect certain users:
 
-## Server-side Ruby gems might need to be updated for upgrading with JRuby 1.7
+## Server-side Ruby gems might need to be updated for upgrading from JRuby 1.7
 
 When upgrading from Puppet Server 5 using JRuby 1.7 (9k was optional in those releases), Server-side gems that were installed manually with the `puppetserver gem` command or using the `puppetserver_gem` package provider might need to be updated to work with the newer JRuby. In most cases gems do not have APIs that break when upgrading from the Ruby versions implemented between JRuby 1.7 and JRuby 9k, so there might be no necessary updates. However, two notable exceptions are that the autosign gem should be 0.1.3 or later and yard-doc must be 0.9 or later. 
+
+## Potential JAVA ARGS settings
 
 If you're working outside of lab environment, increase `ReservedCodeCache` to `512m` under normal load. If you're working with 6-12 JRuby instances (or a `max-requests-per-instance` value significantly less than 100k), run with a `ReservedCodeCache` of 1G. Twelve or more JRuby instances in a single server might require 2G or more. 
 
 Similar caveats regarding scaling `ReservedCodeCache` might apply if users are managing `MaxMetaspace`.
-
-## Ruby 1.8 vs Ruby 1.9
-
-Puppet Server uses an embedded JRuby interpreter to execute Ruby code. This
-interpreter is compatible with Ruby 1.9. If you are installing
-Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby.
 
 ## `tmp` directory mounted `noexec`
 
@@ -54,32 +50,6 @@ When Puppet Server is installed from packages, this property should be added
 to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
 or `/etc/default/puppetserver`, depending on upon your distribution. Note that
 the service will need to be restarted in order for this change to take effect.
-
-
-## Diffie-Helman HTTPS Client Issues
-
-[SERVER-17](https://tickets.puppet.com/browse/SERVER-17): When configuring
-Puppet Server to use a report processor that involves HTTPS requests (e.g., to
-Foreman), there can be compatibility issues between the JVM HTTPS client and
-certain server HTTPS implementations (e.g., very recent versions of Apache mod_ssl).
-See the linked ticket for known workarounds.
-
-## Uberjar Leiningen Version Issues
-
-If you try to build an uberjar on your own, you need to use leiningen 2.4.3
-or later. Earlier versions of leiningen fail to include some of JRuby's
-dependencies in the uberjar, which can cause failures that say
-`Puppet::Error: Cannot determine basic system flavour` on startup.
-
-## OpenBSD JRuby Compatibility Issues
-
-[SERVER-14](https://tickets.puppet.com/browse/SERVER-14): While we don't ship
-official packages or provide official support for OpenBSD, we would very much
-like for users to be able to run Puppet Server on it. Current versions of JRuby
-have a bug in their POSIX support on OpenBSD that prevents Puppet Server from
-running. We will try to work with the JRuby team to see if they can get a fix
-in for this, and upgrade to a newer JRuby when a fix becomes available. It might
-also be possible to patch the Puppet Ruby code to work around this issue.
 
 ## Puppet Server Master Fails to Connect to Load-Balanced Servers with Different SSL Certificates
 
