@@ -49,15 +49,6 @@ to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
 or `/etc/default/puppetserver`, depending on upon your distribution. Note that
 the service will need to be restarted in order for this change to take effect.
 
-
-## Diffie-Helman HTTPS Client Issues
-
-[SERVER-17](https://tickets.puppet.com/browse/SERVER-17): When configuring
-Puppet Server to use a report processor that involves HTTPS requests (e.g., to
-Foreman), there can be compatibility issues between the JVM HTTPS client and
-certain server HTTPS implementations (e.g., very recent versions of Apache mod_ssl).
-See the linked ticket for known workarounds.
-
 ## Uberjar Leiningen Version Issues
 
 If you try to build an uberjar on your own, you need to use leiningen 2.4.3
