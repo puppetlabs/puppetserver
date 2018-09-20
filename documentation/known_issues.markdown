@@ -17,12 +17,6 @@ If you're working outside of lab environment, increase `ReservedCodeCache` to `5
 
 Similar caveats regarding scaling `ReservedCodeCache` might apply if users are managing `MaxMetaspace`.
 
-## Ruby 1.8 vs Ruby 1.9
-
-Puppet Server uses an embedded JRuby interpreter to execute Ruby code. This
-interpreter is compatible with Ruby 1.9. If you are installing
-Puppet Server on an existing system with Ruby 1.8, the behavior of some extensions, such as custom functions and custom resource types and providers, might change slightly. Generally speaking, this shouldn't affect core Puppet Ruby code, which is tested against both versions of Ruby.
-
 ## `tmp` directory mounted `noexec`
 
 In some cases (especially for RHEL 7 installations) if the `/tmp` directory is
