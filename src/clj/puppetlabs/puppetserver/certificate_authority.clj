@@ -98,11 +98,12 @@
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
-  {:name          schema/Str
-   :state         CertificateState
-   :dns_alt_names [schema/Str]
-   :fingerprint   schema/Str
-   :fingerprints  {schema/Keyword schema/Str}})
+  {:name              schema/Str
+   :state             CertificateState
+   :dns_alt_names     [schema/Str]
+   :subject_alt_names [schema/Str]
+   :fingerprint       schema/Str
+   :fingerprints      {schema/Keyword schema/Str}})
 
 (def Certificate
   (schema/pred utils/certificate?))
@@ -376,6 +377,13 @@
   [cert-or-csr :- (schema/either Certificate CertificateRequest)]
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
+
+(schema/defn subject-alt-names :- [schema/Str]
+  "Get the list of both DNS and IP alt names on the provided certificate or CSR.
+   Each name will be prepended with 'DNS:' or 'IP:'."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
+        (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
 
 (defn seq-contains? [coll target] (some #(= target %) coll))
 
@@ -1162,18 +1170,18 @@
                           (i18n/trs "restart the puppetserver, and try signing this certificate again."))}))))))
 
 (schema/defn ensure-subject-alt-names-allowed!
-  "Throws an exception if the CSR contains DNS alt-names AND the user has
+  "Throws an exception if the CSR contains subject-alt-names AND the user has
    chosen to disallow subject-alt-names. Subject alt names can be allowed by
    setting allow-subject-alt-names to true in the puppetserver.conf file."
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
-  (when-let [dns-alt-names (not-empty (dns-alt-names csr))]
+  (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
     (if (false? allow-subject-alt-names)
       (let [subject (get-csr-subject csr)]
         (sling/throw+
           {:kind :disallowed-extension
            :msg (format "%s %s %s"
-                        (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
+                        (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " subject-alt-names))
                         (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file,")
                         (i18n/tru "restart the puppetserver, and try signing this certificate again."))})))))
 (schema/defn ^:always-validate process-csr-submission!
@@ -1314,14 +1322,15 @@
                               (utils/pem->cert (path-to-cert signeddir subject))
                               (utils/pem->csr (path-to-cert-request csrdir subject)))
         default-fingerprint (fingerprint cert-or-csr "SHA-256")]
-    {:name          subject
-     :state         (certificate-state cert-or-csr crl)
-     :dns_alt_names (dns-alt-names cert-or-csr)
-     :fingerprint   default-fingerprint
-     :fingerprints  {:SHA1    (fingerprint cert-or-csr "SHA-1")
-                     :SHA256  default-fingerprint
-                     :SHA512  (fingerprint cert-or-csr "SHA-512")
-                     :default default-fingerprint}}))
+    {:name              subject
+     :state             (certificate-state cert-or-csr crl)
+     :dns_alt_names     (dns-alt-names cert-or-csr)
+     :subject_alt_names (subject-alt-names cert-or-csr)
+     :fingerprint       default-fingerprint
+     :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
+                         :SHA256  default-fingerprint
+                         :SHA512  (fingerprint cert-or-csr "SHA-512")
+                         :default default-fingerprint}}))
 
 (schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
