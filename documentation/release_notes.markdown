@@ -19,7 +19,7 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 ### New features
 
-- There is now a CLI tool for setting up the certificate authority. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
+- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
 
 - The Puppet master's cert is now authorized to connect to the `certificate-status` endpoint out of the box. This allows the new CA CLI tool to perform CA tasks via Puppet Server's CA API. ([SERVER-2308](https://tickets.puppetlabs.com/browse/SERVER-2308))
 
@@ -27,11 +27,14 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 - Puppet Server now has a setting called `allow-subject-alt-names` in the `certificate-authority` section of its config for enabling signing certs with subject alternative names. It is false by default. ([SERVER-2278](https://tickets.puppetlabs.com/browse/SERVER-2278))
 
-- The {{puppetserver ca}} CLI now has an {{import}} subcommand for installing key and certificate files that you generate, for example, when you have an external root CA that you need Puppet Server's PKI to chain to. ([SERVER-2261](https://tickets.puppetlabs.com/browse/SERVER-2261))
+- The `puppetserver ca` CLI now has an `import` subcommand for installing key and certificate files that you generate, for example, when you have an external root CA that you need Puppet Server's PKI to chain to. ([SERVER-2261](https://tickets.puppetlabs.com/browse/SERVER-2261))
 
 - We've added an infrastructure-only CRL in addition to the full CRL, that provides a list of certs that, when revoked, should be added to a separate CRL (useful for specifying special nodes in your infrastructure like compile masters). You can configure Whether this special CRL or the default CRL are distributed to agents. ([SERVER-2231](https://tickets.puppetlabs.com/browse/SERVER-2231))
 
-- Puppet Server now bundles its `JRuby jar` inside the main uberjar. This means the `JRUBY_JAR` setting is no longer valid, and a warning will be issued if it is set. ([SERVER-2157](https://tickets.puppetlabs.com/browse/SERVER-2157))
+- Puppet Server now bundles its `JRuby jar` inside the main uberjar. This means the `JRUBY_JAR` setting is no longer valid, and a warning will be issued if it is set.
+([SERVER-2157](https://tickets.puppetlabs.com/browse/SERVER-2157))
+
+- Puppet Server 6.0 uses JRuby 9K, which implements Ruby language version 2.3 Server-side gems that were installed manually with the `puppetserver gem` command or using the `puppetserver_gem` package provider might need to be updated to work with JRuby 9K. Additionally, if `ReservedCodeCache` or `MaxMetaspacesize` parameters were set in `JAVA_ARGS`, they might need to be adjusted for JRuby 9K. See the [known issues](/puppetserver/known_issues.html#server-side-ruby-gems-might-need-to-be-updated-for-upgrading-with-jruby-17) for more info. 
 
 - The version of semantic_puppet has been updated in Puppet Server to ensure backwards compatibility in preparation for future major releases of Puppet Platform. ([SERVER-2132](https://tickets.puppetlabs.com/browse/SERVER-2132))
 
