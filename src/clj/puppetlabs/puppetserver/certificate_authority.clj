@@ -612,17 +612,22 @@
     (when-not (empty? hostnames)
       (map str/trim (str/split hostnames #",")))))
 
-(schema/defn create-dns-alt-names-ext :- Extension
-  "Given a hostname and a comma-separated list of DNS names, create a Subject
-   Alternative Names extension. If there are no alt names provided then
-   defaults will be used."
+(schema/defn create-subject-alt-names-ext :- Extension
+  "Given a hostname and a comma-separated list of DNS (and possibly IP) alt names,
+   create a Subject Alternative Names extension. If there are no alt names
+   provided then defaults will be used."
   [host-name :- schema/Str
    alt-names :- schema/Str]
-  (let [alt-names-list    (split-hostnames alt-names)
-        default-alt-names ["puppet"]]
-    (if-not (empty? alt-names-list)
-      (utils/subject-dns-alt-names (conj alt-names-list host-name) false)
-      (utils/subject-dns-alt-names (conj default-alt-names host-name) false))))
+  (let [split-alt-names (split-hostnames alt-names)
+        default-alt-names ["puppet"]
+        alt-names-list (reduce (fn [acc alt-name]
+                                 (if (str/starts-with? alt-name "IP:")
+                                   (update acc :ip conj (str/replace alt-name #"^IP:" ""))
+                                   (update acc :dns-name conj (str/replace alt-name #"^DNS:" ""))))
+                               {:ip [] :dns-name []} split-alt-names)]
+    (if (and (empty? (get alt-names-list :dns-name)) (empty? (get alt-names-list :ip)))
+      (utils/subject-alt-names {:dns-name (conj default-alt-names host-name)} false)
+      (utils/subject-alt-names (update alt-names-list :dns-name conj host-name) false))))
 
 (schema/defn validate-subject!
   "Validate the CSR or certificate's subject name.  The subject name must:
@@ -674,26 +679,25 @@
                        :msg (i18n/tru "Found extensions that are not permitted: {0}"
                                  (str/join ", " bad-extension-oids))})))))
 
-(schema/defn validate-dns-alt-names!
+(schema/defn validate-subject-alt-names!
   "Validate that the provided Subject Alternative Names extension is valid for
   a cert signed by this CA. This entails:
-    * Only DNS alternative names are allowed, no other types
+    * Only DNS and IP alternative names are allowed, no other types
     * Each DNS name does not contain a wildcard character (*)"
   [{value :value} :- Extension]
   (let [name-types (keys value)
-        names      (:dns-name value)]
-    (when-not (and (= (count name-types) 1)
-                   (= (first name-types) :dns-name))
+        dns-names (:dns-name value)
+        ip-names (:ip value)]
+    (when-not (every? #{:dns-name :ip} name-types)
       (sling/throw+
         {:kind :invalid-alt-name
-         :msg (i18n/tru "Only DNS names are allowed in the Subject Alternative Names extension")}))
-
-    (doseq [name names]
-      (when (.contains name "*")
+         :msg (i18n/tru "Only DNS and IP names are allowed in the Subject Alternative Names extension")}))
+    (doseq [dns-name dns-names]
+      (when (.contains dns-name "*")
         (sling/throw+
           {:kind :invalid-alt-name
            :msg (i18n/tru "Cert subjectAltName contains a wildcard, which is not allowed: {0}"
-                 name)})))))
+                 dns-name)})))))
 
 (schema/defn create-csr-attrs-exts :- (schema/maybe (schema/pred utils/extension-list?))
   "Parse the CSR attributes yaml file at the given path and create a list of
@@ -717,7 +721,7 @@
    master-public-key :- (schema/pred utils/public-key?)
    ca-public-key :- (schema/pred utils/public-key?)
    {:keys [dns-alt-names csr-attributes]} :- MasterSettings]
-  (let [alt-names-ext (create-dns-alt-names-ext master-certname dns-alt-names)
+  (let [alt-names-ext (create-subject-alt-names-ext master-certname dns-alt-names)
         csr-attr-exts (create-csr-attrs-exts csr-attributes)
         base-ext-list [(utils/netscape-comment
                          netscape-comment-value)
@@ -734,7 +738,7 @@
                        {:oid cli-auth-oid
                         :critical false
                         :value "true"}]]
-    (validate-dns-alt-names! alt-names-ext)
+    (validate-subject-alt-names! alt-names-ext)
     (when csr-attr-exts
       (validate-extensions! csr-attr-exts))
     (remove nil? (concat base-ext-list [alt-names-ext] csr-attr-exts))))
