@@ -47,18 +47,3 @@ We don't recommend this workaround, however, because it can make Puppet Server m
 The use of the `allowUnsafeServerCertChange` property is documented in
 <http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.50>.
 
-
-## Future Plans
-
-We're considering optional settings to turn off SSL session caching for Puppet Server's client requests or for the Jetty server when hosting Puppet Server or PuppetDB. Several JIRA tickets have been filed to cover this work:
-
-* [TK-124](https://tickets.puppet.com/browse/TK-124): Disable SSL session
-  caching in the Jetty server
-* [TK-125](https://tickets.puppet.com/browse/TK-125): Disable SSL session
-  caching in the clj-http-client library that Puppet Server uses to make its
-  client requests
-* [SERVER-216](https://tickets.puppet.com/browse/SERVER-216): Utilize work
-  in TK-125 to allow SSL session caching to be disabled for Puppet Server client
-  requests.
-
-This approach might have performance trade-offs, although if the load balancer distributes requests evenly among all of its servers, issues should be minimal.
