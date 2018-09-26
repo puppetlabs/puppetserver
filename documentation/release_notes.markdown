@@ -19,7 +19,7 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 ### New features
 
-- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
+- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Subcommands](/puppetserver/latest/subcommands.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
 
 - The Puppet master's cert is now authorized to connect to the `certificate-status` endpoint out of the box. This allows the new CA CLI tool to perform CA tasks via Puppet Server's CA API. ([SERVER-2308](https://tickets.puppetlabs.com/browse/SERVER-2308))
 
