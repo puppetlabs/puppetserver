@@ -1367,27 +1367,30 @@
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
    The certificate will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacert cacrl cakey infra-crl-path infra-node-serials-path]} :- CaSettings
+  [{:keys [signeddir cacert cacrl cakey infra-crl-path
+           infra-node-serials-path enable-infra-crl]} :- CaSettings
    subject :- schema/Str]
   (let [serial  (-> (path-to-cert signeddir subject)
                     (utils/pem->cert)
                     (utils/get-serial))
-        [our-crl & rest-of-chain] (utils/pem->crls cacrl)
-        new-crl (utils/revoke our-crl
+        [our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
+         new-full-crl (utils/revoke our-full-crl
                               (utils/pem->private-key cakey)
                               (.getPublicKey (utils/pem->ca-cert cacert cakey))
                               serial)]
-    (utils/objs->pem! (cons new-crl (vec rest-of-chain)) cacrl)
+    (utils/objs->pem! (cons new-full-crl (vec rest-of-full-chain)) cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
-   
+
     ;; Publish infra-crl if an infra node is getting revoked.
-    (when (and (fs/exists? infra-node-serials-path) 
+    (when (and enable-infra-crl
+               (fs/exists? infra-node-serials-path) 
                (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
-       (let [new-infra-crl (utils/revoke (utils/pem->crl infra-crl-path)
-                           (utils/pem->private-key cakey)
-                           (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                           serial)]
-         (utils/crl->pem! new-infra-crl infra-crl-path)
+       (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+             new-infra-crl (utils/revoke our-infra-crl
+                                         (utils/pem->private-key cakey)
+                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                         serial)]
+         (utils/objs->pem! (cons new-infra-crl (vec rest-of-infra-chain)) infra-crl-path)
          (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
 
 (schema/defn ^:always-validate set-certificate-status!
