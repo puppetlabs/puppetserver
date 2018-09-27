@@ -1170,7 +1170,7 @@
         (is (= (set exts) (set exts-expected)))))
 
     (testing "additional extensions are created for a master"
-      (let [dns-alt-names "onefish,twofish"
+      (let [dns-alt-names "DNS:onefish,twofish,DNS:threefish,fourfish"
             settings      (-> (testutils/master-settings confdir)
                               (assoc :dns-alt-names dns-alt-names)
                               (assoc :csr-attributes (csr-attributes-file "csr_attributes.yaml")))
@@ -1204,10 +1204,26 @@
                                     :value    "true"}
                                    {:oid      "2.5.29.17"
                                     :critical false
-                                    :value    {:dns-name ["subject"
-                                                          "onefish"
-                                                          "twofish"]}}])]
+                                    :value    {:dns-name ["onefish"
+                                                          "twofish"
+                                                          "threefish"
+                                                          "fourfish"
+                                                          "subject"]
+                                               :ip        []}}])]
         (is (= (set exts) (set exts-expected)))))
+
+    (testing "correct subject alt name extensions are created for a master"
+      (let [dns-alt-names "onefish,twofish,DNS:threefish,IP:192.168.69.90,fivefish,IP:192.168.69.91"
+            exts-expected {:oid      "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name ["onefish"
+                                                  "twofish"
+                                                  "threefish"
+                                                  "fivefish"
+                                                  "subject"]
+                                       :ip       ["192.168.69.90"
+                                                  "192.168.69.91"]}}]
+        (is (= (create-subject-alt-names-ext "subject" dns-alt-names) exts-expected))))
 
     (testing "A non-puppet OID read from a CSR attributes file is rejected"
       (let [config (assoc (testutils/master-settings confdir)
@@ -1340,22 +1356,28 @@
           (validate-subject! "Host-With-Capital-Letters"
                              "Host-With-Capital-Letters")))))
 
-(deftest validate-dns-alt-names!-test
-  (testing "Only DNS alt names are allowed"
+(deftest validate-subject-alt-names!-test
+  (testing "Both DNS and IP alt names are allowed"
+    (is (nil?
+          (validate-subject-alt-names! {:oid "2.5.29.17"
+                                        :critical false
+                                        :value {:ip ["12.34.5.6"] :dns-name ["ahostname"]}}))))
+
+  (testing "Non-DNS and IP names are not allowed"
     (is (thrown+?
           [:kind :invalid-alt-name
-           :msg "Only DNS names are allowed in the Subject Alternative Names extension"]
-          (validate-dns-alt-names! {:oid "2.5.29.17"
-                                    :critical false
-                                    :value {:ip-address ["12.34.5.6"]}}))))
+           :msg "Only DNS and IP names are allowed in the Subject Alternative Names extension"]
+          (validate-subject-alt-names! {:oid "2.5.29.17"
+                                        :critical false
+                                        :value {:uri ["12.34.5.6"]}}))))
 
   (testing "No DNS wildcards are allowed"
     (is (thrown+?
           [:kind :invalid-alt-name
            :msg "Cert subjectAltName contains a wildcard, which is not allowed: foo*bar"]
-          (validate-dns-alt-names! {:oid "2.5.29.17"
-                                    :critical false
-                                    :value {:dns-name ["ahostname" "foo*bar"]}})))))
+          (validate-subject-alt-names! {:oid "2.5.29.17"
+                                        :critical false
+                                        :value {:dns-name ["ahostname" "foo*bar"]}})))))
 
 (deftest default-master-dns-alt-names
   (testing "Master certificate has default DNS alt names if none are specified"
