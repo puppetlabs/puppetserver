@@ -1367,7 +1367,8 @@
 (schema/defn revoke-existing-cert!
   "Revoke the subject's certificate. Note this does not destroy the certificate.
    The certificate will remain in the signed directory despite being revoked."
-  [{:keys [signeddir cacert cacrl cakey infra-crl-path infra-node-serials-path]} :- CaSettings
+  [{:keys [signeddir cacert cacrl cakey infra-crl-path
+           infra-node-serials-path enable-infra-crl]} :- CaSettings
    subject :- schema/Str]
   (let [serial  (-> (path-to-cert signeddir subject)
                     (utils/pem->cert)
@@ -1379,9 +1380,10 @@
                               serial)]
     (utils/objs->pem! (cons new-crl (vec rest-of-chain)) cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
-   
+
     ;; Publish infra-crl if an infra node is getting revoked.
-    (when (and (fs/exists? infra-node-serials-path) 
+    (when (and enable-infra-crl
+               (fs/exists? infra-node-serials-path) 
                (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
        (let [new-infra-crl (utils/revoke (utils/pem->crl infra-crl-path)
                            (utils/pem->private-key cakey)
