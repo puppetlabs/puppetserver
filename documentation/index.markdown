@@ -25,7 +25,7 @@ Puppet Server is the next-generation application for managing Puppet agents.
     * [logback.xml](./config_file_logbackxml.markdown)
         * [Advanced logging configuration](./config_logging_advanced.markdown)
     * [master.conf](./config_file_master.markdown) (deprecated)
-    * [ca.conf](./config_file_ca.markdown) (deprecated)
+    * [ca.conf](./config_file_ca.markdown)
     * [Differing behavior in puppet.conf](./puppet_conf_setting_diffs.markdown)
 * **Using and extending Puppet Server**
     * [Subcommands](./subcommands.markdown)

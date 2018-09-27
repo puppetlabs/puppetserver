@@ -74,16 +74,22 @@
                    "DNS:localhost"
                    "DNS:puppet"
                    "DNS:puppet.vpn.puppetlabs.net"]
-   :fingerprint   "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"
-   :fingerprints  {:SHA1 "DB:32:CD:AB:88:86:E0:64:0A:B7:5B:88:76:E4:60:3A:CD:9E:36:C1"
-                   :SHA256 "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"
-                   :SHA512 "58:22:32:60:CE:E7:E9:C9:CB:6A:01:52:81:ED:24:D4:69:8E:9E:CF:D8:A7:4E:6E:B5:C7:E7:18:59:5F:81:4C:93:11:77:E6:F0:40:70:5B:9C:9D:BE:22:A6:61:0B:F9:46:70:43:09:58:7E:6B:B7:5B:D9:6A:54:36:09:53:F9"
-                   :default "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"}
+   :subject_alt_names ["IP:192.168.69.92"
+                       "DNS:djroomba.vpn.puppetlabs.net"
+                       "DNS:localhost"
+                       "DNS:puppet"
+                       "DNS:puppet.vpn.puppetlabs.net"]
+   :fingerprint   "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
+   :fingerprints {:SHA1 "A7:9B:45:46:8A:27:2A:85:60:E2:BF:AD:AA:4B:AB:DE:54:02:F7:76"
+                  :SHA256 "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
+                  :SHA512 "4A:1B:D5:A5:22:E1:54:AE:9E:67:6B:83:0C:B6:6D:46:87:CB:D1:50:BE:C3:B2:B3:83:95:07:88:0C:44:1B:AA:5D:19:0A:64:FE:9F:72:EB:40:14:D1:88:1D:5E:8D:A0:26:3A:93:C8:DB:F9:FC:CB:74:C9:73:62:05:E3:F0:AC"
+                  :default "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"}
    :name          "localhost"
    :state         "signed"})
 
 (def test-agent-status
   {:dns_alt_names []
+   :subject_alt_names []
    :fingerprint   "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
    :fingerprints  {:SHA1 "EB:3D:7B:9C:85:3E:56:7A:3E:9D:1B:C4:7A:21:5A:91:F5:00:4D:9D"
                    :SHA256 "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
@@ -97,6 +103,10 @@
                    "DNS:Baz4"
                    "DNS:foo"
                    "DNS:revoked-agent"]
+   :subject_alt_names ["DNS:BAR"
+                       "DNS:Baz4"
+                       "DNS:foo"
+                       "DNS:revoked-agent"]
    :fingerprint   "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
    :fingerprints  {:SHA1 "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
                    :SHA256 "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
@@ -370,6 +380,31 @@
              expected-path (ca/path-to-cert-request (:csrdir settings) "hostwithaltnames")]
          (try
            (let [response (handle-put-certificate-request! "hostwithaltnames" csr settings)]
+             (is (= 200 (:status response)))
+             (is (= "text/plain" (get-in response [:headers "Content-Type"])))
+             (is (nil? (:body response))))
+           (finally
+             (fs/delete expected-path)))))
+
+     (testing "a CSR w/ DNS and IP alt-names and disallowed subject-alt-names gets a specific error response"
+       (let [csr (io/input-stream (test-pem-file "host-with-ip-and-dns-altnames.pem"))
+             settings (assoc settings :allow-subject-alt-names false)
+             response (handle-put-certificate-request!
+                       "host-with-ip-and-dns-altnames" csr settings)]
+         (is (= 400 (:status response)))
+         (is (= (:body response)
+                (str "CSR 'host-with-ip-and-dns-altnames' contains subject alternative names "
+                     "(IP:192.168.69.92, DNS:puppet, DNS:hostname), which are disallowed. "
+                     "To allow subject alternative names, set allow-subject-alt-names to "
+                     "true in your puppetserver.conf file, restart the puppetserver, and "
+                     "try signing this certificate again.")))))
+
+     (testing "a CSR w/ DNS and IP alt-names and allowed subject-alt-names returns 200"
+       (let [csr (io/input-stream (test-pem-file "host-with-ip-and-dns-altnames.pem"))
+             settings (assoc settings :allow-subject-alt-names true)
+             expected-path (ca/path-to-cert-request (:csrdir settings) "host-with-ip-and-dns-altnames")]
+         (try
+           (let [response (handle-put-certificate-request! "host-with-ip-and-dns-altnames" csr settings)]
              (is (= 200 (:status response)))
              (is (= "text/plain" (get-in response [:headers "Content-Type"])))
              (is (nil? (:body response))))

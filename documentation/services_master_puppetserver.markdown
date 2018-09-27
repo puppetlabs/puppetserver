@@ -65,7 +65,7 @@ Puppet Server includes a certificate authority (CA) service that accepts certifi
 See [CA V1 HTTP API](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html#ca-v1-http-api)
 for more information on these APIs.
 
-Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file (or deprecated [`ca.conf`](./config_file_ca.markdown) file) to let specific certificate owners issue commands.
+Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file to let specific certificate owners issue commands.
 
 The CA service uses .pem files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
 
@@ -151,7 +151,7 @@ Puppet Server's `conf.d` directory contains:
 * `puppetserver.conf`: Settings for Puppet Server itself, including the JRuby interpreter and the administrative API.
 * `auth.conf`: Authentication rules for Puppet Server endpoints.
 * `master.conf` ([deprecated][]): Settings for the Puppet master functionality of Puppet Server.
-* `ca.conf` ([deprecated][]): Settings for the Certificate Authority service.
+* `ca.conf`: Settings for the Certificate Authority service.
 
 For detailed information about Puppet Server settings and the `conf.d` directory, refer to the [Configuration](./configuration.markdown) page.
 

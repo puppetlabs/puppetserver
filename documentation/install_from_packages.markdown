@@ -15,7 +15,7 @@ Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just
 
 ## Platforms with Packages
 
-Puppet provides official packages that install Puppet Server 5.1 and all of its prerequisites on x86_64 architectures for the following platforms, as part of [Puppet Platform][repodocs].
+Puppet provides official packages that install Puppet Server 6.0 and all of its prerequisites on x86_64 architectures for the following platforms, as part of [Puppet Platform][repodocs].
 
 ### Red Hat Enterprise Linux
 
@@ -25,6 +25,7 @@ Puppet provides official packages that install Puppet Server 5.1 and all of its 
 ### Debian
 
 -   Debian 8 (Jessie)
+-   Debian 9 (Stretch)
 
 Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/), which includes openjdk-8:
 
