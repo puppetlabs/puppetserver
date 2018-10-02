@@ -11,6 +11,21 @@ canonical: "/puppetserver/latest/release_notes.html"
 [product.conf]: ./config_file_product.markdown
 
 
+## Puppet Server 6.0.1
+
+Released 2 October 2018
+
+This release contains some new features.
+
+### New features
+
+- Puppet Server now creates a default `ca.conf` file when installed, both in open source Puppet and Puppet Enterprise. CA settings such as `allow-subject-alt-names` should be configured in the `certificate-authority` section of this file. ([SERVER-2372](https://tickets.puppetlabs.com/browse/SERVER-2327))
+
+- The `puppetserver ca generate` command now has a flag `--ca-client` that will generate a certificate offline -- not using the CA API -- that is authorized to talk to that API.  This can be used to regenerate the master's host cert, or create certs for distribution to other CA nodes that need administrative access to the CA, such as the ability to sign and revoke certs. This command should only be used while Puppet Server is offline, to avoid conflicts with cert serials. ([SERVER-2320](https://tickets.puppetlabs.com/browse/SERVER-2320))
+
+- The Puppet Server CA can now sign certificates with IP alt names in addition to DNS alt names (if signing certs with alt names is enabled). ([SERVER-2267](https://tickets.puppetlabs.com/browse/SERVER-2267)
+
+
 ## Puppet Server 6.0.0
 
 Released 18 September, 2018
@@ -19,9 +34,9 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 ### New features
 
-- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html) for more information. [(SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
+- There is now a CLI command for setting up the certificate authority, called `puppetserver ca`. See [Puppet Server: Subcommands](/puppetserver/latest/subcommands.html) for more information. ([SERVER-2172](https://tickets.puppetlabs.com/browse/SERVER-2172))
 
-- The Puppet master's cert is now authorized to connect to the `certificate-status` endpoint out of the box. This allows the new CA CLI tool to perform CA tasks via Puppet Server's CA API. ([SERVER-2308](https://tickets.puppetlabs.com/browse/SERVER-2308))
+- For fresh installs, the Puppet master's cert is now authorized to connect to the `certificate_status` endpoint out of the box. This allows the new CA CLI tool to perform CA tasks via Puppet Server's CA API. ([SERVER-2308](https://tickets.puppetlabs.com/browse/SERVER-2308)) Note that upgrades will need to instead whitelist the master's cert for these endpoints, see [Puppet Server: Subcommands#ca](/puppetserver/latest/subcommands.html#ca).
 
 - Puppet Server now has a setting called `allow-authorization-extensions` in the `certificate-authority` section of its config for enabling signing certs with authorization extensions. It is false by default. ([SERVER-2290](https://tickets.puppetlabs.com/browse/SERVER-2290))
 
@@ -42,7 +57,7 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 ### Bug fixes
 
-- We've made server-side fixes for fully supporting intermediate CA capability. With this, CRL chains will be persisted when revoking certs. [SERVER-2205](https://tickets.puppetlabs.com/browse/SERVER-2205)
+- We've made server-side fixes for fully supporting intermediate CA capability. With this, CRL chains will be persisted when revoking certs. [SERVER-2205](https://tickets.puppetlabs.com/browse/SERVER-2205) For more details on the intermediate CA support in Puppet 6, see [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html).
 
 
 
