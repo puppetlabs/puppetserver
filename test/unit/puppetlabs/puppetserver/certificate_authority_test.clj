@@ -680,6 +680,11 @@
                 "The Subject Alternative Names extension should contain the
                  master's actual hostname and the hostnames in $dns-alt-names")))
 
+        (testing "has CLI auth extension"
+          (let [cli-auth-ext (utils/get-extension-value hostcert cli-auth-oid)]
+            (is (= "true" cli-auth-ext)
+                "The master cert should have the auth extension for the CA CLI.")))
+
         (testing "is also saved in the CA's $signeddir"
           (let [signedpath (path-to-cert (:signeddir ca-settings) "master")]
             (is (fs/exists? signedpath))
@@ -1149,6 +1154,9 @@
                            {:oid      "2.5.29.14"
                             :critical false
                             :value    subject-pub}
+                           {:oid      "1.3.6.1.4.1.34380.1.3.39"
+                            :critical false
+                            :value    "true"}
                            {:oid      utils/subject-alt-name-oid
                             :critical false
                             :value    {:dns-name ["puppet" "subject"]}}]]
@@ -1184,6 +1192,9 @@
                                    {:oid      "2.5.29.14"
                                     :critical false
                                     :value    subject-pub}
+                                   {:oid      "1.3.6.1.4.1.34380.1.3.39"
+                                    :critical false
+                                    :value    "true"}
                                    {:oid      "2.5.29.17"
                                     :critical false
                                     :value    {:dns-name ["subject"
