@@ -374,7 +374,8 @@
           {:jruby-puppet {:master-conf-dir master-conf-dir}
            :certificate-authority {:enable-infra-crl true}}   
           (testing "should update infrastructure CRL"
-            (let [ca-cert (ssl-utils/pem->cert (str master-conf-dir "/ssl/ca/ca_crt.pem"))
+            (let [ca-cert (ssl-utils/pem->ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                                                  (str master-conf-dir "/ssl/ca/ca_key.pem"))
                   cm-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ssl/ca/signed") subject))
                   node-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ssl/ca/signed") node-subject))
                   options {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
@@ -397,12 +398,12 @@
                  (let [revoke-response (cert-status-request "revoked" subject)]
                    ;; If the revocation was successful infra CRL should contain above revoked compile master cert
                    (is (= 204 (:status revoke-response)))
-                   (is (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) cm-cert))))
+                   (is (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) cm-cert))))
 
               (testing "Infra CRL should NOT contain a revoked non compile master certificate"
                  (let [revoke-response (cert-status-request "revoked" node-subject)]
                    (is (= 204 (:status revoke-response)))
-                   (is (not (utils/revoked? (utils/pem->crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) node-cert)))))))
+                   (is (not (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) node-cert)))))))
 
            (testing "Verify correct CRL is returned depending on enable-infra-crl"
              (let [request (mock/request :get
