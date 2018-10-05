@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 86e19066bd1a221abcdb88aff0bb93e6f7888d50\n"
+"X-Git-Ref: 869153bf96bc45c5fd27cb53cd1fd945b7faa851\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -200,7 +200,13 @@ msgid "CSR ''{0}'' contains an authorization extension, which is disallowed."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Use {0} to sign this request."
+msgid ""
+"To allow authorization extensions, set allow-authorization-extensions to "
+"true in your puppetserver.conf file,"
+msgstr ""
+
+#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
+msgid "restart the puppetserver, and try signing this certificate again."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -209,7 +215,9 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Use `puppet cert --allow-dns-alt-names sign {0}` to sign this request."
+msgid ""
+"To allow subject alternative names, set allow-subject-alt-names to true in "
+"your puppetserver.conf file,"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
