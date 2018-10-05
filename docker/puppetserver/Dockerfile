@@ -1,4 +1,4 @@
-ARG version="5.3.1"
+ARG version="6.0.0"
 ARG namespace="puppet"
 FROM "$namespace"/puppetserver-standalone:"$version"
 
