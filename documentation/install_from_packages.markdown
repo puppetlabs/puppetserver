@@ -56,6 +56,7 @@ On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/commun
 
 1.  [Enable the Puppet package repositories][repodocs], if you haven't already done so.
 2.  Stop any existing `puppetmaster` or `puppetserver` service.
+
         service <service_name> stop
 
     Or
