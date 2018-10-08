@@ -5,7 +5,6 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
 [repodocs]: https://puppet.com/docs/puppet/latest/puppet_platform.html
-[passengerguide]: https://puppet.com/docs/puppet/latest/passenger.html
 
 ## System Requirements
 
@@ -56,18 +55,12 @@ On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/commun
 ## Quick Start
 
 1.  [Enable the Puppet package repositories][repodocs], if you haven't already done so.
-2.  Stop the existing Puppet master service. The method for doing this varies depending on how your system is set up.
+2.  Stop any existing `puppetmaster` or `puppetserver` service.
+        service <service_name> stop
 
-    If you're running a WEBrick Puppet master, use: `service puppetmaster stop`.
+    Or
 
-    If you're running Puppet under Apache, you'll instead need to disable the puppetmaster vhost and restart the Apache service. The exact method for this depends on what your Puppet master vhost file is called and how you enabled it. For full documentation, see the [Passenger guide][passengerguide].
-
-    -   On a Debian system, the command might be something like `sudo a2dissite puppetmaster`.
-    -   On RHEL or CentOS systems, the command might be something like `sudo mv /etc/httpd/conf.d/puppetmaster.conf ~/`. Alternatively, you can delete the file instead of moving it.
-
-    After you've disabled the vhost, restart Apache, which is a service called either `httpd` or `apache2`, depending on your OS.
-
-    Alternatively, if you don't need to keep the Apache service running, you can stop Apache with `service httpd stop` or `service apache2 stop`.
+        systemctl stop <service_name>
 
 3.  Install the Puppet Server package by running:
 
@@ -81,7 +74,9 @@ On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/commun
 
 4. Generate a root and intermediate signing CA for Puppet Server
 
-        service puppetserver ca generate
+        puppetserver ca setup
+
+   (This step is not needed if upgrading.)
 
 5.  Start the Puppet Server service:
 
