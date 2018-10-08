@@ -81,7 +81,9 @@ On Ubuntu 18.04, enable the [universe repository](https://help.ubuntu.com/commun
 
 4. Generate a root and intermediate signing CA for Puppet Server
 
-        service puppetserver ca generate
+        puppetserver ca setup
+
+   (This step is not needed if upgrading.)
 
 5.  Start the Puppet Server service:
 
