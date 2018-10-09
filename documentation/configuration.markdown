@@ -24,8 +24,8 @@ At startup, Puppet Server reads all the `.conf` files in the `conf.d` directory.
 * [`web-routes.conf`](./config_file_web-routes.markdown)
 * [`puppetserver.conf`](./config_file_puppetserver.markdown)
 * [`auth.conf`](./config_file_auth.markdown)
+* [`ca.conf`](./config_file_ca.markdown)
 * [`master.conf`](./config_file_master.markdown) ([deprecated][])
-* [`ca.conf`](./config_file_ca.markdown) ([deprecated][])
 
 The [`product.conf`](./config_file_product.markdown) file is optional and is not included by default. You can create that file in the `conf.d` directory in order to configure product-related settings, such as automatic update checking and analytics data collection.
 
