@@ -22,6 +22,7 @@
             [liberator.representation :as representation]
             [ring.util.request :as request]
             [ring.util.response :as rr]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [puppetlabs.i18n.core :as i18n]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -363,3 +364,11 @@
           (get-in ca-settings [:access-control :certificate-status]))
         i18n/locale-negotiator
         (wrap-middleware puppet-version))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(schema/defn ^:always-validate v1-status :- status-core/StatusCallbackResponse
+  [level :- status-core/ServiceStatusDetailLevel]
+  {:state :running
+   :status {}})

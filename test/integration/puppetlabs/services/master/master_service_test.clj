@@ -148,7 +148,7 @@
      (let [resp (http-get "/status/v1/services?level=debug")]
        (is (= 200 (:status resp)))
        (let [status (json/parse-string (:body resp) true)]
-         (is (= #{:jruby-metrics :master :puppet-profiler :status-service}
+         (is (= #{:ca :jruby-metrics :master :puppet-profiler :status-service}
                 (set (keys status))))
 
          (is (= 1 (get-in status [:jruby-metrics :service_status_version])))

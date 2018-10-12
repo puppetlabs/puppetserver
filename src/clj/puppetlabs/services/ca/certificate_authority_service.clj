@@ -8,14 +8,16 @@
             [puppetlabs.services.ca.certificate-authority-core :as core]
             [puppetlabs.services.protocols.ca :refer [CaService]]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.i18n.core :as i18n]))
+            [puppetlabs.i18n.core :as i18n]
+            [puppetlabs.trapperkeeper.services.status.status-core :as status-core]))
 
 (tk/defservice certificate-authority-service
   CaService
   [[:PuppetServerConfigService get-config get-in-config]
    [:WebroutingService add-ring-handler get-route]
    [:AuthorizationService wrap-with-authorization-check]
-   [:FilesystemWatchService create-watcher]]
+   [:FilesystemWatchService create-watcher]
+   [:StatusService register-status]]
   (init
     [this context]
     (let [path (get-route this)
@@ -65,6 +67,11 @@
                               infra-nodes-file))
                      events)
            (ca/generate-infra-serials settings))))
+      (register-status
+        "ca"
+        (status-core/get-artifact-version "puppetlabs" "puppetserver")
+        1
+        (partial core/v1-status))
       (assoc context :auth-handler auth-handler
                      :watcher watcher)))
 
