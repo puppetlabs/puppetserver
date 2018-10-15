@@ -13,8 +13,6 @@ Puppet master is a Ruby application that compiles configurations for any number 
 
 Puppet Server is an application that runs on the Java Virtual Machine (JVM) and provides the same services as the classic Puppet master application. It mostly does this by running the existing Puppet master code in several JRuby interpreters, but it replaces some parts of the classic application with new services written in Clojure.
 
-Puppet Server is one of two recommended ways to run the Puppet master service; the other is [a Rack server][rack]. Today they're mostly equivalent --- Puppet Server is easier to set up and performs better under heavy loads, but they provide the same services. In the future, Puppet Server's features will further surpass the Rack Puppet master, and we plan to eventually disable Rack support.
-
 > **Note:** Puppet Enterprise 3.7 and later use Puppet Server by default. You do not need to manually install or configure it.
 
 This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](https://puppet.com/docs/puppet/latest/man/master.html).
@@ -37,21 +35,19 @@ Note that while Puppet Server has better performance overall than a Ruby Puppet 
 
 Puppet Server consists of several related services that share state and route requests among themselves. These services run inside a single JVM process, using the Trapperkeeper service framework.
 
-From a user's perspective, it mostly acts like a single monolithic service. (Unlike a Rack-based Puppet master, which often looks like a web server, a plugin to manage Rack apps, and a bunch of spawned Ruby processes with varying lifespans.) Most of the architectural complexity is wrapped and hidden; the main exception is the handful of extra config files that manage different internal services.
+From a user's perspective, it mostly acts like a single monolithic service. Most of the architectural complexity is wrapped and hidden; the main exception is the handful of extra config files that manage different internal services.
 
 ### Embedded Web Server
 
-Puppet Server uses a Jetty-based web server embedded in the service's JVM process. Unlike with a Rack-based Puppet master, you don't need to do anything special to configure or enable the web server; it works out of the box. Unlike the WEBrick server embedded in the Ruby Puppet master, it performs well under production-level loads.
+Puppet Server uses a Jetty-based web server embedded in the service's JVM process. You don't need to do anything special to configure or enable the web server; it works out of the box. It performs well under production-level loads.
 
 The web server's settings can be modified in [`webserver.conf`](./config_file_webserver.markdown). You might need to edit this file if you're [using an external CA][external_ca] or running Puppet on a non-standard port.
 
 ### Puppet Master Service
 
-Puppet Server includes a "master" service that provides the same basic functions
-as Rack and WEBrick masters, using the same input and output formats.  See
+Puppet Server includes a "master" service. See
 [Puppet V3 HTTP API](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html#puppet-v3-http-api)
-for more information on the basic APIs.  Puppet Server's master service
-provides some additional APIs that the Rack and WEBrick Puppet masters do not.
+for more information on the basic APIs.
 
 - For docs on the Puppet Server-specific APIs hosted by the master service, see:
 
@@ -60,7 +56,7 @@ provides some additional APIs that the Rack and WEBrick Puppet masters do not.
 
 ### Certificate Authority Service
 
-Puppet Server includes a certificate authority (CA) service that accepts certificate signing requests (CSRs) from nodes, serves certificates and a certificate revocation list (CRL) to nodes, and optionally accepts commands to sign or revoke certificates. It provides these services at the same URLs used by Rack and WEBrick Puppet masters, using the same input and output formats. (The specific endpoints are `certificate`, `certificate_request`, `certificate_revocation_list`, and `certificate_status`.)
+Puppet Server includes a certificate authority (CA) service that accepts certificate signing requests (CSRs) from nodes, serves certificates and a certificate revocation list (CRL) to nodes, and optionally accepts commands to sign or revoke certificates. (The specific endpoints are `certificate`, `certificate_request`, `certificate_revocation_list`, and `certificate_status`.)
 
 See [CA V1 HTTP API](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html#ca-v1-http-api)
 for more information on these APIs.
@@ -71,7 +67,7 @@ The CA service uses .pem files in the standard Puppet [`ssldir`](https://puppet.
 
 ### Admin API Service
 
-Puppet Server includes an administrative API for triggering maintenance tasks. This is a new feature that doesn't exist in Rack or WEBrick Puppet masters.
+Puppet Server includes an administrative API for triggering maintenance tasks.
 
 Right now, the main administrative task is forcing expiration of all environment caches. This lets you deploy new code to long-timeout environments without having to do a lengthy full restart of the service.
 
@@ -118,7 +114,7 @@ Puppet Server completely ignores the `masterport` setting in the puppet.conf fil
 
 All of Puppet Server's logging is routed through the JVM [Logback](http://logback.qos.ch/) library. By default, it logs to `/var/log/puppetlabs/puppetserver/puppetserver.log`. The default log level is 'INFO'. By default, Puppet Server sends nothing to syslog.
 
-All log messages follow the same path, including HTTP traffic, catalog compilation, certificate processing, and all other parts of Puppet Server's work. This differs from Rack and WEBrick masters, which split their HTTP and application logs.
+All log messages follow the same path, including HTTP traffic, catalog compilation, certificate processing, and all other parts of Puppet Server's work.
 
 Puppet Server also relies on Logback to manage, rotate, and archive Server log files. Logback archives Server logs when they exceed 200MB, and when the total size of all Server logs exceeds 1GB, it automatically deletes the oldest logs.
 
