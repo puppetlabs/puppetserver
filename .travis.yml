@@ -4,6 +4,13 @@ dist: trusty
 jdk:
   - oraclejdk8
   - openjdk10
+# see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
+matrix:
+  include:
+    - jdk: openjdk10
+      before_install:
+        - rm "${JAVA_HOME}/lib/security/cacerts"
+        - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
