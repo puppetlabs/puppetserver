@@ -1,9 +1,6 @@
 language: clojure
 lein: 2.8.1
 dist: trusty
-jdk:
-  - oraclejdk8
-  - openjdk10
 # see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
 matrix:
   include:
@@ -11,6 +8,7 @@ matrix:
       before_install:
         - rm "${JAVA_HOME}/lib/security/cacerts"
         - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
+    - jdk: oraclejdk8
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
