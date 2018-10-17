@@ -3,7 +3,7 @@ lein: 2.8.1
 dist: trusty
 jdk:
   - oraclejdk8
-  - oraclejdk10
+  - openjdk10
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
