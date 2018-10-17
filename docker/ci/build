@@ -37,7 +37,7 @@ function get_version() {
     : ===
     : === If we do not git pull --unshallow we get really weird results with git describe
     : ===
-    git pull --unshallow
+    git pull --unshallow > /dev/null 2>&1
 
     : ===
     : === make sure we fetch tags for versioning
