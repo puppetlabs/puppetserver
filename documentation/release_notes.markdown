@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.6
+
+Released 23 October 2018.
+
+This release contains new features.
+
+### New Features
+
+- We have added two settings to Puppet Server's CA configuration: `allow-subject-alt-names` and `allow-autorization-extensions`. These are false by default. When set to true, they allow CSR with subject alt names or special auth extensions to be signed by the Puppet Server CA API. These flags are needed to sign such certs via `puppetserver ca sign` command, which replaces `puppet cert` in Puppet 6. [SERVER-2322](https://tickets.puppetlabs.com/browse/SERVER-2322) 
+- The CA service and the CA proxy service (in PE) now have their own entries in the status endpoint output and can be queried as "ca" and "ca-proxy" respectively. [SERVER-2350](https://tickets.puppetlabs.com/browse/SERVER-2350)
+
+
 ## Puppet Server 5.3.5
 
 Released 21 August, 2018
