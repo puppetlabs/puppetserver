@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require_relative 'helpers'
+
+spec 'puppetserver-standalone', version: '5.2.0'
+spec 'puppetserver', version: '5.2.0'

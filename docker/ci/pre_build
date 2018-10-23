@@ -1,0 +1,6 @@
+#! /usr/bin/env ruby
+
+require_relative 'helpers'
+
+lint 'puppetserver-standalone'
+lint 'puppetserver'

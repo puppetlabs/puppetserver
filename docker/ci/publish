@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+
+require_relative 'helpers'
+
+is_latest = ENV['IS_LATEST'] || false
+
+publish 'puppetserver-standalone', is_latest: is_latest, noop: true
+publish 'puppetserver', is_latest: is_latest, noop: true
