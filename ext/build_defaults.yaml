@@ -3,4 +3,3 @@ project: 'puppetserver'
 
 repo_name: 'puppet5'
 nonfinal_repo_name: 'puppet5-nightly'
-repo_link_target: 'puppet'
