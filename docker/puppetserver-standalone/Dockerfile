@@ -53,7 +53,7 @@ CMD ["foreground"]
 HEALTHCHECK --interval=10s --timeout=10s --retries=90 CMD \
   hostname=$(puppet config print certname) && \
   curl --fail -H 'Accept: pson' \
-  --resolve '${hostname}:8140:127.0.0.1' \
+  --resolve "${hostname}:8140:127.0.0.1" \
   --cert   $(puppet config print hostcert) \
   --key    $(puppet config print hostprivkey) \
   --cacert $(puppet config print localcacert) \
