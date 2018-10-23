@@ -1,11 +1,11 @@
 ---
 layout: default
-title: "Puppet Server: Differing Behavior in puppet.conf"
+title: "How Puppet Server uses the values in puppet.conf"
 canonical: "/puppetserver/latest/puppet_conf_setting_diffs.html"
 ---
 
 Puppet Server honors almost all settings in puppet.conf and should pick them
-up automatically. However, some Puppet Server settings differ from a Ruby Puppet master's puppet.conf settings; we've detailed these differences below. For more complete information on puppet.conf settings, see our [Configuration Reference](https://puppet.com/docs/puppet/latest/configuration.html) page.
+up automatically. For more complete information on puppet.conf settings, see our [Configuration Reference](https://puppet.com/docs/puppet/latest/configuration.html) page.
 
 ### [`autoflush`](https://puppet.com/docs/puppet/latest/configuration.html#autoflush)
 
