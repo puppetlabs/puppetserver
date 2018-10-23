@@ -52,7 +52,7 @@ function get_version() {
     : ===
     : === make sure we fetch tags for versioning
     : ===
-    git fetch origin 'refs/tags/*:refs/tags/*'
+    git fetch origin 'refs/tags/*:refs/tags/*' 2>&1
     local git_describe=`git describe`
     local version="${git_describe%%-*}"
   fi
