@@ -10,6 +10,16 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.0.2
+
+Released 23 October 2018.
+
+This release contains new a feature.
+
+### New features
+
+- The CA service and the CA proxy service (in PE) now have their own entries in the status endpoint output and can be queried as "ca" and "ca-proxy" respectively. [SERVER-2350](https://tickets.puppetlabs.com/browse/SERVER-2350)
+
 
 ## Puppet Server 6.0.1
 
