@@ -45,20 +45,17 @@ steps:
   displayName: Diagnostic Host Information
   name: hostinfo
 - powershell: |
-    . ./docker/ci/build.ps1
-    Invoke-ContainerBuildSetup
-  displayName: Prepare Build Environment
-  name: build_prepare
+    Push-Location (Join-Path (Get-CurrentDirectory) 'docker')
+    ci/lint
+    Pop-Location
+  displayName: Lint Containers
+  name: lint_containers
 - powershell: |
-    . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver-standalone -Repository $ENV:BUILD_REPOSITORY
-  displayName: Build Puppetserver Standalone
-  name: build_puppetserver_standalone
-- powershell: |
-    . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver -Repository $ENV:BUILD_REPOSITORY
-  displayName: Build Puppetserver
-  name: build_puppetserver
+    Push-Location (Join-Path (Get-CurrentDirectory) 'docker')
+    ci/build
+    Pop-Location
+  displayName: Build Containers
+  name: build_containers
 - powershell: |
     . ./docker/ci/build.ps1
     Invoke-ContainerTest -Name puppetserver-standalone -Repository $ENV:BUILD_REPOSITORY
