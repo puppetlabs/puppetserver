@@ -45,11 +45,11 @@ steps:
   displayName: Diagnostic Host Information
   name: hostinfo
 - powershell: |
-    ruby docker\ci\lint
+    . ./docker/ci/pre_build 
   displayName: Lint Containers
   name: lint_containers
 - powershell: |
-    ruby docker\ci\build
+    . ./docker/ci/build
   displayName: Build Containers
   name: build_containers
 - powershell: |
