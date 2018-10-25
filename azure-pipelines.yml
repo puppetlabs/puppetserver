@@ -45,15 +45,11 @@ steps:
   displayName: Diagnostic Host Information
   name: hostinfo
 - powershell: |
-    Push-Location (Join-Path (Get-CurrentDirectory) 'docker')
-    ci/lint
-    Pop-Location
+    docker/ci/lint
   displayName: Lint Containers
   name: lint_containers
 - powershell: |
-    Push-Location (Join-Path (Get-CurrentDirectory) 'docker')
-    ci/build
-    Pop-Location
+    docker/ci/build
   displayName: Build Containers
   name: build_containers
 - powershell: |
