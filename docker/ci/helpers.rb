@@ -19,7 +19,7 @@ def lint(container, is_nightly: false)
 
   # run this command from the 'docker' directory
   Dir.chdir(File.dirname(File.dirname(__FILE__))) do
-    output = %x(docker run --rm -v #{File.join(Dir.pwd, container, dockerfile)}:/Dockerfile:ro -i #{lint_image} hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 Dockerfile)
+    output = %x(hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 #{File.join(Dir.pwd, container, dockerfile)})
     status = $?.exitstatus
     puts output
     fail "Running hadolint against #{File.join(container, dockerfile)} failed!" unless status == 0
