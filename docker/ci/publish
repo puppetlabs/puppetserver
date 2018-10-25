@@ -3,6 +3,7 @@
 require_relative 'helpers'
 
 is_latest = ENV['IS_LATEST'] || false
+is_nightly = ENV['IS_NIGHTLY'] || false
 
-publish 'puppetserver-standalone', is_latest: is_latest, noop: true
-publish 'puppetserver', is_latest: is_latest, noop: true
+publish 'puppetserver-standalone', is_latest: is_latest, is_nightly: is_nightly
+publish 'puppetserver', is_latest: is_latest, is_nightly: is_nightly

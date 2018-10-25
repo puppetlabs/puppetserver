@@ -1,14 +1,12 @@
 #! /usr/bin/env ruby
 
 require 'rspec/core'
-require 'puppet_docker_tools/utilities'
-require 'puppet_docker_tools/spec_helper'
 require 'time'
 require 'date'
 require 'open3'
 
 # lint the container
-def lint(container, dockerfile = 'Dockerfile')
+def lint(container, is_nightly: false)
   lint_image = 'hadolint/hadolint:latest'
   # can we get away with just using the hadolint container since we aren't using
   # pipelines hw? how does azure do with volume mounting?
@@ -17,17 +15,23 @@ def lint(container, dockerfile = 'Dockerfile')
   puts output
   fail "Fetching #{lint_image} failed!" unless status == 0
 
+  dockerfile = get_dockerfile(is_nightly)
+
   # run this command from the 'docker' directory
   Dir.chdir(File.dirname(File.dirname(__FILE__))) do
-    output = %x(docker run --rm -v #{File.join(Dir.pwd, container, dockerfile)}:/Dockerfile:ro -i #{lint_image} #{PuppetDockerTools::Utilities.get_hadolint_command('Dockerfile').join(' ')})
-    #output = %x(docker run --rm -v #{File.join(Dir.pwd, container, dockerfile)}:/Dockerfile:ro -i #{lint_image} hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 Dockerfile)
+    output = %x(docker run --rm -v #{File.join(Dir.pwd, container, dockerfile)}:/Dockerfile:ro -i #{lint_image} hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 Dockerfile)
     status = $?.exitstatus
     puts output
     fail "Running hadolint against #{File.join(container, dockerfile)} failed!" unless status == 0
   end
 end
 
-def get_version(is_nightly: false)
+def get_dockerfile(is_nightly = false)
+  return 'Dockerfile.nightly' if is_nightly
+  return 'Dockerfile'
+end
+
+def get_version(is_nightly = false)
   if is_nightly
     return 'puppet6-nightly'
   end
@@ -50,13 +54,14 @@ def get_version(is_nightly: false)
 end
 
 # build the containers
-def build(container, dockerfile = 'Dockerfile', repository: 'puppet', version: '', is_latest: false)
+def build(container, repository: 'puppet', version: '', is_latest: false, is_nightly: false)
   # run this command from the 'docker' directory
   Dir.chdir(File.dirname(File.dirname(__FILE__))) do
-    vcs_ref = PuppetDockerTools::Utilities.current_git_sha(container)
+    vcs_ref = %x(git rev-parse HEAD).strip
     build_date = Time.now.utc.iso8601
 
-    version = get_version unless !version.empty?
+    dockerfile = get_dockerfile(is_nightly)
+    version = get_version(is_nightly) unless !version.empty?
     if version.empty?
       fail "no version!"
     end
@@ -80,10 +85,10 @@ def build(container, dockerfile = 'Dockerfile', repository: 'puppet', version: '
 end
 
 # spec test the container
-def spec(container, repository: 'puppet', version: '')
+def spec(container, repository: 'puppet', version: '', is_nightly: false)
   # run this command from the 'docker' directory
   Dir.chdir(File.dirname(File.dirname(__FILE__))) do
-    version = get_version unless !version.empty?
+    version = get_version(is_nightly) unless !version.empty?
     if version.empty?
       fail "no version!"
     end
@@ -109,8 +114,8 @@ def spec(container, repository: 'puppet', version: '')
 end
 
 # push the containers
-def publish(container, repository: 'puppet', version: '', is_latest: false)
-  version = get_version unless !version.empty?
+def publish(container, repository: 'puppet', version: '', is_latest: false, is_nightly: false)
+  version = get_version(is_nightly) unless !version.empty?
 
   versions = [version]
   versions << 'latest' if is_latest

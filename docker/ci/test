@@ -2,5 +2,7 @@
 
 require_relative 'helpers'
 
-spec 'puppetserver-standalone', version: '5.2.0'
-spec 'puppetserver', version: '5.2.0'
+is_nightly = ENV['IS_NIGHTLY'] || false
+
+spec 'puppetserver-standalone', is_nightly: is_nightly
+spec 'puppetserver', is_nightly: is_nightly

@@ -3,7 +3,8 @@
 require_relative 'helpers'
 
 is_latest = ENV['IS_LATEST'] || false
+is_nightly = ENV['IS_NIGHTLY'] || false
 %x(docker pull ubuntu:16.04)
 
-build 'puppetserver-standalone', is_latest: is_latest
-build 'puppetserver', is_latest: is_latest
+build 'puppetserver-standalone', is_latest: is_latest, is_nightly: is_nightly
+build 'puppetserver', is_latest: is_latest, is_nightly: is_nightly
