@@ -30,3 +30,5 @@ puppetserver ca import --cert-bundle bundle.pem --crl-chain crls.pem --private-k
 ```
 
 You can always delete your CA per the instructions for regenerating the CA if you decide to switch to an intermediate CA setup later. See [Regenerating all certificates in a Puppet deployment](/puppet/latest/ssl_regenerate_certificates.html) All the caveats around certificate regeneration still apply.
+
+**Note:** Puppet 5 agents still do not support intermediate CAs. If you must use a Puppet 5 agent with a new (or regenerated) Puppet 6 CA, follow the [instructions](/puppetserver/5.3/intermediate_ca_configuration.html) for setting up Puppet 5 agents for intermediate CAs.
