@@ -4,10 +4,7 @@ dist: trusty
 # see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
 matrix:
   include:
-    - jdk: openjdk10
-      before_install:
-        - rm "${JAVA_HOME}/lib/security/cacerts"
-        - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
+    - jdk: openjdk11
     - jdk: oraclejdk8
 script:
   - ./ext/travisci/test.sh
