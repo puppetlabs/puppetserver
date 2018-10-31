@@ -813,16 +813,14 @@
     (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
 
     (testing "should throw an error message with too short keylength"
-      (is (thrown-with-msg?
-        InvalidParameterException
-        #".*RSA keys must be at least 512 bits long.*"
-          (initialize-master-ssl! (assoc settings :keylength 128) "master" ca-settings))))
+      (is (thrown?
+           InvalidParameterException
+           (initialize-master-ssl! (assoc settings :keylength 128) "master" ca-settings))))
 
     (testing "should throw an error message with too large keylength"
-      (is (thrown-with-msg?
-        InvalidParameterException
-        #".*RSA keys must be no longer than 16384 bits.*"
-          (initialize-master-ssl! (assoc settings :keylength 32768) "master" ca-settings))))))
+      (is (thrown?
+           InvalidParameterException
+           (initialize-master-ssl! (assoc settings :keylength 32768) "master" ca-settings))))))
 
 (deftest initialize-master-ssl!-test-with-keylength-settings
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
