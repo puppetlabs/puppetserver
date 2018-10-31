@@ -303,7 +303,7 @@ jruby-config :- jruby-schemas/JRubyConfig
               (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
               (is false "Expected HTTP connection to HTTPS port to fail")
               (catch EvalFailedException e
-                (is (ssl-connection-exception? (.. e getCause getCause))))))))
+                (is (ssl-connection-exception? (.getCause e))))))))
 
       (testing "Can connect via SSLv3 when specified"
         (with-scripting-container sc

@@ -1,7 +1,6 @@
 (ns puppetlabs.services.jruby.request-handler-test
   (:import (java.io ByteArrayInputStream)
            (java.security MessageDigest)
-           (javax.xml.bind.annotation.adapters HexBinaryAdapter)
            (org.apache.commons.io IOUtils))
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
@@ -38,12 +37,10 @@
          (let [raw-byte-arr            (byte-array [(byte -128)
                                                     (byte -127)
                                                     (byte -126)])
-               expected-md5            (-> (HexBinaryAdapter.)
-                                           (.marshal (->
-                                                       (MessageDigest/getInstance
-                                                         "MD5")
-                                                       (.digest raw-byte-arr)))
-                                           (string/lower-case))
+               digested                (.digest
+                                         (MessageDigest/getInstance "MD5")
+                                         raw-byte-arr)
+               expected-md5            (.toString (BigInteger. 1 digested) 16)
                expected-bucket-file    (string/join
                                          "/"
                                          [bucket-dir
