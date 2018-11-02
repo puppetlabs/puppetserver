@@ -67,8 +67,8 @@
                  ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "2.0.0"]
-                 [puppetlabs/jruby-deps "9.1.16.0-1"]
+                 [puppetlabs/jruby-utils "2.1.0"]
+                 [puppetlabs/jruby-deps "9.2.0.0-1"]
 
                  ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
                  ;; asm dependencies.  Deferring to clj-parent to resolve the version.
