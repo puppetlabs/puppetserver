@@ -76,7 +76,7 @@ The `puppetserver.conf` file contains settings for Puppet Server software. For a
 
         For more information, see the [`environment_classes` API documentation][].
 
-    * `compile-mode`: Recommended. The default value is `on`. Used to control JRuby's "CompileMode", which may improve performance. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
+    * `compile-mode`: The default value depends on JRuby versions, for 1.7 it is `off`, for 9k it is `jit`. Used to control JRuby's "CompileMode", which may improve performance. A value of `jit` enables JRuby's "just-in-time" compilation of Ruby code. A value of `force` causes JRuby to attempt to pre-compile all Ruby code.
 
     * `profiling-mode`: Optional. Used to enable JRuby's profiler for service startup and set it to one of the supported modes. The default value is `off`, but it can be set to one of `api`, `flat`, `graph`, `html`, `json`, `off`, and `service`. See [ruby-prof](https://github.com/ruby-prof/ruby-prof/blob/master/README.rdoc#reports) for details on what the various modes do.
 
