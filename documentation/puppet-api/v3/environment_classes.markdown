@@ -19,13 +19,7 @@ canonical: "/puppetserver/latest/puppet-api/v3/environment_classes.html"
 [Etag]: https://tools.ietf.org/html/rfc7232#section-2.3
 
 The environment classes API serves as a replacement for the Puppet [resource type API][]
-for [classes][], which is [deprecated](../../deprecated_features.markdown) as of Puppet
-Server 2.3.0 and Puppet 4.5.
-
-This endpoint is available only when the Puppet master is running Puppet Server, not
-on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It also ignores
-the Ruby-based Puppet master's authorization methods and configuration. See the
-[Authorization section](#authorization) for more information.
+for [classes][], which was removed in Puppet 5.
 
 ## Changes in the environment classes API
 
