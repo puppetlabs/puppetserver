@@ -4,7 +4,9 @@ require 'rspec/core'
 
 describe 'puppetserver-standalone container' do
   def puppetserver_health_check(container)
-    %x(docker inspect "#{container}" --format '{{.State.Health.Status}}').chomp
+    status = %x(docker inspect "#{container}" --format '{{.State.Health.Status}}').chomp
+    STDOUT.puts "queried health status of #{container}: #{status}"
+    return status
   end
 
   before(:all) do
@@ -29,14 +31,11 @@ describe 'puppetserver-standalone container' do
 
   it 'should start puppetserver successfully' do
     status = puppetserver_health_check(@container)
-    while status == 'starting'
+    while (status == 'starting' || status == "'starting'")
       sleep(1)
       status = puppetserver_health_check(@container)
     end
-    unless status == 'healthy'
-      puts %x(docker logs #{@container})
-    end
-    expect(status).to eq('healthy')
+    expect(status).to match(/\'?healthy\'?/)
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
