@@ -1,6 +1,7 @@
 require 'beaker/dsl/install_utils'
 require 'net/http'
 require 'json'
+require 'beaker-puppet'
 
 module PuppetServerExtensions
 
