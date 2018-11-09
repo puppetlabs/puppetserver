@@ -35,6 +35,9 @@ describe 'puppetserver container' do
       sleep(1)
       status = puppetserver_health_check(@container)
     end
+    if status !~ /\'?healthy\'?/
+      puts %x(docker logs #{@container})
+    end
     expect(status).to match(/\'?healthy\'?/)
   end
 
