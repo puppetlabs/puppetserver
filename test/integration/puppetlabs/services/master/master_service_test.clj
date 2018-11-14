@@ -275,19 +275,6 @@
                           (+ (:duration-millis requested-instance)
                              (:time requested-instance))))))))))))))
 
-(deftest dashboard-test
-  (testing "dashboard can be loaded"
-    (bootstrap-testutils/with-puppetserver-running-with-mock-jrubies
-     "Mocking is safe here because we're just trying to see that the
-     dashboard page comes up.  We aren't trying to evaluate any of the content
-     on it, like whether any real info related to JRuby usage is correct."
-     _
-     {:jruby-puppet {:max-active-instances 1
-                     :master-conf-dir master-service-test-runtime-dir}}
-     (let [resp (http-get "/puppet/experimental/dashboard.html")]
-       (is (= 200 (:status resp)))
-       (is (re-find #"Puppet Server Developer Dashboard" (:body resp)))))))
-
 (deftest ^:integration ca-files-test
   (testing "CA settings from puppet are honored and the CA
             files are created when the service starts up"

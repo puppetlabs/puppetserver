@@ -105,11 +105,6 @@
          use-legacy-auth-conf (get-in config
                                       [:jruby-puppet :use-legacy-auth-conf]
                                       false)
-         clojure-handler (fn [handler]
-                           (core/get-wrapped-handler
-                            (ring/wrap-params handler)
-                            (get-auth-handler)
-                            puppet-version))
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
@@ -122,9 +117,7 @@
                                                current-code-id
                                                handle-request
                                                (get-auth-handler)
-                                               environment-class-cache-enabled)
-                   (-> (core/experimental-routes path)
-                       (comidi/wrap-routes clojure-handler)))
+                                               environment-class-cache-enabled))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)
