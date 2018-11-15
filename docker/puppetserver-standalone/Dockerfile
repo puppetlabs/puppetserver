@@ -44,21 +44,15 @@ RUN puppet config set autosign true --section master && \
     rm -rf /var/tmp/puppet/ssl
 
 COPY docker-entrypoint.sh /
+RUN chmod +x /docker-entrypoint.sh
 
 EXPOSE 8140
 
 ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
 CMD ["foreground"]
 
-HEALTHCHECK --interval=10s --timeout=10s --retries=90 CMD \
-  hostname=$(puppet config print certname) && \
-  curl --fail -H 'Accept: pson' \
-  --resolve "${hostname}:8140:127.0.0.1" \
-  --cert   $(puppet config print hostcert) \
-  --key    $(puppet config print hostprivkey) \
-  --cacert $(puppet config print localcacert) \
-  https://${hostname}:8140/${PUPPET_HEALTHCHECK_ENVIRONMENT}/status/test \
-  |  grep -q '"is_alive":true' \
-  || exit 1
+COPY healthcheck.sh /
+RUN chmod +x /healthcheck.sh
+HEALTHCHECK --interval=10s --timeout=10s --retries=90 CMD ["/healthcheck.sh"]
 
 COPY Dockerfile /
