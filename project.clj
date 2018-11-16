@@ -173,7 +173,7 @@
                    ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
-             :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
+             :testutils {:source-paths ["test/unit" "test/integration"]}
              :test {
                     ;; NOTE: In core.async version 0.2.382, the default size for
                     ;; the core.async dispatch thread pool was reduced from
@@ -215,7 +215,58 @@
                                 [puppetlabs/lein-ezbake "1.8.5"]]
                       :hooks [leiningen.cljsbuild]
                       :name "puppetserver"}
-             :uberjar {:aot [puppetlabs.trapperkeeper.main]
+             :uberjar {:aot [puppetlabs.trapperkeeper.main
+                             puppetlabs.trapperkeeper.services.status.status-service
+                             puppetlabs.trapperkeeper.services.metrics.metrics-service
+                             puppetlabs.services.protocols.jruby-puppet
+                             puppetlabs.trapperkeeper.services.watcher.filesystem-watch-service
+                             puppetlabs.trapperkeeper.services.webserver.jetty9-service
+                             puppetlabs.trapperkeeper.services.webrouting.webrouting-service
+                             puppetlabs.services.legacy-routes.legacy-routes-core
+                             puppetlabs.services.protocols.jruby-metrics
+                             puppetlabs.services.protocols.ca
+                             puppetlabs.puppetserver.common
+                             puppetlabs.trapperkeeper.services.scheduler.scheduler-service
+                             puppetlabs.services.jruby.jruby-metrics-core
+                             puppetlabs.services.jruby.jruby-metrics-service
+                             puppetlabs.services.protocols.puppet-server-config
+                             puppetlabs.puppetserver.liberator-utils
+                             puppetlabs.services.puppet-profiler.puppet-profiler-core
+                             puppetlabs.services.jruby-pool-manager.jruby-pool-manager-service
+                             puppetlabs.services.jruby.puppet-environments
+                             puppetlabs.services.jruby.jruby-puppet-schemas
+                             puppetlabs.services.jruby.jruby-puppet-core
+                             puppetlabs.services.jruby.jruby-puppet-service
+                             puppetlabs.puppetserver.jruby-request
+                             puppetlabs.puppetserver.shell-utils
+                             puppetlabs.puppetserver.ringutils
+                             puppetlabs.puppetserver.certificate-authority
+                             puppetlabs.services.ca.certificate-authority-core
+                             puppetlabs.puppetserver.ring.middleware.params
+                             puppetlabs.services.puppet-admin.puppet-admin-core
+                             puppetlabs.services.puppet-admin.puppet-admin-service
+                             puppetlabs.services.versioned-code-service.versioned-code-core
+                             puppetlabs.services.ca.certificate-authority-disabled-service
+                             puppetlabs.services.protocols.request-handler
+                             puppetlabs.services.request-handler.request-handler-core
+                             puppetlabs.puppetserver.cli.subcommand
+                             puppetlabs.services.request-handler.request-handler-service
+                             puppetlabs.services.protocols.versioned-code
+                             puppetlabs.services.protocols.puppet-profiler
+                             puppetlabs.services.puppet-profiler.puppet-profiler-service
+                             puppetlabs.services.master.master-core
+                             puppetlabs.services.protocols.master
+                             puppetlabs.services.config.puppet-server-config-core
+                             puppetlabs.services.config.puppet-server-config-service
+                             puppetlabs.services.versioned-code-service.versioned-code-service
+                             puppetlabs.services.legacy-routes.legacy-routes-service
+                             puppetlabs.services.master.master-service
+                             puppetlabs.services.ca.certificate-authority-service
+                             puppetlabs.puppetserver.cli.ruby
+                             puppetlabs.puppetserver.cli.irb
+                             puppetlabs.puppetserver.cli.gem
+                             puppetlabs.services.analytics.analytics-service
+                             puppetlabs.services.protocols.legacy-routes]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}
