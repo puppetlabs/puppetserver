@@ -145,6 +145,12 @@ it's recommended that you explicitly set this value to something that you think
 is reasonable in your environment. To encourage this, we log a warning
 message at startup if you haven't provided an explicit value.
 
+### Potential JAVA ARGS settings
+
+If you’re working outside of lab environment, increase `ReservedCodeCache` to `512m` under normal load. If you’re working with 6-12 JRuby instances (or a `max-requests-per-instance` value significantly less than 100k), run with a `ReservedCodeCache` of 1G. Twelve or more JRuby instances in a single server might require 2G or more.
+
+Similar caveats regarding scaling `ReservedCodeCache` might apply if users are managing `MaxMetaspace`.
+
 ## Footnotes
 
 [1] The vast majority of the memory footprint of a JVM process can usually be
