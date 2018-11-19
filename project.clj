@@ -84,12 +84,8 @@
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
                  [puppetlabs/comidi]
-                 [puppetlabs/i18n]
+                 [puppetlabs/i18n]]
 
-                 ;; dependencies for clojurescript dashboard
-                 [puppetlabs/cljs-dashboard-widgets]
-                 [org.clojure/clojurescript]
-                 [cljs-http "0.1.36"]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -99,7 +95,7 @@
   :java-source-paths ["src/java"]
 
   :test-paths ["test/unit" "test/integration"]
-  :resource-paths ["resources" "src/ruby" "target/js-resources"]
+  :resource-paths ["resources" "src/ruby"]
 
   :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
@@ -133,15 +129,6 @@
   ;; code that we have.
   :classifiers [["test" :testutils]]
 
-  :cljsbuild {:builds {:app {:source-paths ["src/cljs"]
-                             :compiler {:output-to     "target/js-resources/puppetlabs/puppetserver/public/js/puppetserver-dashboard.js"
-                                        :output-dir    "target/js-resources/puppetlabs/puppetserver/public/js/out"
-                                        :asset-path   "js/out"
-                                        :optimizations :none
-                                        :pretty-print  true
-                                        :main "puppetlabs.puppetserver.dashboard.production"}}}}
-  :hooks [leiningen.cljsbuild]
-
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil]
@@ -153,32 +140,9 @@
                                    [ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                                    [beckon]
-                                   [com.cemerick/url "0.1.1"]
+                                   [com.cemerick/url "0.1.1"]]
 
-                                   ;; Including this to avoid a logback version conflict when running
-                                   ;; 'lein figwheel'.
-                                   [ch.qos.logback/logback-classic]
-
-                                   ;; dependencies for cljs development
-                                   [leiningen "2.7.1" :exclusions [org.codehaus.plexus/plexus-utils
-                                                                   org.clojure/tools.cli]]
-                                   [cljsbuild ~cljsbuild-version]
-
-                                   [figwheel ~figwheel-version :exclusions [org.clojure/clojure]]]
-                   ;; dev profile config for clojurescript dev
-                   :plugins [[lein-cljsbuild ~cljsbuild-version]
-                             [lein-figwheel ~figwheel-version
-                              :exclusions [org.clojure/clojure
-                                           org.clojure/core.cache
-                                           commons-io
-                                           commons-codec]]]
-                   :figwheel {:http-server-root "puppetlabs/puppetserver/public"
-                              :server-port 3449
-                              :repl false}
-                   :cljsbuild {:builds {:app {:source-paths ["dev-cljs"]
-                                              :compiler {:main "puppetlabs.puppetserver.dashboard.dev"
-                                                         :source-map true}}}}
-                   ; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
+                   ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
