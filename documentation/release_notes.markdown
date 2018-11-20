@@ -181,7 +181,7 @@ In previous versions of Puppet Server, administrators had to manually remediate 
 
 Both the backlog limit and `Retry-After` period are configurable, as the `max-queued-requests` and `max-retry-delay` settings respectively under the `jruby-puppet` configuration in [puppetserver.conf][]. Both settings' default values do not change Puppet Server's behavior compared to Server 5.0.0, so to take advantage of this feature in Puppet Server 5.1.0, you must specify your own values for `max-queued-requests` and `max-retry-delay`. For details, see the [puppetserver.conf][] documentation. Also, Puppet agents must run Puppet 5.3.0 or newer to respect such headers.
 
--   [PUP-7451](https://tickets.puppetlabs.com/browse/PUP-7902)
+-   [PUP-7451](https://tickets.puppetlabs.com/browse/PUP-7451)
 -   [SERVER-1767](https://tickets.puppetlabs.com/browse/SERVER-1767)
 
 ### New Feature: Automatic CRL refresh on certificate revocation
