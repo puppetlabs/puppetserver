@@ -4,8 +4,9 @@ step "Configure puppet.conf" do
   dir = master.tmpdir(File.basename('/tmp'))
 
   lay_down_new_puppet_conf( master,
-                           {"main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}",
-                                       "verbose" => true }}, dir)
+                           {"main" => {"dns_alt_names" => "puppet,#{hostname},#{fqdn}",
+                                       "verbose" => true,
+                                       "server" => fqdn}}, dir)
 
   config = { 'certificate-authority' => { 'allow-subject-alt-names' => true }}
   path = '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf'
