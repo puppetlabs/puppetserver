@@ -86,12 +86,7 @@
                  [puppetlabs/dujour-version-check]
                  [puppetlabs/http-client]
                  [puppetlabs/comidi]
-                 [puppetlabs/i18n]
-
-                 ;; dependencies for clojurescript dashboard
-                 [puppetlabs/cljs-dashboard-widgets "0.1.1"]
-                 [org.clojure/clojurescript ~clojurescript-version]
-                 [cljs-http "0.1.36"]]
+                 [puppetlabs/i18n]]
 
   :main puppetlabs.trapperkeeper.main
 
@@ -101,7 +96,7 @@
   :java-source-paths ["src/java"]
 
   :test-paths ["test/unit" "test/integration"]
-  :resource-paths ["resources" "src/ruby" "target/js-resources"]
+  :resource-paths ["resources" "src/ruby"]
 
   :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
@@ -133,14 +128,6 @@
   ;; code that we have.
   :classifiers [["test" :testutils]]
 
-  :cljsbuild {:builds {:app {:source-paths ["src/cljs"]
-                             :compiler {:output-to     "target/js-resources/puppetlabs/puppetserver/public/js/puppetserver-dashboard.js"
-                                        :output-dir    "target/js-resources/puppetlabs/puppetserver/public/js/out"
-                                        :asset-path   "js/out"
-                                        :optimizations :none
-                                        :pretty-print  true
-                                        :main "puppetlabs.puppetserver.dashboard.production"}}}}
-
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil]
@@ -152,24 +139,8 @@
                                    [ring/ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                                    [beckon]
-                                   [com.cemerick/url "0.1.1"]
+                                   [com.cemerick/url "0.1.1"]]
 
-                                   ;; dependencies for cljs development
-                                   [figwheel-sidecar "0.5.4-6" :exclusions [org.clojure/clojure]]]
-                   ;; dev profile config for clojurescript dev
-                   :plugins [[lein-cljsbuild ~cljsbuild-version
-                              :exclusions [org.clojure/clojurescript]]
-                             [lein-figwheel "0.5.4-6"
-                              :exclusions [org.clojure/clojure
-                                           org.clojure/core.cache
-                                           commons-io
-                                           commons-codec]]]
-                   :figwheel {:http-server-root "puppetlabs/puppetserver/public"
-                              :server-port 3449
-                              :repl false}
-                   :cljsbuild {:builds {:app {:source-paths ["dev-cljs"]
-                                              :compiler {:main "puppetlabs.puppetserver.dashboard.dev"
-                                                         :source-map true}}}}
                    ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
@@ -209,11 +180,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[lein-cljsbuild ~cljsbuild-version
-                                 :exclusions [org.clojure/clojurescript
-                                              org.apache.commons/commons-compress]]
-                                [puppetlabs/lein-ezbake "1.8.5"]]
-                      :hooks [leiningen.cljsbuild]
+                      :plugins [[puppetlabs/lein-ezbake "1.8.10"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
