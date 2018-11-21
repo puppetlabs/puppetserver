@@ -68,6 +68,3 @@ This Puppet Server release provides a new workflow and API for certificate issua
 ### Bug fixes
 
 - We've made server-side fixes for fully supporting intermediate CA capability. With this, CRL chains will be persisted when revoking certs. [SERVER-2205](https://tickets.puppetlabs.com/browse/SERVER-2205) For more details on the intermediate CA support in Puppet 6, see [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html).
-
-
-
