@@ -28,8 +28,7 @@
             [puppetlabs.metrics :as metrics]
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
-            [figwheel-sidecar.repl-api :as ra])
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -94,12 +93,6 @@
                        (key f)
                        (-> (val f) meta :doc))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CLJS utility functions
-
-(defn start-figwheel []
-   (print "Starting figwheel.\n")
-   (ra/start-figwheel!))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for interacting with running system
