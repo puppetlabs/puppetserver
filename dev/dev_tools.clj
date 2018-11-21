@@ -94,13 +94,6 @@
                        (key f)
                        (-> (val f) meta :doc))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; CLJS utility functions
-
-(defn start-figwheel []
-  (future
-   (print "Starting figwheel.\n")
-   (lein/-main ["figwheel"])))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities for interacting with running system
