@@ -1,18 +1,22 @@
 language: clojure
 lein: 2.8.1
 dist: trusty
-# see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
-matrix:
-  include:
-    - jdk: openjdk10
-      before_install:
-       - rm "${JAVA_HOME}/lib/security/cacerts"
-       - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
-    - jdk: oraclejdk8
+sudo: required
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
-sudo: required
+matrix:
+  include:
+    - stage: puppetserver tests
+      env: JRUBY_VERSION=9k
+      jdk: openjdk8
+    - stage: puppetserver tests
+      env: JRUBY_VERSION=1.7
+      jdk: oraclejdk8
+    - stage: puppetserver container tests
+      language: generic
+      script:
+        - cd docker && make lint && make build && make test
 notifications:
   email: false
   hipchat:
