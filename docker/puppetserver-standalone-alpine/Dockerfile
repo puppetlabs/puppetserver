@@ -61,7 +61,8 @@ RUN apk add --no-cache \
     boost-regex \
     boost-thread \
     java-jffi-native \
-    libc6-compat
+    libc6-compat \
+    tini
 
 COPY docker/conf.d /etc/puppetlabs/puppetserver/conf.d
 COPY ezbake/config/services.d /etc/puppetlabs/puppetserver/services.d
@@ -83,5 +84,7 @@ COPY --from=agent /usr/local/share /usr/local/share
 RUN ln -s /usr/local/lib/libfacter.so.* /usr/local/lib/libfacter.so
 
 EXPOSE 8140
+
+ENTRYPOINT ["/sbin/tini", "--"]
 
 CMD ["java", "-cp", "/puppet-server-release.jar", "clojure.main", "-m", "puppetlabs.trapperkeeper.main", "-b", "/etc/puppetlabs/puppetserver/bootstrap.cfg,/etc/puppetlabs/puppetserver/services.d", "-c", "/etc/puppetlabs/puppetserver/conf.d"]
