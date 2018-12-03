@@ -21,6 +21,11 @@ Puppet provides official packages that install Puppet Server 6.0 and all of its 
 -   Enterprise Linux 6
 -   Enterprise Linux 7
 
+### CentOS
+
+-   CentOS 6
+-   CentOS 7
+
 ### Debian
 
 -   Debian 8 (Jessie)
