@@ -8,11 +8,12 @@ script:
 matrix:
   include:
     - stage: puppetserver tests
-      env: JRUBY_VERSION=9k
       jdk: openjdk8
     - stage: puppetserver tests
-      env: JRUBY_VERSION=1.7
-      jdk: oraclejdk8
+      jdk: openjdk10
+      before_install:
+        - rm "${JAVA_HOME}/lib/security/cacerts"
+        - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
     - stage: puppetserver container tests
       language: generic
       script:
