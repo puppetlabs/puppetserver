@@ -11,7 +11,7 @@ matrix:
     - stage: puppetserver tests
       jdk: openjdk11
     - stage: puppetserver tests
-      jdk: oraclejdk8
+      jdk: openjdk8
     - stage: puppetserver container tests
       language: generic
       script:
