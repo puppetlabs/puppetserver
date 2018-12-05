@@ -1,2 +1,3 @@
 docker/puppetserver/*               text  eol=lf
 docker/puppetserver-standalone/*    text  eol=lf
+docker/puppetserver-standalone/docker-entrypoint.d/*    text  eol=lf
