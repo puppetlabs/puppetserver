@@ -12,9 +12,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 6.0.2
 
-Released 23 October 2018.
-
-This release contains new a feature.
+Released 23 October 2018
 
 ### New features
 
@@ -24,8 +22,6 @@ This release contains new a feature.
 ## Puppet Server 6.0.1
 
 Released 2 October 2018
-
-This release contains some new features.
 
 ### New features
 
@@ -38,9 +34,9 @@ This release contains some new features.
 
 ## Puppet Server 6.0.0
 
-Released 18 September, 2018
+Released 18 September 2018
 
-This Puppet Server release provides a new workflow and API for certificate issuance. By default, the server will now generate a root and intermediate signing CA cert, rather than signing everything off the root. If you have an external certificate authority, you can generate an intermediate signing CA from it instead, and a new `puppetserver ca` subcommand will put everything put into its proper place
+This Puppet Server release provides a new workflow and API for certificate issuance. By default, the server now generates a root and intermediate signing CA cert, rather than signing everything off the root. If you have an external certificate authority, you can generate an intermediate signing CA from it instead, and a new `puppetserver ca` subcommand puts everything into its proper place.
 
 ### New features
 
@@ -65,6 +61,6 @@ This Puppet Server release provides a new workflow and API for certificate issua
 
 - Puppet Server 6.0 now uses JRuby 9k. This implements version 2.3 of the Ruby language. ([SERVER-2095](https://tickets.puppetlabs.com/browse/SERVER-2095))
 
-### Bug fixes
+### Resolved issues
 
 - We've made server-side fixes for fully supporting intermediate CA capability. With this, CRL chains will be persisted when revoking certs. [SERVER-2205](https://tickets.puppetlabs.com/browse/SERVER-2205) For more details on the intermediate CA support in Puppet 6, see [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html).
