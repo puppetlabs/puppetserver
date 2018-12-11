@@ -9,11 +9,7 @@ canonical: "/puppetserver/latest/services_master_puppetserver.html"
 [cert_manpage]: https://puppet.com/docs/puppet/latest/man/cert.html
 [deprecated]: ./deprecated_features.markdown
 
-Puppet master is a Ruby application that compiles configurations for any number of Puppet agent nodes, using Puppet code and various other data sources. (For more info, see [Overview of Puppet's Architecture](https://puppet.com/docs/puppet/latest/architecture.html).)
-
-Puppet Server is an application that runs on the Java Virtual Machine (JVM) and provides the same services as the classic Puppet master application. It mostly does this by running the existing Puppet master code in several JRuby interpreters, but it replaces some parts of the classic application with new services written in Clojure.
-
-> **Note:** Puppet Enterprise 3.7 and later use Puppet Server by default. You do not need to manually install or configure it.
+Puppet is configured in an agent-master architecture, in which a master node controls configuration information for a fleet of managed agent nodes. Puppet Server performs the role of the master node. Puppet Server is a Ruby and Clojure application that runs on the Java Virtual Machine (JVM) and provides the same services as the classic Puppet master application. It mostly does this by running the existing Puppet master code in several JRuby interpreters, but it replaces some parts of the classic application with new services written in Clojure.
 
 This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](https://puppet.com/docs/puppet/latest/man/master.html).
 
@@ -28,8 +24,6 @@ Note that Puppet Server is versioned separately from Puppet itself. Puppet Serve
 ## Controlling the Service
 
 The Puppet Server service name is `puppetserver`. To start and stop the service, you'll use the usual commands for your OS, such as `service puppetserver restart`, `service puppetserver status`, etc.
-
-Note that while Puppet Server has better performance overall than a Ruby Puppet master running on the Apache/Passenger stack, it's slower to start up. Starting or restarting the service will take longer than you are used to.
 
 ## Puppet Server's Run Environment
 
@@ -78,11 +72,11 @@ Right now, the main administrative task is forcing expiration of all environment
 
 ### JRuby Interpreters
 
-Most of Puppet Server's work --- compiling catalogs, receiving reports, etc. --- is still done by the Ruby-based Puppet master application. But instead of using the operating system's MRI Ruby runtime, Puppet Server runs Puppet in JRuby, drawing from a separate collection of Ruby code.
+Most of Puppet Server's work --- compiling catalogs, receiving reports, etc. --- is still done by the now removed Ruby-based Puppet master application. But instead of using the operating system's MRI Ruby runtime, Puppet Server runs Puppet in JRuby, drawing from a separate collection of Ruby code.
 
 Since we don't use the system Ruby, you can't use the system `gem` command to install Ruby Gems for use by the Puppet master. Instead, Puppet Server includes a separate `puppetserver gem` command for installing any libraries that your Puppet extensions might require. See [the "Using Ruby Gems" page](./gems.markdown) for details.
 
-Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that will execute Ruby code in a JRuby environment identical to what the Puppet master application uses.
+Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that will execute Ruby code in a JRuby environment.
 
 > **Note:** In Puppet Server 2.7.1, you can set custom arguments to be passed into the Java process for the `puppetserver ruby` command via the new `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file (typically located at `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`). The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver gem` and `puppetserver irb` [subcommands](./subcommands.markdown). See the [Server 2.7.1 release notes](https://docs.puppet.com/puppetserver/2.7/release_notes.html) for details.
 
