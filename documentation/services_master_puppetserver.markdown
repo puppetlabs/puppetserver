@@ -72,7 +72,7 @@ Right now, the main administrative task is forcing expiration of all environment
 
 ### JRuby Interpreters
 
-Most of Puppet Server's work --- compiling catalogs, receiving reports, etc. --- is still done by the now removed Ruby-based Puppet master application. But instead of using the operating system's MRI Ruby runtime, Puppet Server runs Puppet in JRuby, drawing from a separate collection of Ruby code.
+Most of Puppet Server's work — compiling catalogs, receiving reports, etc. — is still done by Ruby code. But instead of using the operating system's MRI Ruby runtime, Puppet Server runs Puppet in JRuby, drawing from a separate collection of Ruby code.
 
 Since we don't use the system Ruby, you can't use the system `gem` command to install Ruby Gems for use by the Puppet master. Instead, Puppet Server includes a separate `puppetserver gem` command for installing any libraries that your Puppet extensions might require. See [the "Using Ruby Gems" page](./gems.markdown) for details.
 
