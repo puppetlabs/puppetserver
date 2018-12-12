@@ -9,7 +9,7 @@ ENV UBUNTU_CODENAME="xenial"
 ENV PUPPETSERVER_JAVA_ARGS="-Xms256m -Xmx256m"
 ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
 ENV PUPPET_HEALTHCHECK_ENVIRONMENT="production"
-ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=''
+ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=1
 ENV PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
