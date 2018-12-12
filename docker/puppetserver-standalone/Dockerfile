@@ -9,6 +9,8 @@ ENV UBUNTU_CODENAME="xenial"
 ENV PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m"
 ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
 ENV PUPPET_HEALTHCHECK_ENVIRONMENT="production"
+ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=1
+ENV PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
@@ -38,6 +40,8 @@ RUN apt-get update && \
 COPY puppetserver /etc/default/puppetserver
 COPY logback.xml /etc/puppetlabs/puppetserver/
 COPY request-logging.xml /etc/puppetlabs/puppetserver/
+COPY puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+
 
 RUN puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
@@ -45,6 +49,7 @@ RUN puppet config set autosign true --section master && \
 
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
+COPY docker-entrypoint.d /docker-entrypoint.d
 
 EXPOSE 8140
 

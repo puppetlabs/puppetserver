@@ -17,17 +17,23 @@ canonical: "/puppetserver/latest/puppet_server_metrics.html"
 Puppet Server tracks several advanced performance and health metrics, all of which take advantage of the [metrics API][]. You can track these metrics using:
 
 -   Customizable, networked [Graphite and Grafana instances](#getting-started-with-graphite)
--   A built-in experimental [developer dashboard][]
 -   [HTTP client metrics][]
 -   [Metrics API][metrics API] endpoints
 
-> **Note:** The `grafanadash` and `puppet-graphite` modules referenced in this document are _not_ Puppet-supported modules. They are provided as testing and demonstration purposes _only_.
+To visualize Puppet Server metrics, either:
+
+- Export them to a Graphite installation. The [grafanadash](https://forge.puppet.com/puppetlabs/grafanadash) module helps you set up a Graphite instance, configure Puppet Server for exporting to it, and visualize the output with Grafana. You can later integrate this with your Graphite installation. For more information, see Getting started with Graphite below.
+- Use the [puppet-metrics-dashboard](https://forge.puppet.com/puppetlabs/puppet_metrics_dashboard) — this does not go through the Graphite exporting feature. The puppet-metrics-dashboard queries the metrics HTTP API directly and saves the results to disk. It also includes a Docker image of Graphite and Grafana for easy visualization. For more information, see [Puppet Metrics Collection](https://github.com/puppetlabs/best-practices/blob/master/puppet-enterprise-metrics-collection.md).
+
+The puppet-metrics-dashboard is the recommended option for FOSS users, as it is an easier way to save and visualize Puppet Server metrics. The `grafanadash` is still useful for users exporting to their existing Graphite installation.
+
+> **Note:** The `grafanadash` and `puppet-graphite` modules referenced in this document are _not_ Puppet-supported modules. They are provided as testing and demonstration purposes _only_. 
 
 ## Getting started with Graphite
 
 [Graphite][] is a third-party monitoring application that stores real-time metrics and provides customizable ways to view them. Puppet Server can export many metrics to Graphite, and exports a set of metrics by default that is designed to be immediately useful to Puppet administrators.
 
-> **Note:** A Graphite setup is deeply customizable and can report many Puppet Server metrics on demand. However, it requires considerable configuration and additional server resources. For a web-based dashboard of Puppet Server metrics built into Puppet Server, see the [developer dashboard][]. To retrieve metrics through HTTP requests, see the metrics API.
+> **Note:** A Graphite setup is deeply customizable and can report many Puppet Server metrics on demand. However, it requires considerable configuration and additional server resources. To retrieve metrics through HTTP requests, see the metrics API.
 
 To start using Graphite with Puppet Server, you must:
 
@@ -54,7 +60,7 @@ Install the `grafanadash` Puppet module on a \*nix agent. The module's `grafanad
 
 1.  [Install a \*nix Puppet agent](https://puppet.com/docs/puppet/latest/install_linux.html) to serve as the Graphite server.
 
-2.  As root on the Puppet agent node, run `puppet module install cprice404-grafanadash`.
+2.  As root on the Puppet agent node, run `puppet module install puppetlabs-grafanadash`.
 
 3.  As root on the Puppet agent node, run `puppet apply -e 'include grafanadash::dev'`.
 
@@ -81,6 +87,8 @@ Grafana runs as a web dashboard, and the `grafanadash` module configures it to u
 4.  Navigate to and select the edited JSON file.
 
 This loads a dashboard with nine graphs that display various metrics exported from the Puppet Server to the Graphite server. (For details, see [Using the Grafana dashboard](#using-the-sample-grafana-dashboard).) However, these graphs will remain empty until you enable Puppet Server's Graphite metrics.
+
+> Note: If you want to integrate Puppet Server's Grafana exporting with your own infrastructure, use the `grafanadash` module. If you want visualization of metrics, use the `puppetlabs-puppet_metrics_dashboard` module. See [Puppet Metrics Collection](https://github.com/puppetlabs/best-practices/blob/master/puppet-enterprise-metrics-collection.md) for more information. 
 
 ### Enabling Puppet Server's Graphite support
 
@@ -414,14 +422,3 @@ Optional metrics include:
 
 -   `compiler.compile.evaluate_resources.<RESOURCE>`: Time spent evaluating a specific resource during catalog compilation.
 
-## Using the developer dashboard
-
-While not as customizable as a Graphite dashboard, the developer dashboard is a simple, built-in way to view basic Puppet Server metrics.
-
-The developer dashboard features metrics particularly relevant to developers of Puppet manifests and modules, which are drawn from the [metrics v1 API](./metrics-api/v1/metrics_api.markdown).
-
-The dashboard charts the current and mean number of free and requested JRuby interpreters, as well as the mean JRuby borrow and wait times in milliseconds. It also lists the top 10 aggregate API endpoint requests, function calls, and resource declarations by total, mean, and aggregate counts. For more information about these metrics, see the [documentation for the metrics v1 endpoints](./metrics-api/v1/metrics_api.markdown).
-
-### Accessing the developer dashboard
-
-Open a web browser and go to `https://<DNS NAME OF YOUR MASTER>:8140/puppet/experimental/dashboard.html`.
