@@ -10,6 +10,23 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.1.0
+
+Released 18 December 2018
+
+### Enhancements
+
+- Puppet Server 6.1.0 upgrades to JRuby 9.2.0.0. This version implements the Ruby 2.5 interface. It is backwards compatible, but will issue a warning for Ruby language features that have been deprecated. The major warning that users will see is `warning: constant ::Fixnum is deprecated`. Upgrading to this version of JRuby means that the Ruby interface has the same version as the Puppet agent. This version of JRuby is faster than previous versions under certain conditions. [SERVER-2381](https://tickets.puppetlabs.com/browse/SERVER-2381)
+- Puppet Server now has experimental support for Java 11. This has been tested with low level tests but has not gone through high level packaged acceptance tests. Consequently, we consider this support "experimental", with full support coming later in 2019 for the latest long term supported version of Java. [SERVER-2315](https://tickets.puppetlabs.com/browse/SERVER-2315).
+- The `puppetserver ca` command now provides useful errors on connection issues and returns debugging information. [SERVER-2317](https://tickets.puppetlabs.com/browse/SERVER-2317)
+- The `puppetserver ca` tool now prefers the `server_list` setting in `puppet.conf` for users that have created their own high availability configuration using this feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392)
+
+### Resolved issues
+
+- The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
+- Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
+
+
 ## Puppet Server 6.0.2
 
 Released 23 October 2018
