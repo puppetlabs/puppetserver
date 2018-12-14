@@ -14,9 +14,9 @@ FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
 PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
 # Branch of puppetserver for which to update submodule pins
-PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || '5.1.x'
+PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || '6.1.0-release'
 # Branch of puppet-agent to track for passing puppet SHA
-PUPPET_AGENT_BRANCH = ENV['PUPPET_AGENT_BRANCH'] || '5.3.x'
+PUPPET_AGENT_BRANCH = ENV['PUPPET_AGENT_BRANCH'] || '6.1.0-release'
 
 TEST_GEMS_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_gems')
 TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
