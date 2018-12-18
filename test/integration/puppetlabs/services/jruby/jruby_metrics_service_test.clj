@@ -262,7 +262,8 @@
         ;; when the sampling occurs.  Otherwise these tests would be very racy.
         sampling-scheduled?# (atom false)
         mock-schedule-metrics-sampler# (fn [_# _# _#] (reset! sampling-scheduled?# true))]
-    (with-redefs [puppetlabs.services.jruby.jruby-metrics-core/schedule-metrics-sampler! mock-schedule-metrics-sampler#]
+    (with-redefs [puppetlabs.services.jruby.jruby-metrics-core/schedule-metrics-sampler! mock-schedule-metrics-sampler#
+                  puppetlabs.trapperkeeper.services.protocols.scheduler/stop-job (constantly true)]
       (bootstrap/with-app-with-config
         app#
         (jruby-testutils/add-mock-jruby-pool-manager-service
