@@ -52,6 +52,7 @@ RUN puppet config set autosign true --section master && \
 COPY docker-entrypoint.sh /
 RUN chmod +x /docker-entrypoint.sh
 COPY docker-entrypoint.d /docker-entrypoint.d
+RUN mkdir /docker-entrypoint-additional.d
 
 EXPOSE 8140
 
