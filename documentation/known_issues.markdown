@@ -42,10 +42,12 @@ To use a different temporary directory, you can set the following JVM property:
 -Djava.io.tmpdir=/some/other/temporary/directory
 ```
 
-When Puppet Server is installed from packages, this property should be added
-to the `JAVA_ARGS` variable defined in either `/etc/sysconfig/puppetserver`
-or `/etc/default/puppetserver`, depending on upon your distribution. Note that
-the service will need to be restarted in order for this change to take effect.
+When Puppet Server is installed from packages, add this property
+to the `JAVA_ARGS` and `JAVA_ARGS_CLI` variables defined in either
+`/etc/sysconfig/puppetserver` or `/etc/default/puppetserver`, depending on
+your distribution. Invocations of the `gem`, `ruby`, and `irb` subcommands
+use the updated `JAVA_ARGS_CLI` on their next invocation. The service will
+need to be restarted in order to re-read the `JAVA_ARGS` variable.
 
 
 ## Diffie-Helman HTTPS Client Issues
