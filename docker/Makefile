@@ -31,7 +31,7 @@ endif
 
 build: prep
 	@docker build --pull --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver-standalone/$(dockerfile) --tag puppet/puppetserver-standalone:$(version) puppetserver-standalone
-	@docker build --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver/$(dockerfile) --tag puppet/puppetserver:$(version) puppetserver
+	@docker build --pull --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver/$(dockerfile) --tag puppet/puppetserver:$(version) puppetserver
 ifeq ($(IS_LATEST),true)
 	@docker tag puppet/puppetserver-standalone:$(version) puppet/puppetserver-standalone:latest
 	@docker tag puppet/puppetserver:$(version) puppet/puppetserver:latest
@@ -39,8 +39,8 @@ endif
 
 test: prep
 	@bundle install --path .bundle/gems
-	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver-standalone:$(version) bundle exec rspec puppetserver-standalone/spec
-	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver:$(version) bundle exec rspec puppetserver/spec
+	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver-standalone:$(version) bundle exec rspec --options puppetserver-standalone/.rspec puppetserver-standalone/spec
+	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver:$(version) bundle exec rspec --options puppetserver/.rspec puppetserver/spec
 
 publish: prep
 	@docker push puppet/puppetserver-standalone:$(version)
