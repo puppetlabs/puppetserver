@@ -28,8 +28,7 @@
             [puppetlabs.metrics :as metrics]
             [puppetlabs.metrics.http :as http-metrics]
             [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
-            [leiningen.core.main :as lein])
+            [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core])
   (:import (java.io File)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
