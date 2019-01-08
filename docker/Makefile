@@ -39,8 +39,8 @@ endif
 
 test: prep
 	@bundle install --path .bundle/gems
-	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver-standalone:$(version) bundle exec rspec puppetserver-standalone/spec
-	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver:$(version) bundle exec rspec puppetserver/spec
+	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver-standalone:$(version) bundle exec rspec --options puppetserver-standalone/.rspec puppetserver-standalone/spec
+	@PUPPET_TEST_DOCKER_IMAGE=puppet/puppetserver:$(version) bundle exec rspec --options puppetserver/.rspec puppetserver/spec
 
 publish: prep
 	@docker push puppet/puppetserver-standalone:$(version)

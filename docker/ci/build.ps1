@@ -19,27 +19,50 @@ function Get-ContainerVersion
   (git describe) -replace '-.*', ''
 }
 
-# installs gems for build and test and grabs base images
-function Invoke-ContainerBuildSetup
+function Lint-Dockerfile($Path)
 {
-  Push-Location (Get-CurrentDirectory)
-  bundle install --path '.bundle/gems'
-  bundle exec puppet-docker update-base-images ubuntu:16.04
+  hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 $Path
+}
+
+function Build-Container(
+  $Name,
+  $Namespace = 'puppet',
+  $Version = (Get-ContainerVersion),
+  $Vcs_ref = $(git rev-parse HEAD),
+  $Pull = $true)
+{
+  Push-Location (Join-Path (Get-CurrentDirectory) '..')
+
+  $build_date = (Get-Date).ToUniversalTime().ToString('o')
+  $docker_args = @(
+    '--build-arg', "vcs_ref=$Vcs_ref",
+    '--build-arg', "build_date=$build_date",
+    '--build-arg', "version=$Version",
+    '--build-arg', "namespace=$Namespace",
+    '--file', "$Name/Dockerfile",
+    '--tag', "$Namespace/${Name}:$Version"
+  )
+
+  if ($Pull) {
+    $docker_args += '--pull'
+  }
+
+  docker build $docker_args $Name
+
   Pop-Location
 }
 
-function Build-Container($Name, $Repository = '127.0.0.1', $Version = (Get-ContainerVersion))
+function Invoke-ContainerTest(
+  $Name,
+  $Namespace = 'puppet',
+  $Version = (Get-ContainerVersion))
 {
   Push-Location (Join-Path (Get-CurrentDirectory) '..')
-  bundle exec puppet-docker local-lint $Name
-  bundle exec puppet-docker build $Name --no-cache --repository $Repository --version $Version --no-latest --build-arg namespace=$Repository
-  Pop-Location
-}
 
-function Invoke-ContainerTest($Name, $Repository = '127.0.0.1', $Version = (Get-ContainerVersion))
-{
-  Push-Location (Join-Path (Get-CurrentDirectory) '..')
-  bundle exec puppet-docker spec $Name --image "$Repository/${Name}:$Version"
+  bundle install --path .bundle/gems
+  $ENV:PUPPET_TEST_DOCKER_IMAGE = "$Namespace/${Name}:$Version"
+  bundle exec rspec --options $Name/.rspec $Name/spec
+
   Pop-Location
 }
 
