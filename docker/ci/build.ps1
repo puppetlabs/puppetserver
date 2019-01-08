@@ -28,13 +28,13 @@ function Build-Container(
   $Name,
   $Namespace = 'puppet',
   $Version = (Get-ContainerVersion),
-  $Vcs_ref = $(git rev-parse HEAD))
+  $Vcs_ref = $(git rev-parse HEAD),
+  $Pull = $true)
 {
   Push-Location (Join-Path (Get-CurrentDirectory) '..')
 
   $build_date = (Get-Date).ToUniversalTime().ToString('o')
   $docker_args = @(
-    '--pull',
     '--build-arg', "vcs_ref=$Vcs_ref",
     '--build-arg', "build_date=$build_date",
     '--build-arg', "version=$Version",
@@ -42,6 +42,10 @@ function Build-Container(
     '--file', "$Name/Dockerfile",
     '--tag', "$Namespace/${Name}:$Version"
   )
+
+  if ($Pull) {
+    $docker_args += '--pull'
+  }
 
   docker build $docker_args $Name
 

@@ -31,7 +31,7 @@ endif
 
 build: prep
 	@docker build --pull --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver-standalone/$(dockerfile) --tag puppet/puppetserver-standalone:$(version) puppetserver-standalone
-	@docker build --pull --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver/$(dockerfile) --tag puppet/puppetserver:$(version) puppetserver
+	@docker build --build-arg vcs_ref=$(vcs_ref) --build-arg build_date=$(build_date) --build-arg version=$(version) --file puppetserver/$(dockerfile) --tag puppet/puppetserver:$(version) puppetserver
 ifeq ($(IS_LATEST),true)
 	@docker tag puppet/puppetserver-standalone:$(version) puppet/puppetserver-standalone:latest
 	@docker tag puppet/puppetserver:$(version) puppet/puppetserver:latest

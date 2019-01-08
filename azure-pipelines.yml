@@ -62,7 +62,7 @@ steps:
   name: build_puppetserverstandalone_container
 - powershell: |
     . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver -Namespace $ENV:NAMESPACE
+    Build-Container -Name puppetserver -Namespace $ENV:NAMESPACE -Pull $false
   displayName: Build PuppetServer Container
   name: build_puppetserver_container
 - powershell: |
