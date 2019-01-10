@@ -157,7 +157,7 @@ namespace :spec do
       gem_install_bundler = <<-CMD
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
       lein run -m org.jruby.Main \
-      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' --no-rdoc --no-ri bundler --source '#{GEM_SOURCE}'
+      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' bundler -v '< 2' --no-document --source '#{GEM_SOURCE}'
       CMD
       sh gem_install_bundler
 
