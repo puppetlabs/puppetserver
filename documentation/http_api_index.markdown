@@ -135,10 +135,10 @@ As with the Puppet V3 API, using this API requires a significant amount of under
 
 These endpoints accept only plain-text payload formats. Historically, Puppet has used the MIME type `s` to mean `text/plain`. In Puppet 5, it always uses `text/plain`, but continues to accept `s` as an equivalent.
 
--   [Certificate](https://puppet.com/docs/puppet/latest/http_api/http_certificate.html)
--   [Certificate Signing Requests](https://puppet.com/docs/puppet/latest/http_api/http_certificate_request.html)
--   [Certificate Status](https://puppet.com/docs/puppet/latest/http_api/http_certificate_status.html)
--   [Certificate Revocation List](https://puppet.com/docs/puppet/latest/http_api/http_certificate_revocation_list.html)
+-   [Certificate](./http_certificate.html)
+-   [Certificate Signing Requests](./http_certificate_request.html)
+-   [Certificate Status](./http_certificate_status.html)
+-   [Certificate Revocation List](./http_certificate_revocation_list.html)
 
 ## Serialization formats
 
