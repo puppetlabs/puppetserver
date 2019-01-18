@@ -428,7 +428,7 @@
              settings (assoc settings :allow-authorization-extensions false)
              response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
          (is (= 400 (:status response)))
-         (is (re-matches #"csr-auth-extension.*disallowed" (:body response))))))))
+         (is (re-matches #"CSR \'csr-auth-extension\' contains an authorization extension, which is disallowed\." (:body response))) )))))
 
 (deftest certificate-status-test
   (testing "read requests"
