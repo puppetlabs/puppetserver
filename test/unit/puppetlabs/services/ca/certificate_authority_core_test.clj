@@ -428,11 +428,7 @@
              settings (assoc settings :allow-authorization-extensions false)
              response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
          (is (= 400 (:status response)))
-         (is (= (:body response)
-                (str "CSR 'csr-auth-extension' contains an authorization extension, which is disallowed. "
-                     "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file, "
-                     "restart the puppetserver, and try signing this certificate again."))))))))
-
+         (is (re-matches #"csr-auth-extension.*disallowed" (:body response))))))
 
 (deftest certificate-status-test
   (testing "read requests"
