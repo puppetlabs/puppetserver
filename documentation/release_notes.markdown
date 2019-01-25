@@ -40,6 +40,16 @@ Released 18 December 2018
 - The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
 - Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
 
+## Puppet Server 6.0.3
+
+Released 11 January 2019.
+
+This release contains new features.
+
+### New Features
+
+- The `puppetserver ca` tool now respects the `server_list` setting in `puppet.conf` for those users that have created their own high availability configuration using that feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392) 
+- The EZBake configs now allow you to specify `JAVA_ARGS_CLI`, which is used when using `puppetserver` subcommands to configure Java differently from what is needed for the service. This was used by the CLI before, but as an environment variable only, not as an EZBake config option. [SERVER-2399](https://tickets.puppetlabs.com/browse/SERVER-2399)
 
 ## Puppet Server 6.0.2
 

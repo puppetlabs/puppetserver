@@ -367,12 +367,7 @@
              response (handle-put-certificate-request!
                        "hostwithaltnames" csr settings)]
          (is (= 400 (:status response)))
-         (is (= (:body response)
-                (str "CSR 'hostwithaltnames' contains subject alternative names "
-                     "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
-                     "To allow subject alternative names, set allow-subject-alt-names to "
-                     "true in your puppetserver.conf file, restart the puppetserver, and "
-                     "try signing this certificate again.")))))
+         (is (re-find #"hostwithaltnames.*disallowed" (:body response)))))
 
      (testing "a CSR w/ DNS alt-names and allowed subject-alt-names returns 200"
        (let [csr (io/input-stream (test-pem-file "hostwithaltnames.pem"))
@@ -392,12 +387,7 @@
              response (handle-put-certificate-request!
                        "host-with-ip-and-dns-altnames" csr settings)]
          (is (= 400 (:status response)))
-         (is (= (:body response)
-                (str "CSR 'host-with-ip-and-dns-altnames' contains subject alternative names "
-                     "(IP:192.168.69.92, DNS:puppet, DNS:hostname), which are disallowed. "
-                     "To allow subject alternative names, set allow-subject-alt-names to "
-                     "true in your puppetserver.conf file, restart the puppetserver, and "
-                     "try signing this certificate again.")))))
+         (is (re-find #"host-with-ip-and-dns-altnames" (:body response)))))
 
      (testing "a CSR w/ DNS and IP alt-names and allowed subject-alt-names returns 200"
        (let [csr (io/input-stream (test-pem-file "host-with-ip-and-dns-altnames.pem"))
@@ -428,11 +418,7 @@
              settings (assoc settings :allow-authorization-extensions false)
              response (handle-put-certificate-request! "csr-auth-extension" csr settings)]
          (is (= 400 (:status response)))
-         (is (= (:body response)
-                (str "CSR 'csr-auth-extension' contains an authorization extension, which is disallowed. "
-                     "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file, "
-                     "restart the puppetserver, and try signing this certificate again."))))))))
-
+         (is (re-find #"csr-auth-extension.*disallowed" (:body response))))))))
 
 (deftest certificate-status-test
   (testing "read requests"
@@ -838,12 +824,7 @@
           (is (= "text/plain; charset=UTF-8"
                 (get-in response [:headers "Content-Type"]))
             "Unexpected content type for response")
-          (is (= (:body response)
-                 (str "CSR 'hostwithaltnames' contains subject alternative names "
-                      "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
-                      "To allow subject alternative names, set allow-subject-alt-names to "
-                      "true in your puppetserver.conf file, restart the puppetserver, and "
-                      "try signing this certificate again.")))))
+          (is (re-find #"hostwithaltnames.*disallowed" (:body response)))))
 
       (testing "another example - a CSR with an invalid extension"
         (let [request {:uri            "/v1/certificate_status/meow"
