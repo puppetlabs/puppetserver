@@ -117,7 +117,7 @@ Configure Puppet Server's [`metrics.conf`](./config_file_metrics.markdown) file 
 2.  Configure the Graphite host settings in `metrics.reporters.graphite`:
     -   **host:** The Graphite host's IP address as a string.
     -   **port:** The Graphite host's port number.
-    -   **update-interval-seconds:** How frequently Puppet Server should send metrics ot Graphite.
+    -   **update-interval-seconds:** How frequently Puppet Server should send metrics to Graphite.
 
 3.  Verify that `metrics.registries.puppetserver.reporters.jmx.enabled` is not set to false. Its default setting is true.
 
