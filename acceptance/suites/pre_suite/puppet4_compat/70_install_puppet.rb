@@ -15,7 +15,7 @@ nonmaster_agents.each { |agent|
 
 step "Install Legacy Puppet Agents."
 
-default_puppet_version = '1.10.1'
+default_puppet_version = '1.10.15'
 puppet_version = ENV['PUPPET_LEGACY_VERSION']
 if not puppet_version
   logger.info "PUPPET_LEGACY_VERSION is not set!"
