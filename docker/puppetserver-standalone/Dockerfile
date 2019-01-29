@@ -3,6 +3,13 @@ FROM ubuntu:16.04
 ARG vcs_ref
 ARG build_date
 ARG version="5.3.1"
+# Used by entrypoint to submit metrics to Google Analytics.
+# Published images should use "production" for this build_arg.
+ARG pupperware_analytics_stream="dev"
+ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
+ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4"
+ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver-standalone"
+
 ENV PUPPET_SERVER_VERSION="$version"
 ENV DUMB_INIT_VERSION="1.2.1"
 ENV UBUNTU_CODENAME="xenial"

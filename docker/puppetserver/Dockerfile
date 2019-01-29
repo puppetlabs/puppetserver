@@ -5,6 +5,13 @@ FROM "$namespace"/puppetserver-standalone:"$version"
 ARG vcs_ref
 ARG build_date
 
+# Used by entrypoint to submit metrics to Google Analytics.
+# Published images should use "production" for this build_arg.
+ARG pupperware_analytics_stream="dev"
+ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
+ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-3"
+ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver"
+
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
