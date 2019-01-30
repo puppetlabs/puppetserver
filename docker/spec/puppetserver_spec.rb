@@ -31,7 +31,7 @@ describe 'puppetserver container' do
     @compiler = %x(docker run --rm --detach \
                --env DNS_ALT_NAMES=puppet \
                --env PUPPERWARE_DISABLE_ANALYTICS=true \
-               --env ENABLE_CA=false \
+               --env CA_ENABLED=false \
                --env CA_HOSTNAME=puppet.test \
                --link puppet.test \
                --name puppet-compiler.test \
