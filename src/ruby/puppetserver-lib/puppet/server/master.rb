@@ -60,6 +60,10 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
+  def compileCatalog(_request_data)
+    {}
+  end
+
   def getClassInfoForEnvironment(env)
     environment = @env_loader.get(env)
     unless environment.nil?
