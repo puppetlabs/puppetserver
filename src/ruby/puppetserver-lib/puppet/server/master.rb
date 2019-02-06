@@ -60,6 +60,13 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
+  def compileCatalog(certname, persistence, facts)
+    n = Puppet::Node.new(certname, {facts: facts})
+    # n.trusted_data = request_data[:trusted_facts]
+    #n.add_server_facts
+    Puppet::Parser::Compiler.compile(n) 
+  end
+
   def getClassInfoForEnvironment(env)
     environment = @env_loader.get(env)
     unless environment.nil?

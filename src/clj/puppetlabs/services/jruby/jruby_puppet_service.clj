@@ -77,6 +77,10 @@
     [this jruby-instance env-name]
     (.getClassInfoForEnvironment jruby-instance env-name))
 
+  (compile-catalog
+   [this jruby-instance certname persistence facts]
+   (.compileCatalog jruby-instance certname persistence facts))
+
   (get-environment-module-info
     [this jruby-instance env-name]
     (.getModuleInfoForEnvironment jruby-instance env-name))

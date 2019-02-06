@@ -716,17 +716,18 @@
   (let [parameters
         (try+
           (json/decode body true) ;; maybe should use false?
-          (catch JsonParseException e
+          (catch com.fasterxml.jackson.core.JsonParseException e
             (throw+ {:kind :bad-request
                      :message "Error parsing JSON"})))]
     (schema/validate  ;; XXX throws an exception, I think there's a handler for schema errors installed
      {:certname schema/Str
       :persistence {:facts schema/Str, :catalogs schema/Str, :reports schema/Str}
       (schema/optional-key :trusted_facts) {:values {schema/Any schema/Any}}
-      (schema/optional-key :facts {:values {schema/Any schema/Any}})
-      (schema/optional-key :environment schema/Str)
-      (schema/optional-key :classes [schema/Any])
-      (schema/optional-key :parameters {schema/Any schema/Any})}
+      (schema/optional-key :facts) {:values {schema/Any schema/Any}}
+      (schema/optional-key :job-id) schema/Int
+      (schema/optional-key :environment) schema/Str
+      (schema/optional-key :classes) [schema/Any]
+      (schema/optional-key :parameters) {schema/Any schema/Any}}
      parameters)
     parameters))
 
@@ -735,11 +736,15 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
     (let [{:keys [certname persistence trusted_facts facts environment classes parameters]}
-          (decode-catalog-post-body)]
-      ;; (jruby-service/something something something)
-      {:status 200
-       :headers {"Content-Type" "application/json"}
-       :body (json/encode {:dude "sweet!"})})))
+          (-> request
+              :body
+              slurp
+              decode-catalog-post-body)]
+      (jruby-protocol/compile-catalog jruby-service
+                                      (:jruby-instance request)
+                                      certname
+                                      persistence
+                                      facts))))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
@@ -836,13 +841,14 @@
   v4-routes :- bidi-schema/RoutePair
   [clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (comidi/context
-   "/v4"
-   (comidi/wrap-routes
-    (comidi/routes
-     (comidi/POST "/catalog" request
-                  (v4-catalog-handler request)))
-    clojure-request-wrapper)))
+  (let [v4-catalog-handler (v4-catalog-handler jruby-service)]
+    (comidi/context
+          "/v4"
+          (comidi/wrap-routes
+           (comidi/routes
+            (comidi/POST "/catalog" request
+                         (v4-catalog-handler request) ))
+           clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
   v3-routes :- bidi-schema/RoutePair
