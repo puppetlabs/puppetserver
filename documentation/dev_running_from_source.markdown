@@ -162,6 +162,48 @@ run the following:
 
     $ lein run -c /path/to/puppetserver.conf
 
+Step 4c: Development environment gotchas
+-----
+
+Missing git submodules
+------
+
+If you get an error like the following:
+
+~~~
+Execution error (LoadError) at org.jruby.RubyKernel/require
+(org/jruby/RubyKernel.java:970).
+(LoadError) no such file to load -- puppet
+~~~
+
+Then you've probably forgotten to fetch the git submodules.
+
+Failing tests
+------
+
+If you change the `:webserver :ssl-port` config option from the default value of
+`8140`, tests will fail with errors like the following:
+
+~~~
+lein test :only puppetlabs.general-puppet.general-puppet-int-test/test-external-command-execution
+
+ERROR in (test-external-command-execution) (SocketChannelImpl.java:-2)
+Uncaught exception, not in assertion.
+expected: nil
+2019-02-06 14:58:50,541 WARN  [async-dispatch-18] [o.e.j.s.h.ContextHandler] Empty contextPath
+  actual: java.net.ConnectException: Connection refused
+ at sun.nio.ch.SocketChannelImpl.checkConnect (SocketChannelImpl.java:-2)
+    sun.nio.ch.SocketChannelImpl.finishConnect (SocketChannelImpl.java:717)
+    org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor.processEvent (DefaultConnectingIOReactor.java:171)
+    org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor.processEvents (DefaultConnectingIOReactor.java:145)
+    org.apache.http.impl.nio.reactor.AbstractMultiworkerIOReactor.execute (AbstractMultiworkerIOReactor.java:348)
+    org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager.execute (PoolingNHttpClientConnectionManager.java:192)
+    org.apache.http.impl.nio.client.CloseableHttpAsyncClientBase$1.run (CloseableHttpAsyncClientBase.java:64)
+    java.lang.Thread.run (Thread.java:844)
+~~~
+
+Changing the `ssl-port` variable back to `8140` makes the tests run properly.
+
 Running the Agent
 -----
 
