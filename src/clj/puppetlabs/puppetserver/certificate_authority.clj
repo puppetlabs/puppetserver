@@ -535,7 +535,7 @@
     (line-seq (io/reader infra-file)))
 
 (schema/defn generate-infra-serials
-  "Given a list of infra nodes it will create a file containing 
+  "Given a list of infra nodes it will create a file containing
    serial numbers of their certificates (listed on separate lines).
    It is expected have at least one entry (MoM)"
    [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
@@ -549,13 +549,13 @@
                                  (utils/get-serial))]
                (.write wtr (str infra-serial))
                (.newLine wtr))
-            (catch java.io.FileNotFoundException ex 
+            (catch java.io.FileNotFoundException ex
                (log/warn
                  (i18n/trs
                    (str
                      "Failed to find/load certificate for Puppet Infrastructure Node:"
                      infra-node)))))))
-       (catch java.io.FileNotFoundException ex 
+       (catch java.io.FileNotFoundException ex
          (log/warn (i18n/trs (str infra-nodes-path " does not exist")))))))
 
 (schema/defn generate-ssl-files!
@@ -618,7 +618,7 @@
    provided then defaults will be used."
   [host-name :- schema/Str
    alt-names :- schema/Str]
-  (let [split-alt-names (split-hostnames alt-names)
+  (let [split-alt-names   (split-hostnames alt-names)
         default-alt-names ["puppet"]
         alt-names-list (reduce (fn [acc alt-name]
                                  (if (str/starts-with? alt-name "IP:")
@@ -640,22 +640,22 @@
   (when-not (= hostname subject)
     (sling/throw+
       {:kind :hostname-mismatch
-       :msg (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
+       :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Certificate names must be lower case.")}))
+       :msg  (i18n/tru "Certificate names must be lower case.")}))
 
   (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Subject contains unprintable or non-ASCII characters")}))
+       :msg  (i18n/tru "Subject contains unprintable or non-ASCII characters")}))
 
   (when (.contains subject "*")
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
+       :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -1383,7 +1383,7 @@
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl
-               (fs/exists? infra-node-serials-path) 
+               (fs/exists? infra-node-serials-path)
                (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
        (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
              new-infra-crl (utils/revoke our-infra-crl
