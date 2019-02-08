@@ -4,6 +4,7 @@ require 'puppet/info_service'
 
 require 'puppet/network/http'
 require 'puppet/network/http/api/master/v3'
+require 'puppet/node/facts'
 
 require 'puppet/server/config'
 require 'puppet/server/puppet_config'
@@ -35,6 +36,7 @@ class Puppet::Server::Master
                           chain(Puppet::Network::HTTP::API::Master::V3.routes)
     register([master_routes])
     @env_loader = Puppet.lookup(:environments)
+    set_server_facts
   end
 
   def handleRequest(request)
@@ -60,11 +62,21 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
-  def compileCatalog(certname, persistence, facts)
-    n = Puppet::Node.new(certname, {facts: facts})
-    # n.trusted_data = request_data[:trusted_facts]
-    #n.add_server_facts
-    Puppet::Parser::Compiler.compile(n) 
+  def compileCatalog(request_data)
+    facts, trusted_facts = process_facts(request_data)
+    node_params = { facts: facts,
+                    environment: request_data[:environment],
+                    # Are these 'parameters' the same as what Node expects?
+                    # There's a bunch of code in Node around merging additional things,
+                    # notably facts, into the 'parameter' field. Is that necessary? If so,
+                    # why?
+                    parameters: request_data[:parameters],
+                    classes: request_data[:classes] }
+
+    node = Puppet::Node.new(request_data[:certname], node_params)
+    node.trusted_data = trusted_facts
+    node.add_server_facts(@server_facts)
+    Puppet::Parser::Compiler.compile(n, request_data[:job_id])
   end
 
   def getClassInfoForEnvironment(env)
@@ -129,6 +141,68 @@ class Puppet::Server::Master
   end
 
   private
+
+  def process_facts(request_data)
+    if request_data[:facts].nil?
+      facts = get_facts_from_pdb(request_data[:certname], request_data[:environment])
+    else
+      facts = Puppet::Node::Facts.from_data_hash(facts)
+    end
+
+    fact_values = if facts.nil?
+                    {}
+                  else
+                    facts.sanitize
+                    facts_obj.to_data_hash
+                  end
+
+    # Pull the trusted facts from the request, or attempt to extract them from
+    # the facts hash
+    trusted_facts = if request_data[:trusted_facts].nil?
+                      fact_values['trusted'].nil? ? {} : fact_values['trusted']
+                    else
+                      request_data[:trusted_facts]
+                    end
+
+    return fact_values, trusted_facts
+  end
+
+  def get_facts_from_pdb(nodename, environment)
+    if Puppet::Node::Facts.indirection.terminus_class == :puppetdb
+      Puppet::Node::Facts.indirection.find(name, :environment => environment)
+    else
+      raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
+    end
+  end
+
+  # Initialize our server fact hash; we add these to each client, and they
+  # won't change while we're running, so it's safe to cache the values.
+  def set_server_facts
+    @server_facts = {}
+
+    # Add our server version to the fact list
+    @server_facts['serverversion'] = Puppet.version.to_s
+
+    # And then add the server name and IP
+    { 'servername' => 'fqdn',
+      'serverip' => 'ipaddress'
+    }.each do |var, fact|
+      if value = Facter.value(fact)
+        @server_facts[var] = value
+      else
+        Puppet.warning "Could not retrieve fact #{fact}"
+      end
+    end
+
+    if @server_facts['servername'].nil?
+      host = Facter.value(:hostname)
+      if domain = Facter.value(:domain)
+        @server_facts['servername'] = [host, domain].join('.')
+      else
+        @server_facts['servername'] = host
+      end
+    end
+  end
 
   def self.getModules(env)
     env.modules.collect do |mod|
