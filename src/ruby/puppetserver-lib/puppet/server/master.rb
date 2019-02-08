@@ -68,9 +68,9 @@ class Puppet::Server::Master
         newkey = key.to_s
         newkey.slice!(0)
         if value.java_kind_of?(Java::ClojureLang::PersistentArrayMap)
-          [newkey.to_sym, convert_java_args_to_ruby(value)]
+          [newkey, convert_java_args_to_ruby(value)]
         else
-          [newkey.to_sym, value.java_kind_of?(Java::JavaUtil::List) ? value.to_a : value]
+          [newkey, value.java_kind_of?(Java::JavaUtil::List) ? value.to_a : value]
         end
       end]
   end
