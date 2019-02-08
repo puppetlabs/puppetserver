@@ -14,13 +14,6 @@ step 'Install Puppet Release Repo' do
   install_puppetlabs_release_repo_on(master, 'puppet5')
 end
 
-step 'Install latest working version of apt module' do
-  # Version 6.3.0 of the apt module broke the puppetdb module.
-  # Until that is fix, pin the apt module to the previous version.
-  # See PDB-4232.
-  on(master, puppet('module install puppetlabs-apt --version 6.2.1'))
-end
-
 step 'Install PuppetDB module' do
   on(master, puppet('module install puppetlabs-puppetdb'))
 end
