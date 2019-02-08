@@ -13,10 +13,6 @@ matrix:
     - stage: puppetserver tests
       env: JRUBY_VERSION=1.7
       jdk: oraclejdk8
-    - stage: puppetserver container tests
-      language: generic
-      script:
-        - cd docker && make lint && make build && make test
 notifications:
   email: false
   hipchat:
