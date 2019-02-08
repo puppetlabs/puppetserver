@@ -51,7 +51,7 @@
     cache will remain unchanged as a result of this call.")
 
   (compile-catalog
-    [this jruby-instance certname persistence facts]
+    [this jruby-instance request-options]
     "Compile the catalog for a given certname")
 
   (get-environment-module-info

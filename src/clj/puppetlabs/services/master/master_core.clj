@@ -742,9 +742,9 @@
               decode-catalog-post-body)]
       (jruby-protocol/compile-catalog jruby-service
                                       (:jruby-instance request)
-                                      certname
-                                      persistence
-                                      facts))))
+                                      {:certname certname
+                                       :persistence persistence
+                                       :facts facts}))))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn

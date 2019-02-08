@@ -62,21 +62,38 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
+  def convert_java_args_to_ruby(hash)
+    Hash[hash.collect do |key, value|
+        # Stolen and modified from params_to_ruby in handler.rb
+        newkey = key.to_s
+        newkey.slice!(0)
+        if value.java_kind_of?(Java::ClojureLang::PersistentArrayMap)
+          [newkey.to_sym, convert_java_args_to_ruby(value)]
+        else
+          [newkey.to_sym, value.java_kind_of?(Java::JavaUtil::List) ? value.to_a : value]
+        end
+      end]
+  end
+
+
+
   def compileCatalog(request_data)
-    facts, trusted_facts = process_facts(request_data)
+    processed_hash = convert_java_args_to_ruby(request_data)
+
+    facts, trusted_facts = process_facts(processed_hash)
     node_params = { facts: facts,
-                    environment: request_data[:environment],
+                    environment: processed_hash[:environment],
                     # Are these 'parameters' the same as what Node expects?
                     # There's a bunch of code in Node around merging additional things,
                     # notably facts, into the 'parameter' field. Is that necessary? If so,
                     # why?
-                    parameters: request_data[:parameters],
-                    classes: request_data[:classes] }
+                    parameters: processed_hash[:parameters],
+                    classes: processed_hash[:classes] }
 
-    node = Puppet::Node.new(request_data[:certname], node_params)
+    node = Puppet::Node.new(processed_hash[:certname], node_params)
     node.trusted_data = trusted_facts
     node.add_server_facts(@server_facts)
-    Puppet::Parser::Compiler.compile(n, request_data[:job_id])
+    Puppet::Parser::Compiler.compile(n, processed_hash[:job_id])
   end
 
   def getClassInfoForEnvironment(env)
