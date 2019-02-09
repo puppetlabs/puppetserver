@@ -22,7 +22,12 @@ describe 'puppetserver container' do
       fail error_message
     end
 
-    @container = %x(docker run --rm --detach --env DNS_ALT_NAMES=puppet --name puppet.test --hostname puppet.test #{@image}).chomp
+    @container = %x(docker run --rm --detach \
+               --env DNS_ALT_NAMES=puppet \
+               --env PUPPERWARE_DISABLE_ANALYTICS=true \
+               --name puppet.test \
+               --hostname puppet.test \
+               #{@image}).chomp
   end
 
   after(:all) do
