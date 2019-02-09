@@ -91,7 +91,8 @@ steps:
     testRunTitle: PuppetServer Test Results
 - powershell: |
     . ./docker/ci/build.ps1
-    Clear-ContainerBuilds
+    Clear-ContainerBuilds -Name puppetserver
+    Clear-ContainerBuilds -Name puppetserver-standalone
   displayName: Container Cleanup
   name: cleanup_containers
   condition: always()
