@@ -12,7 +12,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 6.0.3
 
-Released 11 January 2019.
+Released 16 January 2019.
 
 This release contains new features.
 
