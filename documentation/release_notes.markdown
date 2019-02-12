@@ -14,7 +14,7 @@ For release notes on versions of Puppet Server prior to Puppet Server 5, see [do
 
 ## Puppet Server 5.3.7
 
-Released 16 January 2019.
+Released 15 January 2019.
 
 This release contains new features.
 
