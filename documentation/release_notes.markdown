@@ -42,7 +42,7 @@ Released 18 December 2018
 
 ## Puppet Server 6.0.3
 
-Released 11 January 2019.
+Released 15 January 2019.
 
 This release contains new features.
 
