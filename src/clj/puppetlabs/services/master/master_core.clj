@@ -736,16 +736,13 @@
   v4-catalog-fn :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
-    (let [{:keys [certname persistence trusted_facts facts environment classes parameters]}
-          (decode-catalog-post-body (slurp (:body request)))]
+    (let [request-options (decode-catalog-post-body (slurp (:body request)))]
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/encode
               (jruby-protocol/compile-catalog jruby-service
                                               (:jruby-instance request)
-                                              {:certname certname
-                                               :persistence persistence
-                                               :facts facts}))})))
+                                              request-options))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
