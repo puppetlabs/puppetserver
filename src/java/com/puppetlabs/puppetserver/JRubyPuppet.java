@@ -20,6 +20,7 @@ public interface JRubyPuppet {
     List getTasks(String environment);
     Map getClassInfoForEnvironment(String environment);
     List getModuleInfoForEnvironment(String environment);
+    Map compileCatalog(Map requestBody);
     Map getModuleInfoForAllEnvironments();
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);

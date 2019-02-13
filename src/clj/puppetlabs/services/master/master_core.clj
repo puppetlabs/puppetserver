@@ -5,6 +5,7 @@
            (org.jruby RubySymbol)
            (org.jruby.exceptions RaiseException)
            (com.codahale.metrics MetricRegistry Gauge)
+           (com.fasterxml.jackson.core JsonParseException)
            (java.lang.management ManagementFactory))
   (:require [me.raynes.fs :as fs]
             [puppetlabs.puppetserver.ringutils :as ringutils]
@@ -29,7 +30,8 @@
             [puppetlabs.http.client.common :as http-client-common]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [clojure.java.io :as io]
-            [clojure.tools.logging :as log]))
+            [clojure.tools.logging :as log]
+            [cheshire.core :as json]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -710,6 +712,45 @@
          :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
+(defn decode-catalog-post-body
+  [body]
+  (let [parameters
+        (try+
+          (json/decode body true)
+          (catch JsonParseException e
+            (throw+ {:kind :bad-request
+                     :msg (format "Error parsing JSON: %s" e)})))]
+    (schema/validate
+     {:certname schema/Str
+      :persistence {:facts schema/Str, :catalogs schema/Str, :reports schema/Str}
+      (schema/optional-key :trusted_facts) {:values {schema/Any schema/Any}}
+      (schema/optional-key :facts) {:values {schema/Any schema/Any}}
+      (schema/optional-key :job_id) schema/Int
+      (schema/optional-key :environment) schema/Str
+      (schema/optional-key :classes) [schema/Any]
+      (schema/optional-key :parameters) {schema/Any schema/Any}}
+     parameters)
+    parameters))
+
+(schema/defn ^:always-validate
+  v4-catalog-fn :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [request-options (decode-catalog-post-body (slurp (:body request)))]
+      {:status 200
+       :headers {"Content-Type" "application/json"}
+       :body (json/encode
+              (jruby-protocol/compile-catalog jruby-service
+                                              (:jruby-instance request)
+                                              request-options))})))
+
+(schema/defn ^:always-validate
+  v4-catalog-handler :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (v4-catalog-fn jruby-service)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-error-handling))
+
 (def MetricIdsForStatus (schema/atom [[schema/Str]]))
 
 (schema/defn http-client-metrics-summary
@@ -793,6 +834,19 @@
                   (all-tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                   (static-file-content-handler request)))))
+
+(schema/defn ^:always-validate
+  v4-routes :- bidi-schema/RoutePair
+  [clojure-request-wrapper :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (let [v4-catalog-handler (v4-catalog-handler jruby-service)]
+    (comidi/context
+          "/v4"
+          (comidi/wrap-routes
+           (comidi/routes
+            (comidi/POST "/catalog" request
+                         (v4-catalog-handler request) ))
+           clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
   v3-routes :- bidi-schema/RoutePair
@@ -918,7 +972,9 @@
               jruby-service
               get-code-content-fn
               current-code-id-fn
-              environment-class-cache-enabled)))
+              environment-class-cache-enabled)
+   (v4-routes clojure-request-wrapper
+              jruby-service)))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn

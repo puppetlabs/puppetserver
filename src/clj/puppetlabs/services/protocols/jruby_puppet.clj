@@ -50,6 +50,10 @@
     'cache-generation-id' value stored in the cache for the environment, the
     cache will remain unchanged as a result of this call.")
 
+  (compile-catalog
+    [this jruby-instance request-options]
+    "Compile the catalog for a given certname")
+
   (get-environment-module-info
     [this jruby-instance env-name]
     "Get module information for a specific environment")
