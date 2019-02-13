@@ -61,7 +61,7 @@ function Invoke-ContainerTest(
 
   bundle install --path .bundle/gems
   $ENV:PUPPET_TEST_DOCKER_IMAGE = "$Namespace/${Name}:$Version"
-  bundle exec rspec --options $Name/.rspec $Name/spec
+  bundle exec rspec --options $Name/.rspec spec
 
   Pop-Location
 }
