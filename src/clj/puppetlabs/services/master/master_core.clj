@@ -725,7 +725,7 @@
       :persistence {:facts schema/Str, :catalogs schema/Str, :reports schema/Str}
       (schema/optional-key :trusted_facts) {:values {schema/Any schema/Any}}
       (schema/optional-key :facts) {:values {schema/Any schema/Any}}
-      (schema/optional-key :job-id) schema/Int
+      (schema/optional-key :job_id) schema/Int
       (schema/optional-key :environment) schema/Str
       (schema/optional-key :classes) [schema/Any]
       (schema/optional-key :parameters) {schema/Any schema/Any}}
