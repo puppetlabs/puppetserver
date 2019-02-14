@@ -70,22 +70,25 @@
   (io/input-stream (.getBytes s)))
 
 (def localhost-status
-  {:dns_alt_names ["DNS:djroomba.vpn.puppetlabs.net"
-                   "DNS:localhost"
-                   "DNS:puppet"
-                   "DNS:puppet.vpn.puppetlabs.net"]
+  {:dns_alt_names     ["DNS:djroomba.vpn.puppetlabs.net"
+                       "DNS:localhost"
+                       "DNS:puppet"
+                       "DNS:puppet.vpn.puppetlabs.net"]
    :subject_alt_names ["IP:192.168.69.92"
                        "DNS:djroomba.vpn.puppetlabs.net"
                        "DNS:localhost"
                        "DNS:puppet"
                        "DNS:puppet.vpn.puppetlabs.net"]
-   :fingerprint   "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
-   :fingerprints {:SHA1 "A7:9B:45:46:8A:27:2A:85:60:E2:BF:AD:AA:4B:AB:DE:54:02:F7:76"
-                  :SHA256 "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
-                  :SHA512 "4A:1B:D5:A5:22:E1:54:AE:9E:67:6B:83:0C:B6:6D:46:87:CB:D1:50:BE:C3:B2:B3:83:95:07:88:0C:44:1B:AA:5D:19:0A:64:FE:9F:72:EB:40:14:D1:88:1D:5E:8D:A0:26:3A:93:C8:DB:F9:FC:CB:74:C9:73:62:05:E3:F0:AC"
-                  :default "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"}
-   :name          "localhost"
-   :state         "signed"})
+   :fingerprint       "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
+   :fingerprints      {:SHA1    "A7:9B:45:46:8A:27:2A:85:60:E2:BF:AD:AA:4B:AB:DE:54:02:F7:76"
+                       :SHA256  "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
+                       :SHA512  "4A:1B:D5:A5:22:E1:54:AE:9E:67:6B:83:0C:B6:6D:46:87:CB:D1:50:BE:C3:B2:B3:83:95:07:88:0C:44:1B:AA:5D:19:0A:64:FE:9F:72:EB:40:14:D1:88:1D:5E:8D:A0:26:3A:93:C8:DB:F9:FC:CB:74:C9:73:62:05:E3:F0:AC"
+                       :default "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"}
+   :name              "localhost"
+   :state             "signed"
+   :not_after         "2034-07-25T21:10:07UTC"
+   :not_before        "2002-11-16T19:23:27UTC"
+   :serial_number     1})
 
 (def test-agent-status
   {:dns_alt_names []
@@ -99,59 +102,63 @@
    :state         "requested"})
 
 (def revoked-agent-status
-  {:dns_alt_names ["DNS:BAR"
-                   "DNS:Baz4"
-                   "DNS:foo"
-                   "DNS:revoked-agent"]
+  {:dns_alt_names     ["DNS:BAR"
+                       "DNS:Baz4"
+                       "DNS:foo"
+                       "DNS:revoked-agent"]
    :subject_alt_names ["DNS:BAR"
                        "DNS:Baz4"
                        "DNS:foo"
                        "DNS:revoked-agent"]
-   :fingerprint   "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
-   :fingerprints  {:SHA1 "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
-                   :SHA256 "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
-                   :SHA512 "1A:E3:12:14:81:50:38:19:3C:C6:42:4B:BB:09:16:0C:B1:8A:3C:EB:8C:64:9C:88:46:C6:7E:35:5E:11:0C:7A:CC:B2:47:A2:EB:57:63:5C:48:68:22:57:62:A1:46:64:B4:56:29:47:A5:46:F4:BD:9B:45:77:19:91:0B:35:39"
-                   :default "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"}
-   :name          "revoked-agent"
-   :state         "revoked"})
+   :fingerprint       "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
+   :fingerprints      {:SHA1    "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
+                       :SHA256  "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
+                       :SHA512  "1A:E3:12:14:81:50:38:19:3C:C6:42:4B:BB:09:16:0C:B1:8A:3C:EB:8C:64:9C:88:46:C6:7E:35:5E:11:0C:7A:CC:B2:47:A2:EB:57:63:5C:48:68:22:57:62:A1:46:64:B4:56:29:47:A5:46:F4:BD:9B:45:77:19:91:0B:35:39"
+                       :default "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"}
+   :name              "revoked-agent"
+   :state             "revoked"
+
+   :not_after     "2019-08-25T19:25:29UTC"
+   :not_before    "2014-08-25T19:25:29UTC"
+   :serial_number 4})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
 (deftest crl-endpoint-test
   (testing "implementation of the CRL endpoint with no 'If-Modified-Since' header"
-    (let [request (mock/request :get
-                            "/v1/certificate_revocation_list/mynode")
+    (let [request  (mock/request :get
+                                 "/v1/certificate_revocation_list/mynode")
           response (handle-get-certificate-revocation-list
-                     request {:cacrl (test-pem-file "crl.pem") :infra-crl-path (test-pem-file "crl.pem") :enable-infra-crl false})]
+                    request {:cacrl (test-pem-file "crl.pem") :infra-crl-path (test-pem-file "crl.pem") :enable-infra-crl false})]
       (is (map? response))
       (is (= 200 (:status response)))
       (is (= "text/plain" (get-in response [:headers "Content-Type"])))
-      (is (string? (:body response))))))
+      (is (string? (:body response)))))
   (testing "with a malformed http-date 'If-Modified-Since' header"
     (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
-          request {:uri "/v1/certificate_revocation_list/mynode"
-                   :request-method :get
-                   :headers {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00"}}
+          request  {:uri            "/v1/certificate_revocation_list/mynode"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00"}}
           response (ring-app request)]
       (is (= 200 (:status response))
-      (is (string? (:body response))))))
+          (is (string? (:body response))))))
   (testing "with older 'If-Modified-Since' header"
     (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
-          request {:uri "/v1/certificate_revocation_list/mynode"
-                   :request-method :get
-                   :headers {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00 GMT"}}
+          request  {:uri            "/v1/certificate_revocation_list/mynode"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 2015 07:28:00 GMT"}}
           response (ring-app request)]
       (is (= 200 (:status response))
-      (is (string? (:body response))))))
+          (is (string? (:body response))))))
   (testing "with newer 'If-Modified-Since' header"
     (let [ring-app (build-ring-handler (testutils/ca-settings cadir) "42.42.42")
-          request {:uri "/v1/certificate_revocation_list/mynode"
-                   :request-method :get
-                   :headers {"If-Modified-Since" "Wed, 21 Oct 3015 07:28:00 GMT"}}
+          request  {:uri            "/v1/certificate_revocation_list/mynode"
+                    :request-method :get
+                    :headers        {"If-Modified-Since" "Wed, 21 Oct 3015 07:28:00 GMT"}}
           response (ring-app request)]
       (is (= 304 (:status response))
-      (is (nil? (:body response))))))
+          (is (nil? (:body response)))))))
 
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"

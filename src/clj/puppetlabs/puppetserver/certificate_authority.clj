@@ -6,7 +6,8 @@
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security KeyPair)
            (org.joda.time DateTime)
-           (java.security.cert CRLException))
+           (java.security.cert CRLException)
+           (sun.security.x509 X509CertImpl))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -94,16 +95,29 @@
   "The list of states a certificate may be in."
   (schema/enum "requested" "signed" "revoked"))
 
+(def CertificateDetails
+  "CA and client certificate details; notAfter, notBefore and serial values."
+  {:not_after     schema/Str
+   :not_before    schema/Str
+   :serial_number schema/Int})
+
 (def CertificateStatusResult
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
-  {:name              schema/Str
-   :state             CertificateState
-   :dns_alt_names     [schema/Str]
-   :subject_alt_names [schema/Str]
-   :fingerprint       schema/Str
-   :fingerprints      {schema/Keyword schema/Str}})
+  (let [base {:name              schema/Str
+              :state             CertificateState
+              :dns_alt_names     [schema/Str]
+              :subject_alt_names [schema/Str]
+              :fingerprint       schema/Str
+              :fingerprints      {schema/Keyword schema/Str}}]
+    ;; The map should either have all of the CertificateDetails keys or none of
+    ;; them
+    (schema/conditional
+      :serial_number (merge
+                       base
+                       CertificateDetails)
+      :else          base)))
 
 (def Certificate
   (schema/pred utils/certificate?))
@@ -1317,24 +1331,41 @@
        (str/join ":")
        (str/upper-case)))
 
+(schema/defn get-certificate-details :- CertificateDetails
+  "Return details from a X509 certificate."
+  [cert :- X509CertImpl]
+  {:not_after     (-> cert
+                    (.getNotAfter)
+                    (format-date-time))
+   :not_before    (-> cert
+                    (.getNotBefore)
+                    (format-date-time))
+   :serial_number (-> cert
+                    (.getSerialNumber))})
+
 (schema/defn get-certificate-status*
   [signeddir :- schema/Str
    csrdir :- schema/Str
    crl :- CertificateRevocationList
    subject :- schema/Str]
-  (let [cert-or-csr         (if (fs/exists? (path-to-cert signeddir subject))
+  (let [is-cert?            (fs/exists? (path-to-cert signeddir subject))
+        cert-or-csr         (if is-cert?
                               (utils/pem->cert (path-to-cert signeddir subject))
                               (utils/pem->csr (path-to-cert-request csrdir subject)))
         default-fingerprint (fingerprint cert-or-csr "SHA-256")]
-    {:name              subject
-     :state             (certificate-state cert-or-csr crl)
-     :dns_alt_names     (dns-alt-names cert-or-csr)
-     :subject_alt_names (subject-alt-names cert-or-csr)
-     :fingerprint       default-fingerprint
-     :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
-                         :SHA256  default-fingerprint
-                         :SHA512  (fingerprint cert-or-csr "SHA-512")
-                         :default default-fingerprint}}))
+    (merge
+      {:name              subject
+       :state             (certificate-state cert-or-csr crl)
+       :dns_alt_names     (dns-alt-names cert-or-csr)
+       :subject_alt_names (subject-alt-names cert-or-csr)
+       :fingerprint       default-fingerprint
+       :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
+                           :SHA256  default-fingerprint
+                           :SHA512  (fingerprint cert-or-csr "SHA-512")
+                           :default default-fingerprint}}
+      ;; Only certificates have expiry dates
+      (if is-cert?
+        (get-certificate-details cert-or-csr)))))
 
 (schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
