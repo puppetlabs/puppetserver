@@ -13,7 +13,7 @@ if [ "$CONSUL_ENABLED" = "true" ]; then
   "address": "$ipaddress",
   "checks": [
     {
-      "http": "https://$HOSTNAME:8140/production/status/test",
+      "http": "https://${HOSTNAME}:8140/${PUPPET_HEALTHCHECK_ENVIRONMENT}/status/test",
       "tls_skip_verify": true,
       "header": {"Accept": ["pson"]},
       "interval": "30s",
