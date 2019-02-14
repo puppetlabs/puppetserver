@@ -1,4 +1,3 @@
-PUPPERWARE_ANALYTICS_STREAM ?= dev
 git_describe = $(shell git describe)
 vcs_ref := $(shell git rev-parse HEAD)
 build_date := $(shell date -u +%FT%T)
@@ -9,9 +8,15 @@ hadolint_container := hadolint/hadolint:latest
 ifeq ($(IS_NIGHTLY),true)
 	dockerfile := Dockerfile.nightly
 	version := puppet6-nightly
+	ifeq ($(PUPPERWARE_ANALYTICS_STREAM),production)
+	  PUPPERWARE_ANALYTICS_STREAM = nightly-production
+  else
+	  PUPPERWARE_ANALYTICS_STREAM = nightly-dev
+	endif
 else
 	version = $(shell echo $(git_describe) | sed 's/-.*//')
 	dockerfile := Dockerfile
+	PUPPERWARE_ANALYTICS_STREAM ?= dev
 endif
 
 prep:
