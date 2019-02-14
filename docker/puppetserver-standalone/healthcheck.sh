@@ -4,7 +4,7 @@ set -x
 set -e
 
 hostname=$(puppet config print certname) && \
-curl --fail -H 'Accept: pson' \
+curl --fail \
 --resolve "${hostname}:8140:127.0.0.1" \
 --cert   $(puppet config print hostcert) \
 --key    $(puppet config print hostprivkey) \
