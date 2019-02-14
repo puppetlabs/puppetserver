@@ -219,6 +219,35 @@ Puppet Agent and Puppet Server instances are both using the same
 confdir, they're both using the same certificates as well. This
 alleviates the need to sign certificates as a separate step.
 
+Running the Agent inside a Docker container
+-----
+
+You can easily run a Puppet Agent inside a Docker container, either by using
+the `host` network profile or by accessing the Puppetserver service using the
+Docker host IP:
+
+```sh
+docker run -ti                    \
+       --name agent1              \
+       puppet/puppet-agent-ubuntu \
+       agent -t --server 172.17.0.1
+```
+
+```sh
+docker run -ti                     \
+       --name agent2               \
+       --network host              \
+       --add-host puppet:127.0.0.1 \
+       puppet/puppet-agent-ubuntu
+```
+
+To start another Puppet Agent run in a previous container you can use the
+`docker start` command:
+
+```sh
+docker start -a agent1
+```
+
 Running tests
 -----
 
