@@ -6,7 +6,8 @@
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security KeyPair)
            (org.joda.time DateTime)
-           (java.security.cert CRLException))
+           (java.security.cert CRLException)
+           (sun.security.x509 X509CertImpl))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
@@ -94,16 +95,29 @@
   "The list of states a certificate may be in."
   (schema/enum "requested" "signed" "revoked"))
 
+(def CertificateDetails
+  "CA and client certificate details; notAfter, notBefore and serial values."
+  {:not_after     schema/Str
+   :not_before    schema/Str
+   :serial_number schema/Int})
+
 (def CertificateStatusResult
   "Various information about the state of a certificate or
    certificate request that is provided by the certificate
    status endpoint."
-  {:name              schema/Str
-   :state             CertificateState
-   :dns_alt_names     [schema/Str]
-   :subject_alt_names [schema/Str]
-   :fingerprint       schema/Str
-   :fingerprints      {schema/Keyword schema/Str}})
+  (let [base {:name              schema/Str
+              :state             CertificateState
+              :dns_alt_names     [schema/Str]
+              :subject_alt_names [schema/Str]
+              :fingerprint       schema/Str
+              :fingerprints      {schema/Keyword schema/Str}}]
+    ;; The map should either have all of the CertificateDetails keys or none of
+    ;; them
+    (schema/conditional
+      :serial_number (merge
+                       base
+                       CertificateDetails)
+      :else          base)))
 
 (def Certificate
   (schema/pred utils/certificate?))
@@ -535,7 +549,7 @@
     (line-seq (io/reader infra-file)))
 
 (schema/defn generate-infra-serials
-  "Given a list of infra nodes it will create a file containing 
+  "Given a list of infra nodes it will create a file containing
    serial numbers of their certificates (listed on separate lines).
    It is expected have at least one entry (MoM)"
    [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
@@ -549,13 +563,13 @@
                                  (utils/get-serial))]
                (.write wtr (str infra-serial))
                (.newLine wtr))
-            (catch java.io.FileNotFoundException ex 
+            (catch java.io.FileNotFoundException ex
                (log/warn
                  (i18n/trs
                    (str
                      "Failed to find/load certificate for Puppet Infrastructure Node:"
                      infra-node)))))))
-       (catch java.io.FileNotFoundException ex 
+       (catch java.io.FileNotFoundException ex
          (log/warn (i18n/trs (str infra-nodes-path " does not exist")))))))
 
 (schema/defn generate-ssl-files!
@@ -618,7 +632,7 @@
    provided then defaults will be used."
   [host-name :- schema/Str
    alt-names :- schema/Str]
-  (let [split-alt-names (split-hostnames alt-names)
+  (let [split-alt-names   (split-hostnames alt-names)
         default-alt-names ["puppet"]
         alt-names-list (reduce (fn [acc alt-name]
                                  (if (str/starts-with? alt-name "IP:")
@@ -640,22 +654,22 @@
   (when-not (= hostname subject)
     (sling/throw+
       {:kind :hostname-mismatch
-       :msg (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
+       :msg  (i18n/tru "Instance name \"{0}\" does not match requested key \"{1}\"" subject hostname)}))
 
   (when (contains-uppercase? hostname)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Certificate names must be lower case.")}))
+       :msg  (i18n/tru "Certificate names must be lower case.")}))
 
   (when-not (re-matches #"\A[ -.0-~]+\Z" subject)
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Subject contains unprintable or non-ASCII characters")}))
+       :msg  (i18n/tru "Subject contains unprintable or non-ASCII characters")}))
 
   (when (.contains subject "*")
     (sling/throw+
       {:kind :invalid-subject-name
-       :msg (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
+       :msg  (i18n/tru "Subject contains a wildcard, which is not allowed: {0}" subject)})))
 
 (schema/defn allowed-extension?
   "A predicate that answers if an extension is allowed or not.
@@ -1317,24 +1331,41 @@
        (str/join ":")
        (str/upper-case)))
 
+(schema/defn get-certificate-details :- CertificateDetails
+  "Return details from a X509 certificate."
+  [cert :- X509CertImpl]
+  {:not_after     (-> cert
+                    (.getNotAfter)
+                    (format-date-time))
+   :not_before    (-> cert
+                    (.getNotBefore)
+                    (format-date-time))
+   :serial_number (-> cert
+                    (.getSerialNumber))})
+
 (schema/defn get-certificate-status*
   [signeddir :- schema/Str
    csrdir :- schema/Str
    crl :- CertificateRevocationList
    subject :- schema/Str]
-  (let [cert-or-csr         (if (fs/exists? (path-to-cert signeddir subject))
+  (let [is-cert?            (fs/exists? (path-to-cert signeddir subject))
+        cert-or-csr         (if is-cert?
                               (utils/pem->cert (path-to-cert signeddir subject))
                               (utils/pem->csr (path-to-cert-request csrdir subject)))
         default-fingerprint (fingerprint cert-or-csr "SHA-256")]
-    {:name              subject
-     :state             (certificate-state cert-or-csr crl)
-     :dns_alt_names     (dns-alt-names cert-or-csr)
-     :subject_alt_names (subject-alt-names cert-or-csr)
-     :fingerprint       default-fingerprint
-     :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
-                         :SHA256  default-fingerprint
-                         :SHA512  (fingerprint cert-or-csr "SHA-512")
-                         :default default-fingerprint}}))
+    (merge
+      {:name              subject
+       :state             (certificate-state cert-or-csr crl)
+       :dns_alt_names     (dns-alt-names cert-or-csr)
+       :subject_alt_names (subject-alt-names cert-or-csr)
+       :fingerprint       default-fingerprint
+       :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
+                           :SHA256  default-fingerprint
+                           :SHA512  (fingerprint cert-or-csr "SHA-512")
+                           :default default-fingerprint}}
+      ;; Only certificates have expiry dates
+      (if is-cert?
+        (get-certificate-details cert-or-csr)))))
 
 (schema/defn ^:always-validate get-certificate-status :- CertificateStatusResult
   "Get the status of the subject's certificate or certificate request.
@@ -1383,7 +1414,7 @@
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl
-               (fs/exists? infra-node-serials-path) 
+               (fs/exists? infra-node-serials-path)
                (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
        (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
              new-infra-crl (utils/revoke our-infra-crl
