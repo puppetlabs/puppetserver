@@ -89,6 +89,10 @@ class Puppet::Server::Master
                     classes: processed_hash['classes'] }
 
     node = Puppet::Node.new(processed_hash['certname'], node_params)
+    # Merges facts into the node parameters.
+    # Ensures that facts will be surfaced as top-scope variables,
+    # along with other node parameters.
+    node.merge(facts.values)
     node.trusted_data = trusted_facts
     node.add_server_facts(@server_facts)
     catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
@@ -172,7 +176,7 @@ class Puppet::Server::Master
                     {}
                   else
                     facts.sanitize
-                    facts.to_data_hash
+                    facts.to_data_hash['values']
                   end
 
     # Pull the trusted facts from the request, or attempt to extract them from
