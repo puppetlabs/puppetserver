@@ -187,8 +187,8 @@ class Puppet::Server::Master
   end
 
   def get_facts_from_pdb(nodename, environment)
-    if Puppet::Node::Facts.indirection.terminus_class == :puppetdb
-      Puppet::Node::Facts.indirection.find(name, :environment => environment)
+    if Puppet[:storeconfigs_backend] == :puppetdb
+      Puppet::Node::Facts.indirection.find(nodename, :environment => environment)
     else
       # How should this be surfaced? Seems like we could maybe do better than a 500, unless
       # that's accurate?
