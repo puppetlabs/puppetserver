@@ -10,11 +10,21 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.2.1
+
+Released 20 February 2019.
+
+This release contains resolved issues.
+
+### Resolved issues
+
+- This release upgrades Bouncy Castle to version 1.60 for security updates.
+
 ## Puppet Server 6.2.0
 
- Released 23 January 2019.
+Released 23 January 2019.
 
- This release contains new features and resolved issues.
+This release contains new features and resolved issues.
 
  ### New features
 
