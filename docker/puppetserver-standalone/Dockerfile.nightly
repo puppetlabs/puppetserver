@@ -3,6 +3,12 @@ FROM ubuntu:16.04
 ARG vcs_ref
 ARG build_date
 ARG version="puppet6-nightly"
+# Used by entrypoint to submit metrics to Google Analytics.
+# Published images should use "production" for this build_arg.
+ARG pupperware_analytics_stream="nightly-dev"
+ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
+ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4"
+ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver-standalone"
 ENV PUPPET_SERVER_VERSION="$version"
 ENV DUMB_INIT_VERSION="1.2.1"
 ENV UBUNTU_CODENAME="xenial"
@@ -11,6 +17,7 @@ ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/b
 ENV PUPPET_HEALTHCHECK_ENVIRONMENT="production"
 ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=1
 ENV PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0
+ENV CA_ENABLED=true
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
