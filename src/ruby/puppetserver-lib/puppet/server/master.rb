@@ -77,15 +77,19 @@ class Puppet::Server::Master
 
   def compileCatalog(request_data)
     processed_hash = convert_java_args_to_ruby(request_data)
+    # We need an environment to talk to PDB
+    processed_hash['environment'] ||= 'production'
 
     facts, trusted_facts = process_facts(processed_hash)
     node_params = { facts: facts,
+                    # TODO: fetch environment from classifier
                     environment: processed_hash['environment'],
                     # Are these 'parameters' the same as what Node expects?
                     # There's a bunch of code in Node around merging additional things,
                     # notably facts, into the 'parameter' field. Is that necessary? If so,
                     # why?
                     parameters: processed_hash['parameters'],
+                    # TODO: fetch classes from classifier
                     classes: processed_hash['classes'] }
 
     node = Puppet::Node.new(processed_hash['certname'], node_params)
@@ -172,26 +176,22 @@ class Puppet::Server::Master
       facts = Puppet::Node::Facts.from_data_hash(facts_from_request)
     end
 
-    fact_values = if facts.nil?
-                    {}
-                  else
-                    facts.sanitize
-                    facts.to_data_hash['values']
-                  end
+    facts.sanitize if facts
 
     # Pull the trusted facts from the request, or attempt to extract them from
     # the facts hash
-    trusted_facts = if request_data['trusted_facts'].nil?
-                      fact_values['trusted'].nil? ? {} : fact_values['trusted']
-                    else
+    trusted_facts = if request_data['trusted_facts']
                       request_data['trusted_facts']['values']
+                    else
+                      fact_values = facts ? facts.to_data_hash['values'] : {}
+                      fact_values['trusted'].nil? ? {} : fact_values['trusted']
                     end
 
     return facts, trusted_facts
   end
 
   def get_facts_from_pdb(nodename, environment)
-    if Puppet[:storeconfigs_backend] == :puppetdb
+    if Puppet[:storeconfigs] == true
       pdb_terminus = Puppet::Node::Facts::Puppetdb.new
       request = Puppet::Indirector::Request.new(pdb_terminus.class.name,
                                                 :find,
@@ -208,6 +208,10 @@ class Puppet::Server::Master
 
   # Initialize our server fact hash; we add these to each client, and they
   # won't change while we're running, so it's safe to cache the values.
+  #
+  # This is lifted directly from Puppet::Indirector::Catalog::Compiler,
+  # where it is used to configure and store this state on the terminus,
+  # which we aren't using.
   def set_server_facts
     @server_facts = {}
 
