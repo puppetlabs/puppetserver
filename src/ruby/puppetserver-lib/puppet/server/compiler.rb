@@ -15,10 +15,42 @@ module Puppet
         node = create_node(processed_hash)
 
         catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
+
+        maybe_save(processed_hash)
+
         catalog.to_data_hash
       end
 
       private
+
+      def maybe_save(processed_hash)
+        nodename = processed_hash['certname']
+        environment = processed_hash['environment']
+        persist = processed_hash['persistence']
+
+        if persist['facts']
+          facts_terminus = @adapters_info[:facts][:actual_terminus_class].new
+
+          facts_request = Puppet::Indirector::Request.new(facts_terminus.class.name,
+                                                          :save,
+                                                          nodename,
+                                                          nil,
+                                                          :environment => environment)
+
+          facts_terminus.save(request)
+        end
+        if persist['catalog']
+          catalog_terminus = @adapters_info[:catalog][:actual_terminus_class].new
+
+          catalog_request = Puppet::Indirector::Request.new(catalog_terminus.class.name,
+                                                            :save,
+                                                            nodename,
+                                                            nil,
+                                                            :environment => environment)
+
+          catalog_terminus.save(request)
+        end
+      end
 
       def create_node(request_data)
         # We need an environment to talk to PDB
