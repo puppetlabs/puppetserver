@@ -6,6 +6,7 @@ module Puppet
 
       def initialize
         set_server_facts
+        @adapters_info = collect_adapters_info
       end
 
       def compile(request_data)
@@ -68,7 +69,7 @@ module Puppet
 
       def extract_facts(request_data)
         if request_data['facts'].nil?
-          if Puppet[:storeconfigs] == true
+          if @adapters_info[:facts][:actual_terminus_name] == :puppetdb
             facts = get_facts_from_pdb(request_data['certname'], request_data['environment'])
           else
             raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
@@ -103,7 +104,7 @@ module Puppet
       end
 
       def get_facts_from_pdb(nodename, environment)
-        pdb_terminus = Puppet::Node::Facts::Puppetdb.new
+        pdb_terminus = @adapters_info[:facts][:actual_terminus_class].new
         request = Puppet::Indirector::Request.new(pdb_terminus.class.name,
                                                   :find,
                                                   nodename,
@@ -149,6 +150,158 @@ module Puppet
             @server_facts['servername'] = host
           end
         end
+      end
+
+      # For indirection `:facts` returns Hash like:
+      #   {yaml:     Puppet::Node::Facts::Yaml,
+      #    puppetdb: Puppet::Node::Faccts::Puppdb,
+      #    ... }
+      # for all available termini.
+      def collect_termini(indirection)
+        # This has an analog within the indirection instance however it
+        # appears to be lazily populated, full information on all
+        # available termini are availble through
+        # `Puppet::Indirector::Terminus.terminus_classes(indirection)`
+        Puppet::Indirector::Terminus.terminus_classes(indirection).map do |term_name|
+          [term_name,
+           Puppet::Indirector::Terminus.terminus_class(indirection, term_name)]
+        end.to_h
+      end
+
+      def find_terminus_class(indirection, terminus_name)
+        if terminus_name
+          Puppet::Indirector::Terminus.terminus_class(indirection, terminus_name)
+        else
+          nil
+        end
+      end
+
+      # The StoreConfigs indirection wraps the storeconfigs_backend.
+      def maybe_deref_storeconfigs(indirection, terminus_name, terminus_class)
+        if terminus_name == :store_configs
+          actual_name = Puppet.settings[:storeconfigs_backend]
+          actual_class =
+            Puppet::Indirector::Terminus.terminus_class(indirection,
+                                                        actual_name)
+        else
+          actual_name = terminus_name
+          actual_class = terminus_class
+        end
+
+        return actual_name, actual_class
+      end
+
+      # This is broken out into its own method simply because the length
+      # of comments within break the flow of `collect_adapters_info`.
+      def basic_indirection_info(indirection)
+        # The below is an instance of that indirected class, eg
+        # `Puppet::Node::Facts.new` which contains some information about
+        # its configuration
+        indirection_instance = Puppet::Indirector::Indirection.instance(indirection)
+
+        # An actual class ref of what will be indirected, eg `Puppet::Node::Facts`
+        indirected_class_reference = indirection_instance.model
+
+        # Symbol or String (eg :store_configs) or `nil` (no cache)
+        # non-nil can be used to look up class ref eg
+        # `Terminus.terminus_class(:catalog, :store_configs)`
+        cache_terminus_name = indirection_instance.cache_class
+
+        # The symbol, eg :compiler that can be given to
+        # `Terminus.terminus_class` same as cache_class
+        # May be `nil`, if so terminus_setting should be consulted
+        primary_terminus_name = indirection_instance.terminus_class
+
+        # Where to find any configuration for what default terminus to use
+        # Will be a symbol that can be passed into `Puppet.setting[<here>]`
+        terminus_setting = indirection_instance.terminus_setting
+
+        return indirected_class_reference, cache_terminus_name,
+          primary_terminus_name, terminus_setting
+      end
+
+      # Returns a Hash with symbol keys naming each indirection (eg :facts)
+      # Each indirection key refers to a Hash with the configured termini
+      # (name and class) for its primary and cache usages, if a termini is
+      # :store_configs it will find the associated termini for
+      # :storeconfigs_backend and place that in the "actual" keys for the
+      # termini. If not store_configs, then the actual keys will be the
+      # values in origal "configured" keys. Also inlcudes all possible termini
+      # for the given indirection, and additional information needed to derive
+      # the above. eg:
+      #   {
+      #     :catalog =>
+      #       {:indirected_class       => Puppet::Resource::Catalog,
+      #        :cache_terminus_name    => :store_configs,
+      #        :actual_cache_name      => :puppetdb,
+      #        :primary_terminus_name  => :compiler,
+      #        :actual_terminus_name   => :compiler,
+      #        :cache_terminus_class   => Puppet::Resource::Catalog::StoreConfigs,
+      #        :actual_cache_class     => Puppet::Resource::Catalog::Puppetdb,
+      #        :primary_terminus_class => Puppet::Resource::Catalog::Compiler,
+      #        :actual_terminus_class  => Puppet::Resource::Catalog::Compiler,
+      #        :terminus_setting       => :catalog_terminus,
+      #        :termini=>
+      #         {:compiler      => Puppet::Resource::Catalog::Compiler,
+      #          :json          => Puppet::Resource::Catalog::Json,
+      #          :msgpack       => Puppet::Resource::Catalog::Msgpack,
+      #          :rest          => Puppet::Resource::Catalog::Rest,
+      #          :store_configs => Puppet::Resource::Catalog::StoreConfigs,
+      #          :yaml          => Puppet::Resource::Catalog::Yaml,
+      #          :puppetdb      => Puppet::Resource::Catalog::Puppetdb}},
+      #     :facts => ...,
+      #     ...
+      #   }
+      def collect_adapters_info
+        adapters = {}
+
+        # Returns an array of symbols for registered
+        # adapters/indirections, e.g. :facts
+        Puppet::Indirector::Indirection.instances.each do |indirection|
+
+          indirected_class_reference, cache_terminus_name,
+          primary_terminus_name, terminus_setting =
+            basic_indirection_info(indirection)
+
+          termini = collect_termini(indirection)
+
+          cache_terminus_class = find_terminus_class(indirection, cache_terminus_name)
+
+          actual_cache_name, actual_cache_class =
+            maybe_deref_storeconfigs(indirection,
+                                       cache_terminus_name,
+                                       cache_terminus_class)
+
+
+          # Every indirection needs a primary termini, cache however does not.
+          primary_terminus_name ||= Puppet.settings[terminus_setting]
+
+          primary_terminus_class = find_terminus_class(indirection, primary_terminus_name)
+
+          actual_terminus_name, actual_terminus_class =
+            maybe_deref_storeconfigs(indirection,
+                                     primary_terminus_name,
+                                     primary_terminus_class)
+
+          adapters[indirection] = {
+            indirected_class: indirected_class_reference,
+
+            cache_terminus_name: cache_terminus_name,
+            actual_cache_name: actual_cache_name,
+            primary_terminus_name: primary_terminus_name,
+            actual_terminus_name: actual_terminus_name,
+
+            cache_terminus_class: cache_terminus_class,
+            actual_cache_class: actual_cache_class,
+            primary_terminus_class: primary_terminus_class,
+            actual_terminus_class: actual_terminus_class,
+
+            terminus_setting: terminus_setting,
+            termini: termini,
+          }
+        end
+
+        adapters
       end
     end
   end
