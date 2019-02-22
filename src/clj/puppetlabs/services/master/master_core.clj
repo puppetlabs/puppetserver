@@ -722,10 +722,12 @@
                      :msg (format "Error parsing JSON: %s" e)})))]
     (schema/validate
      {(schema/required-key "certname") schema/Str
-      (schema/required-key "persistence") {(schema/required-key "facts") schema/Str, (schema/required-key"catalogs") schema/Str, (schema/required-key "reports") schema/Str}
-      (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Any schema/Any}}
-      (schema/optional-key "facts") {(schema/required-key "values") {schema/Any schema/Any}}
+      (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
+                                           (schema/required-key "catalog") schema/Bool}
+      (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
+      (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "job_id") schema/Int
+      (schema/optional-key "transaction_uuid") schema/Str
       (schema/optional-key "environment") schema/Str
       (schema/optional-key "classes") [schema/Any]
       (schema/optional-key "parameters") {schema/Any schema/Any}}

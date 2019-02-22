@@ -15,10 +15,56 @@ module Puppet
         node = create_node(processed_hash)
 
         catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
+
+        maybe_save(processed_hash, node.facts, catalog)
+
         catalog.to_data_hash
       end
 
       private
+
+      def maybe_save(processed_hash, facts, catalog)
+        nodename = processed_hash['certname']
+        persist = processed_hash['persistence']
+        options = processed_hash.
+                    slice("environment", "transaction_id").
+                    map {|key, val| [key.intern, val] }.to_h
+
+        if persist['facts']
+          Puppet.override({trusted_information: processed_hash['trusted_facts']}) do
+            save_artifact(:facts, facts, nodename, options)
+          end
+        end
+
+        if persist['catalog']
+          save_artifact(:catalog, catalog, nodename, options)
+        end
+      end
+
+      # Some primary termini may not implement save (like with Catalog).
+      # In those cases we need to fall back to the cache class and if it
+      # is unconfigured then raise.
+      def save_artifact(indirection, artifact, nodename, options)
+        terminus_class = @adapters_info[indirection][:actual_terminus_class]
+        terminus = terminus_class ? terminus_class.new : nil
+
+        unless terminus && terminus.respond_to?(:save)
+          terminus_class = @adapters_info[indirection][:actual_cache_class]
+          terminus = terminus_class ? terminus_class.new : nil
+        end
+
+        unless terminus && terminus.respond_to?(:save)
+          raise Puppet::Error, "No configured termini to save #{indirection.to_s}"
+        end
+
+        request = Puppet::Indirector::Request.new(terminus.class.name,
+                                                  :save,
+                                                  nodename,
+                                                  artifact,
+                                                  options)
+
+        terminus.save(request)
+      end
 
       def create_node(request_data)
         # We need an environment to talk to PDB
@@ -69,7 +115,7 @@ module Puppet
 
       def extract_facts(request_data)
         if request_data['facts'].nil?
-          if @adapters_info[:facts][:actual_terminus_name] == :puppetdb
+          if @adapters_info[:facts][:actual_terminus_name].to_s == "puppetdb"
             facts = get_facts_from_pdb(request_data['certname'], request_data['environment'])
           else
             raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
@@ -152,22 +198,6 @@ module Puppet
         end
       end
 
-      # For indirection `:facts` returns Hash like:
-      #   {yaml:     Puppet::Node::Facts::Yaml,
-      #    puppetdb: Puppet::Node::Faccts::Puppdb,
-      #    ... }
-      # for all available termini.
-      def collect_termini(indirection)
-        # This has an analog within the indirection instance however it
-        # appears to be lazily populated, full information on all
-        # available termini are availble through
-        # `Puppet::Indirector::Terminus.terminus_classes(indirection)`
-        Puppet::Indirector::Terminus.terminus_classes(indirection).map do |term_name|
-          [term_name,
-           Puppet::Indirector::Terminus.terminus_class(indirection, term_name)]
-        end.to_h
-      end
-
       def find_terminus_class(indirection, terminus_name)
         if terminus_name
           Puppet::Indirector::Terminus.terminus_class(indirection, terminus_name)
@@ -222,13 +252,11 @@ module Puppet
 
       # Returns a Hash with symbol keys naming each indirection (eg :facts)
       # Each indirection key refers to a Hash with the configured termini
-      # (name and class) for its primary and cache usages, if a termini is
-      # :store_configs it will find the associated termini for
+      # (name and class) for its primary and cache usages, if a terminus is
+      # :store_configs it will find the associated terminus for
       # :storeconfigs_backend and place that in the "actual" keys for the
       # termini. If not store_configs, then the actual keys will be the
-      # values in origal "configured" keys. Also inlcudes all possible termini
-      # for the given indirection, and additional information needed to derive
-      # the above. eg:
+      # values in origal "configured" keys eg.
       #   {
       #     :catalog =>
       #       {:indirected_class       => Puppet::Resource::Catalog,
@@ -240,15 +268,7 @@ module Puppet
       #        :actual_cache_class     => Puppet::Resource::Catalog::Puppetdb,
       #        :primary_terminus_class => Puppet::Resource::Catalog::Compiler,
       #        :actual_terminus_class  => Puppet::Resource::Catalog::Compiler,
-      #        :terminus_setting       => :catalog_terminus,
-      #        :termini=>
-      #         {:compiler      => Puppet::Resource::Catalog::Compiler,
-      #          :json          => Puppet::Resource::Catalog::Json,
-      #          :msgpack       => Puppet::Resource::Catalog::Msgpack,
-      #          :rest          => Puppet::Resource::Catalog::Rest,
-      #          :store_configs => Puppet::Resource::Catalog::StoreConfigs,
-      #          :yaml          => Puppet::Resource::Catalog::Yaml,
-      #          :puppetdb      => Puppet::Resource::Catalog::Puppetdb}},
+      #        :terminus_setting       => :catalog_terminus},
       #     :facts => ...,
       #     ...
       #   }
@@ -263,8 +283,6 @@ module Puppet
           primary_terminus_name, terminus_setting =
             basic_indirection_info(indirection)
 
-          termini = collect_termini(indirection)
-
           cache_terminus_class = find_terminus_class(indirection, cache_terminus_name)
 
           actual_cache_name, actual_cache_class =
@@ -273,7 +291,7 @@ module Puppet
                                        cache_terminus_class)
 
 
-          # Every indirection needs a primary termini, cache however does not.
+          # Every indirection needs a primary terminus, cache however does not.
           primary_terminus_name ||= Puppet.settings[terminus_setting]
 
           primary_terminus_class = find_terminus_class(indirection, primary_terminus_name)
@@ -297,7 +315,6 @@ module Puppet
             actual_terminus_class: actual_terminus_class,
 
             terminus_setting: terminus_setting,
-            termini: termini,
           }
         end
 
