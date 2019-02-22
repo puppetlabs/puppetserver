@@ -22,26 +22,31 @@ describe 'puppetserver container' do
       fail error_message
     end
 
+    %x(docker network create spectests)
+
     @container = %x(docker run --rm --detach \
                --env DNS_ALT_NAMES=puppet \
                --env PUPPERWARE_DISABLE_ANALYTICS=true \
                --name puppet.test \
                --hostname puppet.test \
+               --network spectests \
                #{@image}).chomp
     @compiler = %x(docker run --rm --detach \
                --env DNS_ALT_NAMES=puppet \
                --env PUPPERWARE_DISABLE_ANALYTICS=true \
                --env CA_ENABLED=false \
                --env CA_HOSTNAME=puppet.test \
-               --link puppet.test \
                --name puppet-compiler.test \
                --hostname puppet-compiler.test \
+               --network spectests \
                #{@image}).chomp
+
   end
 
   after(:all) do
     %x(docker container kill #{@container}) unless @container.nil?
     %x(docker container kill #{@compiler}) unless @compiler.nil?
+    %x(docker network rm spectests)
   end
 
   it 'should start puppetserver successfully' do
@@ -57,7 +62,12 @@ describe 'puppetserver container' do
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
-    output = %x(docker run --rm --name puppet-agent.test --hostname puppet-agent.test --link puppet.test puppet/puppet-agent-alpine:latest agent --test --server puppet.test)
+    output = %x(docker run --rm \
+             --name puppet-agent.test \
+             --hostname puppet-agent.test \
+             --network spectests \
+             puppet/puppet-agent-alpine:latest \
+             agent --test --server puppet.test)
     status = $?.exitstatus
     puts output
     expect(status).to eq(0)
@@ -76,7 +86,12 @@ describe 'puppetserver container' do
 end
 
   it 'should be able to run an agent against the compile master' do
-    output = %x(docker run --rm --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --link puppet.test --link puppet-compiler.test puppet/puppet-agent-alpine:latest agent --test --server puppet-compiler.test --ca_server puppet.test)
+    output = %x(docker run --rm \
+             --name puppet-agent-compiler.test \
+             --hostname puppet-agent-compiler.test \
+             --network spectests \
+             puppet/puppet-agent-alpine:latest \
+             agent --test --server puppet-compiler.test --ca_server puppet.test)
     status = $?.exitstatus
     puts output
     expect(status).to eq(0)
