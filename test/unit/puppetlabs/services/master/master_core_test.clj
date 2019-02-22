@@ -412,8 +412,7 @@
                                :content-type "application/json"}
                               (ring-mock/body (json/encode {:certname "foo"
                                                             :persistence
-                                                            {:catalogs "something"
-                                                             :facts "something"
-                                                             :reports "something"}}))))]
+                                                            {:catalog true
+                                                             :facts true}}))))]
         (is (= 200 (:status response)))
         (is (= {:cool "catalog"} (json/decode (:body response) true)))))))
