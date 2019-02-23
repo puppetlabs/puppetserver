@@ -4,10 +4,12 @@ require 'puppet/info_service'
 
 require 'puppet/network/http'
 require 'puppet/network/http/api/master/v3'
+require 'puppet/node/facts'
 
 require 'puppet/server/config'
 require 'puppet/server/puppet_config'
 require 'puppet/server/network/http/handler'
+require 'puppet/server/compiler'
 
 require 'java'
 
@@ -35,6 +37,7 @@ class Puppet::Server::Master
                           chain(Puppet::Network::HTTP::API::Master::V3.routes)
     register([master_routes])
     @env_loader = Puppet.lookup(:environments)
+    @catalog_compiler = Puppet::Server::Compiler.new
   end
 
   def handleRequest(request)
@@ -60,8 +63,8 @@ class Puppet::Server::Master
         response["X-Puppet-Version"])
   end
 
-  def compileCatalog(_request_data)
-    {}
+  def compileCatalog(request_data)
+    @catalog_compiler.compile(request_data)
   end
 
   def getClassInfoForEnvironment(env)
