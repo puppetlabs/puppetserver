@@ -46,20 +46,15 @@ module Puppet
 
       def convert_java_args_to_ruby(hash)
         Hash[hash.collect do |key, value|
-            # Stolen and modified from params_to_ruby in handler.rb
-            newkey = key.to_s
-            # Java::ClojureLang::Keywords retain their leading colon when
-            # converted to a string
-            newkey.delete_prefix!(':')
-
-            if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
-              [newkey, convert_java_args_to_ruby(value)]
-            elsif value.java_kind_of?(Java::JavaUtil::List)
-              [newkey, value.to_a]
-            else
-              [newkey, value]
-            end
-          end]
+          # Stolen and modified from params_to_ruby in handler.rb
+          if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
+            [newkey, convert_java_args_to_ruby(value)]
+          elsif value.java_kind_of?(Java::JavaUtil::List)
+            [newkey, value.to_a]
+          else
+            [newkey, value]
+          end
+        end]
       end
 
 
