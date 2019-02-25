@@ -112,7 +112,7 @@ module Puppet
 
       def extract_facts(request_data)
         if request_data['facts'].nil?
-          if @adapters_info[:facts][:actual_terminus_name] == :puppetdb
+          if @adapters_info[:facts][:actual_terminus_name].to_s == "puppetdb"
             facts = get_facts_from_pdb(request_data['certname'], request_data['environment'])
           else
             raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
