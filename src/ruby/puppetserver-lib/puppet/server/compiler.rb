@@ -195,22 +195,6 @@ module Puppet
         end
       end
 
-      # For indirection `:facts` returns Hash like:
-      #   {yaml:     Puppet::Node::Facts::Yaml,
-      #    puppetdb: Puppet::Node::Facts::Puppetdb,
-      #    ... }
-      # for all available termini.
-      def collect_termini(indirection)
-        # This has an analog within the indirection instance however it
-        # appears to be lazily populated, full information on all
-        # available termini are availble through
-        # `Puppet::Indirector::Terminus.terminus_classes(indirection)`
-        Puppet::Indirector::Terminus.terminus_classes(indirection).map do |term_name|
-          [term_name,
-           Puppet::Indirector::Terminus.terminus_class(indirection, term_name)]
-        end.to_h
-      end
-
       def find_terminus_class(indirection, terminus_name)
         if terminus_name
           Puppet::Indirector::Terminus.terminus_class(indirection, terminus_name)
@@ -269,9 +253,7 @@ module Puppet
       # :store_configs it will find the associated terminus for
       # :storeconfigs_backend and place that in the "actual" keys for the
       # termini. If not store_configs, then the actual keys will be the
-      # values in origal "configured" keys. Also inlcudes all possible termini
-      # for the given indirection, and additional information needed to derive
-      # the above. eg:
+      # values in origal "configured" keys eg.
       #   {
       #     :catalog =>
       #       {:indirected_class       => Puppet::Resource::Catalog,
@@ -283,15 +265,7 @@ module Puppet
       #        :actual_cache_class     => Puppet::Resource::Catalog::Puppetdb,
       #        :primary_terminus_class => Puppet::Resource::Catalog::Compiler,
       #        :actual_terminus_class  => Puppet::Resource::Catalog::Compiler,
-      #        :terminus_setting       => :catalog_terminus,
-      #        :termini=>
-      #         {:compiler      => Puppet::Resource::Catalog::Compiler,
-      #          :json          => Puppet::Resource::Catalog::Json,
-      #          :msgpack       => Puppet::Resource::Catalog::Msgpack,
-      #          :rest          => Puppet::Resource::Catalog::Rest,
-      #          :store_configs => Puppet::Resource::Catalog::StoreConfigs,
-      #          :yaml          => Puppet::Resource::Catalog::Yaml,
-      #          :puppetdb      => Puppet::Resource::Catalog::Puppetdb}},
+      #        :terminus_setting       => :catalog_terminus},
       #     :facts => ...,
       #     ...
       #   }
@@ -305,8 +279,6 @@ module Puppet
           indirected_class_reference, cache_terminus_name,
           primary_terminus_name, terminus_setting =
             basic_indirection_info(indirection)
-
-          termini = collect_termini(indirection)
 
           cache_terminus_class = find_terminus_class(indirection, cache_terminus_name)
 
@@ -340,7 +312,6 @@ module Puppet
             actual_terminus_class: actual_terminus_class,
 
             terminus_setting: terminus_setting,
-            termini: termini,
           }
         end
 
