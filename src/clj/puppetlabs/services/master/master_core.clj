@@ -8,6 +8,7 @@
            (com.fasterxml.jackson.core JsonParseException)
            (java.lang.management ManagementFactory))
   (:require [me.raynes.fs :as fs]
+            [ring.util.codec :as ring-codec]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.puppetserver.common :as ps-common]
             [puppetlabs.comidi :as comidi]
@@ -744,10 +745,35 @@
                                               (:jruby-instance request)
                                               request-options))})))
 
+(defn convert-url-encoded-to-clojure-structure
+  [request]
+  (let [facts (ring-codec/url-decode (get (:form-params request) "facts"))]
+    {"facts" {"values" (get (json/decode facts false) "values")}
+     "certname" (last (str/split (:uri request) #"/"))}))
+
+
+(schema/defn ^:always-validate
+  v3-reroute-catalog-fn :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    {:status 200
+     :headers {"Content-Type" "application/json"}
+     :body (json/encode
+            (jruby-protocol/compile-catalog jruby-service
+                                            (:jruby-instance request)
+                                            (convert-url-encoded-to-clojure-structure request)))}))
+
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (-> (v4-catalog-fn jruby-service)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  v3-reroute-catalog-handler :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (v3-reroute-catalog-fn jruby-service)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
 
@@ -788,8 +814,8 @@
 
    (comidi/GET ["/catalog/" [#".*" :rest]] request
                (request-handler (assoc request :include-code-id? true)))
-   (comidi/POST ["/catalog/" [#".*" :rest]] request
-                (request-handler (assoc request :include-code-id? true)))
+   ;; (comidi/POST ["/catalog/" [#".*" :rest]] request
+   ;;              (request-handler (assoc request :include-code-id? true)))
    (comidi/PUT ["/facts/" [#".*" :rest]] request
                (request-handler request))
    (comidi/PUT ["/report/" [#".*" :rest]] request
@@ -834,6 +860,19 @@
                   (all-tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                   (static-file-content-handler request)))))
+
+(schema/defn ^:always-validate
+  v3-reroute :- bidi-schema/RoutePair
+  [clojure-request-wrapper :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (let [v3-reroute-catalog-handler (v3-reroute-catalog-handler jruby-service)]
+    (comidi/context
+     "/v3"
+     (comidi/wrap-routes
+      (comidi/routes
+       (comidi/POST ["/catalog/" [#".*" :rest]] request
+                    (v3-reroute-catalog-handler request) ))
+      clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
   v4-routes :- bidi-schema/RoutePair
@@ -967,6 +1006,8 @@
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool]
   (comidi/routes
+   (v3-reroute clojure-request-wrapper
+               jruby-service)
    (v3-routes ruby-request-handler
               clojure-request-wrapper
               jruby-service
