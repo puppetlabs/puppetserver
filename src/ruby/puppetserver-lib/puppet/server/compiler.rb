@@ -48,11 +48,11 @@ module Puppet
         Hash[hash.collect do |key, value|
           # Stolen and modified from params_to_ruby in handler.rb
           if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
-            [newkey, convert_java_args_to_ruby(value)]
+            [key, convert_java_args_to_ruby(value)]
           elsif value.java_kind_of?(Java::JavaUtil::List)
-            [newkey, value.to_a]
+            [key, value.to_a]
           else
-            [newkey, value]
+            [key, value]
           end
         end]
       end
