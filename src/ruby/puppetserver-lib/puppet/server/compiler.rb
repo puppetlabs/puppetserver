@@ -16,14 +16,14 @@ module Puppet
 
         catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
 
-        maybe_save(processed_hash)
+        maybe_save(processed_hash, node.facts, catalog)
 
         catalog.to_data_hash
       end
 
       private
 
-      def maybe_save(processed_hash)
+      def maybe_save(processed_hash, facts, catalog)
         nodename = processed_hash['certname']
         environment = processed_hash['environment']
         persist = processed_hash['persistence']
@@ -34,7 +34,7 @@ module Puppet
           facts_request = Puppet::Indirector::Request.new(facts_terminus.class.name,
                                                           :save,
                                                           nodename,
-                                                          nil,
+                                                          facts,
                                                           :environment => environment)
 
           facts_terminus.save(request)
@@ -45,7 +45,7 @@ module Puppet
           catalog_request = Puppet::Indirector::Request.new(catalog_terminus.class.name,
                                                             :save,
                                                             nodename,
-                                                            nil,
+                                                            catalog,
                                                             :environment => environment)
 
           catalog_terminus.save(request)
