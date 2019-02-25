@@ -28,28 +28,39 @@ module Puppet
         environment = processed_hash['environment']
         persist = processed_hash['persistence']
 
+        Puppet.warning(facts.inspect)
         if persist['facts']
-          facts_terminus = @adapters_info[:facts][:actual_terminus_class].new
-
-          facts_request = Puppet::Indirector::Request.new(facts_terminus.class.name,
-                                                          :save,
-                                                          nodename,
-                                                          facts,
-                                                          :environment => environment)
-
-          facts_terminus.save(facts_request)
+          save_artifact(:facts, facts, nodename, environment)
         end
+
         if persist['catalog']
-          catalog_terminus = @adapters_info[:catalog][:actual_terminus_class].new
-
-          catalog_request = Puppet::Indirector::Request.new(catalog_terminus.class.name,
-                                                            :save,
-                                                            nodename,
-                                                            catalog,
-                                                            :environment => environment)
-
-          catalog_terminus.save(catalog_request)
+          save_artifact(:catalog, catalog, nodename, environment)
         end
+      end
+
+      # Some primary termini may not implement save (like with Catalog).
+      # In those cases we need to fall back to the cache class and if it
+      # is unconfigured then raise.
+      def save_artifact(indirection, artifact, nodename, environment)
+        terminus_class = @adapters_info[indirection][:actual_terminus_class]
+        terminus = terminus_class ? terminus_class.new : nil
+
+        unless terminus && terminus.respond_to?(:save)
+          terminus_class = @adapters_info[indirection][:actual_cache_class]
+          terminus = terminus_class ? terminus_class.new : nil
+        end
+
+        unless terminus && terminus.respond_to?(:save)
+          raise Puppet::Error, "No configured termini to save #{indirection.to_s}"
+        end
+
+        request = Puppet::Indirector::Request.new(terminus.class.name,
+                                                  :save,
+                                                  nodename,
+                                                  artifact,
+                                                  :environment => environment)
+
+        terminus.save(request)
       end
 
       def create_node(request_data)
