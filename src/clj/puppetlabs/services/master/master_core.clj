@@ -723,7 +723,7 @@
     (schema/validate
      {(schema/required-key "certname") schema/Str
       (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
-                                           (schema/required-key"catalogs") schema/Bool}
+                                           (schema/required-key "catalog") schema/Bool}
       (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "job_id") schema/Int
