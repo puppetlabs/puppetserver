@@ -197,7 +197,7 @@ module Puppet
 
       # For indirection `:facts` returns Hash like:
       #   {yaml:     Puppet::Node::Facts::Yaml,
-      #    puppetdb: Puppet::Node::Faccts::Puppdb,
+      #    puppetdb: Puppet::Node::Facts::Puppetdb,
       #    ... }
       # for all available termini.
       def collect_termini(indirection)
@@ -265,8 +265,8 @@ module Puppet
 
       # Returns a Hash with symbol keys naming each indirection (eg :facts)
       # Each indirection key refers to a Hash with the configured termini
-      # (name and class) for its primary and cache usages, if a termini is
-      # :store_configs it will find the associated termini for
+      # (name and class) for its primary and cache usages, if a terminus is
+      # :store_configs it will find the associated terminus for
       # :storeconfigs_backend and place that in the "actual" keys for the
       # termini. If not store_configs, then the actual keys will be the
       # values in origal "configured" keys. Also inlcudes all possible termini
@@ -316,7 +316,7 @@ module Puppet
                                        cache_terminus_class)
 
 
-          # Every indirection needs a primary termini, cache however does not.
+          # Every indirection needs a primary terminus, cache however does not.
           primary_terminus_name ||= Puppet.settings[terminus_setting]
 
           primary_terminus_class = find_terminus_class(indirection, primary_terminus_name)
