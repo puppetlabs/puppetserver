@@ -37,7 +37,7 @@ module Puppet
                                                           facts,
                                                           :environment => environment)
 
-          facts_terminus.save(request)
+          facts_terminus.save(facts_request)
         end
         if persist['catalog']
           catalog_terminus = @adapters_info[:catalog][:actual_terminus_class].new
@@ -48,7 +48,7 @@ module Puppet
                                                             catalog,
                                                             :environment => environment)
 
-          catalog_terminus.save(request)
+          catalog_terminus.save(catalog_request)
         end
       end
 
