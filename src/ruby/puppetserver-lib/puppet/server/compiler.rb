@@ -34,6 +34,11 @@ module Puppet
         end
 
         if persist['catalog']
+          # TODO: We need to pass transaction_id in here some how.
+          # Probably through the options hash that environment is passed into
+          # So instead of just passing an environment in here we might pass
+          # in a complete options hash that includes environment.
+          # Now where do we get a transaction_id?
           save_artifact(:catalog, catalog, nodename, environment)
         end
       end
