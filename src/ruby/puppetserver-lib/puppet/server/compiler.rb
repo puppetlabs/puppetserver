@@ -25,28 +25,25 @@ module Puppet
 
       def maybe_save(processed_hash, facts, catalog)
         nodename = processed_hash['certname']
-        environment = processed_hash['environment']
         persist = processed_hash['persistence']
+        options = processed_hash.
+                    slice("environment", "transaction_id").
+                    map {|key, val| [key.intern, val] }.to_h
 
         Puppet.warning(facts.inspect)
         if persist['facts']
-          save_artifact(:facts, facts, nodename, environment)
+          save_artifact(:facts, facts, nodename, options)
         end
 
         if persist['catalog']
-          # TODO: We need to pass transaction_id in here some how.
-          # Probably through the options hash that environment is passed into
-          # So instead of just passing an environment in here we might pass
-          # in a complete options hash that includes environment.
-          # Now where do we get a transaction_id?
-          save_artifact(:catalog, catalog, nodename, environment)
+          save_artifact(:catalog, catalog, nodename, options)
         end
       end
 
       # Some primary termini may not implement save (like with Catalog).
       # In those cases we need to fall back to the cache class and if it
       # is unconfigured then raise.
-      def save_artifact(indirection, artifact, nodename, environment)
+      def save_artifact(indirection, artifact, nodename, options)
         terminus_class = @adapters_info[indirection][:actual_terminus_class]
         terminus = terminus_class ? terminus_class.new : nil
 
@@ -63,7 +60,7 @@ module Puppet
                                                   :save,
                                                   nodename,
                                                   artifact,
-                                                  :environment => environment)
+                                                  options)
 
         terminus.save(request)
       end
