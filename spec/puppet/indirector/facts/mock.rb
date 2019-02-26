@@ -7,11 +7,9 @@ module Puppet
       class Mock < Puppet::Indirector::ThisIsStupid
 
         def save(request)
-          true
         end
 
         def find(request)
-          true
         end
       end
     end
