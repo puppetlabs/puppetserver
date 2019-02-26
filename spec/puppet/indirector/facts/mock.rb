@@ -6,14 +6,6 @@ module Puppet
     class Facts
       class Mock < Puppet::Indirector::ThisIsStupid
 
-        def self.indirection_name
-          :facts
-        end
-
-        def self.name
-          :mock
-        end
-
         def save(request)
           true
         end
