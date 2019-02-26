@@ -30,7 +30,6 @@ module Puppet
                     slice("environment", "transaction_id").
                     map {|key, val| [key.intern, val] }.to_h
 
-        Puppet.warning(facts.inspect)
         if persist['facts']
           save_artifact(:facts, facts, nodename, options)
         end
