@@ -5,7 +5,7 @@ canonical: "/puppetserver/latest/puppet-api/v4/catalog.html"
 ---
 
 The catalog API returns a compiled catalog for the node specified in the request,
-making use of provided metadata like facts, environment, and classes if specified.
+making use of provided metadata like facts or environment if specified.
 If not specified, it will attempt to fetch this data from Puppet's configured sources
 (usually PuppetDB or a node classifier). The returned catalog is in JSON format,
 ready to be parsed and applied by an agent.
@@ -24,8 +24,7 @@ following form:
   "facts": { "values": { "<fact name>": <fact value>, ... } },
   "trusted_facts": { "values": { "<fact name>": <fact value>, ... } },
   "environment": "<environment name>",
-  "classes": [ "<class name>", ... ],
-  "parameters": { "<param name>": "<param value>" }
+  "prefer_requested_environment": <true/false>
 }
 ```
 
@@ -48,20 +47,14 @@ provided, Puppet will attempt to fetch the trusted facts for the node from Puppe
 from the provided facts hash.
 
 #### `environment`
-The name of the environment for which to compile the catalog. If not provided, defaults
-to 'production'. (TODO LOOK THIS UP IN THE CLASSIFIER)
+The name of the environment for which to compile the catalog. If `prefer_requested_environemnt`
+is true, override the classified environment with this param. If it is false, only respect this
+if the classifier allows an agent-specified environment.
 
-#### `classes`
-Any classes that should be applied to the node. Can be omitted, in which case the classes
-will be looked up in the configured node classifier. (WHAT HAPPENS IF NONE IS CONFIGURED?
-IS THERE A CASE WHERE WE WOULD WANT NEITHER?)
-
-#### `parameters`
-Any parameters that should be added to the node. Can be omitted. (ARE THESE PARAMETERS ALA
-https://puppet.com/docs/puppet/5.3/lang_classes.html#class-parameters-and-variables
-OR PARAMETERS ALA https://github.com/puppetlabs/puppet/blob/master/lib/puppet/node.rb#L29?
-Are those two different things or somehow the same/connected? DO THESE ALSO COME FROM THE
-CLASSIFIER SOMETIMES?)
+#### `prefer_requested_environment`
+Whether to always override a node's classified environment with the one supplied in the
+request. If this is true and no environment is supplied, fall back to the classified
+environment, or finally, 'production'.
 
 ### Schema
 
