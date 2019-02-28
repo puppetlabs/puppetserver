@@ -8,20 +8,37 @@ module Puppet
         set_server_facts
       end
 
+      # Compiles a catalog according to the spec provided from the
+      # request.
+      # @param [Hash] request_data details about the catalog to be compiled
+      # @return [Hash] containing either just the catalog or catalog and logs,
+      #                if capturing logs was enabled
       def compile(request_data)
-        catalog, logs = capture_logs do
-          processed_hash = convert_java_args_to_ruby(request_data)
+        options = request_data['options'] || {}
+        # Default to capturing errors and warnings from compiles
+        options['capture_logs'] = true unless options['capture_logs']
 
-          node = create_node(processed_hash)
+        processed_hash = convert_java_args_to_ruby(request_data)
 
-          catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
-          catalog.to_data_hash
+        if options['capture_logs']
+          catalog, logs = capture_logs do
+            compile_catalog(processed_hash)
+          end
+
+          { catalog: catalog, logs: logs }
+        else
+          catalog = compile_catalog(request_data)
+          { catalog: catalog }
         end
-
-        { catalog: catalog, logs: logs }
       end
 
       private
+
+      def compile_catalog(request_data)
+        node = create_node(request_data)
+        catalog = Puppet::Parser::Compiler.compile(node, request_data['job_id'])
+        catalog.to_data_hash
+      end
 
       def capture_logs(&block)
         logs = []
