@@ -24,7 +24,8 @@ following form:
   "facts": { "values": { "<fact name>": <fact value>, ... } },
   "trusted_facts": { "values": { "<fact name>": <fact value>, ... } },
   "environment": "<environment name>",
-  "prefer_requested_environment": <true/false>
+  "options": { "prefer_requested_environment": <true/false>,
+               "capture_logs": <true/false> }
 }
 ```
 
@@ -51,10 +52,18 @@ The name of the environment for which to compile the catalog. If `prefer_request
 is true, override the classified environment with this param. If it is false, only respect this
 if the classifier allows an agent-specified environment.
 
-#### `prefer_requested_environment`
+#### `options`
+
+A hash of options beyond direct input to catalogs.
+
+`prefer_requested_environment`
 Whether to always override a node's classified environment with the one supplied in the
 request. If this is true and no environment is supplied, fall back to the classified
 environment, or finally, 'production'.
+
+`capture_logs'
+Whether to return the errors and warnings that occurred during compilation alongside the
+catalog in the response body.
 
 ### Schema
 
