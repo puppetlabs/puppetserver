@@ -49,11 +49,11 @@ module Puppet
         end
 
         log_entries = logs.map do |log|
-          begin
-            log.to_data_hash
-          rescue
-            log
-          end
+          log.to_data_hash
+        end.select do |log|
+          # Filter out debug messages, which may be verbose and
+          # contain sensitive data
+          log['level'] == 'warning' || log['level'] == 'error'
         end
 
         return result, log_entries
