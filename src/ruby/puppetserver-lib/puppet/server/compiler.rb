@@ -26,16 +26,9 @@ module Puppet
       def capture_logs(&block)
         logs = []
         result = nil
-        Puppet::Util::Log.close_all
         log_dest = Puppet::Test::LogCollector.new(logs)
-        begin
-          Puppet::Util::Log.newdestination(log_dest)
-          Puppet::Util::Log.with_destination(log_dest) do
-            result = yield
-          end
-        ensure
-          Puppet::Util::Log.newdestination(:console)
-          Puppet::Util::Log.close(log_dest)
+        Puppet::Util::Log.with_destination(log_dest) do
+          result = yield
         end
 
         log_entries = logs.map do |log|
