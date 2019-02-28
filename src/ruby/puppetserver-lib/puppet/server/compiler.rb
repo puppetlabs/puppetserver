@@ -9,15 +9,45 @@ module Puppet
       end
 
       def compile(request_data)
-        processed_hash = convert_java_args_to_ruby(request_data)
+        catalog, logs = capture_logs do
+          processed_hash = convert_java_args_to_ruby(request_data)
 
-        node = create_node(processed_hash)
+          node = create_node(processed_hash)
 
-        catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
-        catalog.to_data_hash
+          catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
+          catalog.to_data_hash
+        end
+
+        { catalog: catalog, logs: logs }
       end
 
       private
+
+      def capture_logs(&block)
+        logs = []
+        result = nil
+        Puppet::Util::Log.close_all
+        log_dest = Puppet::Test::LogCollector.new(logs)
+        begin
+          Puppet::Util::Log.newdestination(log_dest)
+          Puppet::Util::Log.with_destination(log_dest) do
+            result = yield
+          end
+        ensure
+          Puppet::Util::Log.newdestination(:console)
+          Puppet::Util::Log.close(log_dest)
+        end
+
+        log_entries = logs.map do |log|
+          begin
+            log.to_data_hash
+          rescue
+            log
+          end
+        end
+
+        return result, log_entries
+      end
 
       def create_node(request_data)
         # We need an environment to talk to PDB
