@@ -735,7 +735,9 @@
 
 (schema/defn ^:always-validate
   v4-catalog-fn :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn
+   current-code-id-fn]
   (fn [request]
     (let [request-options (decode-catalog-post-body (slurp (:body request)))]
       {:status 200
@@ -746,34 +748,43 @@
                                               request-options))})))
 
 (defn convert-url-encoded-to-clojure-structure
-  [request]
+  [request
+   current-code-id-fn]
   (let [facts (ring-codec/url-decode (get (:form-params request) "facts"))]
     {"facts" {"values" (get (json/decode facts false) "values")}
-     "certname" (last (str/split (:uri request) #"/"))}))
+     "certname" (last (str/split (:uri request) #"/"))
+     "job_id" (current-code-id-fn (jruby-request/get-environment-from-request request))}))
 
 
 (schema/defn ^:always-validate
   v3-reroute-catalog-fn :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn
+   current-code-id-fn]
   (fn [request]
-    {:status 200
-     :headers {"Content-Type" "application/json"}
-     :body (json/encode
-            (jruby-protocol/compile-catalog jruby-service
-                                            (:jruby-instance request)
-                                            (convert-url-encoded-to-clojure-structure request)))}))
+    ( let [environment (jruby-request/get-environment-from-request request)]
+     {:status 200
+      :headers {"Content-Type" "application/json"}
+      :body (json/encode
+             (jruby-protocol/compile-catalog jruby-service
+                                             (:jruby-instance request)
+                                             (convert-url-encoded-to-clojure-structure request current-code-id-fn)))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (-> (v4-catalog-fn jruby-service)
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn
+   current-code-id-fn]
+  (-> (v4-catalog-fn jruby-service get-code-content-fn current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
 
 (schema/defn ^:always-validate
   v3-reroute-catalog-handler :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (-> (v3-reroute-catalog-fn jruby-service)
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn
+   current-code-id-fn]
+  (-> (v3-reroute-catalog-fn jruby-service get-code-content-fn current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
 
@@ -864,8 +875,10 @@
 (schema/defn ^:always-validate
   v3-reroute :- bidi-schema/RoutePair
   [clojure-request-wrapper :- IFn
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (let [v3-reroute-catalog-handler (v3-reroute-catalog-handler jruby-service)]
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn
+   current-code-id-fn :- IFn]
+  (let [v3-reroute-catalog-handler (v3-reroute-catalog-handler jruby-service get-code-content-fn current-code-id-fn)]
     (comidi/context
      "/v3"
      (comidi/wrap-routes
@@ -877,14 +890,16 @@
 (schema/defn ^:always-validate
   v4-routes :- bidi-schema/RoutePair
   [clojure-request-wrapper :- IFn
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (let [v4-catalog-handler (v4-catalog-handler jruby-service)]
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   get-code-content-fn :- IFn
+   current-code-id-fn :- IFn]
+  (let [v4-catalog-handler (v4-catalog-handler jruby-service get-code-content-fn current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request) ))
+                         (v4-catalog-handler request get-code-content-fn current-code-id-fn) ))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
@@ -1007,7 +1022,9 @@
    environment-class-cache-enabled :- schema/Bool]
   (comidi/routes
    (v3-reroute clojure-request-wrapper
-               jruby-service)
+               jruby-service
+               get-code-content-fn
+               current-code-id-fn)
    (v3-routes ruby-request-handler
               clojure-request-wrapper
               jruby-service
@@ -1015,7 +1032,9 @@
               current-code-id-fn
               environment-class-cache-enabled)
    (v4-routes clojure-request-wrapper
-              jruby-service)))
+              jruby-service
+              get-code-content-fn
+              current-code-id-fn)))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
