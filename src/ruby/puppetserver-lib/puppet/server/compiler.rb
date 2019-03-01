@@ -31,7 +31,9 @@ module Puppet
                     map {|key, val| [key.intern, val] }.to_h
 
         if persist['facts']
-          save_artifact(:facts, facts, nodename, options)
+          Puppet.override({trusted_information: processed_hash['trusted_facts']}) do
+            save_artifact(:facts, facts, nodename, options)
+          end
         end
 
         if persist['catalog']
