@@ -65,7 +65,7 @@ describe Puppet::Server::Execution do
       end
 
       it "should support environment variables" do
-        result = test_execute(%(FOO=bar python -c "import os; print os.environ['FOO']"))
+        result = test_execute(%(FOO=bar sh -c 'echo $FOO'))
         expect(result).to be_a Puppet::Util::Execution::ProcessOutput
         expect(result).to eq "bar\n"
         expect(result.exitstatus).to eq 0
