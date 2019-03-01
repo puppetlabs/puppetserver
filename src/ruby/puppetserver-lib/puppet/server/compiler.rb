@@ -1,4 +1,5 @@
 require 'puppet/server'
+require 'puppet/server/log_collector'
 
 module Puppet
   module Server
@@ -43,7 +44,7 @@ module Puppet
       def capture_logs(&block)
         logs = []
         result = nil
-        log_dest = Puppet::Test::LogCollector.new(logs)
+        log_dest = Puppet::Server::LogCollector.new(logs)
         Puppet::Util::Log.with_destination(log_dest) do
           result = yield
         end
