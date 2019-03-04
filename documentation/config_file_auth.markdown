@@ -126,9 +126,9 @@ A `match-request` can take the following parameters, some of which are required:
 
     > **Note:** While the new HOCON format does not provide a direct equivalent to the [deprecated][] `method` parameter's `search` indirector, you can create the equivalent rule by passing GET and POST to `method` and specifying endpoint paths using the `path` parameter.
 
--   **`query-params` and `environment`:** Use the optional `query-params` setting and provide the list of query parameters as an array to the setting's `environment` parameter.
+-   **`query-params`:** Use the optional query-params setting to provide the list of query parameters. Each entry is a hash of the param name followed by a list of its values.
 
-    For example, this rule would match a request URL containing the `environment=production` or `environment=test` query parameters:
+For example, this rule would match a request URL containing the `environment=production` or `environment=test` query parameters:
 
     ``` hocon
     query-params: {
