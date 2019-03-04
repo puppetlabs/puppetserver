@@ -19,11 +19,9 @@ module Puppet
         # Default to capturing errors and warnings from compiles
         options['capture_logs'] = true unless options['capture_logs']
 
-        processed_hash = convert_java_args_to_ruby(request_data)
-
         if options['capture_logs']
           catalog, logs = capture_logs do
-            compile_catalog(processed_hash)
+            compile_catalog(request_data)
           end
 
           { catalog: catalog, logs: logs }
@@ -84,20 +82,6 @@ module Puppet
         node.add_server_facts(@server_facts)
         node
       end
-
-      def convert_java_args_to_ruby(hash)
-        Hash[hash.collect do |key, value|
-          # Stolen and modified from params_to_ruby in handler.rb
-          if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
-            [key, convert_java_args_to_ruby(value)]
-          elsif value.java_kind_of?(Java::JavaUtil::List)
-            [key, value.to_a]
-          else
-            [key, value]
-          end
-        end]
-      end
-
 
       # @return Puppet::Node::Facts facts, Hash trusted_facts
       def process_facts(request_data)

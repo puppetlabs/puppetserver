@@ -64,7 +64,7 @@ class Puppet::Server::Master
   end
 
   def compileCatalog(request_data)
-    @catalog_compiler.compile(request_data)
+    @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
   end
 
   def getClassInfoForEnvironment(env)
@@ -129,6 +129,19 @@ class Puppet::Server::Master
   end
 
   private
+
+  def convert_java_args_to_ruby(hash)
+    Hash[hash.collect do |key, value|
+      # Stolen and modified from params_to_ruby in handler.rb
+      if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
+        [key, convert_java_args_to_ruby(value)]
+      elsif value.java_kind_of?(Java::JavaUtil::List)
+        [key, value.to_a]
+      else
+        [key, value]
+      end
+    end]
+  end
 
   def self.getModules(env)
     env.modules.collect do |mod|
