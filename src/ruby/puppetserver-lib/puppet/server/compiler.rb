@@ -16,8 +16,6 @@ module Puppet
       #                if capturing logs was enabled
       def compile(request_data)
         options = request_data['options'] || {}
-        # Default to capturing errors and warnings from compiles
-        options['capture_logs'] = true unless options['capture_logs']
 
         if options['capture_logs']
           catalog, logs = capture_logs do
