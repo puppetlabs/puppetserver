@@ -180,7 +180,7 @@
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
-                      :plugins [[puppetlabs/lein-ezbake "1.9.3"]]
+                      :plugins [[puppetlabs/lein-ezbake "1.9.7"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main
                              puppetlabs.trapperkeeper.services.status.status-service
