@@ -1,4 +1,5 @@
 require 'puppet/server'
+require 'puppet/server/log_collector'
 
 module Puppet
   module Server
@@ -8,16 +9,52 @@ module Puppet
         set_server_facts
       end
 
+      # Compiles a catalog according to the spec provided from the
+      # request.
+      # @param [Hash] request_data details about the catalog to be compiled
+      # @return [Hash] containing either just the catalog or catalog and logs,
+      #                if capturing logs was enabled
       def compile(request_data)
-        processed_hash = convert_java_args_to_ruby(request_data)
+        options = request_data['options'] || {}
 
-        node = create_node(processed_hash)
+        if options['capture_logs']
+          catalog, logs = capture_logs do
+            compile_catalog(request_data)
+          end
 
-        catalog = Puppet::Parser::Compiler.compile(node, processed_hash['job_id'])
-        catalog.to_data_hash
+          { catalog: catalog, logs: logs }
+        else
+          catalog = compile_catalog(request_data)
+          { catalog: catalog }
+        end
       end
 
       private
+
+      def compile_catalog(request_data)
+        node = create_node(request_data)
+        catalog = Puppet::Parser::Compiler.compile(node, request_data['job_id'])
+        catalog.to_data_hash
+      end
+
+      def capture_logs(&block)
+        logs = []
+        result = nil
+        log_dest = Puppet::Server::LogCollector.new(logs)
+        Puppet::Util::Log.with_destination(log_dest) do
+          result = yield
+        end
+
+        log_entries = logs.map do |log|
+          log.to_data_hash
+        end.select do |log|
+          # Filter out debug messages, which may be verbose and
+          # contain sensitive data
+          log['level'] == 'warning' || log['level'] == 'error'
+        end
+
+        return result, log_entries
+      end
 
       def create_node(request_data)
         # We need an environment to talk to PDB
@@ -43,20 +80,6 @@ module Puppet
         node.add_server_facts(@server_facts)
         node
       end
-
-      def convert_java_args_to_ruby(hash)
-        Hash[hash.collect do |key, value|
-          # Stolen and modified from params_to_ruby in handler.rb
-          if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
-            [key, convert_java_args_to_ruby(value)]
-          elsif value.java_kind_of?(Java::JavaUtil::List)
-            [key, value.to_a]
-          else
-            [key, value]
-          end
-        end]
-      end
-
 
       # @return Puppet::Node::Facts facts, Hash trusted_facts
       def process_facts(request_data)
