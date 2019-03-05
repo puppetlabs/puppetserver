@@ -29,7 +29,7 @@ module Puppet
         end
       end
 
-      private
+      # private
 
       def compile_catalog(request_data)
         persist = request_data['persistence']
@@ -116,22 +116,26 @@ module Puppet
         end
       end
 
+      # Make the node object to be used in compilation. This requests it from
+      # the node indirection and merges local facts and other data.
+      # @api private
       def create_node(request_data)
-        # We need an environment to talk to PDB
-        request_data['environment'] ||= 'production'
-
         facts, trusted_facts = process_facts(request_data)
-        node_params = { facts: facts,
-                        # TODO: fetch environment from classifier
-                        environment: request_data['environment'],
-                        # data added to the node object and exposed in manifests as
-                        # top-level vars. Maybe related to class params??
-                        # Can these also come from the classifier?
-                        parameters: request_data['parameters'],
-                        # TODO: fetch classes from classifier
-                        classes: request_data['classes'] }
+        certname = request_data['certname']
+        environment = request_data['environment'] || 'production'
+        transaction_uuid = request_data['transaction_uuid']
+        prefer_requested_environment =
+          request_data.dig('options', 'prefer_requested_environment')
 
-        node = Puppet::Node.new(request_data['certname'], node_params)
+        node = Puppet::Node.indirection.find(certname,
+                                             environment: environment,
+                                             facts: facts,
+                                             transaction_uuid: transaction_uuid)
+
+        if prefer_requested_environment
+          node.environment = environment
+        end
+
         # Merges facts into the node parameters.
         # Ensures that facts will be surfaced as top-scope variables,
         # along with other node parameters.
