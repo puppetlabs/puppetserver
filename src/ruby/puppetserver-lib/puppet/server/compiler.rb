@@ -32,8 +32,24 @@ module Puppet
       private
 
       def compile_catalog(request_data)
+        persist = request_data['persistence']
+        save_options = request_data.slice('environment', 'transaction_id', 'certname')
+
         node = create_node(request_data)
+
+        if persist['facts']
+          save_facts(node.facts, node.trusted_data, save_options)
+        end
+
+        # Note: if we change this to use the indirection we may no longer
+        # need to call `save_catalog` below. See its documentation for
+        # further info.
         catalog = Puppet::Parser::Compiler.compile(node, request_data['job_id'])
+
+        if persist['catalog']
+          save_catalog(catalog, save_options)
+        end
+
         catalog.to_data_hash
       end
 
@@ -54,6 +70,50 @@ module Puppet
         end
 
         return result, log_entries
+      end
+
+      # Typically in our use case (~early 2019, with PuppetDB configured as
+      # the primary terminus and yaml as the cache) Indirection.save will
+      # save to both the primary terminus and cache.
+      #
+      # @param [Puppet::Node::Facts] facts
+      # @param [Hash] trusted_facts
+      # @param [Hash] options
+      # @option options [String] environment    Required
+      # @option options [String] certname       Required
+      def save_facts(facts, trusted_facts, options)
+        # trusted_facts are pulled from the context in at least the PDB terminus.
+        Puppet.override({trusted_information: trusted_facts}) do
+          Puppet::Node::Facts.indirection.save(facts, options.delete('certname'), options)
+        end
+      end
+
+      # The current Compiler terminus (which is the primary terminus for the
+      # Catalog indirection) does not implement save and so we
+      # cannot call Indirection#save directly. Typically, the catalog is
+      # "saved" to PDB because PDB becomes the cache terminus and
+      # Indirection#find will attempt to cache on successful lookup.
+      #
+      # Should we begin retrieving the catalog via Indirection#find this
+      # method may become unnecessary
+      #
+      # @param [Puppet::Resource::Catalog] catalog
+      # @param [Hash] options
+      # @option options [String] environment    Required
+      # @option options [String] certname       Required
+      # @option options [String] transaction_id Optional
+      def save_catalog(catalog, options)
+        if Puppet::Resource::Catalog.indirection.cache?
+          terminus = Puppet::Resource::Catalog.indirection.cache
+
+          request = Puppet::Indirector::Request.new(terminus.class.name,
+                                                    :save,
+                                                    options.delete('certname'),
+                                                    catalog,
+                                                    options)
+
+          terminus.save(request)
+        end
       end
 
       def create_node(request_data)
@@ -91,7 +151,7 @@ module Puppet
 
       def extract_facts(request_data)
         if request_data['facts'].nil?
-          if Puppet[:storeconfigs] == true
+          if Puppet::Node::Facts.indirection.terminus.name.to_s == "puppetdb"
             facts = get_facts_from_pdb(request_data['certname'], request_data['environment'])
           else
             raise(Puppet::Error, "PuppetDB not configured, please provide facts with your catalog request.")
