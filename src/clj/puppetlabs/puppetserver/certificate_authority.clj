@@ -224,7 +224,7 @@
   "The set of SSL related files that are required on the CA."
   [enable-infra-crl]
   (union #{:cacert :cacrl :cakey :cert-inventory :serial}
-     (if enable-infra-crl #{:infra-node-serials-path :infra-nodes-path :infra-crl-path} #{})))
+     (if enable-infra-crl #{:infra-nodes-path :infra-crl-path} #{})))
 
 (def max-ca-ttl
   "The longest valid duration for CA certs, in seconds. 50 standard years."
