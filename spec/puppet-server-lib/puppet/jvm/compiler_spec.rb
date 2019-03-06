@@ -62,7 +62,6 @@ describe Puppet::Server::Compiler do
         let(:options) { { 'prefer_requested_environment' => true } }
 
         it 'uses the environment in the request' do
-          node = compiler.create_node(request_data)
           expect(node.environment.name).to eq(:fancy)
         end
       end
