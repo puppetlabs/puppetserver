@@ -29,7 +29,36 @@ module Puppet
         end
       end
 
-      # private
+      # Make the node object to be used in compilation. This requests it from
+      # the node indirection and merges local facts and other data.
+      # @api private
+      def create_node(request_data)
+        facts, trusted_facts = process_facts(request_data)
+        certname = request_data['certname']
+        environment = request_data['environment'] || 'production'
+        transaction_uuid = request_data['transaction_uuid']
+        prefer_requested_environment =
+          request_data.dig('options', 'prefer_requested_environment')
+
+        node = Puppet::Node.indirection.find(certname,
+                                             environment: environment,
+                                             facts: facts,
+                                             transaction_uuid: transaction_uuid)
+
+        if prefer_requested_environment
+          node.environment = environment
+        end
+
+        # Merges facts into the node parameters.
+        # Ensures that facts will be surfaced as top-scope variables,
+        # along with other node parameters.
+        node.merge(facts.values)
+        node.trusted_data = trusted_facts
+        node.add_server_facts(@server_facts)
+        node
+      end
+
+      private
 
       def compile_catalog(request_data)
         persist = request_data['persistence']
@@ -114,35 +143,6 @@ module Puppet
 
           terminus.save(request)
         end
-      end
-
-      # Make the node object to be used in compilation. This requests it from
-      # the node indirection and merges local facts and other data.
-      # @api private
-      def create_node(request_data)
-        facts, trusted_facts = process_facts(request_data)
-        certname = request_data['certname']
-        environment = request_data['environment'] || 'production'
-        transaction_uuid = request_data['transaction_uuid']
-        prefer_requested_environment =
-          request_data.dig('options', 'prefer_requested_environment')
-
-        node = Puppet::Node.indirection.find(certname,
-                                             environment: environment,
-                                             facts: facts,
-                                             transaction_uuid: transaction_uuid)
-
-        if prefer_requested_environment
-          node.environment = environment
-        end
-
-        # Merges facts into the node parameters.
-        # Ensures that facts will be surfaced as top-scope variables,
-        # along with other node parameters.
-        node.merge(facts.values)
-        node.trusted_data = trusted_facts
-        node.add_server_facts(@server_facts)
-        node
       end
 
       # @return Puppet::Node::Facts facts, Hash trusted_facts
