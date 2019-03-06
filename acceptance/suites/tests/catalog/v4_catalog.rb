@@ -94,11 +94,13 @@ PUPPETCONF
 
 
   teardown do
-    on(master, "puppet resource user #{compile_subject} ensure=absent")
-    on(master, "puppet resource user #{compile_service} ensure=absent")
+    on(master, "puppet resource user #{compile_subject} ensure=absent managehome=true")
+    on(master, "puppet resource user #{compile_service} ensure=absent managehome=true")
     on(master, "puppet resource group compile-nodes ensure=absent")
-    on(master, "rm -rf #{site_path}")
+    on(master, "rm -f #{site_path}")
     modify_tk_config(master, auth_path, old_config, replace=true)
+
+    on(master, 'echo "" > /etc/puppetlabs/puppet/puppet.conf')
     lay_down_new_puppet_conf(master, old_puppet_conf, testdir)
     reload_server
   end
