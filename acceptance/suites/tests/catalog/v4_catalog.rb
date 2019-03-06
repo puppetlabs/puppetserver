@@ -157,7 +157,12 @@ PUPPETCONF
 
   step 'create site.pp' do
     create_remote_file(master, site_path, <<SITEPP)
-# We want to make 
+# We want to make sure if facts aren't loaded they will cause some
+# kind of easily testable outcome. If trusted_facts are not loaded
+# then the file will have different content. With this manifest the
+# same file will be updated but the content will change if
+# trusted_facts are missing.
+
 $foo_path = if $test_fact_path {
               "$test_fact_path"
             } else {
