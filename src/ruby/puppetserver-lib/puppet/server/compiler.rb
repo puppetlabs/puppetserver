@@ -40,10 +40,12 @@ module Puppet
         prefer_requested_environment =
           request_data.dig('options', 'prefer_requested_environment')
 
-        node = Puppet::Node.indirection.find(certname,
-                                             environment: environment,
-                                             facts: facts,
-                                             transaction_uuid: transaction_uuid)
+        node = Puppet.override(trusted_information: trusted_facts) do
+          Puppet::Node.indirection.find(certname,
+                                        environment: environment,
+                                        facts: facts,
+                                        transaction_uuid: transaction_uuid)
+        end
 
         if prefer_requested_environment
           node.environment = environment
