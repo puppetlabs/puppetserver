@@ -24,6 +24,8 @@ following form:
   "facts": { "values": { "<fact name>": <fact value>, ... } },
   "trusted_facts": { "values": { "<fact name>": <fact value>, ... } },
   "environment": "<environment name>",
+  "transaction_uuid": "<uuid string>",
+  "job_id": "<id string>",
   "options": { "prefer_requested_environment": <true/false>,
                "capture_logs": <true/false> }
 }
@@ -51,6 +53,12 @@ from the provided facts hash.
 The name of the environment for which to compile the catalog. If `prefer_requested_environemnt`
 is true, override the classified environment with this param. If it is false, only respect this
 if the classifier allows an agent-specified environment.
+
+#### `transaction_uuid`
+The id for tracking the catalog compilation and report submission.
+
+#### `job_id`
+The id of the orchestrator job that triggered this run.
 
 #### `options`
 
