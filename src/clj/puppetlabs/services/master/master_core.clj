@@ -726,7 +726,6 @@
                                            (schema/required-key "catalog") schema/Bool}
       (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "job_id") schema/Int
       (schema/optional-key "transaction_uuid") schema/Str
       (schema/optional-key "environment") schema/Str
       (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool}
