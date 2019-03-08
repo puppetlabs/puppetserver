@@ -754,9 +754,11 @@
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
   (-> (v4-catalog-fn jruby-service current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
+      wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
 
 (def MetricIdsForStatus (schema/atom [[schema/Str]]))
@@ -847,8 +849,12 @@
   v4-routes :- bidi-schema/RoutePair
   [clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
-  (let [v4-catalog-handler (v4-catalog-handler jruby-service current-code-id-fn)]
+  (let [v4-catalog-handler (v4-catalog-handler
+                             jruby-service
+                             wrap-with-jruby-queue-limit
+                             current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
@@ -972,6 +978,7 @@
   [ruby-request-handler :- IFn
    clojure-request-wrapper :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   wrap-with-jruby-queue-limit :- IFn
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool]
@@ -984,6 +991,7 @@
               environment-class-cache-enabled)
    (v4-routes clojure-request-wrapper
               jruby-service
+              wrap-with-jruby-queue-limit
               current-code-id-fn)))
 
 (schema/defn ^:always-validate
@@ -1056,6 +1064,7 @@
    current-code-id :- IFn
    handle-request :- IFn
    wrap-with-authorization-check :- IFn
+   wrap-with-jruby-queue-limit :- IFn
    environment-class-cache-enabled :- schema/Bool]
   (let [ruby-request-handler (get-wrapped-handler handle-request
                                                   wrap-with-authorization-check
@@ -1069,6 +1078,7 @@
     (root-routes ruby-request-handler
                  clojure-request-wrapper
                  jruby-service
+                 wrap-with-jruby-queue-limit
                  get-code-content
                  current-code-id
                  environment-class-cache-enabled)))
