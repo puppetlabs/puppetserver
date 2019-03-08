@@ -31,7 +31,7 @@ test_name "v4 catalog endpoint workflows" do
 
   old_puppet_conf = puppet_conf_for(master, {})
   testdir = master.tmpdir('v4catalog')
-  pdb ||= on(master,
+  pdb = on(master,
               '[ -d /etc/puppetlabs/puppetdb ]',
               allow_failure).
               exit_code == 0
@@ -127,10 +127,16 @@ PUPPETCONF
     modify_tk_config(master, auth_path, config, replace=true)
   end
 
-  step 'allow autosigning storeconfigs' do
+  step 'allow autosigning, maybe enable storeconfigs' do
     new_puppet_conf = puppet_conf_for(master, {})
     new_puppet_conf['master']['autosign'] = true
-    new_puppet_conf['master']['storeconfigs'] = true
+
+    # Despite PDB being enabled this setting may not be set, which is
+    # required for saving catalogs (facts are managed by the routes.yaml
+    # file and reports are a different setting.
+    if pdb
+      new_puppet_conf['master']['storeconfigs'] = true
+    end
 
     lay_down_new_puppet_conf(master, new_puppet_conf, testdir)
     reload_server
@@ -240,7 +246,7 @@ SITEPP
       content = on(master, "cat #{path_fact_value}").stdout.strip
       assert_equal(content, content_fact_value)
 
-    step 'test that reports are saved to PDB' do
+    step 'test that catalogs are saved to PDB' do
       stored_catalog = on(master, curl(url: pdb_catalog)).stdout
       stored_catalog_uuid = JSON.parse(stored_catalog)['catalog_uuid']
 
