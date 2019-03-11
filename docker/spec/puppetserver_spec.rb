@@ -66,9 +66,7 @@ describe 'puppetserver container' do
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
-    # We believe we may be running into https://github.com/Microsoft/hcsshim/issues/150 when
-    # testing in azure, so sleeping for a second before running the agent to try to decrease transients
-    output = %x(docker run --rm --name puppet-agent.test --dns 8.8.8.8 --hostname puppet-agent.test --network #{@network} --entrypoint /bin/sh puppet/puppet-agent-alpine:latest -c "sleep 10 && puppet agent --test --server puppet.test")
+  output = %x(docker run --rm --dns 8.8.8.8 --name puppet-agent.test --hostname puppet-agent.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet.test)
     status = $?.exitstatus
     puts output
     expect(status).to eq(0)
@@ -87,9 +85,7 @@ describe 'puppetserver container' do
 end
 
   it 'should be able to run an agent against the compile master' do
-    # We believe we may be running into https://github.com/Microsoft/hcsshim/issues/150 when
-    # testing in azure, so sleeping for a second before running the agent to try to decrease transients
-    output = %x(docker run --rm --dns 8.8.8.8 --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --network #{@network} --entrypoint /bin/sh puppet/puppet-agent-alpine:latest -c "sleep 10 && puppet agent --test --server puppet-compiler.test --ca_server puppet.test")
+    output = %x(docker run --rm --dns 8.8.8.8 --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet-compiler.test --ca_server puppet.test)
     status = $?.exitstatus
     puts output
     expect(status).to eq(0)
