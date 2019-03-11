@@ -69,7 +69,7 @@ Whether to always override a node's classified environment with the one supplied
 request. If this is true and no environment is supplied, fall back to the classified
 environment, or finally, 'production'.
 
-`capture_logs'
+`capture_logs`
 Whether to return the errors and warnings that occurred during compilation alongside the
 catalog in the response body.
 
@@ -81,4 +81,4 @@ The catalog response body conforms to the [catalog schema](./catalog.json).
 
 All requests made to the catalog API are authorized using the Trapperkeeper-based `auth.conf`.
 For more information about the Puppet Server authorization process and configuration settings,
-see the [`auth.conf` documentation][`auth.conf`].
+see the [`auth.conf` documentation](../../config_file_auth.markdown).
