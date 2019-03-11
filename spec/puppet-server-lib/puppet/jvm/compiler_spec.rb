@@ -48,20 +48,74 @@ describe Puppet::Server::Compiler do
 
       before(:each) do
         FileUtils.mkdir_p(File.join(Puppet[:environmentpath], environment))
-
-        Puppet::Node.indirection.expects(:find).returns(
-          Puppet::Node.new(certname, environment: 'production')
-        )
       end
 
       it 'by default uses the classified environment' do
+        Puppet::Node.indirection.expects(:find).returns(
+          Puppet::Node.new(certname, environment: 'production')
+        )
+
         expect(node.environment.name).to eq(:production)
+      end
+
+      context 'and facts are not submitted' do
+        let(:facts) { nil }
+
+        it 'requests facts from pdb after classifying and attempts to classify again' do
+          pdb_environments = sequence('pdb environments')
+          Puppet::Node::Facts.indirection.terminus.stubs(:name).returns(:puppetdb)
+          compiler.expects(:get_facts_from_pdb)
+                  .with(certname, 'fancy')
+                  .in_sequence(pdb_environments)
+                  .returns(Puppet::Node::Facts.new(certname))
+          compiler.expects(:get_facts_from_pdb)
+                  .with(certname, 'production')
+                  .in_sequence(pdb_environments)
+                  .returns(Puppet::Node::Facts.new(certname))
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'production')
+          ).twice
+
+          expect(node.environment.name).to eq(:production)
+        end
+
+        it 'makes a limited number of attempts to retrieve a node' do
+          %w[foo bar baz qux].each do |env|
+            FileUtils.mkdir_p(File.join(Puppet[:environmentpath], env))
+          end
+          environments = sequence('environments')
+          Puppet::Node::Facts.indirection.terminus.stubs(:name).returns(:puppetdb)
+          compiler.stubs(:get_facts_from_pdb).returns(Puppet::Node::Facts.new(certname))
+
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'production')
+          ).in_sequence(environments)
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'foo')
+          ).in_sequence(environments)
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'bar')
+          ).in_sequence(environments)
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'baz')
+          ).in_sequence(environments)
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'qux')
+          ).in_sequence(environments)
+
+          expect { compiler.create_node(request_data) }
+            .to raise_error(Puppet::Error, /environment didn't stabilize/)
+        end
       end
 
       context 'and prefer_requested_environment is set' do
         let(:options) { { 'prefer_requested_environment' => true } }
 
         it 'uses the environment in the request' do
+          Puppet::Node.indirection.expects(:find).returns(
+            Puppet::Node.new(certname, environment: 'production')
+          )
+
           expect(node.environment.name).to eq(:fancy)
         end
       end

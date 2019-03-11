@@ -35,20 +35,42 @@ module Puppet
       def create_node(request_data)
         facts, trusted_facts = process_facts(request_data)
         certname = request_data['certname']
-        environment = request_data['environment'] || 'production'
+        requested_environment = request_data['environment'] || 'production'
         transaction_uuid = request_data['transaction_uuid']
         prefer_requested_environment =
           request_data.dig('options', 'prefer_requested_environment')
 
+
         node = Puppet.override(trusted_information: trusted_facts) do
           Puppet::Node.indirection.find(certname,
-                                        environment: environment,
+                                        environment: requested_environment,
                                         facts: facts,
                                         transaction_uuid: transaction_uuid)
         end
 
+        if request_data['facts'].nil? && !prefer_requested_environment
+          tries = 0
+          environment = requested_environment
+          while node.environment != environment
+            if tries > 3
+              raise Puppet::Error, _("Node environment didn't stabilize after %{tries} fetches, aborting run") % { tries: tries }
+            end
+
+            environment = node.environment
+            facts = get_facts_from_pdb(certname, environment.to_s)
+            node = Puppet.override(trusted_information: trusted_facts) do
+              Puppet::Node.indirection.find(certname,
+                                            environment: environment,
+                                            configured_environment: requested_environment,
+                                            facts: facts,
+                                            transaction_uuid: transaction_uuid)
+            end
+            tries += 1
+          end
+        end
+
         if prefer_requested_environment
-          node.environment = environment
+          node.environment = requested_environment
         end
 
         # Merges facts into the node parameters.
