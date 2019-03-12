@@ -4,6 +4,7 @@
     [clojure.set :as setutils]
     [puppetlabs.services.master.master-service :refer :all]
     [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
+    [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
@@ -62,6 +63,22 @@
   (let [master-service-test-runtime-ssl-dir
         (str master-service-test-runtime-dir "/ssl")]
     (http-client/put (str "https://localhost:8140" url)
+                     {:ssl-cert (str master-service-test-runtime-ssl-dir
+                                     "/certs/localhost.pem")
+                      :ssl-key (str master-service-test-runtime-ssl-dir
+                                    "/private_keys/localhost.pem")
+                      :ssl-ca-cert (str master-service-test-runtime-ssl-dir
+                                        "/certs/ca.pem")
+                      :body body
+                      :headers {"Accept" "application/json"
+                                "Content-type" "application/json"}
+                      :as :text})))
+
+(defn http-post
+  [url body]
+  (let [master-service-test-runtime-ssl-dir
+        (str master-service-test-runtime-dir "/ssl")]
+    (http-client/post (str "https://localhost:8140" url)
                      {:ssl-cert (str master-service-test-runtime-ssl-dir
                                      "/certs/localhost.pem")
                       :ssl-key (str master-service-test-runtime-ssl-dir
@@ -713,3 +730,30 @@
               (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
         (finally
           (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test))))))
+
+(deftest ^:integration v4-queue-limit
+  (bootstrap-testutils/with-puppetserver-running
+   app
+   {:jruby-puppet {:gem-path gem-path
+                   :max-active-instances 1
+                   :max-retry-delay 1800
+                   :max-queued-requests 1
+                   :master-code-dir test-resources-code-dir
+                   :master-conf-dir master-service-test-runtime-dir
+                   :master-var-dir (fs/tmpdir)}}
+
+    (let [metrics-svc (tk-app/get-service app :JRubyMetricsService)
+          metrics (jruby-metrics/get-metrics metrics-svc)
+          _ (swap! (:requested-instances metrics) assoc :foo "bar" :baz "bar")]
+
+      (logutils/with-test-logging
+        (testing "v4 catalog endpoint is affected by the jruby queue limit"
+          (let [body "{\"certname\": \"foo\", \"persistence\": {\"facts\": false, \"catalog\": false}}"
+                response (http-post "/puppet/v4/catalog" body)
+                status-code (:status response)
+                retry-after (-> response
+                                (get-in [:headers "retry-after"])
+                                Integer/parseInt)]
+
+            (is (= 503 status-code))
+            (is (<= 0 retry-after 1800))))))))
