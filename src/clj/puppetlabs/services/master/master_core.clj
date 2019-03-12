@@ -726,7 +726,6 @@
                                            (schema/required-key "catalog") schema/Bool}
       (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "job_id") schema/Int
       (schema/optional-key "transaction_uuid") schema/Str
       (schema/optional-key "environment") schema/Str
       (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool}
@@ -737,7 +736,8 @@
 
 (schema/defn ^:always-validate
   v4-catalog-fn :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   current-code-id-fn :- IFn]
   (fn [request]
     (let [request-options (decode-catalog-post-body (slurp (:body request)))]
       {:status 200
@@ -745,12 +745,15 @@
        :body (json/encode
               (jruby-protocol/compile-catalog jruby-service
                                               (:jruby-instance request)
-                                              request-options))})))
+                                              (assoc request-options
+                                                     "code_id"
+                                                     (current-code-id-fn (jruby-request/get-environment-from-request request)))))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (-> (v4-catalog-fn jruby-service)
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   current-code-id-fn :- IFn]
+  (-> (v4-catalog-fn jruby-service current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
 
@@ -841,14 +844,15 @@
 (schema/defn ^:always-validate
   v4-routes :- bidi-schema/RoutePair
   [clojure-request-wrapper :- IFn
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
-  (let [v4-catalog-handler (v4-catalog-handler jruby-service)]
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   current-code-id-fn :- IFn]
+  (let [v4-catalog-handler (v4-catalog-handler jruby-service current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request) ))
+                         (v4-catalog-handler request)))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
@@ -977,7 +981,8 @@
               current-code-id-fn
               environment-class-cache-enabled)
    (v4-routes clojure-request-wrapper
-              jruby-service)))
+              jruby-service
+              current-code-id-fn)))
 
 (schema/defn ^:always-validate
   wrap-middleware :- IFn

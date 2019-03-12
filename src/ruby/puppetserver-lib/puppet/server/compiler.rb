@@ -44,7 +44,7 @@ module Puppet
         # Note: if we change this to use the indirection we may no longer
         # need to call `save_catalog` below. See its documentation for
         # further info.
-        catalog = Puppet::Parser::Compiler.compile(node, request_data['job_id'])
+        catalog = Puppet::Parser::Compiler.compile(node, request_data['code_id'])
 
         if persist['catalog']
           save_catalog(catalog, save_options)
