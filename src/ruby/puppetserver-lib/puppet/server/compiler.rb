@@ -29,6 +29,59 @@ module Puppet
         end
       end
 
+      # Make the node object to be used in compilation. This requests it from
+      # the node indirection and merges local facts and other data.
+      # @api private
+      def create_node(request_data)
+        facts, trusted_facts = process_facts(request_data)
+        certname = request_data['certname']
+        requested_environment = request_data['environment'] || 'production'
+        transaction_uuid = request_data['transaction_uuid']
+        prefer_requested_environment =
+          request_data.dig('options', 'prefer_requested_environment')
+
+
+        node = Puppet.override(trusted_information: trusted_facts) do
+          Puppet::Node.indirection.find(certname,
+                                        environment: requested_environment,
+                                        facts: facts,
+                                        transaction_uuid: transaction_uuid)
+        end
+
+        if request_data['facts'].nil? && !prefer_requested_environment
+          tries = 0
+          environment = requested_environment
+          while node.environment != environment
+            if tries > 3
+              raise Puppet::Error, _("Node environment didn't stabilize after %{tries} fetches, aborting run") % { tries: tries }
+            end
+
+            environment = node.environment
+            facts = get_facts_from_pdb(certname, environment.to_s)
+            node = Puppet.override(trusted_information: trusted_facts) do
+              Puppet::Node.indirection.find(certname,
+                                            environment: environment,
+                                            configured_environment: requested_environment,
+                                            facts: facts,
+                                            transaction_uuid: transaction_uuid)
+            end
+            tries += 1
+          end
+        end
+
+        if prefer_requested_environment
+          node.environment = requested_environment
+        end
+
+        # Merges facts into the node parameters.
+        # Ensures that facts will be surfaced as top-scope variables,
+        # along with other node parameters.
+        node.merge(facts.values)
+        node.trusted_data = trusted_facts
+        node.add_server_facts(@server_facts)
+        node
+      end
+
       private
 
       def compile_catalog(request_data)
@@ -114,31 +167,6 @@ module Puppet
 
           terminus.save(request)
         end
-      end
-
-      def create_node(request_data)
-        # We need an environment to talk to PDB
-        request_data['environment'] ||= 'production'
-
-        facts, trusted_facts = process_facts(request_data)
-        node_params = { facts: facts,
-                        # TODO: fetch environment from classifier
-                        environment: request_data['environment'],
-                        # data added to the node object and exposed in manifests as
-                        # top-level vars. Maybe related to class params??
-                        # Can these also come from the classifier?
-                        parameters: request_data['parameters'],
-                        # TODO: fetch classes from classifier
-                        classes: request_data['classes'] }
-
-        node = Puppet::Node.new(request_data['certname'], node_params)
-        # Merges facts into the node parameters.
-        # Ensures that facts will be surfaced as top-scope variables,
-        # along with other node parameters.
-        node.merge(facts.values)
-        node.trusted_data = trusted_facts
-        node.add_server_facts(@server_facts)
-        node
       end
 
       # @return Puppet::Node::Facts facts, Hash trusted_facts

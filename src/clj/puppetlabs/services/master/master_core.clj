@@ -728,7 +728,8 @@
       (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "transaction_uuid") schema/Str
       (schema/optional-key "environment") schema/Str
-      (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool}
+      (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                       (schema/optional-key "prefer_requested_environment") schema/Bool}
       (schema/optional-key "classes") [schema/Any]
       (schema/optional-key "parameters") {schema/Any schema/Any}}
      parameters)
