@@ -65,6 +65,7 @@ PUPPETCONF
 
   base_request = {
     "certname" => compile_subject,
+    "environment" => "production",
     "persistence" => {
       "facts" => false,
       "catalog" => false

@@ -35,7 +35,7 @@ module Puppet
       def create_node(request_data)
         facts, trusted_facts = process_facts(request_data)
         certname = request_data['certname']
-        requested_environment = request_data['environment'] || 'production'
+        requested_environment = request_data['environment']
         transaction_uuid = request_data['transaction_uuid']
         prefer_requested_environment =
           request_data.dig('options', 'prefer_requested_environment')
