@@ -204,6 +204,9 @@ end
 
 step 'SETUP: Find Python executable'
   if on(master, 'which python', :acceptable_exit_codes => [0, 1]).exit_code == 1
+    if master['platform'] == 'el-8-x86_64'
+      master.install_package('python3')
+    end
     python_bin = 'python3'
   else
     python_bin = 'python'
