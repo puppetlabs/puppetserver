@@ -40,6 +40,7 @@
                                         (master-core/root-routes handle-request
                                                                  (partial identity)
                                                                  jruby-service
+                                                                 identity
                                                                  (fn [_ _ _]
                                                                    (throw (IllegalStateException.
                                                                             (i18n/trs "Versioned code not supported."))))

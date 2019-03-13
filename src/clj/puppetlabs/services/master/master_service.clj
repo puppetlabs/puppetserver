@@ -4,6 +4,7 @@
             [puppetlabs.trapperkeeper.core :refer [defservice]]
             [puppetlabs.services.master.master-core :as core]
             [puppetlabs.puppetserver.certificate-authority :as ca]
+            [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.comidi :as comidi]
             [puppetlabs.dujour.version-check :as version-check]
@@ -99,7 +100,10 @@
          certname (get-in config [:puppetserver :certname])
          localcacert (get-in config [:puppetserver :localcacert])
          puppet-version (get-in config [:puppetserver :puppet-version])
+         max-queued-requests (get-in config [:jruby-puppet :max-queued-requests] 0)
+         max-retry-delay (get-in config [:jruby-puppet :max-retry-delay] 1800)
          settings (ca/config->master-settings config)
+         metrics-service (tk-services/get-service this :JRubyMetricsService)
          metrics-server-id (get-server-id)
          jruby-service (tk-services/get-service this :JRubyPuppetService)
          use-legacy-auth-conf (get-in config
@@ -109,6 +113,15 @@
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
                                                  false)
+         wrap-with-jruby-queue-limit (if (pos? max-queued-requests)
+                                       (fn [handler]
+                                         (jruby-request/wrap-with-request-queue-limit
+                                           handler
+                                           metrics-service
+                                           max-queued-requests
+                                           max-retry-delay))
+                                       identity)
+
          ring-app (comidi/routes
                    (core/construct-root-routes puppet-version
                                                use-legacy-auth-conf
@@ -117,6 +130,7 @@
                                                current-code-id
                                                handle-request
                                                (get-auth-handler)
+                                               wrap-with-jruby-queue-limit
                                                environment-class-cache-enabled))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)

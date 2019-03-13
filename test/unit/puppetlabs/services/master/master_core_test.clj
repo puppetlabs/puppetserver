@@ -33,6 +33,7 @@
   [request-handler puppet-version jruby-service]
   (-> (root-routes request-handler ring/wrap-params
                    jruby-service
+                   identity
                    (fn [___] (throw (IllegalStateException. "Versioned code not supported.")))
                    (constantly nil)
                    true)
