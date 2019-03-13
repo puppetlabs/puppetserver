@@ -86,7 +86,10 @@ module Puppet
 
       def compile_catalog(request_data)
         persist = request_data['persistence']
-        save_options = request_data.slice('environment', 'transaction_id', 'certname')
+        save_options = request_data.slice('environment',
+                                          'transaction_id',
+                                          'certname',
+                                          'job_id')
 
         node = create_node(request_data)
 
@@ -155,6 +158,7 @@ module Puppet
       # @option options [String] environment    Required
       # @option options [String] certname       Required
       # @option options [String] transaction_id Optional
+      # @option options [String] job_id         Optional
       def save_catalog(catalog, options)
         if Puppet::Resource::Catalog.indirection.cache?
           terminus = Puppet::Resource::Catalog.indirection.cache

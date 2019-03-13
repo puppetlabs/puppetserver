@@ -10,6 +10,7 @@ describe Puppet::Server::Compiler do
     let(:facts) { { 'values' => { 'hello' => 'hi' } } }
     let(:trusted_facts) { { 'values' => { 'secret' => 'm3ss4g3' } } }
     let(:transaction_uuid) { '3542fd19-86df-424a-a2b1-31c6600a4ad9' }
+    let(:job_id) { '1234' }
     let(:options) { {} }
 
     let(:request_data) do
@@ -20,6 +21,7 @@ describe Puppet::Server::Compiler do
         'facts' => facts,
         'trusted_facts' => trusted_facts,
         'transaction_uuid' => transaction_uuid,
+        'job_id' => job_id,
         'options' => options
       }
     end
