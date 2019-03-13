@@ -71,7 +71,7 @@ test: prep
 	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver:$(version) \
 		bundle exec rspec --options puppetserver/.rspec spec
 
-publish: prep
+push-image: prep
 	@docker push puppet/puppetserver-standalone:$(version)
 	@docker push puppet/puppetserver:$(version)
 ifeq ($(IS_LATEST),true)
@@ -79,4 +79,23 @@ ifeq ($(IS_LATEST),true)
 	@docker push puppet/puppetserver:latest
 endif
 
-.PHONY: lint build test publish
+push-readme:
+	@docker pull sheogorath/readme-to-dockerhub
+	@docker run --rm \
+		-v $(PWD)/puppetserver-standalone/README.md:/data/README.md \
+		-e DOCKERHUB_USERNAME="$(DISTELLI_DOCKER_USERNAME)" \
+		-e DOCKERHUB_PASSWORD="$(DISTELLI_DOCKER_PW)" \
+		-e DOCKERHUB_REPO_PREFIX=puppet \
+		-e DOCKERHUB_REPO_NAME=puppetserver-standalone \
+		sheogorath/readme-to-dockerhub
+	@docker run --rm \
+		-v $(PWD)/puppetserver/README.md:/data/README.md \
+		-e DOCKERHUB_USERNAME="$(DISTELLI_DOCKER_USERNAME)" \
+		-e DOCKERHUB_PASSWORD="$(DISTELLI_DOCKER_PW)" \
+		-e DOCKERHUB_REPO_PREFIX=puppet \
+		-e DOCKERHUB_REPO_NAME=puppetserver \
+		sheogorath/readme-to-dockerhub
+
+publish: push-image push-readme
+
+.PHONY: prep lint build test publish push-image push-readme
