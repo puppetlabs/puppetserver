@@ -20,10 +20,10 @@ following form:
 {
   "certname": "<node name>",
   "persistence": { "facts": <true/false>, "catalog": <true/false> },
+  "environment": "<environment name>",
   # The rest are optional:
   "facts": { "values": { "<fact name>": <fact value>, ... } },
   "trusted_facts": { "values": { "<fact name>": <fact value>, ... } },
-  "environment": "<environment name>",
   "transaction_uuid": "<uuid string>",
   "job_id": "<id string>",
   "options": { "prefer_requested_environment": <true/false>,
@@ -38,6 +38,11 @@ The name of the node for which to compile the catalog.
 A hash containing two required keys, `facts` and `catalog`, which when set to true will
 cause the facts and reports to be stored in PuppetDB, or discarded if set to false.
 
+#### `environment` (required)
+The name of the environment for which to compile the catalog. If `prefer_requested_environemnt`
+is true, override the classified environment with this param. If it is false, only respect this
+if the classifier allows an agent-specified environment.
+
 #### `facts`
 A hash with a required `values` key, containing a hash of all the facts for the node.
 If not provided, Puppet will attempt to fetch facts for the node from PuppetDB.
@@ -48,11 +53,6 @@ In a normal agent's catalog request, these would be extracted from the cert, but
 endpoint does not require a cert for the node whose catalog is being compiled. If not
 provided, Puppet will attempt to fetch the trusted facts for the node from PuppetDB or
 from the provided facts hash.
-
-#### `environment`
-The name of the environment for which to compile the catalog. If `prefer_requested_environemnt`
-is true, override the classified environment with this param. If it is false, only respect this
-if the classifier allows an agent-specified environment.
 
 #### `transaction_uuid`
 The id for tracking the catalog compilation and report submission.
