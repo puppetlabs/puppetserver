@@ -724,11 +724,11 @@
      {(schema/required-key "certname") schema/Str
       (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
                                            (schema/required-key "catalog") schema/Bool}
+      (schema/required-key "environment") schema/Str
       (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
       (schema/optional-key "job_id") schema/Str
       (schema/optional-key "transaction_uuid") schema/Str
-      (schema/optional-key "environment") schema/Str
       (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
                                        (schema/optional-key "prefer_requested_environment") schema/Bool}
       (schema/optional-key "classes") [schema/Any]

@@ -412,6 +412,7 @@
                                :uri "/v4/catalog"
                                :content-type "application/json"}
                               (ring-mock/body (json/encode {:certname "foo"
+                                                            :environment "production"
                                                             :persistence
                                                             {:catalog true
                                                              :facts true}}))))]
