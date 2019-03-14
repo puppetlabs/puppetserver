@@ -202,13 +202,6 @@ step 'SETUP: Configure the code-id script' do
   reload_server
 end
 
-step 'SETUP: Find Python executable'
-  if on(master, 'which python', :acceptable_exit_codes => [0, 1]).exit_code == 1
-    python_bin = 'python3'
-  else
-    python_bin = 'python'
-  end
-
 step 'Get the current code-id'
   current_code_id=on(master, '/opt/puppetlabs/server/apps/puppetserver/code-id-command_script.sh production').stdout.chomp
 
@@ -217,6 +210,6 @@ step 'Pull the catalog, validate that it contains the current code-id'
   key       ="/etc/puppetlabs/puppet/ssl/private_keys/#{fqdn}.pem"
   hostcert  ="/etc/puppetlabs/puppet/ssl/certs/#{fqdn}.pem"
   auth_str  ="--cacert #{cacert} --key #{key} --cert #{hostcert}"
-  result=on(master, "curl --silent #{auth_str} https://#{fqdn}:8140/puppet/v3/catalog/#{fqdn}?environment=production | #{python_bin} -m json.tool").stdout
+  result=on(master, "curl --silent #{auth_str} https://#{fqdn}:8140/puppet/v3/catalog/#{fqdn}?environment=production").stdout
   catalog=JSON.parse(result)
   assert_match(current_code_id, catalog['code_id'], "FAIL: Expected catalog to contain current_code_id #{current_code_id}.")
