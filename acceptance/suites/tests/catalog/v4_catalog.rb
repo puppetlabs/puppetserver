@@ -1,5 +1,7 @@
 require 'json'
 
+skip_test if master.is_pe?
+
 # Here we test our v4 compile endpoint by:
 #   - use "compile_service" to compile a catalog for "compile_subject"
 #   - compile_subject can successfully apply the compiled catalog
