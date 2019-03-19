@@ -53,7 +53,7 @@ describe Puppet::Server::Compiler do
       end
 
       it 'by default uses the classified environment' do
-        Puppet::Node.indirection.expects(:find).returns(
+        expect(Puppet::Node.indirection).to receive(:find).and_return(
           Puppet::Node.new(certname, environment: 'production')
         )
 
@@ -64,17 +64,16 @@ describe Puppet::Server::Compiler do
         let(:facts) { nil }
 
         it 'requests facts from pdb after classifying and attempts to classify again' do
-          pdb_environments = sequence('pdb environments')
-          Puppet::Node::Facts.indirection.terminus.stubs(:name).returns(:puppetdb)
-          compiler.expects(:get_facts_from_pdb)
+          allow(Puppet::Node::Facts.indirection.terminus).to receive(:name).and_return(:puppetdb)
+          expect(compiler).to receive(:get_facts_from_pdb)
                   .with(certname, 'fancy')
-                  .in_sequence(pdb_environments)
-                  .returns(Puppet::Node::Facts.new(certname))
-          compiler.expects(:get_facts_from_pdb)
+                  .ordered
+                  .and_return(Puppet::Node::Facts.new(certname))
+          expect(compiler).to receive(:get_facts_from_pdb)
                   .with(certname, 'production')
-                  .in_sequence(pdb_environments)
-                  .returns(Puppet::Node::Facts.new(certname))
-          Puppet::Node.indirection.expects(:find).returns(
+                  .ordered
+                  .and_return(Puppet::Node::Facts.new(certname))
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'production')
           ).twice
 
@@ -85,25 +84,25 @@ describe Puppet::Server::Compiler do
           %w[foo bar baz qux].each do |env|
             FileUtils.mkdir_p(File.join(Puppet[:environmentpath], env))
           end
-          environments = sequence('environments')
-          Puppet::Node::Facts.indirection.terminus.stubs(:name).returns(:puppetdb)
-          compiler.stubs(:get_facts_from_pdb).returns(Puppet::Node::Facts.new(certname))
 
-          Puppet::Node.indirection.expects(:find).returns(
+          allow(Puppet::Node::Facts.indirection.terminus).to receive(:name).and_return(:puppetdb)
+          allow(compiler).to receive(:get_facts_from_pdb).and_return(Puppet::Node::Facts.new(certname))
+
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'production')
-          ).in_sequence(environments)
-          Puppet::Node.indirection.expects(:find).returns(
+          ).ordered
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'foo')
-          ).in_sequence(environments)
-          Puppet::Node.indirection.expects(:find).returns(
+          ).ordered
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'bar')
-          ).in_sequence(environments)
-          Puppet::Node.indirection.expects(:find).returns(
+          ).ordered
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'baz')
-          ).in_sequence(environments)
-          Puppet::Node.indirection.expects(:find).returns(
+          ).ordered
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'qux')
-          ).in_sequence(environments)
+          ).ordered
 
           expect { compiler.create_node(request_data) }
             .to raise_error(Puppet::Error, /environment didn't stabilize/)
@@ -114,7 +113,7 @@ describe Puppet::Server::Compiler do
         let(:options) { { 'prefer_requested_environment' => true } }
 
         it 'uses the environment in the request' do
-          Puppet::Node.indirection.expects(:find).returns(
+          expect(Puppet::Node.indirection).to receive(:find).and_return(
             Puppet::Node.new(certname, environment: 'production')
           )
 
