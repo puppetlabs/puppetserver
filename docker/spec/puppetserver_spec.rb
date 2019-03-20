@@ -26,6 +26,7 @@ describe 'puppetserver container' do
     network_opt = File::ALT_SEPARATOR.nil? ? '' : '--driver=nat'
 
     @network = %x(docker network create #{network_opt} puppetserver_test_network).chomp
+    fail 'Failed to create network' unless $?.exitstatus == 0
 
     @container = %x(docker run --rm --detach \
                --env DNS_ALT_NAMES=puppet \
@@ -34,6 +35,8 @@ describe 'puppetserver container' do
                --network #{@network} \
                --hostname puppet.test \
                #{@image}).chomp
+    fail 'Failed to create puppet.test' unless $?.exitstatus == 0
+
     @compiler = %x(docker run --rm --detach \
                --env DNS_ALT_NAMES=puppet \
                --env PUPPERWARE_DISABLE_ANALYTICS=true \
@@ -43,6 +46,7 @@ describe 'puppetserver container' do
                --name puppet-compiler.test \
                --hostname puppet-compiler.test \
                #{@image}).chomp
+    fail 'Failed to create compiler' unless $?.exitstatus == 0
   end
 
   after(:all) do
