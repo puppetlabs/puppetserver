@@ -4,23 +4,7 @@ require 'rspec/core'
 require 'open3'
 
 describe 'puppetserver container' do
-
-  def run_command(command)
-    stdout_string = ''
-    status = nil
-    Open3.popen3(command) do |stdin, stdout, stderr, wait_thread|
-      Thread.new do
-        stdout.each { |l| stdout_string << l; STDOUT.puts l }
-      end
-      Thread.new do
-        stderr.each { |l| STDOUT.puts l }
-      end
-      stdin.close
-      status = wait_thread.value
-    end
-
-    { status: status, stdout: stdout_string }
-  end
+  include Helpers
 
   def puppetserver_health_check(container)
     result = run_command("docker inspect \"#{container}\" --format '{{.State.Health.Status}}'")
