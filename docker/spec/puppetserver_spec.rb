@@ -6,20 +6,25 @@ require 'open3'
 describe 'puppetserver container' do
 
   def run_command(command)
+    stdout_string = ''
     status = nil
-    STDOUT.puts "Executing #{command}"
-    Open3.popen2e(command) do |stdin, stdout_stderr, wait_thread|
+    Open3.popen3(command) do |stdin, stdout, stderr, wait_thread|
       Thread.new do
-        stdout_stderr.each { |l| STDOUT.puts l }
+        stdout.each { |l| stdout_string << l; STDOUT.puts l }
+      end
+      Thread.new do
+        stderr.each { |l| STDOUT.puts l }
       end
       stdin.close
       status = wait_thread.value
     end
-    status
+
+    { status: status, stdout: stdout_string }
   end
 
   def puppetserver_health_check(container)
-    status = %x(docker inspect "#{container}" --format '{{.State.Health.Status}}').chomp
+    result = run_command("docker inspect \"#{container}\" --format '{{.State.Health.Status}}'")
+    status = result[:stdout].chomp
     STDOUT.puts "queried health status of #{container}: #{status}"
     return status
   end
@@ -40,28 +45,31 @@ describe 'puppetserver container' do
     # Windows doesn't have the default 'bridge' network driver
     network_opt = File::ALT_SEPARATOR.nil? ? '' : '--driver=nat'
 
-    @network = %x(docker network create #{network_opt} puppetserver_test_network).chomp
-    fail 'Failed to create network' unless $?.exitstatus == 0
+    result = run_command("docker network create #{network_opt} puppetserver_test_network")
+    fail 'Failed to create network' unless result[:status].exitstatus == 0
+    @network = result[:stdout].chomp
 
-    @container = %x(docker run --rm --detach \
-               --env DNS_ALT_NAMES=puppet \
-               --env PUPPERWARE_DISABLE_ANALYTICS=true \
-               --name puppet.test \
-               --network #{@network} \
-               --hostname puppet.test \
-               #{@image}).chomp
-    fail 'Failed to create puppet.test' unless $?.exitstatus == 0
+    result = run_command("docker run --rm --detach \
+                   --env DNS_ALT_NAMES=puppet \
+                   --env PUPPERWARE_DISABLE_ANALYTICS=true \
+                   --name puppet.test \
+                   --network #{@network} \
+                   --hostname puppet.test \
+                   #{@image}")
+    fail 'Failed to create puppet.test' unless result[:status].exitstatus == 0
+    @container = result[:stdout].chomp
 
-    @compiler = %x(docker run --rm --detach \
-               --env DNS_ALT_NAMES=puppet \
-               --env PUPPERWARE_DISABLE_ANALYTICS=true \
-               --env CA_ENABLED=false \
-               --env CA_HOSTNAME=puppet.test \
-               --network #{@network} \
-               --name puppet-compiler.test \
-               --hostname puppet-compiler.test \
-               #{@image}).chomp
-    fail 'Failed to create compiler' unless $?.exitstatus == 0
+    result = run_command("docker run --rm --detach \
+                   --env DNS_ALT_NAMES=puppet \
+                   --env PUPPERWARE_DISABLE_ANALYTICS=true \
+                   --env CA_ENABLED=false \
+                   --env CA_HOSTNAME=puppet.test \
+                   --network #{@network} \
+                   --name puppet-compiler.test \
+                   --hostname puppet-compiler.test \
+                   #{@image}")
+    fail 'Failed to create compiler' unless result[:status].exitstatus == 0
+    @compiler = result[:stdout].chomp
   end
 
   after(:all) do
@@ -83,8 +91,8 @@ describe 'puppetserver container' do
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
-    status = run_command("docker run --rm --name puppet-agent.test --hostname puppet-agent.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet.test")
-    expect(status.exitstatus).to eq(0)
+    result = run_command("docker run --rm --name puppet-agent.test --hostname puppet-agent.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet.test")
+    expect(result[:status].exitstatus).to eq(0)
   end
 
   it 'should be able to start a compile master' do
@@ -100,12 +108,12 @@ describe 'puppetserver container' do
 end
 
   it 'should be able to run an agent against the compile master' do
-    status = run_command("docker run --rm --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet-compiler.test --ca_server puppet.test")
-    expect(status.exitstatus).to eq(0)
+    result = run_command("docker run --rm --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet-compiler.test --ca_server puppet.test")
+    expect(result[:status].exitstatus).to eq(0)
   end
 
   it 'should have r10k available' do
-    status = run_command('docker exec puppet.test r10k --help')
-    expect(status.exitstatus).to eq(0)
+    result = run_command('docker exec puppet.test r10k --help')
+    expect(result[:status].exitstatus).to eq(0)
   end
 end
