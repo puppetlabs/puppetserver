@@ -61,6 +61,8 @@ function Invoke-ContainerTest(
 
   bundle install --path .bundle/gems
   $ENV:PUPPET_TEST_DOCKER_IMAGE = "$Namespace/${Name}:$Version"
+  Write-Host "Testing against image: ${ENV:PUPPET_TEST_DOCKER_IMAGE}"
+  bundle exec rspec --version
   bundle exec rspec --options $Name/.rspec spec
 
   Pop-Location
