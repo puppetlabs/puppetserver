@@ -12,6 +12,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.8
+
+Released 26 March 2019
+
+### Bug fixes
+
+- Updated bouncy-castle to 1.60 to fix security issues. [SERVER-2431](https://tickets.puppetlabs.com/browse/SERVER-2431)
+
 ## Puppet Server 5.3.7
 
 Released 15 January 2019.
