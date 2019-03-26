@@ -10,6 +10,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.3.0
+
+Released 26 March 2019
+
+### New features
+
+- Puppet Server has a new endpoint for catalog retrieval, allowing more options than the previous endpoint. This endpoint is controlled by `tk-auth`, and by default is not generally accessible. It is an API that integrators can use to provide [functionality similar to `puppet master --compile`](https://tickets.puppetlabs.com/browse/PUP-9055). For details on the API, see the [Puppet API catalog](https://github.com/puppetlabs/puppetserver/blob/master/documentation/puppet-api/v4/catalog.markdown). This endpoint is intended for use by other Puppet services. [SERVER-2434](https://tickets.puppetlabs.com/browse/SERVER-2434) 
+
+### Enhancements
+
+- The CA's `certificate_status` endpoint now returns additional information for custom integration. [SERVER-2370](https://tickets.puppetlabs.com/browse/SERVER-2370)
+
 ## Puppet Server 6.2.1
 
 Released 20 February 2019.
