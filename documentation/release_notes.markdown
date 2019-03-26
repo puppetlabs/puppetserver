@@ -10,6 +10,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.0.4
+
+Released 26 March 2019
+
+### Bug fixes
+
+- Updated bouncy-castle to 1.60 to fix security issues. [SERVER-2431](https://tickets.puppetlabs.com/browse/SERVER-2431)
+
 ## Puppet Server 6.0.3
 
 Released 15 January 2019.
