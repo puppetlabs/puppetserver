@@ -62,6 +62,14 @@ Released 18 December 2018
 - The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
 - Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
 
+## Puppet Server 6.0.4
+
+Released 26 March 2019
+
+### Bug fixes
+
+- Updated bouncy-castle to 1.60 to fix security issues. [SERVER-2431](https://tickets.puppetlabs.com/browse/SERVER-2431)
+
 ## Puppet Server 6.0.3
 
 Released 15 January 2019.
