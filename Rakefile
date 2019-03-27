@@ -9,9 +9,9 @@ ACCEPTANCE_ROOT = ENV['ACCEPTANCE_ROOT'] ||
 BEAKER_OPTIONS_FILE = File.join(ACCEPTANCE_ROOT, 'config', 'beaker', 'options.rb')
 PUPPET_SRC = File.join(PROJECT_ROOT, 'ruby', 'puppet')
 PUPPET_LIB = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'lib')
-PUPPET_SPEC = File.join(PROJECT_ROOT, 'ruby', 'puppet', 'spec')
 FACTER_LIB = File.join(PROJECT_ROOT, 'ruby', 'facter', 'lib')
 PUPPET_SERVER_RUBY_SRC = File.join(PROJECT_ROOT, 'src', 'ruby', 'puppetserver-lib')
+PUPPET_SERVER_RUBY_SPEC = File.join(PROJECT_ROOT, 'spec')
 PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
 # Branch of puppetserver for which to update submodule pins
 PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || 'master'
@@ -193,7 +193,7 @@ task :spec => ["spec:init"] do
     BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
     GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
     lein run -m org.jruby.Main \
-      -I'#{PUPPET_LIB}' -I'#{PUPPET_SPEC}' -I'#{FACTER_LIB}' -I'#{PUPPET_SERVER_RUBY_SRC}' \
+      -I'#{PUPPET_SERVER_RUBY_SPEC}' -I'#{PUPPET_LIB}' -I'#{FACTER_LIB}' -I'#{PUPPET_SERVER_RUBY_SRC}' \
       ./spec/run_specs.rb
   CMD
   sh run_rspec_with_jruby

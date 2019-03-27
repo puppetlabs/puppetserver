@@ -4,11 +4,11 @@ describe 'Puppet::Server::PuppetConfig' do
   context "initializing Puppet Server" do
     context "setting the Puppet log level from logback" do
       let(:logger) do
-        stub("Logger", isDebugEnabled: false, isInfoEnabled: true, isWarnEnabled: false, isErrorEnabled: false)
+        double("Logger", isDebugEnabled: false, isInfoEnabled: true, isWarnEnabled: false, isErrorEnabled: false)
       end
 
       before :each do
-        Puppet::Server::Logger.expects(:get_logger).returns(logger)
+        expect(Puppet::Server::Logger).to receive(:get_logger).and_return(logger)
         Puppet::Server::PuppetConfig.initialize_puppet({})
       end
 
