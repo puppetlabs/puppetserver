@@ -85,18 +85,18 @@ The following environment variables are supported:
 
 ## Analytics Data Collection
 
-The puppetserver container collects usage data. This is disabled by default. You can enable it by passing `--env PUPPERWARE_DISABLE_ANALYTICS=false`
+The puppetserver-standalone container collects usage data. This is disabled by default. You can enable it by passing `--env PUPPERWARE_DISABLE_ANALYTICS=false`
 to your `docker run` command.
 
 ### What data is collected?
-* Version of the puppetserver container.
+* Version of the puppetserver-standalone container.
 * Anonymized IP address is used by Google Analytics for Geolocation data, but the IP address is not collected.
 
-### Why does the puppetserver container collect data?
+### Why does the puppetserver-standalone container collect data?
 
 We collect data to help us understand how the containers are used and make decisions about upcoming changes.
 
-### How can I opt out of puppetserver container data collection?
+### How can I opt out of puppetserver-standalone container data collection?
 
 This is disabled by default.
 
