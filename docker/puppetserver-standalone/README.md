@@ -29,6 +29,60 @@ The following environment variables are supported:
 
   Set to `false` to disable Google Analytics.
 
+- `PUPPETSERVER_JAVA_ARGS`
+
+  Additional Java args to pass to the puppetserver process. Defaults to '-Xms512m -Xmx512m'.
+
+- `PUPPET_HEALTHCHECK_ENVIRONMENT`
+
+  The environment to get the status of in the healthcheck script. Defaults to 'production'.
+
+- `PUPPETSERVER_MAX_ACTIVE_INSTANCES`
+
+  The maximum number of JRuby instances allowed. Defaults to '1'.
+
+- `PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE`
+
+  The maximume number HTTP requests a JRuby instance will handle in its lifetime. Defaults to '0' (Disable instance flushing).
+
+- `CA_ENABLED`
+
+  Whether or not this puppetserver instance has a running CA (Certificate Authority). Defaults to 'true'.
+
+- `CA_HOSTNAME`
+
+  The hostname for the puppetserver running the CA. Does nothing unless `CA_ENABLED=false`. Defaults to 'puppet'.
+
+- `CONSUL_ENABLED`
+
+  Whether or not to register the `puppet` service with an external consul server. Defaults to 'false'.
+
+- `CONSUL_HOSTNAME`
+
+  If consul is enabled, the hostname for the external consul server. Defaults to 'consul'.
+
+- `CONSUL_PORT`
+
+  If consul is enabled, the port to access consul at. Defaults to '8500'.
+
+- `PUPPETDB_SERVER_URLS`
+
+  The `server_urls` to set in /etc/puppetlabs/puppet/puppetdb.conf. Defaults to 'https://puppetdb:8081'.
+
+- `PUPPETSERVER_HOSTNAME`
+
+  The hostname for the puppetserver instance. This sets the `certname` and `server` in puppet.conf. Defaults to unset.
+
+- `AUTOSIGN`
+
+  Whether or not to enable autosigning on the puppetserver instance. Valid values match [true|false|/path/to/autosign.conf]. Defaults to 'true'.
+
+- `DNS_ALT_NAMES`
+
+  Alternate names to set in the puppetserver config and to be used in puppetserver certificate generation. Defaults to unset.
+
+  **Note** this is only effective on the initial run of the container when certificates are generated.
+
 
 
 [1]: https://github.com/puppetlabs/puppetserver/blob/master/docker/puppetserver-standalone/Dockerfile
