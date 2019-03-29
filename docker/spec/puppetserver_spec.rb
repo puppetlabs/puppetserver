@@ -7,9 +7,22 @@ describe 'puppetserver container' do
   include Helpers
 
   def puppetserver_health_check(container)
-    result = run_command("docker inspect \"#{container}\" --format '{{.State.Health.Status}}'")
-    status = result[:stdout].chomp
-    STDOUT.puts "queried health status of #{container}: #{status}"
+    empty_response_counter = 0
+    status = ''
+
+    # We intermittently get an empty response from the `docker inspect`
+    # but we don't want this to run forever if the container failed, so
+    # assume that 5 empty responses in a row is a failure case
+    while status.empty? && empty_response_counter < 5
+      result = run_command("docker inspect \"#{container}\" --format '{{.State.Health.Status}}'")
+      status = result[:stdout].chomp
+      if status.empty?
+        empty_response_counter += 1
+        sleep 1
+      end
+      STDOUT.puts "queried health status of #{container}: #{status}"
+    end
+
     return status
   end
 
@@ -64,7 +77,7 @@ describe 'puppetserver container' do
 
   it 'should start puppetserver successfully' do
     status = puppetserver_health_check(@container)
-    while (status == 'starting' || status == "'starting'" || status.empty?)
+    while (status == 'starting' || status == "'starting'")
       sleep(1)
       status = puppetserver_health_check(@container)
     end
@@ -81,7 +94,7 @@ describe 'puppetserver container' do
 
   it 'should be able to start a compile master' do
     status = puppetserver_health_check(@compiler)
-    while (status == 'starting' || status == "'starting'" || status.empty?)
+    while (status == 'starting' || status == "'starting'")
       sleep(1)
       status = puppetserver_health_check(@compiler)
     end
