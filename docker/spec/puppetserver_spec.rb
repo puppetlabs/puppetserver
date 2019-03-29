@@ -64,7 +64,7 @@ describe 'puppetserver container' do
 
   it 'should start puppetserver successfully' do
     status = puppetserver_health_check(@container)
-    while (status == 'starting' || status == "'starting'")
+    while (status == 'starting' || status == "'starting'" || status.empty?)
       sleep(1)
       status = puppetserver_health_check(@container)
     end
@@ -81,7 +81,7 @@ describe 'puppetserver container' do
 
   it 'should be able to start a compile master' do
     status = puppetserver_health_check(@compiler)
-    while (status == 'starting' || status == "'starting'")
+    while (status == 'starting' || status == "'starting'" || status.empty?)
       sleep(1)
       status = puppetserver_health_check(@compiler)
     end
