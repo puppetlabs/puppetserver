@@ -11,7 +11,7 @@ ARG pupperware_analytics_stream="dev"
 ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
 ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-3"
 ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver"
-ENV PUPPERWARE_DISABLE_ANALYTICS=true
+ENV PUPPERWARE_ANALYTICS_ENABLED=false
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \

@@ -25,9 +25,9 @@ Compose.
 
 The following environment variables are supported:
 
-- `PUPPERWARE_DISABLE_ANALYTICS`
+- `PUPPERWARE_ANALYTICS_ENABLED`
 
-  Set to `true` to disable Google Analytics. Defaults to `true`.
+  Set to 'true' to enable Google Analytics. Defaults to 'false'.
 
 - `PUPPETSERVER_JAVA_ARGS`
 
@@ -85,7 +85,7 @@ The following environment variables are supported:
 
 ## Analytics Data Collection
 
-The puppetserver-standalone container collects usage data. This is disabled by default. You can enable it by passing `--env PUPPERWARE_DISABLE_ANALYTICS=false`
+The puppetserver-standalone container collects usage data. This is disabled by default. You can enable it by passing `--env PUPPERWARE_ANALYTICS_ENABLED=true`
 to your `docker run` command.
 
 ### What data is collected?
