@@ -187,9 +187,11 @@ module PuppetServerExtensions
     variant = master['platform'].variant
     version = master['platform'].version
     if variant == 'debian' && version == "8"
-      create_remote_file(master, "/etc/apt/sources.list.d/jessie-backports.list", "deb http://ftp.debian.org/debian jessie-backports main")
+      create_remote_file(master,
+                         "/etc/apt/sources.list.d/jessie-backports.list",
+                         "deb https://artifactory.delivery.puppetlabs.net/artifactory/debian_archive__remote/ jessie-backports main")
       on master, 'apt-get update'
-      master.install_package("openjdk-8-jre-headless", "-t jessie-backports")
+      master.install_package("openjdk-8-jre-headless")
       on master, 'update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java'
     end
   end
