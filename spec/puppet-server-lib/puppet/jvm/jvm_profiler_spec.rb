@@ -32,31 +32,31 @@ describe Puppet::Server::JvmProfiler do
 
   it "converts metric ids to java" do
     converted = profiler.javify_metric_id(["foo", "bar"])
-    converted.should be_a java.lang.String[]
-    converted[0].should == "foo"
-    converted[1].should == "bar"
+    expect(converted).to be_a java.lang.String[]
+    expect(converted[0]).to eq("foo")
+    expect(converted[1]).to eq("bar")
   end
 
   it "calls wrapped profiler with java args" do
     context = profiler.start("desc", ["my", "metric"])
-    wrapped.description.should be_a java.lang.String
-    wrapped.description.should == "desc"
-    wrapped.metric_id.should be_a java.lang.String[]
-    wrapped.metric_id[0].should == "my"
-    wrapped.metric_id[1].should == "metric"
-    context.should == "foo"
+    expect(wrapped.description).to be_a java.lang.String
+    expect(wrapped.description).to eq("desc")
+    expect(wrapped.metric_id).to be_a java.lang.String[]
+    expect(wrapped.metric_id[0]).to eq("my")
+    expect(wrapped.metric_id[1]).to eq("metric")
+    expect(context).to eq("foo")
 
     profiler.finish(context, "desc", ["my", "metric"])
-    wrapped.context.should == "foo"
-    wrapped.description.should be_a java.lang.String
-    wrapped.description.should == "desc"
-    wrapped.metric_id.should be_a java.lang.String[]
-    wrapped.metric_id[0].should == "my"
-    wrapped.metric_id[1].should == "metric"
+    expect(wrapped.context).to eq("foo")
+    expect(wrapped.description).to be_a java.lang.String
+    expect(wrapped.description).to eq("desc")
+    expect(wrapped.metric_id).to be_a java.lang.String[]
+    expect(wrapped.metric_id[0]).to eq("my")
+    expect(wrapped.metric_id[1]).to eq("metric")
 
-    wrapped.is_shutdown.should == false
+    expect(wrapped.is_shutdown).to eq(false)
     profiler.shutdown
-    wrapped.is_shutdown.should == true
+    expect(wrapped.is_shutdown).to eq(true)
 
   end
 end
