@@ -33,12 +33,12 @@ describe 'Puppet::Server::Master' do
   context "profiler" do
     it "does not register a profiler if profiler is set to nil" do
       master = Puppet::Server::Master.new({}, {})
-      Puppet::Util::Profiler.current.length.should == 0
+      expect(Puppet::Util::Profiler.current.length).to eq(0)
     end
 
     it "registers a profiler if the profiler is not nil" do
       master = Puppet::Server::Master.new({}, {"profiler" => MasterTestProfiler.new})
-      Puppet::Util::Profiler.current.length.should == 1
+      expect(Puppet::Util::Profiler.current.length).to eq(1)
     end
   end
 end
