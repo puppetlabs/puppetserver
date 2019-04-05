@@ -20,71 +20,72 @@ describe Puppet::Server::Certificate do
   agent_certificate = Puppet::Server::Certificate.new(java_agent_cert)
 
   it 'should return DNS alt names' do
-    Set.new(master_certificate.subject_alt_names).should ==
+    expect(Set.new(master_certificate.subject_alt_names)).to eq(
         Set.new(['localhost', 'onefish', 'twofish', 'redfish', 'bluefish'])
+    )
   end
 
   it 'should return Puppet white-listed extensions' do
     Puppet::Server::PuppetConfig.initialize_puppet({})
     exts = agent_certificate.custom_extensions
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_uuid' }['value'].should == "ED803750-E3C7-44F5-BB08-41A04433FE2E"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_uuid' }['value']).to eq("ED803750-E3C7-44F5-BB08-41A04433FE2E")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_instance_id' }['value'].should == "thisisanid"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_instance_id' }['value']).to eq("thisisanid")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_image_name' }['value'].should == "my_ami_image"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_image_name' }['value']).to eq("my_ami_image")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_preshared_key' }['value'].should == "342thbjkt82094y0uthhor289jnqthpc2290"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_preshared_key' }['value']).to eq("342thbjkt82094y0uthhor289jnqthpc2290")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_cost_center' }['value'].should == "center"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_cost_center' }['value']).to eq("center")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_product' }['value'].should == "product"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_product' }['value']).to eq("product")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_project' }['value'].should == "project"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_project' }['value']).to eq("project")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_application' }['value'].should == "application"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_application' }['value']).to eq("application")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_service' }['value'].should == "service"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_service' }['value']).to eq("service")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_employee' }['value'].should == "employee"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_employee' }['value']).to eq("employee")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_created_by' }['value'].should == "created"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_created_by' }['value']).to eq("created")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_environment' }['value'].should == "environment"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_environment' }['value']).to eq("environment")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_role' }['value'].should == "role"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_role' }['value']).to eq("role")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_software_version' }['value'].should == "version"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_software_version' }['value']).to eq("version")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_department' }['value'].should == "deparment"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_department' }['value']).to eq("deparment")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_cluster' }['value'].should == "cluster"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_cluster' }['value']).to eq("cluster")
 
-    exts.find { |ext|
-      ext['oid'] == 'pp_provisioner' }['value'].should == "provisioner"
+    expect(exts.find { |ext|
+      ext['oid'] == 'pp_provisioner' }['value']).to eq("provisioner")
   end
 
   it 'should return the proper subject name' do
-    agent_certificate.unmunged_name.should == 'firehose-agent'
+    expect(agent_certificate.unmunged_name).to eq('firehose-agent')
   end
 
   it 'should return the expiration date' do
-    agent_certificate.expiration.to_s.should == '2020-03-11 21:44:28 UTC'
+    expect(agent_certificate.expiration.to_s).to eq('2020-03-11 21:44:28 UTC')
   end
 end
