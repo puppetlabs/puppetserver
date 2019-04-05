@@ -15,7 +15,7 @@ if [ "$CONSUL_ENABLED" = "true" ]; then
     {
       "http": "https://${HOSTNAME}:8140/${PUPPET_HEALTHCHECK_ENVIRONMENT}/status/test",
       "tls_skip_verify": true,
-      "interval": "30s",
+      "interval": "1s",
       "deregister_critical_service_after": "5m"
     }
   ]
