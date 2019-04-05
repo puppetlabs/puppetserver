@@ -48,7 +48,7 @@ describe 'puppetserver container' do
 
     result = run_command("docker run --rm --detach \
                    --env DNS_ALT_NAMES=puppet \
-                   --env PUPPERWARE_DISABLE_ANALYTICS=true \
+                   --env PUPPERWARE_ANALYTICS_ENABLED=false \
                    --name puppet.test \
                    --network #{@network} \
                    --hostname puppet.test \
@@ -58,7 +58,7 @@ describe 'puppetserver container' do
 
     result = run_command("docker run --rm --detach \
                    --env DNS_ALT_NAMES=puppet \
-                   --env PUPPERWARE_DISABLE_ANALYTICS=true \
+                   --env PUPPERWARE_ANALYTICS_ENABLED=false \
                    --env CA_ENABLED=false \
                    --env CA_HOSTNAME=puppet.test \
                    --network #{@network} \
