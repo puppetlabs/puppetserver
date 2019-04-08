@@ -1,6 +1,7 @@
 require 'json'
 
 skip_test 'SKIP: This test should only run in puppetserver FOSS.' if options[:type] == 'pe'
+skip_test 'SKIP: The required puppet module does not support Debian 8+' if master['platform'] =~ /debian/
 
 test_name 'SERVER-1118: Validate code-id-command feature in FOSS'
 
