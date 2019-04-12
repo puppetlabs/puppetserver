@@ -66,3 +66,6 @@ There are three ways to trigger your Puppet Server environment to refresh and pi
 * Changes to [`ca.cfg`](./configuration.markdown#service-bootstrapping) to enable or disable Puppet Server's certificate authority (CA) service.
 
 For these types of changes, you must restart the process by using the operating system's service framework, for example, by using the `systemctl` or `service` commands.
+
+> Note: To ensure that the Puppet master and CA service is running in a platform agnostic way, use the `puppet resource service puppetserver ensure=running` command. This command is equivalent to `systemctl start puppetserver` on systems that support it. For more information on the resource command and managing a server’s desired state, see 
+[Man Page: puppet resource](https://puppet.com/docs/puppet/6.4/man/resource.html) and [Resource Type: service](https://puppet.com/docs/puppet/6.4/types/service.html). 
