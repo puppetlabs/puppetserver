@@ -93,8 +93,15 @@ with_puppet_running_on(master, {}) do
     curl_authenticated(report_query(masterfqdn))
     assert_allowed
 
+    # In PE, the master (specifically the orchestrator)
+    # is allowed to make report submissions on behalf of
+    # other nodes
     curl_authenticated(report_query('notme'))
-    assert_denied(/\/puppet\/v3\/report\/notme \(method :put\)/)
+    if master.is_pe?
+      assert_allowed
+    else
+      assert_denied(/\/puppet\/v3\/report\/notme \(method :put\)/)
+    end
 
     curl_unauthenticated(report_query(masterfqdn))
     assert_denied(/\/puppet\/v3\/report\/#{masterfqdn} \(method :put\)/)
