@@ -2,3 +2,5 @@
 # review of any opened PRs against the branches containing this file.
 
 *  @puppetlabs/puppetserver-maintainers
+
+/docker/ @puppetlabs/pupperware
