@@ -30,9 +30,9 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN puppet config set storeconfigs_backend puppetdb --section main && \
-    puppet config set storeconfigs true --section main && \
-    puppet config set reports puppetdb --section main && \
+RUN puppet config set storeconfigs_backend puppetdb --section master && \
+    puppet config set storeconfigs true --section master && \
+    puppet config set reports puppetdb --section master && \
     cp -p /etc/puppetlabs/puppet/puppet.conf /var/tmp/puppet
 
 COPY puppetdb.conf /var/tmp/puppet/
