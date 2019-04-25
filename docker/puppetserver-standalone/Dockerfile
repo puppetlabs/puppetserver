@@ -50,6 +50,7 @@ COPY puppetserver /etc/default/puppetserver
 COPY logback.xml /etc/puppetlabs/puppetserver/
 COPY request-logging.xml /etc/puppetlabs/puppetserver/
 COPY puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+COPY domain.txt /opt/puppetlabs/facter/facts.d/domain.txt
 
 
 RUN puppet config set autosign true --section master && \
