@@ -6,25 +6,13 @@ hadolint_available := $(shell hadolint --help > /dev/null 2>&1; echo $$?)
 hadolint_command := hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001
 hadolint_container := hadolint/hadolint:latest
 
-ifeq ($(IS_NIGHTLY),true)
-	dockerfile := Dockerfile.nightly
-	version := puppet6-nightly
-	ifeq ($(PUPPERWARE_ANALYTICS_STREAM),production)
-	  PUPPERWARE_ANALYTICS_STREAM = nightly-production
-  else
-	  PUPPERWARE_ANALYTICS_STREAM = nightly-dev
-	endif
-else
-	version = $(shell echo $(git_describe) | sed 's/-.*//')
-	dockerfile := Dockerfile
-	PUPPERWARE_ANALYTICS_STREAM ?= dev
-endif
+version = $(shell echo $(git_describe) | sed 's/-.*//')
+dockerfile := Dockerfile
+PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 prep:
-ifneq ($(IS_NIGHTLY),true)
 	@git fetch --unshallow ||:
 	@git fetch origin 'refs/tags/*:refs/tags/*'
-endif
 
 lint:
 ifeq ($(hadolint_available),0)
