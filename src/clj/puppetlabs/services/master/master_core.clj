@@ -636,6 +636,76 @@
    jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling))
 
+(schema/defn ^:always-validate
+  raw-transports->response-map
+  [data :- List
+   env :- schema/Str]
+  {:name env
+   :transports data})
+
+(schema/defn ^:always-validate
+  transport-response! :- ringutils/RingResponse
+  "Conditionally honors etag info if cache is enabled.
+  Updates cache if enabled but out of date.
+  Note: takes raw Java data and calls hardcoded conversion fn"
+  [raw-info :- List
+   env :- schema/Str
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   request-tag :- (schema/maybe String)
+   cache-id :- (schema/maybe schema/Int)
+   cache-enabled? :- schema/Bool]
+  (let [resp-map (raw-transports->response-map raw-info env)
+        serialized-resp (cheshire/generate-string resp-map)]
+    (if cache-enabled?
+      (let [;; This isn't going to work with two different data sets per environmnt, is it?
+            tag (ks/utf8-string->sha1 serialized-resp)]
+        (jruby-protocol/set-environment-class-info-tag!
+         jruby-service
+         env
+         tag
+         cache-id)
+        (if (= tag request-tag)
+          (not-modified-response tag)
+          (-> (response-with-etag serialized-resp tag)
+              (rr/content-type "application/json"))))
+      (middleware-utils/json-response 200 serialized-resp))))
+
+(schema/defn ^:always-validate
+  transport-info-fn :- IFn
+  "Returns the handler fn which attempts to retrieve data from jruby and if
+  successful passes it to a fn to build a response, otherwise returns not-found"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   cache-enabled? :- schema/Bool]
+  (fn [request]
+    (let [env (jruby-request/get-environment-from-request request)
+          cache-id
+          (jruby-protocol/get-environment-class-info-cache-generation-id!
+           jruby-service
+           env)]
+      (if-let [transport-info
+               (jruby-protocol/get-environment-transport-info
+                 jruby-service
+                 (:jruby-instance request)
+                 env)]
+        (transport-response! transport-info
+                             env
+                             jruby-service
+                             (if-none-match-from-request request)
+                             cache-id
+                             cache-enabled?)
+        (environment-not-found env)))))
+
+(schema/defn ^:always-validate
+  environment-transport-handler :- IFn
+  "Handler for processing an incoming environment_transport Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   cache-enabled :- schema/Bool]
+  (-> (transport-info-fn jruby-service cache-enabled)
+   (jruby-request/wrap-with-jruby-instance jruby-service)
+   (wrap-with-etag-check jruby-service)
+   jruby-request/wrap-with-environment-validation
+   jruby-request/wrap-with-error-handling))
+
 
 (schema/defn ^:always-validate
   environment-module-handler :- IFn
@@ -815,33 +885,36 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   environment-class-cache-enabled :- schema/Bool]
-  (let [environment-class-handler
-        (environment-class-handler jruby-service
-                                   environment-class-cache-enabled),
+   cache-enabled :- schema/Bool]
+  (let [class-handler (environment-class-handler jruby-service
+                                                 cache-enabled)
 
-        environment-module-handler
-        (environment-module-handler jruby-service)
+        module-handler (environment-module-handler jruby-service)
 
-        all-tasks-handler
-        (all-tasks-handler jruby-service)
+        tasks-handler (all-tasks-handler jruby-service)
 
-        task-details-handler
-        (task-details-handler jruby-service get-code-content-fn current-code-id-fn)
+        transport-handler (environment-transport-handler jruby-service
+                                                         cache-enabled)
 
-        static-file-content-handler
-        (static-file-content-request-handler get-code-content-fn)]
+        task-handler (task-details-handler jruby-service
+                                           get-code-content-fn
+                                           current-code-id-fn)
+
+        static-content-handler (static-file-content-request-handler
+                                 get-code-content-fn)]
     (comidi/routes
       (comidi/GET ["/environment_classes" [#".*" :rest]] request
-                  (environment-class-handler request))
+                  (class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
-                  (environment-module-handler request))
+                  (module-handler request))
+      (comidi/GET ["/environment_transports" [#".*" :rest]] request
+                  (transport-handler request))
       (comidi/GET ["/tasks/" :module-name "/" :task-name] request
-                  (task-details-handler request))
+                  (task-handler request))
       (comidi/GET ["/tasks"] request
-                  (all-tasks-handler request))
+                  (tasks-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
-                  (static-file-content-handler request)))))
+                  (static-content-handler request)))))
 
 (schema/defn ^:always-validate
   v4-routes :- bidi-schema/RoutePair

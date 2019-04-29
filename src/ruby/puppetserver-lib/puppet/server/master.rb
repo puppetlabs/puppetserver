@@ -77,6 +77,19 @@ class Puppet::Server::Master
     end
   end
 
+  def getTransportInfoForEnvironment(env)
+    [{
+      name: "foo_transport",
+      desc: "A mock transport schema",
+      connection_info: {
+        host: {
+          type: "String",
+          desc: "The host"
+        }
+      }
+    }]
+  end
+
   def getModuleInfoForEnvironment(env)
     environment = @env_loader.get(env)
     unless environment.nil?

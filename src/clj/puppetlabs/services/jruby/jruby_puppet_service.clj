@@ -77,6 +77,10 @@
     [this jruby-instance env-name]
     (.getClassInfoForEnvironment jruby-instance env-name))
 
+  (get-environment-transport-info
+    [this jruby-instance env-name]
+    (.getTransportInfoForEnvironment jruby-instance env-name))
+
   (compile-catalog
    [this jruby-instance request-options]
    (.compileCatalog jruby-instance request-options))

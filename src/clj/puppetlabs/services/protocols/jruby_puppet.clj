@@ -23,6 +23,10 @@
     [this jruby-instance env-name]
     "Get class information for a specific environment")
 
+  (get-environment-transport-info
+    [this jruby-instance env-name]
+    "Get transport information for a specific environment")
+
   (get-environment-class-info-tag
     [this env-name]
     "Get a tag for the latest class information parsed for a specific
