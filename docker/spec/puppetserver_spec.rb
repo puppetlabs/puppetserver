@@ -2,115 +2,56 @@
 
 require 'rspec/core'
 require 'open3'
+require 'pupperware/spec_helper'
 
 describe 'puppetserver container' do
-  include Helpers
-
-  def puppetserver_health_check(container)
-    empty_response_counter = 0
-    status = ''
-
-    # We intermittently get an empty response from the `docker inspect`
-    # but we don't want this to run forever if the container failed, so
-    # assume that 5 empty responses in a row is a failure case
-    while status.empty? && empty_response_counter < 5
-      result = run_command("docker inspect \"#{container}\" --format '{{.State.Health.Status}}'")
-      status = result[:stdout].chomp
-      if status.empty?
-        empty_response_counter += 1
-        sleep 1
-      end
-      STDOUT.puts "queried health status of #{container}: #{status}"
-    end
-
-    return status
-  end
+  include Pupperware::SpecHelpers
 
   before(:all) do
-    run_command('docker pull puppet/puppet-agent-alpine:latest')
-    @image = ENV['PUPPET_TEST_DOCKER_IMAGE']
-    if @image.nil?
+    run_command('docker pull puppet/puppet-agent-ubuntu:latest')
+    if ENV['PUPPET_TEST_DOCKER_IMAGE'].nil?
+      fail <<-MSG
       error_message = <<-MSG
-* * * * *
+  * * * * *
   PUPPET_TEST_DOCKER_IMAGE environment variable must be set so we
   know which image to test against!
-* * * * *
+  * * * * *
       MSG
-      fail error_message
+		end
+
+		status = run_command('docker-compose --no-ansi version')[:status]
+    if status.exitstatus != 0
+      fail "`docker-compose` must be installed and available in your PATH"
     end
 
-    # Windows doesn't have the default 'bridge' network driver
-    network_opt = File::ALT_SEPARATOR.nil? ? '' : '--driver=nat'
+		teardown_cluster()
 
-    result = run_command("docker network create #{network_opt} puppetserver_test_network")
-    fail 'Failed to create network' unless result[:status].exitstatus == 0
-    @network = result[:stdout].chomp
-
-    result = run_command("docker run --rm --detach \
-                   --env DNS_ALT_NAMES=puppet \
-                   --env PUPPERWARE_ANALYTICS_ENABLED=false \
-                   --name puppet.test \
-                   --network #{@network} \
-                   --hostname puppet.test \
-                   #{@image}")
-    fail 'Failed to create puppet.test' unless result[:status].exitstatus == 0
-    @container = result[:stdout].chomp
-
-    result = run_command("docker run --rm --detach \
-                   --env DNS_ALT_NAMES=puppet \
-                   --env PUPPERWARE_ANALYTICS_ENABLED=false \
-                   --env CA_ENABLED=false \
-                   --env CA_HOSTNAME=puppet.test \
-                   --network #{@network} \
-                   --name puppet-compiler.test \
-                   --hostname puppet-compiler.test \
-                   #{@image}")
-    fail 'Failed to create compiler' unless result[:status].exitstatus == 0
-    @compiler = result[:stdout].chomp
+    run_command('docker-compose --no-ansi up --detach')
   end
 
   after(:all) do
-    run_command("docker container kill #{@container}") unless @container.nil?
-    run_command("docker container kill #{@compiler}") unless @compiler.nil?
-    run_command("docker network rm #{@network}") unless @network.nil?
+    emit_logs()
+    teardown_cluster()
   end
 
   it 'should start puppetserver successfully' do
-    status = puppetserver_health_check(@container)
-    while (status == 'starting' || status == "'starting'")
-      sleep(1)
-      status = puppetserver_health_check(@container)
-    end
-    if status !~ /\'?healthy\'?/
-      run_command("docker logs #{@container}")
-    end
-    expect(status).to match(/\'?healthy\'?/)
+    expect(wait_on_puppetserver_status()).to eq ('healthy')
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
-    result = run_command("docker run --rm --name puppet-agent.test --hostname puppet-agent.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet.test")
-    expect(result[:status].exitstatus).to eq(0)
+    expect(run_agent('puppet-agent.test', 'puppetserver_test')).to eq(0)
   end
 
   it 'should be able to start a compile master' do
-    status = puppetserver_health_check(@compiler)
-    while (status == 'starting' || status == "'starting'")
-      sleep(1)
-      status = puppetserver_health_check(@compiler)
-    end
-    if status !~ /\'?healthy\'?/
-      run_command("docker logs #{@compiler}")
-    end
-    expect(status).to match(/\'?healthy\'?/)
-end
+    expect(wait_on_puppetserver_status(180, 'compiler')).to eq ('healthy')
+  end
 
   it 'should be able to run an agent against the compile master' do
-    result = run_command("docker run --rm --name puppet-agent-compiler.test --hostname puppet-agent-compiler.test --network #{@network} puppet/puppet-agent-alpine:latest agent --test --server puppet-compiler.test --ca_server puppet.test")
-    expect(result[:status].exitstatus).to eq(0)
+    expect(run_agent('compiler-agent.test', 'puppetserver_test', get_container_hostname(get_service_container('compiler')), get_container_hostname(get_service_container('puppet')))).to eq(0)
   end
 
   it 'should have r10k available' do
-    result = run_command('docker exec puppet.test r10k --help')
+    result = run_command('docker-compose exec -T puppet r10k --help')
     expect(result[:status].exitstatus).to eq(0)
   end
 end

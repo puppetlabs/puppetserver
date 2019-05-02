@@ -1,4 +1,3 @@
---require spec_helper
 --format RspecJunitFormatter
 --out puppetserver-standalone/TEST-rspec.xml
 --format documentation
