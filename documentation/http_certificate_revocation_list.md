@@ -44,7 +44,7 @@ None
 
 ### Examples
 
-Since the returned CRL always looks similar to the human eye, the successful examples are each followed by an openssl
+Because the returned CRL always looks similar to the human eye, the successful examples are each followed by an openssl
 decoding of the CRL PEM file.
 
 #### Empty revocation list

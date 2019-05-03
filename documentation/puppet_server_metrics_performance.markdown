@@ -41,11 +41,11 @@ There are two indicators in Puppet Server's metrics that can help you identify a
 -   **Average JRuby Wait Time:** This refers to the amount of time Puppet Server has to wait for an available JRuby to become available, and increases when each JRuby is held for a longer period of time, which reduces the overall number of free JRubies and forces new requests to wait longer for available resources.
 -   **Average JRuby Borrow Time:** This refers to the amount of time that Puppet Server "holds" a JRuby as a resource for a request, and increases because of other factors on the server.
 
-If wait time increases but borrow time stays the same, your Server infrastructure might be serving too many agents. This indicates that Server can easily handle requests but is receiving too many at once to keep up.
+If wait time increases but borrow time stays the same, your Server infrastructure might be serving too many agents. This indicates that Server can easily handle requests but is receiving too many at one time to keep up.
 
 If both wait and borrow times are increasing, something else on your server is causing requests to take longer to process. The longer borrow times suggest that Puppet Server is struggling more than before to process requests, which has a cascading effect on wait times. Correlate borrow time increases with other events whenever possible to isolate what activities might cause them, such as a Puppet code change.
 
-If you are setting up Puppet Server for the first time, start by increasing your Server infrastructure's capacity through additional JRubies (if your server has spare CPU and memory resources) or compile masters until you have more than 0 free JRubies, and your average number of free JRubies are at least 1. Once your system can handle its request volume, you can start looking into more specific performance improvements.
+If you are setting up Puppet Server for the first time, start by increasing your Server infrastructure's capacity through additional JRubies (if your server has spare CPU and memory resources) or compile masters until you have more than 0 free JRubies, and your average number of free JRubies are at least 1. After your system can handle its request volume, you can start looking into more specific performance improvements.
 
 #### Adding more JRubies
 
@@ -69,12 +69,12 @@ If you don't have the additional capacity on your master to add more JRubies, yo
 
 If JRuby metrics appear to be stable, performance issues might originate from lag in server requests, which also have a cascading effect on other metrics. HTTP metrics in the [status API][], and the requests graph in the [Grafana dashboard](./puppet_server_metrics.markdown), can help you determine when and where request times have increased.
 
-HTTP metrics include the total time for the server to handle the request, including waiting for a JRuby instance to become available. Once JRuby borrow time increases, wait time also increases, so once borrow time for *one* type of request increases, wait times for *all* requests increases.
+HTTP metrics include the total time for the server to handle the request, including waiting for a JRuby instance to become available. When JRuby borrow time increases, wait time also increases, so when borrow time for *one* type of request increases, wait times for *all* requests increases.
 
 Catalog compilation, which is graphed on the [sample Grafana dashboard][], most commonly increases request times, because there are many points of potential failure or delay in a catalog compilation. Several things could cause catalog compilation lengthen JRuby borrow times.
 
 -   A Puppet code change, such as a faulty or complex new function. The Grafana dashboard should show if functions start taking significantly longer, and the experimental dashboard and [status API][] endpoint also list the lengthiest function calls (showing the top 10 and top 40, respectively) based on aggregate execution times.
--   Adding many file resources at once.
+-   Adding many file resources at one time.
 
 In cases like these, there might be more efficient ways to author your Puppet code, you might be extending Puppet to the point where you need to add JRubies or compile masters even if you aren't adding more agents.
 

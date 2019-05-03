@@ -214,7 +214,7 @@ Use a command like the one below to run an agent against your running puppetserv
 
 Note that a system installed Puppet Agent is ok for use with
 source-based PuppetDB and Puppet Server. The `--confdir` above
-specifies the same confdir that Puppet Server is using. Since the
+specifies the same confdir that Puppet Server is using. Because the
 Puppet Agent and Puppet Server instances are both using the same
 confdir, they're both using the same certificates as well. This
 alleviates the need to sign certificates as a separate step.
@@ -363,7 +363,7 @@ PuppetDB conf.d directory. The update would look like:
     ssl-key = <home dir>/.puppetlabs/etc/puppet/ssl/private_keys/<MASTERHOST>.pem
     ssl-ca-cert = <home dir>/.puppetlabs/etc/puppet/ssl/certs/ca.pem
 
-Once the SSL config is in place, start (or restart) PuppetDB:
+After the SSL config is in place, start (or restart) PuppetDB:
 
     lein run services -c <path to PDB config>/conf.d
 

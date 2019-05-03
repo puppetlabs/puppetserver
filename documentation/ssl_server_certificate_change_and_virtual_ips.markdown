@@ -33,7 +33,7 @@ javax.net.ssl.SSLHandshakeException: server certificate change is restricted dur
 
 If you need Puppet Server to act as a client to a load-balanced HTTPS service (e.g., multiple PuppetDB servers), your best option right now is to have all of the servers behind the load balancer present the same certificate.
 
-There appear to be ways to fulfill the renegotiation check with certificates that only partially match ([see here for more info](http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.186)), but these might not be foolproof, especially since future JDK implementations might disallow these partial matches. The most reliable way is to simply use the same certificates.
+There appear to be ways to fulfill the renegotiation check with certificates that only partially match ([see here for more info](http://hg.openjdk.java.net/bsd-port/bsd-port/jdk/rev/eabde5c42157#l1.186)), but these might not be foolproof, especially because future JDK implementations might disallow these partial matches. The most reliable way is to simply use the same certificates.
 
 The Puppet Enterprise documentation has [instructions for configuring multiple PuppetDB][pe_db_instructions] servers to use a single certificate, but note that this configuration isn't necessarily supported.
 

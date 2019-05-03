@@ -127,4 +127,4 @@ To enable SSLv3 at the JRE layer, first create a properties file (for example, `
 jdk.tls.disabledAlgorithms=
 ~~~
 
-Once this property file exists, update `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`, and add the option `-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`. This will configure the JVM to override the `jdk.tls.disabledAlgorithms` property defined in `$JAVA_HOME/jre/lib/security/java.security`. Restart the `puppetserver` service for this setting to take effect.
+After this property file exists, update `JAVA_ARGS`, typically defined in `/etc/sysconfig/puppetserver`, and add the option `-Djava.security.properties=/etc/sysconfig/puppetserver-properties/java.security`. This will configure the JVM to override the `jdk.tls.disabledAlgorithms` property defined in `$JAVA_HOME/jre/lib/security/java.security`. Restart the `puppetserver` service for this setting to take effect.

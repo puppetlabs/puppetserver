@@ -50,7 +50,7 @@ source with `lein run` rather than `lein repl`:
     $ lein run --config ~/.puppetserver/puppetserver.conf
 
 The `lein run` command will start the server in the foreground as normal.
-`pry` or `ruby-debug` will display an input prompt once the relevant statement
+`pry` or `ruby-debug` will display an input prompt when the relevant statement
 is reached.  Expect to see the normal `lein run` output and then the Ruby REPL
 will present itself as compared to `lein repl` which presents a prompt early in
 the process lifecycle.  In this way the "ruby repl" is more of a breakpoint
