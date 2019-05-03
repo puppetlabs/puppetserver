@@ -8,6 +8,8 @@ services:
       - PUPPETSERVER_HOSTNAME=puppet.test
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
       - DNS_ALT_NAMES=puppet,puppet.test,${DNS_ALT_NAMES:-}
+      - PUPPET_STORECONFIGS=false
+      - PUPPET_REPORTS=log
     dns_search: '.test'
     networks:
       puppetserver_test:
@@ -21,6 +23,8 @@ services:
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
       - CA_ENABLED=false
       - CA_HOSTNAME=puppet.test
+      - PUPPET_STORECONFIGS=false
+      - PUPPET_REPORTS=log
     dns_search: '.test'
     networks:
       puppetserver_test:

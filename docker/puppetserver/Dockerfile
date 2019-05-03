@@ -12,6 +12,9 @@ ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
 ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-3"
 ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver"
 ENV PUPPERWARE_ANALYTICS_ENABLED=false
+ENV PUPPET_STORECONFIGS_BACKEND="puppetdb"
+ENV PUPPET_STORECONFIGS=true
+ENV PUPPET_REPORTS="puppetdb"
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
