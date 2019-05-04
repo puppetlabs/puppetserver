@@ -5,6 +5,10 @@ build_date := $(shell date -u +%FT%T)
 hadolint_available := $(shell hadolint --help > /dev/null 2>&1; echo $$?)
 hadolint_command := hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001
 hadolint_container := hadolint/hadolint:latest
+pwd := $(shell pwd)
+export BUNDLE_PATH = $(pwd)/.bundle/gems
+export BUNDLE_BIN = $(pwd)/.bundle/bin
+export GEMFILE = $(pwd)/Gemfile
 
 version = $(shell echo $(git_describe) | sed 's/-.*//')
 dockerfile := Dockerfile
@@ -53,11 +57,13 @@ ifeq ($(IS_LATEST),true)
 endif
 
 test: prep
-	@bundle install --path .bundle/gems
+	@bundle install --path $$BUNDLE_PATH --gemfile $$GEMFILE
 	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver-standalone:$(version) \
-		bundle exec rspec --options puppetserver-standalone/.rspec spec
+		bundle exec --gemfile $$GEMFILE \
+		rspec --options puppetserver-standalone/.rspec spec
 	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver:$(version) \
-		bundle exec rspec --options puppetserver/.rspec spec
+		bundle exec --gemfile $$GEMFILE \
+		rspec --options puppetserver/.rspec spec
 
 push-image: prep
 	@docker push puppet/puppetserver-standalone:$(version)

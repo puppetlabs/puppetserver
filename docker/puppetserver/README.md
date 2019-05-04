@@ -69,6 +69,18 @@ The following environment variables are supported:
 
   If consul is enabled, the port to access consul at. Defaults to '8500'.
 
+- `PUPPET_REPORTS`
+
+  Sets `reports` in puppet.conf. Defaults to 'puppetdb'.
+
+- `PUPPET_STORECONFIGS`
+
+  Sets `storeconfigs` in puppet.conf. Defaults to true.
+
+- `PUPPET_STORECONFIGS_BACKEND`
+
+  Sets `storeconfigs_backend` in puppet.conf. Defaults to 'puppetdb'.
+
 - `PUPPETDB_SERVER_URLS`
 
   The `server_urls` to set in /etc/puppetlabs/puppet/puppetdb.conf. Defaults to 'https://puppetdb:8081'.
