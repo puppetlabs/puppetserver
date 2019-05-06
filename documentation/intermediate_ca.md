@@ -55,7 +55,7 @@ Puppet Server needs to present the full certificate chain to clients so the clie
 -----END X509 CRL-----
 ```
 
-8. Use the `puppet server import` command to trigger the rest of the CA setup:
+8. Use the `puppet server ca import` command to trigger the rest of the CA setup:
 
 ```
 puppetserver ca import --cert-bundle ca-bundle.pem --crl-chain crls.pem --private-key puppet_ca_key.pem
