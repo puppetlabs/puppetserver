@@ -31,7 +31,7 @@
             "type": "number"
           },
           "uri": {
-            "description": "Information on how to request the file contents from a Puppet master node. This will only provide a relative path, since clients may want to request from a compile master instead of the primary master.",
+            "description": "Information on how to request the file contents from a Puppet master node. This will only provide a relative path, because clients may want to request from a compile master instead of the primary master.",
             "type": "object",
             "properties": {
               "path": {

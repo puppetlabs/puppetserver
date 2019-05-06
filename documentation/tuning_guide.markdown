@@ -23,7 +23,7 @@ several Ruby processes to hand off work to.
 
 Puppet Server isolates these JRuby instances so that they will only be allowed
 to handle one request at a time. This ensures that we don't encounter any
-concurrency issues, since the Ruby code is not thread-safe. When an HTTP request
+concurrency issues, because the Ruby code is not thread-safe. When an HTTP request
 comes in to Puppet Server, and it determines that some Ruby code will need to be
 executed in order to handle the request, Puppet Server "borrows" a JRuby instance
 from the pool, uses it to do the work, and then "returns" it to the pool.  If

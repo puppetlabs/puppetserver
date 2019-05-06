@@ -36,7 +36,7 @@ the regular expression `\A[a-z][a-z0-9_]*\z` (excluding extensions).
 
 ### Will error if the tasks implementations are invalid
 
-Since the returning file information requires parsing metadata and finding
+Because the returning file information requires parsing metadata and finding
 implementation files this endpoint will error if the metadata cannot be parsed
 or the implementation content is invalid.
 

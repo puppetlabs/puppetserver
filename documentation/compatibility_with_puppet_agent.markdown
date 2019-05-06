@@ -11,7 +11,7 @@ canonical: "/puppetserver/latest/compatibility_with_puppet_agent.html"
 [deprecated]: https://docs.puppet.com/puppetserver/2.2/deprecated_features.html
 [Puppet Server `auth.conf` documentation]: ./config_file_auth.markdown
 
-Since version 2.1, Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agents. Once your Puppet 3 nodes work with a newer Puppet Server, start upgrading them to Puppet 4.
+In version 2.1 and later, Puppet Server can serve configurations to both Puppet 4 and Puppet 3 agents. After your Puppet 3 nodes work with a newer Puppet Server, start upgrading them to Puppet 4.
 
 ## Preparing Puppet 3 Nodes for Puppet Server 2
 

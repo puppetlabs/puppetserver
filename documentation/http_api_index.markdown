@@ -121,7 +121,7 @@ Puppet provides a [JSON schema for error objects](https://puppet.com/docs/puppet
 
 The certificate authority (CA) API contains all of the endpoints supporting Puppet's public key infrastructure (PKI) system.
 
-The CA V1 endpoints share the same basic format as the Puppet V3 API, since they are based on the interface of Puppet's indirector-based CA. However, Puppet Server's CA is implemented in Clojure. Both have a different prefix and version than the V3 API.
+The CA V1 endpoints share the same basic format as the Puppet V3 API, because they are based on the interface of Puppet's indirector-based CA. However, Puppet Server's CA is implemented in Clojure. Both have a different prefix and version than the V3 API.
 
 These endpoints follow the form `/puppet-ca/v1/:indirection/:key?environment=:environment`, where:
 

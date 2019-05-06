@@ -101,7 +101,7 @@ Next, let's convert each component of the deprecated rule to the new HOCON forma
     ...
     ```
 
-2.  Next, add its type to the section's [`type`](./config_file_auth.markdown#match-request) setting. Since this is a literal string path, the type is `path`.
+2.  Next, add its type to the section's [`type`](./config_file_auth.markdown#match-request) setting. Because this is a literal string path, the type is `path`.
 
     ``` hocon
     ...
