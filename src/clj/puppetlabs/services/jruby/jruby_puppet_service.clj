@@ -5,8 +5,8 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.i18n.core :as i18n])
-  (:import (org.jruby.runtime Constants)))
+            [puppetlabs.i18n.core :as i18n]))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
