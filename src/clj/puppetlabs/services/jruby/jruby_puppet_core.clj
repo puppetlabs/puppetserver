@@ -376,6 +376,30 @@
       environment-info-cache)))
 
 (schema/defn ^:always-validate
+  environment-info-cache-updated-with-tag :- EnvironmentInfoCache
+  "Return the supplied environment class info cache argument, updated per
+  supplied arguments.  cache-generation-id-before-tag-computed should represent
+  what the client received for a
+  'get-environment-class-info-cache-generation-id!' call for the environment,
+  made before the client started doing the work to parse environment info
+  / compute the new tag.  If cache-generation-id-before-tag-computed equals the
+  'cache-generation-id' value stored in the cache for the environment, the new
+  'tag' will be stored for the environment and the corresponding
+  'cache-generation-id' value will be incremented.  If
+  cache-generation-id-before-tag-computed is different than the
+  'cache-generation-id' value stored in the cache for the environment, the cache
+  will remain unchanged as a result of this call."
+  [environment-info-cache :- EnvironmentInfoCache
+   env-name :- schema/Str
+   svc-id :- schema/Keyword
+   tag :- (schema/maybe schema/Str)
+   prior-cache-id :- schema/Int]
+  (let [cache-entry (get environment-info-cache env-name)]
+    (if (= (:cache-generation-id cache-entry) prior-cache-id)
+      (assoc-in environment-info-cache [env-name :info svc-id] tag)
+      environment-info-cache)))
+
+(schema/defn ^:always-validate
   add-environment-info-cache-entry-if-not-present!
   :- EnvironmentInfoCache
   "Update the 'environment-info-cache' atom with a new cache entry for

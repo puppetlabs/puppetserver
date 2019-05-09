@@ -123,6 +123,17 @@
             tag
             cache-generation-id-before-tag-computed)))
 
+  (set-environment-info-tag!
+   [this env-name info-id tag initial-cache-id]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (swap! environment-class-info
+            core/environment-info-cache-updated-with-tag
+            env-name
+            info-id
+            tag
+            initial-cache-id)))
+
   (get-task-data
    [this jruby-instance env-name module-name task-name]
    (.getTaskData jruby-instance env-name module-name task-name))

@@ -59,6 +59,20 @@
     'cache-generation-id' value stored in the cache for the environment, the
     cache will remain unchanged as a result of this call.")
 
+  (set-environment-info-tag!
+    [this env-name info-id tag prior-cache-id]
+    "Set the tag computed for the latest info service parsed for a
+    specific environment.  prior-cache-id should represent what the client
+    received for a 'get-environment-class-info-cache-generation-id!' call for
+    the environment made before it started doing the work to parse environment
+    info / compute the new tag.  If prior-cache-id equals the
+    'cache-generation-id' value stored in the cache for the environment, the
+    new 'tag' will be stored for the environment and the corresponding
+    'cache-generation-id' value will be incremented.  If
+    prior-cache-id is different than the 'cache-generation-id' value stored in
+    the cache for the environment, the cache will remain unchanged as a result
+    of this call.")
+
   (compile-catalog
     [this jruby-instance request-options]
     "Compile the catalog for a given certname")

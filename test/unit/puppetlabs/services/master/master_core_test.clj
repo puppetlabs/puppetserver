@@ -108,7 +108,7 @@
                                 {}))
                             (get-environment-class-info-cache-generation-id!
                               [_ _])
-                            (set-environment-class-info-tag! [_ _ _ _]))
+                            (set-environment-info-tag! [_ _ _ _ _]))
             handler (fn ([req] {:request req}))
             app (build-ring-handler handler "1.2.3" jruby-service)
             request (partial app-request app)

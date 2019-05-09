@@ -590,6 +590,7 @@
   [info :- {schema/Any schema/Any}
    env :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   svc-key :- (schema/maybe schema/Keyword)
    request-tag :- (schema/maybe String)
    cache-version :- (schema/maybe schema/Int)]
   (let [body (cheshire/encode info)
@@ -597,9 +598,10 @@
     (if (= tag request-tag)
       (not-modified-response tag)
       (do
-        (jruby-protocol/set-environment-class-info-tag!
+        (jruby-protocol/set-environment-info-tag!
          jruby-service
          env
+         svc-key
          tag
          cache-version)
         (-> (response-with-etag body tag)
@@ -614,6 +616,7 @@
    cache-enabled? :- schema/Bool]
   (fn [request]
     (let [env (jruby-request/get-environment-from-request request)
+          svc-id (info-service request)
           cache-id
            (jruby-protocol/get-environment-class-info-cache-generation-id!
             jruby-service
@@ -621,7 +624,7 @@
       (if-let [info (info-fn (:jruby-instance request) env)]
         (let [known-tag (if-none-match-from-request request)]
           (if cache-enabled?
-            (check-cache! info env jruby-service known-tag cache-id)
+            (check-cache! info env jruby-service svc-id known-tag cache-id)
             (middleware-utils/json-response 200 info)))
         (environment-not-found env)))))
 
