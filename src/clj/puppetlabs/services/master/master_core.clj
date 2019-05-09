@@ -302,49 +302,6 @@
       (rr/status 304)))
 
 (schema/defn ^:always-validate
-  environment-class-response! :- ringutils/RingResponse
-  "Process the environment class info, returning a Ring response to be
-  propagated back up to the caller of the environment_classes endpoint.
-
-  If the specified `environment-class-cache-enabled` is 'true', a SHA-1 hash
-  of the class info will be generated.  If the hash is equal to the supplied
-  `request-tag`, the response will have an HTTP 304 (Not Modified) status code
-  and the response body will be empty.  If the hash is not equal to the supplied
-  `request-tag`, the response will have an HTTP 200 (OK) status code and
-  the class info, serialized to JSON, will appear in the response body.  The
-  newly generated hash code, along with the specified `cache-generation-id`,
-  will be passed to the `jruby-service`, to be stored in its environment class
-  cache, and will also be returned in the response as the value for an HTTP
-  Etag header.
-
-  If the specified `environment-class-cache-enabled` is 'false', no hash
-  will be generated for the class info.  The response will always have an
-  HTTP 200 (OK) status code and the class info, serialized to JSON, as the
-  response body.  An HTTP Etag header will not appear in the response."
-  [info-from-jruby :- Map
-   environment :- schema/Str
-   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   request-tag :- (schema/maybe String)
-   cache-generation-id :- (schema/maybe schema/Int)
-   environment-class-cache-enabled :- schema/Bool]
-  (let [info-for-json (class-info-from-jruby->class-info-for-json
-                       info-from-jruby
-                       environment)]
-    (if environment-class-cache-enabled
-      (let [info-as-json (cheshire/generate-string info-for-json)
-            parsed-tag (ks/utf8-string->sha1 info-as-json)]
-        (jruby-protocol/set-environment-class-info-tag!
-         jruby-service
-         environment
-         parsed-tag
-         cache-generation-id)
-        (if (= parsed-tag request-tag)
-          (not-modified-response parsed-tag)
-          (-> (response-with-etag info-as-json parsed-tag)
-              (rr/content-type "application/json"))))
-      (middleware-utils/json-response 200 info-for-json))))
-
-(schema/defn ^:always-validate
   all-tasks-response! :- ringutils/RingResponse
   "Process the info, returning a Ring response to be propagated back up to the
   caller of the endpoint.
@@ -429,31 +386,6 @@
   "Ring handler to provide a standard error when a task is not found."
   [task :- schema/Str]
   (rr/not-found (i18n/tru "Could not find task ''{0}''" task)))
-
-(schema/defn ^:always-validate
-  environment-class-info-fn :- IFn
-  "Middleware function for constructing a Ring response from an incoming
-  request for environment_classes information."
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   environment-class-cache-enabled :- schema/Bool]
-  (fn [request]
-    (let [environment (jruby-request/get-environment-from-request request)
-          cache-generation-id
-          (jruby-protocol/get-environment-class-info-cache-generation-id!
-           jruby-service
-           environment)]
-      (if-let [class-info
-               (jruby-protocol/get-environment-class-info jruby-service
-                                                          (:jruby-instance
-                                                           request)
-                                                          environment)]
-        (environment-class-response! class-info
-                                     environment
-                                     jruby-service
-                                     (if-none-match-from-request request)
-                                     cache-generation-id
-                                     environment-class-cache-enabled)
-        (environment-not-found environment)))))
 
 (schema/defn ^:always-validate
   module-info-from-jruby->module-info-for-json  :- EnvironmentModulesInfo
@@ -605,7 +537,7 @@
 (schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
-  header on an incoming environment_classes request matches the last Etag
+  header on an incoming cacheable request matches the last Etag
   computed for the environment whose info is being requested.  If the two
   match, the middleware function returns an HTTP 304 (Not Modified) Ring
   response.  If the two do not match, the request is threaded through to the
@@ -624,19 +556,6 @@
         (handler request)))))
 
 (schema/defn ^:always-validate
-  environment-class-handler :- IFn
-  "Handler for processing an incoming environment_classes Ring request"
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   environment-class-cache-enabled :- schema/Bool]
-  (->
-   (environment-class-info-fn jruby-service
-                              environment-class-cache-enabled)
-   (jruby-request/wrap-with-jruby-instance jruby-service)
-   (wrap-with-etag-check jruby-service)
-   jruby-request/wrap-with-environment-validation
-   jruby-request/wrap-with-error-handling))
-
-(schema/defn ^:always-validate
   raw-transports->response-map
   [data :- List
    env :- schema/Str]
@@ -644,63 +563,61 @@
    :transports data})
 
 (schema/defn ^:always-validate
-  transport-response! :- ringutils/RingResponse
-  "Conditionally honors etag info if cache is enabled.
-  Updates cache if enabled but out of date.
-  Note: takes raw Java data and calls hardcoded conversion fn"
-  [raw-info :- List
+  check-cache! :- ringutils/RingResponse
+  "Updates cache if new data does not match previous data
+
+  We must use the cache version generated at the start of the request.
+  The cache will check to see that the version given to it is the same
+  as its internal version (eg that it hasn't been reset since handing
+  out that version). If the given and internal versions do not match the
+  request to set the tag is ignored, if they match the tag is stored and
+  the internal version is incremented."
+  [info :- {schema/Any schema/Any}
    env :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    request-tag :- (schema/maybe String)
-   cache-id :- (schema/maybe schema/Int)
-   cache-enabled? :- schema/Bool]
-  (let [resp-map (raw-transports->response-map raw-info env)
-        serialized-resp (cheshire/generate-string resp-map)]
-    (if cache-enabled?
-      (let [;; This isn't going to work with two different data sets per environmnt, is it?
-            tag (ks/utf8-string->sha1 serialized-resp)]
+   cache-version :- (schema/maybe schema/Int)]
+  (let [body (cheshire/encode info)
+        tag (ks/utf8-string->sha1 body)]
+    (if (= tag request-tag)
+      (not-modified-response tag)
+      (do
         (jruby-protocol/set-environment-class-info-tag!
          jruby-service
          env
          tag
-         cache-id)
-        (if (= tag request-tag)
-          (not-modified-response tag)
-          (-> (response-with-etag serialized-resp tag)
-              (rr/content-type "application/json"))))
-      (middleware-utils/json-response 200 serialized-resp))))
+         cache-version)
+        (-> (response-with-etag body tag)
+            (rr/content-type "application/json"))))))
 
 (schema/defn ^:always-validate
-  transport-info-fn :- IFn
-  "Returns the handler fn which attempts to retrieve data from jruby and if
-  successful passes it to a fn to build a response, otherwise returns not-found"
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+  mk-cacheable-handler :- IFn
+  "Given a retrieval fn of the jruby protocol, builds a handler for fn that
+  honors the environment cache."
+  [info-fn :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    cache-enabled? :- schema/Bool]
   (fn [request]
     (let [env (jruby-request/get-environment-from-request request)
           cache-id
-          (jruby-protocol/get-environment-class-info-cache-generation-id!
-           jruby-service
-           env)]
-      (if-let [transport-info
-               (jruby-protocol/get-environment-transport-info
-                 jruby-service
-                 (:jruby-instance request)
-                 env)]
-        (transport-response! transport-info
-                             env
-                             jruby-service
-                             (if-none-match-from-request request)
-                             cache-id
-                             cache-enabled?)
+           (jruby-protocol/get-environment-class-info-cache-generation-id!
+            jruby-service
+            env)]
+      (if-let [info (info-fn (:jruby-instance request) env)]
+        (let [known-tag (if-none-match-from-request request)]
+          (if cache-enabled?
+            (check-cache! info env jruby-service known-tag cache-id)
+            (middleware-utils/json-response 200 info)))
         (environment-not-found env)))))
 
 (schema/defn ^:always-validate
-  environment-transport-handler :- IFn
-  "Handler for processing an incoming environment_transport Ring request"
-  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+  wrap-cacheable-environment-info-handler :- IFn
+  "Calls the creation of a cacheable environment info handler and
+  wraps it in appropriate middleware."
+  [info-fn :- IFn
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    cache-enabled :- schema/Bool]
-  (-> (transport-info-fn jruby-service cache-enabled)
+  (-> (mk-cacheable-handler info-fn jruby-service cache-enabled)
    (jruby-request/wrap-with-jruby-instance jruby-service)
    (wrap-with-etag-check jruby-service)
    jruby-request/wrap-with-environment-validation
@@ -886,15 +803,25 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    cache-enabled :- schema/Bool]
-  (let [class-handler (environment-class-handler jruby-service
-                                                 cache-enabled)
+  (let [class-handler (wrap-cacheable-environment-info-handler
+                        (fn [jruby env]
+                          (some-> jruby-service
+                                  (jruby-protocol/get-environment-class-info jruby env)
+                                  (class-info-from-jruby->class-info-for-json env)))
+                        jruby-service
+                        cache-enabled)
 
         module-handler (environment-module-handler jruby-service)
 
         tasks-handler (all-tasks-handler jruby-service)
 
-        transport-handler (environment-transport-handler jruby-service
-                                                         cache-enabled)
+        transport-handler (wrap-cacheable-environment-info-handler
+                            (fn [jruby env]
+                              (some-> jruby-service
+                                      (jruby-protocol/get-environment-transport-info jruby env)
+                                      (raw-transports->response-map env)))
+                            jruby-service
+                            cache-enabled)
 
         task-handler (task-details-handler jruby-service
                                            get-code-content-fn

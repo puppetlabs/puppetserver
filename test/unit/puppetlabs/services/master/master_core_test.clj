@@ -113,13 +113,9 @@
             app (build-ring-handler handler "1.2.3" jruby-service)
             request (partial app-request app)
             etag #(-> %
-                      (environment-class-response!
-                       "production"
-                       jruby-service
-                       nil
-                       nil
-                       true)
-                      (rr/get-header "Etag"))
+                      (class-info-from-jruby->class-info-for-json "production")
+                      json/encode
+                      ks/utf8-string->sha1)
             map-with-classes #(doto (HashMap.)
                                (.put "classes" %))]
         (testing "returns 200 for environment that exists"
