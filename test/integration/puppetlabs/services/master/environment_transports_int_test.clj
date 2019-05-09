@@ -117,7 +117,7 @@
                         :environment-class-cache-enabled]))
      (let [foo-file (testutils/write-foo-pp-file
                      "some kind of test data")
-           expected-response (json/encode mock-response)
+           expected-response mock-response
            response (get-env-transports "production")]
        (testing "a successful status code is returned"
          (is (= 200 (:status response))
