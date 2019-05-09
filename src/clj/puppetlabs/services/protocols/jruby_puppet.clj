@@ -32,6 +32,11 @@
     "Get a tag for the latest class information parsed for a specific
     environment")
 
+  (get-environment-info-tag
+    [this env-name info-svc]
+    "Get a tag for the latest information parsed for a specific
+    environment and info service")
+
   (get-environment-class-info-cache-generation-id!
     [this env-name]
     "Get the current cache generation id for a specific environment's class

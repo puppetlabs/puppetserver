@@ -534,6 +534,19 @@
             (catch RaiseException e
               (handle-task-details-jruby-exception e environment module task))))))
 
+(defn info-service
+  [request]
+  (let [path-components (-> request :route-info :path)
+        ;; path-components will be something like
+        ;; ["/puppet" "/v3" "/environment_classes" ["*" :rest]]
+        ;; and we want to map "/environment_classes" to a
+        ;; cacheable info service
+        resource-component (-> path-components butlast last)]
+    (when resource-component
+      (get {"environment_classes" :classes
+            "environment_transports" :transports}
+           (str/replace resource-component "/" "")))))
+
 (schema/defn ^:always-validate
   wrap-with-etag-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
@@ -546,12 +559,14 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
     (let [environment (jruby-request/get-environment-from-request request)
+          svc-key (info-service request)
           request-tag (if-none-match-from-request request)]
       (if (and request-tag
                (= request-tag
-                  (jruby-protocol/get-environment-class-info-tag
+                  (jruby-protocol/get-environment-info-tag
                    jruby-service
-                   environment)))
+                   environment
+                   svc-key)))
         (not-modified-response request-tag)
         (handler request)))))
 

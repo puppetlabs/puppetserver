@@ -479,7 +479,7 @@
     (let [expected-etag "abcd1234"
           body-length 200000
           jruby-service (reify jruby-protocol/JRubyPuppetService
-                          (get-environment-class-info-tag [_ _]
+                          (get-environment-info-tag [_ _ _]
                             expected-etag))
           app (->
                (fn [_]

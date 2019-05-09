@@ -99,6 +99,12 @@
                                  (tk-services/service-context this))]
      (get-in @environment-class-info [env-name :info :classes])))
 
+  (get-environment-info-tag
+   [this env-name info-svc]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (get-in @environment-class-info [env-name :info info-svc])))
+
   (get-environment-class-info-cache-generation-id!
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
