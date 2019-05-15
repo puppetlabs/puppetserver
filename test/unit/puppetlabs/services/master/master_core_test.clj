@@ -115,7 +115,7 @@
             etag #(-> %
                       (class-info-from-jruby->class-info-for-json "production")
                       json/encode
-                      ks/utf8-string->sha1)
+                      ks/utf8-string->sha256)
             map-with-classes #(doto (HashMap.)
                                (.put "classes" %))]
         (testing "returns 200 for environment that exists"

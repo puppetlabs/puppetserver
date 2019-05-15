@@ -594,7 +594,7 @@
    request-tag :- (schema/maybe String)
    cache-version :- (schema/maybe schema/Int)]
   (let [body (cheshire/encode info)
-        tag (ks/utf8-string->sha1 body)]
+        tag (ks/utf8-string->sha256 body)]
     (if (= tag request-tag)
       (not-modified-response tag)
       (do
