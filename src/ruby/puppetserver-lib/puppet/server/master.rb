@@ -37,6 +37,7 @@ class Puppet::Server::Master
                           chain(Puppet::Network::HTTP::API::Master::V3.routes)
     register([master_routes])
     @env_loader = Puppet.lookup(:environments)
+    @transports_loader = Puppet::Util::Autoload.new(self, "puppet/transport/schema")
     @catalog_compiler = Puppet::Server::Compiler.new
   end
 
@@ -78,16 +79,14 @@ class Puppet::Server::Master
   end
 
   def getTransportInfoForEnvironment(env)
-    [{
-      name: "foo_transport",
-      desc: "A mock transport schema",
-      connection_info: {
-        host: {
-          type: "String",
-          desc: "The host"
-        }
-      }
-    }]
+    require 'puppet/resource_api/transport'
+
+    environment = @env_loader.get!(env)
+    Puppet.override({current_environment: environment}) do
+      @transports_loader.loadall(environment)
+      Puppet::Util::Autoload.reload_changed(environment)
+      Puppet::ResourceApi::Transport.list.values.map(&:definition)
+    end
   end
 
   def getModuleInfoForEnvironment(env)

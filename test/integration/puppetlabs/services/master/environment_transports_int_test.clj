@@ -24,17 +24,83 @@
   [(ks/absolute-path jruby-testutils/gem-path)])
 
 
-(def mock-transport
-  {:name "foo_transport"
-    :desc "A mock transport schema"
-    :connection_info {
-      :host {
-        :type "String"
-        :desc "The host"}}})
+(def schema1
+"require 'puppet/resource_api'
 
-(def mock-response
-  {:name "production"
-    :transports [mock-transport]})
+Puppet::ResourceApi.register_transport(
+  name: 'test_device',
+  desc: 'Connects to a device',
+  connection_info: {
+    username:        {
+      type:      'String',
+      desc:      'The name of the resource you want to manage.',
+    },
+    variant_secret: {
+      type:      'Optional[Variant[Array[String], Integer]]',
+      desc:      'An array secret to protect.',
+      sensitive:  true,
+    },
+  },
+) ")
+
+(def schema1-serialized
+  {:name "test_device"
+   :desc "Connects to a device"
+   :connection_info
+   {:username
+    {:type "String"
+     :desc "The name of the resource you want to manage."}
+    :variant_secret
+    {:type "Optional[Variant[Array[String], Integer]]"
+     :desc "An array secret to protect."
+     :sensitive true}}})
+
+(def schema2
+"require 'puppet/resource_api'
+
+Puppet::ResourceApi.register_transport(
+  name: 'another_device',
+  desc: 'Connects to a network device',
+  connection_info: {
+    username:        {
+      type:      'String',
+      desc:      'The name of the resource you want to manage.',
+    },
+    secret: {
+      type:      'String',
+      desc:      'A secret to protect.',
+      sensitive:  true,
+    },
+  },
+)")
+
+(def schema2-serialized
+  {:name "another_device"
+   :desc "Connects to a network device"
+   :connection_info
+   {:username
+    {:type "String"
+     :desc "The name of the resource you want to manage."}
+    :secret
+    {:type "String"
+     :desc "A secret to protect."
+     :sensitive true}}})
+
+(defn mkmod
+  ([] (mkmod "production"))
+  ([env]
+    (let [module-dir (testutils/create-module "test_module"
+                                              {:env-name env})
+          schema-dir (str/join "/"
+                               [module-dir
+                                "lib"
+                                "puppet"
+                                "transport"
+                                "schema"])
+          schema-file (str schema-dir "/test_device.rb")]
+      (fs/mkdirs schema-dir)
+      (spit schema-file schema1)
+      schema-dir)))
 
 (defn purge-env-dir
   []
@@ -115,9 +181,8 @@
          (bootstrap/load-dev-config-with-overrides)
          (ks/dissoc-in [:jruby-puppet
                         :environment-class-cache-enabled]))
-     (let [foo-file (testutils/write-foo-pp-file
-                     "some kind of test data")
-           expected-response mock-response
+     (let [_ (mkmod)
+           expected-response {:name "production" :transports [schema1-serialized]}
            response (get-env-transports "production")]
        (testing "a successful status code is returned"
          (is (= 200 (:status response))
@@ -136,148 +201,126 @@
    {:jruby-puppet {:gem-path gem-path
                    :max-active-instances 1
                    :environment-class-cache-enabled true}}
-   (let [foo-file (str "tbd test data")
-         expected-initial-response (json/encode mock-response)
-         initial-response (get-env-transports "production")
-         initial-etag (response-etag initial-response)
-         initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
-         initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
-     (testing "environment transport cache invalidation for one environment"
-       ;; This test is about ensuring that when the environment-cache
-       ;; endpoint is hit for a single environment that only that the
-       ;; environment class info cached for that environment - but not the
-       ;; info cached for other environments - is invalidated, meaning that
-       ;; the next request for class info for that environment will get fresh
-       ;; data.
-       ;;
-       ;; The test has the following basic steps:
-       ;;
-       ;; 1) Purge the current environment files on disk and hit the
-       ;;    environment-cache endpoint to flush the cache for all
-       ;;    environments, basically to ensure nothing is left around from
-       ;;    other tests.
-       ;; 2) Populate code for the 'test' and 'production' environments and
-       ;;    see that environment_transports queries return the right info for
-       ;;    them.
-       ;; 3) Do one more environment_transports query for each environment,
-       ;;    using the etag from the initial queries, to ensure that a 304
-       ;;    (Not Modified) is returned.
-       ;; 4) Change code on disk for both the 'test' and 'production'
-       ;;    environments.
-       ;; 5) Hit the environment-cache endpoint for the 'production'
-       ;;    environment (but not for the 'test' environment).
-       ;; 6) Do two more environment_transports queries for the 'test' and
-       ;;    'production' environments using the etags from the initial
-       ;;    queries.  Confirm that the information reflects the latest data on
-       ;;    disk for the 'production' environment but still reflects the old
-       ;;    data for the 'test' environment - expected, in this case, because
-       ;;    the 'test' environment was not flushed.
-       (purge-env-dir)
-       (purge-all-env-caches)
-       (let [prod-file (str "test data")
-             test-file (str "test data")
-             production-response-initial (get-env-transports "production")
-             production-etag-initial (response-etag production-response-initial)
-             production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
-             test-response-initial (get-env-transports "test")
-             test-etag-initial (response-etag test-response-initial)
-             test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
-                                                     (response-etag test-response-initial))]
-         (is (= 200 (:status production-response-initial))
+   (testing "environment transport cache invalidation for one environment"
+     ;; This test is about ensuring that when the environment-cache
+     ;; endpoint is hit for a single environment that only that the
+     ;; environment class info cached for that environment - but not the
+     ;; info cached for other environments - is invalidated, meaning that
+     ;; the next request for class info for that environment will get fresh
+     ;; data.
+     ;;
+     ;; The test has the following basic steps:
+     ;;
+     ;; 1) Purge the current environment files on disk and hit the
+     ;;    environment-cache endpoint to flush the cache for all
+     ;;    environments, basically to ensure nothing is left around from
+     ;;    other tests.
+     ;; 2) Populate code for the 'test' and 'production' environments and
+     ;;    see that environment_transports queries return the right info for
+     ;;    them.
+     ;; 3) Do one more environment_transports query for each environment,
+     ;;    using the etag from the initial queries, to ensure that a 304
+     ;;    (Not Modified) is returned.
+     ;; 4) Change code on disk for both the 'test' and 'production'
+     ;;    environments.
+     ;; 5) Hit the environment-cache endpoint for the 'production'
+     ;;    environment (but not for the 'test' environment).
+     ;; 6) Do two more environment_transports queries for the 'test' and
+     ;;    'production' environments using the etags from the initial
+     ;;    queries.  Confirm that the information reflects the latest data on
+     ;;    disk for the 'production' environment but still reflects the old
+     ;;    data for the 'test' environment - expected, in this case, because
+     ;;    the 'test' environment was not flushed.
+     (purge-env-dir)
+     (purge-all-env-caches)
+     (let [prod-schema-dir (mkmod) ;; should this have different content then above?
+           test-schema-dir (mkmod "test")
+           production-response-initial (get-env-transports "production")
+           production-etag-initial (response-etag production-response-initial)
+           production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
+           test-response-initial (get-env-transports "test")
+           test-etag-initial (response-etag test-response-initial)
+           test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
+                                                   (response-etag test-response-initial))]
+       (is (= 200 (:status production-response-initial))
+           (str
+            "unexpected status code for initial production response"
+            "response: "
+            (ks/pprint-to-string production-response-initial)))
+       (is (not (nil? production-etag-initial))
+           "no etag returned for production response")
+       (is (= {:name "production" :transports [schema1-serialized]}
+              (response->map production-response-initial))
+           "unexpected body for production response")
+       (is (= 200 (:status test-response-initial))
+           (str
+            "unexpected status code for initial test response"
+            "response: "
+            (ks/pprint-to-string test-response-initial)))
+       (is (not (nil? test-etag-initial))
+           "no etag returned for test response")
+       (is (= {:name "test" :transports [schema1-serialized]}
+              (response->map test-response-initial))
+           "unexpected body for test response")
+
+       (spit (str prod-schema-dir "/test_device.rb") schema2)
+       (spit (str test-schema-dir "/test_device.rb") schema2)
+
+       (let [production-response-before-flush (get-env-transports
+                                               "production"
+                                               production-etag-initial)
+             test-response-before-flush (get-env-transports
+                                         "test"
+                                         test-etag-initial)]
+         (is (= 304 (:status production-response-before-flush))
              (str
-              "unexpected status code for initial production response"
-              "response: "
-              (ks/pprint-to-string production-response-initial)))
-         (is (not (nil? production-etag-initial))
-             "no etag returned for production response")
-         (is (= mock-response
-                (response->map production-response-initial))
+              "unexpected status code for prod response after code change "
+              "but before flush"))
+         (is (= production-etag-initial-without-gzip-suffix (response-etag
+                                                              production-response-before-flush))
+             "unexpected etag change when no production environment change")
+         (is (empty? (:body production-response-before-flush))
              "unexpected body for production response")
-         (comment
-           "We are currently only returning mock data for prod"
-           (is (= 200 (:status test-response-initial))
+         (is (= 304 (:status test-response-before-flush))
+             (str
+              "unexpected status code for test response after code change "
+              "but before flush"))
+         (is (= test-etag-initial-without-gzip-suffix (response-etag
+                                                        test-response-before-flush))
+             "unexpected etag change when no test environment change")
+         (is (empty? (:body test-response-before-flush))
+             "unexpected body for test response"))
+
+         (purge-env-cache "production")
+         (let [production-response-after-prod-flush (get-env-transports
+                                                     "production"
+                                                     production-etag-initial)
+               production-etag-after-prod-flush (response-etag
+                                                 production-response-after-prod-flush)
+               test-response-after-prod-flush (get-env-transports
+                                               "test"
+                                               test-etag-initial)]
+           (is (= 200 (:status production-response-after-prod-flush))
                (str
-                "unexpected status code for initial test response"
-                "response: "
-                (ks/pprint-to-string test-response-initial)))
-           (is (not (nil? test-etag-initial))
-               "no etag returned for test response")
-           (is (= mock-response
-                  (response->map test-response-initial))
-               "unexpected body for test response"))
-
-         (comment
-           (write-some-test-data "test data")
-           (write-some-test-data "test data")
-
-           "The following tests verify even though we just wrote new data
-           to disk the response is still honoring the cache since it has
-           yet to be purged.
-
-           Since the writing of data is not done, these tests basically
-           repeat the above section of tests. They are left here for a
-           future commit when we write realistic transports to disk"
-
-           (let [production-response-before-flush (get-env-transports
-                                                   "production"
-                                                   production-etag-initial)
-                 test-response-before-flush (get-env-transports
-                                             "test"
-                                             test-etag-initial)]
-             (is (= 304 (:status production-response-before-flush))
-                 (str
-                  "unexpected status code for prod response after code change "
-                  "but before flush"))
-             (is (= production-etag-initial-without-gzip-suffix (response-etag
-                                                                  production-response-before-flush))
-                 "unexpected etag change when no production environment change")
-             (is (empty? (:body production-response-before-flush))
-                 "unexpected body for production response")
-             (is (= 304 (:status test-response-before-flush))
-                 (str
-                  "unexpected status code for test response after code change "
-                  "but before flush"))
-             (is (= test-etag-initial-without-gzip-suffix (response-etag
-                                                            test-response-before-flush))
-                 "unexpected etag change when no test environment change")
-             (is (empty? (:body test-response-before-flush))
-                 "unexpected body for test response")))
-
-           (comment
-             "The following tests require the code that was written _prior_
-             to the previous set of tests. The following tests validate
-             that, once we've purged the cache new data based on those
-             written files will be returned first and then cached."
-             (purge-env-cache "production")
-             (let [production-response-after-prod-flush (get-env-transports
-                                                         "production"
-                                                         production-etag-initial)
-                   production-etag-after-prod-flush (response-etag
-                                                     production-response-after-prod-flush)
-                   test-response-after-prod-flush (get-env-transports
-                                                   "test"
-                                                   test-etag-initial)]
-               (is (= 200 (:status production-response-after-prod-flush))
-                   (str
-                    "unexpected status code for prod response after code change "
-                    "and prod flush"))
-               (is (not (nil? production-etag-after-prod-flush))
-                   "no etag returned for production response")
-               (is (not= production-etag-initial
-                         production-etag-after-prod-flush)
-                   (str
-                    "etag unexpectedly stayed the same even though "
-                    "the production environment changed"))
-               (is (= mock-response
-                      (response->map
-                       production-response-after-prod-flush))
-                   "unexpected body for production response")
-               (is (= 304 (:status test-response-after-prod-flush))
-               (is (= test-etag-initial-without-gzip-suffix (response-etag
-                                                              test-response-after-prod-flush))
-                   "unexpected etag change when test environment not invalidated")
-               (is (empty? (:body test-response-after-prod-flush))
-                   "unexpected body for test response")))))))))
+                "unexpected status code for prod response after code change "
+                "and prod flush"))
+           (is (not (nil? production-etag-after-prod-flush))
+               "no etag returned for production response")
+           (is (not= production-etag-initial
+                     production-etag-after-prod-flush)
+               (str
+                "etag unexpectedly stayed the same even though "
+                "the production environment changed"))
+           (is (= {:name "production" :transports [schema1-serialized schema2-serialized]}
+                  (response->map
+                   production-response-after-prod-flush))
+               "unexpected body for production response")
+           (is (= 304 (:status test-response-after-prod-flush)))
+           (is (= test-etag-initial-without-gzip-suffix (response-etag
+                                                          test-response-after-prod-flush))
+               "unexpected etag change when test environment not invalidated")
+           (is (empty? (:body test-response-after-prod-flush))
+               "unexpected body for test response"))))))
 
 
 (deftest ^:integration environment-transports-integration-cache-enabled-test2
@@ -285,8 +328,8 @@
    {:jruby-puppet {:gem-path gem-path
                    :max-active-instances 1
                    :environment-class-cache-enabled true}}
-   (let [foo-file (str "tbd test data")
-         expected-initial-response mock-response
+   (let [schema-dir (mkmod)
+         expected-initial-response {:name "production" :transports [schema1-serialized]}
          initial-response (get-env-transports "production")
          initial-etag (response-etag initial-response)
          initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
@@ -334,142 +377,131 @@
              "etag changed even though code did not")
          (is (empty? (:body response))
              "unexpected body for response")))
-     (comment
-       "Not valid until we write new data out"
-       (testing (str "environment_transport fetch without if-none-match "
-                     "header includes latest info after code update")
-         (str "test data")
-         (str "test data")
-         (let [baz-file (str "test data")
-               borked-file (str "test data")
-               _ (purge-all-env-caches)
-               response (get-env-transports "production")]
-           (is (= 200 (:status response))
-               (str
-                "unexpected status code for response following code change,"
-                "response: "
-                (ks/pprint-to-string response)))
-           (is (not= initial-etag (response-etag response))
-               "etag did not change even though code did")
-           (is (= mock-response
-                  (response->map response))
-               "unexpected body following code change")))))))
+     (testing (str "environment_transport fetch without if-none-match "
+                   "header includes latest info after code update")
+       (let [_ (spit (str schema-dir "/test_device.rb") schema2)
+             _ (purge-all-env-caches)
+             response (get-env-transports "production")]
+         (is (= 200 (:status response))
+             (str
+              "unexpected status code for response following code change,"
+              "response: "
+              (ks/pprint-to-string response)))
+         (is (not= initial-etag (response-etag response))
+             "etag did not change even though code did")
+         (is (= {:name "production" :transports [schema1-serialized schema2-serialized]}
+                (response->map response))
+             "unexpected body following code change"))))))
 
 
-#_(deftest ^:integration environment-transports-integration-cache-enabled-test3
+(deftest ^:integration environment-transports-integration-cache-enabled-test3
   (bootstrap/with-puppetserver-running app
    {:jruby-puppet {:gem-path gem-path
                    :max-active-instances 1
                    :environment-class-cache-enabled true}}
-   (let [foo-file (str "tbd test data")
-         expected-initial-response mock-response
-         initial-response (get-env-transports "production")
-         initial-etag (response-etag initial-response)
-         initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
-         initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
-     (testing "environment transports cache invalidation for all environments"
-       ;; This test is about ensuring that when the environment-cache
-       ;; endpoint is hit with no environment parameter that any previously
-       ;; cached environment class info is invalidated, meaning that
-       ;; the next request for class info for all environments will get fresh
-       ;; data.
-       ;;
-       ;; To eliminate some of the redundancy between tests, this test doesn't
-       ;; repeat the intermediate step of checking to see that the first two
-       ;; environment queries were cached - 304 (Not Modified) returns -
-       ;; between the first set of environment_transports queries and the second
-       ;; set, done after the code on disk for both environments has changed.
-       ;;
-       ;; The test has the following basic steps:
-       ;;
-       ;; 1) Purge the current environment files on disk and hit the
-       ;;    environment-cache endpoint to flush the cache for all
-       ;;    environments, basically to ensure nothing is left around from
-       ;;    other tests.
-       ;; 2) Populate code for the 'test' and 'production' environments and
-       ;;    see that environment_transports queries return the right info for
-       ;;    them.
-       ;; 3) Change code on disk for both the 'test' and 'production'
-       ;;    environments.
-       ;; 4) Hit the environment-cache endpoint with no environment
-       ;;    parameter, expected to have the effect of flushing the cache for
-       ;;    all environments.
-       ;; 5) Do two more environment_transports queries for the 'test' and
-       ;;    'production' environments with the corresponding etags returned
-       ;;    from the first two queries.  Confirm that the information
-       ;;    reflects the latest data on disk for both environments.
-       (purge-env-dir)
+   (testing "environment transports cache invalidation for all environments"
+     ;; This test is about ensuring that when the environment-cache
+     ;; endpoint is hit with no environment parameter that any previously
+     ;; cached environment class info is invalidated, meaning that
+     ;; the next request for class info for all environments will get fresh
+     ;; data.
+     ;;
+     ;; To eliminate some of the redundancy between tests, this test doesn't
+     ;; repeat the intermediate step of checking to see that the first two
+     ;; environment queries were cached - 304 (Not Modified) returns -
+     ;; between the first set of environment_transports queries and the second
+     ;; set, done after the code on disk for both environments has changed.
+     ;;
+     ;; The test has the following basic steps:
+     ;;
+     ;; 1) Purge the current environment files on disk and hit the
+     ;;    environment-cache endpoint to flush the cache for all
+     ;;    environments, basically to ensure nothing is left around from
+     ;;    other tests.
+     ;; 2) Populate code for the 'test' and 'production' environments and
+     ;;    see that environment_transports queries return the right info for
+     ;;    them.
+     ;; 3) Change code on disk for both the 'test' and 'production'
+     ;;    environments.
+     ;; 4) Hit the environment-cache endpoint with no environment
+     ;;    parameter, expected to have the effect of flushing the cache for
+     ;;    all environments.
+     ;; 5) Do two more environment_transports queries for the 'test' and
+     ;;    'production' environments with the corresponding etags returned
+     ;;    from the first two queries.  Confirm that the information
+     ;;    reflects the latest data on disk for both environments.
+     (purge-env-dir)
+     (purge-all-env-caches)
+     (let [prod-schema-dir (mkmod)
+           test-schema-dir (mkmod "test")
+           production-response-initial (get-env-transports "production")
+           production-etag-initial (response-etag production-response-initial)
+           test-response-initial (get-env-transports "test")
+           test-etag-initial (response-etag test-response-initial)]
+       (is (= 200 (:status production-response-initial))
+           (str
+            "unexpected status code for initial production response"
+            "response: "
+            (ks/pprint-to-string production-response-initial)))
+       (is (not (nil? production-etag-initial))
+           "no etag returned for production response")
+       (is (= {:name "production" :transports [schema1-serialized]}
+              (response->map production-response-initial))
+           "unexpected body for production response")
+       (is (= 200 (:status test-response-initial))
+           (str
+            "unexpected status code for initial test response"
+            "response: "
+            (ks/pprint-to-string test-response-initial)))
+       (is (not (nil? test-etag-initial))
+           "no etag returned for test response")
+       (is (= {:name "test" :transports [schema1-serialized]}
+              (response->map test-response-initial))
+           "unexpected body for test response")
+
+       (spit (str prod-schema-dir "/test_device.rb") schema2)
+       (spit (str test-schema-dir "/test_device.rb") schema2)
        (purge-all-env-caches)
-       (let [prod-file (str "test data")
-             test-file (str "test data")
-             production-response-initial (get-env-transports "production")
-             production-etag-initial (response-etag production-response-initial)
-             test-response-initial (get-env-transports "test")
-             test-etag-initial (response-etag test-response-initial)]
-         (is (= 200 (:status production-response-initial))
+
+       (let [production-response-after-all-flush (get-env-transports
+                                                  "production"
+                                                  production-etag-initial)
+             production-etag-after-all-flush (response-etag
+                                              production-response-after-all-flush)]
+         (is (= 200 (:status production-response-after-all-flush))
              (str
-              "unexpected status code for initial production response"
-              "response: "
-              (ks/pprint-to-string production-response-initial)))
-         (is (not (nil? production-etag-initial))
+              "unexpected status code for prod response after code change "
+              "and all environment flush"))
+         (is (not (nil? production-etag-after-all-flush))
              "no etag returned for production response")
-         (is (= mock-response
-                (response->map production-response-initial))
-             "unexpected body for production response")
-         (is (= 200 (:status test-response-initial))
+         (is (not= production-etag-initial production-etag-after-all-flush)
              (str
-              "unexpected status code for initial test response"
-              "response: "
-              (ks/pprint-to-string test-response-initial)))
-         (is (not (nil? test-etag-initial))
+              "etag unexpectedly stayed the same even though "
+              "the production environment changed"))
+         (is (= {:name "production" :transports [schema1-serialized schema2-serialized]}
+                (response->map
+                 production-response-after-all-flush))
+             "unexpected body for production response"))
+
+       (let [test-response-after-all-flush (get-env-transports
+                                            "test"
+                                            test-etag-initial)
+             test-etag-after-all-flush (response-etag
+                                        test-response-after-all-flush)]
+         (is (= 200 (:status test-response-after-all-flush))
+             (str
+              "unexpected status code for test response after code change "
+              "and all environment flush"))
+         (is (not (nil? test-etag-after-all-flush))
              "no etag returned for test response")
-         (is (= mock-response
-                (response->map test-response-initial))
-             "unexpected body for test response")
-
-         (str "test data")
-         (str "test data")
-         (purge-all-env-caches)
-
-         (let [production-response-after-all-flush (get-env-transports
-                                                    "production"
-                                                    production-etag-initial)
-               production-etag-after-all-flush (response-etag
-                                                production-response-after-all-flush)]
-           (is (= 200 (:status production-response-after-all-flush))
-               (str
-                "unexpected status code for prod response after code change "
-                "and all environment flush"))
-           (is (not (nil? production-etag-after-all-flush))
-               "no etag returned for production response")
-           (is (not= production-etag-initial production-etag-after-all-flush)
-               (str
-                "etag unexpectedly stayed the same even though "
-                "the production environment changed"))
-           (is (= mock-response
-                  (response->map
-                   production-response-after-all-flush))
-               "unexpected body for production response"))
-
-         (let [test-response-after-all-flush (get-env-transports
-                                              "test"
-                                              test-etag-initial)
-               test-etag-after-all-flush (response-etag
-                                          test-response-after-all-flush)]
-           (is (= 200 (:status test-response-after-all-flush))
-               (str
-                "unexpected status code for test response after code change "
-                "and all environment flush"))
-           (is (not (nil? test-etag-after-all-flush))
-               "no etag returned for test response")
-           (is (not= test-etag-initial test-etag-after-all-flush)
-               (str
-                "etag unexpectedly stayed the same even though "
-                "the test environment changed"))
-           (is (= mock-response
-                  (response->map
-                   test-response-after-all-flush))
-               "unexpected body for test response")))))))
+         (is (not= test-etag-initial test-etag-after-all-flush)
+             (str
+              "etag unexpectedly stayed the same even though "
+              "the test environment changed"))
+         (is (= {:name "test" :transports [schema1-serialized schema2-serialized]}
+                (response->map
+                 test-response-after-all-flush))
+             "unexpected body for test response"))))))
 
 (deftest ^:integration
          not-modified-returned-for-environment-transports-info-request-with-gzip-tag
@@ -521,20 +553,14 @@
       (getSetting [_ setting]
         (get puppet-config setting))
       (getClassInfoForEnvironment [_ _]
-        (let [class-info
-              {"/some/file"
-               (doto (HashMap.)
-                 (.put
-                  "classes"
-                  @transports-info-atom))}]
+        (let [class-info {"/some/file" {"classes" "foo"}}]
+          class-info))
+      (getTransportInfoForEnvironment [_ _]
+        (let [a (ArrayList.)]
+          (.add a @transports-info-atom)
           (when-let [promises @wait-atom]
             (deliver (:wait-promise promises) true)
             @(:continue-promise promises))
-          class-info))
-      (getTransportInfoForEnvironment [_ _]
-        (let [a (ArrayList.)
-              t (walk/stringify-keys mock-transport)]
-          (.add a t)
           a))
       (handleRequest [_ _]
         (JRubyPuppetResponse. 0 nil nil nil))
@@ -543,8 +569,8 @@
       (terminate [_]
         (log/info "Terminating Master")))))
 
-#_(deftest ^:integration transports-info-updated-after-cache-flush-during-prior-request
-  (let [transports-info-atom (atom [{"name" "someclass" "params" []}])
+(deftest ^:integration transports-info-updated-after-cache-flush-during-prior-request
+  (let [transports-info-atom (atom {:name "transport1"})
         wait-atom (atom nil)
         config (bootstrap/load-dev-config-with-overrides
                 {:jruby-puppet {:gem-path gem-path
@@ -570,8 +596,7 @@
        (is (true? (deref wait-promise 10000 :timed-out))
            (str "timed out waiting for get transports info call to be reached "
                 "in mock jrubypuppet instance"))
-       (reset! transports-info-atom [{"name" "updatedclass"
-                                 "params" []}])
+       (reset! transports-info-atom {:name "transport2"})
        (purge-env-cache "production")
        (deliver continue-promise true)
        (let [initial-response @initial-response-future
@@ -588,7 +613,7 @@
                 (ks/pprint-to-string initial-response)))
            (is (not (nil? initial-response-etag))
                "no etag returned for initial response")
-           (is (= mock-response
+           (is (= {:name "production" :transports [{:name "transport1"}]}
                   (response->map initial-response))
                "unexpected body for initial response"))
          (testing (str "transports info updated properly for "
@@ -602,6 +627,6 @@
            (is (not= initial-response-etag
                      (response-etag response-after-update))
                "unexpected etag for response after update")
-           (is (= mock-response
+           (is (= {:name "production" :transports [{:name "transport2"}]}
                   (response->map response-after-update))
                "unexpected body for response after update")))))))
