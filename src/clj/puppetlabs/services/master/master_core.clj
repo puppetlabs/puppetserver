@@ -199,8 +199,7 @@
   This function was copypasta'd from clj-kitchensink's core/sort-nested-maps.
   sort-nested-maps can only deep sort a structure that contains native Clojure
   types, whereas this function includes a couple of changes which handle the
-  sorting of the data structure returned from JRuby for a call to get
-  environment class info:
+  sorting of the data structure returned from JRuby:
 
   1) This function sorts keys within any `java.util.Map`, as opposed to just an
      object for which `map?` returns true.
@@ -574,8 +573,9 @@
   raw-transports->response-map
   [data :- List
    env :- schema/Str]
-  {:name env
-   :transports data})
+  (sort-nested-info-maps
+    {:name env
+     :transports data}))
 
 (schema/defn ^:always-validate
   check-cache! :- ringutils/RingResponse
