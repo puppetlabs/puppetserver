@@ -314,27 +314,16 @@
     (update original-environment-info-entry :cache-generation-id inc)
     (environment-info-entry)))
 
-(schema/defn ^:always-validate update-environment-info-entry
-  :- EnvironmentInfoCacheEntry
-  "Return the supplied 'original-environment-info-entry', only updated
-  with the supplied tag and a cache-generation-id value that has been
-  incremented."
-  [original-environment-info-entry :-
-   (schema/maybe EnvironmentInfoCacheEntry)
-   tag :- (schema/maybe schema/Str)]
-  (-> original-environment-info-entry
-      inc-cache-generation-id-for-info-entry
-      (assoc-in [:info :classes] tag)))
-
 (schema/defn ^:always-valid invalidate-environment-info-entry
   :- EnvironmentInfoCacheEntry
   "Return the supplied 'original-environment-info-entry', only updated
   with nil tags and a cache-generation-id value that has been incremented."
   [original-environment-info-entry :-
    (schema/maybe EnvironmentInfoCacheEntry)]
-  (update-environment-info-entry
-   original-environment-info-entry
-   nil))
+  (-> original-environment-info-entry
+    inc-cache-generation-id-for-info-entry
+    (assoc-in [:info :classes] nil)
+    (assoc-in [:info :transports] nil)))
 
 (schema/defn ^:always-validate
   environment-info-cache-with-invalidated-entry
@@ -370,9 +359,9 @@
   (let [cache-entry (get environment-info-cache env-name)]
     (if (= (:cache-generation-id cache-entry)
            cache-generation-id-before-tag-computed)
-      (assoc environment-info-cache
-        env-name
-        (update-environment-info-entry cache-entry tag))
+      (-> environment-info-cache
+        (assoc-in [env-name :info :classes] tag)
+        (update-in [env-name :cache-generation-id] inc))
       environment-info-cache)))
 
 (schema/defn ^:always-validate
