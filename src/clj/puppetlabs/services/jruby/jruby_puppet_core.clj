@@ -284,10 +284,8 @@
 (def EnvironmentInfoCacheEntry
   "Data structure that holds per-environment cache information for the
   environment info services cache"
-  {:info
-   {:classes (schema/maybe schema/Str)
-    :transports (schema/maybe schema/Str)}
-   :cache-generation-id schema/Int})
+  {:classes {:tag (schema/maybe schema/Str) :version schema/Int}
+   :transports {:tag (schema/maybe schema/Str) :version schema/Int}})
 
 (def EnvironmentInfoCache
   "Data structure for the environment_classes info cache"
@@ -298,21 +296,8 @@
   "Create an environment info entry.  The return value will have a nil
   tags for each service and cache-generation-id set to 1."
   []
-  {:info
-   {:classes nil :transports nil}
-   :cache-generation-id 1})
-
-(schema/defn ^:always-validate inc-cache-generation-id-for-info-entry
-  :- EnvironmentInfoCacheEntry
-  "Return the supplied 'original-environment-info-entry' info service entry,
-  only updated with a cache-generation-id value that has been incremented.
-  If the supplied parameter is nil, the return value will have service tags set
-  to nil and cache-generation-id set to 1."
-  [original-environment-info-entry :-
-   (schema/maybe EnvironmentInfoCacheEntry)]
-  (if original-environment-info-entry
-    (update original-environment-info-entry :cache-generation-id inc)
-    (environment-info-entry)))
+  {:classes {:tag nil :version 1}
+   :transports {:tag nil :version 1}})
 
 (schema/defn ^:always-valid invalidate-environment-info-entry
   :- EnvironmentInfoCacheEntry
@@ -320,10 +305,11 @@
   with nil tags and a cache-generation-id value that has been incremented."
   [original-environment-info-entry :-
    (schema/maybe EnvironmentInfoCacheEntry)]
-  (-> original-environment-info-entry
-    inc-cache-generation-id-for-info-entry
-    (assoc-in [:info :classes] nil)
-    (assoc-in [:info :transports] nil)))
+  (-> (or original-environment-info-entry (environment-info-entry))
+    (update-in [:classes :version] inc)
+    (update-in [:transports :version] inc)
+    (assoc-in [:classes :tag] nil)
+    (assoc-in [:transports :tag] nil)))
 
 (schema/defn ^:always-validate
   environment-info-cache-with-invalidated-entry
@@ -356,17 +342,16 @@
    env-name :- schema/Str
    tag :- (schema/maybe schema/Str)
    cache-generation-id-before-tag-computed :- schema/Int]
-  (let [cache-entry (get environment-info-cache env-name)]
-    (if (= (:cache-generation-id cache-entry)
-           cache-generation-id-before-tag-computed)
-      (-> environment-info-cache
-        (assoc-in [env-name :info :classes] tag)
-        (update-in [env-name :cache-generation-id] inc))
-      environment-info-cache)))
+  (if (= (get-in environment-info-cache [env-name :classes :version])
+         cache-generation-id-before-tag-computed)
+    (-> environment-info-cache
+      (assoc-in [env-name :classes :tag] tag)
+      (update-in [env-name :classes :version] inc))
+    environment-info-cache))
 
 (schema/defn ^:always-validate
   environment-info-cache-updated-with-tag :- EnvironmentInfoCache
-  "Return the supplied environment class info cache argument, updated per
+  "Return the supplied environment info cache argument, updated per
   supplied arguments.  cache-generation-id-before-tag-computed should represent
   what the client received for a
   'get-environment-class-info-cache-generation-id!' call for the environment,
@@ -383,10 +368,12 @@
    svc-id :- schema/Keyword
    tag :- (schema/maybe schema/Str)
    prior-cache-id :- schema/Int]
-  (let [cache-entry (get environment-info-cache env-name)]
-    (if (= (:cache-generation-id cache-entry) prior-cache-id)
-      (assoc-in environment-info-cache [env-name :info svc-id] tag)
-      environment-info-cache)))
+  (if (= (get-in environment-info-cache [env-name svc-id :version])
+         prior-cache-id)
+    (-> environment-info-cache
+        (assoc-in [env-name svc-id :tag] tag)
+        (update-in [env-name svc-id :version] inc))
+    environment-info-cache))
 
 (schema/defn ^:always-validate
   add-environment-info-cache-entry-if-not-present!
@@ -412,7 +399,21 @@
   (-> (add-environment-info-cache-entry-if-not-present!
        environment-info-cache
        env-name)
-      (get-in [env-name :cache-generation-id])))
+      (get-in [env-name :classes :version])))
+
+(schema/defn ^:always-validate
+  get-environment-cache-version! :- schema/Int
+  "Get the current cache version for a specific service's cache within an
+  environment.  If no entry for the environment had existed at the point
+  this function was called this function would, as a side effect, populate
+  a new entry for that environment into the cache."
+  [environment-info-cache :- (schema/atom EnvironmentInfoCache)
+   env-name :- schema/Str
+   info-service :- schema/Keyword]
+  (-> (add-environment-info-cache-entry-if-not-present!
+       environment-info-cache
+       env-name)
+      (get-in [env-name info-service :version])))
 
 (schema/defn ^:always-validate
   mark-environment-expired!

@@ -39,10 +39,18 @@
 
   (get-environment-class-info-cache-generation-id!
     [this env-name]
-    "Get the current cache generation id for a specific environment's class
+    "DEPRECATED
+    Get the current cache generation id for a specific environment's class
     info.  If no entry for the environment had existed at the point this
     function was called this function would, as a side effect, populate a new
     entry for that environment into the cache.")
+
+  (get-environment-cache-version!
+    [this env-name info-svc]
+    "Get the current cache version for a specific service's cache within an
+    environment.  If no entry for the environment had existed at the point
+    this function was called this function would, as a side effect, populate
+    a new entry for that environment into the cache.")
 
   (set-environment-class-info-tag!
     [this env-name tag cache-generation-id-before-tag-computed]

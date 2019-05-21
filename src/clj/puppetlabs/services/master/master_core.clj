@@ -618,9 +618,10 @@
     (let [env (jruby-request/get-environment-from-request request)
           svc-id (info-service request)
           cache-id
-           (jruby-protocol/get-environment-class-info-cache-generation-id!
+           (jruby-protocol/get-environment-cache-version!
             jruby-service
-            env)]
+            env
+            svc-id)]
       (if-let [info (info-fn (:jruby-instance request) env)]
         (let [known-tag (if-none-match-from-request request)]
           (if cache-enabled?

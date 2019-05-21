@@ -97,13 +97,13 @@
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get-in @environment-class-info [env-name :info :classes])))
+     (get-in @environment-class-info [env-name :classes :tag])))
 
   (get-environment-info-tag
    [this env-name info-svc]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get-in @environment-class-info [env-name :info info-svc])))
+     (get-in @environment-class-info [env-name info-svc :tag])))
 
   (get-environment-class-info-cache-generation-id!
    [this env-name]
@@ -112,6 +112,15 @@
      (core/get-environment-class-info-cache-generation-id!
       environment-class-info
       env-name)))
+
+  (get-environment-cache-version!
+   [this env-name info-svc]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (core/get-environment-cache-version!
+      environment-class-info
+      env-name
+      info-svc)))
 
   (set-environment-class-info-tag!
    [this env-name tag cache-generation-id-before-tag-computed]
