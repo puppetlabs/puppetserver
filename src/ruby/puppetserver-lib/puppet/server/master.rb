@@ -84,7 +84,6 @@ class Puppet::Server::Master
     environment = @env_loader.get!(env)
     Puppet.override({current_environment: environment}) do
       @transports_loader.loadall(environment)
-      Puppet::Util::Autoload.reload_changed(environment)
       Puppet::ResourceApi::Transport.list.values.map(&:definition)
     end
   end
