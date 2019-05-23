@@ -87,7 +87,7 @@
 
   (compile-ast
     [this jruby-instance compile-options]
-    {:foo "bar"})
+    (.compileAST jruby-instance compile-options))
 
   (get-environment-module-info
     [this jruby-instance env-name]

@@ -22,6 +22,7 @@ public interface JRubyPuppet {
     List getTransportInfoForEnvironment(String environment);
     List getModuleInfoForEnvironment(String environment);
     Map compileCatalog(Map requestBody);
+    Map compileAST(Map compileOptions);
     Map getModuleInfoForAllEnvironments();
     JRubyPuppetResponse handleRequest(Map request);
     Object getSetting(String setting);

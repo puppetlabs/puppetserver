@@ -68,6 +68,10 @@ class Puppet::Server::Master
     @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
   end
 
+  def compileAST(compile_options)
+    {mock: "data"}
+  end
+
   def getClassInfoForEnvironment(env)
     environment = @env_loader.get(env)
     unless environment.nil?
