@@ -720,16 +720,8 @@
          :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
-(defn decode-catalog-post-body
-  [body]
-  (let [parameters
-        (try+
-          (json/decode body false)
-          (catch JsonParseException e
-            (throw+ {:kind :bad-request
-                     :msg (format "Error parsing JSON: %s" e)})))]
-    (schema/validate
-     {(schema/required-key "certname") schema/Str
+(def CatalogRequestV4
+  {(schema/required-key "certname") schema/Str
       (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
                                            (schema/required-key "catalog") schema/Bool}
       (schema/required-key "environment") schema/Str
@@ -738,8 +730,17 @@
       (schema/optional-key "job_id") schema/Str
       (schema/optional-key "transaction_uuid") schema/Str
       (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
-                                       (schema/optional-key "prefer_requested_environment") schema/Bool}}
-     parameters)
+                                       (schema/optional-key "prefer_requested_environment") schema/Bool}})
+
+(defn valid-body
+  [body schema]
+  (let [parameters
+        (try+
+          (json/decode body false)
+          (catch JsonParseException e
+            (throw+ {:kind :bad-request
+                     :msg (format "Error parsing JSON: %s" e)})))]
+    (schema/validate schema parameters)
     parameters))
 
 (schema/defn ^:always-validate
@@ -747,7 +748,10 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    current-code-id-fn :- IFn]
   (fn [request]
-    (let [request-options (decode-catalog-post-body (slurp (:body request)))]
+    (let [request-options (-> request
+                              :body
+                              slurp
+                              (valid-body CatalogRequestV4))]
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/encode
