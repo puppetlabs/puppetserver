@@ -392,25 +392,24 @@
                      set))))))))
 
 (deftest v4-routes-test
-  (testing "catalog endpoint"
-    (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
-                  jruby-core/return-to-pool (fn [_ _ _] #())]
-      (let [jruby-service (reify jruby/JRubyPuppetService
-                            (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
-                                                   (jruby-core/initialize-config {:gem-home "bar"
-                                                                                  :gem-path "bar:foobar"
-                                                                                  :ruby-load-path ["foo"]})))
-                            (compile-catalog [_ _ _] {:cool "catalog"}))
-            handler (fn ([req] {:request req}))
-            app (build-ring-handler handler "1.2.3" jruby-service)
-            request (partial app-request app)
-            response (app (-> {:request-method :post
-                               :uri "/v4/catalog"
-                               :content-type "application/json"}
-                              (ring-mock/body (json/encode {:certname "foo"
-                                                            :environment "production"
-                                                            :persistence
-                                                            {:catalog true
-                                                             :facts true}}))))]
-        (is (= 200 (:status response)))
-        (is (= {:cool "catalog"} (json/decode (:body response) true)))))))
+  (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
+                jruby-core/return-to-pool (fn [_ _ _] #())]
+    (let [jruby-service (reify jruby/JRubyPuppetService
+                          (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
+                                                 (jruby-core/initialize-config {:gem-home "bar"
+                                                                                :gem-path "bar:foobar"
+                                                                                :ruby-load-path ["foo"]})))
+                          (compile-catalog [_ _ _] {:cool "catalog"}))
+          handler (fn ([req] {:request req}))
+          app (build-ring-handler handler "1.2.3" jruby-service)]
+      (testing "catalog endpoint"
+          (let [response (app (-> {:request-method :post
+                                   :uri "/v4/catalog"
+                                   :content-type "application/json"}
+                                  (ring-mock/body (json/encode {:certname "foo"
+                                                                :environment "production"
+                                                                :persistence
+                                                                {:catalog true
+                                                                 :facts true}}))))]
+            (is (= 200 (:status response)))
+            (is (= {:cool "catalog"} (json/decode (:body response) true))))))))
