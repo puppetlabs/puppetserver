@@ -722,15 +722,27 @@
 
 (def CatalogRequestV4
   {(schema/required-key "certname") schema/Str
-      (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
-                                           (schema/required-key "catalog") schema/Bool}
-      (schema/required-key "environment") schema/Str
-      (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "job_id") schema/Str
-      (schema/optional-key "transaction_uuid") schema/Str
-      (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
-                                       (schema/optional-key "prefer_requested_environment") schema/Bool}})
+   (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
+                                        (schema/required-key "catalog") schema/Bool}
+   (schema/required-key "environment") schema/Str
+   (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "job_id") schema/Str
+   (schema/optional-key "transaction_uuid") schema/Str
+   (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                    (schema/optional-key "prefer_requested_environment") schema/Bool}})
+
+(def CompileRequest
+  {(schema/required-key "certname") schema/Str
+   (schema/required-key "environment") schema/Str
+   (schema/required-key "code_ast") schema/Str
+   (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/required-key "variables") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "job_id") schema/Str
+   (schema/optional-key "transaction_uuid") schema/Str
+   (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                    (schema/optional-key "log_level") (schema/enum "debug" "info" "warn")}})
 
 (defn valid-body
   [body schema]
@@ -765,9 +777,20 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    current-code-id-fn :- IFn]
   (fn [request]
-    {:status 200
-     :headers {"Content-Type" "application/json"}
-     :body (json/encode {:foo "bar"})}))
+    (let [env (jruby-request/get-environment-from-request request)
+          request-options (-> request
+                              :body
+                              slurp
+                              (valid-body CompileRequest))
+          compile-options (assoc request-options
+                                 "code_id"
+                                 (current-code-id-fn env))]
+      {:status 200
+       :headers {"Content-Type" "application/json"}
+       :body (json/encode
+               (jruby-protocol/compile jruby-service
+                                       (:jruby-instance request)
+                                       compile-options))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn

@@ -399,7 +399,8 @@
                                                  (jruby-core/initialize-config {:gem-home "bar"
                                                                                 :gem-path "bar:foobar"
                                                                                 :ruby-load-path ["foo"]})))
-                          (compile-catalog [_ _ _] {:cool "catalog"}))
+                          (compile-catalog [_ _ _] {:cool "catalog"})
+                          (compile [_ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
       (testing "catalog endpoint"
