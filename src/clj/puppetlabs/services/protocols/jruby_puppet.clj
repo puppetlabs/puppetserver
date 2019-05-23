@@ -88,7 +88,7 @@
     [this jruby-instance request-options]
     "Compile the catalog for a given certname")
 
-  (compile
+  (compile-ast
     [this jruby-instance compile-options]
     "Compiles arbitrary Puppet ASTs into mini catalogs")
 

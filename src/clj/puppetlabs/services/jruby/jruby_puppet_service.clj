@@ -85,7 +85,7 @@
    [this jruby-instance request-options]
    (.compileCatalog jruby-instance request-options))
 
-  (compile
+  (compile-ast
     [this jruby-instance compile-options]
     {:foo "bar"})
 

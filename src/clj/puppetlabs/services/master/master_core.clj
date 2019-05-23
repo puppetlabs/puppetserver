@@ -788,9 +788,9 @@
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/encode
-               (jruby-protocol/compile jruby-service
-                                       (:jruby-instance request)
-                                       compile-options))})))
+               (jruby-protocol/compile-ast jruby-service
+                                           (:jruby-instance request)
+                                           compile-options))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
