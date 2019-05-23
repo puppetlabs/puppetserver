@@ -761,12 +761,30 @@
                                                      "code_id"
                                                      (current-code-id-fn (jruby-request/get-environment-from-request request)))))})))
 
+(schema/defn ^:always-validate compile-fn :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   current-code-id-fn :- IFn]
+  (fn [request]
+    {:status 200
+     :headers {"Content-Type" "application/json"}
+     :body (json/encode {:foo "bar"})}))
+
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
   (-> (v4-catalog-fn jruby-service current-code-id-fn)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      wrap-with-jruby-queue-limit
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  compile-handler :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   wrap-with-jruby-queue-limit :- IFn
+   current-code-id-fn :- IFn]
+  (-> (compile-fn jruby-service current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
@@ -877,13 +895,19 @@
   (let [v4-catalog-handler (v4-catalog-handler
                              jruby-service
                              wrap-with-jruby-queue-limit
-                             current-code-id-fn)]
+                             current-code-id-fn)
+        compile-handler' (compile-handler
+                           jruby-service
+                           wrap-with-jruby-queue-limit
+                           current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request)))
+                         (v4-catalog-handler request))
+            (comidi/POST "/compile" request
+                         (compile-handler' request)))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate

@@ -412,4 +412,15 @@
                                                                 {:catalog true
                                                                  :facts true}}))))]
             (is (= 200 (:status response)))
-            (is (= {:cool "catalog"} (json/decode (:body response) true))))))))
+            (is (= {:cool "catalog"} (json/decode (:body response) true)))))
+      (testing "compile endpoint"
+        (let [response (app (-> {:request-method :post
+                                 :uri "/v4/compile"
+                                 :content-type "application/json"}
+                                (ring-mock/body (json/encode {:certname "foo"
+                                                              :environment "production"
+                                                              :code_ast "{\"__pcore_something\": \"Foo\"}"
+                                                              :facts {:values {}}
+                                                              :trusted_facts {:values {}}
+                                                              :variables {:values {}}}))))]
+          (is (= 200 (:status response))))))))
