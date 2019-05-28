@@ -7,7 +7,7 @@ canonical: "/puppetserver/latest/compatibility_with_puppet_agent.html"
 [ca.conf]: ./config_file_ca.markdown
 [auth.conf]: https://puppet.com/docs/puppet/latest/config_file_auth.html
 [future parser]: https://docs.puppet.com/puppet/3.8/experiments_future.html
-[upgrade puppet]: https://puppet.com/docs/puppet/latest/upgrade_major_pre.html
+[upgrade puppet]: https://puppet.com/docs/puppet/5.5/upgrade_major_pre.html
 [deprecated]: https://docs.puppet.com/puppetserver/2.2/deprecated_features.html
 [Puppet Server `auth.conf` documentation]: ./config_file_auth.markdown
 
