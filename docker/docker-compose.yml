@@ -23,6 +23,7 @@ services:
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
     environment:
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
+      - PUPPETSERVER_HOSTNAME=compiler.test
       - CA_ENABLED=false
       - CA_HOSTNAME=puppet.test
       - PUPPET_STORECONFIGS=false
