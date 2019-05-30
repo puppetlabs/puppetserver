@@ -117,8 +117,8 @@ Puppet::ResourceApi.register_transport(
        (terminate [_]
          (log/info "Terminating Master"))))))
 
-(defn mkmod
-  ([] (mkmod "production"))
+(defn make-module
+  ([] (make-module "production"))
   ([env]
     (let [module-dir (testutils/create-module "test_module"
                                               {:env-name env})
@@ -278,8 +278,8 @@ Puppet::ResourceApi.register_transport(
        ;;    the 'test' environment was not flushed.
        (purge-env-dir)
        (purge-all-env-caches)
-       (let [;; prod-schema-dir (mkmod)
-             ;; test-schema-dir (mkmod "test")
+       (let [;; prod-schema-dir (make-module)
+             ;; test-schema-dir (make-module "test")
              production-response-initial (get-env-transports "production")
              production-etag-initial (response-etag production-response-initial)
              production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
@@ -383,7 +383,7 @@ Puppet::ResourceApi.register_transport(
       config
       mock-jruby-fn)
      config
-     (let [;; schema-dir (mkmod)
+     (let [;; schema-dir (make-module)
            expected-initial-response {:name "production" :transports [schema1-serialized]}
            initial-response (get-env-transports "production")
            initial-etag (response-etag initial-response)
@@ -497,8 +497,8 @@ Puppet::ResourceApi.register_transport(
        ;;    reflects the latest data on disk for both environments.
        (purge-env-dir)
        (purge-all-env-caches)
-       (let [;; prod-schema-dir (mkmod)
-             ;; test-schema-dir (mkmod "test")
+       (let [;; prod-schema-dir (make-module)
+             ;; test-schema-dir (make-module "test")
              production-response-initial (get-env-transports "production")
              production-etag-initial (response-etag production-response-initial)
              test-response-initial (get-env-transports "test")
@@ -577,14 +577,14 @@ Puppet::ResourceApi.register_transport(
     (let [expected-etag "abcd1234"
           body-length 200000
           jruby-service (reify jruby-protocol/JRubyPuppetService
-                          (get-environment-info-tag [_ _ _]
+                          (get-cached-info-tag [_ _ _]
                             expected-etag))
           app (->
                (fn [_]
                  (master-core/response-with-etag
                   (apply str (repeat body-length "a"))
                   expected-etag))
-               (master-core/wrap-with-etag-check jruby-service))]
+               (master-core/wrap-with-cache-check jruby-service))]
       (jetty9/with-test-webserver
        app
        port

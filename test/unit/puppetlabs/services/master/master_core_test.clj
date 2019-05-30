@@ -106,9 +106,9 @@
                             (get-environment-class-info [_ _ env]
                               (if (= env "production")
                                 {}))
-                            (get-environment-cache-version!
+                            (get-cached-content-version
                               [_ _ _])
-                            (set-environment-info-tag! [_ _ _ _ _]))
+                            (set-cache-info-tag! [_ _ _ _ _]))
             handler (fn ([req] {:request req}))
             app (build-ring-handler handler "1.2.3" jruby-service)
             request (partial app-request app)

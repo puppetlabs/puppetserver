@@ -99,11 +99,11 @@
                                  (tk-services/service-context this))]
      (get-in @environment-class-info [env-name :classes :tag])))
 
-  (get-environment-info-tag
-   [this env-name info-svc]
+  (get-cached-info-tag
+   [this env-name info-service]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get-in @environment-class-info [env-name info-svc :tag])))
+     (get-in @environment-class-info [env-name info-service :tag])))
 
   (get-environment-class-info-cache-generation-id!
    [this env-name]
@@ -113,14 +113,14 @@
       environment-class-info
       env-name)))
 
-  (get-environment-cache-version!
-   [this env-name info-svc]
+  (get-cached-content-version
+   [this env-name info-service]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (core/get-environment-cache-version!
+     (core/get-cached-content-version
       environment-class-info
       env-name
-      info-svc)))
+      info-service)))
 
   (set-environment-class-info-tag!
    [this env-name tag cache-generation-id-before-tag-computed]
@@ -132,16 +132,16 @@
             tag
             cache-generation-id-before-tag-computed)))
 
-  (set-environment-info-tag!
-   [this env-name info-id tag initial-cache-id]
+  (set-cache-info-tag!
+   [this env-name info-service-id tag initial-content-version]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
      (swap! environment-class-info
-            core/environment-info-cache-updated-with-tag
+            core/maybe-update-environment-info-service-cache
             env-name
-            info-id
+            info-service-id
             tag
-            initial-cache-id)))
+            initial-content-version)))
 
   (get-task-data
    [this jruby-instance env-name module-name task-name]

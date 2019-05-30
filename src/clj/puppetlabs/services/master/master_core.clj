@@ -547,13 +547,14 @@
            (str/replace resource-component "/" "")))))
 
 (schema/defn ^:always-validate
-  wrap-with-etag-check :- IFn
+  wrap-with-cache-check :- IFn
   "Middleware function which validates whether or not the If-None-Match
   header on an incoming cacheable request matches the last Etag
-  computed for the environment whose info is being requested.  If the two
-  match, the middleware function returns an HTTP 304 (Not Modified) Ring
-  response.  If the two do not match, the request is threaded through to the
-  supplied 'f' function."
+  computed for the environment whose info is being requested.
+
+  If the two match, the middleware function returns an HTTP 304 (Not Modified)
+  Ring response.  If the two do not match, the request is threaded through to
+  the supplied handler function."
   [handler :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
   (fn [request]
@@ -562,7 +563,7 @@
           request-tag (if-none-match-from-request request)]
       (if (and request-tag
                (= request-tag
-                  (jruby-protocol/get-environment-info-tag
+                  (jruby-protocol/get-cached-info-tag
                    jruby-service
                    environment
                    svc-key)))
@@ -577,68 +578,69 @@
     {:name env
      :transports data}))
 
-(schema/defn ^:always-validate
-  check-cache! :- ringutils/RingResponse
-  "Updates cache if new data does not match previous data
+(schema/defn ^:always-validate maybe-update-cache! :- ringutils/RingResponse
+  "Updates cached etag for a given info service if the etag is different
+  than the etag requested.
 
-  We must use the cache version generated at the start of the request.
-  The cache will check to see that the version given to it is the same
-  as its internal version (eg that it hasn't been reset since handing
-  out that version). If the given and internal versions do not match the
-  request to set the tag is ignored, if they match the tag is stored and
-  the internal version is incremented."
+  Note, the content version at the time of etag computation must be supplied,
+  the jruby service will only update the cache if the current content
+  version of the cache has not changed while the etag was being computed."
   [info :- {schema/Any schema/Any}
    env :- schema/Str
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    svc-key :- (schema/maybe schema/Keyword)
    request-tag :- (schema/maybe String)
-   cache-version :- (schema/maybe schema/Int)]
+   content-version :- (schema/maybe schema/Int)]
   (let [body (cheshire/encode info)
         tag (ks/utf8-string->sha256 body)]
     (if (= tag request-tag)
       (not-modified-response tag)
       (do
-        (jruby-protocol/set-environment-info-tag!
+        (jruby-protocol/set-cache-info-tag!
          jruby-service
          env
          svc-key
          tag
-         cache-version)
+         content-version)
         (-> (response-with-etag body tag)
             (rr/content-type "application/json"))))))
 
 (schema/defn ^:always-validate
-  mk-cacheable-handler :- IFn
-  "Given a retrieval fn of the jruby protocol, builds a handler for fn that
-  honors the environment cache."
+  make-cacheable-handler :- IFn
+  "Given a function to retrieve information from the jruby protocol
+  (referred to as an info service), builds a handler that honors the
+  environment cache."
   [info-fn :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    cache-enabled? :- schema/Bool]
   (fn [request]
     (let [env (jruby-request/get-environment-from-request request)
-          svc-id (info-service request)
-          cache-id
-           (jruby-protocol/get-environment-cache-version!
-            jruby-service
-            env
-            svc-id)]
+          service-id (info-service request)
+          content-version (jruby-protocol/get-cached-content-version
+                           jruby-service
+                           env
+                           service-id)]
       (if-let [info (info-fn (:jruby-instance request) env)]
         (let [known-tag (if-none-match-from-request request)]
           (if cache-enabled?
-            (check-cache! info env jruby-service svc-id known-tag cache-id)
+            (maybe-update-cache! info
+                                 env
+                                 jruby-service
+                                 service-id
+                                 known-tag
+                                 content-version)
             (middleware-utils/json-response 200 info)))
         (environment-not-found env)))))
 
 (schema/defn ^:always-validate
-  wrap-cacheable-environment-info-handler :- IFn
-  "Calls the creation of a cacheable environment info handler and
-  wraps it in appropriate middleware."
+  create-cacheable-info-handler-with-middleware :- IFn
+  "Creates a cacheable info handler and wraps it in appropriate middleware."
   [info-fn :- IFn
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    cache-enabled :- schema/Bool]
-  (-> (mk-cacheable-handler info-fn jruby-service cache-enabled)
+  (-> (make-cacheable-handler info-fn jruby-service cache-enabled)
    (jruby-request/wrap-with-jruby-instance jruby-service)
-   (wrap-with-etag-check jruby-service)
+   (wrap-with-cache-check jruby-service)
    jruby-request/wrap-with-environment-validation
    jruby-request/wrap-with-error-handling))
 
@@ -822,7 +824,7 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    cache-enabled :- schema/Bool]
-  (let [class-handler (wrap-cacheable-environment-info-handler
+  (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
                                   (jruby-protocol/get-environment-class-info jruby env)
@@ -834,7 +836,7 @@
 
         tasks-handler (all-tasks-handler jruby-service)
 
-        transport-handler (wrap-cacheable-environment-info-handler
+        transport-handler (create-cacheable-info-handler-with-middleware
                             (fn [jruby env]
                               (some-> jruby-service
                                       (jruby-protocol/get-environment-transport-info jruby env)
