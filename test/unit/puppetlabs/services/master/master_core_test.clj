@@ -106,20 +106,16 @@
                             (get-environment-class-info [_ _ env]
                               (if (= env "production")
                                 {}))
-                            (get-environment-class-info-cache-generation-id!
-                              [_ _])
-                            (set-environment-class-info-tag! [_ _ _ _]))
+                            (get-cached-content-version
+                              [_ _ _])
+                            (set-cache-info-tag! [_ _ _ _ _]))
             handler (fn ([req] {:request req}))
             app (build-ring-handler handler "1.2.3" jruby-service)
             request (partial app-request app)
             etag #(-> %
-                      (environment-class-response!
-                       "production"
-                       jruby-service
-                       nil
-                       nil
-                       true)
-                      (rr/get-header "Etag"))
+                      (class-info-from-jruby->class-info-for-json "production")
+                      json/encode
+                      ks/utf8-string->sha256)
             map-with-classes #(doto (HashMap.)
                                (.put "classes" %))]
         (testing "returns 200 for environment that exists"

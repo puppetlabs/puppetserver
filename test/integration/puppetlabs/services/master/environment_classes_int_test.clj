@@ -568,14 +568,14 @@
     (let [expected-etag "abcd1234"
           body-length 200000
           jruby-service (reify jruby-protocol/JRubyPuppetService
-                          (get-environment-class-info-tag [_ _]
+                          (get-cached-info-tag [_ _ _]
                             expected-etag))
           app (->
                (fn [_]
                  (master-core/response-with-etag
                   (apply str (repeat body-length "a"))
                   expected-etag))
-               (master-core/wrap-with-etag-check jruby-service))]
+               (master-core/wrap-with-cache-check jruby-service))]
       (jetty9/with-test-webserver
        app
        port

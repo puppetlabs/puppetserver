@@ -37,6 +37,7 @@ class Puppet::Server::Master
                           chain(Puppet::Network::HTTP::API::Master::V3.routes)
     register([master_routes])
     @env_loader = Puppet.lookup(:environments)
+    @transports_loader = Puppet::Util::Autoload.new(self, "puppet/transport/schema")
     @catalog_compiler = Puppet::Server::Compiler.new
   end
 
@@ -74,6 +75,16 @@ class Puppet::Server::Master
       classes_per_env =
           Puppet::InfoService::ClassInformationService.new.classes_per_environment(environments)
       classes_per_env[env]
+    end
+  end
+
+  def getTransportInfoForEnvironment(env)
+    require 'puppet/resource_api/transport'
+
+    environment = @env_loader.get!(env)
+    Puppet.override({current_environment: environment}) do
+      @transports_loader.loadall(environment)
+      Puppet::ResourceApi::Transport.list.values.map(&:definition)
     end
   end
 

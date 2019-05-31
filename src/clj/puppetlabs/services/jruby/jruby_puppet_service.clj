@@ -5,8 +5,8 @@
             [puppetlabs.trapperkeeper.core :as trapperkeeper]
             [puppetlabs.trapperkeeper.services :as tk-services]
             [puppetlabs.services.protocols.jruby-puppet :as jruby]
-            [puppetlabs.i18n.core :as i18n])
-  (:import (org.jruby.runtime Constants)))
+            [puppetlabs.i18n.core :as i18n]))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -77,6 +77,10 @@
     [this jruby-instance env-name]
     (.getClassInfoForEnvironment jruby-instance env-name))
 
+  (get-environment-transport-info
+    [this jruby-instance env-name]
+    (.getTransportInfoForEnvironment jruby-instance env-name))
+
   (compile-catalog
    [this jruby-instance request-options]
    (.compileCatalog jruby-instance request-options))
@@ -93,7 +97,13 @@
    [this env-name]
    (let [environment-class-info (:environment-class-info-tags
                                  (tk-services/service-context this))]
-     (get-in @environment-class-info [env-name :tag])))
+     (get-in @environment-class-info [env-name :classes :tag])))
+
+  (get-cached-info-tag
+   [this env-name info-service]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (get-in @environment-class-info [env-name info-service :tag])))
 
   (get-environment-class-info-cache-generation-id!
    [this env-name]
@@ -102,6 +112,15 @@
      (core/get-environment-class-info-cache-generation-id!
       environment-class-info
       env-name)))
+
+  (get-cached-content-version
+   [this env-name info-service]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (core/get-cached-content-version
+      environment-class-info
+      env-name
+      info-service)))
 
   (set-environment-class-info-tag!
    [this env-name tag cache-generation-id-before-tag-computed]
@@ -112,6 +131,17 @@
             env-name
             tag
             cache-generation-id-before-tag-computed)))
+
+  (set-cache-info-tag!
+   [this env-name info-service-id tag initial-content-version]
+   (let [environment-class-info (:environment-class-info-tags
+                                 (tk-services/service-context this))]
+     (swap! environment-class-info
+            core/maybe-update-environment-info-service-cache
+            env-name
+            info-service-id
+            tag
+            initial-content-version)))
 
   (get-task-data
    [this jruby-instance env-name module-name task-name]

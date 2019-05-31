@@ -7,3 +7,6 @@
 [submodule "ruby/hiera"]
 	path = ruby/hiera
 	url = https://github.com/puppetlabs/hiera.git
+[submodule "ruby/resource_api"]
+	path = ruby/resource_api
+	url = https://github.com/puppetlabs/puppet-resource_api.git

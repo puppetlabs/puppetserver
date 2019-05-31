@@ -281,133 +281,132 @@
         (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
      (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler metrics-service))))
 
-(def EnvironmentClassInfoCacheEntry
-  "Data structure that holds per-environment cache information for the
-  environment_classes info cache"
-  {:tag (schema/maybe schema/Str)
-   :cache-generation-id schema/Int})
+(def EnvironmentCacheEntry
+  "Represents an environment with each cacheable info service as a key.
+  The value for each info service is a map that contains a:
 
-(def EnvironmentClassInfoCache
-  "Data structure for the environment_classes info cache"
-  {schema/Str EnvironmentClassInfoCacheEntry})
+    `:tag` Representing the latest value computed for that info service
+           (this is the sanitized Etag used in subsequent HTTP cache checks).
 
-(schema/defn ^:always-validate environment-class-info-entry
-  :- EnvironmentClassInfoCacheEntry
-  "Create an environment class info entry.  The return value will have a nil
-  tag and cache-generation-id set to 1."
+    `:version` Representing the version of the environment's content at a
+               given tag. This is incremented whenever the environment cache
+               is invalidated or new information is retrieved from the
+               environment. New tag values are only accepted if they have a
+               content-version parameter that matches the **currently** stored
+               version, signifying that the cache was not invalidated while
+               the tag was being computed."
+  {:classes {:tag (schema/maybe schema/Str) :version schema/Int}
+   :transports {:tag (schema/maybe schema/Str) :version schema/Int}})
+
+(def EnvironmentCache
+  "Maps each environment to its cache entry"
+  {schema/Str EnvironmentCacheEntry})
+
+(schema/defn ^:always-validate environment-cache-entry :- EnvironmentCacheEntry
+  "Creates an initial EnvironmentCacheEntry"
   []
-  {:tag nil
-   :cache-generation-id 1})
+  {:classes {:tag nil :version 1}
+   :transports {:tag nil :version 1}})
 
-(schema/defn ^:always-validate inc-cache-generation-id-for-class-info-entry
-  :- EnvironmentClassInfoCacheEntry
-  "Return the supplied 'original-environment-class-info-entry' class info entry,
-  only updated with a cache-generation-id value that has been incremented.
-  If the supplied parameter is nil, the return value will have a tag set to
-  nil and cache-generation-id set to 1."
-  [original-environment-class-info-entry :-
-   (schema/maybe EnvironmentClassInfoCacheEntry)]
-  (if original-environment-class-info-entry
-    (update original-environment-class-info-entry :cache-generation-id inc)
-    (environment-class-info-entry)))
+(schema/defn ^:always-validate invalidate-environment-cache-entry
+  :- EnvironmentCacheEntry
+  "Sets all info service tags to nil and increments their content versions"
+  [maybe-environment-cache-entry :- (schema/maybe EnvironmentCacheEntry)]
+  (-> (or maybe-environment-cache-entry (environment-cache-entry))
+    (update-in [:classes :version] inc)
+    (update-in [:transports :version] inc)
+    (assoc-in [:classes :tag] nil)
+    (assoc-in [:transports :tag] nil)))
 
-(schema/defn ^:always-validate update-environment-class-info-entry
-  :- EnvironmentClassInfoCacheEntry
-  "Return the supplied 'original-environment-class-info-entry', only updated
-  with the supplied tag and a cache-generation-id value that has been
-  incremented."
-  [original-environment-class-info-entry :-
-   (schema/maybe EnvironmentClassInfoCacheEntry)
-   tag :- (schema/maybe schema/Str)]
-  (-> original-environment-class-info-entry
-      inc-cache-generation-id-for-class-info-entry
-      (assoc :tag tag)))
-
-(schema/defn ^:always-valid invalidate-environment-class-info-entry
-  :- EnvironmentClassInfoCacheEntry
-  "Return the supplied 'original-environment-class-info-entry', only updated
-  with a nil tag and a cache-generation-id value that has been incremented."
-  [original-environment-class-info-entry :-
-   (schema/maybe EnvironmentClassInfoCacheEntry)]
-  (update-environment-class-info-entry
-   original-environment-class-info-entry
-   nil))
-
-(schema/defn ^:always-validate
-  environment-class-info-cache-with-invalidated-entry
-  :- EnvironmentClassInfoCache
-  "Return the supplied 'environment-class-info-cache', only updated with an
-  invalidated entry for the supplied 'env-name'.  The invalidated entry will
-  have nil tag and a cache-generation-id value that has been incremented."
-  [environment-class-info-cache :- EnvironmentClassInfoCache
+(schema/defn ^:always-validate invalidate-environment :- EnvironmentCache
+  "Return the EnvironmentCache with named environment invalidated."
+  [environment-cache :- EnvironmentCache
    env-name :- schema/Str]
   (->> env-name
-       (get environment-class-info-cache)
-       invalidate-environment-class-info-entry
-       (assoc environment-class-info-cache env-name)))
+       (get environment-cache)
+       invalidate-environment-cache-entry
+       (assoc environment-cache env-name)))
 
 (schema/defn ^:always-validate
-  environment-class-info-cache-updated-with-tag :- EnvironmentClassInfoCache
-  "Return the supplied environment class info cache argument, updated per
-  supplied arguments.  cache-generation-id-before-tag-computed should represent
-  what the client received for a
-  'get-environment-class-info-cache-generation-id!' call for the environment,
-  made before the client started doing the work to parse environment class info
-  / compute the new tag.  If cache-generation-id-before-tag-computed equals the
-  'cache-generation-id' value stored in the cache for the environment, the new
-  'tag' will be stored for the environment and the corresponding
-  'cache-generation-id' value will be incremented.  If
-  cache-generation-id-before-tag-computed is different than the
-  'cache-generation-id' value stored in the cache for the environment, the cache
-  will remain unchanged as a result of this call."
-  [environment-class-info-cache :- EnvironmentClassInfoCache
+  environment-class-info-cache-updated-with-tag :- EnvironmentCache
+  "DEPRECATED: see `maybe-update-environment-info-service-cache`
+
+  Updates the class info service tag in the given EnvironmentCache for the
+  named environment, **if** the prior-content-version and the version currently
+  in the cache are the same. If the two content versions are not the same, eg
+  the cache has been invalidated, or otherwise moved since the action that
+  computed the tag started, then the update will silently fail. Returns the
+  given EnvironmentCache regardless of update status."
+  [environment-cache :- EnvironmentCache
    env-name :- schema/Str
    tag :- (schema/maybe schema/Str)
-   cache-generation-id-before-tag-computed :- schema/Int]
-  (let [cache-entry (get environment-class-info-cache env-name)]
-    (if (= (:cache-generation-id cache-entry)
-           cache-generation-id-before-tag-computed)
-      (assoc environment-class-info-cache
-        env-name
-        (update-environment-class-info-entry cache-entry tag))
-      environment-class-info-cache)))
+   prior-content-version :- schema/Int]
+  (if (= (get-in environment-cache [env-name :classes :version])
+         prior-content-version)
+    (-> environment-cache
+      (assoc-in [env-name :classes :tag] tag)
+      (update-in [env-name :classes :version] inc))
+    environment-cache))
 
 (schema/defn ^:always-validate
-  add-environment-class-info-cache-entry-if-not-present!
-  :- EnvironmentClassInfoCache
-  "Update the 'environment-class-info-cache' atom with a new cache entry for
-  the supplied 'env-name' (if no entry is already present) and return back
-  the new value that the atom has been set to."
-  [environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)
+  maybe-update-environment-info-service-cache :- EnvironmentCache
+  "Updates the requested info service tag in the given EnvironmentCache for
+  the named environment, **if** the prior-content-version and the version
+  currently in the cache are the same. If the two content versions are not the
+  same, eg the cache has been invalidated, or otherwise moved since the action
+  that computed the tag started, then the update will silently fail. Returns
+  the given EnvironmentCache regardless of update status."
+  [environment-cache :- EnvironmentCache
+   env-name :- schema/Str
+   svc-id :- schema/Keyword
+   tag :- (schema/maybe schema/Str)
+   prior-content-version :- schema/Int]
+  (if (= (get-in environment-cache [env-name svc-id :version])
+         prior-content-version)
+    (-> environment-cache
+        (assoc-in [env-name svc-id :tag] tag)
+        (update-in [env-name svc-id :version] inc))
+    environment-cache))
+
+(schema/defn ^:always-validate ensure-environment :- EnvironmentCache
+  "Ensure the given environment exists within the EnvironmentCache."
+  [environment-cache :- (schema/atom EnvironmentCache)
    env-name :- schema/Str]
-  (swap! environment-class-info-cache
+  (swap! environment-cache
          #(if (contains? % env-name)
            %
-           (assoc % env-name (environment-class-info-entry)))))
+           (assoc % env-name (environment-cache-entry)))))
 
 (schema/defn ^:always-validate
   get-environment-class-info-cache-generation-id! :- schema/Int
-  "Get the current cache generation id for a specific environment's class info.
+  "DEPRECATED: see `get-info-service-version` for replacement.
+
+  Get the current cache generation id for a specific environment's info cache.
   If no entry for the environment had existed at the point this function was
   called this function would, as a side effect, populate a new entry for that
   environment into the cache."
-  [environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)
+  [environment-cache :- (schema/atom EnvironmentCache)
    env-name :- schema/Str]
-  (-> (add-environment-class-info-cache-entry-if-not-present!
-       environment-class-info-cache
-       env-name)
-      (get-in [env-name :cache-generation-id])))
+  (-> (ensure-environment environment-cache env-name)
+      (get-in [env-name :classes :version])))
 
-(schema/defn ^:always-validate
-  mark-environment-expired!
-  "Mark the specified environment expired, in all JRuby instances.  Resets
-  the cached class info for the environment's 'tag' to nil and increments the
-  'cache-generation-id' value."
+(schema/defn ^:always-validate get-cached-content-version :- schema/Int
+  "Get the current version for a specific service's content within an
+  environment, initializes environment if it did not already exist."
+  [environment-cache :- (schema/atom EnvironmentCache)
+   env-name :- schema/Str
+   info-service :- schema/Keyword]
+  (-> (ensure-environment environment-cache env-name)
+      (get-in [env-name info-service :version])))
+
+(schema/defn ^:always-validate mark-environment-expired!
+  "Mark the specified environment expired in the clojure managed cache and,
+  using the Environment Expiration Service, in each JRuby instance."
   [context :- jruby-schemas/PoolContext
    env-name :- schema/Str
-   environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
-  (swap! environment-class-info-cache
-         environment-class-info-cache-with-invalidated-entry
+   environment-cache :- (schema/atom EnvironmentCache)]
+  (swap! environment-cache
+         invalidate-environment
          env-name)
   (doseq [jruby-instance (jruby-core/registered-instances context)]
     (-> jruby-instance
@@ -416,13 +415,11 @@
 
 (schema/defn ^:always-validate
   mark-all-environments-expired!
-  "Mark all cached environments expired, in all JRuby instances.  Resets the
-  cached class info for all previously stored environment 'tags' to nil and
-  increments the 'cache-generation-id' value."
+  "Mark all cached environments expired, in all JRuby instances."
   [context :- jruby-schemas/PoolContext
-   environment-class-info-cache :- (schema/atom EnvironmentClassInfoCache)]
-  (swap! environment-class-info-cache
-         (partial ks/mapvals invalidate-environment-class-info-entry))
+   environment-cache :- (schema/atom EnvironmentCache)]
+  (swap! environment-cache
+         (partial ks/mapvals invalidate-environment-cache-entry))
   (doseq [jruby-instance (jruby-core/registered-instances context)]
     (-> jruby-instance
         :environment-registry
