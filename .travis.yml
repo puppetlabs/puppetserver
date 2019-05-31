@@ -1,6 +1,6 @@
 language: clojure
 lein: 2.7.1
-dist: trusty
+dist: xenial
 sudo: required
 script:
   - ./ext/travisci/test.sh
@@ -12,7 +12,7 @@ matrix:
       jdk: openjdk8
     - stage: puppetserver tests
       env: JRUBY_VERSION=1.7
-      jdk: oraclejdk8
+      jdk: openjdk8
 notifications:
   email: false
   hipchat:
