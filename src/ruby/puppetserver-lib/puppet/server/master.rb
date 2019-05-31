@@ -10,6 +10,7 @@ require 'puppet/server/config'
 require 'puppet/server/puppet_config'
 require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
+require 'puppet/server/ast_compiler'
 
 require 'java'
 
@@ -69,7 +70,7 @@ class Puppet::Server::Master
   end
 
   def compileAST(compile_options)
-    {mock: "data"}
+    Puppet::Server::ASTCompiler.compile(convert_java_args_to_ruby(compile_options))
   end
 
   def getClassInfoForEnvironment(env)
