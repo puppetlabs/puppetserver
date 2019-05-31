@@ -868,7 +868,8 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   cache-enabled :- schema/Bool]
+   cache-enabled :- schema/Bool
+   wrap-with-jruby-queue-limit :- IFn]
   (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
@@ -894,8 +895,14 @@
                                            current-code-id-fn)
 
         static-content-handler (static-file-content-request-handler
-                                 get-code-content-fn)]
+                                 get-code-content-fn)
+        compile-handler' (compile-handler
+                          jruby-service
+                          wrap-with-jruby-queue-limit
+                          current-code-id-fn)]
     (comidi/routes
+      (comidi/POST "/compile" request
+                   (compile-handler' request))
       (comidi/GET ["/environment_classes" [#".*" :rest]] request
                   (class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
@@ -918,19 +925,13 @@
   (let [v4-catalog-handler (v4-catalog-handler
                              jruby-service
                              wrap-with-jruby-queue-limit
-                             current-code-id-fn)
-        compile-handler' (compile-handler
-                           jruby-service
-                           wrap-with-jruby-queue-limit
-                           current-code-id-fn)]
+                             current-code-id-fn)]
     (comidi/context
           "/v4"
           (comidi/wrap-routes
            (comidi/routes
             (comidi/POST "/catalog" request
-                         (v4-catalog-handler request))
-            (comidi/POST "/compile" request
-                         (compile-handler' request)))
+                         (v4-catalog-handler request)))
            clojure-request-wrapper))))
 
 (schema/defn ^:always-validate
@@ -943,14 +944,16 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   environment-class-cache-enabled :- schema/Bool]
+   environment-class-cache-enabled :- schema/Bool
+   wrap-with-jruby-queue-limit :- IFn]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
                                       current-code-id-fn
-                                      environment-class-cache-enabled)
+                                      environment-class-cache-enabled
+                                      wrap-with-jruby-queue-limit)
                    clojure-request-wrapper )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1058,7 +1061,8 @@
               jruby-service
               get-code-content-fn
               current-code-id-fn
-              environment-class-cache-enabled)
+              environment-class-cache-enabled
+              wrap-with-jruby-queue-limit)
    (v4-routes clojure-request-wrapper
               jruby-service
               wrap-with-jruby-queue-limit

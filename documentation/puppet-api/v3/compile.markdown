@@ -1,11 +1,12 @@
 ---
 layout: default
 title: "Puppet Server: Puppet API: Compile"
-canonical: "/puppetserver/latest/puppet-api/v4/compile.html"
+canonical: "/puppetserver/latest/puppet-api/v3/compile.html"
 ---
 
 [PCore Generic Data]: https://github.com/puppetlabs/puppet-specifications/blob/a87c9967ebd7071e0a548920f3262ac24cc3f4cd/language/data-types/pcore-generic-data.md
 [`auth.conf` documentation]: ../../config_file_auth.markdown
+[v4 catalog schema]: ../v4/catalog.json
 
 The compile endpoint allows compilation of arbitrary pcore serialized Puppet
 Code ASTs (aka parsed, but unevaluated Puppet Code snippets). In addition to
@@ -17,7 +18,7 @@ JSON formatted and the caller must accept a JSON response. The server must
 not have `rich_data` disabled.
 
 
-## `POST /puppet/v4/compile`
+## `POST /puppet/v3/compile`
 
 (Introduced in Puppet Server 6.4.0)
 
@@ -85,7 +86,7 @@ values are one of "debug", "warn", "info".
 
 ### Schema
 
-The response body conforms to the [catalog schema](./catalog.json).
+The response body conforms to the [v4 catalog schema][].
 
 ### Authorization
 
