@@ -744,7 +744,7 @@
    (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
                                     (schema/optional-key "log_level") (schema/enum "debug" "info" "warn")}})
 
-(defn valid-body
+(defn validated-body
   [body schema]
   (let [parameters
         (try+
@@ -763,7 +763,7 @@
     (let [request-options (-> request
                               :body
                               slurp
-                              (valid-body CatalogRequestV4))]
+                              (validated-body CatalogRequestV4))]
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/encode
@@ -781,7 +781,7 @@
           request-options (-> request
                               :body
                               slurp
-                              (valid-body CompileRequest))
+                              (validated-body CompileRequest))
           compile-options (assoc request-options
                                  "code_id"
                                  (current-code-id-fn env))]
