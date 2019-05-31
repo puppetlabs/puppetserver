@@ -4,7 +4,7 @@ set -x
 set -e
 
 certname=$(ls /etc/puppetlabs/puppet/ssl/certs | grep --invert-match ca.pem) && \
-hostname=${certname%.*} && \
+hostname=$(basename $certname .pem) && \
 hostprivkey=/etc/puppetlabs/puppet/ssl/private_keys/$certname && \
 hostcert=/etc/puppetlabs/puppet/ssl/certs/$certname && \
 localcacert=/etc/puppetlabs/puppet/ssl/certs/ca.pem && \
