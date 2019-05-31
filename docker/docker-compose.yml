@@ -2,7 +2,8 @@ version: '3.5'
 
 services:
   puppet:
-    hostname: puppet.test
+    hostname: puppet
+    domainname: test
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
     environment:
       - PUPPETSERVER_HOSTNAME=puppet.test
@@ -10,22 +11,24 @@ services:
       - DNS_ALT_NAMES=puppet,puppet.test,${DNS_ALT_NAMES:-}
       - PUPPET_STORECONFIGS=false
       - PUPPET_REPORTS=log
-    dns_search: '.test'
+    dns_search: 'test'
     networks:
       puppetserver_test:
         aliases:
           - puppet.test
 
   compiler:
-    hostname: compiler.test
+    hostname: compiler
+    domainname: test
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
     environment:
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
+      - PUPPETSERVER_HOSTNAME=compiler.test
       - CA_ENABLED=false
       - CA_HOSTNAME=puppet.test
       - PUPPET_STORECONFIGS=false
       - PUPPET_REPORTS=log
-    dns_search: '.test'
+    dns_search: 'test'
     networks:
       puppetserver_test:
         aliases:
