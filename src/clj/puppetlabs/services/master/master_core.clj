@@ -730,6 +730,7 @@
    (schema/optional-key "job_id") schema/Str
    (schema/optional-key "transaction_uuid") schema/Str
    (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                    (schema/optional-key "log_level") (schema/enum "debug" "info" "warning" "err")
                                     (schema/optional-key "prefer_requested_environment") schema/Bool}})
 
 (def CompileRequest
@@ -742,7 +743,7 @@
    (schema/optional-key "job_id") schema/Str
    (schema/optional-key "transaction_uuid") schema/Str
    (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
-                                    (schema/optional-key "log_level") (schema/enum "debug" "info" "warn")}})
+                                    (schema/optional-key "log_level") (schema/enum "debug" "info" "warning" "error")}})
 
 (defn validated-body
   [body schema]

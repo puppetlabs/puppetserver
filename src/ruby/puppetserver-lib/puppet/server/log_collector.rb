@@ -7,7 +7,7 @@ module Puppet
       end
 
       def <<(value)
-        @logs << value
+        @logs << value.to_data_hash
       end
     end
 

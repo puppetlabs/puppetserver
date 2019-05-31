@@ -1,5 +1,5 @@
 require 'puppet/server'
-require 'puppet/server/log_collector'
+require 'puppet/server/logging'
 
 module Puppet
   module Server
@@ -18,7 +18,7 @@ module Puppet
         options = request_data['options'] || {}
 
         if options['capture_logs']
-          catalog, logs = capture_logs do
+          catalog, logs = Logging.capture_logs(options['log_level']) do
             compile_catalog(request_data)
           end
 
@@ -107,25 +107,6 @@ module Puppet
         end
 
         catalog.to_data_hash
-      end
-
-      def capture_logs(&block)
-        logs = []
-        result = nil
-        log_dest = Puppet::Server::LogCollector.new(logs)
-        Puppet::Util::Log.with_destination(log_dest) do
-          result = yield
-        end
-
-        log_entries = logs.map do |log|
-          log.to_data_hash
-        end.select do |log|
-          # Filter out debug messages, which may be verbose and
-          # contain sensitive data
-          log['level'] == 'warning' || log['level'] == 'error'
-        end
-
-        return result, log_entries
       end
 
       # Typically in our use case (~early 2019, with PuppetDB configured as

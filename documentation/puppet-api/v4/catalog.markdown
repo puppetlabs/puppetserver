@@ -27,7 +27,8 @@ following form:
   "transaction_uuid": "<uuid string>",
   "job_id": "<id string>",
   "options": { "prefer_requested_environment": <true/false>,
-               "capture_logs": <true/false> }
+               "capture_logs": <true/false>,
+               "log_level": <err/warning/info/debug> }
 }
 ```
 
@@ -72,6 +73,10 @@ environment, or finally, 'production'.
 `capture_logs`
 Whether to return the errors and warnings that occurred during compilation alongside the
 catalog in the response body.
+
+`log_level`
+The logging level to use during the compile when `capture_logs` is true. Options are
+'err', 'warning', 'info', and 'debug'.
 
 ### Schema
 
