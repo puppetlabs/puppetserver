@@ -1,7 +1,6 @@
 language: clojure
 lein: 2.8.1
-dist: trusty
-sudo: required
+dist: xenial
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
@@ -11,9 +10,6 @@ matrix:
       jdk: openjdk8
     - stage: puppetserver tests
       jdk: openjdk10
-      before_install:
-        - rm "${JAVA_HOME}/lib/security/cacerts"
-        - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
 notifications:
   email: false
   hipchat:
