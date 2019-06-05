@@ -9,9 +9,7 @@ canonical: "/puppetserver/latest/configuration.html"
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 [deprecated]: ./deprecated_features.markdown
 
-Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings.
-
-These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
+Puppet Server automatically loads settings in the `main` and `master` section, and honors most other settings in [`puppet.conf`](https://github.com/puppetlabs/puppetserver/blob/master/src/clj/puppetlabs/services/config/puppet_server_config_core.clj#L18-L49). However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings. These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
 
 ## Configuration Files
 
