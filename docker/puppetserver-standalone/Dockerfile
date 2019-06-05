@@ -17,6 +17,7 @@ ENV UBUNTU_CODENAME="xenial"
 ENV PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m"
 ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
 ENV PUPPET_HEALTHCHECK_ENVIRONMENT="production"
+ENV PUPPET_MASTERPORT=8140
 ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=1
 ENV PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0
 ENV CA_ENABLED=true
@@ -50,6 +51,7 @@ COPY puppetserver /etc/default/puppetserver
 COPY logback.xml /etc/puppetlabs/puppetserver/
 COPY request-logging.xml /etc/puppetlabs/puppetserver/
 COPY puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+COPY webserver.conf /etc/puppetlabs/puppetserver/conf.d/
 
 
 RUN puppet config set autosign true --section master && \
