@@ -41,6 +41,10 @@ The following environment variables are supported:
 
   The environment to get the status of in the healthcheck script. Defaults to 'production'.
 
+- `PUPPET_MASTERPORT`
+
+  The port the puppetserver should listen on. Defaults to '8140'.
+
 - `PUPPETSERVER_MAX_ACTIVE_INSTANCES`
 
   The maximum number of JRuby instances allowed. Defaults to '1'.
@@ -56,6 +60,10 @@ The following environment variables are supported:
 - `CA_HOSTNAME`
 
   The hostname for the puppetserver running the CA. Does nothing unless `CA_ENABLED=false`. Defaults to 'puppet'.
+
+- `CA_MASTERPORT`
+
+  The port the CA is listening on. Does nothing unless `CA_ENABLED=false`. Defaults to `PUPPET_MASTERPORT` when set, otherwise '8140'.
 
 - `CONSUL_ENABLED`
 
