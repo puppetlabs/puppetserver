@@ -2,7 +2,7 @@
 
 
 ca_running() {
-  status=$(curl --silent --fail --insecure "https://${CA_HOSTNAME}:8140/status/v1/simple")
+  status=$(curl --silent --fail --insecure "https://${CA_HOSTNAME}:${CA_MASTERPORT}/status/v1/simple")
   test "$status" = "running"
 }
 
@@ -11,6 +11,7 @@ hocon() {
 }
 
 CA_HOSTNAME="${CA_HOSTNAME:-puppet}"
+CA_MASTERPORT="${CA_MASTERPORT:-8140}"
 
 if [[ "$CA_ENABLED" != "true" ]]; then
   # we are just an ordinary compiler
@@ -39,6 +40,6 @@ EOF
       sleep 1
     done
 
-    puppet agent --noop --server="${CA_HOSTNAME}"
+    puppet agent --noop --server="${CA_HOSTNAME}" --masterport="${CA_MASTERPORT}"
   fi
 fi
