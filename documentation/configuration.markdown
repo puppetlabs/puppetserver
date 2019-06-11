@@ -9,7 +9,10 @@ canonical: "/puppetserver/latest/configuration.html"
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 [deprecated]: ./deprecated_features.markdown
 
-Puppet Server automatically loads the settings in the `main` and `master` sections of the configuration file. If there are duplicates, it prefers the values in the `main` section. Puppet Server honors the following `puppet.conf` settings:
+Puppet Server automatically loads the settings in the `main` and `master`
+sections of the configuration file. If there are duplicates, it prefers the
+values in the `master` section. Puppet Server honors the following
+`puppet.conf` settings:
 
 * allow_duplicate_certs
 * autosign
