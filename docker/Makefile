@@ -15,7 +15,7 @@ dockerfile := Dockerfile
 PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 prep:
-	@git fetch --unshallow ||:
+	@git fetch --unshallow 2> /dev/null ||:
 	@git fetch origin 'refs/tags/*:refs/tags/*'
 
 lint:
@@ -30,7 +30,7 @@ else
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
 endif
 
-build: prep
+build-standalone: prep
 	@docker build \
 		--pull \
 		--build-arg vcs_ref=$(vcs_ref) \
@@ -40,6 +40,12 @@ build: prep
 		--file puppetserver-standalone/$(dockerfile) \
 		--tag $(NAMESPACE)/puppetserver-standalone:$(version) \
 		puppetserver-standalone
+ifeq ($(IS_LATEST),true)
+	@docker tag $(NAMESPACE)/puppetserver-standalone:$(version) \
+		$(NAMESPACE)/puppetserver-standalone:latest
+endif
+
+build-full: build-standalone
 	@docker build \
 		--build-arg namespace=$(NAMESPACE) \
 		--build-arg vcs_ref=$(vcs_ref) \
@@ -50,11 +56,11 @@ build: prep
 		--tag $(NAMESPACE)/puppetserver:$(version) \
 		puppetserver
 ifeq ($(IS_LATEST),true)
-	@docker tag $(NAMESPACE)/puppetserver-standalone:$(version) \
-		$(NAMESPACE)/puppetserver-standalone:latest
 	@docker tag $(NAMESPACE)/puppetserver:$(version) \
 		$(NAMESPACE)/puppetserver:latest
 endif
+
+build: build-standalone build-full
 
 test: prep
 	@bundle install --path $$BUNDLE_PATH --gemfile $$GEMFILE
@@ -92,4 +98,4 @@ push-readme:
 
 publish: push-image push-readme
 
-.PHONY: prep lint build test publish push-image push-readme
+.PHONY: prep lint build build-standalone build-full test publish push-image push-readme
