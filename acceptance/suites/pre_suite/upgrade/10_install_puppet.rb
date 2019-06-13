@@ -1,13 +1,42 @@
-step "Install PC1 repository" do
-  install_puppetlabs_release_repo(hosts, 'pc1')
+def install_pc1_repo(host)
+  variant, version, _, codename = host['platform'].to_array
+  return if variant =~ /win/
+
+  variant = 'el' if variant =~ /redhat|centos/
+  debian = !!codename
+
+  if debian
+    pkg = "puppetlabs-release-pc1-#{codename}.deb"
+    url = "http://release-archives.puppet.com/apt"
+  else
+    pkg = "puppetlabs-release-pc1-#{variant}-#{version}.noarch.rpm"
+    url = "http://release-archives.puppet.com/yum"
+  end
+
+  on host, "wget #{url}/#{pkg}"
+
+  if debian
+    on host, "dpkg -i --force-all #{pkg}"
+    on host, "apt-get update"
+  else
+    on host, "rpm -i --replacepkgs #{pkg}"
+  end
+
+  if variant =~ /sles/
+    on host, "rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet"
+  end
+
+  # cargo culted
+  configure_type_defaults_on(host)
 end
 
-hosts.each { |agent|
-  variant = agent['platform'].variant
-  if variant == 'sles'
-    on(agent, 'rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet')
+
+
+step "Install PC1 repository" do
+  block_on(hosts) do |host|
+    install_pc1_repo(host)
   end
-}
+end
 
 step "Install legacy Puppet agents" do
   default_puppet_version = '1.10.1'
