@@ -720,26 +720,39 @@
          :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
-(defn decode-catalog-post-body
-  [body]
+(def CatalogRequestV4
+  {(schema/required-key "certname") schema/Str
+   (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
+                                        (schema/required-key "catalog") schema/Bool}
+   (schema/required-key "environment") schema/Str
+   (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "job_id") schema/Str
+   (schema/optional-key "transaction_uuid") schema/Str
+   (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                    (schema/optional-key "prefer_requested_environment") schema/Bool}})
+
+(def CompileRequest
+  {(schema/required-key "certname") schema/Str
+   (schema/required-key "environment") schema/Str
+   (schema/required-key "code_ast") schema/Str
+   (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/required-key "variables") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/optional-key "job_id") schema/Str
+   (schema/optional-key "transaction_uuid") schema/Str
+   (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
+                                    (schema/optional-key "log_level") (schema/enum "debug" "info" "warn")}})
+
+(defn validated-body
+  [body schema]
   (let [parameters
         (try+
           (json/decode body false)
           (catch JsonParseException e
             (throw+ {:kind :bad-request
                      :msg (format "Error parsing JSON: %s" e)})))]
-    (schema/validate
-     {(schema/required-key "certname") schema/Str
-      (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
-                                           (schema/required-key "catalog") schema/Bool}
-      (schema/required-key "environment") schema/Str
-      (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-      (schema/optional-key "job_id") schema/Str
-      (schema/optional-key "transaction_uuid") schema/Str
-      (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
-                                       (schema/optional-key "prefer_requested_environment") schema/Bool}}
-     parameters)
+    (schema/validate schema parameters)
     parameters))
 
 (schema/defn ^:always-validate
@@ -747,7 +760,10 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    current-code-id-fn :- IFn]
   (fn [request]
-    (let [request-options (decode-catalog-post-body (slurp (:body request)))]
+    (let [request-options (-> request
+                              :body
+                              slurp
+                              (validated-body CatalogRequestV4))]
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/encode
@@ -757,12 +773,41 @@
                                                      "code_id"
                                                      (current-code-id-fn (jruby-request/get-environment-from-request request)))))})))
 
+(schema/defn ^:always-validate compile-fn :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   current-code-id-fn :- IFn]
+  (fn [request]
+    (let [env (jruby-request/get-environment-from-request request)
+          request-options (-> request
+                              :body
+                              slurp
+                              (validated-body CompileRequest))
+          compile-options (assoc request-options
+                                 "code_id"
+                                 (current-code-id-fn env))]
+      {:status 200
+       :headers {"Content-Type" "application/json"}
+       :body (json/encode
+               (jruby-protocol/compile-ast jruby-service
+                                           (:jruby-instance request)
+                                           compile-options))})))
+
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
    current-code-id-fn :- IFn]
   (-> (v4-catalog-fn jruby-service current-code-id-fn)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      wrap-with-jruby-queue-limit
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  compile-handler :- IFn
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   wrap-with-jruby-queue-limit :- IFn
+   current-code-id-fn :- IFn]
+  (-> (compile-fn jruby-service current-code-id-fn)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
@@ -823,7 +868,8 @@
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   cache-enabled :- schema/Bool]
+   cache-enabled :- schema/Bool
+   wrap-with-jruby-queue-limit :- IFn]
   (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
@@ -849,8 +895,14 @@
                                            current-code-id-fn)
 
         static-content-handler (static-file-content-request-handler
-                                 get-code-content-fn)]
+                                 get-code-content-fn)
+        compile-handler' (compile-handler
+                          jruby-service
+                          wrap-with-jruby-queue-limit
+                          current-code-id-fn)]
     (comidi/routes
+      (comidi/POST "/compile" request
+                   (compile-handler' request))
       (comidi/GET ["/environment_classes" [#".*" :rest]] request
                   (class-handler request))
       (comidi/GET ["/environment_modules" [#".*" :rest]] request
@@ -892,14 +944,16 @@
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   environment-class-cache-enabled :- schema/Bool]
+   environment-class-cache-enabled :- schema/Bool
+   wrap-with-jruby-queue-limit :- IFn]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
                                       current-code-id-fn
-                                      environment-class-cache-enabled)
+                                      environment-class-cache-enabled
+                                      wrap-with-jruby-queue-limit)
                    clojure-request-wrapper )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1007,7 +1061,8 @@
               jruby-service
               get-code-content-fn
               current-code-id-fn
-              environment-class-cache-enabled)
+              environment-class-cache-enabled
+              wrap-with-jruby-queue-limit)
    (v4-routes clojure-request-wrapper
               jruby-service
               wrap-with-jruby-queue-limit

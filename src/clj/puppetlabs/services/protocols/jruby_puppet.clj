@@ -88,6 +88,10 @@
     [this jruby-instance request-options]
     "Compile the catalog for a given certname")
 
+  (compile-ast
+    [this jruby-instance compile-options]
+    "Compiles arbitrary Puppet ASTs into mini catalogs")
+
   (get-environment-module-info
     [this jruby-instance env-name]
     "Get module information for a specific environment")
