@@ -38,11 +38,11 @@ Released 23 January 2019.
 
 This release contains new features and resolved issues.
 
- ### New features
+### New features
 
  - The EZBake configs now allow you to specify `JAVA_ARGS_CLI`, which is used when using `puppetserver` subcommands to configure Java differently from what is needed for the service. This was used by the CLI before, but as an environment variable only, not as an EZBake config option. [SERVER-2399](https://tickets.puppetlabs.com/browse/SERVER-2399)
- 
- ### Resolved issues
+
+### Resolved issues
 
 -  A dependency issue caused puppetserver 6.1.0 to fail with OpenJDK 11. This has been fixed and Puppet Server packages can now start under Java 11. [SERVER-2404](https://tickets.puppetlabs.com/browse/SERVER-2404)
  
