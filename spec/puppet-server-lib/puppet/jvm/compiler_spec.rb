@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 require 'puppet/server/compiler'
 
 describe Puppet::Server::Compiler do

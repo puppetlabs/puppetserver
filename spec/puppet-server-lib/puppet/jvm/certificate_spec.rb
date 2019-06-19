@@ -3,6 +3,7 @@ require 'spec_helper'
 require 'puppet/ssl'
 require 'puppet/ssl/base'
 require 'puppet/server/certificate'
+require 'puppet/server/puppet_config'
 require 'rspec'
 
 java_import com.puppetlabs.ssl_utils.SSLUtils

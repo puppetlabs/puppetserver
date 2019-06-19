@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 require 'puppet/server/puppet_config'
 
 describe 'Puppet::Server::PuppetConfig' do

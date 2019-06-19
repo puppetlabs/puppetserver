@@ -1,3 +1,5 @@
+require 'spec_helper'
+
 require 'puppet/server/network/http/handler'
 
 class TestHandler
