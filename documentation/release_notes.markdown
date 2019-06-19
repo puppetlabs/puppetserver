@@ -10,6 +10,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.4.0
+
+Released 19 April 2019
+
+### New features
+
+- This release adds a new API endpoint to `/puppet/v3/environment_transports`. This endpoint lists all of the available network transports from modules and is for use with the Agentless Catalog Executor. [SERVER-2467](https://tickets.puppetlabs.com/browse/SERVER-2467)
+
 ## Puppet Server 6.3.0
 
 Released 26 March 2019
