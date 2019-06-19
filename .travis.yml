@@ -14,10 +14,6 @@ matrix:
       before_install:
         - rm "${JAVA_HOME}/lib/security/cacerts"
         - ln -s /etc/ssl/certs/java/cacerts "${JAVA_HOME}/lib/security/cacerts"
-    - stage: puppetserver container tests
-      language: generic
-      script:
-        - cd docker && make lint && make build && make test
 notifications:
   email: false
   hipchat:
