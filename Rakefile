@@ -181,7 +181,8 @@ namespace :spec do
 end
 
 desc "Run rspec tests"
-task :spec => ["spec:init"] do
+task :spec, [:rspec_opts] => ["spec:init"] do |t, args|
+  rspec_opts = args[:rspec_opts] || './spec'
   ## Run RSpec via our JRuby dependency
   ## Line 1 tells bundler to use puppet's Gemfile
   ## Line 2 tells JRuby where to look for gems
@@ -194,7 +195,7 @@ task :spec => ["spec:init"] do
     GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
     lein run -m org.jruby.Main \
       -I'#{PUPPET_SERVER_RUBY_SPEC}' -I'#{PUPPET_LIB}' -I'#{FACTER_LIB}' -I'#{PUPPET_SERVER_RUBY_SRC}' \
-      ./spec/run_specs.rb
+      ./spec/run_specs.rb #{rspec_opts}
   CMD
   sh run_rspec_with_jruby
 end
