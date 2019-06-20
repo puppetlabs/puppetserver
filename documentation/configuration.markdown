@@ -9,9 +9,42 @@ canonical: "/puppetserver/latest/configuration.html"
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 [deprecated]: ./deprecated_features.markdown
 
-Puppet Server honors most settings in `puppet.conf` and picks them up automatically. However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings.
+Puppet Server automatically loads the settings in the `main` and `master`
+sections of the configuration file. If there are duplicates, it prefers the
+values in the `master` section. Puppet Server honors the following
+`puppet.conf` settings:
 
-These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
+* allow_duplicate_certs
+* autosign
+* cacert
+* cacrl
+* cakey
+* ca_name
+* capub
+* ca_ttl
+* certdir
+* certname
+* cert_inventory
+* codedir (PE only)
+* csrdir
+* csr_attributes
+* dns_alt_names
+* hostcert
+* hostcrl
+* hostprivkey
+* hostpubkey
+* keylength
+* localcacert
+* manage_internal_file_permissions
+* privatekeydir
+* requestdir
+* serial
+* signeddir
+* ssl_client_header
+* ssl_client_verify_header
+* trusted_oid_mapping_file
+
+However, for some tasks, such as configuring the web server or an external Certificate Authority (CA), Puppet Server has separate configuration files and settings. These files and settings are described below. For more information about differences between Puppet Server and the Ruby Puppet master's use of `puppet.conf` settings, see  [Puppet Server: Differing Behavior in `puppet.conf`](./puppet_conf_setting_diffs.markdown).
 
 ## Configuration Files
 
