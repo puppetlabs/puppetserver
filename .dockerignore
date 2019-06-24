@@ -1,0 +1,8 @@
+/lib/
+/classes/
+/targets/
+target/
+/.bundle/
+/resources/puppetlabs/puppetserver/*.class
+/tmp/
+/dev-resources/i18n/bin

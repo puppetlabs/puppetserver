@@ -47,7 +47,7 @@ function Build-Container(
     $docker_args += '--pull'
   }
 
-  docker build $docker_args $Name
+  docker build $docker_args ..
 
   Pop-Location
 }
