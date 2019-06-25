@@ -270,7 +270,7 @@ jruby-config :- jruby-schemas/JRubyConfig
               (is (instance? ProtocolException (.getCause e))))))))))
 
   (testing "Can connect via TLSv1 by default"
-    (with-webserver-with-protocols ["TLSv1"] nil
+    (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
       (with-scripting-container sc
         (with-http-client sc 10080 {:use-ssl true}
           (.runScriptlet sc "$response = $c.get('/', {})")
@@ -278,7 +278,7 @@ jruby-config :- jruby-schemas/JRubyConfig
           (is (= "hi" (.runScriptlet sc "$response.body")))))))
 
   (testing "Can connect via TLSv1.1 by default"
-    (with-webserver-with-protocols ["TLSv1.1"] nil
+    (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
       (with-scripting-container sc
         (with-http-client sc 10080 {:use-ssl true}
           (.runScriptlet sc "$response = $c.get('/', {})")
@@ -295,7 +295,7 @@ jruby-config :- jruby-schemas/JRubyConfig
 
 (deftest https-sslv3
   (logutils/with-test-logging
-    (with-webserver-with-protocols ["SSLv3"] nil
+    (with-webserver-with-protocols ["SSLv3"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
       (testing "Cannot connect via SSLv3 by default"
         (with-scripting-container sc
           (with-http-client sc 10080 {:use-ssl true}
