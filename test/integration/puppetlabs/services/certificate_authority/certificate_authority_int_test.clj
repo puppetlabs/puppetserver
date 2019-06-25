@@ -398,12 +398,12 @@
                  (let [revoke-response (cert-status-request "revoked" subject)]
                    ;; If the revocation was successful infra CRL should contain above revoked compile master cert
                    (is (= 204 (:status revoke-response)))
-                   (is (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) cm-cert))))
+                   (is (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem") ca-cert) cm-cert))))
 
               (testing "Infra CRL should NOT contain a revoked non compile master certificate"
                  (let [revoke-response (cert-status-request "revoked" node-subject)]
                    (is (= 204 (:status revoke-response)))
-                   (is (not (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem")) node-cert)))))))
+                   (is (not (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem") ca-cert) node-cert)))))))
 
            (testing "Verify correct CRL is returned depending on enable-infra-crl"
              (let [request (mock/request :get
