@@ -8,8 +8,6 @@ matrix:
   include:
     - stage: puppetserver tests
       jdk: openjdk8
-    - stage: puppetserver tests
-      jdk: openjdk10
 notifications:
   email: false
   hipchat:
