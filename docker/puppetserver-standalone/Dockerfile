@@ -69,7 +69,7 @@ RUN apt-get update && \
     rm puppet6-release-"$UBUNTU_CODENAME".deb dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     apt-get update && \
     apt-get install --no-install-recommends -y git && \
-    apt install -y /puppetserver.deb && \
+    apt-get install --no-install-recommends -y /puppetserver.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     gem install --no-rdoc --no-ri r10k
