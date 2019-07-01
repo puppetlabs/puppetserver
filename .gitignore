@@ -3,6 +3,7 @@ pom.xml
 *jar
 /lib/
 /classes/
+/output/
 /targets/
 .lein-deps-sum
 .lein-failures
