@@ -39,6 +39,7 @@ function Build-Container(
     '--build-arg', "build_date=$build_date",
     '--build-arg', "version=$Version",
     '--build-arg', "namespace=$Namespace",
+    '--memory', '4g',
     '--file', "$Name/Dockerfile",
     '--tag', "$Namespace/${Name}:$Version"
   )
