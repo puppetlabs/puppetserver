@@ -142,7 +142,8 @@
                                    [com.cemerick/url "0.1.1"]]
 
                    ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
-                   :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
+                   :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"
+                                   "-Djruby.debug.fullTrace=true"]}
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
              :test {
