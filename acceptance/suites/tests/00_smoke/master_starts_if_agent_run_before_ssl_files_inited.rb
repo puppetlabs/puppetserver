@@ -51,7 +51,7 @@ end
 step 'Do an agent run with the server stopped so a public/private key can be created' do
   # The agent run is expected to return a '1' (failure) here because the server
   # it tries to contact would be down.
-  on(master, puppet('agent', '--test', '--certname', master, '--server', master),
+  on(master, puppet('agent', '--test', '--certname', master),
      {:acceptable_exit_codes => [1]})
 end
 
@@ -66,6 +66,6 @@ end
 step 'Ensure an agent run with the generated master cert is now successful' do
   # Exit code of 0 (success, no changes) or 2 (success, some changes) allowed
   # since only interested in determining that the run is successful.
-  on(master, puppet('agent', '--test', '--certname', master, '--server', master),
+  on(master, puppet('agent', '--test', '--certname', master),
      {:acceptable_exit_codes => [0, 2]})
 end

@@ -20,7 +20,7 @@ agents.each do |agent|
 
   step "Validate binary-file filebucket backup" do
     old_md5 = on(agent, "md5sum #{studio}/binary-file-old | awk '{print $1}'").stdout.chomp
-    on(agent, puppet("filebucket restore #{studio}/binary-file-backup #{old_md5} --server #{master}"))
+    on(agent, puppet("filebucket restore #{studio}/binary-file-backup #{old_md5}"))
     diff = on(agent, "diff #{studio}/binary-file-old #{studio}/binary-file-backup").exit_code
     assert_equal(0, diff, 'binary-file was not backed up to filebucket')
   end
