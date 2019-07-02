@@ -73,10 +73,6 @@ module Puppet
           node.environment = requested_environment
         end
 
-        # Merges facts into the node parameters.
-        # Ensures that facts will be surfaced as top-scope variables,
-        # along with other node parameters.
-        node.merge(facts.values)
         node.trusted_data = trusted_facts
         node.add_server_facts(@server_facts)
         node
