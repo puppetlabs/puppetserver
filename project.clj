@@ -36,7 +36,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "2.6.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "2.7.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -69,6 +69,10 @@
 
                  [puppetlabs/jruby-utils "2.1.0"]
                  [puppetlabs/jruby-deps "9.2.0.0-1"]
+
+                 ;; Update to flatland usable in jdk11
+                 [org.flatland/useful "0.11.6"]
+                 [org.flatland/ordered "1.5.7"]
 
                  ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
                  ;; asm dependencies.  Deferring to clj-parent to resolve the version.
