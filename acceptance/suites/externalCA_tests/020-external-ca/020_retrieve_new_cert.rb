@@ -11,6 +11,6 @@ step 'Run puppet agent --test on all agents to retrieve new certificates' do
       sleep 5
       result = shell("test -e #{lockfile}", {:accept_all_exit_codes => true})
     end
-    on(my_agent, puppet('agent', '--test', "--server #{master}"), :acceptable_exit_codes => [0,2])
+    on(my_agent, puppet('agent', '--test'), :acceptable_exit_codes => [0,2])
   end
 end

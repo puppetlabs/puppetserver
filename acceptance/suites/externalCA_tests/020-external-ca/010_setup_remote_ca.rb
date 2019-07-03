@@ -131,6 +131,6 @@ step 'Restart Puppet Services' do
 end
 
 step 'if we can not do an agent run, we should fail' do
-  on(master, "puppet agent -t --server #{master}", :acceptable_error_code => [0,2])
+  on(master, "puppet agent -t", :acceptable_error_code => [0,2])
 end
 

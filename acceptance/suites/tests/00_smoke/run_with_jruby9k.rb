@@ -70,7 +70,7 @@ step 'Restart master with JRuby 9k' do
 end
 
 step 'Ensure that the server is running Ruby language version 2+' do
-   on(master, puppet('agent', '--test', '--server', master),
+   on(master, puppet('agent', '--test'),
       {:acceptable_exit_codes => [0, 2]}) do
      assert_match(/Notify\[rubyvers\]\/message: defined 'message' as '2/,
                   stdout,
