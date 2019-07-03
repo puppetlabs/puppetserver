@@ -27,6 +27,7 @@ function Lint-Dockerfile($Path)
 function Build-Container(
   $Name,
   $Namespace = 'puppet',
+  $Context = "$Name",
   $Version = (Get-ContainerVersion),
   $Vcs_ref = $(git rev-parse HEAD),
   $Pull = $true)
@@ -48,7 +49,7 @@ function Build-Container(
     $docker_args += '--pull'
   }
 
-  docker build $docker_args ..
+  docker build $docker_args $Context
 
   Pop-Location
 }
