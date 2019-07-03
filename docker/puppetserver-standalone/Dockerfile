@@ -20,6 +20,7 @@ COPY . /puppetserver
 WORKDIR /puppetserver
 RUN lein clean && lein install
 RUN EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-xenial-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build
+RUN mv /puppetserver/output/deb/xenial/*/*.deb /puppetserver.deb
 
 FROM ubuntu:16.04
 
@@ -58,7 +59,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.dockerfile="/Dockerfile"
 
-COPY --from=build /puppetserver/output/deb/xenial/*/*.deb /puppetserver.deb
+COPY --from=build /puppetserver.deb /puppetserver.deb
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget=1.17.1-1ubuntu1 ca-certificates && \
