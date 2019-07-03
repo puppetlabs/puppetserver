@@ -71,7 +71,6 @@ EOM
     end
 
     on(master, puppet_agent('--test', '--noop',
-                            '--server', master_fqdn,
                             '--certname', 'resource-exporter.test'),
               :acceptable_exit_codes => [0,2])
   end
@@ -80,7 +79,7 @@ EOM
     # ISO 8601 timestamp, with milliseconds and time zone. Local time is used
     # instead of UTC as both PuppetDB and Puppet Server log in local time.
     run_timestamp = Time.iso8601(on(master, 'date +"%Y-%m-%dT%H:%M:%S.%3N%:z"').stdout.chomp)
-    on(master, puppet_agent("--test --server #{master_fqdn}"), :acceptable_exit_codes => [0,2]) do
+    on(master, puppet_agent("--test"), :acceptable_exit_codes => [0,2]) do
       assert_match(/Notice: #{random_string}/, stdout,
                   'Puppet run collects exported Notify')
     end
