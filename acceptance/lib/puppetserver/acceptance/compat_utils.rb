@@ -15,7 +15,7 @@ class { 'simmons':
 SITEPP
   on(master, "chmod 644 #{sitepp}")
   with_puppet_running_on(master, {"master" => {"autosign" => true}}) do
-    on(agent, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0,2])
+    on(agent, puppet("agent --test"), :acceptable_exit_codes => [0,2])
   end
 end
 
