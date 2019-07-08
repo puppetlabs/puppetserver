@@ -474,9 +474,10 @@
           cert     (-> (:signeddir settings)
                        (path-to-cert "localhost")
                        (utils/pem->cert))
+          ca-cert (utils/pem->ca-cert (:cacert settings) (:cakey settings))
           revoked? (fn [cert]
                      (-> (:cacrl settings)
-                         (utils/pem->ca-crl)
+                         (utils/pem->ca-crl ca-cert)
                          (utils/revoked? cert)))]
       (is (false? (revoked? cert)))
       (revoke-existing-cert! settings "localhost")
