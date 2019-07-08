@@ -1,8 +1,6 @@
 language: clojure
 lein: 2.8.1
-dist: trusty
-# see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
-sudo: required
+dist: xenial
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
