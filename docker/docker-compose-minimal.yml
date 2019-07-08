@@ -1,0 +1,25 @@
+version: '3.5'
+
+services:
+  puppet:
+    hostname: puppet
+    domainname: test
+    image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
+    expose:
+      - 8141
+    environment:
+      - PUPPETSERVER_HOSTNAME=puppet.test
+      - PUPPET_MASTERPORT=8141
+      - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
+      - DNS_ALT_NAMES=puppet,puppet.test,${DNS_ALT_NAMES:-}
+      - PUPPET_STORECONFIGS=false
+      - PUPPET_REPORTS=log
+    dns_search: 'test'
+    networks:
+      puppetserver_test:
+        aliases:
+          - puppet.test
+
+networks:
+  puppetserver_test:
+    name: puppetserver_test

@@ -86,7 +86,7 @@ steps:
   name: build_puppetserver_container
 - powershell: |
     . ./docker/ci/build.ps1
-    Invoke-ContainerTest -Name puppetserver-standalone -Namespace $ENV:NAMESPACE
+    Invoke-ContainerTest -Name puppetserver-standalone -Namespace $ENV:NAMESPACE -Specs minimal-spec
   displayName: Test PuppetServer-Standalone
   name: test_puppetserverstandalone
 - task: PublishTestResults@2
@@ -97,7 +97,7 @@ steps:
     testRunTitle: PuppetServer-Standalone Test Results
 - powershell: |
     . ./docker/ci/build.ps1
-    Invoke-ContainerTest -Name puppetserver -Namespace $ENV:NAMESPACE
+    Invoke-ContainerTest -Name puppetserver -Namespace $ENV:NAMESPACE -Specs docker/minimal-spec
   displayName: Test PuppetServer
   name: test_puppetserver
 - task: PublishTestResults@2
