@@ -97,6 +97,9 @@
   :test-paths ["test/unit" "test/integration"]
   :resource-paths ["resources" "src/ruby"]
 
+  :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
+                 ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
+
   :plugins [[lein-parent "0.3.1"]
             [puppetlabs/i18n "0.8.0"]]
 
@@ -116,6 +119,9 @@
                 :system-config-dir "ezbake/system-config"
                 :additional-uberjars [[puppetlabs/jruby-deps ~jruby-9k-version]
                                       [puppetlabs/jruby-deps ~jruby-1_7-version]]}
+
+  :deploy-repositories [["releases" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/")]
+                        ["snapshots" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/")]]
 
   ;; By declaring a classifier here and a corresponding profile below we'll get an additional jar
   ;; during `lein jar` that has all the code in the test/ directory. Downstream projects can then
@@ -139,12 +145,6 @@
                    ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
                    :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
 
-             :internal {:repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
-                                       ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
-
-                        :deploy-repositories [["releases" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/")]
-                                              ["snapshots" ~(deploy-info "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/")]]
-                        }
              :testutils {:source-paths ^:replace ["test/unit" "test/integration"]}
              :test {
                     ;; NOTE: In core.async version 0.2.382, the default size for
