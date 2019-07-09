@@ -1,8 +1,6 @@
 language: clojure
 lein: 2.8.1
-dist: trusty
-# see https://www.deps.co/guides/travis-ci-latest-java/ certificate issues
-sudo: required
+dist: xenial
 
 services:
   - docker

@@ -1143,7 +1143,7 @@
    {:kind :duplicate-cert
     :msg  <specific error message>}"
   [csr :- CertificateRequest
-   {:keys [allow-duplicate-certs cacrl csrdir signeddir]} :- CaSettings]
+   {:keys [allow-duplicate-certs cacert cacrl cakey csrdir signeddir]} :- CaSettings]
   (let [subject (get-csr-subject csr)
         cert (path-to-cert signeddir subject)
         existing-cert? (fs/exists? cert)
@@ -1151,7 +1151,8 @@
     (when (or existing-cert? existing-csr?)
       (let [status (if existing-cert?
                      (if (utils/revoked?
-                           (utils/pem->ca-crl cacrl) (utils/pem->cert cert))
+                          (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
+                          (utils/pem->cert cert))
                        "revoked"
                        "signed")
                      "requested")]
@@ -1371,15 +1372,15 @@
   "Get the status of the subject's certificate or certificate request.
    The status includes the state of the certificate (signed, revoked, requested),
    DNS alt names, and several different fingerprint hashes of the certificate."
-  [{:keys [csrdir signeddir cacrl]} :- CaSettings
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings
    subject :- schema/Str]
-  (let [crl (utils/pem->ca-crl cacrl)]
+  (let [crl (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))]
     (get-certificate-status* signeddir csrdir crl subject)))
 
 (schema/defn ^:always-validate get-certificate-statuses :- [CertificateStatusResult]
   "Get the status of all certificates and certificate requests."
-  [{:keys [csrdir signeddir cacrl]} :- CaSettings]
-  (let [crl           (utils/pem->ca-crl cacrl)
+  [{:keys [csrdir signeddir cacert cacrl cakey]} :- CaSettings]
+  (let [crl           (utils/pem->ca-crl cacrl (utils/pem->ca-cert cacert cakey))
         pem-pattern   #"^.+\.pem$"
         all-subjects  (map #(fs/base-name % ".pem")
                            (concat (fs/find-files csrdir pem-pattern)
