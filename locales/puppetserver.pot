@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: a4bb768e0caec7953ad56dd93594c7316efc0f79\n"
+"X-Git-Ref: 6543391d9381378830eaf605061bf59b07adc5fa\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -309,24 +309,6 @@ msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/ringutils.clj
 msgid "Access to {0} rejected; no client certificate found"
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/shell_utils.clj
-msgid "An absolute path is required, but ''{0}'' is not an absolute path"
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/shell_utils.clj
-msgid ""
-"Command ''{0}'' appears to use command-line arguments, but this is not "
-"allowed."
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/shell_utils.clj
-msgid "The referenced command ''{0}'' does not exist"
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/shell_utils.clj
-msgid "The referenced command ''{0}'' is not executable"
 msgstr ""
 
 #: src/clj/puppetlabs/services/analytics/analytics_service.clj
