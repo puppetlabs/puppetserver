@@ -23,6 +23,8 @@ def install_pc1_repo(host)
   end
 
   if variant =~ /sles/
+    # Hack around RE-12490's invalid sles repo lists for pc1.
+    on host, "sed -i 's,==,=,' /etc/zypp/repos.d/puppetlabs-pc1.repo"
     on host, "rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet"
   end
 
