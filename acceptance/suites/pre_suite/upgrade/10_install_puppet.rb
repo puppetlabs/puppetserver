@@ -23,6 +23,8 @@ def install_pc1_repo(host)
   end
 
   if variant =~ /sles/
+    # Hack around RE-12490's invalid sles repo lists for pc1.
+    on host, "sed -i 's,==,=,' /etc/zypp/repos.d/puppetlabs-pc1.repo"
     on host, "rpmkeys --import https://yum.puppetlabs.com/RPM-GPG-KEY-puppet"
   end
 
@@ -57,11 +59,19 @@ end
 step "Configure puppet.conf" do
   hostname = on(master, 'facter hostname').stdout.strip
   fqdn = on(master, 'facter fqdn').stdout.strip
-  dir = master.tmpdir(File.basename('/tmp'))
 
-  lay_down_new_puppet_conf( master,
-                           {"main" => { "dns_alt_names" => "puppet,#{hostname},#{fqdn}",
-                                       "verbose" => true }}, dir)
+  hosts.each do |host|
+    dir = host.tmpdir('configure_puppet')
+
+    if host == master
+      lay_down_new_puppet_conf( host,
+                               {"main" => {"dns_alt_names" => "puppet,#{hostname},#{fqdn}",
+                                           "verbose" => true,
+                                           "server" => fqdn}}, dir)
+    else
+      lay_down_new_puppet_conf(host, {"main" => {"server" => fqdn}}, dir)
+    end
+  end
 end
 
 puppetserver_initialize_ssl
