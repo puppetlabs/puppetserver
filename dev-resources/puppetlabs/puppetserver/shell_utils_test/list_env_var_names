@@ -1,7 +1,0 @@
-#!/usr/bin/env sh
-
-# -s supresses lines that don't have an equals sign in them (this prevents bar in FOO=foo\nbar from being interpretted as a environment key)
-# -f selects which part of the split line to select
-# -d specifies the delimiter
-printenv | cut -s -f 1 -d "="
-

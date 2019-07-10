@@ -36,7 +36,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "3.0.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "3.1.1"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -78,6 +78,7 @@
                  ;; asm dependencies.  Deferring to clj-parent to resolve the version.
                  [org.ow2.asm/asm-all]
 
+                 [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
