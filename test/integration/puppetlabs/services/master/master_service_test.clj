@@ -189,6 +189,14 @@
                                           #(not (hit-routes (:route-id %)))
                                           http-metrics)))))))
 
+         (testing "JRuby borrow times are tracked per-reason"
+           (let [jruby-metrics (get-in status [:jruby-metrics :status :experimental :metrics])]
+             (is (contains? jruby-metrics :borrow-timers))
+             (is (= #{:total :puppet-v3-catalog :puppet-v3-node}
+                    (set (keys (:borrow-timers jruby-metrics)))))
+             (doseq [[k v] (:borrow-timers jruby-metrics)]
+               (is (nil? (schema/check jruby-metrics-core/TimerSummary v))))))
+
          (is (= 1 (get-in status [:puppet-profiler :service_status_version])))
          (is (= "running" (get-in status [:puppet-profiler :state])))
          (is (nil? (schema/check puppet-profiler-core/PuppetProfilerStatusV1

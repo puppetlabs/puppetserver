@@ -2,6 +2,7 @@
   (:require [schema.core :as schema]
             [puppetlabs.metrics :as metrics]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [puppetlabs.comidi :as comidi]
@@ -59,6 +60,8 @@
    :lock-held-timer Timer
    :lock-requests Atom
    :lock-status Atom
+   :hostname schema/Str
+   :metric-registry MetricRegistry
    :sampler-job-id schema/Any
    :queue-limit-hit-meter Meter})
 
@@ -85,6 +88,12 @@
    :reason RequestReasonInfo
    :time schema/Num})
 
+(def TimerSummary
+  {:count schema/Int
+   :mean schema/Num
+   :max schema/Num
+   :rate schema/Num})
+
 (def JRubyMetricsStatusV1
   {(schema/optional-key :experimental)
    {:jruby-pool-lock-status JRubyPoolLockStatus
@@ -99,6 +108,7 @@
               :average-free-jrubies schema/Num
               :average-borrow-time schema/Num
               :average-wait-time schema/Num
+              :borrow-timers {schema/Keyword TimerSummary}
               :requested-instances [InstanceRequestInfo]
               :borrowed-instances [InstanceRequestInfo]
               :num-pool-locks schema/Int
@@ -154,6 +164,85 @@
    (comp add-duration-to-instance instance-request-info)
    instances))
 
+(schema/defn timer-for-borrow-reason :- Timer
+  "Create or return a named timer for a JRuby borrow reason.
+
+  If the JRuby instance was borrowed to service a HTTP request, then
+  the timer name is generated from the sanitized Comidi :route-id.
+
+  If a Clojure Keyword was used as the JRuby borrow reason, then the
+  timer is generated from the Keyword's name and namespace.
+
+  Returns a timer named 'other' if the borrow reason does not match
+  one of the above cases."
+  [{:keys [hostname metric-registry]} :- JRubyMetrics
+   request :- TimestampedReason]
+  (let [request-info (instance-request-info request)
+        reason (:reason request-info)
+        timer-name (cond
+                     (nil? (schema/check HttpRequestReasonInfo reason))
+                       (-> (get-in reason [:request :route-id])
+                           ;; Remove ":" characters created by stringifying
+                           ;; Clojure keywords.
+                           (str/replace ":" "")
+                           ;; Remove segments created from regexes by Comidi.
+                           ;; Regexes contain characters that create escaping
+                           ;; problems in downstream services that use regexes
+                           ;; to search for or select metrics by name.
+                           (str/replace #"-\/.*\/" ""))
+                     (keyword? reason)
+                       (if-let [name-space (namespace reason)]
+                         (str name-space "." (name reason))
+                         (name reason))
+                     :else "other")]
+    (->> timer-name
+         (str "jruby.borrow-timer.")
+         (metrics/host-metric-name hostname)
+         (.timer metric-registry))))
+
+(schema/defn borrow-timers :- java.util.Map
+  "Returns a map of borrow timers from JRuby Metrics"
+  [{:keys [metric-registry hostname]} :- JRubyMetrics]
+  (let [metric-namespace (metrics/host-metric-name hostname "jruby.borrow-timer")
+        ;; TODO: v4.0 of Dropwizard Metrics has a MetricFilter/startsWith
+        ;;       static method that returns a filter which can be passed
+        ;;       directly to .getTimers.
+        metric-filter (partial filter (fn [[k v]]
+                                        (str/starts-with? k metric-namespace)))]
+    (->> (.getTimers metric-registry)
+         metric-filter
+         (into {}))))
+
+(schema/defn summarize-borrow-timers
+  "Generates a summary for each JRuby borrow timer
+
+  This function iterates through the list of registered JRuby borrow timers
+  and summarizes each one."
+  [{:keys [hostname] :as metrics} :- JRubyMetrics]
+  (let [timer-namespace (metrics/host-metric-name hostname "jruby.borrow-timer")
+        get-name (fn [timer-name]
+                   (if (= timer-namespace timer-name)
+                     "total"
+                     (str/replace-first timer-name
+                                        (str timer-namespace ".") "")))
+        timer-summary (fn [timer]
+                        (let [snapshot (.getSnapshot timer)]
+                        {:count (.getCount timer)
+                         :mean (->> snapshot
+                                   .getMean
+                                   (.toMillis TimeUnit/NANOSECONDS))
+                         :max  (->> snapshot
+                                    ;; Using 99.9th percentile instead of the
+                                    ;; max as it is properly weighted for the
+                                    ;; past 5 minutes.
+                                    (.get999thPercentile)
+                                    (.toMillis TimeUnit/NANOSECONDS))
+                         :rate (.getFiveMinuteRate timer)}))]
+    (->> (borrow-timers metrics)
+         (map (fn [[k v]] (vector (keyword (get-name k))
+                                  (timer-summary v))))
+         (into {}))))
+
 (schema/defn track-successful-borrow-instance!
   [{:keys [borrow-count borrowed-instances]} :- JRubyMetrics
    jruby-instance :- JRubyInstance
@@ -186,16 +275,16 @@
     (log/warn (trs "Unable to find request event for borrowed JRuby instance: {0}" event))))
 
 (schema/defn track-return-instance!
-  [{:keys [return-count borrowed-instances borrow-timer]} :- JRubyMetrics
-   {jruby-instance :instance} :- jruby-schemas/JRubyReturnedEvent]
+  [{:keys [return-count borrowed-instances borrow-timer] :as metrics} :- JRubyMetrics
+   {:keys [instance reason]} :- jruby-schemas/JRubyReturnedEvent]
   (.inc return-count)
-  (when (jruby-schemas/jruby-instance? jruby-instance)
-    (let [id (:id jruby-instance)]
+  (when (jruby-schemas/jruby-instance? instance)
+    (let [id (:id instance)]
       (if-let [ta (get @borrowed-instances id)]
-        (do
-          (.update borrow-timer
-                   (- (System/currentTimeMillis) (:time ta))
-                   (TimeUnit/MILLISECONDS))
+        (let [elapsed-time (- (System/currentTimeMillis) (:time ta))
+              per-reason-timer (timer-for-borrow-reason metrics ta)]
+          (.update borrow-timer elapsed-time (TimeUnit/MILLISECONDS))
+          (.update per-reason-timer elapsed-time (TimeUnit/MILLISECONDS))
           (swap! borrowed-instances dissoc id))
         (log/warn (trs "JRuby instance ''{0}'' returned, but no record of when it was borrowed!" id))))))
 
@@ -300,6 +389,8 @@
    :lock-requests (atom {})
    :lock-status (atom {:current-state jruby-pool-lock-not-in-use
                        :last-change-time (timestamp)})
+   :metric-registry registry
+   :hostname hostname
    :sampler-job-id nil
    :queue-limit-hit-meter (.meter registry (metrics/host-metric-name hostname "jruby.queue-limit-hit-meter"))})
 
@@ -351,6 +442,7 @@
                                    :average-free-jrubies (metrics/mean free-jrubies-histo)
                                    :average-borrow-time (metrics/mean-millis borrow-timer)
                                    :average-wait-time (metrics/mean-millis wait-timer)
+                                   :borrow-timers (summarize-borrow-timers metrics)
                                    :requested-instances (requested-instances-info (vals @requested-instances))
                                    :borrowed-instances (requested-instances-info (vals @borrowed-instances))
                                    :num-pool-locks (.getCount lock-held-timer)
