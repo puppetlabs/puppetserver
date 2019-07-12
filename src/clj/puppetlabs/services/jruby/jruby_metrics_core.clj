@@ -15,7 +15,8 @@
            (puppetlabs.services.jruby_pool_manager.jruby_schemas JRubyInstance)
            (java.util.concurrent TimeUnit)
            (org.joda.time DateTime)
-           (org.joda.time.format DateTimeFormatter)))
+           (org.joda.time.format DateTimeFormatter)
+           (org.slf4j MDC)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schemas
@@ -285,6 +286,7 @@
               per-reason-timer (timer-for-borrow-reason metrics ta)]
           (.update borrow-timer elapsed-time (TimeUnit/MILLISECONDS))
           (.update per-reason-timer elapsed-time (TimeUnit/MILLISECONDS))
+          (MDC/put "jruby.borrow-time" (Long/toString elapsed-time))
           (swap! borrowed-instances dissoc id))
         (log/warn (trs "JRuby instance ''{0}'' returned, but no record of when it was borrowed!" id))))))
 
