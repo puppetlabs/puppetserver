@@ -36,7 +36,7 @@ The request body must look like:
   "transaction_uuid": "<uuid string>",
   "job_id": "<id string>",
   "options": { "capture_logs": <true/false>,
-               "log_level": <one of debug/info/warn>}
+               "log_level": <one of debug/info/warning/err>}
 }
 ```
 
