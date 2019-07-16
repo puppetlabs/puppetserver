@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.9
+
+Released 16 July 2019
+
+### Bug fixes
+
+In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
+
+Building Puppet Server outside our network is now slightly easier.
+
+Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
+
 ## Puppet Server 5.3.8
 
 Released 26 March 2019
