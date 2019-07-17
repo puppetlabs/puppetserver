@@ -12,8 +12,6 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 6.0.5
 
-Released 16 July 2019
-
 ### Bug fixes
 
 In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
