@@ -1,6 +1,6 @@
 
 matching_puppetdb_platform = puppetdb_supported_platforms.select { |r| r =~ master.platform }
-skip_test unless matching_puppetdb_platform.length > 0
+skip_test if matching_puppetdb_platform.length == 0 || master.fips_mode?
 
 
 test_name 'PuppetDB setup'
