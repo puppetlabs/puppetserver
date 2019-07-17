@@ -80,6 +80,7 @@
 
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
+                 [puppetlabs/trapperkeeper-webserver-jetty9]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
                  [puppetlabs/trapperkeeper-metrics]
@@ -135,7 +136,6 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                    [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
@@ -238,8 +238,7 @@
                              puppetlabs.puppetserver.cli.irb
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
-                             puppetlabs.services.protocols.legacy-routes]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
+                             puppetlabs.services.protocols.legacy-routes]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
