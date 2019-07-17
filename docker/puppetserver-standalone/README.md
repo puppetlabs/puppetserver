@@ -91,6 +91,11 @@ The following environment variables are supported:
 
   **Note** this is only effective on the initial run of the container when certificates are generated.
 
+## Initialization Scripts
+
+If you would like to do additional initialization, add a directory called `/docker-custom-entrypoint.d/` and fill it with `.sh` scripts.
+These scripts will be executed at the end of the entrypoint script, before the service is ran.
+
 ## Analytics Data Collection
 
 The puppetserver-standalone container collects usage data. This is disabled by default. You can enable it by passing `--env PUPPERWARE_ANALYTICS_ENABLED=true`
