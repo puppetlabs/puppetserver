@@ -18,6 +18,20 @@ Released 19 April 2019
 
 - This release adds a new API endpoint to `/puppet/v3/environment_transports`. This endpoint lists all of the available network transports from modules and is for use with the Agentless Catalog Executor. [SERVER-2467](https://tickets.puppetlabs.com/browse/SERVER-2467)
 
+## Puppet Server 6.3.1
+
+Released 16 July 2019
+
+### Bug fixes
+
+- In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
+
+- Building Puppet Server outside our network is now slightly easier.
+
+- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
+
+- Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
+
 ## Puppet Server 6.3.0
 
 Released 26 March 2019
@@ -69,6 +83,20 @@ Released 18 December 2018
 
 - The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
 - Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
+
+## Puppet Server 6.0.5
+
+Released 16 July 2019
+
+### Bug fixes
+
+- In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
+
+- Building Puppet Server outside our network is now slightly easier.
+
+- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
+
+- Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
 
 ## Puppet Server 6.0.4
 
