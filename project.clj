@@ -1,4 +1,6 @@
 (def ps-version "6.4.1-SNAPSHOT")
+;; This should go away when we move to using clj-parent for jetty9 3.x
+(def jetty9-version "3.0.1")
 
 (defn deploy-info
   [url]
@@ -80,6 +82,7 @@
 
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
+                 [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
                  [puppetlabs/trapperkeeper-metrics]
@@ -135,8 +138,7 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -183,7 +185,7 @@
                                                ;; pulling in an old build of clojurescript without it.
                                                [org.clojure/clojurescript ~clojurescript-version]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version]
                                                [org.clojure/tools.nrepl nil]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
@@ -238,8 +240,7 @@
                              puppetlabs.puppetserver.cli.irb
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
-                             puppetlabs.services.protocols.legacy-routes]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
+                             puppetlabs.services.protocols.legacy-routes]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
