@@ -65,6 +65,10 @@ The following environment variables are supported:
 
   The port the CA is listening on. Does nothing unless `CA_ENABLED=false`. Defaults to `PUPPET_MASTERPORT` when set, otherwise '8140'.
 
+- `CA_ALLOW_SUBJECT_ALT_NAMES`
+
+  Whether or not SSL certificates containing Subject Alternative Names should be signed by the CA. Does nothing unless `CA_ENABLED=true`. Defaults to `false`.
+
 - `CONSUL_ENABLED`
 
   Whether or not to register the `puppet` service with an external consul server. Defaults to 'false'.

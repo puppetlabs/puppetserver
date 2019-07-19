@@ -42,4 +42,8 @@ EOF
 
     puppet agent --noop --server="${CA_HOSTNAME}" --masterport="${CA_MASTERPORT}"
   fi
+else
+  # we are the CA
+  hocon -f /etc/puppetlabs/puppetserver/conf.d/ca.conf \
+    set certificate-authority.allow-subject-alt-names "${CA_ALLOW_SUBJECT_ALT_NAMES}"
 fi
