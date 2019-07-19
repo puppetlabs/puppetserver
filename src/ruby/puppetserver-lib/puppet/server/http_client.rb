@@ -54,19 +54,6 @@ class Puppet::Server::HttpClient
   end
 
   def post(url, body, headers = {}, options = {})
-    # If credentials were supplied for HTTP basic auth, add them into the headers.
-    # This is based on the code in lib/puppet/reports/http.rb.
-    credentials = options[:basic_auth]
-    if credentials
-      if headers["Authorization"]
-        raise "Existing 'Authorization' header conflicts with supplied HTTP basic auth credentials."
-      end
-
-      # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
-      encoded = Base64.strict_encode64("#{credentials[:user]}:#{credentials[:password]}")
-      headers["Authorization"] = "Basic #{encoded}"
-    end
-
     request_options = create_common_request_options(url, headers, options)
     request_options.set_body(body)
 
@@ -92,6 +79,21 @@ class Puppet::Server::HttpClient
   end
 
   def create_common_request_options(url, headers, options)
+    # If credentials were supplied for HTTP basic auth, add them into the headers.
+    # This is based on the code in lib/puppet/reports/http.rb.
+    credentials = options[:basic_auth]
+    if credentials
+      # http://en.wikipedia.org/wiki/Basic_access_authentication#Client_side
+      encoded = Base64.strict_encode64("#{credentials[:user]}:#{credentials[:password]}")
+      authorization = "Basic #{encoded}"
+
+      if headers["Authorization"] && headers["Authorization"] != authorization
+        raise "Existing 'Authorization' header conflicts with supplied HTTP basic auth credentials."
+      end
+
+      headers["Authorization"] = authorization
+    end
+
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
     request_options = RequestOptions.new(build_url(url))

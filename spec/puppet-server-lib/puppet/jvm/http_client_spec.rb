@@ -33,6 +33,48 @@ describe 'Puppet::Server::HttpClient' do
     end
   end
 
+  context 'when making a request with basic auth' do
+    let(:url) { '/' }
+    let(:headers) { {} }
+    let(:options) { {} }
+
+    describe '#create_common_request_options' do
+      subject { client.create_common_request_options(url, headers, options) }
+
+      context 'with auth provided via options' do
+        let(:options) { {basic_auth: {user: 'username', password: 'secret'}} }
+
+        it 'has the Authorization header set' do
+          expect(subject.headers['Authorization']).to eq('Basic dXNlcm5hbWU6c2VjcmV0')
+        end
+      end
+
+      context 'with auth provided via headers' do
+        let(:headers) { {'Authorization' => 'Basic dXNlcm5hbWU6c2VjcmV0'} }
+
+        it 'has the Authorization header set' do
+          expect(subject.headers['Authorization']).to eq('Basic dXNlcm5hbWU6c2VjcmV0')
+        end
+
+        context 'with match auth via options' do
+          let(:options) { {basic_auth: {user: 'username', password: 'secret'}} }
+
+          it 'has the Authorization header set' do
+            expect(subject.headers['Authorization']).to eq('Basic dXNlcm5hbWU6c2VjcmV0')
+          end
+        end
+
+        context 'with non-match auth via options' do
+          let(:options) { {basic_auth: {user: 'username', password: 'mismatch'}} }
+
+          it 'raises an exception' do
+            expect { subject }.to raise_error(StandardError, /Existing 'Authorization' header conflicts/)
+          end
+        end
+      end
+    end
+  end
+
   context "when making a request that triggers a Java exception" do
     let :requests do
       headers = {}
