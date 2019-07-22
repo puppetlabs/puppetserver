@@ -1,4 +1,4 @@
-(def ps-version "6.4.1-SNAPSHOT")
+(def ps-version "6.5.0-SNAPSHOT")
 ;; This should go away when we move to using clj-parent for jetty9 3.x
 (def jetty9-version "3.0.1")
 
