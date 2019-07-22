@@ -10,6 +10,24 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.5.0
+
+Released 22 July 2019
+
+### New features
+
+- You can now specify a `--certname` flag with the `puppetserver ca list` command, which limits the output to information about the requested cert and logs an error if the requested cert does not exist in any form. [SERVER-2589](https://tickets.puppetlabs.com/browse/SERVER-2589)
+
+- You can now specify a log level for the logs collected by the new catalog compilation endpoint during compilation. See the [catalog endpoint docs](https://puppet.com/docs/puppetserver/6.4/puppet-api/v4/catalog.html) for information. [SERVER-2520](https://tickets.puppetlabs.com/browse/SERVER-2520)
+
+- In this release, performance in `puppetserver` commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
+
+- Building Puppet Server outside our network is now slightly easier.
+
+- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
+
+- Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
+
 ## Puppet Server 6.4.0
 
 Released 19 April 2019
