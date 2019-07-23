@@ -7,7 +7,19 @@ canonical: "/puppetserver/latest/known_issues.html"
 
 For a list of all known issues, visit our [Issue Tracker](https://tickets.puppet.com/browse/SERVER).
 
-Here are a few specific issues that we're aware of that might affect certain users:
+## Cipher updates in Puppet Server 6.5
+
+Puppet Server 6.5 includes an upgrade to the latest release of Jetty's 9.4 series. With this update, you may see "weak cipher" warnings about ciphers that were previously enabled by default. Puppet Server now defaults to stronger FIPS-compliant ciphers, but you must first remove the weak ciphers.
+
+The ciphers previously enabled by default have not been changed, but are considered weak by the updated standards. Remove the weak ciphers by removing the `cipher-suite` configuration section from the `webserver.conf`. After you remove the `cipher-suite`, Puppet Server uses the FIPS-compliant ciphers instead. This release includes the weak ciphers for backward compatibility only.
+
+The FIPS-compliant cipher suites, which are not considered weak, will be the default in a future version of Puppet. To maintain backwards compatibility, Puppet Server explicitly enables all cipher suites that were available as of Puppet Server 6.0. When you upgrade to Puppet Server 6.5.0, this affects you in in two ways:
+1. The 6.5 package updates the `webserver.conf` file in Puppet Server's `conf.d` directory.
+2. When Puppet Server starts or reloads, Jetty warns about weak cipher suites being enabled.
+
+This update also removes the `so-linger-seconds` configuration setting. This setting is now ignored and a warning is issued if it is set. See Jetty's [so-linger-seconds](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/3.0.1/doc/jetty-config.md#so-linger-seconds) for removal details.
+
+> Note: On some older operating systems, you might see additional warnings that newer cipher suites are unavailable. In this case, manage the contents of the `webserver.cipher-suites` configuration value to be those strong suites that available to you.
 
 ## Server-side Ruby gems might need to be updated for upgrading from JRuby 1.7
 
