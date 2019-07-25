@@ -57,10 +57,6 @@
                  [puppetlabs/jruby-utils "2.0.0"]
                  [puppetlabs/jruby-deps "9.1.16.0-1"]
 
-                 ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
-                 ;; asm dependencies.  Deferring to clj-parent to resolve the version.
-                 [org.ow2.asm/asm-all]
-
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
