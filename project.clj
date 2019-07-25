@@ -22,10 +22,6 @@
     heap-size-from-profile-clj
     default-heap-size))
 
-(def figwheel-version "0.3.7")
-(def cljsbuild-version "1.1.7")
-(def clojurescript-version "1.10.238")
-
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
@@ -168,10 +164,6 @@
                                                ;; brings in its own version, and older versions of
                                                ;; lein depend on clojure 1.6.
                                                [org.clojure/clojure nil]
-                                               ;; I honestly don't know why we should need this
-                                               ;; But building with ezbake is consistently failing and
-                                               ;; pulling in an old build of clojurescript without it.
-                                               [org.clojure/clojurescript ~clojurescript-version]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9 nil]
                                                [org.clojure/tools.nrepl nil]]
