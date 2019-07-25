@@ -16,16 +16,11 @@
         (get-in [:user :puppetserver-heap-size])))))
 
 (defn heap-size
-  [default-heap-size heap-size-type]
+  [default-heap-size]
   (or
     (System/getenv "PUPPETSERVER_HEAP_SIZE")
     heap-size-from-profile-clj
-    (do
-      (println "Using" default-heap-size heap-size-type
-        "heap since not set via PUPPETSERVER_HEAP_SIZE environment variable or"
-        "user.puppetserver-heap-size in ~/.lein/profiles.clj file. Set to at"
-        "least 5G for best performance during test runs.")
-      default-heap-size)))
+    default-heap-size))
 
 (def figwheel-version "0.3.7")
 (def cljsbuild-version "1.1.7")
@@ -197,8 +192,8 @@
 
   :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
                "-XX:+UseG1GC"
-               ~(str "-Xms" (heap-size "1G" "min"))
-               ~(str "-Xmx" (heap-size "2G" "max"))
+               ~(str "-Xms" (heap-size "1G"))
+               ~(str "-Xmx" (heap-size "2G"))
                "-XX:+IgnoreUnrecognizedVMOptions"
                "--add-modules=java.xml.bind"
                "--add-modules=java.xml.ws"]
