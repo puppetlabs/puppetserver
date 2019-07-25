@@ -52,10 +52,6 @@
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
                  ;; send their logs to logstash, so we include it in the jar.
-                 ;; we may use it directly in the future
-                 ;; We are using an exlusion here because logback dependencies should
-                 ;; be inherited from trapperkeeper to avoid accidentally bringing
-                 ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
                  [puppetlabs/jruby-utils "2.0.0"]
