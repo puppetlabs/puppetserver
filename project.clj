@@ -85,7 +85,7 @@
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
   :plugins [[lein-parent "0.3.1"]
-            [puppetlabs/i18n "0.8.0"]]
+            [puppetlabs/i18n "0.8.0" :hooks false]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
