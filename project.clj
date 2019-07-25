@@ -138,14 +138,12 @@
                     :jvm-opts ["-Dclojure.core.async.pool-size=50"]
                     }
 
-             :ezbake {:dependencies ^:replace [ ;; we need to explicitly pull in our parent project's
+             :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
                                                ;; clojure version here, because without it, lein
-                                               ;; brings in its own version, and older versions of
-                                               ;; lein depend on clojure 1.6.
+                                               ;; brings in its own version.
                                                [org.clojure/clojure]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9]
-                                               [org.clojure/tools.nrepl]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
