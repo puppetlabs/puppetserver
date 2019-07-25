@@ -11,6 +11,7 @@ require 'puppet/server/puppet_config'
 require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
 require 'puppet/server/ast_compiler'
+require 'puppet/server/key_recorder'
 
 require 'java'
 
@@ -44,9 +45,11 @@ class Puppet::Server::Master
 
   def handleRequest(request)
     response = {}
-    process(request, response)
-    # 'process' returns only the status -
-    # `response` now contains all of the response data
+    Puppet.override(lookup_key_recorder: Puppet::Server::KeyRecorder.new) do
+      process(request, response)
+      # 'process' returns only the status -
+      # `response` now contains all of the response data
+    end
 
     body = response[:body]
     body_to_return =
@@ -66,7 +69,9 @@ class Puppet::Server::Master
   end
 
   def compileCatalog(request_data)
-    @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
+    Puppet.override(lookup_key_recorder: Puppet::Server::KeyRecorder.new) do
+      @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
+    end
   end
 
   def compileAST(compile_options)
