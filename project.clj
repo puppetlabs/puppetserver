@@ -25,7 +25,7 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :min-lein-version "2.7.1"
+  :min-lein-version "2.8.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "3.0.0"]
                    :inherit [:managed-dependencies]}
@@ -113,8 +113,8 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -138,31 +138,18 @@
                     :jvm-opts ["-Dclojure.core.async.pool-size=50"]
                     }
 
-             :ezbake {:dependencies ^:replace [;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                                               ;; NOTE: we need to explicitly pass in `nil` values
-                                               ;; for the version numbers here in order to correctly
-                                               ;; inherit the versions from our parent project.
-                                               ;; This is because of a bug in lein 2.7.1 that
-                                               ;; prevents the deps from being processed properly
-                                               ;; with `:managed-dependencies` when you specify
-                                               ;; dependencies in a profile.  See:
-                                               ;; https://github.com/technomancy/leiningen/issues/2216
-                                               ;; Hopefully we can remove those `nil`s (if we care)
-                                               ;; and this comment when lein 2.7.2 is available.
-                                               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-                                               ;; we need to explicitly pull in our parent project's
+             :ezbake {:dependencies ^:replace [ ;; we need to explicitly pull in our parent project's
                                                ;; clojure version here, because without it, lein
                                                ;; brings in its own version, and older versions of
                                                ;; lein depend on clojure 1.6.
-                                               [org.clojure/clojure nil]
+                                               [org.clojure/clojure]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
-                                               [org.clojure/tools.nrepl nil]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9]
+                                               [org.clojure/tools.nrepl]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}
              :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
