@@ -149,8 +149,7 @@
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
                        :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
-                            [lein-exec "0.3.7"]]}
-             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
+                            [lein-exec "0.3.7"]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
