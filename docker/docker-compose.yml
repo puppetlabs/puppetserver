@@ -7,6 +7,8 @@ services:
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
     expose:
       - 8141
+    ports:
+      - 8141
     environment:
       - PUPPETSERVER_HOSTNAME=puppet.test
       - PUPPET_MASTERPORT=8141
@@ -33,6 +35,8 @@ services:
       - PUPPET_STORECONFIGS=false
       - PUPPET_REPORTS=log
     dns_search: 'test'
+    ports:
+      - 8140
     networks:
       puppetserver_test:
         aliases:
