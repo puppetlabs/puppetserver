@@ -16,33 +16,21 @@
         (get-in [:user :puppetserver-heap-size])))))
 
 (defn heap-size
-  [default-heap-size heap-size-type]
+  [default-heap-size]
   (or
     (System/getenv "PUPPETSERVER_HEAP_SIZE")
     heap-size-from-profile-clj
-    (do
-      (println "Using" default-heap-size heap-size-type
-        "heap since not set via PUPPETSERVER_HEAP_SIZE environment variable or"
-        "user.puppetserver-heap-size in ~/.lein/profiles.clj file. Set to at"
-        "least 5G for best performance during test runs.")
-      default-heap-size)))
-
-(def figwheel-version "0.3.7")
-(def cljsbuild-version "1.1.7")
-(def clojurescript-version "1.10.238")
+    default-heap-size))
 
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :min-lein-version "2.7.1"
+  :min-lein-version "2.9.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "3.0.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
-
-                 ;; See SERVER-2216
-                 [org.clojure/tools.nrepl "0.2.13"]
 
                  [slingshot]
                  [circleci/clj-yaml]
@@ -61,18 +49,10 @@
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
                  ;; send their logs to logstash, so we include it in the jar.
-                 ;; we may use it directly in the future
-                 ;; We are using an exlusion here because logback dependencies should
-                 ;; be inherited from trapperkeeper to avoid accidentally bringing
-                 ;; in different versions of the three different logback artifacts
                  [net.logstash.logback/logstash-logback-encoder]
 
                  [puppetlabs/jruby-utils "2.0.0"]
                  [puppetlabs/jruby-deps "9.1.16.0-1"]
-
-                 ;; JRuby 1.7.x and trapperkeeper (via core.async) both bring in
-                 ;; asm dependencies.  Deferring to clj-parent to resolve the version.
-                 [org.ow2.asm/asm-all]
 
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-authorization]
@@ -101,8 +81,8 @@
   :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
-  :plugins [[lein-parent "0.3.1"]
-            [puppetlabs/i18n "0.8.0"]]
+  :plugins [[lein-parent "0.3.7"]
+            [puppetlabs/i18n "0.8.0" :hooks false]]
 
   :uberjar-name "puppet-server-release.jar"
   :lein-ezbake {:vars {:user "puppet"
@@ -130,8 +110,8 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 nil :classifier "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
                                    [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
@@ -155,38 +135,18 @@
                     :jvm-opts ["-Dclojure.core.async.pool-size=50"]
                     }
 
-             :ezbake {:dependencies ^:replace [;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-                                               ;; NOTE: we need to explicitly pass in `nil` values
-                                               ;; for the version numbers here in order to correctly
-                                               ;; inherit the versions from our parent project.
-                                               ;; This is because of a bug in lein 2.7.1 that
-                                               ;; prevents the deps from being processed properly
-                                               ;; with `:managed-dependencies` when you specify
-                                               ;; dependencies in a profile.  See:
-                                               ;; https://github.com/technomancy/leiningen/issues/2216
-                                               ;; Hopefully we can remove those `nil`s (if we care)
-                                               ;; and this comment when lein 2.7.2 is available.
-                                               ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-                                               ;; we need to explicitly pull in our parent project's
+             :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
                                                ;; clojure version here, because without it, lein
-                                               ;; brings in its own version, and older versions of
-                                               ;; lein depend on clojure 1.6.
-                                               [org.clojure/clojure nil]
-                                               ;; I honestly don't know why we should need this
-                                               ;; But building with ezbake is consistently failing and
-                                               ;; pulling in an old build of clojurescript without it.
-                                               [org.clojure/clojurescript ~clojurescript-version]
+                                               ;; brings in its own version.
+                                               [org.clojure/clojure]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 nil]
-                                               [org.clojure/tools.nrepl nil]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 nil]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
-                            [lein-exec "0.3.7"]]}
-             :voom {:plugins [[lein-voom "0.1.0-20150115_230705-gd96d771" :exclusions [org.clojure/clojure]]]}}
+                            [lein-exec "0.3.7"]]}}
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)}
@@ -197,8 +157,8 @@
 
   :jvm-opts ["-Djruby.logger.class=com.puppetlabs.jruby_utils.jruby.Slf4jLogger"
                "-XX:+UseG1GC"
-               ~(str "-Xms" (heap-size "1G" "min"))
-               ~(str "-Xmx" (heap-size "2G" "max"))
+               ~(str "-Xms" (heap-size "1G"))
+               ~(str "-Xmx" (heap-size "2G"))
                "-XX:+IgnoreUnrecognizedVMOptions"
                "--add-modules=java.xml.bind"
                "--add-modules=java.xml.ws"]
