@@ -10,6 +10,7 @@ export BEAKER_OPTIONS="${BEAKER_OPTIONS:-acceptance/config/beaker/options.rb}"
 export BEAKER_CONFIG="${BEAKER_CONFIG:-acceptance/scripts/hosts.cfg}"
 export BEAKER_KEYFILE="${BEAKER_KEYFILE:-~/.ssh/id_rsa-acceptance}"
 export BEAKER_HELPER="${BEAKER_HELPER:-acceptance/lib/helper.rb}"
+export BEAKER_LOADPATH="${BEAKER_LOADPATH:-acceptance/lib}"
 
 bundle install --path vendor/bundle
 
@@ -20,7 +21,10 @@ BEAKER="$BEAKER --keyfile $BEAKER_KEYFILE"
 BEAKER="$BEAKER --helper $BEAKER_HELPER"
 BEAKER="$BEAKER --options-file $BEAKER_OPTIONS"
 BEAKER="$BEAKER --post-suite $BEAKER_POSTSUITE"
-BEAKER="$BEAKER --load-path acceptance/lib"
+BEAKER="$BEAKER --load-path $BEAKER_LOADPATH"
+if [[ -n $BEAKER_TAG ]]; then
+  BEAKER="$BEAKER --tag $BEAKER_TAG"
+fi
 
 if [ -z "$PACKAGE_BUILD_VERSION" ];
   #TODO: curl builds.puppetlabs.lan/puppetserver.  Parse HTML, find most recent folder name.
