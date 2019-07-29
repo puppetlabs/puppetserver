@@ -25,15 +25,12 @@
 (defproject puppetlabs/puppetserver ps-version
   :description "Puppet Server"
 
-  :min-lein-version "2.8.1"
+  :min-lein-version "2.9.1"
 
   :parent-project {:coords [puppetlabs/clj-parent "3.0.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
-
-                 ;; See SERVER-2216
-                 [org.clojure/tools.nrepl "0.2.13"]
 
                  [slingshot]
                  [circleci/clj-yaml]
