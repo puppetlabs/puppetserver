@@ -13,6 +13,6 @@ end
 gem 'rspec'
 gem 'rspec_junit_formatter'
 gem 'pupperware',
-  :git => 'https://github.com/puppetlabs/pupperware.git',
-  :ref => 'master',
+  :git => 'https://github.com/underscorgan/pupperware.git',
+  :ref => 'maint/master/update-puppetserver-checks',
   :glob => 'gem/*.gemspec'
