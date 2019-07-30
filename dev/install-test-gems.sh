@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 VENDORED_GEMS_HOME="./target/jruby-gem-home"
+LEIN="${LEIN:-lein}"
 
 gem_list=()
 while read LINE
@@ -11,4 +12,4 @@ do
 done < ./resources/ext/build-scripts/jruby-gem-list.txt
 
 echo "Installing vendored gems to '${VENDORED_GEMS_HOME}'"
-lein gem install --install-dir "${VENDORED_GEMS_HOME}" --no-ri --no-rdoc "${gem_list[@]}"
+$LEIN gem install --install-dir "${VENDORED_GEMS_HOME}" --no-ri --no-rdoc "${gem_list[@]}"
