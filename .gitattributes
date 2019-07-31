@@ -1,3 +1,6 @@
 docker/puppetserver/*               text  eol=lf
 docker/puppetserver-standalone/*    text  eol=lf
 docker/puppetserver-standalone/docker-entrypoint.d/*    text  eol=lf
+resources/ext/build-scripts/*       text  eol=lf
+resources/ext/cli_defaults/*        text  eol=lf
+resources/ext/cli/*                 text  eol=lf

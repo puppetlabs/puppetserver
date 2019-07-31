@@ -76,7 +76,7 @@ steps:
   name: lint_puppetserver_dockerfile
 - powershell: |
     . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver-standalone -Namespace $ENV:NAMESPACE
+    Build-Container -Name puppetserver-standalone -Namespace $ENV:NAMESPACE -Context ..
   displayName: Build PuppetServer-Standalone Container
   name: build_puppetserverstandalone_container
 - powershell: |

@@ -21,12 +21,13 @@ function Get-ContainerVersion
 
 function Lint-Dockerfile($Path)
 {
-  hadolint --ignore DL3008 --ignore DL3018 --ignore DL4000 --ignore DL4001 $Path
+  hadolint --ignore DL3008 --ignore DL3018 --ignore DL3028 --ignore DL4000 --ignore DL4001 $Path
 }
 
 function Build-Container(
   $Name,
   $Namespace = 'puppet',
+  $Context = "$Name",
   $Version = (Get-ContainerVersion),
   $Vcs_ref = $(git rev-parse HEAD),
   $Pull = $true)
@@ -39,6 +40,7 @@ function Build-Container(
     '--build-arg', "build_date=$build_date",
     '--build-arg', "version=$Version",
     '--build-arg', "namespace=$Namespace",
+    '--memory', '4g',
     '--file', "$Name/Dockerfile",
     '--tag', "$Namespace/${Name}:$Version"
   )
@@ -47,7 +49,7 @@ function Build-Container(
     $docker_args += '--pull'
   }
 
-  docker build $docker_args $Name
+  docker build $docker_args $Context
 
   Pop-Location
 }

@@ -1,0 +1,9 @@
+*
+!.git
+!project.clj
+!docker
+!documentation
+!ezbake
+!resources
+!ruby
+!src
