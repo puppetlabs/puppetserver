@@ -62,7 +62,6 @@
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/kitchensink]
-                 [org.bouncycastle/bcpkix-jdk15on]
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
@@ -117,6 +116,7 @@
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
+                                   [org.bouncycastle/bcpkix-jdk15on]
                                    [ring/ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                                    [beckon]
@@ -140,11 +140,14 @@
                                                ;; clojure version here, because without it, lein
                                                ;; brings in its own version.
                                                [org.clojure/clojure]
+                                               [org.bouncycastle/bcpkix-jdk15on]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
-             :uberjar {:aot [puppetlabs.trapperkeeper.main
+             :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
+                                      [puppetlabs/trapperkeeper-webserver-jetty9]]
+                       :aot [puppetlabs.trapperkeeper.main
                              puppetlabs.trapperkeeper.services.status.status-service
                              puppetlabs.trapperkeeper.services.metrics.metrics-service
                              puppetlabs.services.protocols.jruby-puppet
@@ -195,8 +198,10 @@
                              puppetlabs.puppetserver.cli.irb
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
-                             puppetlabs.services.protocols.legacy-routes]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
+                             puppetlabs.services.protocols.legacy-routes]}
+             :fips {:exclusions [org.bouncycastle/bcpkix-jdk15on]
+                    :dependencies [[org.bouncycastle/bcpkix-fips]
+                                   [org.bouncycastle/bc-fips]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}}
 
