@@ -16,19 +16,21 @@ Released 22 July 2019
 
 ### New features
 
-- This release includes an upgrade to the latest release of Jetty's 9.4 series. With this update, you may see "weak cipher" warnings about ciphers that were previously enabled by default. Puppet Server now defaults to stronger FIPS-compliant ciphers, but you must first remove the weak ciphers.
+- The default for the `cipher-suites` setting in the webserver section of `webserver.conf` has been updated. Previously, the defaults included 11 cipher suites, including 4 `TLS_RSA_*` cipher suites. Now the defaults include all cipher suites usable on a RHEL 7 FIPS-enabled server, our target platform for FIPS certification, except for `TLS_RSA_*` ciphers. Additionally, Puppet Server emits warnings if any `TLS_RSA_*` ciphers are explicitly enabled in the `cipher-suites` setting.
 
-  The ciphers previously enabled by default have not been changed, but are considered weak by the updated standards. Remove the weak ciphers by removing the `cipher-suite` configuration section from the `webserver.conf`. After you remove the `cipher-suite`, Puppet Server uses the FIPS-compliant ciphers instead., Puppet Server uses the FIPS-compliant ciphers instead. This release includes the weak ciphers for backward compatibility only.
+To avoid potentially breaking clients that can use only `TLS_RSA_*` ciphers, the `webserver.conf` file now includes an explicit `cipher-suites` setting that adds the previously enabled `TLS_RSA_*` ciphers to the new implicit `cipher-suites` setting. This has three effects:
 
-  The FIPS-compliant cipher suites, which are not considered weak, will be the default in a future version of Puppet. To maintain backwards compatibility, Puppet Server explicitly enables all cipher suites that were available as of Puppet Server 6.0. When you upgrade to Puppet Server 6.5.0, this affects you in two ways:
-  1. The 6.5 package updates the `webserver.conf` file in Puppet Server's `conf.d` directory.
-  2. When Puppet Server starts or reloads, Jetty warns about weak cipher suites being enabled.
+  1. Older clients that require the `TLS_RSA_*` ciphers will continue to work.
+  2. Puppet Server generates warnings in the logs that the `TLS_RSA_*` ciphers are enabled.
+  3. Puppet Server generates warnings in the logs if ciphers enumerated in the `cipher-suites` setting are not available on that specific OS. These warnings can be safely silenced by editing the `cipher-suites` setting and removing the unavailable ciphers.
+
+  A future version of Puppet Server will remove the `cipher-suites` setting in `webserver.conf`. This will break any clients that still require the `TLS_RSA_*` ciphers.
+
+  In advance of this change, update any clients that still require the `TLS_RSA_*` ciphers to clients that can use more recent ciphers, and remove the `cipher-suites` setting in `webserver.conf`.
 
   This update also removes the `so-linger-seconds` configuration setting. This setting is now ignored and a warning is issued if it is set. See Jetty's [so-linger-seconds](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/3.0.1/doc/jetty-config.md#so-linger-seconds) for removal details.
 
-  > Note: On some older operating systems, you might see additional warnings that newer cipher suites are unavailable. In this case, manage the contents of the `webserver.cipher-suites` configuration value to be those strong suites that available to you.
-
-  [SERVER-2576](https://tickets.puppetlabs.com/browse/SERVER-2576)
+  See [SERVER-2576](https://tickets.puppetlabs.com/browse/SERVER-2576) for further details.
 
 - You can now specify a `--certname` flag with the `puppetserver ca list` command, which limits the output to information about the requested cert and logs an error if the requested cert does not exist in any form. [SERVER-2589](https://tickets.puppetlabs.com/browse/SERVER-2589)
 
