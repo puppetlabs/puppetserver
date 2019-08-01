@@ -16,17 +16,17 @@ Released 22 July 2019
 
 ### New features
 
-- The implicit default for the cipher-suites setting (in the webserver section, in webserver.conf) has been updated. The defaults previously included 11 cipher suites, including 4 TLS_RSA_* cipher suites. The implicit defaults now include all cipher suites usable on a RHEL 7 FIPS enabled server, our target platform for FIPS certification, except for TLS_RSA_* ciphers. Additionally, Puppet Server will emit warnings if any TLS_RSA_* ciphers are explicitly enabled (via the cipher-suites setting).
+- The default for the `cipher-suites` setting in the webserver section of `webserver.conf` has been updated. Previously, the defaults included 11 cipher suites, including 4 `TLS_RSA_*` cipher suites. Now the defaults include all cipher suites usable on a RHEL 7 FIPS-enabled server, our target platform for FIPS certification, except for `TLS_RSA_*` ciphers. Additionally, Puppet Server emits warnings if any `TLS_RSA_*` ciphers are explicitly enabled in the `cipher-suites` setting.
 
-  In order to avoid potentially breaking clients that can only use TLS_RSA_* ciphers, the Puppet Server 6.5.0 webserver.conf file now includes an explicit cipher-suites setting that adds the previously enabled TLS_RSA_* ciphers to the new implicit cipher-suites setting. This has three effects:
+To avoid potentially breaking clients that can use only `TLS_RSA_*` ciphers, the `webserver.conf` file now includes an explicit `cipher-suites` setting that adds the previously enabled `TLS_RSA_*` ciphers to the new implicit `cipher-suites` setting. This has three effects:
 
-  1. Older clients that require the TLS_RSA_* ciphers will continue to work.
-  2. Puppet Server will generate warnings in the logs that the TLS_RSA_* ciphers are enabled.
-  3. Puppet Server will generate warnings in the logs for ciphers enumerated in the cipher-suites setting that are not available on that specific OS. (Note that these warnings can be safely silenced by editing the explicit cipher-suites setting and removing the offending ciphers.)
+  1. Older clients that require the `TLS_RSA_*` ciphers will continue to work.
+  2. Puppet Server generates warnings in the logs that the `TLS_RSA_*` ciphers are enabled.
+  3. Puppet Server generates warnings in the logs if ciphers enumerated in the `cipher-suites` setting are not available on that specific OS. These warnings can be safely silenced by editing the `cipher-suites` setting and removing the unavailable ciphers.
 
-  A future version of Puppet Server will remove the explicit cipher-suites setting in webserver.conf, thus permitting the implicit default to apply. This will break any clients that still require the TLS_RSA_* ciphers.
+  A future version of Puppet Server will remove the `cipher-suites` setting in `webserver.conf`. This will break any clients that still require the `TLS_RSA_*` ciphers.
 
-  In advance of this change, we strongly recommend updating any clients that still require the TLS_RSA_* ciphers to clients that can use more recent ciphers, and then removing the explicit cipher-suites setting in webserver.conf.
+  In advance of this change, update any clients that still require the `TLS_RSA_*` ciphers to clients that can use more recent ciphers, and remove the `cipher-suites` setting in `webserver.conf`.
 
   This update also removes the `so-linger-seconds` configuration setting. This setting is now ignored and a warning is issued if it is set. See Jetty's [so-linger-seconds](https://github.com/puppetlabs/trapperkeeper-webserver-jetty9/blob/3.0.1/doc/jetty-config.md#so-linger-seconds) for removal details.
 
