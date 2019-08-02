@@ -23,6 +23,9 @@ TEST_BUNDLE_DIR = File.join(PROJECT_ROOT, 'vendor', 'test_bundle')
 
 GEM_SOURCE = ENV['GEM_SOURCE'] || "https://artifactory.delivery.puppetlabs.net/artifactory/api/gems/rubygems/"
 
+# Jenkins uses `$LEIN` configure the lein version to use
+LEIN_PATH = ENV['LEIN'] || 'lein'
+
 def assemble_default_beaker_config
   if ENV["BEAKER_CONFIG"]
     return ENV["BEAKER_CONFIG"]
@@ -156,7 +159,7 @@ namespace :spec do
       ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
       gem_install_bundler = <<-CMD
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
-      lein run -m org.jruby.Main \
+      #{LEIN_PATH} run -m org.jruby.Main \
       -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' bundler -v '< 2' --no-document --source '#{GEM_SOURCE}'
       CMD
       sh gem_install_bundler
@@ -172,7 +175,7 @@ namespace :spec do
       PATH='#{TEST_GEMS_DIR}/bin:#{path}' \
       BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
-      lein run -m org.jruby.Main \
+      #{LEIN_PATH} run -m org.jruby.Main \
         -S bundle install --without extra development packaging --path='#{TEST_BUNDLE_DIR}' --retry=3
       CMD
       sh bundle_install
@@ -192,7 +195,7 @@ task :spec => ["spec:init"] do
   run_rspec_with_jruby = <<-CMD
     BUNDLE_GEMFILE='#{PUPPET_SRC}/Gemfile' \
     GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
-    lein run -m org.jruby.Main \
+    #{LEIN_PATH} run -m org.jruby.Main \
       -I'#{PUPPET_SERVER_RUBY_SPEC}' -I'#{PUPPET_LIB}' -I'#{FACTER_LIB}' -I'#{PUPPET_SERVER_RUBY_SRC}' \
       ./spec/run_specs.rb
   CMD
@@ -241,7 +244,7 @@ namespace :test do
     task :bakeNbeak do
       package_version = nil
 
-      Open3.popen3("lein with-profile ezbake ezbake build 2>&1") do |stdin, stdout, stderr, thread|
+      Open3.popen3("#{LEIN_PATH} with-profile ezbake ezbake build 2>&1") do |stdin, stdout, stderr, thread|
         # sleep 5
         # puts "STDOUT IS: #{stdout}"
         success = true
