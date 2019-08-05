@@ -48,7 +48,7 @@
 
                  [slingshot]
                  [circleci/clj-yaml]
-                 [org.yaml/snakeyaml]
+                 [org.yaml/snakeyaml "1.23"]
                  [commons-lang]
                  [commons-io]
 
@@ -71,6 +71,8 @@
 
                  [puppetlabs/jruby-utils "2.1.0"]
                  [puppetlabs/jruby-deps "9.2.0.0-1"]
+                 [org.jruby/jruby-core "9.2.7.0"]
+                 [org.jruby/jruby-stdlib "9.2.7.0"]
 
                  ;; Update to flatland usable in jdk11
                  [org.flatland/useful "0.11.6"]
