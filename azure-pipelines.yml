@@ -15,6 +15,8 @@ pool:
 
 variables:
   NAMESPACE: puppet
+  CONTAINER_NAME: puppetserver
+  CONTAINER_NAME2: puppetserver-standalone
 
 steps:
 - checkout: self
@@ -34,50 +36,49 @@ steps:
   name: hostinfo
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Lint-Dockerfile -Name puppetserver-standalone -Ignore @('DL3028')
-  displayName: Lint PuppetServer-Standalone Dockerfile
-  name: lint_puppetserverstandalone_dockerfile
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME2 -Ignore @('DL3028')
+  displayName: Lint $(CONTAINER_NAME2) Dockerfile
+  name: lint_standalone_dockerfile
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Lint-Dockerfile -Name puppetserver -Ignore @('DL3028')
-  displayName: Lint PuppetServer Dockerfile
-  name: lint_puppetserver_dockerfile
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME -Ignore @('DL3028')
+  displayName: Lint $(CONTAINER_NAME) Dockerfile
+  name: lint_dockerfile
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Build-Container -Name puppetserver-standalone -Namespace $ENV:NAMESPACE -Context . -AdditionalOptions @('--memory', '4g')
-  displayName: Build PuppetServer-Standalone Container
-  name: build_puppetserverstandalone_container
+    Build-Container -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -Context . -AdditionalOptions @('--memory', '4g')
+  displayName: Build $(CONTAINER_NAME2) Container
+  name: build_standalone_container
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Build-Container -Name puppetserver -Namespace $ENV:NAMESPACE -Pull $false -AdditionalOptions @('--memory', '4g')
-  displayName: Build PuppetServer Container
-  name: build_puppetserver_container
+    Build-Container -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE -Pull $false -AdditionalOptions @('--memory', '4g')
+  displayName: Build $(CONTAINER_NAME) Container
+  name: build_container
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Invoke-ContainerTest -Name puppetserver-standalone -Namespace $ENV:NAMESPACE -Options puppetserver-standalone/.rspec
-  displayName: Test PuppetServer-Standalone
-  name: test_puppetserverstandalone
+    Invoke-ContainerTest -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -Options $ENV:CONTAINER_NAME2/.rspec
+  displayName: Test $(CONTAINER_NAME2)
+  name: test_standalone_container
 - task: PublishTestResults@2
-  displayName: Publish PuppetServer Standalone Test Results
+  displayName: Publish $(CONTAINER_NAME2) Test Results
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'docker/puppetserver-standalone/TEST-*.xml'
-    testRunTitle: PuppetServer-Standalone Test Results
+    testResultsFiles: 'docker/$(CONTAINER_NAME2)/TEST-*.xml'
+    testRunTitle: $(CONTAINER_NAME2) Test Results
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Invoke-ContainerTest -Name puppetserver -Namespace $ENV:NAMESPACE -Options puppetserver/.rspec
-  displayName: Test PuppetServer
-  name: test_puppetserver
+    Invoke-ContainerTest -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE -Options $ENV:CONTAINER_NAME/.rspec
+  displayName: Test $(CONTAINER_NAME)
+  name: test_container
 - task: PublishTestResults@2
-  displayName: Publish PuppetServer Test Results
+  displayName: Publish $(CONTAINER_NAME) Test Results
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'docker/puppetserver/TEST-*.xml'
-    testRunTitle: PuppetServer Test Results
+    testResultsFiles: 'docker/$(CONTAINER_NAME)/TEST-*.xml'
+    testRunTitle: $(CONTAINER_NAME) Test Results
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Clear-ContainerBuilds -Name puppetserver -Namespace $ENV:NAMESPACE
-    Clear-ContainerBuilds -Name puppetserver-standalone -Namespace $ENV:NAMESPACE
+    Clear-ContainerBuilds -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE
+    Clear-ContainerBuilds -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE
   displayName: Container Cleanup
-  name: cleanup_containers
   condition: always()
