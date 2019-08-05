@@ -13,7 +13,7 @@ if [ "$CONSUL_ENABLED" = "true" ]; then
   "address": "$ipaddress",
   "checks": [
     {
-      "http": "https://${HOSTNAME}:${PUPPET_MASTERPORT}/${PUPPET_HEALTHCHECK_ENVIRONMENT}/status/test",
+      "http": "https://${HOSTNAME}:${PUPPET_MASTERPORT}/status/v1/simple",
       "tls_skip_verify": true,
       "interval": "1s",
       "deregister_critical_service_after": "5m"

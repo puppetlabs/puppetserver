@@ -13,6 +13,6 @@ curl --fail \
 --cert   $hostcert \
 --key    $hostprivkey \
 --cacert $localcacert \
-"https://${hostname}:${PUPPET_MASTERPORT}/${PUPPET_HEALTHCHECK_ENVIRONMENT}/status/test" \
-|  grep -q '"is_alive":true' \
+"https://${hostname}:${PUPPET_MASTERPORT}/status/v1/simple" \
+|  grep -q '^running$' \
 || exit 1
