@@ -89,7 +89,8 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Clear-ContainerBuilds -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE
-    Clear-ContainerBuilds -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE
-  displayName: Container Cleanup
+    Clear-BuildState -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE
+    Clear-BuildState -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE
+  displayName: Build Cleanup
+  timeoutInMinutes: 3
   condition: always()
