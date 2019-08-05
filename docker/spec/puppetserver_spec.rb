@@ -35,7 +35,7 @@ describe 'puppetserver container' do
   end
 
   it 'should start puppetserver successfully' do
-    expect(wait_on_puppetserver_status()).to eq ('healthy')
+    expect(wait_on_service_health('puppet', 180)).to eq ('healthy')
   end
 
   it 'should be able to run a puppet agent against the puppetserver' do
@@ -43,7 +43,7 @@ describe 'puppetserver container' do
   end
 
   it 'should be able to start a compile master' do
-    expect(wait_on_puppetserver_status(180, 'compiler')).to eq ('healthy')
+    expect(wait_on_service_health('compiler', 180)).to eq ('healthy')
   end
 
   it 'should be able to run an agent against the compile master' do

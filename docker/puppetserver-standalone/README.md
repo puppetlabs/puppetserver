@@ -33,10 +33,6 @@ The following environment variables are supported:
 
   Additional Java args to pass to the puppetserver process. Defaults to '-Xms512m -Xmx512m'.
 
-- `PUPPET_HEALTHCHECK_ENVIRONMENT`
-
-  The environment to get the status of in the healthcheck script. Defaults to 'production'.
-
 - `PUPPET_MASTERPORT`
 
   The port the puppetserver should listen on. Defaults to '8140'.
