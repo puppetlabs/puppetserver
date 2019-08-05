@@ -17,6 +17,7 @@ variables:
   NAMESPACE: puppet
   CONTAINER_NAME: puppetserver
   CONTAINER_NAME2: puppetserver-standalone
+  LINT_IGNORES: DL3028
 
 steps:
 - checkout: self  # self represents the repo where the initial Pipelines YAML file was found
@@ -39,13 +40,13 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Lint-Dockerfile -Name $ENV:CONTAINER_NAME2 -Ignore @('DL3028')
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME2 -Ignore ($ENV:LINT_IGNORES -split ' ')
   displayName: Lint $(CONTAINER_NAME2) Dockerfile
   name: lint_standalone_dockerfile
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Lint-Dockerfile -Name $ENV:CONTAINER_NAME -Ignore @('DL3028')
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME -Ignore ($ENV:LINT_IGNORES -split ' ')
   displayName: Lint $(CONTAINER_NAME) Dockerfile
   name: lint_dockerfile
 
