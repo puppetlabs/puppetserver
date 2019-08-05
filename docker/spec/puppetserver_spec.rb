@@ -17,14 +17,14 @@ describe 'puppetserver container' do
   know which image to test against!
   * * * * *
       MSG
-		end
+    end
 
-		status = run_command('docker-compose --no-ansi version')[:status]
+    status = run_command('docker-compose --no-ansi version')[:status]
     if status.exitstatus != 0
       fail "`docker-compose` must be installed and available in your PATH"
     end
 
-		teardown_cluster()
+    teardown_cluster()
 
     run_command('docker-compose --no-ansi up --detach')
   end
