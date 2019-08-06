@@ -71,7 +71,7 @@ steps:
   name: test_standalone_container
 
 - task: PublishTestResults@2
-  displayName: Publish $(CONTAINER_NAME2) Test Results
+  displayName: Publish $(CONTAINER_NAME2) test results
   inputs:
     testResultsFormat: 'JUnit'
     testResultsFiles: 'docker/$(CONTAINER_NAME2)/TEST-*.xml'
@@ -84,7 +84,7 @@ steps:
   name: test_container
 
 - task: PublishTestResults@2
-  displayName: Publish $(CONTAINER_NAME) Test Results
+  displayName: Publish $(CONTAINER_NAME) test results
   inputs:
     testResultsFormat: 'JUnit'
     testResultsFiles: 'docker/$(CONTAINER_NAME)/TEST-*.xml'
@@ -94,6 +94,6 @@ steps:
     . "$(bundle show pupperware)/ci/build.ps1"
     Clear-BuildState -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE
     Clear-BuildState -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE
-  displayName: Build Cleanup
+  displayName: Container Cleanup
   timeoutInMinutes: 3
   condition: always()
