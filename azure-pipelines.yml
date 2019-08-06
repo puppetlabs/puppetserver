@@ -18,7 +18,7 @@ variables:
   CONTAINER_NAME: puppetserver
   CONTAINER_NAME2: puppetserver-standalone
   CONTAINER_BUILD_PATH2: .
-  LINT_IGNORES: DL3028
+  LINT_IGNORES: DL3008 DL3018 DL4000 DL4001 DL3028
   BUILD_OPTIONS: --memory 4g
 
 steps:
