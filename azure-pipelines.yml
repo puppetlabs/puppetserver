@@ -66,6 +66,12 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
+    Initialize-TestEnv
+  displayName: Prepare Test Environment
+  name: test_prepare
+
+- powershell: |
+    . "$(bundle show pupperware)/ci/build.ps1"
     Invoke-ContainerTest -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -Options $ENV:CONTAINER_NAME2/.rspec
   displayName: Test $(CONTAINER_NAME2)
   name: test_standalone_container
