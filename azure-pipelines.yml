@@ -8,108 +8,98 @@ pr:
     - '*'
 
 pool:
-  # self-hosted agent on Windows 10 1709 environment
+  # self-hosted agent on Windows 10 1903 environment
   # includes newer Docker engine with LCOW enabled, new build of LCOW image
-  # includes Ruby 2.5, Go 1.10, Node.js 10.10, hadolint
+  # includes Ruby 2.5, Go 1.10, Node.js 10.10
   name: Default
 
 variables:
   NAMESPACE: puppet
+  CONTAINER_NAME: puppetserver
+  CONTAINER_NAME2: puppetserver-standalone
+  CONTAINER_BUILD_PATH2: .
+  LINT_IGNORES: DL3028
+  BUILD_OPTIONS: --memory 4g
 
 steps:
-- checkout: self
-  clean: true
-- powershell: |
-    $line = '=' * 80
-    Write-Host "$line`nWindows`n$line`n"
-    Get-ComputerInfo |
-      select WindowsProductName, WindowsVersion, OsHardwareAbstractionLayer |
-      Out-String |
-      Write-Host
-    #
-    # Azure
-    #
-    $assetTag = Get-WmiObject -class Win32_SystemEnclosure -namespace root\CIMV2 |
-      Select -ExpandProperty SMBIOSAssetTag
+- checkout: self  # self represents the repo where the initial Pipelines YAML file was found
+  clean: true  # whether to fetch clean each time
 
-    # only Azure VMs have this hard-coded DMI value
-    if ($assetTag -eq '7783-7084-3265-9085-8269-3286-77')
-    {
-      Write-Host "`n`n$line`nAzure`n$line`n"
-      Invoke-RestMethod -Headers @{'Metadata'='true'} -URI http://169.254.169.254/metadata/instance?api-version=2017-12-01 -Method Get |
-        ConvertTo-Json -Depth 10 |
-        Write-Host
-    }
-    #
-    # Docker
-    #
-    Write-Host "`n`n$line`nDocker`n$line`n"
-    docker version
-    docker images
-    docker info
-    sc.exe qc docker
-    #
-    # Ruby
-    #
-    Write-Host "`n`n$line`nRuby`n$line`n"
-    ruby --version
-    gem --version
-    gem env
-    bundle --version
-    #
-    # Environment
-    #
-    Write-Host "`n`n$line`nEnvironment`n$line`n"
-    Get-ChildItem Env: | % { Write-Host "$($_.Key): $($_.Value)"  }
+- powershell: |
+    $gemfile = Join-Path -Path (Get-Location) -ChildPath 'docker/Gemfile'
+    $gempath = Join-Path -Path (Get-Location) -ChildPath 'docker/.bundle/gems'
+    bundle config --local gemfile $gemfile
+    bundle config --local path $gempath
+    bundle install
+  displayName: Fetch Dependencies
+  name: fetch_deps
+
+- powershell: |
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Write-HostDiagnostics
   displayName: Diagnostic Host Information
   name: hostinfo
 
 - powershell: |
-    . ./docker/ci/build.ps1
-    Lint-Dockerfile -Path ./docker/puppetserver-standalone/Dockerfile
-  displayName: Lint PuppetServer-Standalone Dockerfile
-  name: lint_puppetserverstandalone_dockerfile
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME2 -Ignore ($ENV:LINT_IGNORES -split ' ')
+  displayName: Lint $(CONTAINER_NAME2) Dockerfile
+  name: lint_standalone_dockerfile
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Lint-Dockerfile -Path ./docker/puppetserver/Dockerfile
-  displayName: Lint PuppetServer Dockerfile
-  name: lint_puppetserver_dockerfile
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME -Ignore ($ENV:LINT_IGNORES -split ' ')
+  displayName: Lint $(CONTAINER_NAME) Dockerfile
+  name: lint_dockerfile
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver-standalone -Namespace $ENV:NAMESPACE -Context ..
-  displayName: Build PuppetServer-Standalone Container
-  name: build_puppetserverstandalone_container
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Build-Container -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -PathOrUri $ENV:CONTAINER_BUILD_PATH2 -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
+  displayName: Build $(CONTAINER_NAME2) Container
+  name: build_standalone_container
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Build-Container -Name puppetserver -Namespace $ENV:NAMESPACE -Pull $false
-  displayName: Build PuppetServer Container
-  name: build_puppetserver_container
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Build-Container -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE -Pull $false -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
+  displayName: Build $(CONTAINER_NAME) Container
+  name: build_container
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Invoke-ContainerTest -Name puppetserver-standalone -Namespace $ENV:NAMESPACE
-  displayName: Test PuppetServer-Standalone
-  name: test_puppetserverstandalone
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Initialize-TestEnv
+  displayName: Prepare Test Environment
+  name: test_prepare
+
+- powershell: |
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Invoke-ContainerTest -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -Options $ENV:CONTAINER_NAME2/.rspec
+  displayName: Test $(CONTAINER_NAME2)
+  name: test_standalone_container
+
 - task: PublishTestResults@2
-  displayName: Publish PuppetServer Standalone Test Results
+  displayName: Publish $(CONTAINER_NAME2) test results
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'docker/puppetserver-standalone/TEST-*.xml'
-    testRunTitle: PuppetServer-Standalone Test Results
+    testResultsFiles: 'docker/$(CONTAINER_NAME2)/TEST-*.xml'
+    testRunTitle: $(CONTAINER_NAME2) Test Results
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Invoke-ContainerTest -Name puppetserver -Namespace $ENV:NAMESPACE
-  displayName: Test PuppetServer
-  name: test_puppetserver
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Invoke-ContainerTest -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE -Options $ENV:CONTAINER_NAME/.rspec
+  displayName: Test $(CONTAINER_NAME)
+  name: test_container
+
 - task: PublishTestResults@2
-  displayName: Publish PuppetServer Test Results
+  displayName: Publish $(CONTAINER_NAME) test results
   inputs:
     testResultsFormat: 'JUnit'
-    testResultsFiles: 'docker/puppetserver/TEST-*.xml'
-    testRunTitle: PuppetServer Test Results
+    testResultsFiles: 'docker/$(CONTAINER_NAME)/TEST-*.xml'
+    testRunTitle: $(CONTAINER_NAME) Test Results
+
 - powershell: |
-    . ./docker/ci/build.ps1
-    Clear-ContainerBuilds -Name puppetserver
-    Clear-ContainerBuilds -Name puppetserver-standalone
+    . "$(bundle show pupperware)/ci/build.ps1"
+    Clear-BuildState -Name $ENV:CONTAINER_NAME -Namespace $ENV:NAMESPACE
+    Clear-BuildState -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE
   displayName: Container Cleanup
-  name: cleanup_containers
+  timeoutInMinutes: 3
   condition: always()
