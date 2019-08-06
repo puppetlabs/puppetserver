@@ -282,3 +282,11 @@
   (-> (jruby-request-handler config current-code-id)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-error-handling))
+
+(defn build-multithreaded-request-handler
+  "Build the request handler fn for JRuby requests, when
+  using a multithreaded Puppet architecture."
+  [jruby-instance config current-code-id]
+  (-> (jruby-request-handler config current-code-id)
+      (jruby-request/wrap-with-multithreaded-jruby-instance jruby-instance)
+      jruby-request/wrap-with-error-handling))
