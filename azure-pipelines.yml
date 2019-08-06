@@ -17,6 +17,7 @@ variables:
   NAMESPACE: puppet
   CONTAINER_NAME: puppetserver
   CONTAINER_NAME2: puppetserver-standalone
+  CONTAINER_BUILD_PATH2: .
   LINT_IGNORES: DL3028
   BUILD_OPTIONS: --memory 4g
 
@@ -53,7 +54,7 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Build-Container -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -PathOrUri . -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
+    Build-Container -Name $ENV:CONTAINER_NAME2 -Namespace $ENV:NAMESPACE -PathOrUri $ENV:CONTAINER_BUILD_PATH2 -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
   displayName: Build $(CONTAINER_NAME2) Container
   name: build_standalone_container
 
