@@ -1,6 +1,4 @@
 (def ps-version "6.5.1-SNAPSHOT")
-;; This should go away when we move to using clj-parent for jetty9 3.x
-(def jetty9-version "3.0.1")
 
 (defn deploy-info
   [url]
@@ -29,20 +27,20 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "3.1.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.0.1"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
 
                  [slingshot]
-                 [circleci/clj-yaml]
+                 [clj-commons/clj-yaml]
                  [org.yaml/snakeyaml]
                  [commons-lang]
                  [commons-io]
 
                  [clj-time]
                  [prismatic/schema]
-                 [me.raynes/fs]
+                 [clj-commons/fs]
                  [liberator]
                  [org.apache.commons/commons-exec]
                  [io.dropwizard.metrics/metrics-core]
@@ -53,22 +51,18 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "2.1.0"]
-                 [puppetlabs/jruby-deps "9.2.0.0-1"]
-
-                 ;; Update to flatland usable in jdk11
-                 [org.flatland/useful "0.11.6"]
-                 [org.flatland/ordered "1.5.7"]
+                 [puppetlabs/jruby-utils "2.1.2"]
 
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
-                 [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version]
+                 [puppetlabs/trapperkeeper-webserver-jetty9]
                  [puppetlabs/trapperkeeper-authorization]
                  [puppetlabs/trapperkeeper-comidi-metrics]
                  [puppetlabs/trapperkeeper-metrics]
                  [puppetlabs/trapperkeeper-scheduler]
                  [puppetlabs/trapperkeeper-status]
                  [puppetlabs/kitchensink]
+                 [org.bouncycastle/bcpkix-jdk15on]
                  [puppetlabs/ssl-utils]
                  [puppetlabs/ring-middleware]
                  [puppetlabs/dujour-version-check]
@@ -118,10 +112,10 @@
 
   :profiles {:dev {:source-paths  ["dev"]
                    :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version :classifier "test"]
-                                   [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
+                                   [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
+                                   [puppetlabs/trapperkeeper :classifier "test" :scope "test"]
                                    [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
-                                   [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
+                                   [puppetlabs/kitchensink :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
                                    [ring/ring-mock]
                                    [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
@@ -147,7 +141,7 @@
                                                ;; brings in its own version.
                                                [org.clojure/clojure]
                                                [puppetlabs/puppetserver ~ps-version]
-                                               [puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version]]
+                                               [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.0.4"]]
                       :name "puppetserver"}
              :uberjar {:aot [puppetlabs.trapperkeeper.main
@@ -202,7 +196,7 @@
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
                              puppetlabs.services.protocols.legacy-routes]
-                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9 ~jetty9-version]]}
+                       :dependencies [[puppetlabs/trapperkeeper-webserver-jetty9]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}}
 
