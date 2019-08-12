@@ -12,6 +12,7 @@ require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
 require 'puppet/server/ast_compiler'
 require 'puppet/server/key_recorder'
+require 'puppet/pops/lookup/key_recorder'
 
 require 'java'
 
@@ -29,6 +30,9 @@ class Puppet::Server::Master
   include Puppet::Server::Network::HTTP::Handler
 
   def initialize(puppet_config, puppet_server_config)
+    # There is a setting that is routed from the puppetserver.conf to
+    # configure whether or not to track hiera lookups.
+    @track_hiera_lookups = puppet_server_config.delete('track_hiera_lookups')
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config)
     # Tell Puppet's network layer which routes we are willing handle - which is
@@ -45,7 +49,7 @@ class Puppet::Server::Master
 
   def handleRequest(request)
     response = {}
-    Puppet.override(lookup_key_recorder: Puppet::Server::KeyRecorder.new) do
+    Puppet.override(lookup_key_recorder: create_recorder) do
       process(request, response)
       # 'process' returns only the status -
       # `response` now contains all of the response data
@@ -69,13 +73,17 @@ class Puppet::Server::Master
   end
 
   def compileCatalog(request_data)
-    Puppet.override(lookup_key_recorder: Puppet::Server::KeyRecorder.new) do
+    Puppet.override(lookup_key_recorder: create_recorder) do
       @catalog_compiler.compile(convert_java_args_to_ruby(request_data))
     end
   end
 
   def compileAST(compile_options)
     Puppet::Server::ASTCompiler.compile(convert_java_args_to_ruby(compile_options))
+  end
+
+  def create_recorder
+    @track_hiera_lookups ? Puppet::Server::KeyRecorder.new : Puppet::Pops::Lookup::KeyRecorder.singleton
   end
 
   def getClassInfoForEnvironment(env)
