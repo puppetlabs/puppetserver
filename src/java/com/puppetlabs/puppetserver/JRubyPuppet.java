@@ -18,6 +18,8 @@ import java.util.List;
 public interface JRubyPuppet {
     Map getTaskData(String environment, String module, String task);
     List getTasks(String environment);
+    Map getPlanData(String environment, String module, String plan);
+    List getPlans(String environment);
     Map getClassInfoForEnvironment(String environment);
     List getTransportInfoForEnvironment(String environment);
     List getModuleInfoForEnvironment(String environment);

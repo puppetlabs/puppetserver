@@ -144,6 +144,24 @@ class Puppet::Server::Master
     Puppet::InfoService.task_data(environment_name, module_name, qualified_task_name)
   end
 
+  def getPlans(env)
+    environment = @env_loader.get(env)
+    unless environment.nil?
+      # Pass the original env string. environment.name is a symbol
+      # while the environment cache is primarily used with strings.
+      # Pass as a string to ensure we re-use a cached environment
+      # if available.
+      Puppet::InfoService.plans_per_environment(env)
+    end
+  end
+
+  def getPlanData(environment_name, module_name, plan_name)
+    # the 'init' plan is special-cased to be just the name of the module,
+    # otherwise we have to request 'module::planname'
+    qualified_plan_name = plan_name == 'init' ? module_name : "#{module_name}::#{plan_name}"
+    Puppet::InfoService.plan_data(environment_name, module_name, qualified_plan_name)
+  end
+
   private
 
   def convert_java_args_to_ruby(hash)

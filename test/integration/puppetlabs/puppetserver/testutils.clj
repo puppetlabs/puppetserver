@@ -197,6 +197,26 @@
    (write-tasks-files module-name task-name task-file-contents
                       (json/encode {"description" "This is a description. It describes a thing."}))))
 
+(schema/defn ^:always-validate write-plans-files :- schema/Str
+  ([module-name :- schema/Str
+    plan-name :- schema/Str
+    plan-arguments :- schema/Str
+    plan-body :- schema/Str]
+   (let [module-dir (create-module module-name {})
+         plans-dir (fs/file module-dir "plans")
+         plan-path (fs/file plans-dir (str plan-name ".pp"))
+         scoped-plan-name (if (= plan-name "init")
+                              module-name
+                              (str module-name "::" plan-name))
+         plan-file-contents (str scoped-plan-name "(" plan-arguments ") {" plan-body "}")]
+     (create-file plan-path
+                  plan-file-contents)
+     (.getCanonicalPath plan-path)))
+  ([module-name :- schema/Str
+    plan-name :- schema/Str
+    plan-body :- schema/Str]
+   (write-plans-files module-name plan-name "" plan-body)))
+
 (defn create-env-conf
   [env-dir content]
   (create-file (fs/file env-dir "environment.conf")
