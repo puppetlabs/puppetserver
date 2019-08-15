@@ -127,7 +127,7 @@
                   http-client-idle-timeout-milliseconds
                   http-client-metrics-enabled
                   use-legacy-auth-conf
-                  track-hiera-lookups]} config
+                  track-lookups]} config
           scripting-container (:scripting-container jruby-instance)]
 
       (.runScriptlet scripting-container "require 'puppet/server/master'")
@@ -144,7 +144,7 @@
             (.put "metric_registry" (metrics/get-metrics-registry metrics-service :puppetserver))
             (.put "server_id" (metrics/get-server-id metrics-service))))
         (doto puppetserver-config
-          (.put "track_hiera_lookups" track-hiera-lookups)
+          (.put "track_lookups" track-lookups)
           (.put "profiler" profiler)
           (.put "environment_registry" env-registry)
           (.put "http_connect_timeout_milliseconds" http-client-connect-timeout-milliseconds)

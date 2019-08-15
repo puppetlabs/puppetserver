@@ -43,7 +43,7 @@ on(master, "chmod 644 #{common_yaml_path}")
 
 step 'Configure puppetserver to track hiera lookups' do
   conf = read_tk_config_string(old_puppetserver_conf)
-  conf['jruby-puppet']['track-hiera-lookups'] = true
+  conf['jruby-puppet']['track-lookups'] = true
   modify_tk_config(master, puppetserver_conf_path, conf, replace=true)
 end
 

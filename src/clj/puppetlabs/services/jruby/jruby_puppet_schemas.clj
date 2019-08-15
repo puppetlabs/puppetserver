@@ -25,7 +25,7 @@
     * :master-log-dir - path to the puppetmaster's log dir;
         if not specified, will use the puppet default.
 
-    * :track-hiera-lookups - a boolean to turn on tracking hiera lookups during compilation;
+    * :track-lookups - a boolean to turn on tracking hiera lookups during compilation;
         if not specified, no tracking is enabled.
 
     * :http-client-ssl-protocols - A list of legal SSL protocols that may be used
@@ -56,7 +56,7 @@
    :master-var-dir (schema/maybe schema/Str)
    :master-run-dir (schema/maybe schema/Str)
    :master-log-dir (schema/maybe schema/Str)
-   (schema/optional-key :track-hiera-lookups) schema/Bool
+   (schema/optional-key :track-lookups) schema/Bool
    :http-client-ssl-protocols [schema/Str]
    :http-client-cipher-suites [schema/Str]
    :http-client-connect-timeout-milliseconds schema/Int

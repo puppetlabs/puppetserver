@@ -32,7 +32,7 @@ class Puppet::Server::Master
   def initialize(puppet_config, puppet_server_config)
     # There is a setting that is routed from the puppetserver.conf to
     # configure whether or not to track hiera lookups.
-    @track_hiera_lookups = puppet_server_config.delete('track_hiera_lookups')
+    @track_lookups = puppet_server_config.delete('track_lookups')
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config)
     # Tell Puppet's network layer which routes we are willing handle - which is
@@ -83,7 +83,7 @@ class Puppet::Server::Master
   end
 
   def create_recorder
-    @track_hiera_lookups ? Puppet::Server::KeyRecorder.new : Puppet::Pops::Lookup::KeyRecorder.singleton
+    @track_lookups ? Puppet::Server::KeyRecorder.new : Puppet::Pops::Lookup::KeyRecorder.singleton
   end
 
   def getClassInfoForEnvironment(env)
