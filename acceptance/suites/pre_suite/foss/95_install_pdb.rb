@@ -10,9 +10,15 @@ teardown do
   on(master, "rm -f #{sitepp}")
 end
 
-step 'Install Puppet Release Repo' do
-  install_puppetlabs_release_repo_on(master, 'puppet5')
-end
+# Install the SNAPSHOT with the necessary modifications to the
+# puppetdb terminus; once PuppetDB has tagged and released, revert
+# this commit and update the `install_puppetlabs_release_repo_on`
+# to use 'puppet6'
+
+# step 'Install Puppet Release Repo' do
+#   install_puppetlabs_release_repo_on(master, 'puppet5')
+# end
+install_puppetlabs_dev_repo master, 'puppetdb', "6.4.1.SNAPSHOT.2019.08.13T0822"
 
 step 'Install PuppetDB module' do
   on(master, puppet('module install puppetlabs-puppetdb'))

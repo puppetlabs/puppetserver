@@ -126,7 +126,8 @@
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
                   http-client-metrics-enabled
-                  use-legacy-auth-conf]} config
+                  use-legacy-auth-conf
+                  track-lookups]} config
           scripting-container (:scripting-container jruby-instance)]
 
       (.runScriptlet scripting-container "require 'puppet/server/master'")
@@ -143,6 +144,7 @@
             (.put "metric_registry" (metrics/get-metrics-registry metrics-service :puppetserver))
             (.put "server_id" (metrics/get-server-id metrics-service))))
         (doto puppetserver-config
+          (.put "track_lookups" track-lookups)
           (.put "profiler" profiler)
           (.put "environment_registry" env-registry)
           (.put "http_connect_timeout_milliseconds" http-client-connect-timeout-milliseconds)
@@ -169,7 +171,7 @@
 
 (schema/defn extract-puppet-config
   [config :- {schema/Keyword schema/Any}]
-  (select-keys config (keys jruby-puppet-schemas/JRubyPuppetConfig)))
+  (select-keys config (map schema/explicit-schema-key (keys jruby-puppet-schemas/JRubyPuppetConfig))))
 
 (schema/defn extract-http-config
   "The config is allowed to be nil because the http-client section isn't

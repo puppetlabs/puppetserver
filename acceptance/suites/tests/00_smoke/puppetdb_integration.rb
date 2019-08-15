@@ -29,12 +29,32 @@ run_timestamp = nil
 master_fqdn = on(master, '/opt/puppetlabs/bin/facter fqdn').stdout.chomp
 random_string = SecureRandom.urlsafe_base64.freeze
 
+puppetserver_conf_path = '/etc/puppetlabs/puppetserver/conf.d/puppetserver.conf'
+old_puppetserver_conf = on(master, "cat #{puppetserver_conf_path}").stdout
+
+common_yaml_path = '/etc/puppetlabs/code/environments/production/data/common.yaml'
+
+create_remote_file(master, common_yaml_path, <<EOM)
+---
+some-test-key: test-key-value
+EOM
+
+on(master, "chmod 644 #{common_yaml_path}")
+
+step 'Configure puppetserver to track hiera lookups' do
+  conf = read_tk_config_string(old_puppetserver_conf)
+  conf['jruby-puppet']['track-lookups'] = true
+  modify_tk_config(master, puppetserver_conf_path, conf, replace=true)
+end
+
 step 'Configure site.pp for PuppetDB' do
   sitepp = '/etc/puppetlabs/code/environments/production/manifests/site.pp'
   create_remote_file(master, sitepp, <<EOM)
 node 'resource-exporter.test' {
   @@notify{'#{random_string}': }
 }
+
+lookup('some-test-key')
 
 node '#{master_fqdn}' {
   Notify<<| title == '#{random_string}' |>>
@@ -46,7 +66,8 @@ EOM
   on(master, "chmod 644 #{sitepp}")
 
   teardown do
-    on(master, "rm -f #{sitepp}")
+    modify_tk_config(master, puppetserver_conf_path, read_tk_config_string(old_puppetserver_conf), replace=true)
+    on(master, "rm -f #{sitepp} #{common_yaml_path}")
   end
 end
 
@@ -67,6 +88,7 @@ EOM
 
     teardown do
       on(master, puppet('node', 'deactivate', 'resource-exporter.test'))
+      on(master, "puppet ssl clean --certname resource-exporter.test")
       on(master, 'puppetserver ca clean --certname=resource-exporter.test')
     end
 
@@ -144,4 +166,34 @@ data submission.
 Check puppetdb.log for errors that may have ocurred during
 data processing.
 EOS
+end
+
+step 'Validate PuppetDB stored lookup data sent from puppetserver' do
+  query = "curl -X POST http://localhost:8080/pdb/query/v4/catalog-input-contents" <<
+    " -H 'Content-Type:application/json'" <<
+    " -d '{\"query\": \"\" }'"
+
+  retries = 3
+
+  (1..(retries + 1)).each do |i|
+
+    if i > retries
+      raise "Attempted #{retries} times to get lookup data from puppetdb, but none found"
+    end
+
+    logger.debug("PuppetDB query attempt #{i} for catalog inputs")
+    response = JSON.parse(on(master, query).stdout.chomp)
+
+    # Give PuppetDB some time to process it is running slow
+    if response.empty?
+      sleep 1
+      next
+    end
+
+    response.each do |input|
+      assert_equal('some-test-key', input['name'])
+      assert_equal('hiera', input['type'])
+    end
+    break
+  end
 end
