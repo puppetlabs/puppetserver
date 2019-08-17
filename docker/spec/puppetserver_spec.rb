@@ -15,7 +15,7 @@ describe 'puppetserver container' do
 
     teardown_cluster()
 
-    docker_compose('up --detach')
+    docker_compose_up()
   end
 
   after(:all) do
