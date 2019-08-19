@@ -12,7 +12,6 @@ end
 
 gem 'packaging', *location_for(ENV['PACKAGING_LOCATION'] || '~> 0.99')
 gem 'rake', :group => [:development, :test]
-gem 'jira-ruby', :group => :development
 
 group :test do
   gem 'rspec'
