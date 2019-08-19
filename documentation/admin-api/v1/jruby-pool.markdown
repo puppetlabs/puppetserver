@@ -42,6 +42,44 @@ HTTP/1.1 204 No Content
 ~~~
 
 
+## `GET /puppet-admin-api/v1/jruby-pool/thread-dump`
+
+Retrieve a Ruby thread dump for each JRuby instance registered to the pool.
+The thread dump provides a backtrace through the Ruby code that each instance
+is executing and is useful for diagnosing instances that have stalled or
+are otherwise unresponsive. Backtraces are generated using the JRuby JMX
+interface and require the `jruby.management.enabled` property to be set
+to `true` in the JVM running Puppet Server.
+
+### Response
+
+A successful request to this endpoint will return a `HTTP 200: Ok` status
+code. The response body will be a JSON document containing a map that
+associates each JRuby instance ID with a map containing a `thread-dump`
+entry that has a string value with the Ruby backtrace.
+
+A `HTTP 500: Internal Server Error` status code will be returned if an
+exception occurs while retrieving the thread dump for a JRuby instance,
+or if the `jruby.management.enabled` property is not set to `true`.
+The response body in this case is also JSON, but the failed instances
+will be associated with a map containing a `error` entry with a value
+describing the issue.
+
+### Example
+
+~~~
+$ curl -si --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X GET https://localhost:8140/puppet-admin-api/v1/jruby-pool/thread-dump
+HTTP/1.1 200 OK
+
+{"1":{"thread-dump":"All threads known to Ruby instance 1960016402\n\n ..."}}
+
+# Error returned when jruby.management.enabled is not configured
+$ curl -si --cert <PATH TO CERT> --key <PATH TO KEY> --cacert <PATH TO PUPPET CA CERT> -X GET https://localhost:8140/puppet-admin-api/v1/jruby-pool/thread-dump
+HTTP/1.1 500 Server Error
+
+{"1":{"error":"JRuby management interface not enabled. Add '-Djruby.management.enabled=true' to JAVA_ARGS to enable thread dumps."}}
+~~~
+
 ## Relevant Configuration
 
 Access to this endpoint is controlled by the `puppet-admin` section of `puppetserver.conf`. See

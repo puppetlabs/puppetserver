@@ -12,7 +12,12 @@
      [ca-cert localhost-cert localhost-key ssl-request-options]]
     [puppetlabs.trapperkeeper.app :as tk-app]
     [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-    [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]))
+    [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core])
+  (:import
+    (org.jruby.util.cli Options)))
+
+;; Clear changes to JRuby management settings after each test.
+(use-fixtures :each (fn [f] (f) (.unforce Options/MANAGEMENT_ENABLED)))
 
 (def test-resources-dir
   "./dev-resources/puppetlabs/services/puppet_admin/puppet_admin_int_test")
@@ -28,7 +33,9 @@
 ;;; Utilities
 
 (def endpoints
-  ["/environment-cache" "/jruby-pool"])
+  {"/environment-cache" http-client/delete
+   "/jruby-pool" http-client/delete
+   "/jruby-pool/thread-dump" http-client/get})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -43,9 +50,9 @@
         {:jruby-puppet  {:gem-path gem-path}
          :puppet-admin  {:client-whitelist ["notlocalhost"]}
          :authorization {:version 1 :rules []}}
-        (doseq [endpoint endpoints]
+        (doseq [[endpoint http-method] endpoints]
           (testing (str "for " endpoint " endpoint")
-            (let [response (http-client/delete
+            (let [response (http-method
                              (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                              ssl-request-options)]
               (is (= 403 (:status response))
@@ -60,12 +67,12 @@
         {:jruby-puppet  {:gem-path gem-path}
          :puppet-admin  {:client-whitelist ["localhost"]}
          :authorization {:version 1 :rules []}}
-        (doseq [endpoint endpoints]
+        (doseq [[endpoint http-method] endpoints]
           (testing (str "for " endpoint " endpoint")
-            (let [response (http-client/delete
+            (let [response (http-method
                              (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                              ssl-request-options)]
-              (is (= 204 (:status response))
+              (is (<= 200 (:status response) 299)
                   (ks/pprint-to-string response))))))))
 
   (testing "access allowed when whitelist disabled and no cert provided"
@@ -77,13 +84,13 @@
       {:jruby-puppet  {:gem-path gem-path}
        :puppet-admin  {:authorization-required false}
        :authorization {:version 1 :rules []}}
-      (doseq [endpoint endpoints]
+      (doseq [[endpoint http-method] endpoints]
         (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
+          (let [response (http-method
                           (str "https://localhost:8140/puppet-admin-api/v1"
                                endpoint)
                           (select-keys ssl-request-options [:ssl-ca-cert]))]
-            (is (= 204 (:status response))
+            (is (<= 200 (:status response) 299)
                 (ks/pprint-to-string response))))))))
 
   (testing "access denied when cert denied by rule"
@@ -102,9 +109,9 @@
                                 :name "admin api"}]}}
       (logutils/with-test-logging
        (testing "when no encoded characters in uri"
-         (doseq [endpoint endpoints]
+         (doseq [[endpoint http-method] endpoints]
            (testing (str "for " endpoint " endpoint")
-             (let [response (http-client/delete
+             (let [response (http-method
                              (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                              ssl-request-options)]
                (is (= 403 (:status response))
@@ -132,12 +139,12 @@
                                 :sort-order 1
                                 :name "admin api"}]}}
       (testing "access allowed when no encoded characters in uri"
-        (doseq [endpoint endpoints]
+        (doseq [[endpoint http-method] endpoints]
           (testing (str "for " endpoint " endpoint")
-            (let [response (http-client/delete
+            (let [response (http-method
                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                             ssl-request-options)]
-              (is (= 204 (:status response))
+              (is (<= 200 (:status response) 299)
                   (ks/pprint-to-string response))))))
       (testing "access allowed for appropriate encoded characters in uri"
         (let [response (http-client/delete
@@ -169,12 +176,12 @@
                                 :allow "localhost"
                                 :sort-order 1
                                 :name "admin api"}]}}
-      (doseq [endpoint endpoints]
+      (doseq [[endpoint http-method] endpoints]
         (testing (str "for " endpoint " endpoint")
-          (let [response (http-client/delete
+          (let [response (http-method
                           (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                           ssl-request-options)]
-            (is (= 204 (:status response))
+            (is (<= 200 (:status response) 299)
                 (ks/pprint-to-string response))))))))
 
   (testing "server tolerates client specifying an 'Accept: */*' header"
@@ -183,12 +190,12 @@
        in Clojure."
      app
      {:jruby-puppet {:gem-path gem-path}}
-     (doseq [endpoint endpoints]
+     (doseq [[endpoint http-method] endpoints]
        (testing (str "for " endpoint " endpoint")
-         (let [response (http-client/delete
+         (let [response (http-method
                          (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
                          (assoc ssl-request-options :headers {"Accept" "*/*"}))]
-           (is (= 204 (:status response))
+           (is (<= 200 (:status response) 299)
                (ks/pprint-to-string response))))))))
 
 (deftest ^:integration admin-api-pool-timeout-test
@@ -212,6 +219,32 @@
                     (slurp (:body response)))))
            (finally
              (.releaseItem pool borrowed-instance))))))))
+
+(deftest ^:integration admin-api-jruby-thread-dump-test
+  (testing "returns a 200 result when jruby.management.enabled is set to true"
+    (.force Options/MANAGEMENT_ENABLED "true")
+    (logutils/with-test-logging
+      (bootstrap/with-puppetserver-running
+       app
+       {:jruby-puppet {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}}
+       (let [response (http-client/get
+                       "https://localhost:8140/puppet-admin-api/v1/jruby-pool/thread-dump"
+                       ssl-request-options)]
+         (is (= 200 (:status response)))
+         (is (re-find #"All threads known to Ruby instance"
+                (slurp (:body response))))))))
+  (testing "returns a 500 result when jruby.management.enabled is set to false"
+    (.force Options/MANAGEMENT_ENABLED "false")
+    (logutils/with-test-logging
+      (bootstrap/with-puppetserver-running
+       app
+       {:jruby-puppet {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}}
+       (let [response (http-client/get
+                       "https://localhost:8140/puppet-admin-api/v1/jruby-pool/thread-dump"
+                       ssl-request-options)]
+         (is (= 500 (:status response)))
+         (is (re-find #"JRuby management interface not enabled"
+                (slurp (:body response)))))))))
 
 ;; See 'environment-flush-integration-test'
 ;; for additional test coverage on the /environment-cache endpoint

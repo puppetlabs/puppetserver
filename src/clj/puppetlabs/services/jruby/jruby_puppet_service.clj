@@ -169,6 +169,12 @@
           {:keys [pool-context]} service-context]
      (jruby-core/flush-pool! pool-context)))
 
+  (get-jruby-thread-dump
+   [this]
+   (let [service-context (tk-services/service-context this)
+         {:keys [pool-context]} service-context]
+     (jruby-core/get-jruby-thread-dump pool-context)))
+
   (get-pool-context
    [this]
    (:pool-context (tk-services/service-context this)))
