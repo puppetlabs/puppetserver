@@ -1,7 +1,9 @@
 FROM ubuntu:16.04 as build
 
+ENV LANG="en_US.UTF-8"
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+            language-pack-en \
             openjdk-8-jdk-headless \
             curl \
             git \
