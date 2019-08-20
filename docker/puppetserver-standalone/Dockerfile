@@ -64,11 +64,11 @@ COPY --from=build /puppetserver.deb /puppetserver.deb
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget=1.17.1-1ubuntu1 ca-certificates && \
-    wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
+    wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     wget https://github.com/Yelp/dumb-init/releases/download/v"$DUMB_INIT_VERSION"/dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
-    dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
+    dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
-    rm puppet6-release-"$UBUNTU_CODENAME".deb dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
+    rm puppet6-nightly-release-"$UBUNTU_CODENAME".deb dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     apt-get update && \
     apt-get install --no-install-recommends -y git && \
     apt-get install --no-install-recommends -y /puppetserver.deb && \
