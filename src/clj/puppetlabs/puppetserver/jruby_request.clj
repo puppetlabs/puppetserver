@@ -47,6 +47,14 @@
      jruby-puppet jruby-service {:request (dissoc request :ssl-client-cert)}
      (handler (assoc request :jruby-instance jruby-puppet)))))
 
+(defn wrap-with-multithreaded-jruby-instance
+  "Middleware that makes the provided jruby instance available in the request as
+  `:jruby-instance`. When using this handler, the provided JRuby instance will be
+  shared with other requests."
+  [handler jruby-instance]
+  (fn [request]
+    (handler (assoc request :jruby-instance (:jruby-puppet jruby-instance)))))
+
 (schema/defn ^:always-validate
   wrap-with-request-queue-limit :- IFn
   "Middleware fn that short-circuits incoming requests with a 503 'Service

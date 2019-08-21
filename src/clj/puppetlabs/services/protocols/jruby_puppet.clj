@@ -120,6 +120,10 @@
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")
 
+  (borrow-instance
+    [this reason]
+    "Borrow a JRuby instance from the pool directly. For use with multithreaded Puppet.")
+
   (get-pool-context
     [this]
     "Get the pool context out of the service context.")
