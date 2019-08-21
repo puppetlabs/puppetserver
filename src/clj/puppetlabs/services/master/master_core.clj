@@ -167,6 +167,20 @@
                   :params {:environment schema/Str
                            (schema/optional-key :code_id) schema/Str}}}]})
 
+(def PlanData
+  "Response from puppet's PlanInformationService for data on a single
+  plan, *after* it has been converted to a Clojure map."
+  {:metadata (schema/maybe {schema/Keyword schema/Any})
+   :files [{:name schema/Str :path schema/Str}]
+   (schema/optional-key :error) {:msg schema/Str
+                                 :kind schema/Str
+                                 :details {schema/Keyword schema/Any}}})
+
+(def PlanDetails
+  "A filled-in map of information about a plan."
+  {:metadata {schema/Keyword schema/Any}
+   :name schema/Str})
+
 (defn obj-or-ruby-symbol-as-string
   "If the supplied object is of type RubySymbol, returns a string
   representation of the RubySymbol.  Otherwise, just returns the original
@@ -386,6 +400,11 @@
   [task :- schema/Str]
   (rr/not-found (i18n/tru "Could not find task ''{0}''" task)))
 
+(schema/defn plan-not-found :- ringutils/RingResponse
+  "Ring handler to provide a standard error when a plan is not found."
+  [plan :- schema/Str]
+  (rr/not-found (i18n/tru "Could not find plan ''{0}''" plan)))
+
 (schema/defn ^:always-validate
   module-info-from-jruby->module-info-for-json  :- EnvironmentModulesInfo
   "Creates a new map with a top level key `name` that corresponds to the
@@ -505,6 +524,30 @@
    (:kind err)
    (str/starts-with? (:kind err) "puppet.task")))
 
+(defn handle-plan-details-jruby-exception
+  "Given a JRuby RaiseException arising from a call to plan-details, constructs
+  a 4xx error response if appropriate, otherwise re-throws."
+  [jruby-exception environment module plan]
+  (cond
+    (exception-matches? jruby-exception #"^\(EnvironmentNotFound\)")
+    (environment-not-found environment)
+
+    (exception-matches? jruby-exception #"^\(MissingModule\)")
+    (module-not-found module)
+
+    (exception-matches? jruby-exception #"^\(PlanNotFound\)")
+    (plan-not-found plan)
+
+    :else
+    (throw jruby-exception)))
+
+(defn is-plan-error?
+  [err]
+  (and
+   (map? err)
+   (:kind err)
+   (str/starts-with? (:kind err) "puppet.plan")))
+
 (schema/defn ^:always-validate
   task-details-fn :- IFn
   "Middleware function for constructing a Ring response from an incoming
@@ -532,6 +575,98 @@
                                                :details details}))
             (catch RaiseException e
               (handle-task-details-jruby-exception e environment module task))))))
+
+(schema/defn ^:always-validate
+  all-plans-response! :- ringutils/RingResponse
+  "Process the info, returning a Ring response to be propagated back up to the
+  caller of the endpoint.
+  Returns environment as a list of objects for an eventual future in which
+  tasks for all environments can be requested, and a given task will list all
+  the environments it is found in."
+  [info-from-jruby :- [{schema/Any schema/Any}]
+   environment :- schema/Str
+   jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (let [format-plan (fn [plan-object]
+                      {:name (:name plan-object)
+                       :environment [{:name environment
+                                      :code_id nil}]})]
+    (->> (map format-plan info-from-jruby)
+         (middleware-utils/json-response 200))))
+
+(schema/defn ^:always-validate
+  all-plans-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for plans information."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)]
+      (if-let [plan-info-for-env
+               (sort-nested-info-maps
+                 (jruby-protocol/get-plans jruby-service
+                                           (:jruby-instance
+                                             request)
+                                           environment))]
+        (all-plans-response! plan-info-for-env
+                             environment
+                             jruby-service)
+        (environment-not-found environment)))))
+
+(schema/defn ^:always-validate
+  plan-data->plan-details :- PlanDetails
+  "Fills in a bare PlanData map by examining the files it refers to,
+  returning PlanDetails."
+  [plan-data :- PlanData
+   env-name :- schema/Str
+   module-name :- schema/Str
+   plan-name :- schema/Str]
+  (if (:error plan-data)
+    (throw+ (:error plan-data))
+    {:metadata (or (:metadata plan-data) {})
+     :name (full-task-name module-name plan-name)}))
+
+(schema/defn ^:always-validate
+  plan-details :- PlanDetails
+  "Returns a PlanDetails map for the plan matching the given environment,
+  module, and name.
+
+  Will throw a JRuby RaiseException with (EnvironmentNotFound),
+  (MissingModule), or (PlanNotFound) if any of those conditions occur."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
+   jruby-instance
+   environment-name :- schema/Str
+   module-name :- schema/Str
+   plan-name :- schema/Str]
+  (-> (jruby-protocol/get-plan-data jruby-service
+                                    jruby-instance
+                                    environment-name
+                                    module-name
+                                    plan-name)
+      sort-nested-info-maps
+      (plan-data->plan-details environment-name module-name plan-name)))
+
+(schema/defn ^:always-validate
+  plan-details-fn :- IFn
+  "Middleware function for constructing a Ring response from an incoming
+  request for detailed plan information."
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (fn [request]
+    (let [environment (jruby-request/get-environment-from-request request)
+          module (get-in request [:route-params :module-name])
+          plan (get-in request [:route-params :plan-name])]
+      (try+ (->> (plan-details jruby-service
+                               (:jruby-instance request)
+                               environment
+                               module
+                               plan)
+                 (middleware-utils/json-response 200))
+            (catch is-plan-error?
+              {:keys [kind msg details]}
+              (middleware-utils/json-response 500
+                                              {:kind kind
+                                               :msg msg
+                                               :details details}))
+            (catch RaiseException e
+              (handle-plan-details-jruby-exception e environment module plan))))))
 
 (defn info-service
   [request]
@@ -671,6 +806,24 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn]
   (-> (task-details-fn jruby-service get-code-content-fn current-code-id-fn)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-environment-validation
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  all-plans-handler :- IFn
+  "Handler for processing an incoming all_plans Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (all-plans-fn jruby-service)
+      (jruby-request/wrap-with-jruby-instance jruby-service)
+      jruby-request/wrap-with-environment-validation
+      jruby-request/wrap-with-error-handling))
+
+(schema/defn ^:always-validate
+  plan-details-handler :- IFn
+  "Handler for processing an incoming /plans/:module/:plan-name Ring request"
+  [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)]
+  (-> (plan-details-fn jruby-service)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       jruby-request/wrap-with-environment-validation
       jruby-request/wrap-with-error-handling))
@@ -883,6 +1036,8 @@
 
         tasks-handler (all-tasks-handler jruby-service)
 
+        plans-handler (all-plans-handler jruby-service)
+
         transport-handler (create-cacheable-info-handler-with-middleware
                             (fn [jruby env]
                               (some-> jruby-service
@@ -894,6 +1049,8 @@
         task-handler (task-details-handler jruby-service
                                            get-code-content-fn
                                            current-code-id-fn)
+
+        plan-handler (plan-details-handler jruby-service)
 
         static-content-handler (static-file-content-request-handler
                                  get-code-content-fn)
@@ -914,6 +1071,10 @@
                   (task-handler request))
       (comidi/GET ["/tasks"] request
                   (tasks-handler request))
+      (comidi/GET ["/plans/" :module-name "/" :plan-name] request
+                  (plan-handler request))
+      (comidi/GET ["/plans"] request
+                  (plans-handler request))
       (comidi/GET ["/static_file_content/" [#".*" :rest]] request
                   (static-content-handler request)))))
 

@@ -155,6 +155,14 @@
     [this jruby-instance env-name]
     (.getTasks jruby-instance env-name))
 
+  (get-plan-data
+   [this jruby-instance env-name module-name plan-name]
+   (.getPlanData jruby-instance env-name module-name plan-name))
+
+  (get-plans
+    [this jruby-instance env-name]
+    (.getPlans jruby-instance env-name))
+
   (flush-jruby-pool!
    [this]
    (let [service-context (tk-services/service-context this)

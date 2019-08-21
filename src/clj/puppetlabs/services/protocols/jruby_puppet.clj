@@ -108,6 +108,14 @@
     [this jruby-instance env-name]
     "Get list of task names and environment information.")
 
+  (get-plan-data
+    [this jruby-instance env-name module-name plan-name]
+    "Get information (:metadata_file and :files) for a specific plan. Returns a JRuby hash.")
+
+  (get-plans
+    [this jruby-instance env-name]
+    "Get list of plan names and environment information.")
+
   (flush-jruby-pool!
     [this]
     "Flush all the current JRuby instances and repopulate the pool.")
