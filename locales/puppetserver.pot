@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 6543391d9381378830eaf605061bf59b07adc5fa\n"
+"X-Git-Ref: 8ffceff893ef928b29516266744cae227392968b\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -535,6 +535,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Could not find task ''{0}''"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Could not find plan ''{0}''"
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
