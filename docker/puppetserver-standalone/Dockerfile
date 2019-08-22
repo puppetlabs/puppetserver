@@ -96,6 +96,6 @@ CMD ["foreground"]
 
 COPY docker/puppetserver-standalone/healthcheck.sh /
 RUN chmod +x /healthcheck.sh
-HEALTHCHECK --interval=10s --timeout=10s --retries=90 CMD ["/healthcheck.sh"]
+HEALTHCHECK --interval=5s --timeout=5s --retries=12 --start-period=120s CMD ["/healthcheck.sh"]
 
 COPY docker/puppetserver-standalone/Dockerfile /
