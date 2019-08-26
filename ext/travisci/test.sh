@@ -6,6 +6,6 @@ echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
 ./dev/install-test-gems.sh
 
-lein -U test :all
+lein -U $ADDITIONAL_LEIN_ARGS test :all
 
 rake spec

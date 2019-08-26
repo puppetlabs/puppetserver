@@ -10,10 +10,18 @@ script:
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
 matrix:
   include:
-    - stage: puppetserver tests
+    - stage: puppetserver tests on JDK11 w/o FIPS
       jdk: openjdk11
-    - stage: puppetserver tests
+    - stage: puppetserver tests on JDK8 w/o FIPS
       jdk: openjdk8
+    - stage: puppetserver tests on JDK11 w/ FIPS
+      jdk: openjdk11
+      env:
+        - ADDITIONAL_LEIN_ARGS="with-profile +fips"
+    - stage: puppetserver tests on JDK8 w/ FIPS
+      jdk: openjdk8
+      env:
+        - ADDITIONAL_LEIN_ARGS="with-profile +fips"
     - stage: puppetserver container tests
       language: ruby
       rvm: 2.5.5
