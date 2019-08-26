@@ -3,6 +3,6 @@ source "https://rubygems.org"
 gem 'rspec'
 gem 'rspec_junit_formatter'
 gem 'pupperware',
-    :git => 'https://github.com/puppetlabs/pupperware.git',
-    :branch => 'master',
+    :git => 'https://github.com/Iristyle/pupperware.git',
+    :branch => 'allow-agent-extra-hosts',
     :glob => 'gem/*.gemspec'
