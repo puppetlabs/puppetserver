@@ -42,6 +42,15 @@ class Puppet::Server::PuppetConfig
 
     Puppet::ApplicationSupport.push_application_context(master_run_mode)
 
+    # Puppet's https machinery expects to find an object at
+    # `Puppet.lookup(:ssl_context)` which it will then use as an input
+    # to the Verifier, which is passed to the client. We ignore these
+    # values when passed to our https client and manage our SSLContext
+    # in a completely different way.
+    #
+    # See `Puppet::Network::HttpPool.connection`
+    Puppet.push_context({ssl_context: :unused})
+
     Puppet.settings.use :main, :master, :ssl, :metrics
 
     Puppet::FileServing::Content.indirection.terminus_class = :file_server
