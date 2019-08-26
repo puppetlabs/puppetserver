@@ -15,8 +15,11 @@ services:
       - PUPPET_STORECONFIGS=false
       - PUPPET_REPORTS=log
     dns_search: 'test'
+    extra_hosts:
+      - 'compiler.test:172.22.0.101'
     networks:
       puppetserver_test:
+        ipv4_address: 172.22.0.100
         aliases:
           - puppet.test
 
@@ -33,11 +36,17 @@ services:
       - PUPPET_STORECONFIGS=false
       - PUPPET_REPORTS=log
     dns_search: 'test'
+    extra_hosts:
+      - 'puppet.test:172.22.0.100'
     networks:
       puppetserver_test:
+        ipv4_address: 172.22.0.101
         aliases:
           - compiler.test
 
 networks:
   puppetserver_test:
     name: puppetserver_test
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16

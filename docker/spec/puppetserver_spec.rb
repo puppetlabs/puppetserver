@@ -36,7 +36,22 @@ describe 'puppetserver container' do
   end
 
   it 'should be able to run an agent against the compile master' do
-    expect(run_agent('compiler-agent.test', 'puppetserver_test', server: get_container_hostname(get_service_container('compiler')), ca: get_container_hostname(get_service_container('puppet')), ca_port: '8141')).to eq(0)
+    compiler_container = get_service_container('compiler')
+    compiler_hostname = get_container_hostname(compiler_container)
+    ca_container = get_service_container('puppet')
+    ca_hostname = get_container_hostname(ca_container)
+
+    expect(run_agent(
+      'compiler-agent.test',
+      'puppetserver_test',
+      extra_hosts: {
+        ca_hostname => get_container_ip(ca_container),
+        compiler_hostname => get_container_ip(compiler_container)
+      },
+      server: compiler_hostname,
+      ca: ca_hostname,
+      ca_port: '8141'
+    )).to eq(0)
   end
 
   it 'should have r10k available' do
