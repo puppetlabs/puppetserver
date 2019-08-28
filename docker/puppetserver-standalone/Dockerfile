@@ -1,4 +1,4 @@
-FROM ubuntu:16.04 as build
+FROM ubuntu:18.04 as build
 
 ENV LANG="en_US.UTF-8"
 RUN apt-get update && \
@@ -21,10 +21,10 @@ RUN apt-get update && \
 COPY . /puppetserver
 WORKDIR /puppetserver
 RUN lein clean && lein install
-RUN EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-xenial-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build
-RUN mv /puppetserver/output/deb/xenial/*/*.deb /puppetserver.deb
+RUN EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build
+RUN mv /puppetserver/output/deb/bionic/*/*.deb /puppetserver.deb
 
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 ARG vcs_ref
 ARG build_date
@@ -39,7 +39,7 @@ ENV PUPPERWARE_ANALYTICS_ENABLED=false
 
 ENV PUPPET_SERVER_VERSION="$version"
 ENV DUMB_INIT_VERSION="1.2.1"
-ENV UBUNTU_CODENAME="xenial"
+ENV UBUNTU_CODENAME="bionic"
 ENV PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m"
 ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
 ENV PUPPET_MASTERPORT=8140
@@ -63,7 +63,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
 COPY --from=build /puppetserver.deb /puppetserver.deb
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends wget=1.17.1-1ubuntu1 ca-certificates && \
+    apt-get install -y --no-install-recommends wget ca-certificates && \
     wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     wget https://github.com/Yelp/dumb-init/releases/download/v"$DUMB_INIT_VERSION"/dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
