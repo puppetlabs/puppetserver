@@ -49,45 +49,6 @@
     (is (= 4 (jruby-core/default-pool-size 32)))
     (is (= 4 (jruby-core/default-pool-size 64)))))
 
-
-(deftest add-facter-to-classpath-test
-  (letfn [(class-loader-files [] (map #(.getFile %)
-                                   (.getURLs
-                                     (.. Thread currentThread getContextClassLoader))))
-          (create-temp-facter-jar [] (-> (ks/temp-dir)
-                                       (fs/file jruby-puppet-core/facter-jar)
-                                       (fs/touch)
-                                       (ks/absolute-path)))
-          (temp-dir-as-string [] (-> (ks/temp-dir) (ks/absolute-path)))
-          (fs-parent-as-string [path] (-> path (fs/parent) (ks/absolute-path)))
-          (jar-in-class-loader-file-list? [jar]
-            (some #(= jar %) (class-loader-files)))]
-    (testing "facter jar loaded from first position"
-      (let [temp-jar (create-temp-facter-jar)]
-        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(fs-parent-as-string temp-jar)])
-        (is (true? (jar-in-class-loader-file-list? temp-jar)))))
-    (testing "facter jar loaded from last position"
-      (let [temp-jar (create-temp-facter-jar)]
-        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(temp-dir-as-string)
-                                                          (fs-parent-as-string temp-jar)])
-        (is (true? (jar-in-class-loader-file-list? temp-jar)))))
-    (testing "only first jar loaded when two present"
-      (let [first-jar (create-temp-facter-jar)
-            last-jar (create-temp-facter-jar)]
-        (jruby-puppet-core/add-facter-jar-to-system-classloader! [(fs-parent-as-string first-jar)
-                                                          (temp-dir-as-string)
-                                                          (fs-parent-as-string last-jar)])
-        (is (true? (jar-in-class-loader-file-list? first-jar))
-          "first jar in the list was unexpectedly not found")
-        (is (nil? (jar-in-class-loader-file-list? last-jar))
-          "last jar in the list was unexpectedly not found")))
-    (testing "class loader files unchanged when no jar found"
-      (let [class-loader-files-before-load (class-loader-files)
-            _ (jruby-puppet-core/add-facter-jar-to-system-classloader! [(temp-dir-as-string)
-                                                                (temp-dir-as-string)])
-            class-loader-files-after-load (class-loader-files)]
-        (is (= class-loader-files-before-load class-loader-files-after-load))))))
-
 (deftest initialize-puppet-config-test
   (testing "http-client values are used if present"
     (let [http-config {:ssl-protocols ["some-protocol"]

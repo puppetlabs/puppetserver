@@ -33,7 +33,6 @@
                         (partial shutdown-on-error (tk-services/service-id this))
                         true
                         metrics-service)
-          _ (core/add-facter-jar-to-system-classloader! (:ruby-load-path jruby-config))
           pool-context (create-pool jruby-config)]
       (log/info (i18n/trs "JRuby version info: {0}"
                           jruby-core/jruby-version-info))
