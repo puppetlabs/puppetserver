@@ -83,6 +83,7 @@ COPY docker/puppetserver-standalone/puppetserver.conf /etc/puppetlabs/puppetserv
 
 RUN puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
+    cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
 
 COPY docker/puppetserver-standalone/docker-entrypoint.sh /
