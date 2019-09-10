@@ -14,13 +14,13 @@ cd /
 
 # if the data dir is empty, copy over everything from build time
 if [ ! "$(ls -A /opt/puppetlabs/server/data/puppetserver)" ]; then
-  cp -a /var/tmp/puppetserver/* /opt/puppetlabs/server/data/puppetserver/
+  cp -R /var/tmp/puppetserver/* /opt/puppetlabs/server/data/puppetserver/
   # remove the tmp dir so we only run this on first runs of new containers
   rm -rf /var/tmp/puppetserver/vendored-jruby-gems
 elif [ -d /var/tmp/puppetserver/vendored-jruby-gems ]; then
   # clean up existing vendored gems
   rm -rf /opt/puppetlabs/server/data/puppetserver/vendored-jruby-gems
-  cp -a /var/tmp/puppetserver/vendored-jruby-gems /opt/puppetlabs/server/data/puppetserver/
+  cp -R /var/tmp/puppetserver/vendored-jruby-gems /opt/puppetlabs/server/data/puppetserver/
   # remove the tmp dir so we only run this on first runs of new containers
   rm -rf /var/tmp/puppetserver/vendored-jruby-gems
 fi
