@@ -9,10 +9,20 @@ pwd := $(shell pwd)
 export BUNDLE_PATH = $(pwd)/.bundle/gems
 export BUNDLE_BIN = $(pwd)/.bundle/bin
 export GEMFILE = $(pwd)/Gemfile
-
-version = $(shell echo $(git_describe) | sed 's/-.*//')
-dockerfile := Dockerfile
 PUPPERWARE_ANALYTICS_STREAM ?= dev
+
+ifeq ($(IS_RELEASE),true)
+  VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
+  LATEST_VERSION ?= latest
+  dockerfile := Dockerfile-release
+  dockerfile_context := puppetserver-standalone
+else
+  # regex support and portability for sed is terrible (+ doesn't work consistently)
+  VERSION ?= $(shell echo $(git_describe) | sed 's/\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/')
+	LATEST_VERSION ?= edge
+	dockerfile := Dockerfile
+  dockerfile_context := $(pwd)/..
+endif
 
 prep:
 	@git fetch --unshallow ||:
@@ -21,12 +31,12 @@ prep:
 lint:
 ifeq ($(hadolint_available),0)
 	@$(hadolint_command) puppetserver-standalone/$(dockerfile)
-	@$(hadolint_command) puppetserver/$(dockerfile)
+	@$(hadolint_command) puppetserver/Dockerfile
 else
 	@docker pull $(hadolint_container)
 	@docker run --rm -v $(PWD)/puppetserver-standalone/$(dockerfile):/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
-	@docker run --rm -v $(PWD)/puppetserver/$(dockerfile):/Dockerfile \
+	@docker run --rm -v $(PWD)/puppetserver/Dockerfile:/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
 endif
 
@@ -35,42 +45,50 @@ build: prep
 		--pull \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
-		--build-arg version=$(version) \
+		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver-standalone/$(dockerfile) \
-		--tag $(NAMESPACE)/puppetserver-standalone:$(version) $(pwd)/..
+		--file puppetserver-base/Dockerfile \
+		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base
 	docker build \
 		--build-arg namespace=$(NAMESPACE) \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
-		--build-arg version=$(version) \
+		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver/$(dockerfile) \
-		--tag $(NAMESPACE)/puppetserver:$(version) \
+		--file puppetserver-standalone/$(dockerfile) \
+		--tag $(NAMESPACE)/puppetserver-standalone:$(VERSION) $(dockerfile_context)
+	docker build \
+		--build-arg namespace=$(NAMESPACE) \
+		--build-arg vcs_ref=$(vcs_ref) \
+		--build-arg build_date=$(build_date) \
+		--build-arg version=$(VERSION) \
+		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
+		--file puppetserver/Dockerfile \
+		--tag $(NAMESPACE)/puppetserver:$(VERSION) \
 		puppetserver
 ifeq ($(IS_LATEST),true)
-	@docker tag $(NAMESPACE)/puppetserver-standalone:$(version) \
-		$(NAMESPACE)/puppetserver-standalone:latest
-	@docker tag $(NAMESPACE)/puppetserver:$(version) \
-		$(NAMESPACE)/puppetserver:latest
+	@docker tag $(NAMESPACE)/puppetserver-standalone:$(VERSION) \
+		$(NAMESPACE)/puppetserver-standalone:$(LATEST_VERSION)
+	@docker tag $(NAMESPACE)/puppetserver:$(VERSION) \
+		$(NAMESPACE)/puppetserver:$(LATEST_VERSION)
 endif
 
 test: prep
 	@bundle install --path $$BUNDLE_PATH --gemfile $$GEMFILE --with test
 	@bundle update
-	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver-standalone:$(version) \
+	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver-standalone:$(VERSION) \
 		bundle exec --gemfile $$GEMFILE \
 		rspec --options puppetserver-standalone/.rspec spec
-	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver:$(version) \
+	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver:$(VERSION) \
 		bundle exec --gemfile $$GEMFILE \
 		rspec --options puppetserver/.rspec spec
 
 push-image: prep
-	@docker push puppet/puppetserver-standalone:$(version)
-	@docker push puppet/puppetserver:$(version)
+	@docker push puppet/puppetserver-standalone:$(VERSION)
+	@docker push puppet/puppetserver:$(VERSION)
 ifeq ($(IS_LATEST),true)
-	@docker push puppet/puppetserver-standalone:latest
-	@docker push puppet/puppetserver:latest
+	@docker push puppet/puppetserver-standalone:$(LATEST_VERSION)
+	@docker push puppet/puppetserver:$(LATEST_VERSION)
 endif
 
 push-readme:
