@@ -4,4 +4,4 @@ if [ -n "$JRUBY_JAR" ]; then
   echo "Warning: the JRUBY_JAR setting is no longer needed and will be ignored." 1>&2
 fi
 
-CLASSPATH="${CLASSPATH}:/opt/puppetlabs/server/data/<%= EZBake::Config[:real_name] %>/jars/*"
+CLASSPATH="${CLASSPATH}:/opt/puppetlabs/puppet/lib/ruby/vendor_ruby/facter.jar:/opt/puppetlabs/server/data/<%= EZBake::Config[:real_name] %>/jars/*"
