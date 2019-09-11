@@ -3,6 +3,7 @@
   (:require [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.services.protocols.jruby-puppet :as jruby-puppet]
+            [puppetlabs.ring-middleware.utils :as middleware-utils]
             [puppetlabs.puppetserver.liberator-utils :as liberator-utils]
             [schema.core :as schema]
             [liberator.core :refer [defresource]]
@@ -65,6 +66,13 @@
           (rr/status 503)
           (rr/content-type "text/plain")))))
 
+(defn handle-jruby-pool-thread-dump
+  [jruby-service]
+  (let [result (jruby-puppet/get-jruby-thread-dump jruby-service)]
+    (if (some :error (vals result))
+      (middleware-utils/json-response 500 result)
+      (middleware-utils/json-response 200 result))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Routing
 
@@ -76,7 +84,11 @@
       (environment-cache-resource jruby-service
         (get-in request [:query-params "environment"])))
     (comidi/DELETE "/jruby-pool" []
-      (handle-jruby-pool-flush jruby-service))))
+      (handle-jruby-pool-flush jruby-service))
+    (comidi/context "/jruby-pool"
+      (comidi/routes
+        (comidi/GET "/thread-dump" []
+          (handle-jruby-pool-thread-dump jruby-service))))))
 
 (defn versioned-routes
   [jruby-service]
