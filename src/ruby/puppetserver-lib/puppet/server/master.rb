@@ -12,7 +12,6 @@ require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
 require 'puppet/server/ast_compiler'
 require 'puppet/server/key_recorder'
-require 'puppet/pops/lookup/key_recorder'
 
 require 'java'
 
