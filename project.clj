@@ -142,7 +142,7 @@
                                                [org.bouncycastle/bcpkix-jdk15on]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.1.2"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.1.3"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
