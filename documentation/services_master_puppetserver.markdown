@@ -57,7 +57,7 @@ for more information on these APIs.
 
 Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file to let specific certificate owners issue commands.
 
-The CA service uses ``.pem` files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
+The CA service uses `.pem` files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
 
 ### Admin API Service
 
@@ -75,6 +75,8 @@ Right now, the main administrative task is forcing expiration of all environment
 Most of Puppet Server's work — compiling catalogs, receiving reports, etc. — is still done by Ruby code. But instead of using the operating system's MRI Ruby runtime, Puppet Server runs Puppet in JRuby, an implementation of the Ruby interpreter that runs on the JVM.
 
 Because we don't use the system Ruby, you can't use the system `gem` command to install Ruby Gems for use by the Puppet master. Instead, Puppet Server includes a separate `puppetserver gem` command for installing any libraries that your Puppet extensions might require. See [the "Using Ruby Gems" page](./gems.markdown) for details.
+
+> **Note:** To set custom arguments to be passed into the Java process for the `puppetserver ruby` command with the `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file (typically located at `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`). The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver gem` and `puppetserver irb` [subcommands](./subcommands.markdown).
 
 Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that execute Ruby code in a JRuby environment.
 
