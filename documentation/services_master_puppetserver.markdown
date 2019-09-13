@@ -11,7 +11,7 @@ canonical: "/puppetserver/latest/services_master_puppetserver.html"
 
 Puppet is configured in an agent-master architecture, in which a master node controls configuration information for a fleet of managed agent nodes. Puppet Server performs the role of the master node. Puppet Server is a Ruby and Clojure application that runs on the Java Virtual Machine (JVM) and provides the same services as the classic Puppet master application. It mostly does this by running the existing Puppet master code in several JRuby interpreters, but it replaces some parts of the classic application with new services written in Clojure.
 
-This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it. For details about invoking the `puppet master` command, see [the `puppet master` man page](https://puppet.com/docs/puppet/latest/man/master.html).
+This page describes the generic requirements and run environment for Puppet Server; for practical instructions, see the docs for [installing](./install_from_packages.markdown) and [configuring](./configuration.markdown) it.
 
 ## Supported Platforms
 
@@ -19,7 +19,7 @@ Puppet provides Puppet Server packages for Red Hat Enterprise Linux, RHEL-derive
 
 If we don't provide a package for your system, you can run Puppet Server from source on any POSIX server with JDK 1.7 or later. See [Running from Source](./dev_running_from_source.markdown) for more details.
 
-Note that Puppet Server is versioned separately from Puppet itself. Puppet Server 1.0 is compatible with Puppet 3.7.3 and later, but will not be compatible with Puppet 4.0; there will be a separate Puppet Server release to coincide with the next major version of Puppet.
+Note that Puppet Server is versioned separately from Puppet itself. Major Puppet Server releases are compatible with the same major Puppet release, such as Puppet 6.x and Puppet Server 6.x, but might have different minor or patch versions, such as Puppet 6.9 and Puppet Server 6.6. For a list of the maintained versions of Puppet, Puppet Server, and Puppet DB, see [Puppet releases and lifecycles](https://puppet.com/docs/puppet/latest/about_agent.html).
 
 ## Controlling the Service
 
@@ -57,7 +57,7 @@ for more information on these APIs.
 
 Signing and revoking certificates over the network is disallowed by default; you can use the [`auth.conf`](./config_file_auth.html) file to let specific certificate owners issue commands.
 
-The CA service uses .pem files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
+The CA service uses ``.pem` files in the standard Puppet [`ssldir`](https://puppet.com/docs/puppet/latest/dirs_ssldir.html) to store credentials. You can use the standard `puppetserver ca` command to interact with these credentials, including listing, signing, and revoking certificates.
 
 ### Admin API Service
 
@@ -76,9 +76,7 @@ Most of Puppet Server's work — compiling catalogs, receiving reports, etc. —
 
 Because we don't use the system Ruby, you can't use the system `gem` command to install Ruby Gems for use by the Puppet master. Instead, Puppet Server includes a separate `puppetserver gem` command for installing any libraries that your Puppet extensions might require. See [the "Using Ruby Gems" page](./gems.markdown) for details.
 
-Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that will execute Ruby code in a JRuby environment.
-
-> **Note:** In Puppet Server 2.7.1, you can set custom arguments to be passed into the Java process for the `puppetserver ruby` command via the new `JAVA_ARGS_CLI` environment variable, either temporarily on the command line or persistently by adding it to the sysconfig/default file (typically located at `/etc/sysconfig/puppetserver` or `/etc/defaults/puppetserver`). The `JAVA_ARGS_CLI` environment variable also controls the arguments used when running the `puppetserver gem` and `puppetserver irb` [subcommands](./subcommands.markdown). See the [Server 2.7.1 release notes](https://docs.puppet.com/puppetserver/2.7/release_notes.html) for details.
+Additionally, if you need to test or debug code that will be used by Puppet Server, we include `puppetserver ruby` and `puppetserver irb` commands that execute Ruby code in a JRuby environment.
 
 To handle parallel requests from agent nodes, Puppet Server maintains several separate JRuby interpreters, all independently running Puppet's application code, and distributes agent requests among them. Today, agent requests are distributed more or less randomly, without regard to their environment; this may change in the future.
 
@@ -122,13 +120,13 @@ By default, Puppet Server handles SSL termination automatically.
 
 In network configurations that require external SSL termination (e.g. with a hardware load balancer), you'll need to configure a few other things. See the [External SSL Termination](./external_ssl_termination.markdown) page for details. In summary, you'll need to:
 
-* Configure Puppet Server to use HTTP instead of HTTPS
-* Configure Puppet Server to accept SSL information via insecure HTTP headers
-* Secure your network so that Puppet Server **cannot** be directly reached by **any** untrusted clients
+* Configure Puppet Server to use HTTP instead of HTTPS.
+* Configure Puppet Server to accept SSL information via insecure HTTP headers.
+* Secure your network so that Puppet Server **cannot** be directly reached by **any** untrusted clients.
 * Configure your SSL terminating proxy to set the following HTTP headers:
-    * `X-Client-Verify` (mandatory)
-    * `X-Client-DN` (mandatory for client-verified requests)
-    * `X-Client-Cert` (optional; required for [trusted facts](https://puppet.com/docs/puppet/latest/lang_facts_and_builtin_vars.html))
+    * `X-Client-Verify` (mandatory).
+    * `X-Client-DN` (mandatory for client-verified requests).
+    * `X-Client-Cert` (optional; required for [trusted facts](https://puppet.com/docs/puppet/latest/lang_facts_and_builtin_vars.html)).
 
 ## Configuring Puppet Server
 
@@ -140,11 +138,8 @@ Puppet Server's `conf.d` directory contains:
 * `webserver.conf` and `web-routes.conf`: Web server configuration settings.
 * `puppetserver.conf`: Settings for Puppet Server itself, including the JRuby interpreter and the administrative API.
 * `auth.conf`: Authentication rules for Puppet Server endpoints.
-* `master.conf` ([deprecated][]): Settings for the Puppet master functionality of Puppet Server.
 * `ca.conf`: Settings for the Certificate Authority service.
 
 For detailed information about Puppet Server settings and the `conf.d` directory, refer to the [Configuration](./configuration.markdown) page.
-
-While Puppet Server can use Puppet's [`auth.conf`](https://puppet.com/docs/puppet/latest/config_file_auth.html) for access control, this method is deprecated in favor of a new authentication system introduced in Puppet Server 2.2 and configured through its own [`auth.conf`](./config_file_auth.markdown) file.
 
 As mentioned above, Puppet Server also uses Puppet's usual config files, including most of the settings in [`puppet.conf`](https://puppet.com/docs/puppet/latest/config_file_main.html). However, Puppet Server treats some `puppet.conf` settings differently, and you should be aware of [these differences](./puppet_conf_setting_diffs.markdown).
