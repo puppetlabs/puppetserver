@@ -53,11 +53,17 @@ class Puppet::Server::PuppetConfig
 
     Puppet.settings.use :main, :master, :ssl, :metrics
 
-    Puppet::FileServing::Content.indirection.terminus_class = :file_server
-    Puppet::FileServing::Metadata.indirection.terminus_class = :file_server
-    Puppet::FileBucket::File.indirection.terminus_class = :file
-
-    Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
+    if Puppet::Indirector::Indirection.method_defined?(:set_global_setting)
+      Puppet::FileServing::Content.indirection.set_global_setting(:terminus_class, :file_server)
+      Puppet::FileServing::Metadata.indirection.set_global_setting(:terminus_class, :file_server)
+      Puppet::FileBucket::File.indirection.set_global_setting(:terminus_class, :file)
+      Puppet::Node.indirection.set_global_setting(:cache_class, Puppet[:node_cache_terminus])
+    else
+      Puppet::FileServing::Content.indirection.terminus_class = :file_server
+      Puppet::FileServing::Metadata.indirection.terminus_class = :file_server
+      Puppet::FileBucket::File.indirection.terminus_class = :file
+      Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
+    end
 
     Puppet::ApplicationSupport.configure_indirector_routes("master")
 
