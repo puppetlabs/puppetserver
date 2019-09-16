@@ -8,9 +8,23 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 ## System Requirements
 
-Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just play around with an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
+Puppet Server is configured to use 2 GB of RAM by default. If you're just testing an installation on a Virtual Machine, this much memory is not necessary. To change the memory allocation, see [Memory Allocation](#memory-allocation).
 
 > If you're also using PuppetDB, check its [requirements](https://puppet.com/docs/puppetdb/latest/index.html#system-requirements).
+
+## Java support
+
+Puppet Server versions are tested against the following versions of Java:
+
+| Puppet Server  | Java  |
+|---|---|
+| 2.x  | 7, 8  |
+| 5.x  | 8  |
+| 6.0-6.5  | 8, 11 (experimental)  |
+| 6.6 and later  | 8, 11  |
+
+
+Some Java versions may work with other Puppet Server versions, but we do not test or support those cases. Community submitted patches for support greater than Java 11 are welcome. Both Java 8 and 11 are considered long-term support versions and are planned to be supported by upstream maintainers until 2022 or later.
 
 ## Platforms with Packages
 
