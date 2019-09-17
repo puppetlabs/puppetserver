@@ -14,7 +14,7 @@ if additional_gem_source
   gem_install += " --clear-sources --source #{additional_gem_source}"
 end
 
-gem_uninstall = "#{cli} gem uninstall"
+gem_uninstall = "#{cli} gem uninstall --silent"
 gem_list = "#{cli} gem list"
 gem_cleanup = "#{cli} gem cleanup"
 
