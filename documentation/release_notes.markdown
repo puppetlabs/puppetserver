@@ -10,6 +10,32 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.6.0
+
+Released 17 September 2019
+
+### New features
+
+- Puppet Server no longer hardcodes Java's egd parameter. Users may manage the value via JAVA_ARGS or JAVA_ARGS_CLI in the defaults file. [SERVER-2602](https://tickets.puppetlabs.com/browse/SERVER-2602)
+
+- RedHat 7 FIPS mode packages are now available for `puppetserver`. [SERVER-2555](https://tickets.puppetlabs.com/browse/SERVER-2555)
+
+- Puppet Server now lists plan content from your modules, just as it does task content. [SERVER-2543](https://tickets.puppetlabs.com/browse/SERVER-2543)
+
+- You can now enable sending a list of all the Hiera keys looked up during compile to PuppetDB, via the `jruby-puppet.track-lookups` setting in `puppetserver.conf`. This is currently only used by CD4PE. [SERVER-2538](https://tickets.puppetlabs.com/browse/SERVER-2538)
+
+-Added the `/puppet-admin-api/v1/jruby-pool/thread-dump` endpoint, which returns a thread dump of running JRuby instances, if `jruby.management.enabled` has been set to `true` in the JVM running Puppet Server. See [Admin API: JRuby Pool](./admin-api/v1/jruby-pool.markdown#get-puppet-admin-apiv1jruby-poolthread-dump) for details. [SERVER-2193](https://tickets.puppetlabs.com/browse/SERVER-2193)
+
+- Puppet Server now runs with JRuby 9.2.8.0. [SERVER-2388](https://tickets.puppetlabs.com/browse/SERVER-2588)
+ 
+- The `puppetserver ca import` command now initializes an empty CRL for the intermediate CA if one is not provided in the `crl-chain` file. [SERVER-2522](https://tickets.puppetlabs.com/browse/SERVER-2552)
+
+### Resolved issues
+
+- Puppet Server can now be reloaded and run with multiple JRuby instances when running under Java 11. [SERVER-2423](https://tickets.puppetlabs.com/browse/SERVER-2423)
+
+-Puppet Server's CA can now handle keys in the PKCS#8 format, which is required when running in FIPS mode. [SERVER-2019](https://tickets.puppetlabs.com/browse/SERVER-2019)
+
 ## Puppet Server 6.5.0
 
 Released 22 July 2019
@@ -52,19 +78,6 @@ Released 19 April 2019
 
 - This release adds a new API endpoint to `/puppet/v3/environment_transports`. This endpoint lists all of the available network transports from modules and is for use with the Agentless Catalog Executor. [SERVER-2467](https://tickets.puppetlabs.com/browse/SERVER-2467)
 
-## Puppet Server 6.3.1
-
-Released 16 July 2019
-
-### Bug fixes
-
-- In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
-
-- Building Puppet Server outside our network is now slightly easier.
-
-- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
-
-- Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
 
 ## Puppet Server 6.3.0
 
