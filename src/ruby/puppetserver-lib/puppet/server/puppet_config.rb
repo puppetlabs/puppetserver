@@ -49,7 +49,12 @@ class Puppet::Server::PuppetConfig
     # in a completely different way.
     #
     # See `Puppet::Network::HttpPool.connection`
-    Puppet.push_context_global({ssl_context: :unused})
+    dummy_ssl_context = {ssl_context: :unused}
+    if Puppet.respond_to?(:push_context_global)
+      Puppet.push_context_global(dummy_ssl_context)
+    else
+      Puppet.push_context(dummy_ssl_context)
+    end
 
     Puppet.settings.use :main, :master, :ssl, :metrics
 
