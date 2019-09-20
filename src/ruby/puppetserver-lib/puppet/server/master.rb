@@ -97,12 +97,7 @@ class Puppet::Server::Master
 
   def getTransportInfoForEnvironment(env)
     require 'puppet/resource_api/transport'
-
-    environment = @env_loader.get!(env)
-    Puppet.override({current_environment: environment}) do
-      @transports_loader.loadall(environment)
-      Puppet::ResourceApi::Transport.list.values.map(&:definition)
-    end
+    Puppet::ResourceApi::Transport.list_all_transports(env).values.map(&:definition)
   end
 
   def getModuleInfoForEnvironment(env)
