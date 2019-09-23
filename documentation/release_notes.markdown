@@ -32,7 +32,7 @@ Released 17 September 2019
 
 ### Resolved issues
 
-- Puppet Server can now be reloaded and run with multiple JRuby instances when running under Java 11. [SERVER-2423](https://tickets.puppetlabs.com/browse/SERVER-2423)
+- Puppet Server can now be reloaded and run with multiple JRuby instances when running under Java 11. This change affects the packaging of Puppet Server. If you are running Puppet Server from source, you must add `facter.jar`, provided by the `puppet-agent` package, to the classpath when starting Puppet Server with Java. [SERVER-2423](https://tickets.puppetlabs.com/browse/SERVER-2423)
 
 -Puppet Server's CA can now handle keys in the PKCS#8 format, which is required when running in FIPS mode. [SERVER-2019](https://tickets.puppetlabs.com/browse/SERVER-2019)
 
