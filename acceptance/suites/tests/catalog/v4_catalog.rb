@@ -105,6 +105,7 @@ PUPPETCONF
 
     on(master, 'echo "" > /etc/puppetlabs/puppet/puppet.conf')
     lay_down_new_puppet_conf(master, old_puppet_conf, testdir)
+    on(master, 'puppetserver ca clean --certname compile-node-one,compile-node-two')
     reload_server
   end
 
