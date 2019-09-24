@@ -63,6 +63,17 @@ class Puppet::Server::PuppetConfig
       Puppet::FileServing::Metadata.indirection.set_global_setting(:terminus_class, :file_server)
       Puppet::FileBucket::File.indirection.set_global_setting(:terminus_class, :file)
       Puppet::Node.indirection.set_global_setting(:cache_class, Puppet[:node_cache_terminus])
+
+      # Instead of relying on Puppet defaults to use a hook to configure the
+      # necessary storeconfigs settings, set them directly here.
+      if Puppet[:storeconfigs]
+        Puppet::Resource::Catalog.indirection.set_global_setting(:cache_class, :store_configs)
+        Puppet.settings.override_default(:catalog_cache_terminus, :store_configs)
+        Puppet::Node::Facts.indirection.set_global_setting(:cache_class, :store_configs)
+        Puppet::Resource.indirection.set_global_setting(:terminus_class, :store_configs)
+        # Set the facts indirection terminus globally
+        Puppet::Node::Facts.indirection.set_global_setting(:terminus_class, Puppet[:storeconfigs_backend])
+      end
     else
       Puppet::FileServing::Content.indirection.terminus_class = :file_server
       Puppet::FileServing::Metadata.indirection.terminus_class = :file_server
