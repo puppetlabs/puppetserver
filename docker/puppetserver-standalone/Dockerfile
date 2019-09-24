@@ -50,6 +50,7 @@ ENV CA_ALLOW_SUBJECT_ALT_NAMES=false
 ENV CONSUL_ENABLED=false
 ENV CONSUL_HOSTNAME=consul
 ENV CONSUL_PORT=8500
+ENV NETWORK_INTERFACE=eth0
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
