@@ -1,4 +1,4 @@
-(def ps-version "6.6.1-SNAPSHOT")
+(def ps-version "6.7.0-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -142,7 +142,7 @@
                                                [org.bouncycastle/bcpkix-jdk15on]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.1.2"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
