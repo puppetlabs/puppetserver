@@ -47,6 +47,9 @@ ENV PUPPETSERVER_MAX_ACTIVE_INSTANCES=1
 ENV PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0
 ENV CA_ENABLED=true
 ENV CA_ALLOW_SUBJECT_ALT_NAMES=false
+ENV CONSUL_ENABLED=false
+ENV CONSUL_HOSTNAME=consul
+ENV CONSUL_PORT=8500
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
