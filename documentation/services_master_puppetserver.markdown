@@ -17,7 +17,7 @@ This page describes the generic requirements and run environment for Puppet Serv
 
 Puppet provides Puppet Server packages for Red Hat Enterprise Linux, RHEL-derived distros, Fedora, Debian, and Ubuntu.
 
-If we don't provide a package for your system, you can run Puppet Server from source on any POSIX server with JDK 1.7 or later. See [Running from Source](./dev_running_from_source.markdown) for more details.
+If we don't provide a package for your system, you can run Puppet Server from source on any x86_64 Linux server with JDK 1.8 or 11. See [Running from Source](./dev_running_from_source.markdown) for more details. Other POSIX compatible servers or versions of Java are unsupported by Puppet, although they may work. Join our [community Slack](https://slack.puppet.com/) for help with non-supported operating systems, architectures, or JRE versions.
 
 Note that Puppet Server is versioned separately from Puppet itself. Major Puppet Server releases are compatible with the same major Puppet release, such as Puppet 6.x and Puppet Server 6.x, but might have different minor or patch versions, such as Puppet 6.9 and Puppet Server 6.6. For a list of the maintained versions of Puppet, Puppet Server, and Puppet DB, see [Puppet releases and lifecycles](https://puppet.com/docs/puppet/latest/about_agent.html).
 

@@ -53,8 +53,8 @@ Step 1: Install Prerequisites
 
 Use your system's package tools to ensure that the following prerequisites are installed:
 
-* JDK 1.7 or higher
-* [Leiningen](http://leiningen.org/)
+* JDK 1.8 or Java 11
+* [Leiningen 2.9.1 (latest)](http://leiningen.org/)
 * Git (for checking out the source code)
 
 
