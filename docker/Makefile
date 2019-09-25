@@ -5,23 +5,23 @@ build_date := $(shell date -u +%FT%T)
 hadolint_available := $(shell hadolint --help > /dev/null 2>&1; echo $$?)
 hadolint_command := hadolint --ignore DL3008 --ignore DL3018 --ignore DL3028 --ignore DL4000 --ignore DL4001
 hadolint_container := hadolint/hadolint:latest
-pwd := $(shell pwd)
-export BUNDLE_PATH = $(pwd)/.bundle/gems
-export BUNDLE_BIN = $(pwd)/.bundle/bin
-export GEMFILE = $(pwd)/Gemfile
+export BUNDLE_PATH = $(PWD)/.bundle/gems
+export BUNDLE_BIN = $(PWD)/.bundle/bin
+export GEMFILE = $(PWD)/Gemfile
 PUPPERWARE_ANALYTICS_STREAM ?= dev
+FULL_VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
 
 ifeq ($(IS_RELEASE),true)
-  VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
+  VERSION ?= $(FULL_VERSION)
   LATEST_VERSION ?= latest
   dockerfile := Dockerfile-release
   dockerfile_context := puppetserver-standalone
 else
   # regex support and portability for sed is terrible (+ doesn't work consistently)
-  VERSION ?= $(shell echo $(git_describe) | sed 's/\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/')
+  VERSION ?= $(shell echo $(FULL_VERSION) | sed 's/\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/')
 	LATEST_VERSION ?= edge
 	dockerfile := Dockerfile
-  dockerfile_context := $(pwd)/..
+  dockerfile_context := $(PWD)/..
 endif
 
 prep:
