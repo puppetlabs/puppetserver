@@ -2,6 +2,18 @@ ARG version="6.0.0"
 ARG namespace="puppet"
 FROM "$namespace"/puppetserver-base:"$version"
 
+LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
+      org.label-schema.vendor="Puppet" \
+      org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
+      org.label-schema.name="Puppet Server" \
+      org.label-schema.license="Apache-2.0" \
+      org.label-schema.version="$PUPPET_SERVER_VERSION" \
+      org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
+      org.label-schema.vcs-ref="$vcs_ref" \
+      org.label-schema.build-date="$build_date" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.dockerfile="/Dockerfile"
+
 RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
     rm puppet6-release-"$UBUNTU_CODENAME".deb && \
