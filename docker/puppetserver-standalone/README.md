@@ -73,6 +73,11 @@ The following environment variables are supported:
 
   If consul is enabled, the port to access consul at. Defaults to '8500'.
 
+- `NETWORK_INTERFACE`
+
+  If consul is enabled the network interface to use when finding the server's IP.
+  Defaults to 'eth0'
+
 - `PUPPETDB_SERVER_URLS`
 
   The `server_urls` to set in /etc/puppetlabs/puppet/puppetdb.conf. Defaults to 'https://puppetdb:8081'.
