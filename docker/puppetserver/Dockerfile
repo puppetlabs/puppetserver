@@ -1,25 +1,38 @@
 ARG version="6.0.0"
 ARG namespace="puppet"
-FROM "$namespace"/puppetserver-standalone:"$version"
+FROM ubuntu:18.04 as build
 
-ARG vcs_ref
-ARG build_date
+ENV LANG="en_US.UTF-8"
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+            language-pack-en \
+            openjdk-8-jdk-headless \
+            curl \
+            git \
+            ruby \
+            ruby-dev \
+            g++ \
+            make && \
+    git config --global user.name "Puppet Release Team" && \
+    git config --global user.email "release@puppet.com" && \
+    curl --output /usr/local/bin/lein https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein && \
+    chmod 0755 /usr/local/bin/lein && \
+    /usr/local/bin/lein && \
+    gem install --no-doc bundler fpm
 
-# Used by entrypoint to submit metrics to Google Analytics.
-# Published images should use "production" for this build_arg.
-ARG pupperware_analytics_stream="dev"
-ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream"
-ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-3"
-ENV PUPPERWARE_ANALYTICS_APP_NAME="puppetserver"
-ENV PUPPERWARE_ANALYTICS_ENABLED=false
-ENV PUPPET_STORECONFIGS_BACKEND="puppetdb"
-ENV PUPPET_STORECONFIGS=true
-ENV PUPPET_REPORTS="puppetdb"
+COPY . /puppetserver
+WORKDIR /puppetserver
+RUN lein clean && lein install
+RUN EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build
+RUN mv /puppetserver/output/deb/bionic/*/*.deb /puppetserver.deb
+
+FROM "$namespace"/puppetserver-base:"$version"
+
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
-      org.label-schema.name="Puppet Server" \
+      org.label-schema.name="Puppet Server (from source)" \
       org.label-schema.license="Apache-2.0" \
       org.label-schema.version="$PUPPET_SERVER_VERSION" \
       org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
@@ -28,16 +41,28 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.dockerfile="/Dockerfile"
 
-RUN apt-get update && \
-    apt-get install --no-install-recommends -y puppetdb-termini && \
+COPY --from=build /puppetserver.deb /puppetserver.deb
+
+
+
+RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    rm puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y /puppetserver.deb puppetdb-termini && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    gem install --no-rdoc --no-ri r10k
 
-RUN puppet config set storeconfigs_backend puppetdb --section master && \
-    puppet config set storeconfigs true --section master && \
-    puppet config set reports puppetdb --section master && \
-    cp -p /etc/puppetlabs/puppet/puppet.conf /var/tmp/puppet
+COPY docker/puppetserver/puppetserver /etc/default/puppetserver
+COPY docker/puppetserver/logback.xml /etc/puppetlabs/puppetserver/
+COPY docker/puppetserver/request-logging.xml /etc/puppetlabs/puppetserver/
+COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+COPY docker/puppetserver/puppetdb.conf /etc/puppetlabs/puppet/
 
-COPY puppetdb.conf /var/tmp/puppet/
+RUN puppet config set autosign true --section master && \
+    cp -pr /etc/puppetlabs/puppet /var/tmp && \
+    cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
+    rm -rf /var/tmp/puppet/ssl
 
-COPY Dockerfile /
+COPY docker/puppetserver/Dockerfile /

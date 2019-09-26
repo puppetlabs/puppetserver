@@ -15,7 +15,7 @@ ifeq ($(IS_RELEASE),true)
 	VERSION ?= $(FULL_VERSION)
 	LATEST_VERSION ?= latest
 	dockerfile := Dockerfile-release
-	dockerfile_context := puppetserver-standalone
+	dockerfile_context := puppetserver
 else
 	# regex support and portability for sed is terrible (+ doesn't work consistently)
 	VERSION ?= $(shell echo $(FULL_VERSION) | sed 's/\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/')
@@ -30,13 +30,13 @@ prep:
 
 lint:
 ifeq ($(hadolint_available),0)
-	@$(hadolint_command) puppetserver-standalone/$(dockerfile)
-	@$(hadolint_command) puppetserver/Dockerfile
+	@$(hadolint_command) puppetserver-base/Dockerfile
+	@$(hadolint_command) puppetserver/$(dockerfile)
 else
 	@docker pull $(hadolint_container)
-	@docker run --rm -v $(PWD)/puppetserver-standalone/$(dockerfile):/Dockerfile \
+	@docker run --rm -v $(PWD)/puppetserver/$(dockerfile):/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
-	@docker run --rm -v $(PWD)/puppetserver/Dockerfile:/Dockerfile \
+	@docker run --rm -v $(PWD)/puppetserver-base/Dockerfile:/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
 endif
 
@@ -54,21 +54,9 @@ build: prep
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
 		--build-arg version=$(VERSION) \
-		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver-standalone/$(dockerfile) \
-		--tag $(NAMESPACE)/puppetserver-standalone:$(VERSION) $(dockerfile_context)
-	docker build \
-		--build-arg namespace=$(NAMESPACE) \
-		--build-arg vcs_ref=$(vcs_ref) \
-		--build-arg build_date=$(build_date) \
-		--build-arg version=$(VERSION) \
-		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver/Dockerfile \
-		--tag $(NAMESPACE)/puppetserver:$(VERSION) \
-		puppetserver
+		--file puppetserver/$(dockerfile) \
+		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(dockerfile_context)
 ifeq ($(IS_LATEST),true)
-	@docker tag $(NAMESPACE)/puppetserver-standalone:$(VERSION) \
-		$(NAMESPACE)/puppetserver-standalone:$(LATEST_VERSION)
 	@docker tag $(NAMESPACE)/puppetserver:$(VERSION) \
 		$(NAMESPACE)/puppetserver:$(LATEST_VERSION)
 endif
@@ -76,30 +64,18 @@ endif
 test: prep
 	@bundle install --path $$BUNDLE_PATH --gemfile $$GEMFILE --with test
 	@bundle update
-	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver-standalone:$(VERSION) \
-		bundle exec --gemfile $$GEMFILE \
-		rspec --options puppetserver-standalone/.rspec spec
 	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver:$(VERSION) \
 		bundle exec --gemfile $$GEMFILE \
 		rspec --options puppetserver/.rspec spec
 
 push-image: prep
-	@docker push puppet/puppetserver-standalone:$(VERSION)
 	@docker push puppet/puppetserver:$(VERSION)
 ifeq ($(IS_LATEST),true)
-	@docker push puppet/puppetserver-standalone:$(LATEST_VERSION)
 	@docker push puppet/puppetserver:$(LATEST_VERSION)
 endif
 
 push-readme:
 	@docker pull sheogorath/readme-to-dockerhub
-	@docker run --rm \
-		-v $(PWD)/puppetserver-standalone/README.md:/data/README.md \
-		-e DOCKERHUB_USERNAME="$(DOCKERHUB_USERNAME)" \
-		-e DOCKERHUB_PASSWORD="$(DOCKERHUB_PASSWORD)" \
-		-e DOCKERHUB_REPO_PREFIX=puppet \
-		-e DOCKERHUB_REPO_NAME=puppetserver-standalone \
-		sheogorath/readme-to-dockerhub
 	@docker run --rm \
 		-v $(PWD)/puppetserver/README.md:/data/README.md \
 		-e DOCKERHUB_USERNAME="$(DOCKERHUB_USERNAME)" \

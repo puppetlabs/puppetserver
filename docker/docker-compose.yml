@@ -4,7 +4,7 @@ services:
   puppet:
     hostname: puppet
     domainname: test
-    image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
+    image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver}
     expose:
       - 8141
     environment:
@@ -23,7 +23,7 @@ services:
   compiler:
     hostname: compiler
     domainname: test
-    image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver-standalone}
+    image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver}
     environment:
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
       - PUPPETSERVER_HOSTNAME=compiler.test
