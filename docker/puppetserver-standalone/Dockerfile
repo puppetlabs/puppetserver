@@ -52,6 +52,8 @@ ENV CONSUL_HOSTNAME=consul
 ENV CONSUL_PORT=8500
 ENV NETWORK_INTERFACE=eth0
 ENV SSLDIR /etc/puppetlabs/puppet/ssl
+# TODO: stup this volume
+# ENV SSLDIR /opt/puppetlabs/server/data/puppetserver/certs
 ENV CERTNAME puppet
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
@@ -86,6 +88,8 @@ COPY docker/puppetserver-standalone/puppetserver /etc/default/puppetserver
 COPY docker/puppetserver-standalone/logback.xml /etc/puppetlabs/puppetserver/
 COPY docker/puppetserver-standalone/request-logging.xml /etc/puppetlabs/puppetserver/
 COPY docker/puppetserver-standalone/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+# TODO: we'll need to copy in a puppet.conf like pe-puppetserver that configures SSLDIR and log locations
+# TODO: and a script like https://github.com/puppetlabs/pe-puppetserver/blob/968696ddaa1fc5cf2c16a89faae9b9dff497feb2/docker/pe-puppetserver/docker-entrypoint.d/10-ca.sh
 
 RUN puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
@@ -104,5 +108,15 @@ CMD ["foreground"]
 COPY docker/puppetserver-standalone/healthcheck.sh /
 RUN chmod +x /healthcheck.sh
 HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=4m CMD ["/healthcheck.sh"]
+
+# TODO: setup volumes like pe-puppetserver
+# VOLUME definitions are always at end of Dockerfile to address an LCOW bug
+# https://github.com/moby/moby/issues/39892
+# the puppetserver data directory which contains pe_repo packages under packages
+# VOLUME /opt/puppetlabs/server/data/puppetserver
+# VOLUME /opt/puppetlabs/server/data/packages
+# users should volume map in their id-control_repo.rsa
+# VOLUME /etc/puppetlabs/puppetserver/ssh
+
 
 COPY docker/puppetserver-standalone/Dockerfile /
