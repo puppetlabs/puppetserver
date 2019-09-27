@@ -36,6 +36,7 @@ Released 17 September 2019
 
 -Puppet Server's CA can now handle keys in the PKCS#8 format, which is required when running in FIPS mode. [SERVER-2019](https://tickets.puppetlabs.com/browse/SERVER-2019)
 
+
 ## Puppet Server 6.5.0
 
 Released 22 July 2019
@@ -70,6 +71,7 @@ To avoid potentially breaking clients that can use only `TLS_RSA_*` ciphers, the
 
 - Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
 
+
 ## Puppet Server 6.4.0
 
 Released 19 April 2019
@@ -91,6 +93,7 @@ Released 26 March 2019
 
 - The CA's `certificate_status` endpoint now returns additional information for custom integration. [SERVER-2370](https://tickets.puppetlabs.com/browse/SERVER-2370)
 
+
 ## Puppet Server 6.2.1
 
 Released 20 February 2019.
@@ -99,7 +102,7 @@ This release contains resolved issues.
 
 ### Resolved issues
 
-- This release upgrades Bouncy Castle to version 1.60 for security updates.
+- Updated bouncy-castle to 1.60 to fix security issues. [SERVER-2431](https://tickets.puppetlabs.com/browse/SERVER-2431)
 
 ## Puppet Server 6.2.0
 
@@ -109,75 +112,22 @@ This release contains new features and resolved issues.
 
 ### New features
 
- - The EZBake configs now allow you to specify `JAVA_ARGS_CLI`, which is used when using `puppetserver` subcommands to configure Java differently from what is needed for the service. This was used by the CLI before, but as an environment variable only, not as an EZBake config option. [SERVER-2399](https://tickets.puppetlabs.com/browse/SERVER-2399)
+- The `puppetserver ca` tool now respects the `server_list` setting in `puppet.conf` for those users that have created their own high availability configuration using that feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392) 
+
+- The EZBake configs now allow you to specify `JAVA_ARGS_CLI`, which is used when using `puppetserver` subcommands to configure Java differently from what is needed for the service. This was used by the CLI before, but as an environment variable only, not as an EZBake config option. [SERVER-2399](https://tickets.puppetlabs.com/browse/SERVER-2399)
 
 ### Resolved issues
 
 -  A dependency issue caused puppetserver 6.1.0 to fail with OpenJDK 11. This has been fixed and Puppet Server packages can now start under Java 11. [SERVER-2404](https://tickets.puppetlabs.com/browse/SERVER-2404)
- 
+
+
 ## Puppet Server 6.1.0
 
 Released 18 December 2018
 
-### Enhancements
-
-- Puppet Server 6.1.0 upgrades to JRuby 9.2.0.0. This version implements the Ruby 2.5 interface. It is backwards compatible, but will issue a warning for Ruby language features that have been deprecated. The major warning that users will see is `warning: constant ::Fixnum is deprecated`. Upgrading to this version of JRuby means that the Ruby interface has the same version as the Puppet agent. This version of JRuby is faster than previous versions under certain conditions. [SERVER-2381](https://tickets.puppetlabs.com/browse/SERVER-2381)
-- Puppet Server now has experimental support for Java 11 for users that run from source or build their own packages. This has been tested with low level tests but does not work when installed from official packages. Consequently, we consider this support "experimental", with full support coming later in 2019 for the latest long term supported version of Java. [SERVER-2315](https://tickets.puppetlabs.com/browse/SERVER-2315).
-- The `puppetserver ca` command now provides useful errors on connection issues and returns debugging information. [SERVER-2317](https://tickets.puppetlabs.com/browse/SERVER-2317)
-- The `puppetserver ca` tool now prefers the `server_list` setting in `puppet.conf` for users that have created their own high availability configuration using this feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392)
-
-### Resolved issues
-
-- The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
-- Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
-
-## Puppet Server 6.0.5
-
-Released 16 July 2019
-
-### Bug fixes
-
-- In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
-
-- Building Puppet Server outside our network is now slightly easier.
-
-- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
-
-- Cert and CRL bundles no longer need to be in any specific order. By default, the leaf instances still come first, descending to the root, which are last. [SERVER-2465](https://tickets.puppetlabs.com/browse/SERVER-2465)
-
-## Puppet Server 6.0.4
-
-Released 26 March 2019
-
-### Bug fixes
-
-- Updated bouncy-castle to 1.60 to fix security issues. [SERVER-2431](https://tickets.puppetlabs.com/browse/SERVER-2431)
-
-## Puppet Server 6.0.3
-
-Released 15 January 2019.
-
-This release contains new features.
-
-### New Features
-
-- The `puppetserver ca` tool now respects the `server_list` setting in `puppet.conf` for those users that have created their own high availability configuration using that feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392) 
-- The EZBake configs now allow you to specify `JAVA_ARGS_CLI`, which is used when using `puppetserver` subcommands to configure Java differently from what is needed for the service. This was used by the CLI before, but as an environment variable only, not as an EZBake config option. [SERVER-2399](https://tickets.puppetlabs.com/browse/SERVER-2399)
-
-## Puppet Server 6.0.2
-
-Released 23 October 2018
-
 ### New features
 
 - The CA service and the CA proxy service (in PE) now have their own entries in the status endpoint output and can be queried as "ca" and "ca-proxy" respectively. [SERVER-2350](https://tickets.puppetlabs.com/browse/SERVER-2350)
-
-
-## Puppet Server 6.0.1
-
-Released 2 October 2018
-
-### New features
 
 - Puppet Server now creates a default `ca.conf` file when installed, both in open source Puppet and Puppet Enterprise. CA settings such as `allow-subject-alt-names` should be configured in the `certificate-authority` section of this file. ([SERVER-2372](https://tickets.puppetlabs.com/browse/SERVER-2327))
 
@@ -185,6 +135,21 @@ Released 2 October 2018
 
 - The Puppet Server CA can now sign certificates with IP alt names in addition to DNS alt names (if signing certs with alt names is enabled). ([SERVER-2267](https://tickets.puppetlabs.com/browse/SERVER-2267)
 
+
+### Enhancements
+
+- Puppet Server 6.1.0 upgrades to JRuby 9.2.0.0. This version implements the Ruby 2.5 interface. It is backwards compatible, but will issue a warning for Ruby language features that have been deprecated. The major warning that users will see is `warning: constant ::Fixnum is deprecated`. Upgrading to this version of JRuby means that the Ruby interface has the same version as the Puppet agent. This version of JRuby is faster than previous versions under certain conditions. [SERVER-2381](https://tickets.puppetlabs.com/browse/SERVER-2381)
+
+- Puppet Server now has experimental support for Java 11 for users that run from source or build their own packages. This has been tested with low level tests but does not work when installed from official packages. Consequently, we consider this support "experimental", with full support coming later in 2019 for the latest long term supported version of Java. [SERVER-2315](https://tickets.puppetlabs.com/browse/SERVER-2315).
+
+- The `puppetserver ca` command now provides useful errors on connection issues and returns debugging information. [SERVER-2317](https://tickets.puppetlabs.com/browse/SERVER-2317)
+
+- The `puppetserver ca` tool now prefers the `server_list` setting in `puppet.conf` for users that have created their own high availability configuration using this feature. [SERVER-2392](https://tickets.puppetlabs.com/browse/SERVER-2392)
+
+### Resolved issues
+
+- The `puppetserver ca` command no longer has the wrong default value for the `$server` setting. Previously the `puppetserver ca` tool defaulted to `$certname` when connecting to the server, while the agent defaulted to `puppet`. The `puppetserver ca` tool now has the same default for `$server` as the agent. It will also honor the settings within the agent section of the `puppet.conf` file. [SERVER-2354](https://tickets.puppetlabs.com/browse/SERVER-2354)
+- Jetty no longer reports its version. [TK-473](https://tickets.puppetlabs.com/browse/TK-473)
 
 ## Puppet Server 6.0.0
 
