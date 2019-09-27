@@ -10,6 +10,15 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.7.0
+
+Released 1 October 2019
+
+### New feature
+
+- Puppet Server packages are now available for Debian 10. These packages require Java 11 to be installed, rather than Java 8. [SERVER-2613](https://tickets.puppetlabs.com/browse/SERVER-2613)
+
+
 ## Puppet Server 6.6.0
 
 Released 17 September 2019
