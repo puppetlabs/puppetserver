@@ -57,6 +57,7 @@ endif
 
 test: prep
 	@bundle install --path $$BUNDLE_PATH --gemfile $$GEMFILE
+	@bundle update
 	@PUPPET_TEST_DOCKER_IMAGE=$(NAMESPACE)/puppetserver-standalone:$(version) \
 		bundle exec --gemfile $$GEMFILE \
 		rspec --options puppetserver-standalone/.rspec spec
