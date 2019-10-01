@@ -23,16 +23,8 @@ describe 'puppetserver container' do
     teardown_cluster()
   end
 
-  it 'should start puppetserver successfully' do
-    expect(wait_on_service_health('puppet')).to eq ('healthy')
-  end
-
   it 'should be able to run a puppet agent against the puppetserver' do
     expect(run_agent('puppet-agent.test', 'puppetserver_test', masterport: '8141')).to eq(0)
-  end
-
-  it 'should be able to start a compile master' do
-    expect(wait_on_service_health('compiler')).to eq ('healthy')
   end
 
   it 'should be able to run an agent against the compile master' do
