@@ -18,6 +18,9 @@ Released 1 October 2019
 
 - Puppet Server packages are now available for Debian 10. These packages require Java 11 to be installed, rather than Java 8. [SERVER-2613](https://tickets.puppetlabs.com/browse/SERVER-2613)
 
+### Resolved Issues
+
+- Puppet Server now synchronizes write access to the CRL, so that each revoke request updates the CRL in succession, instead of concurrently. This prevents corruption of the CRL due to competing requests.
 
 ## Puppet Server 6.6.0
 
