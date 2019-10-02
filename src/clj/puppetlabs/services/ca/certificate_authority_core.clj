@@ -34,6 +34,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; 'handler' functions for HTTP endpoints
 
+;; Perhaps this could/should be in the tk context somewhere, and of
+;; course it'll need to be used to guard any competing writes.
+(def crl-write-serializer (Object.))
+
 (defn handle-get-certificate
   [subject {:keys [cacert signeddir]}]
   (-> (if-let [certificate (ca/get-certificate subject cacert signeddir)]
@@ -286,7 +290,8 @@
   :put!
   (fn [context]
     (let [desired-state (get-desired-state context)]
-      (ca/set-certificate-status! settings subject desired-state)
+      (locking crl-write-serializer
+        (ca/set-certificate-status! settings subject desired-state))
       (-> context
         (assoc-in [:representation :media-type] "text/plain")))))
 
