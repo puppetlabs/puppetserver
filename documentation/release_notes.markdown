@@ -36,7 +36,7 @@ Released 17 September 2019
 
 - You can now enable sending a list of all the Hiera keys looked up during compile to PuppetDB, via the `jruby-puppet.track-lookups` setting in `puppetserver.conf`. This is currently only used by CD4PE. [SERVER-2538](https://tickets.puppetlabs.com/browse/SERVER-2538)
 
--Added the `/puppet-admin-api/v1/jruby-pool/thread-dump` endpoint, which returns a thread dump of running JRuby instances, if `jruby.management.enabled` has been set to `true` in the JVM running Puppet Server. See [Admin API: JRuby Pool](./admin-api/v1/jruby-pool.markdown#get-puppet-admin-apiv1jruby-poolthread-dump) for details. [SERVER-2193](https://tickets.puppetlabs.com/browse/SERVER-2193)
+- Added the `/puppet-admin-api/v1/jruby-pool/thread-dump` endpoint, which returns a thread dump of running JRuby instances, if `jruby.management.enabled` has been set to `true` in the JVM running Puppet Server. See [Admin API: JRuby Pool](./admin-api/v1/jruby-pool.markdown#get-puppet-admin-apiv1jruby-poolthread-dump) for details. [SERVER-2193](https://tickets.puppetlabs.com/browse/SERVER-2193)
 
 - Puppet Server now runs with JRuby 9.2.8.0. [SERVER-2388](https://tickets.puppetlabs.com/browse/SERVER-2588)
  
