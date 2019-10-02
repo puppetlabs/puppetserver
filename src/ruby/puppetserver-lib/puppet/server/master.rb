@@ -97,7 +97,16 @@ class Puppet::Server::Master
 
   def getTransportInfoForEnvironment(env)
     require 'puppet/resource_api/transport'
-    Puppet::ResourceApi::Transport.list_all_transports(env).values.map(&:definition)
+    Puppet::ResourceApi::Transport.list_all_transports(env).values.map do |transport|
+      definition = transport.definition
+      # Provide a default for connection_info_order based on the hash-key-insertion order, which is guaranteed by ruby to be preserved.
+      unless definition.has_key?(:connection_info_order)
+        definition = definition.merge(
+          connection_info_order: definition[:connection_info].keys
+        )
+      end
+      definition
+    end
   end
 
   def getModuleInfoForEnvironment(env)
