@@ -293,32 +293,6 @@ jruby-config :- jruby-schemas/JRubyConfig
           (is (= "200" (.runScriptlet sc "$response.code")))
           (is (= "hi" (.runScriptlet sc "$response.body"))))))))
 
-
-(deftest https-cipher-suites
-  (logutils/with-test-logging
-    (with-webserver-with-protocols ["SSLv3"] ["SSL_RSA_WITH_RC4_128_SHA"]
-      (testing "Should not be able to connect if no matching ciphers"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-           {:ssl-protocols ["SSLv3"]
-            :cipher-suites ["SSL_RSA_WITH_RC4_128_MD5"]
-            :use-ssl true}
-           (try
-             (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-             (is false "Expected HTTP connection to HTTPS port to fail")
-             (catch EvalFailedException e
-               (is (ssl-connection-exception? (.. e getCause))))))))
-
-      (testing "Should be able to connect if explicit matching ciphers are configured"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-            {:ssl-protocols ["SSLv3"]
-             :cipher-suites ["SSL_RSA_WITH_RC4_128_SHA"]
-             :use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))))
-
 (deftest clients-persist
   (testing "client persists when making HTTP requests"
     (logutils/with-test-logging
