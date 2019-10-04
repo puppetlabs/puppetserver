@@ -293,26 +293,6 @@ jruby-config :- jruby-schemas/JRubyConfig
           (is (= "200" (.runScriptlet sc "$response.code")))
           (is (= "hi" (.runScriptlet sc "$response.body"))))))))
 
-(deftest https-sslv3
-  (logutils/with-test-logging
-    (with-webserver-with-protocols ["SSLv3"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-      (testing "Cannot connect via SSLv3 by default"
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (try
-              (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-              (is false "Expected HTTP connection to HTTPS port to fail")
-              (catch EvalFailedException e
-                (is (ssl-connection-exception? (.getCause e))))))))
-
-      (testing "Can connect via SSLv3 when specified"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-            {:ssl-protocols ["SSLv3" "TLSv1"]
-             :use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
 (deftest https-cipher-suites
   (logutils/with-test-logging
