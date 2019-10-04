@@ -1334,7 +1334,7 @@
 
 (schema/defn get-certificate-details :- CertificateDetails
   "Return details from a X509 certificate."
-  [cert :- X509CertImpl]
+  [cert]
   {:not_after     (-> cert
                     (.getNotAfter)
                     (format-date-time))
