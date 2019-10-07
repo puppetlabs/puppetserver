@@ -152,6 +152,7 @@
                                                ;; clojure version here, because without it, lein
                                                ;; brings in its own version.
                                                [org.clojure/clojure]
+                                               [org.bouncycastle/bcpkix-jdk15on]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
