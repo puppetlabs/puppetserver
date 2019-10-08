@@ -3,7 +3,8 @@
                     StringWriter
                     ByteArrayInputStream
                     ByteArrayOutputStream)
-           (java.security InvalidParameterException))
+           (java.security InvalidParameterException)
+           (com.puppetlabs.ssl_utils SSLUtils))
   (:require [puppetlabs.puppetserver.certificate-authority :refer :all]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils]
             [puppetlabs.ssl-utils.core :as utils]
@@ -806,22 +807,23 @@
       (is (utils/public-key? key))
       (is (= 768 (utils/keylength key)))))))
 
-(deftest initialize-master-ssl!-test-with-incorrect-keylength
-  (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
-        settings (testutils/master-settings tmp-confdir)
-        ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
+(when-not (SSLUtils/isFIPS)
+  (deftest initialize-master-ssl!-test-with-incorrect-keylength
+    (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
+          settings (testutils/master-settings tmp-confdir)
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
 
-    (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
+      (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
 
-    (testing "should throw an error message with too short keylength"
-      (is (thrown?
-           InvalidParameterException
-           (initialize-master-ssl! (assoc settings :keylength 128) "master" ca-settings))))
+      (testing "should throw an error message with too short keylength"
+        (is (thrown?
+             IllegalArgumentException
+             (initialize-master-ssl! (assoc settings :keylength 128) "master" ca-settings))))
 
-    (testing "should throw an error message with too large keylength"
-      (is (thrown?
-           InvalidParameterException
-           (initialize-master-ssl! (assoc settings :keylength 32768) "master" ca-settings))))))
+      (testing "should throw an error message with too large keylength"
+        (is (thrown?
+             IllegalArgumentException
+             (initialize-master-ssl! (assoc settings :keylength 32768) "master" ca-settings)))))))
 
 (deftest parse-serial-number-test
   (is (= (parse-serial-number "0001") 1))

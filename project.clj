@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.2.0"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.2.4"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -108,21 +108,34 @@
   ;; code that we have.
   :classifiers [["test" :testutils]]
 
-  :profiles {:dev {:source-paths  ["dev"]
-                   :dependencies  [[org.clojure/tools.namespace]
-                                   [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
-                                   [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
-                                   [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
-                                   [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
-                                   [ring-basic-authentication]
-                                   [org.bouncycastle/bcpkix-jdk15on]
-                                   [ring/ring-mock]
-                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
-                                   [beckon]
-                                   [com.cemerick/url "0.1.1"]]
-
-                   ;; SERVER-332, enable SSLv3 for unit tests that exercise SSLv3
-                   :jvm-opts      ["-Djava.security.properties=./dev-resources/java.security"]}
+  :profiles {:defaults {:source-paths  ["dev"]
+                        :dependencies  [[org.clojure/tools.namespace]
+                                        [puppetlabs/trapperkeeper-webserver-jetty9 :classifier "test"]
+                                        [puppetlabs/trapperkeeper nil :classifier "test" :scope "test"]
+                                        [puppetlabs/trapperkeeper-metrics :classifier "test" :scope "test"]
+                                        [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
+                                        [ring-basic-authentication]
+                                        [ring/ring-mock]
+                                        [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
+                                        [beckon]
+                                        [com.cemerick/url "0.1.1"]]}
+             :dev [:defaults
+                   {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
+             :fips [:defaults
+                    {:dependencies [[org.bouncycastle/bcpkix-fips]
+                                    [org.bouncycastle/bc-fips]
+                                    [org.bouncycastle/bctls-fips]]
+                     :jvm-opts ~(let [version (System/getProperty "java.version")
+                                      [major minor _] (clojure.string/split version #"\.")
+                                      unsupported-ex (ex-info "Unsupported major Java version. Expects 8 or 11."
+                                                       {:major major
+                                                        :minor minor})]
+                                  (condp = (java.lang.Integer/parseInt major)
+                                    1 (if (= 8 (java.lang.Integer/parseInt minor))
+                                        ["-Djava.security.properties==./dev-resources/java.security.jdk8-fips"]
+                                        (throw unsupported-ex))
+                                    11 ["-Djava.security.properties==./dev-resources/java.security.jdk11-fips"]
+                                    (throw unsupported-ex)))}]
 
              :testutils {:source-paths ["test/unit" "test/integration"]}
              :test {
@@ -198,9 +211,6 @@
                              puppetlabs.puppetserver.cli.gem
                              puppetlabs.services.analytics.analytics-service
                              puppetlabs.services.protocols.legacy-routes]}
-             :fips {:exclusions [org.bouncycastle/bcpkix-jdk15on]
-                    :dependencies [[org.bouncycastle/bcpkix-fips]
-                                   [org.bouncycastle/bc-fips]]}
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}}
 

@@ -1,6 +1,7 @@
 (ns puppetlabs.puppetserver.ruby.http-client-test
   (:import (org.jruby.embed EvalFailedException)
            (org.apache.http ProtocolException ConnectionClosedException)
+           (com.puppetlabs.ssl_utils SSLUtils)
            (javax.net.ssl SSLHandshakeException SSLException)
            (java.util HashMap)
            (java.io IOException)
@@ -263,27 +264,31 @@ jruby-config :- jruby-schemas/JRubyConfig
       (with-scripting-container sc
         (with-http-client sc 10080 {:use-ssl false}
          (logutils/with-test-logging
-          (try
-            (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-            (is false "Expected HTTP connection to HTTPS port to fail")
-            (catch EvalFailedException e
-              (is (instance? ProtocolException (.getCause e))))))))))
+          (let [ex-class (if (SSLUtils/isFIPS)
+                           ConnectionClosedException
+                           ProtocolException)]
+            (try
+              (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
+              (is false "Expected HTTP connection to HTTPS port to fail")
+              (catch EvalFailedException e
+                (is (instance? ex-class (.getCause e)))))))))))
 
-  (testing "Can connect via TLSv1 by default"
-    (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-      (with-scripting-container sc
-        (with-http-client sc 10080 {:use-ssl true}
-          (.runScriptlet sc "$response = $c.get('/', {})")
-          (is (= "200" (.runScriptlet sc "$response.code")))
-          (is (= "hi" (.runScriptlet sc "$response.body")))))))
+  (when-not (SSLUtils/isFIPS)
+    (testing "Can connect via TLSv1 by default"
+      (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+        (with-scripting-container sc
+          (with-http-client sc 10080 {:use-ssl true}
+            (.runScriptlet sc "$response = $c.get('/', {})")
+            (is (= "200" (.runScriptlet sc "$response.code")))
+            (is (= "hi" (.runScriptlet sc "$response.body")))))))
 
-  (testing "Can connect via TLSv1.1 by default"
-    (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-      (with-scripting-container sc
-        (with-http-client sc 10080 {:use-ssl true}
-          (.runScriptlet sc "$response = $c.get('/', {})")
-          (is (= "200" (.runScriptlet sc "$response.code")))
-          (is (= "hi" (.runScriptlet sc "$response.body")))))))
+    (testing "Can connect via TLSv1.1 by default"
+      (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+        (with-scripting-container sc
+          (with-http-client sc 10080 {:use-ssl true}
+            (.runScriptlet sc "$response = $c.get('/', {})")
+            (is (= "200" (.runScriptlet sc "$response.code")))
+            (is (= "hi" (.runScriptlet sc "$response.body"))))))))
 
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
@@ -292,52 +297,6 @@ jruby-config :- jruby-schemas/JRubyConfig
           (.runScriptlet sc "$response = $c.get('/', {})")
           (is (= "200" (.runScriptlet sc "$response.code")))
           (is (= "hi" (.runScriptlet sc "$response.body"))))))))
-
-(deftest https-sslv3
-  (logutils/with-test-logging
-    (with-webserver-with-protocols ["SSLv3"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-      (testing "Cannot connect via SSLv3 by default"
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (try
-              (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-              (is false "Expected HTTP connection to HTTPS port to fail")
-              (catch EvalFailedException e
-                (is (ssl-connection-exception? (.getCause e))))))))
-
-      (testing "Can connect via SSLv3 when specified"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-            {:ssl-protocols ["SSLv3" "TLSv1"]
-             :use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))))
-
-(deftest https-cipher-suites
-  (logutils/with-test-logging
-    (with-webserver-with-protocols ["SSLv3"] ["SSL_RSA_WITH_RC4_128_SHA"]
-      (testing "Should not be able to connect if no matching ciphers"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-           {:ssl-protocols ["SSLv3"]
-            :cipher-suites ["SSL_RSA_WITH_RC4_128_MD5"]
-            :use-ssl true}
-           (try
-             (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-             (is false "Expected HTTP connection to HTTPS port to fail")
-             (catch EvalFailedException e
-               (is (ssl-connection-exception? (.. e getCause))))))))
-
-      (testing "Should be able to connect if explicit matching ciphers are configured"
-        (with-scripting-container sc
-          (with-http-client sc 10080
-            {:ssl-protocols ["SSLv3"]
-             :cipher-suites ["SSL_RSA_WITH_RC4_128_SHA"]
-             :use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
 (deftest clients-persist
   (testing "client persists when making HTTP requests"
