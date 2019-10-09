@@ -10,6 +10,26 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.3.2
+
+Released 15 October 2019
+
+### New features
+
+Puppet Server's CA API now synchronizes write access to the CRL, so that each revoke request updates the CRL in succession, instead of concurrently. This prevents corruption of the CRL due to competing requests.
+
+This does _not_ affect the `puppet cert` command. If you use `puppet cert revoke` at the same time as a revocation request via the API, the CRL is updated simultaneously and could be corrupted.
+
+To minimize this risk, use the `puppetserver ca` command line tool -- which uses the CA API -- whenever possible. [SERVER-2641](https://tickets.puppetlabs.com/browse/SERVER-2641)
+
+### Bug fixes
+
+- The Puppet Server CA CLI now correctly uses hex serial numbers for certs. [SERVER-2603](https://tickets.puppetlabs.com/browse/SERVER-2603)
+
+- The `puppetserver ca import` command now initializes an empty CRL for the intermediate CA if one is not provided in the `crl-chain` file. [SERVER-2522](https://tickets.puppetlabs.com/browse/SERVER-2552)
+
+- You can now specify a `--certname` flag with the `puppetserver ca list` command, which will limit the output to information about the requested cert, and log an error if the requested cert does not exist in any form. [SERVER-2589](https://tickets.puppetlabs.com/browse/SERVER-2589)
+
 ## Puppet Server 6.3.1
 
 Released 16 July 2019
