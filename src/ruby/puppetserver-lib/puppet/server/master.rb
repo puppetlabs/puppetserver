@@ -97,7 +97,12 @@ class Puppet::Server::Master
 
   def getTransportInfoForEnvironment(env)
     require 'puppet/resource_api/transport'
-    Puppet::ResourceApi::Transport.list_all_transports(env).values.map(&:definition)
+    Puppet::ResourceApi::Transport.list_all_transports(env).values.map do |transport|
+      definition = transport.definition
+      order_info = definition[:connection_info_order]
+      definition[:connection_info_order] = order_info.map(&:to_s)
+      definition
+    end
   end
 
   def getModuleInfoForEnvironment(env)
