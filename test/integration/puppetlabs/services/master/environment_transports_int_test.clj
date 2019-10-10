@@ -46,6 +46,7 @@ Puppet::ResourceApi.register_transport(
 (def schema1-serialized
   {:name "test_device"
    :desc "Connects to a device"
+   :connection_info_order ["username" "variant_secret"]
    :connection_info
    {:username
     {:type "String"
@@ -77,6 +78,7 @@ Puppet::ResourceApi.register_transport(
 (def schema2-serialized
   {:name "another_device"
    :desc "Connects to a network device"
+   :connection_info_order ["username" "secret"]
    :connection_info
    {:username
     {:type "String"
@@ -86,36 +88,6 @@ Puppet::ResourceApi.register_transport(
      :desc "A secret to protect."
      :sensitive true}}})
 
-(defn create-jruby-instance-with-mock-transports-info
-  ([transports-info-atom config]
-   (create-jruby-instance-with-mock-transports-info
-     (atom {:wait-promise (promise)
-            :continue-promise (-> (promise) (deliver true))})
-     transports-info-atom
-     config))
-  ([wait-atom transports-info-atom config]
-   (let [puppet-config (jruby-testutils/mock-puppet-config-settings
-                        (:jruby-puppet config))]
-     (reify JRubyPuppet
-       (getSetting [_ setting]
-         (get puppet-config setting))
-       (getClassInfoForEnvironment [_ _]
-         (let [class-info {"/some/file" {"classes" "foo"}}]
-           class-info))
-       (getTransportInfoForEnvironment [_ _]
-         (let [a (ArrayList.)]
-           (doseq [t @transports-info-atom]
-             (.add a t))
-           (when-let [promises @wait-atom]
-             (deliver (:wait-promise promises) true)
-             @(:continue-promise promises))
-           a))
-       (handleRequest [_ _]
-         (JRubyPuppetResponse. 0 nil nil nil))
-       (puppetVersion [_]
-         "1.2.3")
-       (terminate [_]
-         (log/info "Terminating Master"))))))
 
 (defn make-module
   ([] (make-module "production"))
@@ -205,369 +177,313 @@ Puppet::ResourceApi.register_transport(
 
 (deftest ^:integration environment-transports-integration-cache-disabled-test
   (testing "when environment cache is disabled for a transport request"
-    (let [transports-info-atom (atom [(walk/stringify-keys schema1-serialized)])
-          config (bootstrap/load-dev-config-with-overrides
-                  {:jruby-puppet {:gem-path gem-path
-                                  :max-active-instances 1
-                                  :environment-class-cache-enabled false}})
-          mock-jruby-fn (partial create-jruby-instance-with-mock-transports-info
-                                 transports-info-atom)
-          expected-response {:name "production" :transports [schema1-serialized]}]
-      (tk-bootstrap-testutils/with-app-with-config
-       app
-       (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-        config
-        mock-jruby-fn)
-       config
-       (let [response (get-env-transports "production")]
-         (testing "a successful status code is returned"
-           (is (= 200 (:status response))
-               (str
-                "unexpected status code for response, response: "
-                (ks/pprint-to-string response))))
-         (testing "no etag is returned"
-           (is (false? (contains? (:headers response) "etag"))))
-         (testing "the expected response body is returned"
-           (is (= expected-response
-                  (response->map response)))))))))
+    (bootstrap/with-puppetserver-running-with-config
+     app
+     (-> {:jruby-puppet {:gem-path gem-path
+                         :max-active-instances 1}}
+         (bootstrap/load-dev-config-with-overrides)
+         (ks/dissoc-in [:jruby-puppet
+                        :environment-class-cache-enabled]))
+     (let [_ (make-module)
+           expected-response {:name "production" :transports [schema1-serialized]}
+           response (get-env-transports "production")]
+       (testing "a successful status code is returned"
+         (is (= 200 (:status response))
+             (str
+              "unexpected status code for response, response: "
+              (ks/pprint-to-string response))))
+       (testing "no etag is returned"
+         (is (false? (contains? (:headers response) "etag"))))
+       (testing "the expected response body is returned"
+         (is (= expected-response
+                (response->map response))))))))
 
 
 (deftest ^:integration environment-transports-integration-cache-enabled-test1
-  (let [transports-info-atom (atom [(walk/stringify-keys schema1-serialized)])
-        config (bootstrap/load-dev-config-with-overrides
-                {:jruby-puppet {:gem-path gem-path
-                                :max-active-instances 1
-                                :environment-class-cache-enabled true}})
-        mock-jruby-fn (partial create-jruby-instance-with-mock-transports-info
-                               transports-info-atom)]
-    (tk-bootstrap-testutils/with-app-with-config
-     app
-     (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-      config
-      mock-jruby-fn)
-     config
-     (testing "environment transport cache invalidation for one environment"
-       ;; This test is about ensuring that when the environment-cache
-       ;; endpoint is hit for a single environment that only that the
-       ;; environment class info cached for that environment - but not the
-       ;; info cached for other environments - is invalidated, meaning that
-       ;; the next request for class info for that environment will get fresh
-       ;; data.
-       ;;
-       ;; The test has the following basic steps:
-       ;;
-       ;; 1) Purge the current environment files on disk and hit the
-       ;;    environment-cache endpoint to flush the cache for all
-       ;;    environments, basically to ensure nothing is left around from
-       ;;    other tests.
-       ;; 2) Populate code for the 'test' and 'production' environments and
-       ;;    see that environment_transports queries return the right info for
-       ;;    them.
-       ;; 3) Do one more environment_transports query for each environment,
-       ;;    using the etag from the initial queries, to ensure that a 304
-       ;;    (Not Modified) is returned.
-       ;; 4) Change code on disk for both the 'test' and 'production'
-       ;;    environments.
-       ;; 5) Hit the environment-cache endpoint for the 'production'
-       ;;    environment (but not for the 'test' environment).
-       ;; 6) Do two more environment_transports queries for the 'test' and
-       ;;    'production' environments using the etags from the initial
-       ;;    queries.  Confirm that the information reflects the latest data on
-       ;;    disk for the 'production' environment but still reflects the old
-       ;;    data for the 'test' environment - expected, in this case, because
-       ;;    the 'test' environment was not flushed.
-       (purge-env-dir)
-       (purge-all-env-caches)
-       (let [;; prod-schema-dir (make-module)
-             ;; test-schema-dir (make-module "test")
-             production-response-initial (get-env-transports "production")
-             production-etag-initial (response-etag production-response-initial)
-             production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
-             test-response-initial (get-env-transports "test")
-             test-etag-initial (response-etag test-response-initial)
-             test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
-                                                     (response-etag test-response-initial))]
-         (is (= 200 (:status production-response-initial))
+  (bootstrap/with-puppetserver-running app
+   {:jruby-puppet {:gem-path gem-path
+                   :max-active-instances 1
+                   :environment-class-cache-enabled true}}
+   (testing "environment transport cache invalidation for one environment"
+     ;; This test is about ensuring that when the environment-cache
+     ;; endpoint is hit for a single environment that only that the
+     ;; environment class info cached for that environment - but not the
+     ;; info cached for other environments - is invalidated, meaning that
+     ;; the next request for class info for that environment will get fresh
+     ;; data.
+     ;;
+     ;; The test has the following basic steps:
+     ;;
+     ;; 1) Purge the current environment files on disk and hit the
+     ;;    environment-cache endpoint to flush the cache for all
+     ;;    environments, basically to ensure nothing is left around from
+     ;;    other tests.
+     ;; 2) Populate code for the 'test' and 'production' environments and
+     ;;    see that environment_transports queries return the right info for
+     ;;    them.
+     ;; 3) Do one more environment_transports query for each environment,
+     ;;    using the etag from the initial queries, to ensure that a 304
+     ;;    (Not Modified) is returned.
+     ;; 4) Change code on disk for both the 'test' and 'production'
+     ;;    environments.
+     ;; 5) Hit the environment-cache endpoint for the 'production'
+     ;;    environment (but not for the 'test' environment).
+     ;; 6) Do two more environment_transports queries for the 'test' and
+     ;;    'production' environments using the etags from the initial
+     ;;    queries.  Confirm that the information reflects the latest data on
+     ;;    disk for the 'production' environment but still reflects the old
+     ;;    data for the 'test' environment - expected, in this case, because
+     ;;    the 'test' environment was not flushed.
+     (purge-env-dir)
+     (purge-all-env-caches)
+     (let [prod-schema-dir (make-module) ;; should this have different content then above?
+           test-schema-dir (make-module "test")
+           production-response-initial (get-env-transports "production")
+           production-etag-initial (response-etag production-response-initial)
+           production-etag-initial-without-gzip-suffix (etag-without-gzip-suffix production-etag-initial)
+           test-response-initial (get-env-transports "test")
+           test-etag-initial (response-etag test-response-initial)
+           test-etag-initial-without-gzip-suffix (etag-without-gzip-suffix
+                                                   (response-etag test-response-initial))]
+       (is (= 200 (:status production-response-initial))
+           (str
+            "unexpected status code for initial production response"
+            "response: "
+            (ks/pprint-to-string production-response-initial)))
+       (is (not (nil? production-etag-initial))
+           "no etag returned for production response")
+       (is (= {:name "production" :transports [schema1-serialized]}
+              (response->map production-response-initial))
+           "unexpected body for production response")
+       (is (= 200 (:status test-response-initial))
+           (str
+            "unexpected status code for initial test response"
+            "response: "
+            (ks/pprint-to-string test-response-initial)))
+       (is (not (nil? test-etag-initial))
+           "no etag returned for test response")
+       (is (= {:name "test" :transports [schema1-serialized]}
+              (response->map test-response-initial))
+           "unexpected body for test response")
+
+       (spit (str prod-schema-dir "/test_device.rb") schema2)
+       (spit (str test-schema-dir "/test_device.rb") schema2)
+
+       (let [production-response-before-flush (get-env-transports
+                                               "production"
+                                               production-etag-initial)
+             test-response-before-flush (get-env-transports
+                                         "test"
+                                         test-etag-initial)]
+         (is (= 304 (:status production-response-before-flush))
              (str
-              "unexpected status code for initial production response"
-              "response: "
-              (ks/pprint-to-string production-response-initial)))
-         (is (not (nil? production-etag-initial))
-             "no etag returned for production response")
-         (is (= {:name "production" :transports [schema1-serialized]}
-                (response->map production-response-initial))
+              "unexpected status code for prod response after code change "
+              "but before flush"))
+         (is (= production-etag-initial-without-gzip-suffix (response-etag
+                                                              production-response-before-flush))
+             "unexpected etag change when no production environment change")
+         (is (empty? (:body production-response-before-flush))
              "unexpected body for production response")
-         (is (= 200 (:status test-response-initial))
+         (is (= 304 (:status test-response-before-flush))
              (str
-              "unexpected status code for initial test response"
-              "response: "
-              (ks/pprint-to-string test-response-initial)))
-         (is (not (nil? test-etag-initial))
-             "no etag returned for test response")
-         (is (= {:name "test" :transports [schema1-serialized]}
-                (response->map test-response-initial))
-             "unexpected body for test response")
+              "unexpected status code for test response after code change "
+              "but before flush"))
+         (is (= test-etag-initial-without-gzip-suffix (response-etag
+                                                        test-response-before-flush))
+             "unexpected etag change when no test environment change")
+         (is (empty? (:body test-response-before-flush))
+             "unexpected body for test response"))
 
-         ;; (spit (str prod-schema-dir "/test_device.rb") schema2)
-         ;; (spit (str test-schema-dir "/test_device.rb") schema2)
-         (reset! transports-info-atom [(walk/stringify-keys schema2-serialized)])
-
-         (let [production-response-before-flush (get-env-transports
-                                                 "production"
-                                                 production-etag-initial)
-               test-response-before-flush (get-env-transports
-                                           "test"
-                                           test-etag-initial)]
-           (is (= 304 (:status production-response-before-flush))
+         (purge-env-cache "production")
+         (let [production-response-after-prod-flush (get-env-transports
+                                                     "production"
+                                                     production-etag-initial)
+               production-etag-after-prod-flush (response-etag
+                                                 production-response-after-prod-flush)
+               test-response-after-prod-flush (get-env-transports
+                                               "test"
+                                               test-etag-initial)]
+           (is (= 200 (:status production-response-after-prod-flush))
                (str
                 "unexpected status code for prod response after code change "
-                "but before flush"))
-           (is (= production-etag-initial-without-gzip-suffix (response-etag
-                                                                production-response-before-flush))
-               "unexpected etag change when no production environment change")
-           (is (empty? (:body production-response-before-flush))
-               "unexpected body for production response")
-           (is (= 304 (:status test-response-before-flush))
+                "and prod flush"))
+           (is (not (nil? production-etag-after-prod-flush))
+               "no etag returned for production response")
+           (is (not= production-etag-initial
+                     production-etag-after-prod-flush)
                (str
-                "unexpected status code for test response after code change "
-                "but before flush"))
-           (is (= test-etag-initial-without-gzip-suffix (response-etag
-                                                          test-response-before-flush))
-               "unexpected etag change when no test environment change")
-           (is (empty? (:body test-response-before-flush))
-               "unexpected body for test response"))
-
-           (purge-env-cache "production")
-           (let [production-response-after-prod-flush (get-env-transports
-                                                       "production"
-                                                       production-etag-initial)
-                 production-etag-after-prod-flush (response-etag
-                                                   production-response-after-prod-flush)
-                 test-response-after-prod-flush (get-env-transports
-                                                 "test"
-                                                 test-etag-initial)]
-             (is (= 200 (:status production-response-after-prod-flush))
-                 (str
-                  "unexpected status code for prod response after code change "
-                  "and prod flush"))
-             (is (not (nil? production-etag-after-prod-flush))
-                 "no etag returned for production response")
-             (is (not= production-etag-initial
-                       production-etag-after-prod-flush)
-                 (str
-                  "etag unexpectedly stayed the same even though "
-                  "the production environment changed"))
-             (is (= {:name "production" :transports [schema2-serialized]}
-                    (response->map
-                     production-response-after-prod-flush))
-                 "unexpected body for production response")
-             (is (= 304 (:status test-response-after-prod-flush)))
-             (is (= test-etag-initial-without-gzip-suffix (response-etag
-                                                            test-response-after-prod-flush))
-                 "unexpected etag change when test environment not invalidated")
-             (is (empty? (:body test-response-after-prod-flush))
-                 "unexpected body for test response")))))))
+                "etag unexpectedly stayed the same even though "
+                "the production environment changed")))))))
 
 
 (deftest ^:integration environment-transports-integration-cache-enabled-test2
-  (let [transports-info-atom (atom [(walk/stringify-keys schema1-serialized)])
-        config (bootstrap/load-dev-config-with-overrides
-                {:jruby-puppet {:gem-path gem-path
-                                :max-active-instances 1
-                                :environment-class-cache-enabled true}})
-        mock-jruby-fn (partial create-jruby-instance-with-mock-transports-info
-                               transports-info-atom)]
-    (tk-bootstrap-testutils/with-app-with-config
-     app
-     (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-      config
-      mock-jruby-fn)
-     config
-     (let [;; schema-dir (make-module)
-           expected-initial-response {:name "production" :transports [schema1-serialized]}
-           initial-response (get-env-transports "production")
-           initial-etag (response-etag initial-response)
-           initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
-           initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
-       (testing "initial fetch of environment_transports info is good"
-         (is (= 200 (:status initial-response))
-             (str
-              "unexpected status code for initial response, response: "
-              (ks/pprint-to-string initial-response)))
-         (is (not (nil? initial-etag))
-             "no etag found for initial response")
+  (bootstrap/with-puppetserver-running app
+   {:jruby-puppet {:gem-path gem-path
+                   :max-active-instances 1
+                   :environment-class-cache-enabled true}}
+   (let [schema-dir (make-module)
+         expected-initial-response {:name "production" :transports [schema1-serialized]}
+         initial-response (get-env-transports "production")
+         initial-etag (response-etag initial-response)
+         initial-etag-with-gzip-suffix (etag-with-gzip-suffix initial-etag)
+         initial-etag-without-gzip-suffix (etag-without-gzip-suffix initial-etag)]
+     (testing "initial fetch of environment_transports info is good"
+       (is (= 200 (:status initial-response))
+           (str
+            "unexpected status code for initial response, response: "
+            (ks/pprint-to-string initial-response)))
+       (is (not (nil? initial-etag))
+           "no etag found for initial response")
+       (is (= expected-initial-response
+              (response->map initial-response))
+           "unexpected body for initial response"))
+     (testing "etag not updated when code has not changed"
+       (let [response (get-env-transports "production")]
+         (is (= 200 (:status response))
+             "unexpected status code for response following no code change")
+         (is (= initial-etag (response-etag response))
+             "etag changed even though code did not")
          (is (= expected-initial-response
-                (response->map initial-response))
-             "unexpected body for initial response"))
-       (testing "etag not updated when code has not changed"
-         (let [response (get-env-transports "production")]
-           (is (= 200 (:status response))
-               "unexpected status code for response following no code change")
-           (is (= initial-etag (response-etag response))
-               "etag changed even though code did not")
-           (is (= expected-initial-response
-                  (response->map response))
-               "unexpected body for response")))
-       (testing (str "HTTP 304 (not modified) returned when request "
-                     "roundtrips last etag and code has not changed")
-         (let [response (get-env-transports "production" initial-etag)]
-           (is (= 304 (:status response))
-               (str
-                "unexpected status code for response for no code change and "
-                "original etag roundtripped"))
-           (is (= initial-etag-without-gzip-suffix (response-etag response))
-               "etag changed even though code did not")
-           (is (empty? (:body response))
-               "unexpected body for response")))
-       (testing (str "SERVER-1153 - HTTP 304 (not modified) returned when "
-                     "request roundtrips last etag with '--gzip' suffix and "
-                     "code has not changed")
-         (let [response (get-env-transports "production"
-                                            initial-etag-with-gzip-suffix)]
-           (is (= 304 (:status response))
-               (str
-                "unexpected status code for response for no code change and "
-                "etag with '--gzip' suffix roundtripped"))
-           (is (= initial-etag-without-gzip-suffix (response-etag response))
-               "etag changed even though code did not")
-           (is (empty? (:body response))
-               "unexpected body for response")))
-       (testing (str "environment_transport fetch without if-none-match "
-                     "header includes latest info after code update")
-         (let [;; _ (spit (str schema-dir "/test_device.rb") schema2)
-               _ (reset! transports-info-atom [(walk/stringify-keys schema2-serialized)])
-               _ (purge-all-env-caches)
-               response (get-env-transports "production")]
-           (is (= 200 (:status response))
-               (str
-                "unexpected status code for response following code change,"
-                "response: "
-                (ks/pprint-to-string response)))
-           (is (not= initial-etag (response-etag response))
-               "etag did not change even though code did")
-           (is (= {:name "production" :transports [schema2-serialized]}
-                  (response->map response))
-               "unexpected body following code change")))))))
+                (response->map response))
+             "unexpected body for response")))
+     (testing (str "HTTP 304 (not modified) returned when request "
+                   "roundtrips last etag and code has not changed")
+       (let [response (get-env-transports "production" initial-etag)]
+         (is (= 304 (:status response))
+             (str
+              "unexpected status code for response for no code change and "
+              "original etag roundtripped"))
+         (is (= initial-etag-without-gzip-suffix (response-etag response))
+             "etag changed even though code did not")
+         (is (empty? (:body response))
+             "unexpected body for response")))
+     (testing (str "SERVER-1153 - HTTP 304 (not modified) returned when "
+                   "request roundtrips last etag with '--gzip' suffix and "
+                   "code has not changed")
+       (let [response (get-env-transports "production"
+                                       initial-etag-with-gzip-suffix)]
+         (is (= 304 (:status response))
+             (str
+              "unexpected status code for response for no code change and "
+              "etag with '--gzip' suffix roundtripped"))
+         (is (= initial-etag-without-gzip-suffix (response-etag response))
+             "etag changed even though code did not")
+         (is (empty? (:body response))
+             "unexpected body for response")))
+     (testing (str "environment_transport fetch without if-none-match "
+                   "header includes latest info after code update")
+       (let [_ (spit (str schema-dir "/test_device.rb") schema2)
+             _ (purge-all-env-caches)
+             response (get-env-transports "production")]
+         (is (= 200 (:status response))
+             (str
+              "unexpected status code for response following code change,"
+              "response: "
+              (ks/pprint-to-string response)))
+         (is (not= initial-etag (response-etag response))
+             "etag did not change even though code did"))))))
 
 
 (deftest ^:integration environment-transports-integration-cache-enabled-test3
-  (let [transports-info-atom (atom [(walk/stringify-keys schema1-serialized)])
-        config (bootstrap/load-dev-config-with-overrides
-                {:jruby-puppet {:gem-path gem-path
-                                :max-active-instances 1
-                                :environment-class-cache-enabled true}})
-        mock-jruby-fn (partial create-jruby-instance-with-mock-transports-info
-                               transports-info-atom)]
-    (tk-bootstrap-testutils/with-app-with-config
-     app
-     (bootstrap/services-from-dev-bootstrap-plus-mock-jruby-pool-manager-service
-      config
-      mock-jruby-fn)
-     config
-     (testing "environment transports cache invalidation for all environments"
-       ;; This test is about ensuring that when the environment-cache
-       ;; endpoint is hit with no environment parameter that any previously
-       ;; cached environment class info is invalidated, meaning that
-       ;; the next request for class info for all environments will get fresh
-       ;; data.
-       ;;
-       ;; To eliminate some of the redundancy between tests, this test doesn't
-       ;; repeat the intermediate step of checking to see that the first two
-       ;; environment queries were cached - 304 (Not Modified) returns -
-       ;; between the first set of environment_transports queries and the second
-       ;; set, done after the code on disk for both environments has changed.
-       ;;
-       ;; The test has the following basic steps:
-       ;;
-       ;; 1) Purge the current environment files on disk and hit the
-       ;;    environment-cache endpoint to flush the cache for all
-       ;;    environments, basically to ensure nothing is left around from
-       ;;    other tests.
-       ;; 2) Populate code for the 'test' and 'production' environments and
-       ;;    see that environment_transports queries return the right info for
-       ;;    them.
-       ;; 3) Change code on disk for both the 'test' and 'production'
-       ;;    environments.
-       ;; 4) Hit the environment-cache endpoint with no environment
-       ;;    parameter, expected to have the effect of flushing the cache for
-       ;;    all environments.
-       ;; 5) Do two more environment_transports queries for the 'test' and
-       ;;    'production' environments with the corresponding etags returned
-       ;;    from the first two queries.  Confirm that the information
-       ;;    reflects the latest data on disk for both environments.
-       (purge-env-dir)
+  (bootstrap/with-puppetserver-running app
+   {:jruby-puppet {:gem-path gem-path
+                   :max-active-instances 1
+                   :environment-class-cache-enabled true}}
+   (testing "environment transports cache invalidation for all environments"
+     ;; This test is about ensuring that when the environment-cache
+     ;; endpoint is hit with no environment parameter that any previously
+     ;; cached environment class info is invalidated, meaning that
+     ;; the next request for class info for all environments will get fresh
+     ;; data.
+     ;;
+     ;; To eliminate some of the redundancy between tests, this test doesn't
+     ;; repeat the intermediate step of checking to see that the first two
+     ;; environment queries were cached - 304 (Not Modified) returns -
+     ;; between the first set of environment_transports queries and the second
+     ;; set, done after the code on disk for both environments has changed.
+     ;;
+     ;; The test has the following basic steps:
+     ;;
+     ;; 1) Purge the current environment files on disk and hit the
+     ;;    environment-cache endpoint to flush the cache for all
+     ;;    environments, basically to ensure nothing is left around from
+     ;;    other tests.
+     ;; 2) Populate code for the 'test' and 'production' environments and
+     ;;    see that environment_transports queries return the right info for
+     ;;    them.
+     ;; 3) Change code on disk for both the 'test' and 'production'
+     ;;    environments.
+     ;; 4) Hit the environment-cache endpoint with no environment
+     ;;    parameter, expected to have the effect of flushing the cache for
+     ;;    all environments.
+     ;; 5) Do two more environment_transports queries for the 'test' and
+     ;;    'production' environments with the corresponding etags returned
+     ;;    from the first two queries.  Confirm that the information
+     ;;    reflects the latest data on disk for both environments.
+     (purge-env-dir)
+     (purge-all-env-caches)
+     (let [prod-schema-dir (make-module)
+           test-schema-dir (make-module "test")
+           production-response-initial (get-env-transports "production")
+           production-etag-initial (response-etag production-response-initial)
+           test-response-initial (get-env-transports "test")
+           test-etag-initial (response-etag test-response-initial)]
+       (is (= 200 (:status production-response-initial))
+           (str
+            "unexpected status code for initial production response"
+            "response: "
+            (ks/pprint-to-string production-response-initial)))
+       (is (not (nil? production-etag-initial))
+           "no etag returned for production response")
+       (is (= {:name "production" :transports [schema1-serialized]}
+              (response->map production-response-initial))
+           "unexpected body for production response")
+       (is (= 200 (:status test-response-initial))
+           (str
+            "unexpected status code for initial test response"
+            "response: "
+            (ks/pprint-to-string test-response-initial)))
+       (is (not (nil? test-etag-initial))
+           "no etag returned for test response")
+       (is (= {:name "test" :transports [schema1-serialized]}
+              (response->map test-response-initial))
+           "unexpected body for test response")
+
+       (spit (str prod-schema-dir "/test_device.rb") schema2)
+       (spit (str test-schema-dir "/test_device.rb") schema2)
        (purge-all-env-caches)
-       (let [;; prod-schema-dir (make-module)
-             ;; test-schema-dir (make-module "test")
-             production-response-initial (get-env-transports "production")
-             production-etag-initial (response-etag production-response-initial)
-             test-response-initial (get-env-transports "test")
-             test-etag-initial (response-etag test-response-initial)]
-         (is (= 200 (:status production-response-initial))
+
+       (let [production-response-after-all-flush (get-env-transports
+                                                  "production"
+                                                  production-etag-initial)
+             production-etag-after-all-flush (response-etag
+                                              production-response-after-all-flush)]
+         (is (= 200 (:status production-response-after-all-flush))
              (str
-              "unexpected status code for initial production response"
-              "response: "
-              (ks/pprint-to-string production-response-initial)))
-         (is (not (nil? production-etag-initial))
+              "unexpected status code for prod response after code change "
+              "and all environment flush"))
+         (is (not (nil? production-etag-after-all-flush))
              "no etag returned for production response")
-         (is (= {:name "production" :transports [schema1-serialized]}
-                (response->map production-response-initial))
-             "unexpected body for production response")
-         (is (= 200 (:status test-response-initial))
+         (is (not= production-etag-initial production-etag-after-all-flush)
              (str
-              "unexpected status code for initial test response"
-              "response: "
-              (ks/pprint-to-string test-response-initial)))
-         (is (not (nil? test-etag-initial))
+              "etag unexpectedly stayed the same even though "
+              "the production environment changed")))
+
+       (let [test-response-after-all-flush (get-env-transports
+                                            "test"
+                                            test-etag-initial)
+             test-etag-after-all-flush (response-etag
+                                        test-response-after-all-flush)]
+         (is (= 200 (:status test-response-after-all-flush))
+             (str
+              "unexpected status code for test response after code change "
+              "and all environment flush"))
+         (is (not (nil? test-etag-after-all-flush))
              "no etag returned for test response")
-         (is (= {:name "test" :transports [schema1-serialized]}
-                (response->map test-response-initial))
-             "unexpected body for test response")
-
-         ;; (spit (str prod-schema-dir "/test_device.rb") schema2)
-         ;; (spit (str test-schema-dir "/test_device.rb") schema2)
-         (reset! transports-info-atom [(walk/stringify-keys schema2-serialized)])
-         (purge-all-env-caches)
-
-         (let [production-response-after-all-flush (get-env-transports
-                                                    "production"
-                                                    production-etag-initial)
-               production-etag-after-all-flush (response-etag
-                                                production-response-after-all-flush)]
-           (is (= 200 (:status production-response-after-all-flush))
-               (str
-                "unexpected status code for prod response after code change "
-                "and all environment flush"))
-           (is (not (nil? production-etag-after-all-flush))
-               "no etag returned for production response")
-           (is (not= production-etag-initial production-etag-after-all-flush)
-               (str
-                "etag unexpectedly stayed the same even though "
-                "the production environment changed"))
-           (is (= {:name "production" :transports [schema2-serialized]}
-                  (response->map
-                   production-response-after-all-flush))
-               "unexpected body for production response"))
-
-         (let [test-response-after-all-flush (get-env-transports
-                                              "test"
-                                              test-etag-initial)
-               test-etag-after-all-flush (response-etag
-                                          test-response-after-all-flush)]
-           (is (= 200 (:status test-response-after-all-flush))
-               (str
-                "unexpected status code for test response after code change "
-                "and all environment flush"))
-           (is (not (nil? test-etag-after-all-flush))
-               "no etag returned for test response")
-           (is (not= test-etag-initial test-etag-after-all-flush)
-               (str
-                "etag unexpectedly stayed the same even though "
-                "the test environment changed"))
-           (is (= {:name "test" :transports [schema2-serialized]}
-                  (response->map
-                   test-response-after-all-flush))
-               "unexpected body for test response")))))))
+         (is (not= test-etag-initial test-etag-after-all-flush)
+             (str
+              "etag unexpectedly stayed the same even though "
+              "the test environment changed")))))))
 
 (deftest ^:integration
          not-modified-returned-for-environment-transports-info-request-with-gzip-tag
@@ -611,8 +527,32 @@ Puppet::ResourceApi.register_transport(
          (is (= expected-etag (response-etag response-with-tag))
              "unexpected etag returned for request with prior etag"))))))
 
+(defn create-jruby-instance-with-mock-transports-info
+  [wait-atom transports-info-atom config]
+  (let [puppet-config (jruby-testutils/mock-puppet-config-settings
+                       (:jruby-puppet config))]
+    (reify JRubyPuppet
+      (getSetting [_ setting]
+        (get puppet-config setting))
+      (getClassInfoForEnvironment [_ _]
+        (let [class-info {"/some/file" {"classes" "foo"}}]
+          class-info))
+      (getTransportInfoForEnvironment [_ _]
+        (let [a (ArrayList.)]
+          (.add a @transports-info-atom)
+          (when-let [promises @wait-atom]
+            (deliver (:wait-promise promises) true)
+            @(:continue-promise promises))
+          a))
+      (handleRequest [_ _]
+        (JRubyPuppetResponse. 0 nil nil nil))
+      (puppetVersion [_]
+        "1.2.3")
+      (terminate [_]
+        (log/info "Terminating Master")))))
+
 (deftest ^:integration transports-info-updated-after-cache-flush-during-prior-request
-  (let [transports-info-atom (atom [{:name "transport1"}])
+  (let [transports-info-atom (atom {:name "transport1"})
         wait-atom (atom nil)
         config (bootstrap/load-dev-config-with-overrides
                 {:jruby-puppet {:gem-path gem-path
@@ -638,7 +578,7 @@ Puppet::ResourceApi.register_transport(
        (is (true? (deref wait-promise 10000 :timed-out))
            (str "timed out waiting for get transports info call to be reached "
                 "in mock jrubypuppet instance"))
-       (reset! transports-info-atom [{:name "transport2"}])
+       (reset! transports-info-atom {:name "transport2"})
        (purge-env-cache "production")
        (deliver continue-promise true)
        (let [initial-response @initial-response-future
