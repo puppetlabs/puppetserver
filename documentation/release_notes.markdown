@@ -30,6 +30,8 @@ To minimize this risk, use the `puppetserver ca` command line tool -- which uses
 
 - You can now specify a `--certname` flag with the `puppetserver ca list` command, which will limit the output to information about the requested cert, and log an error if the requested cert does not exist in any form. [SERVER-2589](https://tickets.puppetlabs.com/browse/SERVER-2589)
 
+- Timing metrics associated with borrowing a JRuby instance now include why that JRuby instance was borrowed and access logs now include the time spent in JRuby. [SERVER-1975](https://tickets.puppetlabs.com/browse/SERVER-1975) & [SERVER-2198](https://tickets.puppetlabs.com/browse/SERVER-2198) respectively.
+
 ## Puppet Server 6.3.1
 
 Released 16 July 2019
