@@ -14,7 +14,7 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 Released 15 October 2019
 
-### New features
+### Resolved Issues
 
 - Puppet Server can no longer be configured to accept SSLv3 traffic. [SERVER-2654](https://tickets.puppetlabs.com/browse/SERVER-2654)
 
