@@ -108,6 +108,14 @@ The following environment variables are supported:
 
   **Note** this is only effective on the initial run of the container when certificates are generated.
 
+- `USE_PUPPETDB`
+
+  Whether or not to connect the puppetserver to puppetdb. Defaults to 'true'.
+
+  Setting this to 'false' with the `puppet/puppetserver` image replaces the `puppet/puppetserver-standalone` image.
+  This sets `$PUPPET_REPORTS` to 'log' and `$PUPPET_STORECONFIGS` to 'false' if you haven't customized the storeconfigs
+  backend or the report processor.
+
 ## Initialization Scripts
 
 If you would like to do additional initialization, add a directory called `/docker-custom-entrypoint.d/` and fill it with `.sh` scripts.

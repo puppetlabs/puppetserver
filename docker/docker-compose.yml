@@ -12,8 +12,7 @@ services:
       - PUPPET_MASTERPORT=8141
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
       - DNS_ALT_NAMES=puppet,puppet.test,${DNS_ALT_NAMES:-}
-      - PUPPET_STORECONFIGS=false
-      - PUPPET_REPORTS=log
+      - USE_PUPPETDB=false
     dns_search: 'test'
     networks:
       puppetserver_test:
@@ -30,8 +29,7 @@ services:
       - CA_ENABLED=false
       - CA_HOSTNAME=puppet.test
       - CA_MASTERPORT=8141
-      - PUPPET_STORECONFIGS=false
-      - PUPPET_REPORTS=log
+      - USE_PUPPETDB=false
     dns_search: 'test'
     networks:
       puppetserver_test:
