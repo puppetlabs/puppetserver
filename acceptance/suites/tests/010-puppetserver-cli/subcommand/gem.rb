@@ -1,5 +1,7 @@
 require 'puppetserver/acceptance/gem_utils'
 
+skip_test if master['template'] =~ /fips/
+
 test_name "Puppetserver 'gem' subcommand tests."
 
 cli = "puppetserver"
