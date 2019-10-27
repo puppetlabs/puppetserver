@@ -31,7 +31,7 @@ else
 endif
 
 build: prep
-	@docker build \
+	docker build \
 		--pull \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
@@ -39,7 +39,7 @@ build: prep
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
 		--file puppetserver-standalone/$(dockerfile) \
 		--tag $(NAMESPACE)/puppetserver-standalone:$(version) $(pwd)/..
-	@docker build \
+	docker build \
 		--build-arg namespace=$(NAMESPACE) \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
