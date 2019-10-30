@@ -5,3 +5,4 @@ locale 2.1.2
 gettext 3.2.2
 fast_gettext 1.1.2
 concurrent-ruby 1.1.5
+deep_merge 1.0.1
