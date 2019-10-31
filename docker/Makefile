@@ -9,17 +9,15 @@ export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
 PUPPERWARE_ANALYTICS_STREAM ?= dev
-FULL_VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
 
 ifeq ($(IS_RELEASE),true)
-	VERSION ?= $(FULL_VERSION)
+	VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
 	LATEST_VERSION ?= latest
 	dockerfile := Dockerfile-release
 	dockerfile_context := puppetserver
 else
-	# regex support and portability for sed is terrible (+ doesn't work consistently)
-	VERSION ?= $(shell echo $(FULL_VERSION) | sed 's/\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/')
-	LATEST_VERSION ?= edge
+	VERSION ?= edge
+	IS_LATEST := false
 	dockerfile := Dockerfile
 	dockerfile_context := $(PWD)/..
 endif
