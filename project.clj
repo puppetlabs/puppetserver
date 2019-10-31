@@ -37,7 +37,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "1.7.23"]
+  :parent-project {:coords [puppetlabs/clj-parent "1.7.30"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -100,7 +100,7 @@
   :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
-  :plugins [[lein-parent "0.3.1"]
+  :plugins [[lein-parent "0.3.7"]
             [puppetlabs/i18n "0.8.0"]]
 
   :uberjar-name "puppet-server-release.jar"
