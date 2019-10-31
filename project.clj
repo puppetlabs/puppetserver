@@ -100,7 +100,7 @@
   :repositories [["releases" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-releases__local/"]
                  ["snapshots" "https://artifactory.delivery.puppetlabs.net/artifactory/clojure-snapshots__local/"]]
 
-  :plugins [[lein-parent "0.3.1"]
+  :plugins [[lein-parent "0.3.7"]
             [puppetlabs/i18n "0.8.0"]]
 
   :uberjar-name "puppet-server-release.jar"
