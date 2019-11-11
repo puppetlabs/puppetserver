@@ -413,15 +413,3 @@ Optional metrics include:
 -   `compiler.compile.<ENVIRONMENT>` and `compiler.compile.<ENVIRONMENT>.<NODE-NAME>`, and all statistical fields suffixed to these (such as `compiler.compile.<ENVIRONMENT>.mean`).
 
 -   `compiler.compile.evaluate_resources.<RESOURCE>`: Time spent evaluating a specific resource during catalog compilation.
-
-## Using the developer dashboard
-
-While not as customizable as a Graphite dashboard, the developer dashboard is a simple, built-in way to view basic Puppet Server metrics.
-
-The developer dashboard features metrics particularly relevant to developers of Puppet manifests and modules, which are drawn from the [metrics v1 API](./metrics-api/v1/metrics_api.markdown).
-
-The dashboard charts the current and mean number of free and requested JRuby interpreters, as well as the mean JRuby borrow and wait times in milliseconds. It also lists the top 10 aggregate API endpoint requests, function calls, and resource declarations by total, mean, and aggregate counts. For more information about these metrics, see the [documentation for the metrics v1 endpoints](./metrics-api/v1/metrics_api.markdown).
-
-### Accessing the developer dashboard
-
-Open a web browser and go to `https://<DNS NAME OF YOUR MASTER>:8140/puppet/experimental/dashboard.html`.
