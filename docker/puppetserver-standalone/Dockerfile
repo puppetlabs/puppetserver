@@ -1,6 +1,9 @@
 FROM ubuntu:18.04 as build
 
 ENV LANG="en_US.UTF-8"
+ENV PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH
+ENV UBUNTU_CODENAME="bionic"
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
             language-pack-en \
@@ -10,6 +13,16 @@ RUN apt-get update && \
             ruby \
             ruby-dev \
             g++ \
+            pkg-config \
+            cmake \
+            libssh2-1-dev \
+            gcc \
+            libc-dev \
+            zlib1g-dev \
+            libpcre3-dev \
+            libssl-dev \
+            wget \
+            ca-certificates \
             make && \
     git config --global user.name "Puppet Release Team" && \
     git config --global user.email "release@puppet.com" && \
@@ -17,6 +30,29 @@ RUN apt-get update && \
     chmod 0755 /usr/local/bin/lein && \
     /usr/local/bin/lein && \
     gem install --no-doc bundler fpm
+
+RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    rm puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends puppet-agent && \
+    git clone --single-branch --branch native_fix https://github.com/underscorgan/rake-compiler && \
+    git clone https://github.com/libgit2/rugged
+
+# This is a hack to work around https://github.com/rake-compiler/rake-compiler/issues/156
+WORKDIR /rake-compiler
+RUN gem build rake-compiler.gemspec && \
+    gem install rake-compiler*.gem
+
+# Build rugged on the build box so we don't need build tools on the final container
+# Link against the agent libs
+WORKDIR /rugged
+RUN rake checkout && \
+    PKG_CONFIG_PATH='/opt/puppetlabs/puppet/lib/pkgconfig/' \
+    CFLAGS='-I/opt/puppetlabs/puppet/include' \
+    LDFLAGS='-L/opt/puppetlabs/puppet/lib -Wl,-rpath=/opt/puppetlabs/puppet/lib' \
+    rake native gem && \
+    mv pkg/rugged*linux.gem /rugged.gem
 
 COPY . /puppetserver
 WORKDIR /puppetserver
@@ -65,6 +101,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.dockerfile="/Dockerfile"
 
 COPY --from=build /puppetserver.deb /puppetserver.deb
+COPY --from=build /rugged.gem /rugged.gem
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -78,7 +115,7 @@ RUN apt-get update && \
     apt-get install --no-install-recommends -y /puppetserver.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k
+    gem install --no-rdoc --no-ri r10k /rugged.gem
 
 COPY docker/puppetserver-standalone/puppetserver /etc/default/puppetserver
 COPY docker/puppetserver-standalone/logback.xml /etc/puppetlabs/puppetserver/
