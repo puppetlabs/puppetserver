@@ -87,6 +87,11 @@
                            [:master-log-dir "logdir"]]]
       (if-let [value (get config setting)]
         (.put puppet-config dir (ks/absolute-path value))))
+    (if (:disable-i18n config)
+      ; The value for disable-i18n is stripped in Puppet::Server::PuppetConfig
+      ; so that only the key is outputted, so that '--disable_18n' is used, not
+      ; '--disable_i18n true'
+      (.put puppet-config "disable_i18n" true))
     puppet-config))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -204,7 +209,12 @@
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)
    metrics-service]
-  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-service)
+  (let [modified-jruby-puppet-config (if (:multithreaded jruby-config)
+                                       (do
+                                         (log/info ( i18n/trs "Disabling i18n for puppet because using multithreaded jruby"))
+                                         (assoc jruby-puppet-config :disable-i18n true))
+                                       jruby-puppet-config)
+        initialize-pool-instance-fn (get-initialize-pool-instance-fn modified-jruby-puppet-config profiler metrics-service)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
