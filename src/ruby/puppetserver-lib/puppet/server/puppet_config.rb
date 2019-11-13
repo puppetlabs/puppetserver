@@ -15,7 +15,7 @@ class Puppet::Server::PuppetConfig
     #
     # `config` is a map whose keys are the names of the settings that we wish
     # to override, and whose values are the desired values for the settings.
-    # Key values that are not strings are omitted, allowing for keys in the
+    # Values that are not strings are omitted, allowing for keys in the
     # HashMap from puppetserver to have true values.
     Puppet.initialize_settings(
         puppet_config.reduce([]) do |acc, entry|

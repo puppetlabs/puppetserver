@@ -28,8 +28,8 @@
     * :track-lookups - a boolean to turn on tracking hiera lookups during compilation;
         if not specified, no tracking is enabled.
 
-    * :disable_i18n - a boolean to pass to Puppet to control whether or not to translate;
-        if not specified, uses Puppet's own default.
+    * :disable-i18n - a boolean to pass to Puppet to control whether or not to translate;
+        if not specified or false, the flag is not passed to Puppet's initialization.
 
     * :http-client-ssl-protocols - A list of legal SSL protocols that may be used
         when https client requests are made.
