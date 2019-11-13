@@ -154,6 +154,10 @@
   [config :- {schema/Keyword schema/Any}]
   (select-keys config (keys jruby-schemas/JRubyConfig)))
 
+(schema/defn multithreaded?
+  [config :- {schema/Keyword schema/Any}]
+  (get config :multithreaded false))
+
 (schema/defn extract-puppet-config
   [config :- {schema/Keyword schema/Any}]
   (select-keys config (map schema/explicit-schema-key (keys jruby-puppet-schemas/JRubyPuppetConfig))))
@@ -177,7 +181,10 @@
 (schema/defn ^:always-validate
   initialize-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
   [http-config :- {schema/Keyword schema/Any}
-   jruby-puppet-config :- {schema/Keyword schema/Any}]
+   jruby-puppet-config :- {schema/Keyword schema/Any}
+   multithreaded :- schema/Bool]
+  (if multithreaded
+    (log/info (i18n/trs "Disabling i18n for puppet because using multithreaded jruby")))
   (-> jruby-puppet-config
       (assoc :http-client-ssl-protocols (:ssl-protocols http-config))
       (assoc :http-client-cipher-suites (:cipher-suites http-config))
@@ -195,6 +202,7 @@
       (update-in [:master-run-dir] #(or % default-master-run-dir))
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-requests-per-instance] #(or % 0))
+      (update-in [:disable-i18n] #(or % multithreaded))
       (update-in [:use-legacy-auth-conf] #(if (some? %) % false))
       (dissoc :environment-class-cache-enabled)))
 
@@ -209,12 +217,7 @@
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)
    metrics-service]
-  (let [modified-jruby-puppet-config (if (:multithreaded jruby-config)
-                                       (do
-                                         (log/info ( i18n/trs "Disabling i18n for puppet because using multithreaded jruby"))
-                                         (assoc jruby-puppet-config :disable-i18n true))
-                                       jruby-puppet-config)
-        initialize-pool-instance-fn (get-initialize-pool-instance-fn modified-jruby-puppet-config profiler metrics-service)
+  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-service)
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}
@@ -259,9 +262,11 @@
                  (i18n/trs "The jruby-puppet.compat-version setting is no longer supported."))
      (throw (IllegalArgumentException.
              (i18n/trs "jruby-puppet.compat-version setting no longer supported"))))
-   (let [jruby-puppet-config (initialize-puppet-config
+   (let [jruby-puppet (:jruby-puppet raw-config)
+         jruby-puppet-config (initialize-puppet-config
                               (extract-http-config (:http-client raw-config))
-                              (extract-puppet-config (:jruby-puppet raw-config)))
+                              (extract-puppet-config jruby-puppet)
+                              (multithreaded? jruby-puppet))
          uninitialized-jruby-config (-> (extract-jruby-config (:jruby-puppet raw-config))
                                         (assoc :max-borrows-per-instance
                                                (:max-requests-per-instance jruby-puppet-config)))]

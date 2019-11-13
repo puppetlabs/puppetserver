@@ -56,7 +56,7 @@
                        :connect-timeout-milliseconds 31415
                        :idle-timeout-milliseconds 42
                        :metrics-enabled false}
-          initialized-config (jruby-puppet-core/initialize-puppet-config http-config {})]
+          initialized-config (jruby-puppet-core/initialize-puppet-config http-config {} false)]
       (is (= ["some-suite"] (:http-client-cipher-suites initialized-config)))
       (is (= ["some-protocol"] (:http-client-ssl-protocols initialized-config)))
       (is (= 42 (:http-client-idle-timeout-milliseconds initialized-config)))
@@ -70,27 +70,29 @@
                                :master-log-dir "four"
                                :master-code-dir "five"
                                :use-legacy-auth-conf true}
-          initialized-config (jruby-puppet-core/initialize-puppet-config {} jruby-puppet-config)]
+          initialized-config (jruby-puppet-core/initialize-puppet-config {} jruby-puppet-config true)]
       (is (= "one" (:master-run-dir initialized-config)))
       (is (= "two" (:master-var-dir initialized-config)))
       (is (= "three" (:master-conf-dir initialized-config)))
       (is (= "four" (:master-log-dir initialized-config)))
       (is (= "five" (:master-code-dir initialized-config)))
+      (is (= true (:disable-i18n initialized-config)))
       (is (= true (:use-legacy-auth-conf initialized-config)))))
 
   (testing "jruby-puppet values are set to defaults if not provided"
-    (let [initialized-config (jruby-puppet-core/initialize-puppet-config {} {})]
+    (let [initialized-config (jruby-puppet-core/initialize-puppet-config {} {} false)]
       (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir initialized-config)))
       (is (= "/opt/puppetlabs/server/data/puppetserver" (:master-var-dir initialized-config)))
       (is (= "/etc/puppetlabs/puppet" (:master-conf-dir initialized-config)))
       (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir initialized-config)))
       (is (= "/etc/puppetlabs/code" (:master-code-dir initialized-config)))
       (is (= false (:use-legacy-auth-conf initialized-config)))
+      (is (= false (:disable-i18n initialized-config)))
       (is (= true (:http-client-metrics-enabled initialized-config))))))
 
 (deftest create-jruby-config-test
   (testing "provided values are not overriden"
-    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
+    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {} false)
           unitialized-jruby-config {:gem-home "/foo"
                                     :gem-path ["/foo" "/bar"]
                                     :compile-mode :jit
@@ -117,7 +119,7 @@
         (is (= 31415 (:max-borrows-per-instance initialized-jruby-config))))))
 
   (testing "defaults are used if no values provided"
-    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {})
+    (let [jruby-puppet-config (jruby-puppet-core/initialize-puppet-config {} {} false)
           unitialized-jruby-config {:gem-home "/foo"}
           shutdown-fn (fn [] 42)
           initialized-jruby-config (jruby-puppet-core/create-jruby-config
