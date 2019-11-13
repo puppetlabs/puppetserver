@@ -202,7 +202,7 @@
       (update-in [:master-run-dir] #(or % default-master-run-dir))
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-requests-per-instance] #(or % 0))
-      (update-in [:disable-i18n] #(or % multithreaded))
+      (assoc :disable-i18n multithreaded)
       (update-in [:use-legacy-auth-conf] #(if (some? %) % false))
       (dissoc :environment-class-cache-enabled)))
 
