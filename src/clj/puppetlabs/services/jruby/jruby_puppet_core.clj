@@ -87,6 +87,11 @@
                            [:master-log-dir "logdir"]]]
       (if-let [value (get config setting)]
         (.put puppet-config dir (ks/absolute-path value))))
+    (if (:disable-i18n config)
+      ; The value for disable-i18n is stripped in Puppet::Server::PuppetConfig
+      ; so that only the key is outputted, so that '--disable_18n' is used, not
+      ; '--disable_i18n true'
+      (.put puppet-config "disable_i18n" true))
     puppet-config))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -149,6 +154,10 @@
   [config :- {schema/Keyword schema/Any}]
   (select-keys config (keys jruby-schemas/JRubyConfig)))
 
+(schema/defn multithreaded?
+  [config :- {schema/Keyword schema/Any}]
+  (get config :multithreaded false))
+
 (schema/defn extract-puppet-config
   [config :- {schema/Keyword schema/Any}]
   (select-keys config (map schema/explicit-schema-key (keys jruby-puppet-schemas/JRubyPuppetConfig))))
@@ -172,7 +181,10 @@
 (schema/defn ^:always-validate
   initialize-puppet-config :- jruby-puppet-schemas/JRubyPuppetConfig
   [http-config :- {schema/Keyword schema/Any}
-   jruby-puppet-config :- {schema/Keyword schema/Any}]
+   jruby-puppet-config :- {schema/Keyword schema/Any}
+   multithreaded :- schema/Bool]
+  (if multithreaded
+    (log/info (i18n/trs "Disabling i18n for puppet because using multithreaded jruby")))
   (-> jruby-puppet-config
       (assoc :http-client-ssl-protocols (:ssl-protocols http-config))
       (assoc :http-client-cipher-suites (:cipher-suites http-config))
@@ -190,6 +202,7 @@
       (update-in [:master-run-dir] #(or % default-master-run-dir))
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-requests-per-instance] #(or % 0))
+      (assoc :disable-i18n multithreaded)
       (update-in [:use-legacy-auth-conf] #(if (some? %) % false))
       (dissoc :environment-class-cache-enabled)))
 
@@ -249,9 +262,11 @@
                  (i18n/trs "The jruby-puppet.compat-version setting is no longer supported."))
      (throw (IllegalArgumentException.
              (i18n/trs "jruby-puppet.compat-version setting no longer supported"))))
-   (let [jruby-puppet-config (initialize-puppet-config
+   (let [jruby-puppet (:jruby-puppet raw-config)
+         jruby-puppet-config (initialize-puppet-config
                               (extract-http-config (:http-client raw-config))
-                              (extract-puppet-config (:jruby-puppet raw-config)))
+                              (extract-puppet-config jruby-puppet)
+                              (multithreaded? jruby-puppet))
          uninitialized-jruby-config (-> (extract-jruby-config (:jruby-puppet raw-config))
                                         (assoc :max-borrows-per-instance
                                                (:max-requests-per-instance jruby-puppet-config)))]

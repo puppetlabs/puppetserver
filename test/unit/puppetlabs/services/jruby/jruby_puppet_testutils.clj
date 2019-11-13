@@ -154,7 +154,8 @@ create-mock-pool-instance :- JRubyInstance
                   :master-var-dir var-dir
                   :master-run-dir run-dir
                   :master-log-dir log-dir
-                  :use-legacy-auth-conf false})
+                  :use-legacy-auth-conf false}
+                 false)
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
                                                :gem-home gem-home
                                                :gem-path gem-path}))

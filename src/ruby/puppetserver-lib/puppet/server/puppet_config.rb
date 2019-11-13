@@ -15,9 +15,13 @@ class Puppet::Server::PuppetConfig
     #
     # `config` is a map whose keys are the names of the settings that we wish
     # to override, and whose values are the desired values for the settings.
+    # Values that are not strings are omitted, allowing for keys in the
+    # HashMap from puppetserver to have true values.
     Puppet.initialize_settings(
         puppet_config.reduce([]) do |acc, entry|
-          acc << "--#{entry[0]}" << entry[1]
+          acc << "--#{entry[0]}"
+          acc << entry[1] if entry[1].kind_of?(String)
+          acc
         end
     )
     Puppet[:trace] = true
