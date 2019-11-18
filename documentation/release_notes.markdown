@@ -10,6 +10,12 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.7.2
+
+Released 19 November 2019
+
+This version contains minor security fixes.
+
 ## Puppet Server 6.7.1
 
 Released 15 October 2019
