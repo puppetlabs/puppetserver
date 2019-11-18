@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 66eae26a4478bc6c2a53a057cfbffeb0fa150242\n"
+"X-Git-Ref: 828d512c235ce7dde216580d3a1b6c32102f3bf7\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -440,6 +440,10 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_metrics_service.clj
 msgid "JRuby Metrics Service: stopped metrics sampler job"
+msgstr ""
+
+#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
+msgid "Disabling i18n for puppet because using multithreaded jruby"
 msgstr ""
 
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
