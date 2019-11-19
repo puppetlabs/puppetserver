@@ -178,12 +178,6 @@
    [this]
    (:pool-context (tk-services/service-context this)))
 
-  (borrow-instance
-    [this reason]
-    (let [pool-context (:pool-context (tk-services/service-context this))
-          event-callbacks (jruby-core/get-event-callbacks pool-context)]
-      (jruby-core/borrow-from-pool pool-context reason event-callbacks)))
-
   (register-event-handler
     [this callback-fn]
     (let [pool-context (:pool-context (tk-services/service-context this))]
