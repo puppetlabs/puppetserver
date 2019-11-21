@@ -102,6 +102,12 @@
   [context]
   (keyword (get-in context [::json-body :desired_state])))
 
+(defn merge-request-settings
+  [settings context]
+  (if-let [cert-ttl (get-in context [::json-body :cert_ttl])]
+    (assoc settings :ca-ttl cert-ttl)
+    settings))
+
 (defn invalid-state-requested?
   [context]
   (when (= :put (get-in context [:request :request-method]))
@@ -263,7 +269,10 @@
   (fn [context]
     (let [desired-state (get-desired-state context)]
       (locking crl-write-serializer
-        (ca/set-certificate-status! settings subject desired-state)))))
+       (ca/set-certificate-status!
+        (merge-request-settings settings context)
+        subject
+        desired-state)))))
 
 (defresource certificate-statuses
   [settings]
