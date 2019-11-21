@@ -8,7 +8,6 @@ canonical: "/puppetserver/latest/puppet_server_metrics_performance.html"
 [tuning guide]: ./tuning_guide.markdown
 [metrics API]: ./metrics-api/v1/metrics_api.markdown
 [status API]: ./status-api/v1/services.markdown
-[developer dashboard]: #using-the-developer-dashboard
 [Graphite]: https://graphiteapp.org
 [Grafana]: http://grafana.org
 [sample Grafana dashboard]: ./sample-puppetserver-metrics-dashboard.json
@@ -86,6 +85,6 @@ Puppet Server also requests facts as HTTP requests while handling a node request
 
 ### Memory leaks and usage
 
-A memory leak or increased memory pressure can stress Puppet Server's available resources. In this case, the Java VM will spend more time doing garbage collection, causing the GC time and GC CPU % metrics to increase. These metrics are available in the [developer dashboard][] and [status API][] endpoint, as well as in the mbeans metrics available from both the [`/metrics/v1/mbeans`](./metrics-api/v1/metrics_api.markdown) or [`/metrics/v2/`](./metrics-api/v2/metrics_api.markdown) endpoints.
+A memory leak or increased memory pressure can stress Puppet Server's available resources. In this case, the Java VM will spend more time doing garbage collection, causing the GC time and GC CPU % metrics to increase. These metrics are available from the [status API][] endpoint, as well as in the mbeans metrics available from both the [`/metrics/v1/mbeans`](./metrics-api/v1/metrics_api.markdown) or [`/metrics/v2/`](./metrics-api/v2/metrics_api.markdown) endpoints.
 
 If you can't identify the source of a memory leak, setting the `max-requests-per-instance` setting in [`puppetserver.conf`][puppetserver.conf] to something other than the default of 0 limits the number of requests a JRuby handles during its lifetime and enables automatic JRuby flushing. Enabling this setting reduces overall performance, but if you enable it and no longer see signs of persistent memory leaks, check your module code for inefficiencies or memory-consuming bugs.
