@@ -582,6 +582,15 @@
             (is (= 400 (:status response)))
             (is (= (:body response) "Request body is not JSON."))))
 
+        (testing "invalid cert_ttl value results in a 400"
+          (let [request  {:uri "/v1/certificate_status/test-agent"
+                          :request-method :put
+                          :body (body-stream "{\"desired_state\":\"signed\",\"cert_ttl\":\"astring\"}")}
+                response (test-app request)]
+            (is (= 400 (:status response)))
+            (is (= (:body response)
+                   "cert_ttl specified for host test-agent must be an integer, not \"astring\""))))
+
         (testing "invalid cert status results in a 400"
           (let [request  {:uri "/v1/certificate_status/test-agent"
                           :request-method :put
