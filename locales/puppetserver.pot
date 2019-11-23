@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 869153bf96bc45c5fd27cb53cd1fd945b7faa851\n"
+"X-Git-Ref: a50268e97be1da20eff84a7c501bdac45b4977ac\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -358,6 +358,10 @@ msgstr ""
 msgid ""
 "State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' "
 "for host {1}."
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "cert_ttl specified for host {0} must be an integer, not \"{1}\""
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
