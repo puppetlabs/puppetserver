@@ -102,6 +102,12 @@
   [context]
   (keyword (get-in context [::json-body :desired_state])))
 
+(defn merge-request-settings
+  [settings context]
+  (if-let [cert-ttl (get-in context [::json-body :cert_ttl])]
+    (assoc settings :ca-ttl cert-ttl)
+    settings))
+
 (defn invalid-state-requested?
   [context]
   (when (= :put (get-in context [:request :request-method]))
@@ -237,9 +243,14 @@
               (malformed
                 (i18n/tru "State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' for host {1}."
                   (name desired-state) subject))
-              ; this is the happy path. we have a body, it's parsable json,
-              ; and the desired_state field is one of (signed revoked)
-              [false {::json-body json-body}])
+              (let [cert-ttl (:cert_ttl json-body)]
+                (if (and cert-ttl (schema/check schema/Int cert-ttl))
+                     (malformed
+                      (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
+                     ; this is the happy path. we have a body, it's parsable json,
+                     ; and the desired_state field is one of (signed revoked), and
+                     ; it potentially has a valid cert_ttl field
+                     [false {::json-body json-body}])))
             (malformed (i18n/tru "Missing required parameter \"desired_state\"")))
           (malformed (i18n/tru "Request body is not JSON.")))
         (malformed (i18n/tru "Empty request body.")))))
@@ -263,7 +274,10 @@
   (fn [context]
     (let [desired-state (get-desired-state context)]
       (locking crl-write-serializer
-        (ca/set-certificate-status! settings subject desired-state)))))
+       (ca/set-certificate-status!
+        (merge-request-settings settings context)
+        subject
+        desired-state)))))
 
 (defresource certificate-statuses
   [settings]
