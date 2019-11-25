@@ -348,6 +348,10 @@ msgid ""
 msgstr ""
 
 #: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
+msgid "cert_ttl specified for host {0} must be an integer, not \"{1}\""
+msgstr ""
+
+#: src/clj/puppetlabs/services/ca/certificate_authority_core.clj
 msgid "Missing required parameter \"desired_state\""
 msgstr ""
 
