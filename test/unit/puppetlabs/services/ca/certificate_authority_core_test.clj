@@ -553,7 +553,7 @@
           test-app (-> (build-ring-handler settings "42.42.42")
                        (wrap-with-ssl-client-cert))]
       (testing "PUT"
-        (testing "signing a cert"
+        (testing "signing a cert with an hour ttl"
           (let [csr-path (ca/path-to-cert-request (:csrdir settings) "test-agent")
                 signed-cert-path (ca/path-to-cert (:signeddir settings) "test-agent")
                 static-csr (ca/path-to-cert-request csrdir "test-agent")]
@@ -562,8 +562,15 @@
               (let [response (test-app
                               {:uri "/v1/certificate_status/test-agent"
                                :request-method :put
-                               :body (body-stream "{\"desired_state\":\"signed\"}")})]
+                               :body (body-stream "{\"desired_state\":\"signed\",\"cert_ttl\":3600}")})]
                 (is (true? (fs/exists? signed-cert-path)))
+                (let [cert (utils/pem->cert signed-cert-path)
+                      date (java.util.Calendar/getInstance)]
+                  (is (nil? (.checkValidity cert (.getTime date))))
+                  (.add date (java.util.Calendar/YEAR) 2)
+                  (is (thrown?
+                       java.security.cert.CertificateExpiredException
+                       (.checkValidity cert (.getTime date)))))
                 (is (= 204 (:status response))
                     (ks/pprint-to-string response)))
               (finally
@@ -628,6 +635,15 @@
                 response (test-app request)]
             (is (= 400 (:status response)))
             (is (= (:body response) "Request body is not JSON."))))
+
+        (testing "invalid cert_ttl value results in a 400"
+          (let [request  {:uri "/v1/certificate_status/test-agent"
+                          :request-method :put
+                          :body (body-stream "{\"desired_state\":\"signed\",\"cert_ttl\":\"astring\"}")}
+                response (test-app request)]
+            (is (= 400 (:status response)))
+            (is (= (:body response)
+                   "cert_ttl specified for host test-agent must be an integer, not \"astring\""))))
 
         (testing "invalid cert status results in a 400"
           (let [request  {:uri "/v1/certificate_status/test-agent"
