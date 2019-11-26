@@ -49,7 +49,7 @@ This directory is automatically populated by the `rake spec` task if it does
 not already exist.  The directory may be safely removed and it will be
 re-populated the next time `rake spec` is run in your working copy.
 
-## Installing And Removing Gems
+## Installing and removing gems
 
 We isolate the Ruby load paths that are accessible to Puppet Server's
 JRuby interpreter, so that it doesn't load any gems or other code that
@@ -88,7 +88,9 @@ settings with Puppet. You can manage Puppet Server's gem dependencies with the
 package provider shipped in [`puppetlabs-puppetserver_gem`](https://forge.puppet.com/puppetlabs/puppetserver_gem)
 module.
 
-## Installing Gems for use with development:
+> Note: If you try to load a gem before it's been installed, the agent run will fail with a `LoadError`.
+
+## Installing gems for use with development:
 
 When running from source, JRuby uses a `GEM_HOME` of `./target/jruby-gems`
 relative to the current working directory of the process.  `lein gem` should be
@@ -119,7 +121,7 @@ script.
 
 With the gem installed into the project tree `pry` can be invoked from inside
 Ruby code.  For more detailed information on `pry` see
-[Puppet Server: Debugging](./dev_debugging.markdown#pry).
+[Puppet Server: Debugging](./dev_debugging.markdown#pry). 
 
 ## Gems with Native (C) Extensions
 
