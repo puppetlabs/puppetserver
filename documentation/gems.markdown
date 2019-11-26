@@ -88,6 +88,8 @@ settings with Puppet. You can manage Puppet Server's gem dependencies with the
 package provider shipped in [`puppetlabs-puppetserver_gem`](https://forge.puppet.com/puppetlabs/puppetserver_gem)
 module.
 
+>Note: If you try to load a gem before it's been installed, the agent run will fail with a `LoadError`.
+
 ## Installing Gems for use with development:
 
 When running from source, JRuby uses a `GEM_HOME` of `./target/jruby-gems`
