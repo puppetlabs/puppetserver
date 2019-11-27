@@ -88,7 +88,7 @@ settings with Puppet. You can manage Puppet Server's gem dependencies with the
 package provider shipped in [`puppetlabs-puppetserver_gem`](https://forge.puppet.com/puppetlabs/puppetserver_gem)
 module.
 
-> Note: If you try to load a gem before it's been installed, the agent run will fail with a `LoadError`.
+> Note: If you try to load a gem before it's been installed, the agent run will fail with a `LoadError`. If this happens, reload the server to resolve the issue.
 
 ## Installing gems for use with development:
 
