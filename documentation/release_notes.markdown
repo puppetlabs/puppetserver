@@ -185,3 +185,7 @@ This Puppet Server release provides a new workflow and API for certificate issua
 ### Resolved issues
 
 - We've made server-side fixes for fully supporting intermediate CA capability. With this, CRL chains will be persisted when revoking certs. [SERVER-2205](https://tickets.puppetlabs.com/browse/SERVER-2205) For more details on the intermediate CA support in Puppet 6, see [Puppet Server: Intermediate CA](/puppetserver/latest/intermediate_ca.html).
+
+### Known issues
+
+Ruby’s native methods for spawning processes cause a fork of the JVM on most Linux servers, which in a large production environment causes Out of Memory errors at the OS level. Puppet Server provides a lighter weight way of creating sub-processes with its built-in execution helper `Puppet::Util::Execution.execute`. Use `Puppet::Util::Execution.execute` when writing Ruby-based functions, custom report processors, Hiera backends and faces. When writing custom providers, use the commands helper to determine suitability.
