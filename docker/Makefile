@@ -9,7 +9,6 @@ export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
 PUPPERWARE_ANALYTICS_STREAM ?= dev
-FULL_VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
 
 ifeq ($(IS_RELEASE),true)
 	VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
