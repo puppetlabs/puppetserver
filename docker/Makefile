@@ -13,7 +13,7 @@ PUPPERWARE_ANALYTICS_STREAM ?= dev
 ifeq ($(IS_RELEASE),true)
 	VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
 	LATEST_VERSION ?= latest
-	dockerfile := Dockerfile-release
+	dockerfile := release.Dockerfile
 	dockerfile_context := puppetserver
 else
 	VERSION ?= edge
