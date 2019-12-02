@@ -12,7 +12,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vcs-ref="$vcs_ref" \
       org.label-schema.build-date="$build_date" \
       org.label-schema.schema-version="1.0" \
-      org.label-schema.dockerfile="/Dockerfile"
+      org.label-schema.dockerfile="/release.Dockerfile"
 
 RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
@@ -32,4 +32,4 @@ RUN puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
 
-COPY Dockerfile-release /
+COPY release.Dockerfile /
