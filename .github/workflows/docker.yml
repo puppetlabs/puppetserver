@@ -15,7 +15,7 @@ jobs:
         uses: actions/setup-ruby@v1
         with:
           ruby-version: 2.6.x
-        run: gem install bundler
+      - run: gem install bundler
       - name: Lint container
         working-directory: docker
         run: |
