@@ -15,6 +15,7 @@ jobs:
         uses: actions/setup-ruby@v1
         with:
           ruby-version: 2.6.x
+      - run: gem install bundler
       - name: Lint container
         working-directory: docker
         run: |
@@ -24,9 +25,7 @@ jobs:
           PUPPERWARE_ANALYTICS_STREAM: production
           IS_LATEST: true
         working-directory: docker
-        run: |
-          gem install bundler
-          make build test
+        run: make build test
       - name: Publish container
         env:
           DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
