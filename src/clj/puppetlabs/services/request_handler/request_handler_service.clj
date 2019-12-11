@@ -12,28 +12,19 @@
   [[:PuppetServerConfigService get-config]
    [:ConfigService get-in-config]
    [:VersionedCodeService current-code-id]
-   [:JRubyPuppetService borrow-instance]
+   [:JRubyPuppetService]
    [:JRubyMetricsService]]
   (init [this context]
     (let [config (get-config)
           max-queued-requests (get-in-config [:jruby-puppet :max-queued-requests] 0)
           max-retry-delay (get-in-config [:jruby-puppet :max-retry-delay] 1800)
-          multithreaded (get-in-config [:jruby-puppet :multithreaded] false)
           jruby-service (tk-services/get-service this :JRubyPuppetService)
-          ;; Is there a better thing to pass as the "reason" here?
-          jruby-instance (if multithreaded (borrow-instance "puppet") nil)
           metrics-service (tk-services/get-service this :JRubyMetricsService)
-          handler-settings (request-handler-core/config->request-handler-settings
-                             config)
-          request-handler (if multithreaded
-                            (request-handler-core/build-multithreaded-request-handler
-                              jruby-instance
-                              handler-settings
-                              current-code-id)
-                            (request-handler-core/build-request-handler
-                              jruby-service
-                              handler-settings
-                              current-code-id))]
+          request-handler (request-handler-core/build-request-handler
+                            jruby-service
+                            (request-handler-core/config->request-handler-settings
+                              config)
+                            current-code-id)]
       (when (contains? (:master config) :allow-header-cert-info)
         (if (true? (get-in config [:jruby-puppet :use-legacy-auth-conf]))
           (log/warn (format "%s %s"
@@ -48,8 +39,7 @@
                                           metrics-service
                                           max-queued-requests
                                           max-retry-delay)
-                                        request-handler)
-                     :jruby-instance jruby-instance)))
+                                        request-handler))))
 
   (handle-request
     [this request]

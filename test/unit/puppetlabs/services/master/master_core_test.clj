@@ -97,7 +97,7 @@
 (deftest environment-classes-test
   (testing "environment_classes query"
     (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
-                  jruby-core/return-to-pool (fn [_ _ _] #())]
+                  jruby-core/return-to-pool (fn [_ _ _ _] #())]
       (let [jruby-service (reify jruby/JRubyPuppetService
                             (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                    (jruby-core/initialize-config {:gem-home "bar"
@@ -343,7 +343,7 @@
 (deftest all-tasks-response-test
   (testing "all-tasks query"
     (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
-                  jruby-core/return-to-pool (fn [_ _ _] #())]
+                  jruby-core/return-to-pool (fn [_ _ _ _] #())]
       (let [jruby-service (reify jruby/JRubyPuppetService
                             (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                    (jruby-core/initialize-config {:gem-home "bar"
@@ -393,7 +393,7 @@
 
 (deftest compile-endpoint
   (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
-                jruby-core/return-to-pool (fn [_ _ _] #())]
+                jruby-core/return-to-pool (fn [_ _ _ _] #())]
     (let [jruby-service (reify jruby/JRubyPuppetService
                           (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                  (jruby-core/initialize-config {:gem-home "bar"
@@ -417,7 +417,7 @@
 
 (deftest v4-routes-test
   (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {:jruby-puppet (Object.)})
-                jruby-core/return-to-pool (fn [_ _ _] #())]
+                jruby-core/return-to-pool (fn [_ _ _ _] #())]
     (let [jruby-service (reify jruby/JRubyPuppetService
                           (get-pool-context [_] (jruby-pool-manager-core/create-pool-context
                                                  (jruby-core/initialize-config {:gem-home "bar"

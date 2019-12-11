@@ -89,7 +89,7 @@
  [jruby-puppet-service jruby-instance reason]
  (let [pool-context (:pool-context (tk-service/service-context jruby-puppet-service))
        event-callbacks (jruby-core/get-event-callbacks pool-context)]
-   (jruby-core/return-to-pool jruby-instance reason event-callbacks)))
+   (jruby-core/return-to-pool pool-context jruby-instance reason event-callbacks)))
 
 (schema/defn create-mock-scripting-container :- ScriptingContainer
   []
@@ -101,14 +101,12 @@ create-mock-pool-instance :- JRubyInstance
   [mock-jruby-instance-creator-fn :- IFn
    pool :- jruby-schemas/pool-queue-type
    id :- schema/Int
-   config :- jruby-schemas/JRubyConfig
-   flush-instance-fn :- IFn]
+   config :- jruby-schemas/JRubyConfig]
   (let [instance (jruby-schemas/map->JRubyInstance
                   {:id id
                    :internal {:pool pool
                               :max-borrows (:max-borrows-per-instance config)
                               :initial-borrows nil
-                              :flush-instance-fn flush-instance-fn
                               :state (atom {:borrow-count 0})}
                    :scripting-container (create-mock-scripting-container)})
         modified-instance (merge instance {:jruby-puppet (mock-jruby-instance-creator-fn)
@@ -174,9 +172,9 @@ create-mock-pool-instance :- JRubyInstance
 
 (defn fill-drained-pool
   "Returns a list of JRubyPuppet instances back to their pool."
-  [instance-list]
+  [pool-context instance-list]
   (doseq [instance instance-list]
-    (jruby-core/return-to-pool instance :test [])))
+    (jruby-core/return-to-pool pool-context instance :test [])))
 
 (defn reduce-over-jrubies!
   "Utility function; takes a JRuby pool and size, and a function f from integer
@@ -196,7 +194,7 @@ create-mock-pool-instance :- JRubyInstance
                       (conj acc result)))
                   []
                   (range size))]
-    (fill-drained-pool jrubies)
+    (fill-drained-pool pool-context jrubies)
     result))
 
 (defn wait-for-jrubies
@@ -340,8 +338,7 @@ create-mock-pool-instance :- JRubyInstance
          mock-jruby-puppet-fn
          pool
          id
-         jruby-config
-         (constantly nil))))
+         jruby-config)))
     pool-context))
 
 (schema/defn ^:always-validate

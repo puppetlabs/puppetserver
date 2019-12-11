@@ -385,7 +385,7 @@
            (with-redefs [core/as-jruby-request (fn [_ _]
                                                  (ringutils/throw-bad-request!
                                                   bad-message))
-                         jruby-core/return-to-pool (fn [_ _ _] #())]
+                         jruby-core/return-to-pool (fn [_ _ _ _] #())]
              (with-redefs [jruby-core/borrow-from-pool-with-timeout (fn [_ _ _] {})]
                (let [request-handler (core/build-request-handler dummy-service {} (constantly nil))
                      response (request-handler {:body (StringReader. "blah")})]
