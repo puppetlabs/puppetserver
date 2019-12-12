@@ -1,4 +1,6 @@
 # Puppet Server
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpuppetlabs%2Fpuppetserver.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpuppetlabs%2Fpuppetserver?ref=badge_shield)
+
 
 [Puppet Server](./documentation/services_master_puppetserver.markdown) is the
 next-generation application for managing
@@ -118,6 +120,9 @@ Copyright © 2013---2018 Puppet
 
 Distributed under the [Apache License, Version
 2.0](http://www.apache.org/licenses/LICENSE-2.0.html).
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fpuppetlabs%2Fpuppetserver.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fpuppetlabs%2Fpuppetserver?ref=badge_large)
 
 ## Special thanks to
 
