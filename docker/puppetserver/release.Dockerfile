@@ -1,3 +1,5 @@
+ARG vcs_ref
+ARG build_date
 ARG version="6.0.0"
 ARG namespace="puppet"
 FROM "$namespace"/puppetserver-base:"$version"

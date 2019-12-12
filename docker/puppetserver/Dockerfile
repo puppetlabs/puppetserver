@@ -1,3 +1,5 @@
+ARG vcs_ref
+ARG build_date
 ARG version="6.0.0"
 ARG namespace="puppet"
 FROM ubuntu:18.04 as build
