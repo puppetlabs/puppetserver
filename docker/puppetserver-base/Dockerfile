@@ -7,11 +7,18 @@ ARG version="6.0.0"
 # Published images should use "production" for this build_arg.
 ARG pupperware_analytics_stream="dev"
 
-ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream" \
-    PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
+LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
+      org.label-schema.vendor="Puppet" \
+      org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
+      org.label-schema.name="Puppet Server Base Image" \
+      org.label-schema.license="Apache-2.0" \
+      org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
+      org.label-schema.schema-version="1.0" \
+      org.label-schema.dockerfile="/Dockerfile"
+
+ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     PUPPERWARE_ANALYTICS_APP_NAME="puppetserver" \
     PUPPERWARE_ANALYTICS_ENABLED=false \
-    PUPPET_SERVER_VERSION="$version" \
     DUMB_INIT_VERSION="1.2.1" \
     UBUNTU_CODENAME="bionic" \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
@@ -30,20 +37,23 @@ ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream" \
     PUPPET_STORECONFIGS=true \
     PUPPET_REPORTS="puppetdb"
 
-LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
-      org.label-schema.vendor="Puppet" \
-      org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
-      org.label-schema.name="Puppet Server Base Image" \
-      org.label-schema.license="Apache-2.0" \
-      org.label-schema.version="$PUPPET_SERVER_VERSION" \
-      org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
-      org.label-schema.vcs-ref="$vcs_ref" \
-      org.label-schema.build-date="$build_date" \
-      org.label-schema.schema-version="1.0" \
-      org.label-schema.dockerfile="/Dockerfile"
+EXPOSE 8140
+
+ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
+CMD ["foreground"]
 
 COPY docker-entrypoint.sh healthcheck.sh /
 COPY docker-entrypoint.d /docker-entrypoint.d
+HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
+
+# dynamic LABELs and ENV vars placed lower for the sake of Docker layer caching
+# these are specific to analytics
+ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream" \
+    PUPPET_SERVER_VERSION="$version"
+
+LABEL org.label-schema.version="$version" \
+      org.label-schema.vcs-ref="$vcs_ref" \
+      org.label-schema.build-date="$build_date"
 
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
@@ -53,12 +63,5 @@ RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-
-EXPOSE 8140
-
-ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
-CMD ["foreground"]
-
-HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
 COPY Dockerfile /

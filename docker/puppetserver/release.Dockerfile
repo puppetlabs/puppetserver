@@ -7,7 +7,7 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
       org.label-schema.name="Puppet Server" \
       org.label-schema.license="Apache-2.0" \
-      org.label-schema.version="$PUPPET_SERVER_VERSION" \
+      org.label-schema.version="$version" \
       org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
       org.label-schema.vcs-ref="$vcs_ref" \
       org.label-schema.build-date="$build_date" \
@@ -18,7 +18,7 @@ RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
     rm puppet6-release-"$UBUNTU_CODENAME".deb && \
     apt-get update && \
-    apt-get install --no-install-recommends -y puppetserver="$PUPPET_SERVER_VERSION"-1"$UBUNTU_CODENAME" && \
+    apt-get install --no-install-recommends -y puppetserver="$version"-1"$UBUNTU_CODENAME" && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     gem install --no-rdoc --no-ri r10k && \

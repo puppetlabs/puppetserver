@@ -35,16 +35,16 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
       org.label-schema.name="Puppet Server (from source)" \
       org.label-schema.license="Apache-2.0" \
-      org.label-schema.version="$PUPPET_SERVER_VERSION" \
       org.label-schema.vcs-url="https://github.com/puppetlabs/puppetserver" \
-      org.label-schema.vcs-ref="$vcs_ref" \
-      org.label-schema.build-date="$build_date" \
       org.label-schema.schema-version="1.0" \
       org.label-schema.dockerfile="/Dockerfile"
 
 COPY --from=build /puppetserver.deb /puppetserver.deb
 
-
+# dynamic LABELs placed lower for the sake of Docker layer caching
+LABEL org.label-schema.version="$version" \
+      org.label-schema.vcs-ref="$vcs_ref" \
+      org.label-schema.build-date="$build_date"
 
 RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
