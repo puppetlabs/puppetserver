@@ -64,4 +64,4 @@ RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY Dockerfile /
+COPY Dockerfile /base.Dockerfile
