@@ -21,15 +21,13 @@ RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     apt-get install --no-install-recommends -y puppetserver="$PUPPET_SERVER_VERSION"-1"$UBUNTU_CODENAME" && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k
-
-COPY puppetserver /etc/default/puppetserver
-COPY logback.xml /etc/puppetlabs/puppetserver/
-COPY request-logging.xml /etc/puppetlabs/puppetserver/
-COPY puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
-
-RUN puppet config set autosign true --section master && \
+    gem install --no-rdoc --no-ri r10k && \
+    puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
+
+COPY puppetserver /etc/default/puppetserver
+COPY logback.xml request-logging.xml /etc/puppetlabs/puppetserver/
+COPY puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
 
 COPY release.Dockerfile /

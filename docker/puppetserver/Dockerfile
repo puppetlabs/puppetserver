@@ -22,9 +22,10 @@ RUN apt-get update && \
 
 COPY . /puppetserver
 WORKDIR /puppetserver
-RUN lein clean && lein install
-RUN EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build
-RUN mv /puppetserver/output/deb/bionic/*/*.deb /puppetserver.deb
+RUN lein clean && \
+    lein install && \
+    EZBAKE_ALLOW_UNREPRODUCIBLE_BUILDS=true EZBAKE_NODEPLOY=true COW=base-bionic-amd64.cow MOCK='' GEM_SOURCE=https://rubygems.org lein with-profile ezbake ezbake local-build && \
+    mv /puppetserver/output/deb/bionic/*/*.deb /puppetserver.deb
 
 FROM "$namespace"/puppetserver-base:"$version"
 
@@ -52,17 +53,17 @@ RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENA
     apt-get install --no-install-recommends -y /puppetserver.deb puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k
-
-COPY docker/puppetserver/puppetserver /etc/default/puppetserver
-COPY docker/puppetserver/logback.xml /etc/puppetlabs/puppetserver/
-COPY docker/puppetserver/request-logging.xml /etc/puppetlabs/puppetserver/
-COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
-COPY docker/puppetserver/puppetdb.conf /etc/puppetlabs/puppet/
-
-RUN puppet config set autosign true --section master && \
+    gem install --no-rdoc --no-ri r10k && \
+    puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
     cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
+
+COPY docker/puppetserver/puppetserver /etc/default/puppetserver
+COPY docker/puppetserver/logback.xml \
+     docker/puppetserver/request-logging.xml \
+     /etc/puppetlabs/puppetserver/
+COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
+COPY docker/puppetserver/puppetdb.conf /etc/puppetlabs/puppet/
 
 COPY docker/puppetserver/Dockerfile /
