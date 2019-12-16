@@ -2,36 +2,44 @@ language: clojure
 lein: 2.9.1
 dist: xenial
 
-services:
-  - docker
-
 script:
   - ./ext/travisci/test.sh
   - $TRAVIS_BUILD_DIR/ext/travisci/secscan.sh "$TRAVIS_BUILD_DIR/src/clj" "clj"
 jobs:
   include:
-    - stage: puppetserver tests
-      name: "Java 8 w/o FIPS"
-      jdk: openjdk8
-    - jdk: openjdk11
-      name: "Java 11 w/o FIPS"
-    - jdk: openjdk8
-      env: ADDITIONAL_LEIN_ARGS="with-profile fips"
-      name: "Java 8 w/ FIPS"
-    - jdk: openjdk11
-      env: ADDITIONAL_LEIN_ARGS="with-profile fips"
-      name: "Java 11 w/ FIPS"
+    # - stage: puppetserver tests
+    #   name: "Java 8 w/o FIPS"
+    #   jdk: openjdk8
+    # - jdk: openjdk11
+    #   name: "Java 11 w/o FIPS"
+    # - jdk: openjdk8
+    #   env: ADDITIONAL_LEIN_ARGS="with-profile fips"
+    #   name: "Java 8 w/ FIPS"
+    # - jdk: openjdk11
+    #   env: ADDITIONAL_LEIN_ARGS="with-profile fips"
+    #   name: "Java 11 w/ FIPS"
     - stage: puppetserver container tests
       language: ruby
       rvm: 2.5.5
       env:
+        - DOCKER_BUILD_FLAGS="--progress plain"
         - DOCKER_COMPOSE_VERSION=1.25.0-rc2
       before_install: |
         OS_ARCH=$(uname --machine)
+        OS_RELEASE=$(lsb_release -cs)
+        PKG_ARCH=$(dpkg --print-architecture)
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        sudo add-apt-repository "deb [arch=${PKG_ARCH}] https://download.docker.com/linux/ubuntu $OS_RELEASE stable"
+        sudo apt-get update
+        sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
         sudo rm /usr/local/bin/docker-compose
         curl --location https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname --kernel-name`-${OS_ARCH} > docker-compose
         chmod +x docker-compose
         sudo mv docker-compose /usr/local/bin
+        # {"registry-mirrors": ["https://mirror.gcr.io"]} causes failures for BuildKit
+        sudo cat /etc/docker/daemon.json
+        sudo rm -f /etc/docker/daemon.json
+        sudo systemctl start docker
       before_script: cd $TRAVIS_BUILD_DIR/docker && make lint build
       script: cd $TRAVIS_BUILD_DIR/docker && make test
 

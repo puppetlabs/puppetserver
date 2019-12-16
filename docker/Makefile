@@ -1,3 +1,4 @@
+export DOCKER_BUILDKIT=1
 NAMESPACE ?= puppet
 git_describe = $(shell git describe)
 vcs_ref := $(shell git rev-parse HEAD)
@@ -46,14 +47,16 @@ build: prep
 		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
 		--file puppetserver-base/Dockerfile \
-		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base
+		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base \
+		${DOCKER_BUILD_FLAGS}
 	docker build \
 		--build-arg namespace=$(NAMESPACE) \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
 		--build-arg version=$(VERSION) \
 		--file puppetserver/$(dockerfile) \
-		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(dockerfile_context)
+		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(dockerfile_context) \
+		${DOCKER_BUILD_FLAGS}
 ifeq ($(IS_LATEST),true)
 	@docker tag $(NAMESPACE)/puppetserver:$(VERSION) \
 		$(NAMESPACE)/puppetserver:$(LATEST_VERSION)
