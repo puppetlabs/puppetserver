@@ -14,7 +14,8 @@ pool:
   name: Default
 
 variables:
-  DOCKER_BUILDKIT: 1
+  BUILDKIT_HOST: tcp://0.0.0.0:1234
+  BUILDKIT_VERSION: 0.6.3
   DOCKER_BUILD_FLAGS: --progress plain
   NAMESPACE: puppet
   CONTAINER_NAME: puppetserver
@@ -29,6 +30,26 @@ workspace:
 steps:
 - checkout: self  # self represents the repo where the initial Pipelines YAML file was found
   clean: true  # whether to fetch clean each time
+
+- powershell: |
+    # can't use --privileged which is probably a deal killer
+    # https://github.com/moby/moby/pull/31740
+    # docker run --name buildkit -d -p 1234:1234 moby/buildkit --addr tcp://0.0.0.0:1234
+    # TODO: looks like this *might* be possible
+    # see https://github.com/moby/buildkit/blob/master/docs/rootless.md#about---oci-worker-no-process-sandbox
+    # docker run --name buildkitd -d -p 1234:1234 --security-opt seccomp=unconfined --security-opt apparmor=unconfined moby/buildkit:rootless --oci-worker-no-process-sandbox --addr tcp://0.0.0.0:1234
+    docker run --name buildkitd -d -p 1234:1234 --security-opt seccomp=unconfined --security-opt apparmor=unconfined moby/buildkit:rootless --security-opt systempaths=unconfined --addr tcp://0.0.0.0:1234
+    # currently returns an error:
+    # appears to be https://github.com/rootless-containers/rootlesskit/issues/48
+    # [rootlesskit:parent] error: failed to setup UID/GID map: failed to compute uid/gid map: No subuid ranges found for user "root"
+    # also see running client + daemon in same container at https://github.com/moby/buildkit#daemonless
+    # buildkitd: failed to open database file /var/lib/buildkit/runc-native/metadata.db: invalid argument
+    $uri = "https://github.com/moby/buildkit/releases/download/v${ENV:BUILDKIT_VERSION}/buildkit-v${ENV:BUILDKIT_VERSION}.windows-amd64.tar.gz"
+    $destination = "${ENV:TEMP}\buildkit-v${ENV:BUILDKIT_VERSION}.windows-amd64.tar.gz"
+    (New-Object System.Net.WebClient).DownloadFile($uri, $destination)
+    Push-Location $ENV:TEMP; tar -xzvf $destination; Pop-Location
+    &${ENV:TEMP}\bin\buildctl --version
+  displayName: Setup BuildKit
 
 - powershell: |
     $gemfile = Join-Path -Path (Get-Location) -ChildPath 'docker/Gemfile'
