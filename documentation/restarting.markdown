@@ -39,6 +39,8 @@ OS distributions which use systemd service configurations:
 
     systemctl reload puppetserver
 
+> **Note:** If you're using Puppet Enterprise (PE), you can reload the server by running `service pe-puppetserver reload`, or by using the console or Hiera. For more information, see [Configuring and tuning Puppet Server (https://puppet.com/docs/pe/2019.2/config_puppetserver.html#configuring_and_tuning_puppet_server). 
+
 ## Restarting Puppet Server to pick up changes
 
 There are three ways to trigger your Puppet Server environment to refresh and pick up changes you've made. A request to the [HTTP Admin API to flush the JRuby pool](./admin-api/v1/jruby-pool.markdown) is the quickest, but picks up only certain types of changes. A HUP signal or service reload is also quick, and applies additional changes. Other changes require a full Puppet Server restart.
