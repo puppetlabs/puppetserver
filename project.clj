@@ -49,6 +49,7 @@
                  [commons-io]
 
                  [clj-time]
+                 [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                  [prismatic/schema]
                  [me.raynes/fs]
                  [liberator]
@@ -138,7 +139,6 @@
                                    [puppetlabs/kitchensink nil :classifier "test" :scope "test"]
                                    [ring-basic-authentication]
                                    [ring-mock]
-                                   [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                                    [beckon]
                                    [com.cemerick/url "0.1.1"]]
 

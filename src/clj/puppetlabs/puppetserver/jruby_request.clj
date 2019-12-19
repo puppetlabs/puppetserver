@@ -1,6 +1,7 @@
 (ns puppetlabs.puppetserver.jruby-request
   (:import [clojure.lang IFn])
   (:require [clojure.tools.logging :as log]
+            [clj-semver.core :as semver]
             [ring.util.response :as ring-response]
             [slingshot.slingshot :as sling]
             [puppetlabs.ring-middleware.core :as middleware]
@@ -61,9 +62,13 @@
    max-retry-delay :- schema/Int]
   (let [metrics-map (jruby-metrics/get-metrics metrics-service)
         {:keys [requested-instances queue-limit-hit-meter]} metrics-map
+        minimum-version (semver/version "5.3.1")
         err-msg (i18n/trs "The number of requests waiting for a JRuby instance has exceeded the limit allowed by the max-queued-requests setting.")]
-    (fn [request]
-      (if (>= (count @requested-instances) max-queued-requests)
+    (fn [{{:strs [x-puppet-version]} :headers :as request}]
+      (if (and (>= (count @requested-instances) max-queued-requests)
+               (some? x-puppet-version)
+               (semver/valid-format? x-puppet-version)
+               (>= (semver/cmp x-puppet-version minimum-version) 0))
         (let [response (output-error request {:msg err-msg} 503)]
           ;; Record an occurance of the rate limit being hit to metrics.
           (.mark queue-limit-hit-meter)
