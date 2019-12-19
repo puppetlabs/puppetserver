@@ -49,7 +49,7 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Lint-Dockerfile -Name $ENV:CONTAINER_NAME_BASE -Path "docker/${ENV:CONTAINER_NAME_BASE}/base.Dockerfile" -Ignore ($ENV:LINT_IGNORES -split ' ')
+    Lint-Dockerfile -Name $ENV:CONTAINER_NAME_BASE -Path "docker/puppetserver/base.Dockerfile" -Ignore ($ENV:LINT_IGNORES -split ' ')
   displayName: Lint $(CONTAINER_NAME_BASE) Dockerfile
   timeoutInMinutes: 1
   name: lint_base_dockerfile
@@ -63,7 +63,7 @@ steps:
 
 - powershell: |
     . "$(bundle show pupperware)/ci/build.ps1"
-    Build-Container -Name $ENV:CONTAINER_NAME_BASE -Dockerfile "docker/${ENV:CONTAINER_NAME_BASE}/base.Dockerfile"  -Namespace $ENV:NAMESPACE -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
+    Build-Container -Name $ENV:CONTAINER_NAME_BASE -Dockerfile "docker/puppetserver/base.Dockerfile"  -Namespace $ENV:NAMESPACE -AdditionalOptions ($ENV:BUILD_OPTIONS -split ' ')
   displayName: Build $(CONTAINER_NAME_BASE) Container
   timeoutInMinutes: 5
   name: build_base_container
