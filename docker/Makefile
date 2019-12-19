@@ -29,13 +29,13 @@ prep:
 
 lint:
 ifeq ($(hadolint_available),0)
-	@$(hadolint_command) puppetserver-base/Dockerfile
+	@$(hadolint_command) puppetserver-base/base.Dockerfile
 	@$(hadolint_command) puppetserver/$(dockerfile)
 else
 	@docker pull $(hadolint_container)
 	@docker run --rm -v $(PWD)/puppetserver/$(dockerfile):/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
-	@docker run --rm -v $(PWD)/puppetserver-base/Dockerfile:/Dockerfile \
+	@docker run --rm -v $(PWD)/puppetserver-base/base.Dockerfile:/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
 endif
 
@@ -46,7 +46,7 @@ build: prep
 		--build-arg build_date=$(build_date) \
 		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver-base/Dockerfile \
+		--file puppetserver-base/base.Dockerfile \
 		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base \
 		${DOCKER_BUILD_FLAGS}
 	docker build \
