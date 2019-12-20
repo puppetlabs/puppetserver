@@ -73,8 +73,10 @@
           ;; Record an occurance of the rate limit being hit to metrics.
           (.mark queue-limit-hit-meter)
           (if (pos? max-retry-delay)
-            (assoc-in response [:headers "Retry-After"]
-                      (-> (rand) (* max-retry-delay) int str))
+            (-> response
+                (assoc-in [:headers "Retry-After"]
+                          (-> (rand) (* max-retry-delay) int str))
+                (assoc-in [:headers "Connection"] "close"))
             response))
         (handler request)))))
 

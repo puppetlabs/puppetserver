@@ -954,7 +954,8 @@
 
           (testing "denies requests from agents newer than 5.3.1 when rate limit hit"
             (is (= 503 (:status @new-agent)))
-            (is (<= 0 (-> @new-agent (get-in [:headers "retry-after"]) Integer/parseInt) 1800)))
+            (is (<= 0 (-> @new-agent (get-in [:headers "retry-after"]) Integer/parseInt) 1800))
+            (is (= "close" (get-in @new-agent [:headers "connection"]))))
 
           ;; Unblock all async requests
           (doseq [i (range 1 5)]
