@@ -60,7 +60,7 @@
     ; 204 No Content on success
     {:status 204}
     ; If a lock timeout occurs return a 503 Service Unavailable
-    (catch [:kind :puppetlabs.services.jruby-pool-manager.impl.jruby-agents/jruby-lock-timeout] e
+    (catch [:kind :puppetlabs.services.jruby-pool-manager.impl.jruby-internal/jruby-lock-timeout] e
       (log/error (:msg e))
       (-> (rr/response (:msg e))
           (rr/status 503)
