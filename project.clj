@@ -39,6 +39,7 @@
                  [commons-io]
 
                  [clj-time]
+                 [grimradical/clj-semver "0.3.0" :exclusions [org.clojure/clojure]]
                  [prismatic/schema]
                  [me.raynes/fs]
                  [liberator]
