@@ -30,73 +30,58 @@
   (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Utilities
-
-(def endpoints
-  {"/environment-cache" http-client/delete
-   "/jruby-pool" http-client/delete
-   "/jruby-pool/thread-dump" http-client/get})
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
-(deftest ^:integration admin-api-access-control-test
+;; These tests use the `DELETE /environment-cache` endpoint as representative for testing
+;; the whitelist functionality, since it interacts the best with mock JRubies,
+;; making the tests faster. The same behavior applies also to the `DELETE /jruby-pool`
+;; and the `GET /jruby-pool/thread-dump` endpoints.
+(deftest ^:integration admin-api-access-whitelist-control-test
   (testing "access denied when cert not on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
-       "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
+        "JRuby mocking is safe here because we do not care about the results of the API call."
         app
         {:jruby-puppet  {:gem-path gem-path}
          :puppet-admin  {:client-whitelist ["notlocalhost"]}
          :authorization {:version 1 :rules []}}
-        (doseq [[endpoint http-method] endpoints]
-          (testing (str "for " endpoint " endpoint")
-            (let [response (http-method
-                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                             ssl-request-options)]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response))))))))
+        (let [response (http-client/delete
+                        "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                         ssl-request-options)]
+          (is (= 403 (:status response))
+              (ks/pprint-to-string response))))))
 
   (testing "access allowed when cert on whitelist"
     (logutils/with-test-logging
       (bootstrap/with-puppetserver-running-with-mock-jrubies
-       "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
+        "JRuby mocking is safe here because we do not care about the results of the API call."
         app
         {:jruby-puppet  {:gem-path gem-path}
          :puppet-admin  {:client-whitelist ["localhost"]}
          :authorization {:version 1 :rules []}}
-        (doseq [[endpoint http-method] endpoints]
-          (testing (str "for " endpoint " endpoint")
-            (let [response (http-method
-                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                             ssl-request-options)]
-              (is (<= 200 (:status response) 299)
-                  (ks/pprint-to-string response))))))))
+        (let [response (http-client/delete
+                         "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                         ssl-request-options)]
+          (is (<= 200 (:status response) 299)
+              (ks/pprint-to-string response))))))
 
   (testing "access allowed when whitelist disabled and no cert provided"
     (logutils/with-test-logging
-     (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
-      app
-      {:jruby-puppet  {:gem-path gem-path}
-       :puppet-admin  {:authorization-required false}
-       :authorization {:version 1 :rules []}}
-      (doseq [[endpoint http-method] endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-method
-                          (str "https://localhost:8140/puppet-admin-api/v1"
-                               endpoint)
-                          (select-keys ssl-request-options [:ssl-ca-cert]))]
-            (is (<= 200 (:status response) 299)
-                (ks/pprint-to-string response))))))))
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
+        "JRuby mocking is safe here because we do not care about the results of the API call."
+        app
+        {:jruby-puppet  {:gem-path gem-path}
+         :puppet-admin  {:authorization-required false}
+         :authorization {:version 1 :rules []}}
+        (let [response (http-client/delete
+                        "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                        (select-keys ssl-request-options [:ssl-ca-cert]))]
+          (is (<= 200 (:status response) 299)
+              (ks/pprint-to-string response))))))
 
   (testing "access denied when cert denied by rule"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
-     "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
+      "JRuby mocking is safe here because we do not care about the results of the API call."
       app
       {:jruby-puppet {:gem-path gem-path}
        :puppet-admin  nil
@@ -109,13 +94,11 @@
                                 :name "admin api"}]}}
       (logutils/with-test-logging
        (testing "when no encoded characters in uri"
-         (doseq [[endpoint http-method] endpoints]
-           (testing (str "for " endpoint " endpoint")
-             (let [response (http-method
-                             (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                             ssl-request-options)]
-               (is (= 403 (:status response))
-                   (ks/pprint-to-string response))))))
+         (let [response (http-client/delete
+                         "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                         ssl-request-options)]
+           (is (= 403 (:status response))
+               (ks/pprint-to-string response))))
        (testing "when encoded characters in uri"
          (let [response (http-client/delete
                          (str "https://localhost:8140/pu%70pet-admin-api/"
@@ -126,8 +109,7 @@
 
   (testing "when cert allowed by rule and whitelist not configured"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
-     "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
+      "JRuby mocking is safe here because we do not care about the results of the API call."
       app
       {:jruby-puppet {:gem-path gem-path}
        :puppet-admin  nil
@@ -139,13 +121,11 @@
                                 :sort-order 1
                                 :name "admin api"}]}}
       (testing "access allowed when no encoded characters in uri"
-        (doseq [[endpoint http-method] endpoints]
-          (testing (str "for " endpoint " endpoint")
-            (let [response (http-method
-                            (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                            ssl-request-options)]
-              (is (<= 200 (:status response) 299)
-                  (ks/pprint-to-string response))))))
+        (let [response (http-client/delete
+                        "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                        ssl-request-options)]
+          (is (<= 200 (:status response) 299)
+              (ks/pprint-to-string response))))
       (testing "access allowed for appropriate encoded characters in uri"
         (let [response (http-client/delete
                         (str "https://localhost:8140/pu%70pet-admin-api/"
@@ -164,39 +144,33 @@
   (testing "access allowed when cert allowed by rule and whitelist empty"
     (logutils/with-test-logging
      (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
-      app
-      {:jruby-puppet {:gem-path gem-path}
-       :puppet-admin {:client-whitelist []}
-       :authorization {:version 1
-                       :rules [{:match-request
-                                {:path "/puppet-admin-api/v1"
-                                 :type "path"}
-                                :allow "localhost"
-                                :sort-order 1
-                                :name "admin api"}]}}
-      (doseq [[endpoint http-method] endpoints]
-        (testing (str "for " endpoint " endpoint")
-          (let [response (http-method
-                          (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                          ssl-request-options)]
-            (is (<= 200 (:status response) 299)
-                (ks/pprint-to-string response))))))))
+       "JRuby mocking is safe here because we do not care about the results of the API call."
+       app
+       {:jruby-puppet {:gem-path gem-path}
+        :puppet-admin {:client-whitelist []}
+        :authorization {:version 1
+                        :rules [{:match-request
+                                 {:path "/puppet-admin-api/v1"
+                                  :type "path"}
+                                 :allow "localhost"
+                                 :sort-order 1
+                                 :name "admin api"}]}}
+       (let [response (http-client/delete
+                       "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                       ssl-request-options)]
+         (is (<= 200 (:status response) 299)
+             (ks/pprint-to-string response))))))
 
   (testing "server tolerates client specifying an 'Accept: */*' header"
     (bootstrap/with-puppetserver-running-with-mock-jrubies
-     "JRuby mocking is safe here because the admin endpoint is implemented
-       in Clojure."
-     app
-     {:jruby-puppet {:gem-path gem-path}}
-     (doseq [[endpoint http-method] endpoints]
-       (testing (str "for " endpoint " endpoint")
-         (let [response (http-method
-                         (str "https://localhost:8140/puppet-admin-api/v1" endpoint)
-                         (assoc ssl-request-options :headers {"Accept" "*/*"}))]
-           (is (<= 200 (:status response) 299)
-               (ks/pprint-to-string response))))))))
+      "JRuby mocking is safe here because we do not care about the results of the API call."
+      app
+      {:jruby-puppet {:gem-path gem-path}}
+      (let [response (http-client/delete
+                      "https://localhost:8140/puppet-admin-api/v1/environment-cache"
+                      (assoc ssl-request-options :headers {"Accept" "*/*"}))]
+        (is (<= 200 (:status response) 299)
+            (ks/pprint-to-string response))))))
 
 (deftest ^:integration admin-api-pool-timeout-test
   (testing "pool lock timeout results in 503"
