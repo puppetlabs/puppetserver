@@ -37,6 +37,9 @@
 (def run-dir "./target/master-var/run")
 (def log-dir "./target/master-var/log")
 
+(def multithreaded
+  (= "true" (System/getenv "MULTITHREADED")))
+
 (def jruby-service-and-dependencies
   [jruby-puppet/jruby-puppet-pooled-service
    profiler/puppet-profiler-service
@@ -156,7 +159,8 @@ create-mock-pool-instance :- JRubyInstance
                  false)
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
                                                :gem-home gem-home
-                                               :gem-path gem-path}))
+                                               :gem-path gem-path
+                                               :multithreaded multithreaded}))
          max-requests-per-instance (:max-borrows-per-instance combined-configs)
          updated-config (-> combined-configs
                             (assoc :max-requests-per-instance max-requests-per-instance)

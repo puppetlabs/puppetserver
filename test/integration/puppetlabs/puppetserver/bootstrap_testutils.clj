@@ -39,6 +39,9 @@
 (def master-log-dir
   "./target/master-var/log")
 
+(def multithreaded
+  (= "true" (System/getenv "MULTITHREADED")))
+
 (defn load-dev-config-with-overrides
   [overrides]
   (let [tmp-conf (ks/temp-file "puppetserver" ".conf")]
@@ -50,6 +53,7 @@
         (assoc-in [:jruby-puppet :master-var-dir] master-var-dir)
         (assoc-in [:jruby-puppet :master-run-dir] master-run-dir)
         (assoc-in [:jruby-puppet :master-log-dir] master-log-dir)
+        (assoc-in [:jruby-puppet :multithreaded] multithreaded)
         (ks/deep-merge overrides))))
 
 (def services-from-dev-bootstrap
