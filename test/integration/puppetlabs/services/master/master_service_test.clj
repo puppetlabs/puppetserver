@@ -87,7 +87,8 @@
                                         "/certs/ca.pem")
                       :body body
                       :headers {"Accept" "application/json"
-                                "Content-type" "application/json"}
+                                "Content-type" "application/json"
+                                "X-Puppet-Version" "6.3.0"}
                       :as :text})))
 
 (deftest ^:integration master-service-http-metrics
