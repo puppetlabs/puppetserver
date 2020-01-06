@@ -54,8 +54,10 @@
 ;;; Basic utility fns
 
 (defn http-get
-  [uri]
-  (http-client/get uri {:as :text}))
+  ([uri]
+   (http-get uri {}))
+  ([uri opts]
+   (http-client/get uri (merge opts {:as :text}))))
 
 (defn timestamp-after?
   [start-time event-time]
@@ -179,13 +181,15 @@
        ;; interact with the test coordinator
         (let [request-id (get-in request ["params" "request-id"])]
           ;; notify the coordinator that we've borrowed a jruby instance
-          (coordinator/notify-task-progress coordinator request-id :borrowed-jruby)
+          (when request-id
+            (coordinator/notify-task-progress coordinator request-id :borrowed-jruby))
           ;; if the request has a 'sleep' query param, sleep
           (when-let [sleep (get-in request ["params" "sleep"])]
             (log/debugf "JRuby handler: request '%s' sleeping '%s'" request-id sleep)
             (Thread/sleep (Long/parseLong sleep)))
           ;; notify coordinator that we're about to return the jruby to the pool
-          (coordinator/notify-task-progress coordinator request-id :returning-jruby)
+          (when request-id
+            (coordinator/notify-task-progress coordinator request-id :returning-jruby))
           (JRubyPuppetResponse. (int 200) "hi!" "text/plain" "9.0.0.0")))
       (puppetVersion [_]
         "1.2.3")
@@ -927,7 +931,7 @@
     (let [{:keys [current-metrics-values coordinator]} test-env
           {:keys [requested-count requested-instances
                   borrowed-instances queue-limit-hit-meter]} (:metrics test-env)]
-      (testing "denies requests when rate limit hit"
+      (logging/with-test-logging
         ;; Block up two JRuby instances
         (async-request coordinator 1 "/foo/bar/async1" :returning-jruby)
         (async-request coordinator 2 "/foo/bar/async2" :returning-jruby)
@@ -938,24 +942,33 @@
         (coordinator/unblock-task-to coordinator 3 :borrowed-jruby)
         (coordinator/unblock-task-to coordinator 4 :borrowed-jruby)
 
-        ; Wait for async requests to hit metrics.
+        ; Wait for coordinated requests to hit metrics.
         (while (> 4 (.getCount requested-count)))
 
-        (logging/with-test-logging
-          (let [resp        (http-get "http://127.0.0.1:8140/foo/uncoord/sync1")
-                status-code (:status resp)
-                retry-after (-> resp
-                                (get-in [:headers "retry-after"])
-                                Integer/parseInt)]
-            (is (= 503 status-code))
-            (is (<= 0 retry-after 1800))
-            (is (logged?
-                 #"The number of requests waiting for a JRuby instance has exceeded the limit"
-                 :error))))
+        (let [new-agent (future (http-get "http://127.0.0.1:8140/foo/uncoord/sync1"
+                                  {:headers {"X-Puppet-Version" "5.5.0"}}))
+              old-agent (future (http-get "http://127.0.0.1:8140/foo/uncoord/sync2"
+                                          {:headers {"X-Puppet-Version" "4.10"}}))
+              not-agent (future (http-get "http://127.0.0.1:8140/foo/uncoord/sync3"))
+              silly-agent (future (http-get "http://127.0.0.1:8140/foo/uncoord/sync4"
+                                            {:headers {"X-Puppet-Version" "6.majestik.møøse"}}))]
 
-        ;; unblock all requests
-        (doseq [i (range 1 5)]
-          (coordinator/final-result coordinator i))
+          (testing "denies requests from agents newer than 5.3.1 when rate limit hit"
+            (is (= 503 (:status @new-agent)))
+            (is (<= 0 (-> @new-agent (get-in [:headers "retry-after"]) Integer/parseInt) 1800))
+            (is (= "close" (get-in @new-agent [:headers "connection"]))))
+
+          ;; Unblock all async requests
+          (doseq [i (range 1 5)]
+            (coordinator/final-result coordinator i))
+
+          (testing "allows requests from old or unknown agents when rate limit hit"
+            (doseq [response (map deref [old-agent not-agent silly-agent])]
+              (is (= 200 (:status response))))))
+
+        (is (logged?
+             #"The number of requests waiting for a JRuby instance has exceeded the limit"
+             :error))
 
         ;; Assert that one instance of the rate limit being applied was
         ;; recorded to metrics.
