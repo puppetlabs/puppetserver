@@ -203,19 +203,6 @@
    :current-metrics-values IFn
    :jruby-service (schema/protocol jruby-protocol/JRubyPuppetService)})
 
-(defn expected-values-atom
-  []
-  (let [num-jrubies (if jruby-puppet-core/multithreaded? 1 2)]
-    (atom {:num-jrubies num-jrubies
-           :num-free-jrubies num-jrubies
-           :requested-count 0
-           :borrow-count 0
-           :borrow-timeout-count 0
-           :borrow-retry-count 0
-           :return-count 0
-           :current-requested-instances 0
-           :current-borrowed-instances 0})))
-
 (schema/defn ^:always-validate build-test-env :- TestEnvironment
   [sampling-scheduled? :- Atom
    coordinator :- (schema/protocol coordinator/TaskCoordinator)
@@ -228,11 +215,20 @@
                                                    jruby-metrics-service)
         jruby-service (tk-app/get-service app :JRubyPuppetService)
         sample-metrics! #(jruby-metrics-core/sample-jruby-metrics! jruby-service metrics)
+        expected-num-jrubies (if jruby-puppet-core/multithreaded? 1 2)
 
         ;; an atom to track the expected values for the basic metrics, so
         ;; that we don't have to keep track of the latest counts by hand
         ;; in all of the tests
-        expected-values-atom (expected-values-atom)
+        expected-values-atom (atom {:num-jrubies expected-num-jrubies
+                                    :num-free-jrubies expected-num-jrubies
+                                    :requested-count 0
+                                    :borrow-count 0
+                                    :borrow-timeout-count 0
+                                    :borrow-retry-count 0
+                                    :return-count 0
+                                    :current-requested-instances 0
+                                    :current-borrowed-instances 0})
 
         ;; convenience functions to use for comparing current metrics
         ;; values with expected values.
