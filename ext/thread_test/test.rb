@@ -36,6 +36,8 @@ class CatalogOneTester < CatalogTester
     expect(result['resources']).to include(a_hash_including('title' => 'do it'))
     # v3 function
     expect(result['resources']).to include(a_hash_including('title' => 'the old way of functions'))
+    # class param from hiera
+    expect(result['resources']).to include(a_hash_including('parameters' => { 'input' => 'froyo' }))
   end
 end
 
@@ -53,6 +55,8 @@ class CatalogTwoTester < CatalogTester
     expect(result['resources']).to include(a_hash_including('title' => 'Always on the one'))
     # v3 function
     expect(result['resources']).to include(a_hash_including('title' => 'old school v3 function'))
+    # class param from hiera
+    expect(result['resources']).to include(a_hash_including('parameters' => { 'input' => 'hiera_funky' }))
   end
 end
 
