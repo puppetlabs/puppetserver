@@ -8,6 +8,7 @@
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9-service]
             [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-internal :as jruby-internal]
             [puppetlabs.services.puppet-profiler.puppet-profiler-service :as profiler]
             [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
@@ -202,6 +203,19 @@
    :current-metrics-values IFn
    :jruby-service (schema/protocol jruby-protocol/JRubyPuppetService)})
 
+(defn expected-values-atom
+  []
+  (let [num-jrubies (if jruby-puppet-core/multithreaded? 1 2)]
+    (atom {:num-jrubies num-jrubies
+           :num-free-jrubies num-jrubies
+           :requested-count 0
+           :borrow-count 0
+           :borrow-timeout-count 0
+           :borrow-retry-count 0
+           :return-count 0
+           :current-requested-instances 0
+           :current-borrowed-instances 0})))
+
 (schema/defn ^:always-validate build-test-env :- TestEnvironment
   [sampling-scheduled? :- Atom
    coordinator :- (schema/protocol coordinator/TaskCoordinator)
@@ -218,15 +232,7 @@
         ;; an atom to track the expected values for the basic metrics, so
         ;; that we don't have to keep track of the latest counts by hand
         ;; in all of the tests
-        expected-values-atom (atom {:num-jrubies 2
-                                    :num-free-jrubies 2
-                                    :requested-count 0
-                                    :borrow-count 0
-                                    :borrow-timeout-count 0
-                                    :borrow-retry-count 0
-                                    :return-count 0
-                                    :current-requested-instances 0
-                                    :current-borrowed-instances 0})
+        expected-values-atom (expected-values-atom)
 
         ;; convenience functions to use for comparing current metrics
         ;; values with expected values.
@@ -892,14 +898,14 @@
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env]
       (testing "borrow timeout"
-        ;; first we'll queue up a few requests to consume the 2 jruby instances
+        ;; first we'll queue up a few requests to consume the 2 jruby instances/threads
         (async-request coordinator 1 "/foo/bar/async1" :returning-jruby)
         (async-request coordinator 2 "/foo/baz/async2" :returning-jruby)
 
-        (update-expected-values {:num-free-jrubies -2
+        (update-expected-values {:num-free-jrubies (if jruby-puppet-core/multithreaded? -1 -2)
                                  :requested-count 2
                                  :borrow-count 2
-                                 :current-borrowed-instances 2})
+                                 :current-borrowed-instances (if jruby-puppet-core/multithreaded? 1 2)})
         (is (= (expected-metrics-values) (current-metrics-values)))
 
         ;; now attempt a manual borrow and allow it to timeout
@@ -913,9 +919,9 @@
         (coordinator/final-result coordinator 1)
         (coordinator/final-result coordinator 2)
 
-        (update-expected-values {:num-free-jrubies 2
+        (update-expected-values {:num-free-jrubies (if jruby-puppet-core/multithreaded? 1 2)
                                  :return-count 2
-                                 :current-borrowed-instances -2})
+                                 :current-borrowed-instances (if jruby-puppet-core/multithreaded? -1 -2)})
         (is (= (expected-metrics-values) (current-metrics-values)))))))
 
 (deftest request-queue-limit

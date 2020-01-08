@@ -2,6 +2,7 @@
   (:require [schema.core :as schema]
             [puppetlabs.metrics :as metrics]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
+            [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
@@ -366,7 +367,7 @@
    free-instances-fn :- IFn
    registry :- MetricRegistry]
   {:num-jrubies (metrics/register registry (metrics/host-metric-name hostname "jruby.num-jrubies")
-                  (metrics/gauge max-active-instances))
+                  (if jruby-puppet-core/multithreaded? (metrics/gauge 1) (metrics/gauge max-active-instances)))
    :requested-count (.counter registry (metrics/host-metric-name hostname "jruby.request-count"))
    ;; See the comments on `jruby-metrics-service/schedule-metrics-sampler!` for
    ;; an explanation of how we're using these histograms.
