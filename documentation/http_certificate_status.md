@@ -22,8 +22,7 @@ Find
     GET /puppet-ca/v1/certificate_status/:certname?environment=:environment
     Accept: application/json, text/pson
 
-Retrieve information about the specified certificate. Similar to `puppet
-cert --list :certname`.
+Retrieve information about the specified certificate. Similar to `puppet cert --list :certname`.
 
 Search
 -----
@@ -31,8 +30,7 @@ Search
     GET /puppet-ca/v1/certificate_statuses/:any_key?environment=:environment
     Accept: application/json, text/pson
 
-Retrieve information about all known certificates. Similar to `puppet
-cert --list --all`. A key is required but is ignored.
+Retrieve information about all known certificates. Similar to `puppet cert --list --all`. A key is required but is ignored.
 
 Save
 ----
@@ -42,13 +40,14 @@ Save
 
 Change the status of the specified certificate. The desired state
 is sent in the body of the PUT request as a one-item PSON hash; the two
-allowed complete hashes are `{"desired_state":"signed"}` (for signing a
-certificate signing request; similar to `puppet cert --sign`) and
-`{"desired_state":"revoked"}` (for revoking a certificate; similar to
+allowed complete hashes are:
+
+* `{"desired_state":"signed"}` (for signing a certificate signing request, similar to `puppet cert --sign`). To set the validity period of the signed certificate, specify the `cert_ttl` key in the body of the request, with a integer value. By default, this key specifies the number of seconds, but you can specify another time unit. See [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings) for a list of Puppet's accepted time unit markers.
+* `{"desired_state":"revoked"}` (for revoking a certificate, similar to
 `puppet cert --revoke`).
 
-Note that revoking a certificate will not clean up other info about the
-host - see the DELETE request for more information.
+Note that revoking a certificate does not clean up other info about the
+host --- see the DELETE request for more information.
 
 Delete
 -----
