@@ -17,19 +17,31 @@ Puppet Server is configured to use 2 GB of RAM by default. If you'd like to just
 
 2.  Install the Puppet Server package by running:
 
-        yum install puppetserver
+````
+yum install puppetserver
+````
 
-    or
+or
 
-        apt-get install puppetserver
+```
+apt-get install puppetserver
+```
 
-    Note that there is no `-` in the package name.
+There is no `-` in the package name.
+
+> Note: If you're upgrading, stop any existing `puppetmaster` or `puppetserver` service by running `service <service_name> stop` or `systemctl stop <service_name>`.
 
 3.  Start the Puppet Server service:
 
-`systemctl start puppetserver` or `service puppetserver start`
-        
-> Note: If you're uprgading, stop any existing `puppetmaster` or `puppetserver` service by running `service <service_name> stop` or `systemctl stop <service_name>`.
+```
+systemctl start puppetserver
+``` 
+
+or 
+
+```
+service puppetserver start
+```
 
 ## Platforms with packages
 
