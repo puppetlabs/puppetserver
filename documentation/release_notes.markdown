@@ -12,6 +12,18 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.11
+
+Released 14 January 2020
+
+### New features
+
+- When requesting that a certificate be signed, the `certificate-status` API endpoint can now accept a TTL in its body under the key `cert_ttl`, which determines the validity period of the cert being signed. The unit defaults to seconds, but you can specify the unit. See [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings) for a list of Puppet's accepted time unit markers. [SERVER-2678](https://tickets.puppetlabs.com/browse/SERVER-2678)
+
+### Resolved issues
+
+- Puppet Server no longer issues HTTP 503 responses to agents older than Puppet 5.3, which can't react to these responses. This allows the `max-queued-requests` setting to be used safely with older agents. [SERVER-2405](https://tickets.puppetlabs.com/browse/SERVER-2405)
+
 ## Puppet Server 5.3.10
 
 Released 15 October 2019
