@@ -42,10 +42,12 @@ Save
 
 Change the status of the specified certificate. The desired state
 is sent in the body of the PUT request as a one-item PSON hash; the two
-allowed complete hashes are `{"desired_state":"signed"}` (for signing a
-certificate signing request; similar to `puppet cert --sign`) and
-`{"desired_state":"revoked"}` (for revoking a certificate; similar to
+allowed complete hashes are:
+
+* `{"desired_state":"signed"}` (for signing a certificate signing request, similar to `puppet cert --sign`). To set the validity period of the signed certificate, specify the `cert_ttl` key in the body of the request, with a integer value. By default, this key specifies the number of seconds, but you can specify another time unit. See [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings) for a list of Puppet's accepted time unit markers.
+* `{"desired_state":"revoked"}` (for revoking a certificate, similar to
 `puppet cert --revoke`).
+
 
 Note that revoking a certificate will not clean up other info about the
 host - see the DELETE request for more information.
