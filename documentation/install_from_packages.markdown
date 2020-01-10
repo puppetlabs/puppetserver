@@ -50,7 +50,7 @@ Puppet provides official packages that install Puppet Server 5.1 and all of its 
 * Red Hat Enterprise Linux 6
 * Red Hat Enterprise Linux 7
 * Debian 8 (Jessie)
-* Debian 10 (Stretch)
+* Debian 9 (Stretch)
 * Ubuntu 18.04 (Bionic) - enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu), which contains packages necessary for Puppet Server.
 * Ubuntu 16.04 (Xenial)
 * SLES 12 SP1
