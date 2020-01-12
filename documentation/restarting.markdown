@@ -39,7 +39,7 @@ OS distributions which use systemd service configurations:
 
     systemctl reload puppetserver
 
-> **Note:** If you're using Puppet Enterprise (PE), you can reload the server from the command line by running `service pe-puppetserver reload`. However if you need to change a setting, do so in console or with Heira, and then the agent will reload the server when it applies the change. For more information, see [Configuring and tuning Puppet Server](https://puppet.com/docs/pe/2019.2/config_puppetserver.html#configuring_and_tuning_puppet_server). 
+> **Note:** If you're using Puppet Enterprise (PE), you can reload the server from the command line by running `service pe-puppetserver reload`. However if you need to change a setting, do so in console or with Heira, and then the agent will reload the server when it applies the change. For more information, see [Configuring and tuning Puppet Server](https://puppet.com/docs/pe/2018.1/config_puppetserver.html#configuring_and_tuning_puppet_server). 
 
 ## Restarting Puppet Server to pick up changes
 
