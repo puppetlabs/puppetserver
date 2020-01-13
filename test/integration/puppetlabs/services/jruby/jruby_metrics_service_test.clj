@@ -283,7 +283,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
-(deftest ^:metrics basic-metrics-test
+(deftest ^:metrics ^:single-threaded-only basic-metrics-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [num-jrubies num-free-jrubies requested-count
                   requested-jrubies-histo borrow-count borrow-timeout-count
@@ -320,7 +320,7 @@
           (is (= expected-metrics (-> (current-jruby-status-metrics)
                                       (jruby-status-metric-counters)))))))))
 
-(deftest ^:metrics borrowed-instances-test
+(deftest ^:metrics ^:single-threaded-only borrowed-instances-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env
@@ -403,7 +403,7 @@
                                  :current-borrowed-instances -1})
         (is (= (expected-metrics-values) (current-metrics-values)))))))
 
-(deftest ^:metrics requested-instances-test
+(deftest ^:metrics ^:single-threaded-only requested-instances-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env
@@ -886,7 +886,7 @@
               (is (= 1 (.getCount timer))
                   (str "Timer has a accumulated a count for borrow reason: " timer-name)))))))))
 
-(deftest ^:metrics borrow-timeout-test
+(deftest ^:metrics ^:single-threaded-only borrow-timeout-test
   (with-metrics-test-env
     test-env
     (assoc-in default-test-config

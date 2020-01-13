@@ -1116,7 +1116,7 @@
                                       current-code-id-fn
                                       environment-class-cache-enabled
                                       wrap-with-jruby-queue-limit)
-                   clojure-request-wrapper )))
+                   clojure-request-wrapper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions

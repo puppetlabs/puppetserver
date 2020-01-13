@@ -217,7 +217,7 @@
 
   :test-selectors {:integration :integration
                    :unit (complement :integration)
-                   :multithreaded (complement :single-thread-only)
+                   :multithreaded (complement :single-threaded-only)
                    :singlethreaded (complement :multithreaded-only)}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev/puppetserver.conf" "--"]
