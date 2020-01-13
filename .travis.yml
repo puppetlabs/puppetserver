@@ -21,6 +21,12 @@ jobs:
     - jdk: openjdk11
       env: ADDITIONAL_LEIN_ARGS="with-profile fips"
       name: "Java 11 w/ FIPS"
+    - jdk: openjdk8
+      env: MULTITHREADED=true
+      name: "Java 8 w/ multithreaded"
+    - jdk: openjdk11
+      env: MULTITHREADED=true
+      name: "Java 11 w/ multithreaded"
     - stage: puppetserver container tests
       language: ruby
       rvm: 2.5.5
