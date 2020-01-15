@@ -140,8 +140,8 @@
         (testing "with the init task"
           (let [res (get-task-data "env1" "apache" "init")]
             (is (nil? (schema/check mc/TaskData res)))
-            (is (= "init.rb" (-> res :files first :name))
-            (is (re-matches #".*init\.rb" (-> res :files first :path))))))
+            (is (= "init.rb" (-> res :files first :name)))
+            (is (re-matches #".*init\.rb" (-> res :files first :path)))))
 
         (testing "with another named task"
           (let [res (get-task-data "env1" "apache" "install")]
@@ -265,7 +265,7 @@
                                                 :uri
                                                 {:path "/puppet/v3/file_content/tasks/apache/files.rb",
                                                  :params {:environment "production"}}}
-                                              {:filename "apache/lib/puppet/ruby_file.rb",
+                                               {:filename "apache/lib/puppet/ruby_file.rb",
                                                 :sha256
                                                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                                                 :size_bytes 0,

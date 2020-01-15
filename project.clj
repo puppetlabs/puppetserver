@@ -5,7 +5,7 @@
   { :url url
     :username :env/nexus_jenkins_username
     :password :env/nexus_jenkins_password
-    :sign-releases false })
+    :sign-releases false})
 
 (def heap-size-from-profile-clj
   (let [profile-clj (io/file (System/getenv "HOME") ".lein" "profiles.clj")]
@@ -146,8 +146,8 @@
                     ;; use core.async and need more than eight threads to run
                     ;; properly; this setting overrides the default value.  Without
                     ;; it the metrics tests will hang.
-                    :jvm-opts ["-Dclojure.core.async.pool-size=50"]
-                    }
+                    :jvm-opts ["-Dclojure.core.async.pool-size=50"]}
+
 
              :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
                                                ;; clojure version here, because without it, lein
@@ -216,7 +216,9 @@
                             [lein-exec "0.3.7"]]}}
 
   :test-selectors {:integration :integration
-                   :unit (complement :integration)}
+                   :unit (complement :integration)
+                   :multithreaded (complement :single-threaded-only)
+                   :singlethreaded (complement :multithreaded-only)}
 
   :aliases {"gem" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.gem" "--config" "./dev/puppetserver.conf" "--"]
             "ruby" ["trampoline" "run" "-m" "puppetlabs.puppetserver.cli.ruby" "--config" "./dev/puppetserver.conf" "--"]
@@ -236,5 +238,5 @@
   :uberjar-merge-with {"locales.clj"  [(comp read-string slurp)
                                        (fn [new prev]
                                          (if (map? prev) [new prev] (conj prev new)))
-                                       #(spit %1 (pr-str %2))]}
-  )
+                                       #(spit %1 (pr-str %2))]})
+

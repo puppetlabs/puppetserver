@@ -6,6 +6,13 @@ echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
 ./dev/install-test-gems.sh
 
-lein -U $ADDITIONAL_LEIN_ARGS test :all
+if [ "$MULTITHREADED" = "true" ]; then
+  filter=":multithreaded"
+else
+  filter=":singlethreaded"
+fi
+test_command="lein -U $ADDITIONAL_LEIN_ARGS test $filter"
+echo $test_command
+$test_command
 
 rake spec
