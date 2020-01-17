@@ -246,7 +246,6 @@
 
 (schema/defn track-successful-borrow-instance!
   [{:keys [borrow-count borrowed-instances]} :- JRubyMetrics
-   jruby-instance :- JRubyInstance
    reason :- jruby-schemas/JRubyEventReason
    id :- jruby-schemas/JRubyWorkerId]
   (.inc borrow-count)
@@ -261,12 +260,12 @@
   (swap! requested-instances assoc event (timestamped-reason reason)))
 
 (schema/defn track-borrow-instance!
-  [{:keys [borrow-timeout-count borrow-retry-count requested-instances wait-timer] :as metrics} :- JRubyMetrics
+  [{:keys [borrow-timeout-count requested-instances wait-timer] :as metrics} :- JRubyMetrics
    {jruby-instance :instance requested-event :requested-event reason :reason worker-id :worker-id :as event} :- jruby-schemas/JRubyBorrowedEvent]
   (condp (fn [pred instance] (pred instance)) jruby-instance
     nil? (.inc borrow-timeout-count)
     jruby-schemas/shutdown-poison-pill? (log/warn (trs "Not tracking jruby instance borrowed because server is shutting down"))
-    jruby-schemas/jruby-instance? (track-successful-borrow-instance! metrics jruby-instance reason worker-id))
+    jruby-schemas/jruby-instance? (track-successful-borrow-instance! metrics reason worker-id))
   (if-let [ta (get @requested-instances requested-event)]
     (do
       (.update wait-timer
@@ -277,7 +276,7 @@
 
 (schema/defn track-return-instance!
   [{:keys [return-count borrowed-instances borrow-timer] :as metrics} :- JRubyMetrics
-   {:keys [instance reason worker-id]} :- jruby-schemas/JRubyReturnedEvent]
+   {:keys [instance worker-id]} :- jruby-schemas/JRubyReturnedEvent]
   (.inc return-count)
   (when (jruby-schemas/jruby-instance? instance)
     (if-let [ta (get @borrowed-instances worker-id)]
