@@ -13,7 +13,7 @@ hocon() {
 CA_HOSTNAME="${CA_HOSTNAME:-puppet}"
 CA_MASTERPORT="${CA_MASTERPORT:-8140}"
 
-if [[ "$CA_ENABLED" != "true" ]]; then
+if [[ "$CA_ENABLED" != "true" ]] || [ "$(ls -A /etc/puppetlabs/puppet/ssl/)" ]; then
   # we are just an ordinary compiler
   echo "turning off CA"
   cat > /etc/puppetlabs/puppetserver/services.d/ca.cfg <<EOF
