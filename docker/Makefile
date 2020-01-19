@@ -1,4 +1,4 @@
-NAMESPACE ?= puppet
+NAMESPACE ?= xtigyro
 git_describe = $(shell git describe)
 vcs_ref := $(shell git rev-parse HEAD)
 build_date := $(shell date -u +%FT%T)
