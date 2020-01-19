@@ -5,7 +5,7 @@
 # an existing certificate on the /etc/puppetlabs/puppet volume
 if test -n "${DNS_ALT_NAMES}"; then
     config_section="master"
-    if [[ "${CA_ENABLED}" != "true" ]] || [[ "$(ls -A /etc/puppetlabs/puppet/ssl/)" ]]; then
+    if [[ "${CA_ENABLED}" != "true" ]] || [[ "$(ls -A /etc/puppetlabs/puppet/ssl/private_keys/*.pem)" ]]; then
       # we are just an ordinary compiler using puppet agent to generate cert
       config_section="agent"
     fi
