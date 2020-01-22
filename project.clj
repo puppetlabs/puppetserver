@@ -1,4 +1,4 @@
-(def ps-version "6.8.1-SNAPSHOT")
+(def ps-version "6.9.0-SNAPSHOT")
 
 (defn deploy-info
   [url]
@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.2.11"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.3.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -52,7 +52,7 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils "3.0.1"]
+                 [puppetlabs/jruby-utils]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
