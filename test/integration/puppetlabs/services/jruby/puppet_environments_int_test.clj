@@ -61,6 +61,10 @@
 ;; not ideal, but we discussed it at length and agreed that the test has
 ;; value in terms of simulating an end user's experience, which could not
 ;; be achieved w/o some such assumptions, and thus is worth keeping.
+;;
+;; This test does NOT make sense in multithreaded mode: because there is only a
+;; single jruby instance, any environment context would be shared amongst all
+;; workers (threads in this case, since they share the jruby instance).
 (deftest ^:integration ^:single-threaded-only environment-flush-integration-test
   (testing "environments are flushed after marking expired"
     ;; This test is a bit complicated, so warrants some 'splainin.
