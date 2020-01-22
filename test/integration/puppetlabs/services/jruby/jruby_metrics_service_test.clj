@@ -320,7 +320,7 @@
           (is (= expected-metrics (-> (current-jruby-status-metrics)
                                       (jruby-status-metric-counters)))))))))
 
-(deftest ^:metrics ^:single-threaded-only borrowed-instances-test
+(deftest ^:metrics borrowed-instances-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env
@@ -344,8 +344,6 @@
                                       (jruby-status-metric-counters))))
 
           ;; let's take a peek at the info about the borrowed instances.
-          ;; the keys for `borrowed-instances` are the jruby instance ids.
-          (is (= #{1 2} (set (keys @borrowed-instances))))
           (let [expected-uris #{"/foo/bar/async1" "/foo/baz/async2"}
                 actual-uris #(set (map (fn [instance]
                                          (get-in instance
