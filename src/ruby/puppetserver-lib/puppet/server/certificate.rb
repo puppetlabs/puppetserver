@@ -45,7 +45,8 @@ class Puppet::Server::Certificate < Puppet::SSL::Certificate
     else
       valid_oids = exts.select do |ext|
         subtree_of?(get_name_from_oid('ppRegCertExt'), ext['oid']) or
-            subtree_of?(get_name_from_oid('ppPrivCertExt'), ext['oid'])
+            subtree_of?(get_name_from_oid('ppPrivCertExt'), ext['oid']) or
+            subtree_of?(get_name_from_oid('ppAuthCertExt'), ext['oid'])
       end
 
       valid_oids.collect do |ext|
