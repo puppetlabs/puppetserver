@@ -16,7 +16,11 @@ Released 14 January 2020
 
 ### New features
 
-- When requesting that a certificate be signed, the `certificate-status` API endpoint can now accept a TTL in its body under the key `cert_ttl`, which determines the validity period of the cert being signed. The unit defaults to seconds, but you can specify the unit. See [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings) for a list of Puppet's accepted time unit markers. [SERVER-2678](https://tickets.puppetlabs.com/browse/SERVER-2678)
+- When signing or generating certificates, you can now set the certificate time to live, either with a command line option or by specifying the key directly in the HTTP API. The time unit defaults to seconds, but you can specify a different time unit with any of time unit markers accepted in Puppet [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings).
+
+  The `puppetserver ca sign` and `puppetserver ca generate` commands accept a `--ttl` flag to set certificate time to live. This setting determine how long the resulting certificate is valid for.
+
+  Alternatively, you can set the time in the `certificate-status` API endpoint in the request body under the key `cert_ttl`. [SERVER-2678](https://tickets.puppetlabs.com/browse/SERVER-2678)
 
 ### Resolved issues
 
