@@ -66,6 +66,6 @@ COPY docker/puppetserver/logback.xml \
      docker/puppetserver/request-logging.xml \
      /etc/puppetlabs/puppetserver/
 COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
-COPY docker/puppetserver/puppetdb.conf /etc/puppetlabs/puppet/
+COPY docker/puppetserver/puppetdb.conf /var/tmp/puppet/
 
 COPY docker/puppetserver/Dockerfile /
