@@ -215,7 +215,8 @@
              :ci {:plugins [[lein-pprint "1.1.1"]
                             [lein-exec "0.3.7"]]}}
 
-  :test-selectors {:integration :integration
+  :test-selectors {:default (complement :multithreaded-only)
+                   :integration :integration
                    :unit (complement :integration)
                    :multithreaded (complement :single-threaded-only)
                    :singlethreaded (complement :multithreaded-only)}
