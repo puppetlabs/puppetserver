@@ -283,7 +283,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
-(deftest ^:metrics ^:single-threaded-only basic-metrics-test
+(deftest ^:metrics basic-metrics-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [num-jrubies num-free-jrubies requested-count
                   requested-jrubies-histo borrow-count borrow-timeout-count
@@ -320,7 +320,7 @@
           (is (= expected-metrics (-> (current-jruby-status-metrics)
                                       (jruby-status-metric-counters)))))))))
 
-(deftest ^:metrics ^:single-threaded-only borrowed-instances-test
+(deftest ^:metrics borrowed-instances-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env
@@ -344,8 +344,6 @@
                                       (jruby-status-metric-counters))))
 
           ;; let's take a peek at the info about the borrowed instances.
-          ;; the keys for `borrowed-instances` are the jruby instance ids.
-          (is (= #{1 2} (set (keys @borrowed-instances))))
           (let [expected-uris #{"/foo/bar/async1" "/foo/baz/async2"}
                 actual-uris #(set (map (fn [instance]
                                          (get-in instance
@@ -403,7 +401,7 @@
                                  :current-borrowed-instances -1})
         (is (= (expected-metrics-values) (current-metrics-values)))))))
 
-(deftest ^:metrics ^:single-threaded-only requested-instances-test
+(deftest ^:metrics requested-instances-test
   (with-metrics-test-env test-env default-test-config
     (let [{:keys [coordinator update-expected-values expected-metrics-values
                   current-metrics-values jruby-service]} test-env
@@ -886,7 +884,7 @@
               (is (= 1 (.getCount timer))
                   (str "Timer has a accumulated a count for borrow reason: " timer-name)))))))))
 
-(deftest ^:metrics ^:single-threaded-only borrow-timeout-test
+(deftest ^:metrics borrow-timeout-test
   (with-metrics-test-env
     test-env
     (assoc-in default-test-config

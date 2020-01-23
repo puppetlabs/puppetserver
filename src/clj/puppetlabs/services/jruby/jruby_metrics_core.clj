@@ -246,13 +246,12 @@
 
 (schema/defn track-successful-borrow-instance!
   [{:keys [borrow-count borrowed-instances]} :- JRubyMetrics
-   jruby-instance :- JRubyInstance
-   reason :- jruby-schemas/JRubyEventReason]
+   reason :- jruby-schemas/JRubyEventReason
+   id :- jruby-schemas/JRubyWorkerId]
   (.inc borrow-count)
-  (let [id (:id jruby-instance)]
-    (when (get @borrowed-instances id)
-      (log/warn (trs "JRuby instance ''{0}'' borrowed, but it appears to have already been in use!" id)))
-    (swap! borrowed-instances assoc id (timestamped-reason reason))))
+  (when (get @borrowed-instances id)
+    (log/warn (trs "JRuby instance ''{0}'' borrowed, but it appears to have already been in use!" id)))
+  (swap! borrowed-instances assoc id (timestamped-reason reason)))
 
 (schema/defn track-request-instance!
   [{:keys [requested-count requested-instances]} :- JRubyMetrics
@@ -261,12 +260,12 @@
   (swap! requested-instances assoc event (timestamped-reason reason)))
 
 (schema/defn track-borrow-instance!
-  [{:keys [borrow-timeout-count borrow-retry-count requested-instances wait-timer] :as metrics} :- JRubyMetrics
-   {jruby-instance :instance requested-event :requested-event reason :reason :as event} :- jruby-schemas/JRubyBorrowedEvent]
+  [{:keys [borrow-timeout-count requested-instances wait-timer] :as metrics} :- JRubyMetrics
+   {jruby-instance :instance requested-event :requested-event reason :reason worker-id :worker-id :as event} :- jruby-schemas/JRubyBorrowedEvent]
   (condp (fn [pred instance] (pred instance)) jruby-instance
     nil? (.inc borrow-timeout-count)
     jruby-schemas/shutdown-poison-pill? (log/warn (trs "Not tracking jruby instance borrowed because server is shutting down"))
-    jruby-schemas/jruby-instance? (track-successful-borrow-instance! metrics jruby-instance reason))
+    jruby-schemas/jruby-instance? (track-successful-borrow-instance! metrics reason worker-id))
   (if-let [ta (get @requested-instances requested-event)]
     (do
       (.update wait-timer
@@ -277,18 +276,17 @@
 
 (schema/defn track-return-instance!
   [{:keys [return-count borrowed-instances borrow-timer] :as metrics} :- JRubyMetrics
-   {:keys [instance reason]} :- jruby-schemas/JRubyReturnedEvent]
+   {:keys [instance worker-id]} :- jruby-schemas/JRubyReturnedEvent]
   (.inc return-count)
   (when (jruby-schemas/jruby-instance? instance)
-    (let [id (:id instance)]
-      (if-let [ta (get @borrowed-instances id)]
-        (let [elapsed-time (- (System/currentTimeMillis) (:time ta))
-              per-reason-timer (timer-for-borrow-reason metrics ta)]
-          (.update borrow-timer elapsed-time (TimeUnit/MILLISECONDS))
-          (.update per-reason-timer elapsed-time (TimeUnit/MILLISECONDS))
-          (MDC/put "jruby.borrow-time" (Long/toString elapsed-time))
-          (swap! borrowed-instances dissoc id))
-        (log/warn (trs "JRuby instance ''{0}'' returned, but no record of when it was borrowed!" id))))))
+    (if-let [ta (get @borrowed-instances worker-id)]
+      (let [elapsed-time (- (System/currentTimeMillis) (:time ta))
+            per-reason-timer (timer-for-borrow-reason metrics ta)]
+        (.update borrow-timer elapsed-time (TimeUnit/MILLISECONDS))
+        (.update per-reason-timer elapsed-time (TimeUnit/MILLISECONDS))
+        (MDC/put "jruby.borrow-time" (Long/toString elapsed-time))
+        (swap! borrowed-instances dissoc worker-id))
+      (log/warn (trs "JRuby instance ''{0}'' returned, but no record of when it was borrowed!" worker-id)))))
 
 (schema/defn ^:always-validate update-pool-lock-status! :- JRubyPoolLockStatus
   [jruby-pool-lock-status :- Atom

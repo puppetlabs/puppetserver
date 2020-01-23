@@ -18,10 +18,6 @@ Released 14 January 2020
 
 - When requesting that a certificate be signed, the `certificate-status` API endpoint can now accept a TTL in its body under the key `cert_ttl`, which determines the validity period of the cert being signed. The unit defaults to seconds, but you can specify the unit. See [configuration](https://puppet.com/docs/puppet/latest/configuration.html#configuration-settings) for a list of Puppet's accepted time unit markers. [SERVER-2678](https://tickets.puppetlabs.com/browse/SERVER-2678)
 
-- This release adds a new JRuby pool architecture that maintains a single JRuby instance through which requests to Puppet Server are run concurrently. In this mode, the server's memory footprint is significantly lighter, because it no longer needs to run multiple JRuby instances. Toggle this behavior by setting the `jruby-puppet.multithreaded` to `true`.
-
- > Validation that Puppet's Ruby code functions correctly in this environment is still in progress. This mode is highly experimental, and you may see unexpected behavior. 
-
 ### Resolved issues
 
 - Puppet Server no longer issues HTTP 503 responses to agents older than Puppet 5.3, which can't react to these responses. This allows the `max-queued-requests` setting to be used safely with older agents. [SERVER-2405](https://tickets.puppetlabs.com/browse/SERVER-2405)

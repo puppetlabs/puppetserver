@@ -105,6 +105,16 @@
                    (deliver flush-complete true))))
     flush-complete))
 
+(defn add-watch-for-flush-complete-multithreaded
+  [pool-context]
+  (let [flush-complete (promise)]
+    (add-watch (:borrow-count pool-context) :flush-callback
+               (fn [k a old-count new-count]
+                 (when (and (= k :flush-callback ) (< new-count old-count))
+                   (remove-watch a :flush-callback)
+                   (deliver flush-complete true))))
+    flush-complete))
+
 (defn set-constants-and-verify
   [pool-context num-instances]
   ;; here we set a variable called 'instance_id' in each instance
@@ -150,7 +160,7 @@
 ;;; Tests
 
 (deftest ^:integration ^:single-threaded-only admin-api-flush-jruby-pool-test
-  (testing "Flushing the pool results in all new JRuby instances"
+  (testing "Flushing the instance pool results in all new JRuby instances"
     (bootstrap/with-puppetserver-running
       app
       {:jruby-puppet {:gem-path gem-path
@@ -168,6 +178,27 @@
                    (get-all-stack-traces-as-str))))
         ;; now the pool is flushed, so the constants should be cleared
         (is (true? (verify-no-constants pool-context 4)))))))
+
+;; Copies the test above, but for multithreaded mode (single jruby instance)
+(deftest ^:integration ^:multithreaded-only admin-api-flush-jruby-ref-pool-test
+  (testing "Flushing the reference pool results in a new JRuby instance"
+    (bootstrap/with-puppetserver-running
+      app
+      {:jruby-puppet {:gem-path gem-path
+                      :max-active-instances 4
+                      :borrow-timeout default-borrow-timeout}}
+      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+            context (tk-services/service-context jruby-service)
+            pool-context (:pool-context context)]
+        ;; set a ruby constant in the instance so that we can recognize it
+        (is (true? (set-constants-and-verify pool-context 1)))
+        (let [flush-complete (add-watch-for-flush-complete-multithreaded pool-context)]
+          (is (true? (trigger-flush ssl-request-options)))
+          (is (true? (timed-deref flush-complete))
+              (str "timed out waiting for the flush to complete, stack:\n"
+                   (get-all-stack-traces-as-str))))
+        ;; now the pool is flushed, so the constant should be cleared
+        (is (true? (verify-no-constants pool-context 1)))))))
 
 (defprotocol BonusService
   (bonus-service-fn [this]))
