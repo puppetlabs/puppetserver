@@ -22,7 +22,7 @@ RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
     rm puppet6-release-"$UBUNTU_CODENAME".deb && \
     apt-get update && \
-    apt-get install --no-install-recommends -y puppetserver="$version"-1"$UBUNTU_CODENAME" && \
+    apt-get install --no-install-recommends -y puppetserver="$version"-1"$UBUNTU_CODENAME" puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     gem install --no-rdoc --no-ri r10k && \
