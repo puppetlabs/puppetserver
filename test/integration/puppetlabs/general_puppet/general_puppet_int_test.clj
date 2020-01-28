@@ -307,7 +307,7 @@
       app
       {}
       (let [catalog (testutils/get-catalog)]
-        (is (= "{sf => Burning Finger, short => 22}"
+        (is (= "{pp_auth_doodad => true, sf => Burning Finger, short => 22}"
                (get-in (first (filter #(= (get % "title") "trusted_hash")
                                       (get catalog "resources")))
                        ["parameters" "message"])))))))
