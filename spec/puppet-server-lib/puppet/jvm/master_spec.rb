@@ -41,4 +41,19 @@ describe 'Puppet::Server::Master' do
       expect(Puppet::Util::Profiler.current.length).to eq(1)
     end
   end
+
+  context "multithreaded" do
+    before do
+     @old_settings = Puppet.settings
+    end
+
+    after do
+      Puppet.replace_settings_object(@old_settings)
+    end
+
+    it 'creates a new Puppet::Server::Settings class for settings' do
+      Puppet::Server::Master.new({}, {'multithreaded' => true})
+      expect(Puppet.settings).to be_a_kind_of(Puppet::Server::Settings)
+    end
+  end
 end

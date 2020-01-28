@@ -12,7 +12,7 @@ require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
 require 'puppet/server/ast_compiler'
 require 'puppet/server/key_recorder'
-
+require 'puppet/server/settings'
 require 'java'
 
 ##
@@ -32,8 +32,9 @@ class Puppet::Server::Master
     # There is a setting that is routed from the puppetserver.conf to
     # configure whether or not to track hiera lookups.
     @track_lookups = puppet_server_config.delete('track_lookups')
+    multithreaded = puppet_server_config.delete('multithreaded')
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
-    Puppet::Server::PuppetConfig.initialize_puppet(puppet_config)
+    Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: puppet_config)
     # Tell Puppet's network layer which routes we are willing handle - which is
     # the master routes, not the CA routes.
     master_prefix = Regexp.new("^#{Puppet::Network::HTTP::MASTER_URL_PREFIX}/")
@@ -44,6 +45,11 @@ class Puppet::Server::Master
     @env_loader = Puppet.lookup(:environments)
     @transports_loader = Puppet::Util::Autoload.new(self, "puppet/transport/schema")
     @catalog_compiler = Puppet::Server::Compiler.new
+
+    if multithreaded
+      Puppet.replace_settings_object(Puppet::Server::Settings.new(global_settings: Puppet.settings,
+                                                                  puppet_config: puppet_config))
+    end
   end
 
   def handleRequest(request)
@@ -69,6 +75,8 @@ class Puppet::Server::Master
         body_to_return,
         response[:content_type],
         response["X-Puppet-Version"])
+  ensure
+    Puppet.settings.clear_local_settings if Puppet.settings.is_a?(Puppet::Server::Settings)
   end
 
   def compileCatalog(request_data)

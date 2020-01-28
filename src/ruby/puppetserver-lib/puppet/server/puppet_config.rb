@@ -2,7 +2,14 @@ require 'puppet/server'
 require 'puppet/server/logger'
 
 class Puppet::Server::PuppetConfig
-  def self.initialize_puppet(puppet_config)
+
+  # Configure the Puppet.settings object
+  # @param puppet_config [Hash] Hash of puppet settings
+  # @param require_config [Boolean] controls loading of Puppet configuration files
+  # @param push_global_settings [Boolean] controls push to global context after settings object initialization
+  # @return [void]
+  def self.initialize_puppet_settings(puppet_config:, require_config:, push_settings_globally:)
+
     # It's critical that we initialize the run mode before allowing any of the
     # other settings to be loaded / accessed.
     Puppet.settings.preferred_run_mode = :master
@@ -22,7 +29,8 @@ class Puppet::Server::PuppetConfig
           acc << "--#{entry[0]}"
           acc << entry[1] if entry[1].kind_of?(String)
           acc
-        end
+        end,
+        require_config, push_settings_globally
     )
     Puppet[:trace] = true
 
@@ -36,15 +44,28 @@ class Puppet::Server::PuppetConfig
       Puppet[:always_retry_plugins] = false
     end
 
-    master_run_mode = Puppet::Util::RunMode[:master]
-    app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode).
+    app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode.call).
         merge({:name => "master",
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
-    Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
+    if push_settings_globally
+      Puppet.info("Puppet settings initialized; run mode: #{Puppet.run_mode.name}")
+    else
+      Puppet.info("Puppet local settings initialized; run mode: #{Puppet.run_mode.name}")
+    end
 
-    Puppet::ApplicationSupport.push_application_context(master_run_mode)
+  end
+
+  # This `initialize_puppet` method should only run during the initialization
+  # of the Puppet::Server::Master class. Beyond the Puppet.settings configuration,
+  # it configures additional state for Puppet to begin compilations.
+  def self.initialize_puppet(puppet_config:)
+    initialize_puppet_settings(puppet_config: puppet_config,
+                               require_config: true,
+                               push_settings_globally: true)
+
+    Puppet::ApplicationSupport.push_application_context(master_run_mode.call)
 
     # Puppet's https machinery expects to find an object at
     # `Puppet.lookup(:ssl_context)` which it will then use as an input
@@ -86,5 +107,9 @@ class Puppet::Server::PuppetConfig
 
   def self.oid_defns
     @@oid_defns
+  end
+
+  def self.master_run_mode
+    proc { Puppet::Util::RunMode[:master] }
   end
 end

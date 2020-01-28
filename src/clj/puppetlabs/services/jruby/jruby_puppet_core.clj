@@ -104,7 +104,8 @@
 (schema/defn get-initialize-pool-instance-fn :- IFn
   [config :- jruby-puppet-schemas/JRubyPuppetConfig
    profiler :- (schema/maybe PuppetProfiler)
-   metrics-service]
+   metrics-service
+   multithreaded :- schema/Bool]
   (fn [jruby-instance]
     (let [{:keys [http-client-ssl-protocols
                   http-client-cipher-suites
@@ -129,6 +130,7 @@
             (.put "metric_registry" (metrics/get-metrics-registry metrics-service :puppetserver))
             (.put "server_id" (metrics/get-server-id metrics-service))))
         (doto puppetserver-config
+          (.put "multithreaded" multithreaded)
           (.put "track_lookups" track-lookups)
           (.put "profiler" profiler)
           (.put "environment_registry" env-registry)
@@ -217,7 +219,10 @@
    agent-shutdown-fn :- IFn
    profiler :- (schema/maybe PuppetProfiler)
    metrics-service]
-  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn jruby-puppet-config profiler metrics-service)
+  (let [initialize-pool-instance-fn (get-initialize-pool-instance-fn
+                                     jruby-puppet-config profiler
+                                     metrics-service
+                                     (multithreaded? jruby-config))
         lifecycle-fns {:shutdown-on-error agent-shutdown-fn
                        :initialize-pool-instance initialize-pool-instance-fn
                        :cleanup cleanup-fn}

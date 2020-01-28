@@ -6,7 +6,7 @@ require 'puppet/server/logging'
 describe Puppet::Server::Logging do
   context 'when setting the log level' do
     before :each do
-      Puppet::Server::PuppetConfig.initialize_puppet({})
+      Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
     end
 
     it 'correctly filters messages' do

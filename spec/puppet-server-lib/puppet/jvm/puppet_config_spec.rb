@@ -11,7 +11,7 @@ describe 'Puppet::Server::PuppetConfig' do
 
       before :each do
         expect(Puppet::Server::Logger).to receive(:get_logger).and_return(logger)
-        Puppet::Server::PuppetConfig.initialize_puppet({})
+        Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
       end
 
       it "the puppet log level (Puppet[:log_level]) is set from logback" do
@@ -26,7 +26,7 @@ describe 'Puppet::Server::PuppetConfig' do
 
   context "When puppet has had settings initialized" do
     before :each do
-      Puppet::Server::PuppetConfig.initialize_puppet({})
+      Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: {})
     end
 
     describe '(PUP-5482) Puppet[:always_retry_plugins]' do
@@ -54,7 +54,7 @@ describe 'Puppet::Server::PuppetConfig' do
   # PUP-6060 / SERVER-1819
   subject { Puppet::Node.indirection.cache_class }
   it 'honors the Puppet[:node_cache_terminus] setting' do
-    Puppet::Server::PuppetConfig.initialize_puppet({ :node_cache_terminus => "plain" })
+    Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: { :node_cache_terminus => "plain" })
     expect(subject).to eq(:plain)
   end
 end
