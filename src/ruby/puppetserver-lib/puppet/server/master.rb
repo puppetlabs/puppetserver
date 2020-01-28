@@ -12,7 +12,7 @@ require 'puppet/server/network/http/handler'
 require 'puppet/server/compiler'
 require 'puppet/server/ast_compiler'
 require 'puppet/server/key_recorder'
-
+require 'puppet/server/settings'
 require 'java'
 
 ##
@@ -44,6 +44,9 @@ class Puppet::Server::Master
     @env_loader = Puppet.lookup(:environments)
     @transports_loader = Puppet::Util::Autoload.new(self, "puppet/transport/schema")
     @catalog_compiler = Puppet::Server::Compiler.new
+
+    # This should probably be some sort of method defined in Puppet?
+    Puppet.replace_settings_object(Puppet::Server::Settings.new(Puppet.settings, puppet_config))
   end
 
   def handleRequest(request)
@@ -69,6 +72,8 @@ class Puppet::Server::Master
         body_to_return,
         response[:content_type],
         response["X-Puppet-Version"])
+  ensure
+    Puppet.settings.clear_local_settings
   end
 
   def compileCatalog(request_data)
