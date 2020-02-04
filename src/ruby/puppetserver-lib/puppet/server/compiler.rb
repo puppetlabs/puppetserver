@@ -238,9 +238,17 @@ module Puppet
       # Initialize our server fact hash; we add these to each catalog, and they
       # won't change while we're running, so it's safe to cache the values.
       #
-      # This is lifted directly from Puppet::Indirector::Catalog::Compiler.
+      # See also set_server_facts in Puppet::Indirector::Catalog::Compiler in puppet.
       def set_server_facts
         @server_facts = {}
+
+        # Add our server Puppet Enterprise version, if available.
+        pe_version_file = '/opt/puppetlabs/server/pe_version'
+        if File.readable?(pe_version_file) and !File.zero?(pe_version_file)
+          pe_version_data = File.read(pe_version_file).chomp
+          pe_serverversion = pe_version_data.match(/(\d+\.\d+\.\d+)/)
+          @server_facts['pe_serverversion'] = pe_serverversion[1] if pe_serverversion
+        end
 
         # Add our server version to the fact list
         @server_facts['serverversion'] = Puppet.version.to_s
