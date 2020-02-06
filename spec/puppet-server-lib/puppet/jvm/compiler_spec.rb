@@ -28,6 +28,8 @@ describe Puppet::Server::Compiler do
 
     let(:node) { compiler.create_node(request_data) }
 
+    let(:pe_version_file) { '/opt/puppetlabs/server/pe_version' }
+
     before(:each) do
       Puppet::Node.indirection.terminus_class = :plain
     end
@@ -43,6 +45,19 @@ describe Puppet::Server::Compiler do
     it 'the node has server facts set' do
       expect(node.parameters).to include('serverversion' => Puppet.version.to_s)
       expect(node.server_facts).to include('serverversion' => Puppet.version.to_s)
+    end
+
+    it 'the node has no pe_serverversion fact set when FOSS' do
+      expect(node.parameters).not_to include('pe_serverversion')
+      expect(node.server_facts).not_to include('pe_serverversion')
+    end
+
+    it 'the node has pe_serverversion fact set when PE' do
+      allow(File).to receive(:readable?).with(pe_version_file).and_return(true)
+      allow(File).to receive(:zero?).with(pe_version_file).and_return(false)
+      allow(File).to receive(:read).with(pe_version_file).and_return('2019.3.0')
+      expect(node.parameters).to include('pe_serverversion' => '2019.3.0')
+      expect(node.server_facts).to include('pe_serverversion' => '2019.3.0')
     end
 
     context 'the classified node has a different environment' do
