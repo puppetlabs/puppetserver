@@ -32,6 +32,8 @@ class CatalogOneTester < CatalogTester
   def verify(result)
     expect(result).to include('name' => @catalog)
     expect(result).to include('environment' => @environment)
+    # future_features turned off in futurist function
+    expect(result['resources']).to include(a_hash_including('title' => 'The production future is false'))
     # v4 function
     expect(result['resources']).to include(a_hash_including('title' => 'do it'))
     # v3 function
@@ -51,6 +53,8 @@ class CatalogTwoTester < CatalogTester
   def verify(result)
     expect(result).to include('name' => @catalog)
     expect(result).to include('environment' => @environment)
+    # future_features turned on in futurist function
+    expect(result['resources']).to include(a_hash_including('title' => 'The funky future is true'))
     # v4 function
     expect(result['resources']).to include(a_hash_including('title' => 'Always on the one'))
     # v3 function
