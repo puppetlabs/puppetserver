@@ -2,8 +2,8 @@ require 'puppet/server/puppet_config'
 
 class Puppet::Server::Settings
 
-  # @param global_settings[Puppet::Settings] The puppet settings that all threads will spawn from
-  # @param puppet_config[Hash]
+  # @param global_settings[Puppet::Settings] read-only puppet settings shared globally
+  # @param puppet_config[Hash] the setting options to use for new thread-local settings
   def initialize(global_settings:, puppet_config:)
     @global_settings = global_settings
     @local_settings = Puppet::ThreadLocal.new
