@@ -44,7 +44,7 @@ class Puppet::Server::PuppetConfig
       Puppet[:always_retry_plugins] = false
     end
 
-    app_defaults = Puppet::Settings.app_defaults_for_run_mode(master_run_mode.call).
+    app_defaults = Puppet::Settings.app_defaults_for_run_mode(Puppet::Util::RunMode[:master]).
         merge({:name => "master",
                :facts_terminus => 'yaml'})
     Puppet.settings.initialize_app_defaults(app_defaults)
@@ -65,7 +65,7 @@ class Puppet::Server::PuppetConfig
                                require_config: true,
                                push_settings_globally: true)
 
-    Puppet::ApplicationSupport.push_application_context(master_run_mode.call)
+    Puppet::ApplicationSupport.push_application_context(Puppet::Util::RunMode[:master])
 
     # Puppet's https machinery expects to find an object at
     # `Puppet.lookup(:ssl_context)` which it will then use as an input
@@ -109,7 +109,4 @@ class Puppet::Server::PuppetConfig
     @@oid_defns
   end
 
-  def self.master_run_mode
-    proc { Puppet::Util::RunMode[:master] }
-  end
 end
