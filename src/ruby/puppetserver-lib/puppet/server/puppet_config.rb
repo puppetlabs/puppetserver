@@ -24,14 +24,19 @@ class Puppet::Server::PuppetConfig
     # to override, and whose values are the desired values for the settings.
     # Values that are not strings are omitted, allowing for keys in the
     # HashMap from puppetserver to have true values.
-    Puppet.initialize_settings(
-        puppet_config.reduce([]) do |acc, entry|
-          acc << "--#{entry[0]}"
-          acc << entry[1] if entry[1].kind_of?(String)
-          acc
-        end,
-        require_config, push_settings_globally
-    )
+    cli_flags = puppet_config.reduce([]) do |acc, entry|
+      acc << "--#{entry[0]}"
+      acc << entry[1] if entry[1].kind_of?(String)
+      acc
+    end
+
+    # We check parameter length because Method#arity returns -1 for varargs
+    if Puppet.method(:initialize_settings).parameters.length == 3
+      Puppet.initialize_settings(cli_flags, require_config, push_settings_globally)
+    else
+      Puppet.initialize_settings(cli_flags)
+    end
+
     Puppet[:trace] = true
 
     Puppet::Server::Logger.set_log_level_from_logback
