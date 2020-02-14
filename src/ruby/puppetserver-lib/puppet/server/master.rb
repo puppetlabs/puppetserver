@@ -47,8 +47,14 @@ class Puppet::Server::Master
     @catalog_compiler = Puppet::Server::Compiler.new
 
     if multithreaded
-      Puppet.replace_settings_object(Puppet::Server::Settings.new(global_settings: Puppet.settings,
-                                                                  puppet_config: puppet_config))
+      if Puppet.respond_to?(:replace_settings_object)
+        Puppet.replace_settings_object(Puppet::Server::Settings.new(global_settings: Puppet.settings,
+                                                                    puppet_config: puppet_config))
+      else
+        Puppet.warning(
+          "Attempting to run in multithreaded mode without a version of Puppet that " +
+          "supports threadsafe settings. Please upgrade to Puppet 6.13.0 or greater.")
+      end
     end
   end
 
