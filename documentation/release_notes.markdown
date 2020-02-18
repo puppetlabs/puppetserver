@@ -10,6 +10,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.9.0
+
+Released 18 February 2020
+
+### New features
+
+- There is a new JRuby pool architecture that maintains a single a JRuby instance where requests to Puppet Server will run concurrently. You can toggle this behavior by setting `jruby-puppet.multithreaded` to `true`. In this mode, the server's memory footprint is significantly lighter as it no longer needs to run multiple JRuby instances. Note that this mode should be treated as an experimental feature. [SERVER-2684](https://tickets.puppetlabs.com/browse/SERVER-2684)
+
 ## Puppet Server 6.8.0
 
 Released 14 January 2020
