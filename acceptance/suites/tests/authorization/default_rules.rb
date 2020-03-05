@@ -176,13 +176,4 @@ with_puppet_running_on(master, {}) do
     curl_unauthenticated('/puppet-ca/v1/certificate_request/foo?environment=production')
     assert_allowed(404)
   end
-
-  step 'metrics endpoint' do
-    # The metrics endpoint endpoint isn't currently expected to be controlled
-    # by tk-auth and so there is no rule written to the auth.conf for it explicitly.
-    # This test is basically just confirming that authentication is not required to
-    # in order to hit it.
-    curl_unauthenticated('/metrics/v1/mbeans')
-    assert_allowed
-  end
 end
