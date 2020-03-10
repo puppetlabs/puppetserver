@@ -16,7 +16,7 @@ Released 10 March 2020
 
 ### Resolved issue 
 
-To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost. [PE-28468](https://tickets.puppetlabs.com/browse/PE-28468). 
+To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
 
 ## Puppet Server 6.9.0
 
