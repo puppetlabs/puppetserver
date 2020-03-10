@@ -1,4 +1,4 @@
-(def ps-version "5.3.12-SNAPSHOT")
+(def ps-version "5.3.13-SNAPSHOT")
 (def jruby-1_7-version "1.7.27-1")
 (def jruby-9k-version "9.1.16.0-1")
 
@@ -37,7 +37,7 @@
 
   :min-lein-version "2.7.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "1.7.30"]
+  :parent-project {:coords [puppetlabs/clj-parent "1.7.33"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
