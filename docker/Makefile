@@ -18,7 +18,7 @@ ifeq ($(IS_RELEASE),true)
 	# For our containers built from packages, we want those to be built once then never changed
 	# so check to see if that container already exists on dockerhub
 	CONTAINER_EXISTS = $(shell DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect $(NAMESPACE)/puppetserver:$(VERSION) > /dev/null 2>&1; echo $$?)
-ifneq ($(CONTAINER_EXISTS),0)
+ifeq ($(CONTAINER_EXISTS),0)
 	SKIP_BUILD ?= true
 else ifneq ($(VERSION),$(PUBLISHED_VERSION))
 	SKIP_BUILD ?= true
