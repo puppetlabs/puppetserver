@@ -15,7 +15,7 @@ export BEAKER_LOADPATH="${BEAKER_LOADPATH:-acceptance/lib}"
 bundle install --path vendor/bundle
 
 #TODO: Someday, when our Rakefile is refactored, this section will go away
-BEAKER="bundle exec beaker --debug"
+BEAKER="bundle exec beaker init --debug"
 BEAKER="$BEAKER --type aio"
 BEAKER="$BEAKER --keyfile $BEAKER_KEYFILE"
 BEAKER="$BEAKER --helper $BEAKER_HELPER"
@@ -65,12 +65,15 @@ case $1 in
 
   # run it with the old options.
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
-  BEAKER="$BEAKER --config $BEAKER_CONFIG"
+  BEAKER="$BEAKER --hosts $BEAKER_CONFIG"
   BEAKER="$BEAKER --pre-suite $BEAKER_PRESUITE"
   BEAKER="$BEAKER --tests $BEAKER_TESTSUITE"
   BEAKER="$BEAKER --preserve-hosts onfail"
   BEAKER="$BEAKER --debug --timeout 360"
    $BEAKER
+
   ;;
 esac
 
+bundle exec beaker provision
+bundle exec beaker exec
