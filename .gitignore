@@ -18,6 +18,7 @@ dev/user.clj
 .lein-repl-history
 ext/packaging
 checkouts
+.beaker
 
 # Bundler local state files
 Gemfile.lock
