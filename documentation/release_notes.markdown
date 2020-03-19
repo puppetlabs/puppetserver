@@ -10,13 +10,19 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
-## Puppet Server 6.9.1
+## Puppet Server 6.9.2
 
-Released 10 March 2020
+Released 19 March 2020
 
 ### Resolved issue 
 
 To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
+
+## Puppet Server 6.9.1
+
+Released 10 March 2020
+
+This release contains some minor test fixes.
 
 ## Puppet Server 6.9.0
 
