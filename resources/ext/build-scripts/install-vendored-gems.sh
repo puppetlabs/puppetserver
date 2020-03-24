@@ -23,7 +23,7 @@ do
   gem_version=$(echo $LINE |awk '{print $2}')
   gem_list+=("$gem_name:$gem_version")
 done < "${DIR}/jruby-gem-list.txt"
-java -cp puppet-server-release.jar:jruby-9k.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-ri --no-rdoc "${gem_list[@]}"
+java -cp puppet-server-release.jar:jruby-9k.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-document "${gem_list[@]}"
 
 # We need to ignore dependencies to prevent puppetserver from being installed
 # with facter2 (from gem dependency resolution) and facter3 (from puppet-agent packages)
@@ -47,4 +47,4 @@ do
   gem_version=$(echo $LINE |awk '{print $2}')
   gem_list+=("$gem_name:$gem_version")
 done < "${DIR}/mri-gem-list-no-dependencies.txt"
-java -cp puppet-server-release.jar:jruby-9k.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-ri --no-rdoc --ignore-dependencies "${gem_list[@]}"
+java -cp puppet-server-release.jar:jruby-9k.jar clojure.main -m puppetlabs.puppetserver.cli.gem --config jruby.conf -- install --no-document --ignore-dependencies "${gem_list[@]}"

@@ -1,4 +1,5 @@
 (def ps-version "6.9.3-SNAPSHOT")
+(def jruby-utils-version "3.1.0")
 
 (defn deploy-info
   [url]
@@ -52,7 +53,7 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils]
+                 [puppetlabs/jruby-utils ~jruby-utils-version]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
@@ -152,8 +153,12 @@
              :ezbake {:dependencies ^:replace [;; we need to explicitly pull in our parent project's
                                                ;; clojure version here, because without it, lein
                                                ;; brings in its own version.
+                                               ;; NOTE that these deps will completely replace the deps
+                                               ;; in the list above, so any version overrides need to be
+                                               ;; specified in both places. TODO: fix this.
                                                [org.clojure/clojure]
                                                [org.bouncycastle/bcpkix-jdk15on]
+                                               [puppetlabs/jruby-utils ~jruby-utils-version]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
