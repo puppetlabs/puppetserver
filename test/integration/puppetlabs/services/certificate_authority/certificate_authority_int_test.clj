@@ -30,8 +30,8 @@
 
 (def ca-mount-points
   ["puppet-ca/v1/" ; puppet 4 style
-   "production/" ; pre-puppet 4 style
-   ])
+   "production/"]) ; pre-puppet 4 style
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -205,18 +205,18 @@
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
-                       (str "https://localhost:8140"
+                        (str "https://localhost:8140"
                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
-                       {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                        :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
-                        :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                        :as :text
-                        :body "{\"desired_state\": \"signed\"}"
-                        :headers {"content-type" "application/json"}})]
-        (is (= 409 (:status response)))
-        (is (.startsWith (:body response) "Found extensions"))
-        (is (.contains (:body response) "2.5.29.19"))
-        (fs/delete-dir req-dir))))))
+                        {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                         :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
+                         :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                         :as :text
+                         :body "{\"desired_state\": \"signed\"}"
+                         :headers {"content-type" "application/json"}})]
+          (is (= 409 (:status response)))
+          (is (.startsWith (:body response) "Found extensions"))
+          (is (.contains (:body response) "2.5.29.19"))
+          (fs/delete-dir req-dir))))))
 
 (deftest ^:integration double-encoded-request-not-allowed
   (testing (str "client not able to unintentionally get access to CA endpoint "
@@ -379,21 +379,21 @@
                   cm-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ssl/ca/signed") subject))
                   node-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ssl/ca/signed") node-subject))
                   options {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                          :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
-                          :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
-                          :as :text}
+                           :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
+                           :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
+                           :as :text}
                   cert-status-request (fn [action
                                            certtorevoke]
                                          (http-client/put
                                            (str "https://localhost:8140/"
                                                 "puppet-ca/v1/certificate_status/"
-                                           certtorevoke)
+                                                certtorevoke)
                                            (merge options
                                                   {:body (str "{\"desired_state\": \""
                                                               action
                                                               "\"}")
                                                    :headers {"content-type"
-                                                             "application/json"}}))) ]
+                                                             "application/json"}})))]
               (testing "Infra CRL should contain the revoked compile master certificate"
                  (let [revoke-response (cert-status-request "revoked" subject)]
                    ;; If the revocation was successful infra CRL should contain above revoked compile master cert
@@ -405,30 +405,29 @@
                    (is (= 204 (:status revoke-response)))
                    (is (not (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ssl/ca/infra_crl.pem") ca-cert) node-cert)))))))
 
-           (testing "Verify correct CRL is returned depending on enable-infra-crl"
-             (let [request (mock/request :get
-                                     "/v1/certificate_revocation_list/mynode")
-                   infra-crl-response (handle-get-certificate-revocation-list
-                              request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem") 
-                                       :infra-crl-path (str master-conf-dir "/ssl/ca/infra_crl.pem")
-                                       :enable-infra-crl true })
-                   infra-crl-response-body (:body infra-crl-response)
-                   full-crl-response (handle-get-certificate-revocation-list
-                              request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem") 
-                                       :infra-crl-path (str master-conf-dir "/ssl/ca/infra_crl.pem")
-                                       :enable-infra-crl false })
-                   full-crl-response-body (:body full-crl-response)]
-               (is (map? infra-crl-response))
-               (is (= 200 (:status infra-crl-response)))
-               (is (= "text/plain" (get-in infra-crl-response [:headers "Content-Type"])))
-               (is (string? infra-crl-response-body))
-               (is (= infra-crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra_crl.pem"))))
+          (testing "Verify correct CRL is returned depending on enable-infra-crl"
+            (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")
+                  infra-crl-response (handle-get-certificate-revocation-list
+                                      request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem")
+                                               :infra-crl-path (str master-conf-dir "/ssl/ca/infra_crl.pem")
+                                               :enable-infra-crl true})
+                  infra-crl-response-body (:body infra-crl-response)
+                  full-crl-response (handle-get-certificate-revocation-list
+                                     request {:cacrl (str master-conf-dir "/ssl/ca/ca_crl.pem")
+                                              :infra-crl-path (str master-conf-dir "/ssl/ca/infra_crl.pem")
+                                              :enable-infra-crl false})
+                  full-crl-response-body (:body full-crl-response)]
+              (is (map? infra-crl-response))
+              (is (= 200 (:status infra-crl-response)))
+              (is (= "text/plain" (get-in infra-crl-response [:headers "Content-Type"])))
+              (is (string? infra-crl-response-body))
+              (is (= infra-crl-response-body (slurp (str master-conf-dir "/ssl/ca/infra_crl.pem"))))
 
-               (is (map? full-crl-response))
-               (is (= 200 (:status full-crl-response)))
-               (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
-               (is (string? full-crl-response-body))
-               (is (= full-crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))))
+              (is (map? full-crl-response))
+              (is (= 200 (:status full-crl-response)))
+              (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
+              (is (string? full-crl-response-body))
+              (is (= full-crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))))
 
         (bootstrap/with-puppetserver-running-with-mock-jrubies
          "JRuby mocking is safe here because all of the requests are to the CA
@@ -465,8 +464,8 @@
               (is (= 200 (:status crl-response)))
               (is (string? crl-response-body))
               (is (= crl-response-body (slurp (str master-conf-dir "/ssl/ca/ca_crl.pem")))))))
-    ;; Add back our fixture content
-    (spit hostcrl-path hostcrl-content)
-    (spit full-crl-path full-crl-content)
-    (spit infra-crl-path infra-crl-content)
-    (spit infra-serials-path infra-serials-content))))
+        ;; Add back our fixture content
+        (spit hostcrl-path hostcrl-content)
+        (spit full-crl-path full-crl-content)
+        (spit infra-crl-path infra-crl-content)
+        (spit infra-serials-path infra-serials-content))))
