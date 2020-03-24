@@ -5,6 +5,7 @@ build_date := $(shell date -u +%FT%T)
 hadolint_available := $(shell hadolint --help > /dev/null 2>&1; echo $$?)
 hadolint_command := hadolint --ignore DL3008 --ignore DL3018 --ignore DL3028 --ignore DL4000 --ignore DL4001
 hadolint_container := hadolint/hadolint:latest
+
 export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
@@ -12,6 +13,19 @@ PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 ifeq ($(IS_RELEASE),true)
 	VERSION ?= $(shell echo $(git_describe) | sed 's/-.*//')
+	PRODUCT ?= puppetserver
+	# to work around failures that occur between when the repo is tagged and when the package
+	# is actually shipped, see if this version exists in dujour
+	PUBLISHED_VERSION ?= $(shell curl --silent 'https://updates.puppetlabs.com/?product=$(PRODUCT)&version=$(VERSION)' | jq '."version"' | tr -d '"')
+	# For our containers built from packages, we want those to be built once then never changed
+	# so check to see if that container already exists on dockerhub
+	CONTAINER_EXISTS = $(shell DOCKER_CLI_EXPERIMENTAL=enabled docker manifest inspect $(NAMESPACE)/puppetserver:$(VERSION) > /dev/null 2>&1; echo $$?)
+ifeq ($(CONTAINER_EXISTS),0)
+	SKIP_BUILD ?= true
+else ifneq ($(VERSION),$(PUBLISHED_VERSION))
+	SKIP_BUILD ?= true
+endif
+
 	LATEST_VERSION ?= latest
 	dockerfile := release.Dockerfile
 	dockerfile_context := puppetserver
@@ -25,6 +39,10 @@ endif
 prep:
 	@git fetch --unshallow ||:
 	@git fetch origin 'refs/tags/*:refs/tags/*'
+ifeq ($(SKIP_BUILD),true)
+	@echo "SKIP_BUILD is true, exiting with 1"
+	@exit 1
+endif
 
 lint:
 ifeq ($(hadolint_available),0)
