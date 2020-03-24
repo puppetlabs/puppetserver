@@ -52,7 +52,7 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils]
+                 [puppetlabs/jruby-utils "3.1.0"]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
