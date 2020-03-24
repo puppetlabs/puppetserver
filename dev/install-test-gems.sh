@@ -12,4 +12,4 @@ do
 done < ./resources/ext/build-scripts/jruby-gem-list.txt
 
 echo "Installing vendored gems to '${VENDORED_GEMS_HOME}'"
-$LEIN gem install --install-dir "${VENDORED_GEMS_HOME}" --no-ri --no-rdoc "${gem_list[@]}"
+$LEIN gem install --install-dir "${VENDORED_GEMS_HOME}" --no-document "${gem_list[@]}"
