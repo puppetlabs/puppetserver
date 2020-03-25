@@ -11,6 +11,7 @@
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
@@ -109,6 +110,7 @@
               :state             CertificateState
               :dns_alt_names     [schema/Str]
               :subject_alt_names [schema/Str]
+              :authorization_extensions {schema/Str schema/Str}
               :fingerprint       schema/Str
               :fingerprints      {schema/Keyword schema/Str}}]
     ;; The map should either have all of the CertificateDetails keys or none of
@@ -399,6 +401,25 @@
   [cert-or-csr :- (schema/either Certificate CertificateRequest)]
   (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
         (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
+
+(schema/defn authorization-extensions :- {schema/Str schema/Str}
+  "Get the authorization extensions for the certificate or CSR.
+  These are extensions that fall under the ppAuthCert OID arc.
+  Returns a map of OIDS to values."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (let [extensions (utils/get-extensions cert-or-csr)
+        auth-exts (filter (fn [{:keys [oid]}]
+                            (utils/subtree-of? ppAuthCertExt oid))
+                          extensions)]
+    (reduce (fn [exts ext]
+             ;; Get the short name from the OID if available
+             (let [short-name (get (set/map-invert puppet-short-names) (:oid ext))
+                   short-name-string (when short-name (name short-name))
+                   oid (or short-name-string (:oid ext))
+                   value (:value ext)]
+               (assoc exts oid value)))
+            {}
+            auth-exts)))
 
 (defn seq-contains? [coll target] (some #(= target %) coll))
 
@@ -1360,6 +1381,7 @@
        :state             (certificate-state cert-or-csr crl)
        :dns_alt_names     (dns-alt-names cert-or-csr)
        :subject_alt_names (subject-alt-names cert-or-csr)
+       :authorization_extensions (authorization-extensions cert-or-csr)
        :fingerprint       default-fingerprint
        :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
                            :SHA256  default-fingerprint
