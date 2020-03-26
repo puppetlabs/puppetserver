@@ -11,7 +11,7 @@ gems = {'nokogiri' => '1.6.7', 'excon' => '0.45.4'}
 
 additional_gem_source = ENV['GEM_SOURCE']
 # define command lines
-gem_install = "#{cli} gem install --minimal-deps --force"
+gem_install = "#{cli} gem install --minimal-deps --force --no-document"
 if additional_gem_source
   gem_install += " --clear-sources --source #{additional_gem_source}"
 end
