@@ -159,8 +159,7 @@ namespace :spec do
       ## Line 2 programmatically runs 'gem install bundler' via the gem command that comes with JRuby
       gem_install_bundler = <<-CMD
       GEM_HOME='#{TEST_GEMS_DIR}' GEM_PATH='#{TEST_GEMS_DIR}' \
-      #{LEIN_PATH} run -m org.jruby.Main \
-      -e 'load "META-INF/jruby.home/bin/gem"' install -i '#{TEST_GEMS_DIR}' bundler -v '< 2' --no-document --source '#{GEM_SOURCE}'
+      #{LEIN_PATH} gem install -i '#{TEST_GEMS_DIR}' bundler -v '< 2' --no-document --source '#{GEM_SOURCE}'
       CMD
       sh gem_install_bundler
 
