@@ -1,5 +1,5 @@
-(def ps-version "6.9.3-SNAPSHOT")
-(def jruby-utils-version "3.1.0")
+(def ps-version "6.10.0-SNAPSHOT")
+(def jruby-utils-version "3.1.1")
 
 (defn deploy-info
   [url]
