@@ -1,5 +1,4 @@
 (def ps-version "6.10.0-SNAPSHOT")
-(def jruby-utils-version "3.1.1")
 
 (defn deploy-info
   [url]
@@ -28,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.3.3"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.4.1"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -53,7 +52,7 @@
                  ;; send their logs to logstash, so we include it in the jar.
                  [net.logstash.logback/logstash-logback-encoder]
 
-                 [puppetlabs/jruby-utils ~jruby-utils-version]
+                 [puppetlabs/jruby-utils]
                  [puppetlabs/clj-shell-utils]
                  [puppetlabs/trapperkeeper]
                  [puppetlabs/trapperkeeper-webserver-jetty9]
@@ -158,7 +157,7 @@
                                                ;; specified in both places. TODO: fix this.
                                                [org.clojure/clojure]
                                                [org.bouncycastle/bcpkix-jdk15on]
-                                               [puppetlabs/jruby-utils ~jruby-utils-version]
+                                               [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
                       :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
