@@ -11,6 +11,7 @@
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
             [clojure.string :as str]
+            [clojure.set :as set]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [clj-time.core :as time]
@@ -109,6 +110,7 @@
               :state             CertificateState
               :dns_alt_names     [schema/Str]
               :subject_alt_names [schema/Str]
+              :authorization_extensions {schema/Str schema/Str}
               :fingerprint       schema/Str
               :fingerprints      {schema/Keyword schema/Str}}]
     ;; The map should either have all of the CertificateDetails keys or none of
@@ -400,6 +402,25 @@
   (into (mapv (partial str "IP:") (utils/get-subject-ip-alt-names cert-or-csr))
         (mapv (partial str "DNS:") (utils/get-subject-dns-alt-names cert-or-csr))))
 
+(schema/defn authorization-extensions :- {schema/Str schema/Str}
+  "Get the authorization extensions for the certificate or CSR.
+  These are extensions that fall under the ppAuthCert OID arc.
+  Returns a map of OIDS to values."
+  [cert-or-csr :- (schema/either Certificate CertificateRequest)]
+  (let [extensions (utils/get-extensions cert-or-csr)
+        auth-exts (filter (fn [{:keys [oid]}]
+                            (utils/subtree-of? ppAuthCertExt oid))
+                          extensions)]
+    (reduce (fn [exts ext]
+             ;; Get the short name from the OID if available
+             (let [short-name (get (set/map-invert puppet-short-names) (:oid ext))
+                   short-name-string (when short-name (name short-name))
+                   oid (or short-name-string (:oid ext))
+                   value (:value ext)]
+               (assoc exts oid value)))
+            {}
+            auth-exts)))
+
 (defn seq-contains? [coll target] (some #(= target %) coll))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -526,8 +547,8 @@
       (or (false? (:authorization-required certificate-status-access-control))
           (not-empty certificate-status-whitelist))
       (log/warn (format "%s %s"
-               (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-               (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+                  (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+                  (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
       (not (nil? certificate-status-whitelist))
       (log/warn (format "%s %s %s"
                         (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
@@ -1065,20 +1086,20 @@
     csr-stream :- InputStream]
    (autosign-csr? autosign subject csr-stream [] ""))
   ([autosign :- (schema/either schema/Str schema/Bool)
-   subject :- schema/Str
-   csr-stream :- InputStream
-   ruby-load-path :- [schema/Str]
-   gem-path :- schema/Str]
-  (if (ks/boolean? autosign)
-    autosign
-    (if (fs/exists? autosign)
-      (if (fs/executable? autosign)
-        (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)]
-          (-> command-result
-              :exit-code
-              zero?))
-        (whitelist-matches? autosign subject))
-      false))))
+    subject :- schema/Str
+    csr-stream :- InputStream
+    ruby-load-path :- [schema/Str]
+    gem-path :- schema/Str]
+   (if (ks/boolean? autosign)
+     autosign
+     (if (fs/exists? autosign)
+       (if (fs/executable? autosign)
+         (let [command-result (execute-autosign-command! autosign subject csr-stream ruby-load-path gem-path)]
+           (-> command-result
+               :exit-code
+               zero?))
+         (whitelist-matches? autosign subject))
+       false))))
 
 (schema/defn create-agent-extensions :- (schema/pred utils/extension-list?)
   "Given a certificate signing request, generate a list of extensions that
@@ -1246,7 +1267,7 @@
                   subject csr-path)]
         (log/warn msg)
         {:outcome :not-found
-         :message msg }))))
+         :message msg}))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
@@ -1292,22 +1313,22 @@
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
   [settings :- CaSettings]
-    (ensure-directories-exist! settings)
-    (let [required-files (-> (settings->cadir-paths settings)
-                            (select-keys (required-ca-files (:enable-infra-crl settings)))
-                            (vals))]
-     (if (every? fs/exists? required-files)
-       (do
-         (log/info (i18n/trs "CA already initialized for SSL"))
-         (when (:enable-infra-crl settings)
-           (generate-infra-serials settings))
-         (when (:manage-internal-file-permissions settings)
-           (ensure-ca-file-perms! settings)))
-       (let [{found   true
-              missing false} (group-by fs/exists? required-files)]
-         (if (= required-files missing)
-           (generate-ssl-files! settings)
-           (throw (partial-state-error "CA" found missing)))))))
+  (ensure-directories-exist! settings)
+  (let [required-files (-> (settings->cadir-paths settings)
+                          (select-keys (required-ca-files (:enable-infra-crl settings)))
+                          (vals))]
+   (if (every? fs/exists? required-files)
+     (do
+       (log/info (i18n/trs "CA already initialized for SSL"))
+       (when (:enable-infra-crl settings)
+         (generate-infra-serials settings))
+       (when (:manage-internal-file-permissions settings)
+         (ensure-ca-file-perms! settings)))
+     (let [{found   true
+            missing false} (group-by fs/exists? required-files)]
+       (if (= required-files missing)
+         (generate-ssl-files! settings)
+         (throw (partial-state-error "CA" found missing)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint
@@ -1360,6 +1381,7 @@
        :state             (certificate-state cert-or-csr crl)
        :dns_alt_names     (dns-alt-names cert-or-csr)
        :subject_alt_names (subject-alt-names cert-or-csr)
+       :authorization_extensions (authorization-extensions cert-or-csr)
        :fingerprint       default-fingerprint
        :fingerprints      {:SHA1    (fingerprint cert-or-csr "SHA-1")
                            :SHA256  default-fingerprint

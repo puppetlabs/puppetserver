@@ -79,6 +79,7 @@
                        "DNS:localhost"
                        "DNS:puppet"
                        "DNS:puppet.vpn.puppetlabs.net"]
+   :authorization_extensions {}
    :fingerprint       "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
    :fingerprints      {:SHA1    "A7:9B:45:46:8A:27:2A:85:60:E2:BF:AD:AA:4B:AB:DE:54:02:F7:76"
                        :SHA256  "24:DC:A8:C5:1E:FE:DE:EE:D9:2C:D8:91:00:9E:4C:2E:1C:3E:A2:3D:E7:D1:4C:9F:0B:04:C7:7C:49:B0:12:F8"
@@ -93,6 +94,7 @@
 (def test-agent-status
   {:dns_alt_names []
    :subject_alt_names []
+   :authorization_extensions {}
    :fingerprint   "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
    :fingerprints  {:SHA1 "EB:3D:7B:9C:85:3E:56:7A:3E:9D:1B:C4:7A:21:5A:91:F5:00:4D:9D"
                    :SHA256 "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
@@ -110,6 +112,7 @@
                        "DNS:Baz4"
                        "DNS:foo"
                        "DNS:revoked-agent"]
+   :authorization_extensions {}
    :fingerprint       "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
    :fingerprints      {:SHA1    "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
                        :SHA256  "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
