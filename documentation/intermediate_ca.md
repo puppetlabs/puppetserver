@@ -6,6 +6,10 @@ canonical: "/puppetserver/latest/intermediate_ca.html"
 
 Puppet Server supports both a simple CA architecture, with a self-signed root cert that is also used as the CA signing cert; and an intermediate CA architecture, with a self-signed root that issues an intermediate CA cert used for signing incoming certificate requests. The intermediate CA architecture is preferred, because it is more secure and makes regenerating certs easier. To generate a default intermediate CA for Puppet Server, run the `puppetserver ca setup` command before starting your server for the first time.
 
+The following diagram shows the configuration of Puppet's basic certificate infrastructure.
+
+![A diagram showing Puppet's basic certificate infrastructure](ca_basic_foss.png)
+
 If you have an external certificate authority, you can create a cert chain from it, and use the `puppetserver ca import` subcommand to install the chain on your server. Puppet agents starting with Puppet 6 handle an intermediate CA setup out of the box. No need to copy files around by hand or configure CRL checking. Like `setup`, `import` needs to be run before starting your server for the first time.
 
 **Note:** The PE installer uses the `puppetserver ca setup` command to create a root cert and an intermediate signing cert for Puppet Server. This means that in PE, the default CA is always an intermediate CA as of PE 2019.0.
@@ -16,9 +20,15 @@ If you have an external certificate authority, you can create a cert chain from 
 
 All CA configuration takes place in Puppet’s config file. See the [Puppet Configuration Reference](/puppet/latest/configuration.html) for details.
 
-## Set up Puppet as an intermediate CA with an External Root
+## Set up Puppet as an intermediate CA with an external root
 
 Puppet Server needs to present the full certificate chain to clients so the client can authenticate the server. You construct the certificate chain by concatenating the CA certificates, starting with the new intermediate CA certificate and descending to the root CA certificate.
+
+The following diagram shows the configuration of Puppet's certificate infrastructure with an external root.
+
+![A diagram showing Puppet's certificate infrastructure with an external root](ca_external_root_foss.png)
+
+To set up Puppet as an intermediate CA with an external root:
 
 1. Collect your organization’s chain of trust. This includes:
 * The root cert
