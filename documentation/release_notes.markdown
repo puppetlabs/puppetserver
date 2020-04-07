@@ -12,11 +12,21 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 ## Puppet Server 6.10.0
 
-Released 3 April 2020
+Released 7 April 2020
 
-### Known issue 
+### New features
 
-An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems.
+- The `GET /certificate_status` endpoint now returns certificate or CSR's authorization extensions. [SERVER-2718](https://tickets.puppetlabs.com/browse/SERVER-2718)
+
+### Resolved issues
+
+- Using a precision number to truncate a string in Puppet's `sprintf` function no longer interpolates extra characters.[SERVER-2660](https://tickets.puppetlabs.com/browse/SERVER-2660).
+
+### Known issues 
+
+- An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
+
+
 
 ## Puppet Server 6.9.2
 
@@ -24,7 +34,7 @@ Released 19 March 2020
 
 ### Resolved issue 
 
-To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
+- To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
 
 ## Puppet Server 6.9.1
 
