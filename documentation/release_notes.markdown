@@ -26,8 +26,6 @@ Released 9 April 2020
 
 - An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
 
-
-
 ## Puppet Server 6.9.2
 
 Released 19 March 2020
