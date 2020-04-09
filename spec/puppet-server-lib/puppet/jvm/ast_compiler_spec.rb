@@ -33,32 +33,42 @@ end
 
 describe Puppet::Server::ASTCompiler do
   context 'when compiling AST' do
+    let(:boltlib_path) { nil }
+
     it 'handles basic resources' do
-      response = Puppet::Server::ASTCompiler.compile(request("notify { 'my_notify': }"))
+      response = Puppet::Server::ASTCompiler.compile(request("notify { 'my_notify': }"), boltlib_path)
       notify = find_notify(response[:catalog])
       expect(notify).not_to be_nil
       expect(notify['title']).to eq("my_notify")
     end
 
     it 'correctly interpolates supplied variables' do
-      response = Puppet::Server::ASTCompiler.compile(request('notify { "$foo": }'))
+      response = Puppet::Server::ASTCompiler.compile(request('notify { "$foo": }'), boltlib_path)
       notify = find_notify(response[:catalog])
       expect(notify).not_to be_nil
       expect(notify['title']).to eq("bar")
     end
 
     it 'correctly interpolates supplied facts' do
-      response = Puppet::Server::ASTCompiler.compile(request('notify { "$my_fact": }'))
+      response = Puppet::Server::ASTCompiler.compile(request('notify { "$my_fact": }'), boltlib_path)
       notify = find_notify(response[:catalog])
       expect(notify).not_to be_nil
       expect(notify['title']).to eq("fact_value")
     end
 
     it 'correctly interpolates supplied trusted facts' do
-      response = Puppet::Server::ASTCompiler.compile(request('notify { "${trusted[\'my_trusted\']}": }'))
+      response = Puppet::Server::ASTCompiler.compile(request('notify { "${trusted[\'my_trusted\']}": }'), boltlib_path)
       notify = find_notify(response[:catalog])
       expect(notify).not_to be_nil
       expect(notify['title']).to eq("trusted_value")
+    end
+
+    it 'fails gracefully when boltlib is not found when request requires bolt types' do
+      bolt_request = request('notify { "${trusted[\'my_trusted\']}": }')
+      bolt_request.merge!({'options' => { 'compile_for_plan' => true } })
+      expect {
+        Puppet::Server::ASTCompiler.compile(bolt_request, boltlib_path)
+      }.to raise_error(Puppet::Error, /the path to boltlib modules must be provided/)
     end
   end
 end

@@ -36,7 +36,8 @@
                    identity
                    (fn [___] (throw (IllegalStateException. "Versioned code not supported.")))
                    (constantly nil)
-                   true)
+                   true
+                   nil)
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 
@@ -400,7 +401,7 @@
                                                                                 :gem-path "bar:foobar"
                                                                                 :ruby-load-path ["foo"]})))
                           (compile-catalog [_ _ _] {:cool "catalog"})
-                          (compile-ast [_ _ _] {:cool "catalog"}))
+                          (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
       (testing "compile endpoint"
@@ -424,7 +425,7 @@
                                                                                 :gem-path "bar:foobar"
                                                                                 :ruby-load-path ["foo"]})))
                           (compile-catalog [_ _ _] {:cool "catalog"})
-                          (compile-ast [_ _ _] {:cool "catalog"}))
+                          (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
       (testing "catalog endpoint"
