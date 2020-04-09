@@ -11,19 +11,13 @@ script:
 jobs:
   include:
     - stage: puppetserver tests
-      name: "Java 8 w/o FIPS"
+      name: "Java 8"
       jdk: openjdk8
     - jdk: openjdk11
-      name: "Java 11 w/o FIPS"
-    - jdk: openjdk8
-      env: ADDITIONAL_LEIN_ARGS="with-profile fips"
-      name: "Java 8 w/ FIPS"
+      name: "Java 11"
     - jdk: openjdk11
       env: ADDITIONAL_LEIN_ARGS="with-profile fips"
       name: "Java 11 w/ FIPS"
-    - jdk: openjdk8
-      env: MULTITHREADED=true
-      name: "Java 8 w/ multithreaded"
     - jdk: openjdk11
       env: MULTITHREADED=true
       name: "Java 11 w/ multithreaded"
