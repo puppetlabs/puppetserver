@@ -10,13 +10,31 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.10.0
+
+Released 14 April 2020
+
+### New features
+
+- The `GET /certificate_status` endpoint now returns certificate or CSR's authorization extensions. [SERVER-2718](https://tickets.puppetlabs.com/browse/SERVER-2718)
+
+- Puppet's `ppRegCertExt` arc has been extended with OID `1.3.6.1.4.1.34380.1.1.26` and the short name `pp_owner`. This OID is meant to help users in cloud environments. The short name will be displayed when using the `puppetserver ca` CLI tool.
+
+### Resolved issues
+
+- Using a precision number to truncate a string in Puppet's `sprintf` function no longer interpolates extra characters.[SERVER-2660](https://tickets.puppetlabs.com/browse/SERVER-2660).
+
+### Known issues 
+
+- An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. This is caused by an inability to use the `classpath:/puppetserver-lib` portion of the `$LOAD_PATH` as a parameter to `Gem.list_files` or `Dir.glob`, which Rdoc relies on to install documentation. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
+
 ## Puppet Server 6.9.2
 
 Released 19 March 2020
 
 ### Resolved issue 
 
-To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
+- To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
 
 ## Puppet Server 6.9.1
 
