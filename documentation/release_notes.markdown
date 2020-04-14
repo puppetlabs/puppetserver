@@ -18,7 +18,7 @@ Released 14 April 2020
 
 - The `GET /certificate_status` endpoint now returns certificate or CSR's authorization extensions. [SERVER-2718](https://tickets.puppetlabs.com/browse/SERVER-2718)
 
-- Puppet's `ppRegCertExt` arc has been extended with OID `1.3.6.1.4.1.34380.1.1.26` and the short name `pp_owner`. This OID is meant to help users in cloud environments. The short name will be displayed when using the `puppetserver ca` cli tool.
+- Puppet's `ppRegCertExt` arc has been extended with OID `1.3.6.1.4.1.34380.1.1.26` and the short name `pp_owner`. This OID is meant to help users in cloud environments. The short name will be displayed when using the `puppetserver ca` CLI tool.
 
 ### Resolved issues
 
