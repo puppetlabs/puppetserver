@@ -18,7 +18,7 @@ Released 14 April 2020
 
 - The `GET /certificate_status` endpoint now returns certificate or CSR's authorization extensions. [SERVER-2718](https://tickets.puppetlabs.com/browse/SERVER-2718)
 
-- Puppet's "ppRegCertExt" arc has been extended with OID "1.3.6.1.4.1.34380.1.1.26" and the short name "pp_owner". This OID is meant to help users in cloud environments, and the short name will be displayed when using the `puppetserver ca` cli tool.
+- Puppet's `ppRegCertExt` arc has been extended with OID `1.3.6.1.4.1.34380.1.1.26` and the short name `pp_owner`. This OID is meant to help users in cloud environments. The short name will be displayed when using the `puppetserver ca` cli tool.
 
 ### Resolved issues
 
@@ -26,9 +26,7 @@ Released 14 April 2020
 
 ### Known issues 
 
-- An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
-
-- Part of the `$LOAD_PATH` for Puppet Server is no longer valid when being passed to `File.expand_path`. This will cause Rubygems' `Gem.list_files()` and calls to `Dir.glob()` where the invalid portion of the $LOAD_PATH is passed as the `base:` parameter to fail. This causes features that depend on this functionality (like RDoc, the tool Rubygems uses to install documentation) to fail.
+- An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. This is caused by an inability to use the `classpath:/puppetserver-lib` portion of the `$LOAD_PATH` as a parameter to `Gem.list_files` or `Dir.glob`, which Rdoc relies on to install documentation. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
 
 ## Puppet Server 6.9.2
 
