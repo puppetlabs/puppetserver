@@ -33,7 +33,6 @@
             [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics-protocol]
             [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
             [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (com.codahale.metrics MetricRegistry)
            (java.io ByteArrayOutputStream)
@@ -287,7 +286,7 @@
            (is (= 200 (:status ping-before-stop))
                "environment request before stop failed")
            (let [start (System/currentTimeMillis)]
-             (logging/with-test-logging
+             (logutils/with-test-logging
               (while (and
                       (< (- (System/currentTimeMillis) start) 10000)
                       (not= 503 (:status (ping-environment))))
@@ -296,7 +295,7 @@
              (is (not= :timed-out (timed-deref stop-complete?))
                  (str "timed out waiting for the stop to complete, stack:\n"
                       (get-all-stack-traces-as-str)))
-             (logging/with-test-logging
+             (logutils/with-test-logging
               (is (= 503 (:status (ping-environment)))))))
          (finally
            ;; Stop the tk app.  In success cases, this will end up being done
@@ -335,7 +334,7 @@
            "environment request before stop failed")
        (is (= "our env request has been mocked!" (:body ping-before-stop))
            "environment response did not have our mock response body")
-       (logging/with-test-logging
+       (logutils/with-test-logging
         (let [start (System/currentTimeMillis)]
           (while (and
                   (< (- (System/currentTimeMillis) start) 10000)
@@ -610,7 +609,7 @@
                   (fn [instance]
                     (log/info "In cleanup fn")
                     (.terminate (:jruby-puppet instance)))]
-      (logging/with-test-logging
+      (logutils/with-test-logging
         (tk-testutils/with-app-with-config
          app
          jruby-testutils/jruby-service-and-dependencies
@@ -624,7 +623,7 @@
            (await pool-agent)
            (is (logged? #"In cleanup fn")))))))
   (testing "flushing the pool does not leave orphaned timeout threads"
-    (logging/with-test-logging
+    (logutils/with-test-logging
       (tk-testutils/with-app-with-config
        app
        jruby-testutils/jruby-service-and-dependencies
@@ -663,7 +662,7 @@
 
 (deftest compat-version-in-config-throws-exception-test
   (testing "compat-version setting in configuration throws exception"
-    (logging/with-test-logging
+    (logutils/with-test-logging
      (is (thrown-with-msg?
           IllegalArgumentException
           #"jruby-puppet.compat-version setting no longer supported"
