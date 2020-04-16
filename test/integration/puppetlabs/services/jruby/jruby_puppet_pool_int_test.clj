@@ -1,5 +1,7 @@
 (ns puppetlabs.services.jruby.jruby-puppet-pool-int-test
   (:require [clojure.test :refer :all]
+            [clojure.set :as set]
+            [clojure.java.io :as io]
             [schema.test :as schema-test]
             [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.trapperkeeper.app :as tk-app]
@@ -34,6 +36,8 @@
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
   (:import (org.jruby RubyInstanceConfig$CompileMode RubyInstanceConfig$ProfilingMode)
+           (java.io ByteArrayOutputStream)
+           (org.jruby.embed EvalFailedException)
            (com.codahale.metrics MetricRegistry)
            (org.jruby.runtime Constants)))
 
@@ -618,7 +622,44 @@
            (jruby-protocol/flush-jruby-pool! jruby-service)
            ; wait until the flush is complete
            (await pool-agent)
-           (is (logged? #"In cleanup fn"))))))))
+           (is (logged? #"In cleanup fn")))))))
+  (testing "flushing the pool does not leave orphaned timeout threads"
+    (logging/with-test-logging
+      (tk-testutils/with-app-with-config
+       app
+       jruby-testutils/jruby-service-and-dependencies
+       (jruby-testutils/jruby-puppet-tk-config
+        (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+        ;; getName vs getId here is helpful in debugging
+        (let [threads-before-jruby (->> (Thread/getAllStackTraces)
+                                        (map #(.getName (key %)))
+                                        (set))
+              jruby-service (tk-app/get-service app :JRubyPuppetService)
+              pool-context (jruby-protocol/get-pool-context jruby-service)
+              pool-agent (jruby-agents/get-modify-instance-agent pool-context)
+              instance (jruby-testutils/borrow-instance jruby-service :test)
+              scripting-container (:scripting-container instance)
+              ;; Timeout will print to stderr otherwise
+              _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
+              script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
+          (try
+            (.runScriptlet scripting-container script)
+            (catch EvalFailedException e))
+          (let [threads-during-jruby (->> (Thread/getAllStackTraces)
+                                          (map #(.getName (key %)))
+                                          (set))]
+            (jruby-testutils/return-instance jruby-service instance :test)
+            (jruby-protocol/flush-jruby-pool! jruby-service)
+            ; wait until the flush is complete
+            (await pool-agent)
+            (Thread/sleep 5000)
+            (let [threads-after-jruby (->> (Thread/getAllStackTraces)
+                                           (map #(.getName (key %)))
+                                           (set))
+                  threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
+                  threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
+              (is (empty? threads-orphaned-by-jruby)))))))))
+
 
 (deftest compat-version-in-config-throws-exception-test
   (testing "compat-version setting in configuration throws exception"
