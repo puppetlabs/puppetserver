@@ -3,39 +3,26 @@ version: '3.5'
 services:
   puppet:
     hostname: puppet
-    domainname: test
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver}
     expose:
       - 8141
     environment:
-      - PUPPETSERVER_HOSTNAME=puppet.test
+      - PUPPETSERVER_HOSTNAME=puppet
       - PUPPET_MASTERPORT=8141
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
-      - DNS_ALT_NAMES=puppet,puppet.test,${DNS_ALT_NAMES:-}
       - USE_PUPPETDB=false
-    dns_search: 'test'
-    networks:
-      puppetserver_test:
-        aliases:
-          - puppet.test
 
   compiler:
     hostname: compiler
-    domainname: test
     image: ${PUPPET_TEST_DOCKER_IMAGE:-puppet/puppetserver}
     environment:
       - PUPPERWARE_ANALYTICS_ENABLED=${PUPPERWARE_ANALYTICS_ENABLED:-false}
-      - PUPPETSERVER_HOSTNAME=compiler.test
+      - PUPPETSERVER_HOSTNAME=compiler
       - CA_ENABLED=false
-      - CA_HOSTNAME=puppet.test
+      - CA_HOSTNAME=puppet
       - CA_MASTERPORT=8141
       - USE_PUPPETDB=false
-    dns_search: 'test'
-    networks:
-      puppetserver_test:
-        aliases:
-          - compiler.test
 
 networks:
-  puppetserver_test:
+  default:
     name: puppetserver_test
