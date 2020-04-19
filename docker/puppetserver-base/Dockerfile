@@ -42,6 +42,7 @@ CMD ["foreground"]
 
 COPY docker-entrypoint.sh healthcheck.sh /
 COPY docker-entrypoint.d /docker-entrypoint.d
+# k8s uses livenessProbe, startupProbe, readinessProbe and ignores HEALTHCHECK
 HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
 # dynamic LABELs and ENV vars placed lower for the sake of Docker layer caching
