@@ -11,7 +11,7 @@ if test -n "${DNS_ALT_NAMES}"; then
     fi
 
     certname=$(puppet config print certname)
-    if test ! -f "/etc/puppetlabs/puppet/ssl/certs/$certname.pem" ; then
+    if test ! -f "${SSLDIR}/certs/$certname.pem" ; then
         puppet config set dns_alt_names "${DNS_ALT_NAMES}" --section "${config_section}"
     else
         actual=$(puppet config print dns_alt_names --section "${config_section}")
