@@ -37,6 +37,7 @@ ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     PUPPET_STORECONFIGS=true \
     PUPPET_REPORTS="puppetdb"
 
+# NOTE: this is just documentation on defaults
 EXPOSE 8140
 
 ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
