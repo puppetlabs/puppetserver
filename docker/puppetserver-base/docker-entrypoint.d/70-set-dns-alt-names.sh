@@ -1,18 +1,12 @@
 #!/bin/bash
 
-# Allow setting the dns_alt_names for the server's certificate. This
+# Allow setting dns_alt_names for the compilers certificate. This
 # setting will only have an effect when the container is started without
 # an existing certificate on the /etc/puppetlabs/puppet volume
-if test -n "${DNS_ALT_NAMES}"; then
-    config_section="master"
-    if [[ "${CA_ENABLED}" != "true" ]]; then
-      # we are just an ordinary compiler using puppet agent to generate cert
-      config_section="agent"
-    fi
-
+if [ -n "${DNS_ALT_NAMES}" ] && [ "${CA_ENABLED}" != "true" ]; then
     certname=$(puppet config print certname)
     if test ! -f "${SSLDIR}/certs/$certname.pem" ; then
-        puppet config set dns_alt_names "${DNS_ALT_NAMES}" --section "${config_section}"
+        puppet config set dns_alt_names "${DNS_ALT_NAMES}" --section agent
     else
         actual=$(puppet config print dns_alt_names --section "${config_section}")
         if test "${DNS_ALT_NAMES}" != "${actual}" ; then
