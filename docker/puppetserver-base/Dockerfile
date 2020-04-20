@@ -23,6 +23,7 @@ ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     UBUNTU_CODENAME="bionic" \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
     PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH \
+    LOGDIR=/var/log/puppetlabs/puppetserver \
     PUPPETSERVER_HOSTNAME="" \
     DNS_ALT_NAMES="" \
     PUPPET_MASTERPORT=8140 \
