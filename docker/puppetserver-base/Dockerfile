@@ -23,20 +23,21 @@ ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     UBUNTU_CODENAME="bionic" \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
     PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH \
+    SSLDIR=/etc/puppetlabs/puppet/ssl \
+    LOGDIR=/var/log/puppetlabs/puppetserver \
+    PUPPETSERVER_HOSTNAME="" \
+    DNS_ALT_NAMES="" \
     PUPPET_MASTERPORT=8140 \
     PUPPETSERVER_MAX_ACTIVE_INSTANCES=1 \
     PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE=0 \
     CA_ENABLED=true \
     CA_ALLOW_SUBJECT_ALT_NAMES=false \
-    CONSUL_ENABLED=false \
-    CONSUL_HOSTNAME=consul \
-    CONSUL_PORT=8500 \
-    NETWORK_INTERFACE=eth0 \
     USE_PUPPETDB=true \
     PUPPET_STORECONFIGS_BACKEND="puppetdb" \
     PUPPET_STORECONFIGS=true \
     PUPPET_REPORTS="puppetdb"
 
+# NOTE: this is just documentation on defaults
 EXPOSE 8140
 
 ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
@@ -44,6 +45,7 @@ CMD ["foreground"]
 
 COPY docker-entrypoint.sh healthcheck.sh /
 COPY docker-entrypoint.d /docker-entrypoint.d
+# k8s uses livenessProbe, startupProbe, readinessProbe and ignores HEALTHCHECK
 HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
 # dynamic LABELs and ENV vars placed lower for the sake of Docker layer caching

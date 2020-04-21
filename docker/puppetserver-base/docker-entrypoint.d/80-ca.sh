@@ -45,4 +45,26 @@ else
   # we are the CA
   hocon -f /etc/puppetlabs/puppetserver/conf.d/ca.conf \
     set certificate-authority.allow-subject-alt-names "${CA_ALLOW_SUBJECT_ALT_NAMES}"
+
+  # Generate the same SSL directory that the PE installer creates.
+  #
+  # The steps in this file correspond to the steps in the PE installer.
+  #
+  # See https://github.com/puppetlabs/puppet-enterprise-modules/blob/kearney/modules/pe_install/manifests/prepare/certificates.pp
+
+  if [ ! -d "$SSLDIR" ] || [ ! "$(ls -A "$SSLDIR")" ]; then
+      # Append user-supplied DNS Alt Names
+      if [ -n "$DNS_ALT_NAMES" ]; then
+          current="$(puppet config print --section main dns_alt_names)"
+          puppet config set --section main dns_alt_names "$current","$DNS_ALT_NAMES"
+      fi
+
+      timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
+      ca_name="Puppet Enterprise CA generated on ${HOSTNAME} at $timestamp"
+
+      # See puppet.conf file for relevant settings
+      puppetserver ca setup \
+          --ca-name "$ca_name" \
+          --config /etc/puppetlabs/puppet/puppet.conf
+  fi
 fi

@@ -61,23 +61,6 @@ The following environment variables are supported:
 
   Whether or not SSL certificates containing Subject Alternative Names should be signed by the CA. Does nothing unless `CA_ENABLED=true`. Defaults to `false`.
 
-- `CONSUL_ENABLED`
-
-  Whether or not to register the `puppet` service with an external consul server. Defaults to 'false'.
-
-- `CONSUL_HOSTNAME`
-
-  If consul is enabled, the hostname for the external consul server. Defaults to 'consul'.
-
-- `CONSUL_PORT`
-
-  If consul is enabled, the port to access consul at. Defaults to '8500'.
-
-- `NETWORK_INTERFACE`
-
-  If consul is enabled the network interface to use when finding the server's IP.
-  Defaults to 'eth0'
-
 - `PUPPET_REPORTS`
 
   Sets `reports` in puppet.conf. Defaults to 'puppetdb'.
