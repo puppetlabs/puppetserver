@@ -1,22 +1,22 @@
 ---
 layout: default
-title: "Scaling Puppet Server with compile masters"
+title: "Scaling Puppet Server with compilers"
 canonical: "/puppetserver/latest/scaling_puppet_server.html"
 ---
 
-To scale Puppet Server for many thousands of nodes, you'll need to add Puppet masters dedicated to catalog compilation. These Servers are known as **compile masters**, and are simply additional load-balanced Puppet Servers that receive catalog requests from agents and synchronize the results with each other.
+To scale Puppet Server for many thousands of nodes, you'll need to add Puppet masters dedicated to catalog compilation. These Servers are known as **compilers**, and are simply additional load-balanced Puppet Servers that receive catalog requests from agents and synchronize the results with each other.
 
 > **If you're using Puppet Enterprise (PE),** consult its documentation instead of this guide for PE-specific requirements, settings, and instructions:
 >
 > -   [Large environment installations (LEI)](https://puppet.com/docs/pe/latest/installing/hardware_requirements.html#large-environment-hardware-requirements)
-> -   [Compile masters](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html)
+> -   [Installing compilers](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html)
 > -   [Load balancing](https://puppet.com/docs/pe/latest/installing/installing_compile_masters.html#using-load-balancers-with-compile-masters)
 > -   [High availability](https://puppet.com/docs/pe/latest/high_availability/high_availability_overview.html)
 > -   [Code Manager](https://puppet.com/docs/pe/latest/code_management/code_mgr_how_it_works.html)
 
 ## Planning your load-balancing strategy
 
-The rest of your configuration depends on how you plan on distributing the agent load. Determine what your deployment will look like before you add any compile masters, but **implement load balancing as the last step** only after you have the infrastructure in place to support it.
+The rest of your configuration depends on how you plan on distributing the agent load. Determine what your deployment will look like before you add any compilers, but **implement load balancing as the last step** only after you have the infrastructure in place to support it.
 
 ### Using round-robin DNS
 
@@ -77,7 +77,7 @@ _x-puppet._tcp.site-b.example.com. IN SRV 1 25 8140 master-2.site-a.example.com.
 
 ## Centralizing the Certificate Authority
 
-Additional Puppet Servers should only share the burden of compiling and serving catalogs, which is why they're typically referred to as "compile masters". Any certificate authority functions should be delegated to a single server.
+Additional Puppet Servers should only share the burden of compiling and serving catalogs, which is why they're typically referred to as "compilers". Any certificate authority functions should be delegated to a single server.
 
 Before you centralize this functionality, ensure that the single server that you want to use as the central CA is reachable at a unique hostname other than (or in addition to) `puppet`. Next, point all agent requests to the centralized CA master, either by configuring each agent or through DNS `SRV` records.
 
@@ -89,51 +89,61 @@ On every agent, set the [`ca_server`](https://puppet.com/docs/puppet/latest/conf
 
 ### Pointing DNS `SRV` records at a central CA
 
-If you [use `SRV` records for agents](#using-dns-srv-records), you can use the `_x-puppet-ca._tcp.$srv_domain` DNS name to point clients to one specific CA server, while the `_x-puppet._tcp.$srv_domain` DNS name handles most of their requests to masters and can point to a set of compile masters.
+If you [use `SRV` records for agents](#using-dns-srv-records), you can use the `_x-puppet-ca._tcp.$srv_domain` DNS name to point clients to one specific CA server, while the `_x-puppet._tcp.$srv_domain` DNS name handles most of their requests to masters and can point to a set of compilers.
 
-## Creating and configuring compile masters
+## Creating and configuring compilers
 
-To add a compile master to your deployment, begin by [installing and configuring Puppet Server](./install_from_packages.markdown) on it.
+To add a compiler to your deployment, begin by [installing and configuring Puppet Server](./install_from_packages.markdown) on it.
 
 Before running `puppet agent` or `puppet master` on the new server:
 
--   [Disable Puppet Server's certificate authority services](./configuration.markdown#service-bootstrapping).
+1. In the compiler's 
+[`puppet.conf`](https://puppet.com/docs/puppet/latest/config_file_main.html), in the
+ `[main]` configuration block, set the 
+ [`ca_server`](https://puppet.com/docs/puppet/latest/configuration.html#caserver) setting
+ to the hostname of the server acting as the certificate authority.
 
-    -   If you're using the [individual agent configuration method of CA centralization](#directing-individual-agents-to-a-central-ca), set `ca_server` in `puppet.conf` to the hostname of your CA server in the `[main]` config block.
-    -   If an `ssldir` is configured, make sure it's configured in the `[main]` block only.
+1. In the compiler's `webserver.conf` file, add and set the following SSL settings:
+   * ssl-cert
+   * ssl-key
+   * ssl-ca-cert
+   * ssl-crl-path
 
--   If you're using the [DNS round robin method](#using-round-robin-dns) of agent load balancing, or a [load balancer](#using-a-load-balancer) in TCP proxying mode, provide compile masters with certificates using DNS Subject Alternative Names.
+1.   [Disable Puppet Server's certificate authority services](./configuration.markdown#service-bootstrapping).
 
-    -   Configure `dns_alt_names` in the `[main]` block of `puppet.conf` to cover every DNS name that might be used by an agent to access this master.
+     If you're using the [individual agent configuration method of CA centralization](#directing-individual-agents-to-a-central-ca), set `ca_server` in `puppet.conf` to the hostname of your CA server in the `[main]` config block. 
+     If an `ssldir` is configured, make sure it's configured in the `[main]` block only.
+
+1.   If you're using the [DNS round robin method](#using-round-robin-dns) of agent load balancing, or a [load balancer](#using-a-load-balancer) in TCP proxying mode, provide compilers with certificates using DNS Subject Alternative Names.
+
+     Configure `dns_alt_names` in the `[main]` block of `puppet.conf` to cover every DNS name that might be used by an agent to access this master.
 
         ```
         dns_alt_names = puppet,puppet.example.com,puppet.site-a.example.com
         ```
 
-    -   If the agent or master has been run and already created a certificate, remove it by running `sudo rm -r $(puppet master --configprint ssldir)`. If an agent has requested a certificate from the master, delete it there to re-issue a new one with the alt names: `puppetserver ca clean master-2.example.com`.
+     If the agent or master has been run and already created a certificate, remove it by running `sudo puppet ssl clean`. If an agent has requested a certificate from the master, delete it there to re-issue a new one with the alt names: `puppetserver ca clean master-2.example.com`.
 
--   Request a new certificate by running `puppet agent --test --waitforcert 10`.
+1.   Request a new certificate by running `puppet agent --test --waitforcert 10`.
 
--   Log into the CA server and run `puppetserver ca sign master-2.example.com`.
-
-    Add `--allow-dns-alt-names` to the command if `dns_alt_names` were in the certificate request.
+1.   Log into the CA server and run `puppetserver ca sign master-2.example.com`.
 
 ## Centralizing reports, inventory service, and catalog searching (storeconfigs)
 
-If you use an HTTP report processor, point all of your Puppet masters at the same shared report server in order to see all of your agents' reports.
+If you use an HTTP report processor, point your master and all of your Puppet compilers at the same shared report server in order to see all of your agents' reports.
 
-If you use the inventory service or exported resources, use PuppetDB and point all of your Puppet masters at a shared PuppetDB instance. A reasonably robust PuppetDB server can handle many Puppet masters and many thousands of agents.
+If you use the inventory service or exported resources, use PuppetDB and point your master and all of your Puppet compilers at a shared PuppetDB instance. A reasonably robust PuppetDB server can handle many Puppet compilers and many thousands of agents.
 
-See the [PuppetDB documentation](https://puppet.com/docs/puppetdb/latest/) for instructions on deploying a PuppetDB server, then configure every Puppet master to use it. Note that every Puppet master will need to have its own [whitelist entry](https://puppet.com/docs/puppetdb/latest/configure.html#certificate-whitelist) if you're using HTTPS certificates for authorization.
+See the [PuppetDB documentation](https://puppet.com/docs/puppetdb/latest/) for instructions on deploying a PuppetDB server, then configure every Puppet compiler to use it. Note that every Puppet master and compiler must have its own [whitelist entry](https://puppet.com/docs/puppetdb/latest/configure.html#certificate-whitelist) if you're using HTTPS certificates for authorization.
 
-## Keeping manifests and modules synchronized across masters
+## Keeping manifests and modules synchronized across compilers
 
-You must ensure that all Puppet masters have identical copies of your manifests, modules, and [external node classifier](https://puppet.com/docs/puppet/latest/nodes_external.html) data. Examples include:
+You must ensure that all Puppet compilers have identical copies of your manifests, modules, and [external node classifier](https://puppet.com/docs/puppet/latest/nodes_external.html) data. Examples include:
 
 -   Using a version control system such as [r10k](https://github.com/puppetlabs/r10k), Git, Mercurial, or Subversion to manage and sync your manifests, modules, and other data.
 -   Running an out-of-band `rsync` task via `cron`.
--   Configuring `puppet agent` on each master node to point to a designated model Puppet master, then use Puppet itself to distribute the modules.
+-   Configuring `puppet agent` on each compiler to point to a designated model Puppet master, then use Puppet itself to distribute the modules.
 
 ## Implementing load distribution
 
-Now that your other compile masters are ready, you can implement your [agent load-balancing strategy](#planning-your-load-balancing-strategy).
+Now that your other compilers are ready, you can implement your [agent load-balancing strategy](#planning-your-load-balancing-strategy).
