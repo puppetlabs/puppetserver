@@ -9,6 +9,7 @@ hadolint_container := hadolint/hadolint:latest
 export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
+export DOCKER_BUILDKIT = 1
 PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 ifeq ($(IS_RELEASE),true)
@@ -58,6 +59,7 @@ endif
 
 build: prep
 	docker build \
+		${DOCKER_BUILD_FLAGS} \
 		--pull \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
@@ -66,6 +68,7 @@ build: prep
 		--file puppetserver-base/Dockerfile \
 		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base
 	docker build \
+		${DOCKER_BUILD_FLAGS} \
 		--build-arg namespace=$(NAMESPACE) \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
