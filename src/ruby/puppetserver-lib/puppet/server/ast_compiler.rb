@@ -36,13 +36,15 @@ module Puppet
 
           Puppet[:rich_data] = true
           Puppet[:node_name_value] = compile_options['certname']
-
+          json_deserialized_facts = JSON.parse(compile_options['facts']['values'])
+          json_deserialized_trusted_facts = JSON.parse(compile_options['trusted_facts']['values'])
+          json_deserialzed_vars = JSON.parse(compile_options['variables']['values'])
           boltlib_path = compile_options.dig('options', 'boltlib_path')
           # Use the existing environment with the requested name
           Puppet::Pal.in_environment(compile_options['environment'],
                                      pre_modulepath: boltlib_path,
                                      envpath: Puppet[:environmentpath],
-                                     facts: compile_options['facts']['values']) do |pal|
+                                     facts: json_deserialized_facts) do |pal|
             # TODO: We need to decide on an appropriate config for inventory. Given we 
             # hide this from plan authors this current iteration has only the "required"
             # data for now. This is being discussed on https://github.com/puppetlabs/bolt/pull/1770
@@ -54,7 +56,7 @@ module Puppet
             }
             bolt_inv = Bolt::ApplyInventory.new(fake_config)
             Puppet.override(bolt_inventory: bolt_inv) do
-              Puppet.lookup(:pal_current_node).trusted_data = compile_options['trusted_facts']['values']
+              Puppet.lookup(:pal_current_node).trusted_data = json_deserialized_trusted_facts
               # This compiler has been configured with a node containing
               # the requested environment, facts, and variables, and is used
               # to compile a catalog in that context from the supplied AST.
@@ -62,9 +64,9 @@ module Puppet
                 #TODO: Should we update these in PAL? They are the defaults in Puppet
                 Puppet[:strict] = :warning
                 Puppet[:strict_variables] = false
-                vars = Puppet::Pops::Serialization::FromDataConverter.convert(compile_options['variables']['values'])
+                vars = Puppet::Pops::Serialization::FromDataConverter.convert(json_deserialzed_vars)
 
-                compile_options['facts']['values'].keys.each {|fact_name| vars.delete(fact_name)}
+                json_deserialized_facts.keys.each {|fact_name| vars.delete(fact_name)}
                 # TODO: Refactor PAL api such that we do not need to use private methods
                 pal.send(:add_variables, compiler.send(:topscope), vars)
 
