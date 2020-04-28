@@ -4,7 +4,7 @@
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
            [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
-           (java.security KeyPair)
+           (java.security PrivateKey PublicKey KeyPair)
            (org.joda.time DateTime)
            (java.security.cert CRLException)
            (sun.security.x509 X509CertImpl))
@@ -133,6 +133,9 @@
 
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
+
+(def CertificateRequest
+  (schema/pred utils/certificate-request?))
 
 (def OutcomeInfo
   "Generic map of outcome & message for API consumers"
@@ -315,6 +318,7 @@
     {:not-before (.toDate not-before)
      :not-after  (.toDate not-after)}))
 
+
 (schema/defn settings->cadir-paths
   "Trim down the CA settings to include only paths to files and directories.
   These paths are necessary during CA initialization for determining what needs
@@ -427,6 +431,51 @@
             auth-exts)))
 
 (defn seq-contains? [coll target] (some #(= target %) coll))
+
+;; Writing various SSL objects safely
+;; These versions all encode writing atomically and knowledge of file permissions
+
+(schema/defn write-public-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a public key."
+  [key :- PublicKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) public-key-perms))
+
+(schema/defn write-private-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a private key."
+  [key :- PrivateKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) private-key-perms))
+
+(schema/defn write-cert
+  "Encode a certificate to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [cert :- Certificate
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/cert->pem! cert) public-key-perms))
+
+(schema/defn write-crl
+  "Encode a CRL to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [crl :- CertificateRevocationList
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/crl->pem! crl) public-key-perms))
+
+(schema/defn write-crls
+  "Encode a list of CRLS to PEM format and write it to a file atomically and
+  with appropriate permissions."
+  [crls :- [CertificateRevocationList]
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/objs->pem! crls) public-key-perms))
+
+(schema/defn write-csr
+  "Encode a CSR to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [csr :- CertificateRequest
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/obj->pem! csr) public-key-perms))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
@@ -653,11 +702,11 @@
                                       private-key
                                       public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
-    (ks-file/atomic-write (:capub ca-settings) (partial utils/key->pem! public-key) public-key-perms)
-    (ks-file/atomic-write (:cakey ca-settings) (partial utils/key->pem! private-key) private-key-perms)
-    (ks-file/atomic-write (:cacert ca-settings) (partial utils/cert->pem! cacert) public-key-perms)
-    (ks-file/atomic-write (:cacrl ca-settings) (partial utils/crl->pem! cacrl) public-key-perms)
-    (ks-file/atomic-write (:infra-crl-path ca-settings) (partial utils/crl->pem! infra-crl) public-key-perms)))
+    (write-public-key public-key (:capub ca-settings))
+    (write-private-key private-key (:cakey ca-settings))
+    (write-cert cacert (:cacert ca-settings))
+    (write-crl cacrl (:cacrl ca-settings))
+    (write-crl infra-crl (:infra-crl-path ca-settings))))
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
@@ -807,12 +856,8 @@
   (let [keypair (utils/generate-key-pair keylength)
         public-key (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)]
-    (ks-file/atomic-write hostpubkey
-                          (partial utils/key->pem! public-key)
-                          public-key-perms)
-    (ks-file/atomic-write hostprivkey
-                          (partial utils/key->pem! private-key)
-                          private-key-perms)
+    (write-public-key public-key hostpubkey)
+    (write-private-key private-key hostprivkey)
     public-key))
 
 (schema/defn generate-master-ssl-keys! :- (schema/pred utils/public-key?)
@@ -878,10 +923,8 @@
                                                public-key
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
-    (ks-file/atomic-write (:hostcert settings) (partial utils/cert->pem! hostcert) public-key-perms)
-    (ks-file/atomic-write (path-to-cert (:signeddir ca-settings) certname)
-                          (partial utils/cert->pem! hostcert)
-                          public-key-perms)))
+    (write-cert hostcert (:hostcert settings))
+    (write-cert hostcert (path-to-cert (:signeddir ca-settings) certname))))
 
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
@@ -1169,9 +1212,7 @@
                                              (.getPublicKey cacert)))]
     (log/info (i18n/trs "Signed certificate request for {0}" subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
-    (ks-file/atomic-write (path-to-cert signeddir subject)
-                          (partial utils/cert->pem! signed-cert)
-                          public-key-perms)))
+    (write-cert signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1181,7 +1222,7 @@
    csrdir :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
-    (ks-file/atomic-write csr-path (partial utils/obj->pem! csr) public-key-perms)))
+    (write-csr csr csr-path)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false
@@ -1460,7 +1501,7 @@
                                    (.getPublicKey (utils/pem->ca-cert cacert cakey))
                                    serial)
         new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
-    (ks-file/atomic-write cacrl (partial utils/objs->pem! new-full-chain))
+    (write-crls new-full-chain cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
 
     ;; Publish infra-crl if an infra node is getting revoked.
@@ -1473,7 +1514,7 @@
                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
                                         serial)
             full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-        (ks-file/atomic-write infra-crl-path (partial utils/objs->pem! full-infra-chain))
+        (write-crls full-infra-chain infra-crl-path)
         (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
 
 (schema/defn ^:always-validate set-certificate-status!
