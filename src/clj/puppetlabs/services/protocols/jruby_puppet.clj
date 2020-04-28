@@ -89,7 +89,7 @@
     "Compile the catalog for a given certname")
 
   (compile-ast
-    [this jruby-instance compile-options]
+    [this jruby-instance compile-options boltlib-path]
     "Compiles arbitrary Puppet ASTs into mini catalogs")
 
   (get-environment-module-info

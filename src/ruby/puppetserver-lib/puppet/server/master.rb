@@ -91,8 +91,14 @@ class Puppet::Server::Master
     end
   end
 
-  def compileAST(compile_options)
-    Puppet::Server::ASTCompiler.compile(convert_java_args_to_ruby(compile_options))
+  def compileAST(compile_options, boltlib_path)
+    translated_compile_options = convert_java_args_to_ruby(compile_options)
+    translated_boltlib_path = if boltlib_path.java_kind_of?(Java::JavaUtil::List)
+                                boltlib_path.to_a
+                              else
+                                Array("")
+                              end
+    Puppet::Server::ASTCompiler.compile(translated_compile_options, translated_boltlib_path)
   end
 
   def create_recorder

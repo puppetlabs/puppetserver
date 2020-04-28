@@ -931,7 +931,8 @@
 
 (schema/defn ^:always-validate compile-fn :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
-   current-code-id-fn :- IFn]
+   current-code-id-fn :- IFn
+   boltlib-path :- [schema/Str]]
   (fn [request]
     (let [env (jruby-request/get-environment-from-request request)
           request-options (-> request
@@ -946,7 +947,8 @@
        :body (json/encode
                (jruby-protocol/compile-ast jruby-service
                                            (:jruby-instance request)
-                                           compile-options))})))
+                                           compile-options
+                                           boltlib-path))})))
 
 (schema/defn ^:always-validate
   v4-catalog-handler :- IFn
@@ -962,8 +964,9 @@
   compile-handler :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    wrap-with-jruby-queue-limit :- IFn
-   current-code-id-fn :- IFn]
-  (-> (compile-fn jruby-service current-code-id-fn)
+   current-code-id-fn :- IFn
+   boltlib-path :- [schema/Str]]
+  (-> (compile-fn jruby-service current-code-id-fn boltlib-path)
       (jruby-request/wrap-with-jruby-instance jruby-service)
       wrap-with-jruby-queue-limit
       jruby-request/wrap-with-error-handling))
@@ -1025,7 +1028,8 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    cache-enabled :- schema/Bool
-   wrap-with-jruby-queue-limit :- IFn]
+   wrap-with-jruby-queue-limit :- IFn
+   boltlib-path :- [schema/Str]]
   (let [class-handler (create-cacheable-info-handler-with-middleware
                         (fn [jruby env]
                           (some-> jruby-service
@@ -1059,7 +1063,8 @@
         compile-handler' (compile-handler
                           jruby-service
                           wrap-with-jruby-queue-limit
-                          current-code-id-fn)]
+                          current-code-id-fn
+                          boltlib-path)]
     (comidi/routes
       (comidi/POST "/compile" request
                    (compile-handler' request))
@@ -1109,7 +1114,8 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool
-   wrap-with-jruby-queue-limit :- IFn]
+   wrap-with-jruby-queue-limit :- IFn
+   boltlib-path :- [schema/Str]]
   (comidi/context "/v3"
                   (v3-ruby-routes ruby-request-handler)
                   (comidi/wrap-routes
@@ -1117,7 +1123,8 @@
                                       get-code-content-fn
                                       current-code-id-fn
                                       environment-class-cache-enabled
-                                      wrap-with-jruby-queue-limit)
+                                      wrap-with-jruby-queue-limit
+                                      boltlib-path)
                    clojure-request-wrapper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -1218,7 +1225,8 @@
    wrap-with-jruby-queue-limit :- IFn
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
-   environment-class-cache-enabled :- schema/Bool]
+   environment-class-cache-enabled :- schema/Bool
+   boltlib-path :- [schema/Str]]
   (comidi/routes
    (v3-routes ruby-request-handler
               clojure-request-wrapper
@@ -1226,7 +1234,8 @@
               get-code-content-fn
               current-code-id-fn
               environment-class-cache-enabled
-              wrap-with-jruby-queue-limit)
+              wrap-with-jruby-queue-limit
+              boltlib-path)
    (v4-routes clojure-request-wrapper
               jruby-service
               wrap-with-jruby-queue-limit
@@ -1303,7 +1312,8 @@
    handle-request :- IFn
    wrap-with-authorization-check :- IFn
    wrap-with-jruby-queue-limit :- IFn
-   environment-class-cache-enabled :- schema/Bool]
+   environment-class-cache-enabled :- schema/Bool
+   boltlib-path :- [schema/Str]]
   (let [ruby-request-handler (get-wrapped-handler handle-request
                                                   wrap-with-authorization-check
                                                   puppet-version
@@ -1319,7 +1329,8 @@
                  wrap-with-jruby-queue-limit
                  get-code-content
                  current-code-id
-                 environment-class-cache-enabled)))
+                 environment-class-cache-enabled
+                 boltlib-path)))
 
 (def MasterStatusV1
   {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]

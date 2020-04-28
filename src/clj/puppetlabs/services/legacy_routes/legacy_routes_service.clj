@@ -36,6 +36,9 @@
                                 master-ns
                                 config)
           jruby-service (tk-services/get-service this :JRubyPuppetService)
+          boltlib-path (get-in config
+                               [:jruby-puppet :boltlib-path]
+                               [""])
           master-routes (comidi/context path
                                         (master-core/root-routes handle-request
                                                                  (partial identity)
@@ -45,7 +48,8 @@
                                                                    (throw (IllegalStateException.
                                                                             (i18n/trs "Versioned code not supported."))))
                                                                  (constantly nil)
-                                                                 false))
+                                                                 false
+                                                                 boltlib-path))
           master-route-handler (comidi/routes->handler master-routes)
           master-mount (master-core/get-master-mount
                         master-ns

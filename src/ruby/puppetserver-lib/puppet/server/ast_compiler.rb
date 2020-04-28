@@ -5,7 +5,7 @@ require 'puppet/server/logging'
 module Puppet
   module Server
     class ASTCompiler
-      def self.compile(compile_options)
+      def self.compile(compile_options, boltlib_path)
         options = compile_options['options'] || {}
 
         log_level = options['log_level']
@@ -13,17 +13,17 @@ module Puppet
 
         if options['capture_logs']
           catalog, logs = Logging.capture_logs(log_level) do
-            compile_ast(code, compile_options)
+            compile_ast(code, compile_options, boltlib_path)
           end
 
           { catalog: catalog, logs: logs }
         else
-          catalog = compile_ast(code, compile_options)
+          catalog = compile_ast(code, compile_options, boltlib_path)
           { catalog: catalog }
         end
       end
 
-      def self.compile_ast(code, compile_options)
+      def self.compile_ast(code, compile_options, boltlib_path)
         # If the request requires that bolt be loaded we assume we are in a properly 
         # configured PE environment
         if compile_options.dig('options', 'bolt')
@@ -39,7 +39,7 @@ module Puppet
           json_deserialized_facts = JSON.parse(compile_options['facts']['values'])
           json_deserialized_trusted_facts = JSON.parse(compile_options['trusted_facts']['values'])
           json_deserialzed_vars = JSON.parse(compile_options['variables']['values'])
-          boltlib_path = compile_options.dig('options', 'boltlib_path')
+          Puppet.warning("boltib_path: #{boltlib_path}")
           # Use the existing environment with the requested name
           Puppet::Pal.in_environment(compile_options['environment'],
                                      pre_modulepath: boltlib_path,
@@ -73,7 +73,6 @@ module Puppet
                 # We have to parse the AST inside the compiler block, because it
                 # initializes the necessary type loaders for us.
                 ast = Puppet::Pops::Serialization::FromDataConverter.convert(code)
-                Puppet.warning("AST IS A: Puppet::Pops::Model::Program")
                 # Node definitions must be at the top level of the apply block.
                 # That means the apply body either a) consists of just a
                 # NodeDefinition, b) consists of a BlockExpression which may

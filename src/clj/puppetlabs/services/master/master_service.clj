@@ -122,6 +122,10 @@
                                            max-retry-delay))
                                        identity)
 
+         boltlib-path (get-in config
+                              [:jruby-puppet :boltlib-path]
+                              [""])
+
          ring-app (comidi/routes
                    (core/construct-root-routes puppet-version
                                                use-legacy-auth-conf
@@ -131,7 +135,8 @@
                                                handle-request
                                                (get-auth-handler)
                                                wrap-with-jruby-queue-limit
-                                               environment-class-cache-enabled))
+                                               environment-class-cache-enabled
+                                               boltlib-path))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)
