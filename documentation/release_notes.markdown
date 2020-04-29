@@ -18,7 +18,7 @@ Released 30 April 2020
 
 ### New features
 
-Backports updates to the `puppetserver ca` CLI tool. These changes will be ignored when working with a 5.x CA, but may help with some ugrade scenarios. [SERVER-2591](https://tickets.puppetlabs.com/browse/SERVER-2591), [PUP-10364](https://tickets.puppetlabs.com/browse/PUP-10364)
+- Backports updates to the `puppetserver ca` CLI tool. These changes will be ignored when working with a 5.x CA, but may help with some ugrade scenarios. [SERVER-2591](https://tickets.puppetlabs.com/browse/SERVER-2591), [PUP-10364](https://tickets.puppetlabs.com/browse/PUP-10364)
 
 ## Puppet Server 5.3.12
 
@@ -26,7 +26,7 @@ Released 10 March 2020
 
 ### Resolved issue 
 
-To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
+- To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
 
 ## Puppet Server 5.3.11
 
@@ -46,11 +46,11 @@ Released 15 October 2019
 
 ### New features
 
-Puppet Server's CA API now synchronizes write access to the CRL, so that each revoke request updates the CRL in succession, instead of concurrently. This prevents corruption of the CRL due to competing requests.
+- Puppet Server's CA API now synchronizes write access to the CRL, so that each revoke request updates the CRL in succession, instead of concurrently. This prevents corruption of the CRL due to competing requests.
 
-This does _not_ affect the `puppet cert` command. If you use `puppet cert revoke` at the same time as a revocation request via the API, the CRL is updated simultaneously and could be corrupted.
+    This does _not_ affect the `puppet cert` command. If you use `puppet cert revoke` at the same time as a revocation request via the API, the CRL is updated simultaneously and could be corrupted.
 
-To minimize this risk, use the `puppetserver ca` command line tool -- which uses the CA API -- whenever possible. [SERVER-2641](https://tickets.puppetlabs.com/browse/SERVER-2641)
+    To minimize this risk, use the `puppetserver ca` command line tool -- which uses the CA API -- whenever possible. [SERVER-2641](https://tickets.puppetlabs.com/browse/SERVER-2641)
 
 ### Bug fixes
 
@@ -66,11 +66,11 @@ Released 16 July 2019
 
 ### Bug fixes
 
-In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
+- In this release, performance in puppetserver commands is improved. Running `puppetserver gem`, `puppetserver irb`, and other Puppet Server CLI commands are 15-30 percent faster to start up. Service starting and reloading should see similar improvements, along with some marginal improvements to top-end performance, especially in environments with limited sources of entropy.
 
-Building Puppet Server outside our network is now slightly easier.
+- Building Puppet Server outside our network is now slightly easier.
 
-Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
+- Prior to this release, an unnecessary and deprecated version of Facter was shipped in the `puppetserver` package. This has been removed.
 
 ## Puppet Server 5.3.8
 
@@ -131,7 +131,7 @@ This is a platform support release of Puppet Server.
 
 ### New platforms
 
-This release adds Puppet Server packages for Ubuntu 18.04 (Bionic Beaver).
+- This release adds Puppet Server packages for Ubuntu 18.04 (Bionic Beaver).
 
 ## Puppet Server 5.3.3
 
