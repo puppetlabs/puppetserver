@@ -12,6 +12,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.13
+
+Released 30 April 2020
+
+### New features
+
+Backports updates to the `puppetserver ca` CLI tool. These changes will be ignored when working with a 5.x CA, but may help with some ugrade scenarios. [SERVER-2591](https://tickets.puppetlabs.com/browse/SERVER-2591), [PUP-10364](https://tickets.puppetlabs.com/browse/PUP-10364)
+
 ## Puppet Server 5.3.12
 
 Released 10 March 2020
