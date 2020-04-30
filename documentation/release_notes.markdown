@@ -10,6 +10,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.11.0
+
+Released 30 April 2020
+
+### New features
+
+- The `puppetserver ca` CLI tool has been updated to version 1.7.0. It will now show any authorization extensions that exist when listing certificates or CSRs. [SERVER-2591](https://tickets.puppetlabs.com/browse/SERVER-2591)
+
 ## Puppet Server 6.10.0
 
 Released 14 April 2020
@@ -22,7 +30,7 @@ Released 14 April 2020
 
 ### Resolved issues
 
-- Using a precision number to truncate a string in Puppet's `sprintf` function no longer interpolates extra characters.[SERVER-2660](https://tickets.puppetlabs.com/browse/SERVER-2660).
+- Using a precision number to truncate a string in Puppet's `sprintf` function no longer interpolates extra characters. [SERVER-2660](https://tickets.puppetlabs.com/browse/SERVER-2660).
 
 ### Known issues 
 
