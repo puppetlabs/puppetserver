@@ -4,7 +4,7 @@
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
            [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
-           (java.security KeyPair)
+           (java.security PrivateKey PublicKey KeyPair)
            (org.joda.time DateTime)
            (java.security.cert CRLException)
            (sun.security.x509 X509CertImpl))
@@ -19,6 +19,7 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
             [clojure.set :as cset :refer [union]]
@@ -132,6 +133,9 @@
 
 (def CertificateRevocationList
   (schema/pred utils/certificate-revocation-list?))
+
+(def CertificateRequest
+  (schema/pred utils/certificate-request?))
 
 (def OutcomeInfo
   "Generic map of outcome & message for API consumers"
@@ -254,6 +258,10 @@
   "Posix permissions for all private keys on disk."
   "rw-r-----")
 
+(def public-key-perms
+  "Posix permissions for all public keys on disk."
+  "rw-r--r--")
+
 (def private-key-dir-perms
   "Posix permissions for the private key directory on disk."
   "rwxr-x---")
@@ -309,6 +317,7 @@
         not-after  (time/plus now (time/seconds ca-ttl))]
     {:not-before (.toDate not-before)
      :not-after  (.toDate not-after)}))
+
 
 (schema/defn settings->cadir-paths
   "Trim down the CA settings to include only paths to files and directories.
@@ -423,6 +432,51 @@
 
 (defn seq-contains? [coll target] (some #(= target %) coll))
 
+;; Writing various SSL objects safely
+;; These versions all encode writing atomically and knowledge of file permissions
+
+(schema/defn write-public-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a public key."
+  [key :- PublicKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) public-key-perms))
+
+(schema/defn write-private-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a private key."
+  [key :- PrivateKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) private-key-perms))
+
+(schema/defn write-cert
+  "Encode a certificate to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [cert :- Certificate
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/cert->pem! cert) public-key-perms))
+
+(schema/defn write-crl
+  "Encode a CRL to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [crl :- CertificateRevocationList
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/crl->pem! crl) public-key-perms))
+
+(schema/defn write-crls
+  "Encode a list of CRLS to PEM format and write it to a file atomically and
+  with appropriate permissions."
+  [crls :- [CertificateRevocationList]
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/objs->pem! crls) public-key-perms))
+
+(schema/defn write-csr
+  "Encode a CSR to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [csr :- CertificateRequest
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/obj->pem! csr) public-key-perms))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
@@ -452,6 +506,9 @@
   [serial-number :- schema/Int]
   (format "%04X" serial-number))
 
+(def serial-file-permissions
+  "rw-r--r--")
+
 (schema/defn next-serial-number! :- schema/Int
   "Returns the next serial number to be used when signing a certificate request.
   Reads the serial number as a hex value from the given file and replaces the
@@ -460,27 +517,32 @@
   [serial-file :- schema/Str]
   (locking serial-file-lock
     (let [serial-number (get-serial-number! serial-file)]
-      (spit serial-file (format-serial-number (inc serial-number)))
+      (ks-file/atomic-write-string serial-file
+                                   (format-serial-number (inc serial-number))
+                                   serial-file-permissions)
       serial-number)))
 
 (schema/defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
   [path :- schema/Str]
-  (fs/create (fs/file path))
-  (spit path (format-serial-number 1)))
+  (ks-file/atomic-write-string path
+                               (format-serial-number 1)
+                               serial-file-permissions))
 
 (schema/defn write-local-cacrl! :- (schema/maybe Exception)
-  "Spits the contents of 'cacrl' string to the 'localcacrl' file location if
-  the 'cacrl' string contains valid CRL pem data. On success, return nil.
-  On failure, return the Exception captured from the failed attempt to parse
-  the CRL pem data."
-  [localcacrl :- schema/Str
-   cacrl :- schema/Str]
-  (let [crl-reader (StringReader. cacrl)]
+  "Spits the contents of 'cacrl-contents' string to the 'localcacrl' file
+  location if the 'cacrl' string contains valid CRL pem data. On success, return
+  nil. On failure, return the Exception captured from the failed attempt to
+  parse the CRL pem data."
+  [localcacrl-path :- schema/Str
+   cacrl-contents :- schema/Str]
+  (let [crl-reader (StringReader. cacrl-contents)]
     (try
       (when (zero? (count (utils/pem->crls crl-reader)))
         (throw (CRLException. "No CRL data found")))
-      (spit localcacrl cacrl)
+      (ks-file/atomic-write-string localcacrl-path
+                                   cacrl-contents
+                                   public-key-perms)
       nil
       (catch IOException e
         e)
@@ -570,29 +632,37 @@
     [infra-file :- schema/Str]
     (line-seq (io/reader infra-file)))
 
+(defn- write-infra-serials-to-writer
+  [writer infra-nodes-path infra-node-serials-path signeddir]
+  (try
+    (let [infra-nodes (read-infra-nodes infra-nodes-path)]
+      (doseq [infra-node infra-nodes]
+        (try
+          (let [infra-serial (-> (path-to-cert signeddir infra-node)
+                                 (utils/pem->cert)
+                                 (utils/get-serial))]
+            (.write writer (str infra-serial))
+            (.newLine writer))
+          (catch java.io.FileNotFoundException ex
+            (log/warn
+             (i18n/trs
+              (str
+               "Failed to find/load certificate for Puppet Infrastructure Node:"
+               infra-node)))))))
+    (catch java.io.FileNotFoundException ex
+      (log/warn (i18n/trs (str infra-nodes-path " does not exist"))))))
+
 (schema/defn generate-infra-serials
   "Given a list of infra nodes it will create a file containing
    serial numbers of their certificates (listed on separate lines).
    It is expected have at least one entry (MoM)"
-   [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
-   (with-open [wtr (io/writer infra-node-serials-path)]
-     (try
-       (let [infra-nodes (read-infra-nodes infra-nodes-path)]
-         (doseq [infra-node infra-nodes]
-           (try
-             (let [infra-serial (-> (path-to-cert signeddir infra-node)
-                                 (utils/pem->cert)
-                                 (utils/get-serial))]
-               (.write wtr (str infra-serial))
-               (.newLine wtr))
-            (catch java.io.FileNotFoundException ex
-               (log/warn
-                 (i18n/trs
-                   (str
-                     "Failed to find/load certificate for Puppet Infrastructure Node:"
-                     infra-node)))))))
-       (catch java.io.FileNotFoundException ex
-         (log/warn (i18n/trs (str infra-nodes-path " does not exist")))))))
+  [{:keys [infra-nodes-path infra-node-serials-path signeddir]} :- CaSettings]
+  (ks-file/atomic-write infra-node-serials-path
+                        #(write-infra-serials-to-writer %
+                                                        infra-nodes-path
+                                                        infra-node-serials-path
+                                                        signeddir)
+                        public-key-perms))
 
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
@@ -617,27 +687,26 @@
                                           serial
                                           public-key)
         cacert      (utils/sign-certificate
-                      x500-name
-                      private-key
-                      serial
-                      (:not-before validity)
-                      (:not-after validity)
-                      x500-name
-                      public-key
-                      ca-exts)
+                     x500-name
+                     private-key
+                     serial
+                     (:not-before validity)
+                     (:not-after validity)
+                     x500-name
+                     public-key
+                     ca-exts)
         cacrl       (utils/generate-crl (.getIssuerX500Principal cacert)
                                         private-key
                                         public-key)
-        infra-crl-path   (utils/generate-crl (.getIssuerX500Principal cacert)
-                                        private-key
-                                        public-key)]
+        infra-crl (utils/generate-crl (.getIssuerX500Principal cacert)
+                                      private-key
+                                      public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
-    (utils/key->pem! public-key (:capub ca-settings))
-    (utils/key->pem! private-key
-      (create-file-with-perms (:cakey ca-settings) private-key-perms))
-    (utils/cert->pem! cacert (:cacert ca-settings))
-    (utils/crl->pem! cacrl (:cacrl ca-settings))
-    (utils/crl->pem! infra-crl-path (:infra-crl-path ca-settings))))
+    (write-public-key public-key (:capub ca-settings))
+    (write-private-key private-key (:cakey ca-settings))
+    (write-cert cacert (:cacert ca-settings))
+    (write-crl cacrl (:cacrl ca-settings))
+    (write-crl infra-crl (:infra-crl-path ca-settings))))
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
@@ -787,10 +856,8 @@
   (let [keypair (utils/generate-key-pair keylength)
         public-key (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)]
-    (utils/key->pem! public-key hostpubkey)
-    (utils/key->pem! private-key
-                     (create-file-with-perms hostprivkey
-                                             private-key-perms))
+    (write-public-key public-key hostpubkey)
+    (write-private-key private-key hostprivkey)
     public-key))
 
 (schema/defn generate-master-ssl-keys! :- (schema/pred utils/public-key?)
@@ -856,9 +923,8 @@
                                                public-key
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
-    (utils/cert->pem! hostcert (:hostcert settings))
-    (utils/cert->pem! hostcert
-                      (path-to-cert (:signeddir ca-settings) certname))))
+    (write-cert hostcert (:hostcert settings))
+    (write-cert hostcert (path-to-cert (:signeddir ca-settings) certname))))
 
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
@@ -1146,7 +1212,7 @@
                                              (.getPublicKey cacert)))]
     (log/info (i18n/trs "Signed certificate request for {0}" subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
-    (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
+    (write-cert signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1156,7 +1222,7 @@
    csrdir :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
-    (utils/obj->pem! csr csr-path)))
+    (write-csr csr csr-path)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false
@@ -1225,6 +1291,7 @@
                         (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " subject-alt-names))
                         (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file.")
                         (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -1429,24 +1496,26 @@
                     (utils/pem->cert)
                     (utils/get-serial))
         [our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
-         new-full-crl (utils/revoke our-full-crl
-                              (utils/pem->private-key cakey)
-                              (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                              serial)]
-    (utils/objs->pem! (cons new-full-crl (vec rest-of-full-chain)) cacrl)
+        new-full-crl (utils/revoke our-full-crl
+                                   (utils/pem->private-key cakey)
+                                   (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                   serial)
+        new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
+    (write-crls new-full-chain cacrl)
     (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl
                (fs/exists? infra-node-serials-path)
                (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
-       (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-             new-infra-crl (utils/revoke our-infra-crl
-                                         (utils/pem->private-key cakey)
-                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                         serial)]
-         (utils/objs->pem! (cons new-infra-crl (vec rest-of-infra-chain)) infra-crl-path)
-         (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
+      (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+            new-infra-crl (utils/revoke our-infra-crl
+                                        (utils/pem->private-key cakey)
+                                        (.getPublicKey (utils/pem->ca-cert cacert cakey))
+                                        serial)
+            full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+        (write-crls full-infra-chain infra-crl-path)
+        (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
