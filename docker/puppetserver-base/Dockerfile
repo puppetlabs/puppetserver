@@ -57,6 +57,7 @@ LABEL org.label-schema.version="$version" \
       org.label-schema.vcs-ref="$vcs_ref" \
       org.label-schema.build-date="$build_date"
 
+# hadolint ignore=DL3008
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
     apt-get install -y --no-install-recommends wget ca-certificates git && \

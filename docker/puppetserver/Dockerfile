@@ -6,6 +6,7 @@ ARG namespace="puppet"
 FROM ubuntu:18.04 as build
 
 ENV LANG="en_US.UTF-8"
+# hadolint ignore=DL3008,DL3028
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
             language-pack-en \
@@ -52,6 +53,7 @@ LABEL org.label-schema.version="$version" \
       org.label-schema.vcs-ref="$vcs_ref" \
       org.label-schema.build-date="$build_date"
 
+# hadolint ignore=DL3008,DL3028
 RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
     rm puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
