@@ -27,14 +27,12 @@ else ifneq ($(VERSION),$(PUBLISHED_VERSION))
 	SKIP_BUILD ?= true
 endif
 
+	TARGET ?= release
 	LATEST_VERSION ?= latest
-	dockerfile := release.Dockerfile
-	dockerfile_context := puppetserver
 else
+	TARGET ?= edge
 	VERSION ?= edge
 	IS_LATEST := false
-	dockerfile := Dockerfile
-	dockerfile_context := $(PWD)/..
 endif
 
 prep:
@@ -47,13 +45,10 @@ endif
 
 lint:
 ifeq ($(hadolint_available),0)
-	@$(hadolint_command) puppetserver-base/Dockerfile
-	@$(hadolint_command) puppetserver/$(dockerfile)
+	@$(hadolint_command) puppetserver/Dockerfile
 else
 	@docker pull $(hadolint_container)
-	@docker run --rm -v $(PWD)/puppetserver/$(dockerfile):/Dockerfile \
-		-i $(hadolint_container) $(hadolint_command) Dockerfile
-	@docker run --rm -v $(PWD)/puppetserver-base/Dockerfile:/Dockerfile \
+	@docker run --rm -v $(PWD)/puppetserver/Dockerfile:/Dockerfile \
 		-i $(hadolint_container) $(hadolint_command) Dockerfile
 endif
 
@@ -65,16 +60,9 @@ build: prep
 		--build-arg build_date=$(build_date) \
 		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
-		--file puppetserver-base/Dockerfile \
-		--tag $(NAMESPACE)/puppetserver-base:$(VERSION) puppetserver-base
-	docker build \
-		${DOCKER_BUILD_FLAGS} \
-		--build-arg namespace=$(NAMESPACE) \
-		--build-arg vcs_ref=$(vcs_ref) \
-		--build-arg build_date=$(build_date) \
-		--build-arg version=$(VERSION) \
-		--file puppetserver/$(dockerfile) \
-		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(dockerfile_context)
+		--file puppetserver/Dockerfile \
+		--target $(TARGET) \
+		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(PWD)/..
 ifeq ($(IS_LATEST),true)
 	@docker tag $(NAMESPACE)/puppetserver:$(VERSION) \
 		$(NAMESPACE)/puppetserver:$(LATEST_VERSION)
