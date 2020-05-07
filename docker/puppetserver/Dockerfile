@@ -66,6 +66,9 @@ RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
 FROM ubuntu:18.04 as build
 
 ENV LANG="en_US.UTF-8"
+
+ADD https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein
+
 # hadolint ignore=DL3008,DL3028
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -79,7 +82,6 @@ RUN apt-get update && \
             make && \
     git config --global user.name "Puppet Release Team" && \
     git config --global user.email "release@puppet.com" && \
-    curl --output /usr/local/bin/lein https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein && \
     chmod 0755 /usr/local/bin/lein && \
     /usr/local/bin/lein && \
     gem install --no-doc bundler fpm
