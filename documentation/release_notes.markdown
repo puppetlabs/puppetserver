@@ -10,6 +10,15 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.11.1
+
+Released 7 May 2020
+
+### Known Issue
+
+- JRuby has been rolled back to 9.2.8.0 while we investigate an intermittent problem where some requests that go through JRuby error repeatedly with StackOverflow exceptions. [SERVER-2793](https://tickets.puppetlabs.com/browse/SERVER-2793).
+- Downgrading JRuby reintroduced the `sprintf` bug marked fixed in 6.10.0, since its fix was tied to the JRuby update.
+
 ## Puppet Server 6.11.0
 
 Released 30 April 2020
