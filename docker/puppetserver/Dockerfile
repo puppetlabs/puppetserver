@@ -1,4 +1,5 @@
 ARG build_type=edge
+ARG UBUNTU_CODENAME=bionic
 
 ######################################################
 # base
@@ -18,7 +19,6 @@ ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     PUPPERWARE_ANALYTICS_APP_NAME="puppetserver" \
     PUPPERWARE_ANALYTICS_ENABLED=false \
     DUMB_INIT_VERSION="1.2.1" \
-    UBUNTU_CODENAME="bionic" \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
     PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH \
     SSLDIR=/etc/puppetlabs/puppet/ssl \
@@ -93,12 +93,16 @@ FROM base as edge
 
 COPY --from=build /puppetserver.deb /puppetserver.deb
 
+ARG UBUNTU_CODENAME
+ARG install_path=/puppetserver.deb
+
+ADD http://nightlies.puppet.com/apt/puppet6-nightly-release-$UBUNTU_CODENAME.deb /puppet.deb
+
 # hadolint ignore=DL3008,DL3028
-RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
-    dpkg -i puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
-    rm puppet6-nightly-release-"$UBUNTU_CODENAME".deb && \
+RUN dpkg -i /puppet.deb && \
+    rm /puppet.deb && \
     apt-get update && \
-    apt-get install --no-install-recommends -y /puppetserver.deb puppetdb-termini && \
+    apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     gem install --no-rdoc --no-ri r10k && \
@@ -114,13 +118,16 @@ RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENA
 FROM base as release
 
 ARG version
+ARG UBUNTU_CODENAME
+ARG install_path=puppetserver="$version"-1"$UBUNTU_CODENAME"
+
+ADD https://apt.puppetlabs.com/puppet6-release-$UBUNTU_CODENAME.deb /puppet.deb
 
 # hadolint ignore=DL3008,DL3028
-RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
-    dpkg -i puppet6-release-"$UBUNTU_CODENAME".deb && \
-    rm puppet6-release-"$UBUNTU_CODENAME".deb && \
+RUN dpkg -i /puppet.deb && \
+    rm /puppet.deb && \
     apt-get update && \
-    apt-get install --no-install-recommends -y puppetserver="$version"-1"$UBUNTU_CODENAME" puppetdb-termini && \
+    apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     gem install --no-rdoc --no-ri r10k && \
