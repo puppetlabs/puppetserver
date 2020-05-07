@@ -55,7 +55,7 @@ HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/h
 # hadolint ignore=DL3008,DL3009
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
-    apt-get install -y --no-install-recommends wget ca-certificates git && \
+    apt-get install -y --no-install-recommends ca-certificates git && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb
 
