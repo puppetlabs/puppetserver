@@ -7,6 +7,8 @@ ARG UBUNTU_CODENAME=bionic
 
 FROM ubuntu:18.04 as base
 
+ARG DUMB_INIT_VERSION="1.2.1"
+
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
       org.label-schema.url="https://github.com/puppetlabs/puppetserver" \
@@ -18,7 +20,6 @@ LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
 ENV PUPPERWARE_ANALYTICS_TRACKING_ID="UA-132486246-4" \
     PUPPERWARE_ANALYTICS_APP_NAME="puppetserver" \
     PUPPERWARE_ANALYTICS_ENABLED=false \
-    DUMB_INIT_VERSION="1.2.1" \
     PUPPETSERVER_JAVA_ARGS="-Xms512m -Xmx512m" \
     PATH=/opt/puppetlabs/server/bin:/opt/puppetlabs/puppet/bin:/opt/puppetlabs/bin:$PATH \
     SSLDIR=/etc/puppetlabs/puppet/ssl \
@@ -41,6 +42,8 @@ EXPOSE 8140
 ENTRYPOINT ["dumb-init", "/docker-entrypoint.sh"]
 CMD ["foreground"]
 
+ADD https://github.com/Yelp/dumb-init/releases/download/v"$DUMB_INIT_VERSION"/dumb-init_"$DUMB_INIT_VERSION"_amd64.deb /
+
 COPY docker/puppetserver/docker-entrypoint.sh \
      docker/puppetserver/healthcheck.sh \
       /
@@ -53,7 +56,6 @@ HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/h
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
     apt-get install -y --no-install-recommends wget ca-certificates git && \
-    wget https://github.com/Yelp/dumb-init/releases/download/v"$DUMB_INIT_VERSION"/dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb
 
