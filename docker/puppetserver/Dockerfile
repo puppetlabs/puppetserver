@@ -7,6 +7,7 @@ ARG UBUNTU_CODENAME=bionic
 
 FROM ubuntu:18.04 as base
 
+ARG PACKAGES=ca-certificates\ git
 ARG DUMB_INIT_VERSION="1.2.2"
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
@@ -55,7 +56,7 @@ HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/h
 # hadolint ignore=DL3008,DL3009
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
-    apt-get install -y --no-install-recommends ca-certificates git && \
+    apt-get install -y --no-install-recommends $PACKAGES && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb
 
