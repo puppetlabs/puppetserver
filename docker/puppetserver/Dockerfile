@@ -95,21 +95,7 @@ COPY --from=build /puppetserver.deb /puppetserver.deb
 
 ARG UBUNTU_CODENAME
 ARG install_path=/puppetserver.deb
-
-ADD http://nightlies.puppet.com/apt/puppet6-nightly-release-$UBUNTU_CODENAME.deb /puppet.deb
-
-# hadolint ignore=DL3008,DL3028
-RUN dpkg -i /puppet.deb && \
-    rm /puppet.deb && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k && \
-    puppet config set autosign true --section master && \
-    cp -pr /etc/puppetlabs/puppet /var/tmp && \
-    cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
-    rm -rf /var/tmp/puppet/ssl
+ARG deb_uri=http://nightlies.puppet.com/apt/puppet6-nightly-release-$UBUNTU_CODENAME.deb
 
 ######################################################
 # release (build from packages)
@@ -120,21 +106,7 @@ FROM base as release
 ARG version
 ARG UBUNTU_CODENAME
 ARG install_path=puppetserver="$version"-1"$UBUNTU_CODENAME"
-
-ADD https://apt.puppetlabs.com/puppet6-release-$UBUNTU_CODENAME.deb /puppet.deb
-
-# hadolint ignore=DL3008,DL3028
-RUN dpkg -i /puppet.deb && \
-    rm /puppet.deb && \
-    apt-get update && \
-    apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k && \
-    puppet config set autosign true --section master && \
-    cp -pr /etc/puppetlabs/puppet /var/tmp && \
-    cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
-    rm -rf /var/tmp/puppet/ssl
+ARG deb_uri=https://apt.puppetlabs.com/puppet6-release-$UBUNTU_CODENAME.deb
 
 ######################################################
 # final image
@@ -148,9 +120,27 @@ ARG build_type
 ARG vcs_ref
 ARG version
 ARG build_date
+ARG install_path
+ARG deb_uri
 # used by entrypoint to submit metrics to Google Analytics;
 # published images should use "production" for this build_arg
 ARG pupperware_analytics_stream="dev"
+
+# hadolint ignore=DL3020
+ADD $deb_uri /puppet.deb
+
+# hadolint ignore=DL3008,DL3028
+RUN dpkg -i /puppet.deb && \
+    rm /puppet.deb && \
+    apt-get update && \
+    apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    gem install --no-rdoc --no-ri r10k && \
+    puppet config set autosign true --section master && \
+    cp -pr /etc/puppetlabs/puppet /var/tmp && \
+    cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
+    rm -rf /var/tmp/puppet/ssl
 
 COPY docker/puppetserver/puppetserver /etc/default/puppetserver
 COPY docker/puppetserver/logback.xml \
