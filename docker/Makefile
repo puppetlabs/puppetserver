@@ -27,10 +27,10 @@ else ifneq ($(VERSION),$(PUBLISHED_VERSION))
 	SKIP_BUILD ?= true
 endif
 
-	TARGET ?= release
+	BUILD_TYPE ?= release
 	LATEST_VERSION ?= latest
 else
-	TARGET ?= edge
+	BUILD_TYPE ?= edge
 	VERSION ?= edge
 	IS_LATEST := false
 endif
@@ -56,12 +56,12 @@ build: prep
 	docker build \
 		${DOCKER_BUILD_FLAGS} \
 		--pull \
+		--build-arg build_type=$(BUILD_TYPE) \
 		--build-arg vcs_ref=$(vcs_ref) \
 		--build-arg build_date=$(build_date) \
 		--build-arg version=$(VERSION) \
 		--build-arg pupperware_analytics_stream=$(PUPPERWARE_ANALYTICS_STREAM) \
 		--file puppetserver/Dockerfile \
-		--target $(TARGET) \
 		--tag $(NAMESPACE)/puppetserver:$(VERSION) $(PWD)/..
 ifeq ($(IS_LATEST),true)
 	@docker tag $(NAMESPACE)/puppetserver:$(VERSION) \

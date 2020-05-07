@@ -18,7 +18,7 @@ variables:
   CONTAINER_BUILD_PATH: .
   LINT_IGNORES:
   DOCKER_BUILDKIT: 1
-  BUILD_OPTIONS: --memory 4g --build-arg namespace=puppet --target edge
+  BUILD_OPTIONS: --memory 4g --build-arg namespace=puppet --build-arg build_type=edge
 
 workspace:
   clean: resources

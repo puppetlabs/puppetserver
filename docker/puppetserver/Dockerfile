@@ -1,15 +1,10 @@
+ARG build_type=edge
+
 ######################################################
 # base
 ######################################################
 
 FROM ubuntu:18.04 as base
-
-ARG vcs_ref
-ARG build_date
-ARG version="6.0.0"
-# Used by entrypoint to submit metrics to Google Analytics.
-# Published images should use "production" for this build_arg.
-ARG pupperware_analytics_stream="dev"
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
@@ -53,24 +48,14 @@ COPY docker/puppetserver/docker-entrypoint.d /docker-entrypoint.d
 # k8s uses livenessProbe, startupProbe, readinessProbe and ignores HEALTHCHECK
 HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
-# dynamic LABELs and ENV vars placed lower for the sake of Docker layer caching
-# these are specific to analytics
-ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream" \
-    PUPPET_SERVER_VERSION="$version"
-
-LABEL org.label-schema.version="$version" \
-      org.label-schema.vcs-ref="$vcs_ref" \
-      org.label-schema.build-date="$build_date"
-
-# hadolint ignore=DL3008
+# no need to pin versions or clear apt cache as its still being used
+# hadolint ignore=DL3008,DL3009
 RUN chmod +x /docker-entrypoint.sh /healthcheck.sh && \
     apt-get update && \
     apt-get install -y --no-install-recommends wget ca-certificates git && \
     wget https://github.com/Yelp/dumb-init/releases/download/v"$DUMB_INIT_VERSION"/dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
     dpkg -i dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
-    rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm dumb-init_"$DUMB_INIT_VERSION"_amd64.deb
 
 ######################################################
 # edge (build from source)
@@ -106,8 +91,6 @@ RUN lein clean && \
 
 FROM base as edge
 
-LABEL org.label-schema.name="Puppet Server (from source)"
-
 COPY --from=build /puppetserver.deb /puppetserver.deb
 
 # hadolint ignore=DL3008,DL3028
@@ -124,15 +107,6 @@ RUN wget http://nightlies.puppet.com/apt/puppet6-nightly-release-"$UBUNTU_CODENA
     cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
 
-COPY docker/puppetserver/puppetserver /etc/default/puppetserver
-COPY docker/puppetserver/logback.xml \
-     docker/puppetserver/request-logging.xml \
-     /etc/puppetlabs/puppetserver/
-COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
-COPY docker/puppetserver/puppetdb.conf /var/tmp/puppet/
-
-COPY docker/puppetserver/Dockerfile /
-
 ######################################################
 # release (build from packages)
 ######################################################
@@ -140,8 +114,6 @@ COPY docker/puppetserver/Dockerfile /
 FROM base as release
 
 ARG version
-
-LABEL org.label-schema.name="Puppet Server"
 
 # hadolint ignore=DL3008,DL3028
 RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
@@ -157,11 +129,37 @@ RUN wget https://apt.puppetlabs.com/puppet6-release-"$UBUNTU_CODENAME".deb && \
     cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
     rm -rf /var/tmp/puppet/ssl
 
+######################################################
+# final image
+######################################################
+
+# dynamically selects "edge" or "release" alias based on ARG
+# hadolint ignore=DL3006
+FROM ${build_type} as final
+
+ARG build_type
+ARG vcs_ref
+ARG version
+ARG build_date
+# used by entrypoint to submit metrics to Google Analytics;
+# published images should use "production" for this build_arg
+ARG pupperware_analytics_stream="dev"
+
 COPY docker/puppetserver/puppetserver /etc/default/puppetserver
 COPY docker/puppetserver/logback.xml \
      docker/puppetserver/request-logging.xml \
      /etc/puppetlabs/puppetserver/
 COPY docker/puppetserver/puppetserver.conf /etc/puppetlabs/puppetserver/conf.d/
 COPY docker/puppetserver/puppetdb.conf /var/tmp/puppet/
+
+# dynamic LABELs and ENV vars placed lower for the sake of Docker layer caching
+# these are specific to analytics
+ENV PUPPERWARE_ANALYTICS_STREAM="$pupperware_analytics_stream" \
+    PUPPET_SERVER_VERSION="$version"
+
+LABEL org.label-schema.name="Puppet Server ($build_type)" \
+      org.label-schema.version="$version" \
+      org.label-schema.vcs-ref="$vcs_ref" \
+      org.label-schema.build-date="$build_date"
 
 COPY docker/puppetserver/Dockerfile /
