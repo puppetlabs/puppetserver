@@ -7,7 +7,7 @@ ARG UBUNTU_CODENAME=bionic
 
 FROM ubuntu:18.04 as base
 
-ARG DUMB_INIT_VERSION="1.2.1"
+ARG DUMB_INIT_VERSION="1.2.2"
 
 LABEL org.label-schema.maintainer="Puppet Release Team <release@puppet.com>" \
       org.label-schema.vendor="Puppet" \
