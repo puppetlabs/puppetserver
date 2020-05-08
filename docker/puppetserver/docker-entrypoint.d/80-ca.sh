@@ -9,9 +9,6 @@ hocon() {
   /opt/puppetlabs/puppet/lib/ruby/vendor_gems/bin/hocon "$@"
 }
 
-CA_HOSTNAME="${CA_HOSTNAME:-puppet}"
-CA_MASTERPORT="${CA_MASTERPORT:-8140}"
-
 if [[ "$CA_ENABLED" != "true" ]]; then
   # we are just an ordinary compiler
   echo "turning off CA"

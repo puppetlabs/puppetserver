@@ -1,8 +1,9 @@
 language: clojure
 lein: 2.9.1
-dist: xenial
+dist: bionic
 
 services:
+  # bionic uses 18.06 but need 19.03+ for buildkit so upgrade later in relevant cell
   - docker
 
 script:
@@ -23,10 +24,15 @@ jobs:
       name: "Java 11 w/ multithreaded"
     - stage: puppetserver container tests
       language: ruby
-      rvm: 2.5.5
+      rvm: 2.6.5
       env:
-        - DOCKER_COMPOSE_VERSION=1.25.0-rc2
+        - DOCKER_COMPOSE_VERSION=1.25.5
+        # necessary to prevent overwhelming TravisCI build output limits
+        - DOCKER_BUILD_FLAGS="--progress plain"
       before_install: |
+        sudo apt update -y && sudo apt install -y docker.io
+        sudo systemctl unmask docker.service
+        sudo systemctl start docker
         OS_ARCH=$(uname --machine)
         sudo rm /usr/local/bin/docker-compose
         curl --location https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname --kernel-name`-${OS_ARCH} > docker-compose
@@ -37,10 +43,3 @@ jobs:
 
 notifications:
   email: false
-  hipchat:
-    rooms:
-      secure: ASvt1XwEYbgkKuYZjZHytwg/6Y53Tg4T7QhohiDB4Xb1dmJueqPFpV2ko/VjHCa18JjLiUq0nWcDpRjsqaGGvJ5FSxTyyWDKtZsg1sUf4F+7aZ5vq0Dzg8Uzvdu7m9X1Uszvs9zf6wJ+Jobq4xck1xpPYxFT/+ei2Q2STrJ9xwQ=
-    template:
-      - "%{repository}#%{build_number} (%{branch} - %{commit} : %{author}): %{message}"
-      - "Change view: %{compare_url}"
-      - "Build details: %{build_url}"
