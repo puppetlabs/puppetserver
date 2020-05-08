@@ -53,7 +53,10 @@ else
       # Append user-supplied DNS Alt Names
       if [ -n "$DNS_ALT_NAMES" ]; then
           current="$(puppet config print --section main dns_alt_names)"
-          puppet config set --section main dns_alt_names "$current","$DNS_ALT_NAMES"
+          # shell parameter expansion to remove trailing comma if there is one
+          updated="${DNS_ALT_NAMES%,}"
+          if [ -n "$current" ]; then updated="$current","$updated"; fi
+          puppet config set --section main dns_alt_names "$updated"
       fi
 
       timestamp="$(date '+%Y-%m-%d %H:%M:%S %z')"
