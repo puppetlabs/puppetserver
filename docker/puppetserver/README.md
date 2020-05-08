@@ -25,79 +25,25 @@ Compose.
 
 The following environment variables are supported:
 
-- `PUPPERWARE_ANALYTICS_ENABLED`
-
-  Set to 'true' to enable Google Analytics. Defaults to 'false'.
-
-- `PUPPETSERVER_JAVA_ARGS`
-
-  Additional Java args to pass to the puppetserver process. Defaults to '-Xms512m -Xmx512m'.
-
-- `PUPPET_MASTERPORT`
-
-  The port the puppetserver should listen on. Defaults to '8140'.
-
-- `PUPPETSERVER_MAX_ACTIVE_INSTANCES`
-
-  The maximum number of JRuby instances allowed. Defaults to '1'.
-
-- `PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE`
-
-  The maximume number HTTP requests a JRuby instance will handle in its lifetime. Defaults to '0' (Disable instance flushing).
-
-- `CA_ENABLED`
-
-  Whether or not this puppetserver instance has a running CA (Certificate Authority). Defaults to 'true'.
-
-- `CA_HOSTNAME`
-
-  The hostname for the puppetserver running the CA. Does nothing unless `CA_ENABLED=false`. Defaults to 'puppet'.
-
-- `CA_MASTERPORT`
-
-  The port the CA is listening on. Does nothing unless `CA_ENABLED=false`. Defaults to `PUPPET_MASTERPORT` when set, otherwise '8140'.
-
-- `CA_ALLOW_SUBJECT_ALT_NAMES`
-
-  Whether or not SSL certificates containing Subject Alternative Names should be signed by the CA. Does nothing unless `CA_ENABLED=true`. Defaults to `false`.
-
-- `PUPPET_REPORTS`
-
-  Sets `reports` in puppet.conf. Defaults to 'puppetdb'.
-
-- `PUPPET_STORECONFIGS`
-
-  Sets `storeconfigs` in puppet.conf. Defaults to true.
-
-- `PUPPET_STORECONFIGS_BACKEND`
-
-  Sets `storeconfigs_backend` in puppet.conf. Defaults to 'puppetdb'.
-
-- `PUPPETDB_SERVER_URLS`
-
-  The `server_urls` to set in /etc/puppetlabs/puppet/puppetdb.conf. Defaults to 'https://puppetdb:8081'.
-
-- `PUPPETSERVER_HOSTNAME`
-
-  The hostname for the puppetserver instance. This sets the `certname` and `server` in puppet.conf. Defaults to unset.
-
-- `AUTOSIGN`
-
-  Whether or not to enable autosigning on the puppetserver instance. Valid values match [true|false|/path/to/autosign.conf]. Defaults to 'true'.
-
-- `DNS_ALT_NAMES`
-
-  Alternate names to set in the puppetserver config and to be used in puppetserver certificate generation. Defaults to unset.
-
-  **Note** this is only effective on the initial run of the container when certificates are generated.
-
-- `USE_PUPPETDB`
-
-  Whether or not to connect the puppetserver to puppetdb. Defaults to 'true'.
-
-  Setting this to 'false' with the `puppet/puppetserver` image replaces the `puppet/puppetserver-standalone` image.
-  This sets `$PUPPET_REPORTS` to 'log' and `$PUPPET_STORECONFIGS` to 'false' if you haven't customized the storeconfigs
-  backend or the report processor.
+| Name                                       | Usage / Default                                                                                                                                                                         |
+|--------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **PUPPETSERVER_HOSTNAME**                  | The DNS name used on the masters SSL certificate - sets the `certname` and `server` in puppet.conf<br><br>Defaults to unset.                                                            |
+| **DNS_ALT_NAMES**                          | Additional DNS names to add to the masters SSL certificate<br>**Note** only effective on initial run when certificates are generated                                                    |
+| **PUPPET_MASTERPORT**                      | The port of the puppet master<br><br>`8140`                                                                                                                                             |
+| **AUTOSIGN**                               | Whether or not to enable autosigning on the puppetserver instance. Valid values match [true|false|/path/to/autosign.conf]. Defaults to 'true'.                                          |
+| **CA_ENABLED**                             | Whether or not this puppetserver instance has a running CA (Certificate Authority)<br><br>`true`                                                                                        |
+| **CA_HOSTNAME**                            | The DNS hostname for the puppetserver running the CA. Does nothing unless `CA_ENABLED=false`<br><br>`puppet`                                                                            |
+| **CA_MASTERPORT**                          | The listening port of the CA. Does nothing unless `CA_ENABLED=false`<br><br>`8140`                                                                                                      |
+| **CA_ALLOW_SUBJECT_ALT_NAMES**             | Whether or not SSL certificates containing Subject Alternative Names should be signed by the CA. Does nothing unless `CA_ENABLED=true`.<br><br>`false`                                  |
+| **PUPPET_REPORTS**                         | Sets `reports` in puppet.conf<br><br>`puppetdb`                                                                                                                                         |
+| **PUPPET_STORECONFIGS**                    | Sets `storeconfigs` in puppet.conf<br><br>`true`                                                                                                                                        |
+| **PUPPET_STORECONFIGS_BACKEND**            | Sets `storeconfigs_backend` in puppet.conf<br><br>`puppetdb`                                                                                                                            |
+| **PUPPETDB_SERVER_URLS**                   | The `server_urls` to set in `/etc/puppetlabs/puppet/puppetdb.conf`<br><br>`https://puppetdb:8081`                                                                                       |
+| **USE_PUPPETDB**                           | Whether to connect to puppetdb<br>Sets `PUPPET_REPORTS` to `log` and `PUPPET_STORECONFIGS` to `false` if those unset<br><br>`true`                                                      |
+| **PUPPETSERVER_MAX_ACTIVE_INSTANCES**      | The maximum number of JRuby instances allowed<br><br>`1`                                                                                                                                |
+| **PUPPETSERVER_MAX_REQUESTS_PER_INSTANCE** | The maximum HTTP requests a JRuby instance will handle in its lifetime (disable instance flushing)<br><br>`0`                                                                           | 
+| **PUPPETSERVER_JAVA_ARGS**                 | Arguments passed directly to the JVM when starting the service<br><br>`-Xms512m -Xmx512m`                                                                                               |
+| **PUPPERWARE_ANALYTICS_ENABLED**           | Set to `true` to enable Google Analytics<br><br>`false`                                                                                                                                 |
 
 ## Initialization Scripts
 
