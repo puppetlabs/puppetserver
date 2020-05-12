@@ -3,7 +3,6 @@ lein: 2.9.1
 dist: bionic
 
 services:
-  # bionic uses 18.06 but need 19.03+ for buildkit so upgrade later in relevant cell
   - docker
 
 script:
@@ -23,23 +22,23 @@ jobs:
       env: MULTITHREADED=true
       name: "Java 11 w/ multithreaded"
     - stage: puppetserver container tests
+      dist: focal
       language: ruby
       rvm: 2.6.5
       env:
         - DOCKER_COMPOSE_VERSION=1.25.5
         # necessary to prevent overwhelming TravisCI build output limits
         - DOCKER_BUILD_FLAGS="--progress plain"
-      before_install: |
-        sudo apt update -y && sudo apt install -y docker.io
-        sudo systemctl unmask docker.service
-        sudo systemctl start docker
-        OS_ARCH=$(uname --machine)
-        sudo rm /usr/local/bin/docker-compose
-        curl --location https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname --kernel-name`-${OS_ARCH} > docker-compose
-        chmod +x docker-compose
-        sudo mv docker-compose /usr/local/bin
-      before_script: cd $TRAVIS_BUILD_DIR/docker && make lint build
-      script: cd $TRAVIS_BUILD_DIR/docker && make test
+      before_install:
+        - sudo rm /usr/local/bin/docker-compose
+        - curl --location https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-`uname --kernel-name`-`uname --machine` > docker-compose
+        - chmod +x docker-compose
+        - sudo mv docker-compose /usr/local/bin
+      script:
+        - cd $TRAVIS_BUILD_DIR/docker
+        - make lint
+        - make build
+        - make test
 
 notifications:
   email: false
