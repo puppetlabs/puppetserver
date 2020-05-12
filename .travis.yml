@@ -35,6 +35,7 @@ jobs:
         - chmod +x docker-compose
         - sudo mv docker-compose /usr/local/bin
       script:
+        - set -e
         - cd $TRAVIS_BUILD_DIR/docker
         - make lint
         - make build
