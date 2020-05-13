@@ -85,8 +85,8 @@
    (.compileCatalog jruby-instance request-options))
 
   (compile-ast
-    [this jruby-instance compile-options]
-    (.compileAST jruby-instance compile-options))
+    [this jruby-instance compile-options boltlib-path]
+    (.compileAST jruby-instance compile-options boltlib-path))
 
   (get-environment-module-info
     [this jruby-instance env-name]

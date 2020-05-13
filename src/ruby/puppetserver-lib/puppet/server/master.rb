@@ -91,8 +91,10 @@ class Puppet::Server::Master
     end
   end
 
-  def compileAST(compile_options)
-    Puppet::Server::ASTCompiler.compile(convert_java_args_to_ruby(compile_options))
+  def compileAST(compile_options, boltlib_path)
+    ruby_compile_options = convert_java_args_to_ruby(compile_options)
+    ruby_boltlib_path = boltlib_path.java_kind_of?(Java::JavaUtil::List) ? boltlib_path.to_a : nil
+    Puppet::Server::ASTCompiler.compile(ruby_compile_options, ruby_boltlib_path)
   end
 
   def create_recorder
@@ -190,13 +192,30 @@ class Puppet::Server::Master
 
   private
 
+  # This helper is used to resolve all java objects in an array.
+  # Each array element is examined, if it is expected to be a map
+  # we call back to the convert_java_args_to_ruby method, if it
+  # is expected to be an array, we recurse otherwise we do not modify
+  # the value. 
+  def resolve_java_objects_from_list(list)
+    list.map do |value|
+      if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
+        convert_java_args_to_ruby(value)
+      elsif value.java_kind_of?(Java::JavaUtil::List)
+        resolve_java_objects_from_list(value)
+      else
+        value
+      end
+    end
+  end
+
   def convert_java_args_to_ruby(hash)
     Hash[hash.collect do |key, value|
-      # Stolen and modified from params_to_ruby in handler.rb
+      # Stolen and heavily modified from params_to_ruby in handler.rb
       if value.java_kind_of?(Java::ClojureLang::IPersistentMap)
         [key, convert_java_args_to_ruby(value)]
       elsif value.java_kind_of?(Java::JavaUtil::List)
-        [key, value.to_a]
+        [key, resolve_java_objects_from_list(value)]
       else
         [key, value]
       end
