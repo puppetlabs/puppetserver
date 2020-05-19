@@ -1,12 +1,12 @@
 [submodule "ruby/puppet"]
 	path = ruby/puppet
 	url = https://github.com/puppetlabs/puppet.git
-[submodule "ruby/facter"]
-	path = ruby/facter
-	url = https://github.com/puppetlabs/facter.git
 [submodule "ruby/hiera"]
 	path = ruby/hiera
 	url = https://github.com/puppetlabs/hiera.git
 [submodule "ruby/resource_api"]
 	path = ruby/resource_api
 	url = https://github.com/puppetlabs/puppet-resource_api.git
+[submodule "ruby/facter"]
+	path = ruby/facter
+	url = https://github.com/puppetlabs/facter-ng.git
