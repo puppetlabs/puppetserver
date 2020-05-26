@@ -34,7 +34,7 @@ To set up Puppet as an intermediate CA with an external root:
 * The root cert
 * Any intermediate CA certs
 * The CA cert that you will use to issue a CA signing cert for your Puppet infrastructure
-2. Collect the corresponding CRLs for each of these certificates.
+2. Collect the corresponding CRLs for each of these certificates. Take note of the expiration dates of each CRL. When one expires, you need to refresh it for Puppet to continue working. For more information, see [SERVER-2535](https://tickets.puppetlabs.com/browse/SERVER-2535). 
 3. Create a private key for the Puppet CA — take note of this, you will need to import it into your Puppet infrastructure later.
 4. Create a CSR for the Puppet CA and sign it using the appropriate cert from your organization’s trust chain, which you gathered in Step 1. This is the new Puppet CA cert, which will be used to sign all other Puppet infrastructure certs.
 5. Create a CRL for the new Puppet CA cert.
