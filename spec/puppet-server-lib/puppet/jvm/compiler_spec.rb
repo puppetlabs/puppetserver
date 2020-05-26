@@ -2,12 +2,6 @@ require 'spec_helper'
 
 require 'puppet/server/compiler'
 
-def set_facts(fact_hash)
-  fact_hash.each do |key, value|
-    allow(Facter).to receive(:value).with(key).and_return(value)
-  end
-end
-
 describe Puppet::Server::Compiler do
   let(:compiler) { Puppet::Server::Compiler.new }
 
@@ -61,11 +55,6 @@ describe Puppet::Server::Compiler do
     end
 
     it 'the node has pe_serverversion fact set when PE' do
-      set_facts({
-        'fqdn'       => "my.server.com",
-        'ipaddress'  => "my.ip.address",
-        'ipaddress6' => nil
-        })
       allow(File).to receive(:readable?).with(pe_version_file).and_return(true)
       allow(File).to receive(:zero?).with(pe_version_file).and_return(false)
       allow(File).to receive(:read).with(pe_version_file).and_return('2019.3.0')
