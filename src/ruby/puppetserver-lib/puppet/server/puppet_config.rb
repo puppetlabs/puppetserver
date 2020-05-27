@@ -31,7 +31,7 @@ class Puppet::Server::PuppetConfig
     end
 
     # We check parameter length because Method#arity returns -1 for varargs
-    if Puppet.method(:initialize_settings).parameters.length == 3
+    if Puppet.method(:initialize_settings).parameters.length >= 3
       Puppet.initialize_settings(cli_flags, require_config, push_settings_globally)
     else
       Puppet.initialize_settings(cli_flags)
