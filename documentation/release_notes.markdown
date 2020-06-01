@@ -10,11 +10,23 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.12.0
+
+Released 3 June 2020
+
+### Resolved issue
+
+- JRuby has been bumped to 9.2.11.1 again, with `invokedynamic.yield` set to false to resolve a stackoverflow error. [SERVER-2793](https://tickets.puppetlabs.com/browse/SERVER-2793)
+
+### Deprecation
+
+- The v1 metrics endpoint, which was recently disabled by default, is now deprecated. Instead, use the v2 endpoint. [TK-486](https://tickets.puppetlabs.com/browse/TK-486)
+
 ## Puppet Server 6.11.1
 
 Released 7 May 2020
 
-### Known Issue
+### Known issue
 
 - JRuby has been rolled back to 9.2.8.0 while we investigate an intermittent problem where some requests that go through JRuby error repeatedly with StackOverflow exceptions. [SERVER-2793](https://tickets.puppetlabs.com/browse/SERVER-2793).
 - Downgrading JRuby reintroduced the `sprintf` bug marked fixed in 6.10.0, since its fix was tied to the JRuby update.
@@ -41,7 +53,7 @@ Released 14 April 2020
 
 - Using a precision number to truncate a string in Puppet's `sprintf` function no longer interpolates extra characters. [SERVER-2660](https://tickets.puppetlabs.com/browse/SERVER-2660).
 
-### Known issues 
+### Known issues
 
 - An update to JRuby 9.2.11.1 has caused a change in defaults when installing gems with the `puppetserver gem` command. It attempts to install documentation by default, but this will not work. To avoid this bug, pass `--no-document` when installing gems. This is caused by an inability to use the `classpath:/puppetserver-lib` portion of the `$LOAD_PATH` as a parameter to `Gem.list_files` or `Dir.glob`, which Rdoc relies on to install documentation. [SERVER-2758](https://tickets.puppetlabs.com/browse/SERVER-2758).
 
@@ -49,7 +61,7 @@ Released 14 April 2020
 
 Released 19 March 2020
 
-### Resolved issue 
+### Resolved issue
 
 - To prevent information exposure as a result of [CVE-2020-7943](https://puppet.com/security/cve/CVE-2020-7943), the `/metrics/v1` endpoints are disabled by default, and access to the `/metrics/v2` endpoints are restricted to localhost.
 
