@@ -14,13 +14,13 @@ The `webserver.conf` file looks something like this:
 # Configure the webserver.
 webserver: {
     # Log webserver access to a specific file.
-    access-log-config = /etc/puppetlabs/puppetserver/request-logging.xml
+    access-log-config: /etc/puppetlabs/puppetserver/request-logging.xml
     # Require a valid certificate from the client.
-    client-auth = want
+    client-auth: need
     # Listen for HTTPS traffic on all available hostnames.
-    ssl-host = 0.0.0.0
+    ssl-host: 0.0.0.0
     # Listen for HTTPS traffic on port 8140.
-    ssl-port = 8140
+    ssl-port: 8140
 }
 ~~~
 
