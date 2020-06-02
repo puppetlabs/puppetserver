@@ -14,7 +14,7 @@ The `webserver.conf` file looks something like this:
 # Configure the webserver.
 webserver: {
     # Log webserver access to a specific file.
-    access-log-config = /etc/puppetlabs/puppetserver/request-logging.xml
+    access-log-config: /etc/puppetlabs/puppetserver/request-logging.xml
     # Require a valid certificate from the client.
     client-auth: need
     # Listen for HTTPS traffic on all available hostnames.
