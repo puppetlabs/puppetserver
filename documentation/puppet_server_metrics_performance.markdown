@@ -27,11 +27,13 @@ Puppet Server produces [several types of metrics][metrics] that administrators c
 
 ## Measuring capacity with JRubies
 
-Puppet Server uses JRuby, which rations server resources in the form of JRubies that Puppet Server consumes as it handles requests. A simple way of explaining Puppet Server performance is to remember that your Server infrastructure must be capable of providing enough JRubies for the amount of activity it handles. Anything that reduces or limits your server's capacity to produce JRubies also degrades Puppet Server's performance.
+Puppet Server uses JRuby, which rations server resources in the form of JRuby instances in default mode, and JRuby threads in multithreaded mode. Puppet Server consumes these as it handles requests. A simple way of explaining Puppet Server performance is to remember that your Server infrastructure must be capable of providing enough JRuby instances or threads for the amount of activity it handles. Anything that reduces or limits your server's capacity to produce JRubies also degrades Puppet Server's performance.
 
 Several factors can limit your Server infrastructure's ability to produce JRubies.
 
 ### Request-handling capacity
+
+> **Note:** These guidelines for interpreting metrics generally apply to both default and multithreaded mode. However, threads are much cheaper in terms of system resources, since they do not need to duplicate all of Puppet's runtime, so you may have more vertical scalability in multithreaded mode.
 
 If your free JRubies are 0 or fewer, your server is receiving more requests for JRubies than it can provide, which means it must queue those requests to wait until resources are available. Puppet Server performs best when the average number of free JRubies is above 1, which means Server always has enough resources to immediately handle incoming requests.
 
@@ -48,11 +50,13 @@ If you are setting up Puppet Server for the first time, start by increasing your
 
 #### Adding more JRubies
 
-If you must add JRubies, remember that Puppet Server is tuned by default to use one fewer than your total number of CPUs, with a maximum of 4 CPUs, for the number of available JRubies. You can change this by setting `max-active-instances` in [`puppetserver.conf`][puppetserver.conf], under the `jruby-puppet` section.
+If you must add JRubies, remember that Puppet Server is tuned by default to use one fewer than your total number of CPUs, with a maximum of 4 CPUs, for the number of available JRubies. You can change this by setting `max-active-instances` in [`puppetserver.conf`][puppetserver.conf], under the `jruby-puppet` section. In the default mode, increasing `max-active-instances` creates whole independent JRuby instances. In multithreaded mode, this setting instead controls the number of threads that the single JRuby instance will process concurrently, and therefore has different scaling characteristics. Tuning recommendations for this mode are under development, see [SERVER-2823](https://tickets.puppetlabs.com/browse/SERVER-2823).
+
+When running in the default mode, follow these guidelines for allocating resources when adding JRubies:
 
 Each JRuby also has a certain amount of persistent memory overhead required in order to load both Puppet's Ruby code and your Puppet code. In other words, your available memory sets a baseline limit to how much Puppet code you can process. Catalog compilation can consume more memory, and Puppet Server's total memory usage depends on the number of agents being served, how frequently those agents check in, how many resources are being managed on each agent, and the complexity of the manifests and modules in use.
 
-As a general rule, adding a JRuby requires a bare minimum of 40MB of memory under JRuby 1.7, and at least 60MB under JRuby9k if the `jruby-puppet.compile-mode` setting in [`puppetserver.conf`][puppetserver.conf] is set to `off` --- the amount of memory for the scripting container, plus Puppet's Ruby code, plus additional memory overhead --- just to compile an nearly empty catalog.
+With the `jruby-puppet.compile-mode` setting in [`puppetserver.conf`][puppetserver.conf] set to `off`, a JRuby requires at least 40MB of memory under JRuby 1.7 and at least 60MB under JRuby9k in order to compile a nearly empty catalog. This includes memory for the scripting container, Puppet's Ruby code and additional memory overhead.
 
 For real-world catalogs, you can generally add an absolute minimum of 15MB for each additional JRuby. We calculated this amount by comparing a minimal catalog compilation to compiling a catalog for a [basic role](https://github.com/puppetlabs/puppetlabs-puppetserver_perf_control/blob/production/site/role/manifests/by_size/small.pp) that installs Tomcat and Postgres servers.
 
@@ -88,3 +92,5 @@ Puppet Server also requests facts as HTTP requests while handling a node request
 A memory leak or increased memory pressure can stress Puppet Server's available resources. In this case, the Java VM will spend more time doing garbage collection, causing the GC time and GC CPU % metrics to increase. These metrics are available from the [status API][] endpoint, as well as in the mbeans metrics available from both the [`/metrics/v1/mbeans`](./metrics-api/v1/metrics_api.markdown) or [`/metrics/v2/`](./metrics-api/v2/metrics_api.markdown) endpoints.
 
 If you can't identify the source of a memory leak, setting the `max-requests-per-instance` setting in [`puppetserver.conf`][puppetserver.conf] to something other than the default of 0 limits the number of requests a JRuby handles during its lifetime and enables automatic JRuby flushing. Enabling this setting reduces overall performance, but if you enable it and no longer see signs of persistent memory leaks, check your module code for inefficiencies or memory-consuming bugs.
+
+> **Note:** In multithreaded mode, the `max-requests-per-instance` setting refers to the sum total number of requests processed by the single JRuby instance, across all of its threads. While that single JRuby is being flushed, all requests will suspend until the instance becomes available again.
