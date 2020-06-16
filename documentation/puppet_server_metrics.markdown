@@ -284,7 +284,7 @@ Puppet Server exports each metric in the lists below by default.
 
 #### JRuby metrics
 
-Puppet Server uses an embedded JRuby interpreter to execute Ruby code. JRuby spawns parallel instances known as JRubies to execute Ruby code, which occurs during most Puppet Server activities.
+Puppet Server uses an embedded JRuby interpreter to execute Ruby code. By default, JRuby spawns parallel instances known as JRubies to execute Ruby code, which occurs during most Puppet Server activities. When `multithreaded` is set to `true`, a single JRuby is used instead to process a limited number of threads in parallel. For each of these metrics, they refer to JRuby instances by default and JRuby threads in multithreaded mode.
 
 See [Tuning JRuby on Puppet Server](./tuning_guide.markdown) for details on adjusting JRuby settings.
 
@@ -355,6 +355,8 @@ The following metrics measure the time that Puppet Server spends sending or rece
 -   `puppetlabs.<MASTER-HOSTNAME>.http.total-requests`: The total requests handled by Puppet Server.
 
 #### JRuby metrics
+
+> **Note:** In multithreaded mode, each of these refers to JRuby threads instead of separate JRuby instances.
 
 -   `puppetlabs.<MASTER-HOSTNAME>.jruby.borrow-count`: The number of successfully borrowed JRubies.
 
