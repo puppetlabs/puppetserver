@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 Puppet Server is a required application that runs on the Java Virtual Machine (JVM) on the master.
 
-## Supported operating systems
+### Supported operating systems
 
 Puppet provides official packages that install Puppet Server 6 and all of its prerequisites on x86_64 architectures for the following platforms:
 
@@ -17,7 +17,7 @@ Puppet provides official packages that install Puppet Server 6 and all of its pr
 
 > Note: Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/). 
 
-### Java support
+#### Java support
 
 Puppet Server versions are tested against the following versions of Java:
 
