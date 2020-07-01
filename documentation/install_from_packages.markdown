@@ -12,10 +12,8 @@ Puppet provides official packages that install Puppet Server 6 and all of its pr
 
 * Red Hat Enterprise Linux 6, 7
 * Debian 8 (Jessie), 9 (Stretch), 10 (Buster)
-* Ubuntu 18.04 (Bionic), 16.04 (Xenial) — Enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu), which contains packages necessary for Puppet Server.
+* Ubuntu 18.04 (Bionic), 16.04 (Xenial)
 * SLES 12 SP1
-
-> Note: Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/). 
 
 #### Java support
 
@@ -30,6 +28,8 @@ Puppet Server versions are tested against the following versions of Java:
 
 
 Some Java versions may work with other Puppet Server versions, but we do not test or support those cases. Community submitted patches for support greater than Java 11 are welcome. Both Java 8 and 11 are considered long-term support versions and are planned to be supported by upstream maintainers until 2022 or later.
+
+> Note: Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie) or Ubuntu 18.04 (Bionic).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/). To install Puppet Sevrer on Bionic, enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu).
 
 ## Installing Puppet Server
 
@@ -63,13 +63,7 @@ There is no `-` in the package name.
 systemctl start puppetserver
 ``` 
 
-or 
-
-```
-service puppetserver start
-```
-
-### Running Puppet Server on a VM
+#### Running Puppet Server on a VM
 
 By default, Puppet Server is configured to use 2GB of RAM. However, if you want to experiment with Puppet Server on a VM, you can safely allocate as little as 512MB of memory. To change the Puppet Server memory allocation, you can edit the init config file.
 
