@@ -6,6 +6,8 @@ canonical: "/puppetserver/latest/install_from_packages.html"
 
 Puppet Server is a required application that runs on the Java Virtual Machine (JVM) on the master.
 
+> Note: If you have any issues with the steps below, submit these to our [bug tracker](https://tickets.puppet.com/browse/SERVER).
+
 ### Supported operating systems
 
 Puppet provides official packages that install Puppet Server 6 and all of its prerequisites on x86_64 architectures for the following platforms:
@@ -80,5 +82,3 @@ By default, Puppet Server is configured to use 2GB of RAM. However, if you want 
     For more information about the recommended settings for the JVM, see [Oracle's docs on JVM tuning.](http://docs.oracle.com/cd/E15523_01/web.1111/e13814/jvm_tuning.htm)
 
 2. Restart the `puppetserver` service after making any changes to this file.
-
-> Note: Submit issues to our [bug tracker](https://tickets.puppet.com/browse/SERVER).
