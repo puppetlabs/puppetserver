@@ -4,13 +4,13 @@ title: "Install Puppet Server"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
-Puppet Server is a required application that runs on the Java Virtual Machine (JVM). It performs the role of the master node that controls configuration information for one or more managed agent nodes
+Puppet Server is a required application that runs on the Java Virtual Machine (JVM). It performs the role of a central node that controls configuration information for one or more managed agent nodes.
 
 > Note: If you have any issues with the steps below, submit these to our [bug tracker](https://tickets.puppet.com/browse/SERVER).
 
 ## Before you begin
 
-Review the system requirements and make sure you have a supported version of Java. 
+Review the supported operating systems and make sure you have a supported version of Java. 
 
 ### Supported operating systems
 
@@ -18,7 +18,7 @@ Puppet provides official packages that install Puppet Server 6 and all of its pr
 
 * Red Hat Enterprise Linux 6, 7
 * Debian 8 (Jessie), 9 (Stretch), 10 (Buster)
-* Ubuntu 18.04 (Bionic), 16.04 (Xenial)
+* Ubuntu 16.04 (Xenial), 18.04 (Bionic)
 * SLES 12 SP1
 
 ### Java support
@@ -34,7 +34,7 @@ Puppet Server versions are tested against the following versions of Java:
 
 Some Java versions may work with other Puppet Server versions, but we do not test or support those cases. Community submitted patches for support greater than Java 11 are welcome. Both Java 8 and 11 are considered long-term support versions and are planned to be supported by upstream maintainers until 2022 or later.
 
-> Note: Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie) or Ubuntu 18.04 (Bionic).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/). To install Puppet Sevrer on Bionic, enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu).
+> Note: Java 8 runtime packages do not exist in the standard repositories for Debian 8 (Jessie) or Ubuntu 18.04 (Bionic).  To install Puppet Server on Jessie, [configure the `jessie-backports` repository](https://backports.debian.org/Instructions/). To install Puppet Server on Bionic, enable the [universe repository](https://help.ubuntu.com/community/Repositories/Ubuntu).
 
 ## Install Puppet Server
 
