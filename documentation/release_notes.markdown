@@ -12,6 +12,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.14
+
+Released 14 July 2020
+
+### Deprecation
+
+- The v1 metrics endpoint, which was recently disabled by default, is now deprecated. Instead, use the v2 endpoint. [TK-486](https://tickets.puppetlabs.com/browse/TK-486)
+
 ## Puppet Server 5.3.13
 
 Released 30 April 2020
