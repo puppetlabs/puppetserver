@@ -10,6 +10,16 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.12.1
+
+Released 14 July 2020
+
+### Enhancements
+
+- Jolokia will no longer log at debug level by default, which avoids large stack traces for missing metrics. In order to re-enable debug output, set `debug` to `true` in `metrics.conf` and configure the logging to `debug` in `logback.xml`. [TK-488](https://tickets.puppetlabs.com/browse/TK-488)
+
+- The v2 metrics endpoint can now use trapperkeeper-authorization (tk-auth), which can be controlled from `auth.conf` (or from the authorization section of the trapperkeeper config). The v2 metrics endpoint is still restricted to localhost by default. If tk-auth is used to restrict access, you may override the default behavior in `jolokia-access.xml`. [TK-489](https://tickets.puppetlabs.com/browse/TK-489)
+
 ## Puppet Server 6.12.0
 
 Released 3 June 2020
