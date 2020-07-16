@@ -6,7 +6,7 @@
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey KeyPair)
            (org.joda.time DateTime)
-           (java.security.cert CRLException)
+           (java.security.cert CRLException X509CRL)
            (sun.security.x509 X509CertImpl))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -1598,3 +1598,38 @@
   [custom-oid-mapping-file :- (schema/maybe schema/Str)]
   (merge (get-custom-oid-mappings custom-oid-mapping-file)
          (clojure.set/map-invert puppet-short-names)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; CA status info
+
+(schema/defn ca-expiration-dates
+  "Returns of a map of subject names of certs in the CA bundle
+  to their expiration dates."
+  [ca-cert-file :- schema/Str]
+  (let [ca-cert-bundle (utils/pem->certs ca-cert-file)]
+    (reduce (fn [cert-expirations cert]
+              (assoc cert-expirations
+                (-> cert
+                    (.getSubjectDN)
+                    (.getName)
+                    (utils/x500-name->CN))
+                (-> cert
+                    (.getNotAfter)
+                    (format-date-time))))
+            {}
+            ca-cert-bundle)))
+
+(schema/defn crl-expiration-dates
+  [crl-chain-file :- schema/Str]
+  (let [crl-chain (utils/pem->crls crl-chain-file)]
+    (reduce (fn [crl-expirations crl]
+              (assoc crl-expirations
+                (-> crl
+                    (.getIssuerDN)
+                    (.getName)
+                    (utils/x500-name->CN))
+                (-> crl
+                    (.getNextUpdate)
+                    (format-date-time))))
+            {}
+            crl-chain)))

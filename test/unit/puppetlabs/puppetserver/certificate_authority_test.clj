@@ -794,18 +794,18 @@
                      (assoc :keylength 768))
         ca-settings (assoc (testutils/ca-settings (str tmp-confdir "/ssl/ca")) :keylength 768)]
 
-  (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
-  (initialize-master-ssl! settings "master" ca-settings)
+    (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
+    (initialize-master-ssl! settings "master" ca-settings)
 
-  (testing "hostprivkey should have correct keylength"
-    (let [key (-> settings :hostprivkey utils/pem->private-key)]
-      (is (utils/private-key? key))
-      (is (= 768 (utils/keylength key)))))
+    (testing "hostprivkey should have correct keylength"
+      (let [key (-> settings :hostprivkey utils/pem->private-key)]
+        (is (utils/private-key? key))
+        (is (= 768 (utils/keylength key)))))
 
-  (testing "hostpubkey should have correct keylength"
-    (let [key (-> settings :hostpubkey utils/pem->public-key)]
-      (is (utils/public-key? key))
-      (is (= 768 (utils/keylength key)))))))
+    (testing "hostpubkey should have correct keylength"
+      (let [key (-> settings :hostpubkey utils/pem->public-key)]
+        (is (utils/public-key? key))
+        (is (= 768 (utils/keylength key)))))))
 
 (when-not (SSLUtils/isFIPS)
   (deftest initialize-master-ssl!-test-with-incorrect-keylength
@@ -1296,12 +1296,12 @@
       (testing "pp_authorization is caught"
         (is (thrown+-with-msg?
              [:kind :disallowed-extension]
-              #".*borges.*contains an authorization extension.*"
+             #".*borges.*contains an authorization extension.*"
              (ensure-no-authorization-extensions! auth-csr false))))
       (testing "pp_auth_role is caught"
         (is (thrown+-with-msg?
              [:kind :disallowed-extension]
-              #".*borges.*contains an authorization extension..*"
+             #".*borges.*contains an authorization extension..*"
              (ensure-no-authorization-extensions! auth-role-csr false)))))))
 
 (deftest validate-subject!-test
@@ -1400,3 +1400,17 @@
     (testing "and the file doesn't exist"
       (testing "the result is nil"
         (is (nil? (create-csr-attrs-exts "does/not/exist.yaml")))))))
+
+(deftest ca-expiration-dates-test
+  (testing "returns a map of names to dates"
+    (let [settings (testutils/ca-sandbox! bundle-cadir)
+          expiration-map (ca-expiration-dates (:cacert settings))]
+      (is (= "2036-09-06T05:58:33UTC" (get expiration-map "rootca.example.org")))
+      (is (= "2036-09-06T06:09:14UTC" (get expiration-map "intermediateca.example.org"))))))
+
+(deftest crl-expiration-dates-test
+  (testing "returns a map of names to dates"
+    (let [settings (testutils/ca-sandbox! bundle-cadir)
+          expiration-map (crl-expiration-dates (:cacrl settings))]
+      (is (= "2016-10-11T06:42:52UTC" (get expiration-map "rootca.example.org")))
+      (is (= "2016-10-11T06:40:47UTC" (get expiration-map "intermediateca.example.org"))))))
