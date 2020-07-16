@@ -4,6 +4,8 @@ title: "Install Puppet Server"
 canonical: "/puppetserver/latest/install_from_packages.html"
 ---
 
+[repodocs]: https://puppet.com/docs/puppet/latest/puppet_platform.html
+
 Puppet Server is a required application that runs on the Java Virtual Machine (JVM). It controls the configuration information for one or more managed agent nodes.
 
 > Note: If you have any issues with the steps below, submit these to our [bug tracker](https://tickets.puppet.com/browse/SERVER).
