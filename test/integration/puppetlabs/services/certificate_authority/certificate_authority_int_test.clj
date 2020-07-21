@@ -5,6 +5,7 @@
     [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
     [puppetlabs.puppetserver.testutils :as testutils :refer
      [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.trapperkeeper.testutils.logging :as logutils]
     [schema.test :as schema-test]
     [me.raynes.fs :as fs]
@@ -346,3 +347,48 @@
                          :else (do
                                  (Thread/sleep 500)
                                  (recur (dec times)))))))))))
+
+(deftest csr-api-test
+  (bootstrap/with-puppetserver-running-with-config
+   app
+   (bootstrap/load-dev-config-with-overrides
+    {:jruby-puppet
+     {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+     :webserver
+     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+      :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+      :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+      :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}})
+   (let [request-dir (str bootstrap/master-conf-dir "/ssl/ca/requests")
+         key-pair (ssl-utils/generate-key-pair)
+         subjectDN (ssl-utils/cn "test_cert")
+         csr (ssl-utils/generate-certificate-request key-pair subjectDN)
+         csr-file (ks/temp-file "test_csr.pem")
+         saved-csr (str request-dir "/test_cert.pem")
+         url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
+         request-opts {:ssl-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                       :ssl-key (str bootstrap/master-conf-dir "/ssl/ca/ca_key.pem")
+                       :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                       :as :text
+                       :headers {"content-type" "text/plain"}}]
+     (ssl-utils/obj->pem! csr csr-file)
+     (testing "submit a CSR via the API"
+       (let [response (http-client/put
+                       url
+                       (merge request-opts {:body (slurp csr-file)}))]
+         (is (= 200 (:status response)))
+         (is (= (slurp csr-file) (slurp saved-csr)))))
+     (testing "get a CSR from the API"
+       (let [response (http-client/get
+                       url
+                       request-opts)
+             csr (:body response)]
+         (is (= 200 (:status response)))
+         (is (= (slurp csr-file) csr))))
+     (testing "delete a CSR via the API"
+       (let [response (http-client/delete
+                       url
+                       request-opts)]
+         (is (= 204 (:status response)))
+         (is (not (fs/exists? saved-csr)))))
+     (fs/delete csr-file))))
