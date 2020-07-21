@@ -293,75 +293,75 @@
            (is (= "Not Found" (:body response)))))))))
 
 (deftest ^:integration crl-reloaded-without-server-restart
-         (bootstrap/with-puppetserver-running
-           app
-           {:jruby-puppet
-            {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-            :webserver
-            {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
-             :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
-             :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
-             :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
-           (let [key-pair (ssl-utils/generate-key-pair)
-                 subject "crl_reload"
-                 subject-dn (ssl-utils/cn subject)
-                 public-key (ssl-utils/get-public-key key-pair)
-                 private-key (ssl-utils/get-private-key key-pair)
-                 private-key-file (ks/temp-file)
-                 csr (ssl-utils/generate-certificate-request key-pair subject-dn)
-                 options {:ssl-cert (str bootstrap/master-conf-dir
-                                         "/ssl/ca/ca_crt.pem")
-                          :ssl-key (str bootstrap/master-conf-dir
-                                        "/ssl/ca/ca_key.pem")
-                          :ssl-ca-cert (str bootstrap/master-conf-dir
-                                            "/ssl/ca/ca_crt.pem")
-                          :as :text}
-                 _ (ssl-utils/key->pem! private-key private-key-file)
-                 _ (ssl-utils/obj->pem! csr (str bootstrap/master-conf-dir
-                                                "/ssl/ca/requests/"
-                                                subject
-                                                ".pem"))
-                 cert-status-request (fn [action]
-                                       (http-client/put
-                                         (str "https://localhost:8140/"
-                                              "puppet-ca/v1/certificate_status/"
-                                              subject)
-                                         (merge options
-                                                {:body (str "{\"desired_state\": \""
-                                                            action
-                                                            "\"}")
-                                                 :headers {"content-type"
-                                                           "application/json"}})))
-                 client-request #(http-client/get
-                                  "https://localhost:8140/status/v1/services"
-                                   (merge options
-                                          {:ssl-key (str private-key-file)
-                                           :ssl-cert (str bootstrap/master-conf-dir
-                                                          "/ssl/ca/signed/"
-                                                          subject
-                                                          ".pem")}))]
-             (testing "node certificate request can be signed successfully"
-               (let [sign-response (cert-status-request "signed")]
-                 (is (= 204 (:status sign-response)))))
-             (testing "node request before revocation is successful"
-               (let [node-response-before-revoke (client-request)]
-                 (is (= 200 (:status node-response-before-revoke)))))
-             (testing "node certificate can be successfully revoked"
-               (let [revoke-response (cert-status-request "revoked")]
-                 (is (= 204 (:status revoke-response)))))
-             (testing "node request after revocation fails"
-               (let [ssl-exception-for-request? #(try
-                                                   (client-request)
-                                                   false
-                                                   (catch SSLException e
-                                                     true))]
-                 (is (loop [times 30]
-                       (cond
-                         (ssl-exception-for-request?) true
-                         (zero? times) false
-                         :else (do
-                                 (Thread/sleep 500)
-                                 (recur (dec times)))))))))))
+  (bootstrap/with-puppetserver-running
+    app
+    {:jruby-puppet
+     {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+     :webserver
+     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+      :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+      :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+      :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
+    (let [key-pair (ssl-utils/generate-key-pair)
+          subject "crl_reload"
+          subject-dn (ssl-utils/cn subject)
+          public-key (ssl-utils/get-public-key key-pair)
+          private-key (ssl-utils/get-private-key key-pair)
+          private-key-file (ks/temp-file)
+          csr (ssl-utils/generate-certificate-request key-pair subject-dn)
+          options {:ssl-cert (str bootstrap/master-conf-dir
+                                  "/ssl/ca/ca_crt.pem")
+                   :ssl-key (str bootstrap/master-conf-dir
+                                 "/ssl/ca/ca_key.pem")
+                   :ssl-ca-cert (str bootstrap/master-conf-dir
+                                     "/ssl/ca/ca_crt.pem")
+                   :as :text}
+          _ (ssl-utils/key->pem! private-key private-key-file)
+          _ (ssl-utils/obj->pem! csr (str bootstrap/master-conf-dir
+                                         "/ssl/ca/requests/"
+                                         subject
+                                         ".pem"))
+          cert-status-request (fn [action]
+                                (http-client/put
+                                  (str "https://localhost:8140/"
+                                       "puppet-ca/v1/certificate_status/"
+                                       subject)
+                                  (merge options
+                                         {:body (str "{\"desired_state\": \""
+                                                     action
+                                                     "\"}")
+                                          :headers {"content-type"
+                                                    "application/json"}})))
+          client-request #(http-client/get
+                           "https://localhost:8140/status/v1/services"
+                            (merge options
+                                   {:ssl-key (str private-key-file)
+                                    :ssl-cert (str bootstrap/master-conf-dir
+                                                   "/ssl/ca/signed/"
+                                                   subject
+                                                   ".pem")}))]
+      (testing "node certificate request can be signed successfully"
+        (let [sign-response (cert-status-request "signed")]
+          (is (= 204 (:status sign-response)))))
+      (testing "node request before revocation is successful"
+        (let [node-response-before-revoke (client-request)]
+          (is (= 200 (:status node-response-before-revoke)))))
+      (testing "node certificate can be successfully revoked"
+        (let [revoke-response (cert-status-request "revoked")]
+          (is (= 204 (:status revoke-response)))))
+      (testing "node request after revocation fails"
+        (let [ssl-exception-for-request? #(try
+                                            (client-request)
+                                            false
+                                            (catch SSLException e
+                                              true))]
+          (is (loop [times 30]
+                (cond
+                  (ssl-exception-for-request?) true
+                  (zero? times) false
+                  :else (do
+                          (Thread/sleep 500)
+                          (recur (dec times)))))))))))
 
 
 (deftest ^:integration revoke-compile-master-test

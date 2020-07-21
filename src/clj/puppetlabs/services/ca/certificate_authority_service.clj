@@ -27,9 +27,9 @@
           oid-mappings (ca/get-oid-mappings custom-oid-file)
           auth-handler (fn [request] (wrap-with-authorization-check request {:oid-map oid-mappings}))
           ca-crl-file (.getCanonicalPath (fs/file
-                                       (get-in-config [:puppetserver :cacrl])))
+                                          (get-in-config [:puppetserver :cacrl])))
           host-crl-file (.getCanonicalPath (fs/file
-                                       (get-in-config [:puppetserver :hostcrl])))
+                                            (get-in-config [:puppetserver :hostcrl])))
           infra-nodes-file (.getCanonicalPath (fs/file (str (fs/parent ca-crl-file) "/infra_inventory.txt")))
           watcher (create-watcher {:recursive false})]
       (ca/validate-settings! settings)
