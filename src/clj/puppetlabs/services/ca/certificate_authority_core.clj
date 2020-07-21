@@ -311,9 +311,9 @@
         (GET [""] [subject]
           (handle-get-certificate-request subject ca-settings))
         (PUT [""] [subject :as {body :body}]
-          (handle-put-certificate-request! subject body ca-settings)))
+          (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
-          (handle-delete-certificate-request! subject ca-settings))
+          (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] []
         (handle-get-certificate-revocation-list ca-settings)))
     (comidi/not-found "Not Found")))
