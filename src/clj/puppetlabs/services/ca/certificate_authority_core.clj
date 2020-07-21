@@ -64,36 +64,36 @@
       ;; Respond to all CSR validation failures with a 400
       (middleware-utils/plain-response 400 msg))))
 
-  (schema/defn format-http-date :- (schema/maybe DateTime)
-    "Formats an http-date into joda time.  Returns nil for malformed or nil
-     http-dates"
-    [http-date :- (schema/maybe schema/Str)]
-    (when http-date
-      (try
-        (time-format/parse
-          (time-format/formatters :rfc822)
-          (string/replace http-date #"GMT" "+0000"))
-        (catch IllegalArgumentException e
-          nil))))
+(schema/defn format-http-date :- (schema/maybe DateTime)
+  "Formats an http-date into joda time.  Returns nil for malformed or nil
+   http-dates"
+  [http-date :- (schema/maybe schema/Str)]
+  (when http-date
+    (try
+      (time-format/parse
+        (time-format/formatters :rfc822)
+        (string/replace http-date #"GMT" "+0000"))
+      (catch IllegalArgumentException e
+        nil))))
 
-  (defn handle-get-certificate-revocation-list
-    "Always return the crl if no 'If-Modified-Since' header is provided or
-    if that header is not in correct http-date format. If the header is
-    present and has correct format, only return the crl if the master
-    cacrl is newer than the agent crl."
-    [request {:keys [cacrl infra-crl-path enable-infra-crl]}]
-    (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
-          agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
-          master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
-          master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
-      (if (or (nil? agent-crl-last-modified-date-time)
-              (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
-        (-> (ca/get-certificate-revocation-list master-crl-to-use)
-            (rr/response)
-            (rr/content-type "text/plain"))
-        (-> (rr/response nil)
-            (rr/status 304)
-            (rr/content-type "text/plain")))))
+(defn handle-get-certificate-revocation-list
+  "Always return the crl if no 'If-Modified-Since' header is provided or
+  if that header is not in correct http-date format. If the header is
+  present and has correct format, only return the crl if the master
+  cacrl is newer than the agent crl."
+  [request {:keys [cacrl infra-crl-path enable-infra-crl]}]
+  (let [agent-crl-last-modified-val (rr/get-header request "If-Modified-Since")
+        agent-crl-last-modified-date-time (format-http-date agent-crl-last-modified-val)
+        master-crl-to-use (if (true? enable-infra-crl) infra-crl-path cacrl)
+        master-crl-last-modified-date-time (ca/get-crl-last-modified master-crl-to-use)]
+    (if (or (nil? agent-crl-last-modified-date-time)
+            (time/after? master-crl-last-modified-date-time agent-crl-last-modified-date-time))
+      (-> (ca/get-certificate-revocation-list master-crl-to-use)
+          (rr/response)
+          (rr/content-type "text/plain"))
+      (-> (rr/response nil)
+          (rr/status 304)
+          (rr/content-type "text/plain")))))
 
 (schema/defn handle-delete-certificate-request!
   [subject :- String
@@ -273,12 +273,12 @@
                   (name desired-state) subject))
               (let [cert-ttl (:cert_ttl json-body)]
                 (if (and cert-ttl (schema/check schema/Int cert-ttl))
-                     (malformed
-                      (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
-                     ; this is the happy path. we have a body, it's parsable json,
-                     ; and the desired_state field is one of (signed revoked), and
-                     ; it potentially has a valid cert_ttl field
-                     [false {::json-body json-body}])))
+                  (malformed
+                   (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
+                  ; this is the happy path. we have a body, it's parsable json,
+                  ; and the desired_state field is one of (signed revoked), and
+                  ; it potentially has a valid cert_ttl field
+                  [false {::json-body json-body}])))
             (malformed (i18n/tru "Missing required parameter \"desired_state\"")))
           (malformed (i18n/tru "Request body is not JSON.")))
         (malformed (i18n/tru "Empty request body.")))))
@@ -341,9 +341,9 @@
         (GET [""] [subject]
           (handle-get-certificate-request subject ca-settings))
         (PUT [""] [subject :as {body :body}]
-          (handle-put-certificate-request! subject body ca-settings)))
+          (handle-put-certificate-request! subject body ca-settings))
         (DELETE [""] [subject]
-          (handle-delete-certificate-request! subject ca-settings))
+          (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] request
         (handle-get-certificate-revocation-list request ca-settings)))
     (comidi/not-found "Not Found")))
