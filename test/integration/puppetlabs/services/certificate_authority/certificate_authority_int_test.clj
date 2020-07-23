@@ -1,22 +1,24 @@
 (ns puppetlabs.services.certificate-authority.certificate-authority-int-test
   (:require
-    [clojure.test :refer :all]
-    [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.ssl-utils.core :as utils]
-    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-    [puppetlabs.puppetserver.testutils :as testutils :refer
-     [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
-    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-    [schema.test :as schema-test]
-    [me.raynes.fs :as fs]
-    [cheshire.core :as json]
-    [puppetlabs.http.client.sync :as http-client]
-    [puppetlabs.ssl-utils.core :as ssl-utils]
-    [puppetlabs.puppetserver.certificate-authority :as ca]
-    [puppetlabs.services.ca.certificate-authority-core :refer :all]
-    [ring.mock.request :as mock]
-    [me.raynes.fs :as fs])
+   [clojure.test :refer :all]
+   [puppetlabs.kitchensink.core :as ks]
+   [puppetlabs.ssl-utils.core :as utils]
+   [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
+   [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+   [puppetlabs.puppetserver.testutils :as testutils :refer
+    [ca-cert localhost-cert localhost-key ssl-request-options http-get]]
+   [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+   [schema.test :as schema-test]
+   [me.raynes.fs :as fs]
+   [cheshire.core :as json]
+   [puppetlabs.http.client.sync :as http-client]
+   [puppetlabs.ssl-utils.core :as ssl-utils]
+   [puppetlabs.puppetserver.certificate-authority :as ca]
+   [puppetlabs.services.ca.certificate-authority-core :refer :all]
+   [ring.mock.request :as mock]
+   [me.raynes.fs :as fs]
+   [clj-time.format :as time-format]
+   [clj-time.core :as time])
   (:import (javax.net.ssl SSLException)))
 
 (def test-resources-dir
@@ -581,3 +583,31 @@
          (is (= 204 (:status response)))
          (is (not (fs/exists? saved-csr)))))
      (fs/delete csr-file))))
+
+(deftest ca-expirations-endpoint-test
+  (testing "returns expiration dates for all CA certs and CRLs"
+    (bootstrap/with-puppetserver-running-with-mock-jrubies
+     "JRuby mocking is safe here because all of the requests are to the CA
+     endpoints, which are implemented in Clojure."
+     app
+     {:jruby-puppet
+      {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+      :webserver
+      {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+       :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+       :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+       :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
+     (let [response (http-client/get
+                     "https://localhost:8140/puppet-ca/v1/expirations"
+                     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :ssl-key (str bootstrap/master-conf-dir "/ssl/ca/ca_key.pem")
+                      :ssl-ca-cert (str bootstrap/master-conf-dir "/ssl/ca/ca_crt.pem")
+                      :as :text
+                      :headers {"Accept" "application/json"}})]
+       (is (= 200 (:status response)))
+       (let [body (json/parse-string (:body response))
+             ca-exp (get-in body ["ca-certs" "Puppet CA: localhost"])
+             crl-exp (get-in body ["crls" "Puppet CA: localhost"])
+             formatter (time-format/formatter "YYY-MM-dd'T'HH:mm:ssz")]
+         (is (time/after? (time-format/parse formatter ca-exp) (time/now)))
+         (is (time/after? (time-format/parse formatter crl-exp) (time/now))))))))

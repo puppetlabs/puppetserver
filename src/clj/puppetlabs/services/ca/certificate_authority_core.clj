@@ -104,6 +104,14 @@
         (rr/status ((response :outcome) outcomes->codes))
         (rr/content-type "text/plain"))))
 
+(schema/defn handle-get-ca-expirations
+  [ca-settings :- ca/CaSettings]
+  (let [response {:ca-certs (ca/ca-expiration-dates (:cacert ca-settings))
+                  :crls (ca/crl-expiration-dates (:cacrl ca-settings))}]
+    (-> (rr/response (cheshire/generate-string response))
+        (rr/status 200)
+        (rr/content-type "application/json"))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
 
@@ -345,7 +353,9 @@
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] request
-        (handle-get-certificate-revocation-list request ca-settings)))
+        (handle-get-certificate-revocation-list request ca-settings))
+      (GET ["/expirations"] request
+        (handle-get-ca-expirations ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
