@@ -1477,6 +1477,14 @@
                                    (fs/find-files signeddir pem-pattern)))]
     (map (partial get-certificate-status* signeddir csrdir crl) all-subjects)))
 
+(schema/defn ^:always-validate filter-by-certificate-state :- [CertificateStatusResult]
+  "Get the status of all certificates in the given state."
+  [settings :- CaSettings
+   state :- schema/Str]
+  (->> settings
+       (get-certificate-statuses)
+       (filter (fn [cert-status] (= state (:state cert-status))))))
+
 (schema/defn sign-existing-csr!
   "Sign the subject's certificate request."
   [{:keys [csrdir] :as settings} :- CaSettings
