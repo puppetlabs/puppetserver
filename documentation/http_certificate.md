@@ -11,16 +11,12 @@ Certificate
 The `certificate` endpoint returns the certificate for the specified name,
 which might be either a standard certname or `ca`.
 
-Under Puppet Server's CA service, the `environment` parameter is ignored and can
-be omitted. Under a Rack or WEBrick Puppet master, `environment` is required and
-must be a valid environment, but it has no effect on the response.
-
 Find
 ----
 
 Get a certificate.
 
-    GET /puppet-ca/v1/certificate/:nodename?environment=:environment
+    GET /puppet-ca/v1/certificate/:nodename
 
 
 ### Supported HTTP Methods
@@ -41,7 +37,7 @@ None
 
 #### Certificate found
 
-    GET /puppet-ca/v1/certificate/elmo.mydomain.com?environment=env
+    GET /puppet-ca/v1/certificate/elmo.mydomain.com
 
     HTTP 200 OK
     Content-Type: text/plain
@@ -82,7 +78,7 @@ None
 
 #### Certificate not found
 
-    GET /puppet-ca/v1/certificate/certificate_does_not_exist?environment=env
+    GET /puppet-ca/v1/certificate/certificate_does_not_exist
 
     HTTP 404 Not Found
     Content-Type: text/plain
@@ -91,7 +87,7 @@ None
 
 #### No Certificate name given
 
-    GET /puppet-ca/v1/certificate?environment=env
+    GET /puppet-ca/v1/certificate
 
     HTTP/1.1 400 Bad Request
     Content-Type: text/plain
@@ -100,7 +96,7 @@ None
 
 #### Master is not a CA
 
-    GET /puppet/v1/certificate/valid_certificate?environment=env
+    GET /puppet/v1/certificate/valid_certificate
 
     HTTP/1.1 400 Bad Request
     Content-Type: text/plain

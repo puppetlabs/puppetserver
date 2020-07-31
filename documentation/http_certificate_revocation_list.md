@@ -12,10 +12,6 @@ The `certificate_revocation_list` endpoint retrieves a Certificate Revocation Li
 from the master. The master must be configured to be a CA. The returned
 CRL is always in the `.pem` format.
 
-Under Puppet Server's CA service, the `environment` parameter is ignored and can
-be omitted. Under a Rack or WEBrick Puppet master, `environment` is required and
-must be a valid environment, but it has no effect on the response.
-
 The `:nodename` should always be `ca`, due to the default auth.conf rules for
 WEBrick and Rack Puppet masters. (You can use a different `:nodename` if you
 change the auth rules, but it will have no effect on the response.)
@@ -25,7 +21,7 @@ Find
 
 Get the submitted CRL
 
-    GET /puppet-ca/v1/certificate_revocation_list/:nodename?environment=:environment
+    GET /puppet-ca/v1/certificate_revocation_list/:nodename
     Accept: text/plain
 
 ### Supported HTTP Methods
@@ -49,7 +45,7 @@ decoding of the CRL PEM file.
 
 #### Empty revocation list
 
-    GET /puppet-ca/v1/certificate_revocation_list/ca?environment=env
+    GET /puppet-ca/v1/certificate_revocation_list/ca
 
     HTTP/1.1 200 OK
     Content-Type: text/plain
@@ -115,7 +111,7 @@ decoding of the CRL PEM file.
 
 #### One-item revocation list
 
-    GET /puppet-ca/v1/certificate_revocation_list/ca?environment=env
+    GET /puppet-ca/v1/certificate_revocation_list/ca
 
     HTTP/1.1 200 OK
     Content-Type: text/plain
@@ -186,7 +182,7 @@ decoding of the CRL PEM file.
 
 #### No node name given
 
-    GET /puppet-ca/v1/certificate_revocation_list?environment=env
+    GET /puppet-ca/v1/certificate_revocation_list
 
     HTTP/1.1 400 Bad Request
     Content-Type: text/plain

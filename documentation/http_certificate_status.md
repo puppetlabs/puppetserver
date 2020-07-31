@@ -12,14 +12,10 @@ The `certificate status` endpoint allows a client to read or alter the
 status of a certificate or pending certificate request. It is only
 useful on the CA.
 
-Under Puppet Server's CA service, the `environment` parameter is ignored and can
-be omitted. Under a Rack or WEBrick Puppet master, `environment` is required and
-must be a valid environment, but it has no effect on the response.
-
 Find
 ----
 
-    GET /puppet-ca/v1/certificate_status/:certname?environment=:environment
+    GET /puppet-ca/v1/certificate_status/:certname
     Accept: application/json, text/pson
 
 Retrieve information about the specified certificate. Similar to `puppetserver ca list --certname <certname>`.
@@ -27,7 +23,7 @@ Retrieve information about the specified certificate. Similar to `puppetserver c
 Search
 -----
 
-    GET /puppet-ca/v1/certificate_statuses/:any_key?environment=:environment
+    GET /puppet-ca/v1/certificate_statuses/:any_key
     Accept: application/json, text/pson
 
 Retrieve information about all known certificates. Similar to `puppetserver ca list --all`. A key is required but is ignored.
@@ -35,7 +31,7 @@ Retrieve information about all known certificates. Similar to `puppetserver ca l
 Save
 ----
 
-    PUT /puppet-ca/v1/certificate_status/:certname?environment=:environment
+    PUT /puppet-ca/v1/certificate_status/:certname
     Content-Type: text/pson
 
 Change the status of the specified certificate. The desired state
@@ -52,7 +48,7 @@ host --- see the DELETE request for more information.
 Delete
 -----
 
-    DELETE /puppet-ca/v1/certificate_status/:hostname?environment=:environment
+    DELETE /puppet-ca/v1/certificate_status/:hostname
     Accept: application/json, text/pson
 
 Cause the certificate authority to discard all SSL information regarding
@@ -90,7 +86,7 @@ incomplete.
 
 #### Certificate information
 
-    GET /puppet-ca/v1/certificate_status/mycertname?environment=env
+    GET /puppet-ca/v1/certificate_status/mycertname
 
     HTTP/1.1 200 OK
     Content-Type: text/pson
@@ -111,7 +107,7 @@ incomplete.
 
 #### Revoking a certificate
 
-    PUT /puppet-ca/v1/certificate_status/mycertname?environment=production HTTP/1.1
+    PUT /puppet-ca/v1/certificate_status/mycertname HTTP/1.1
     Content-Type: text/pson
     Content-Length: 27
 
@@ -122,7 +118,7 @@ This has no meaningful return value.
 
 #### Deleting the certificate information
 
-    DELETE /puppet-ca/v1/certificate_status/mycertname?environment=production HTTP/1.1
+    DELETE /puppet-ca/v1/certificate_status/mycertname HTTP/1.1
 
 Gets the response:
 
