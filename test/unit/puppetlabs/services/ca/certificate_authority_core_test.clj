@@ -511,6 +511,32 @@
             (is (= #{localhost-status test-agent-status revoked-agent-status}
                  (set (json/parse-string (:body response) true))))))
 
+        (testing "respects 'state' query param"
+          (testing "requested"
+            (let [response (test-app
+                             {:uri            "/v1/certificate_statuses/thisisirrelevant"
+                              :params         {"state" "requested"}
+                              :request-method :get})]
+              (is (= 200 (:status response)))
+              (is (= #{test-agent-status}
+                     (set (json/parse-string (:body response) true))))))
+          (testing "signed"
+            (let [response (test-app
+                             {:uri            "/v1/certificate_statuses/thisisirrelevant"
+                              :params         {"state" "signed"}
+                              :request-method :get})]
+              (is (= 200 (:status response)))
+              (is (= #{localhost-status}
+                     (set (json/parse-string (:body response) true))))))
+          (testing "revoked"
+            (let [response (test-app
+                             {:uri            "/v1/certificate_statuses/thisisirrelevant"
+                              :params         {"state" "revoked"}
+                              :request-method :get})]
+              (is (= 200 (:status response)))
+              (is (= #{revoked-agent-status}
+                     (set (json/parse-string (:body response) true)))))))
+
         (testing "returns json when no accept header specified"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"

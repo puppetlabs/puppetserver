@@ -318,7 +318,7 @@
         (assoc-in [:representation :media-type] "text/plain")))))
 
 (defresource certificate-statuses
-  [settings]
+  [request settings]
   :allowed-methods [:get]
 
   :available-media-types media-types
@@ -329,9 +329,12 @@
 
   :handle-ok
   (fn [context]
-    (->
-      (ca/get-certificate-statuses settings)
-      (as-json-or-pson context))))
+    (let [queried-state (get-in request [:params "state"])]
+      (->
+        (if (some #(= queried-state %) ["requested" "signed" "revoked"])
+          (ca/filter-by-certificate-state settings queried-state)
+          (ca/get-certificate-statuses settings))
+        (as-json-or-pson context)))))
 
 (schema/defn ^:always-validate web-routes :- bidi-schema/RoutePair
   [ca-settings :- ca/CaSettings]
@@ -340,8 +343,8 @@
       (ANY ["/certificate_status/" :subject] [subject]
         (certificate-status subject ca-settings))
       (comidi/context ["/certificate_statuses/"]
-        (ANY [[#"[^/]+" :ignored-but-required]] []
-          (certificate-statuses ca-settings))
+        (ANY [[#"[^/]+" :ignored-but-required]] request
+          (certificate-statuses request ca-settings))
         (ANY [""] [] (middleware-utils/plain-response 400 "Missing URL Segment")))
       (GET ["/certificate/" :subject] [subject]
         (handle-get-certificate subject ca-settings))
