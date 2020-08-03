@@ -193,7 +193,6 @@
                              puppetlabs.puppetserver.ringutils
                              puppetlabs.puppetserver.certificate-authority
                              puppetlabs.services.ca.certificate-authority-core
-                             puppetlabs.puppetserver.ring.middleware.params
                              puppetlabs.services.puppet-admin.puppet-admin-core
                              puppetlabs.services.puppet-admin.puppet-admin-service
                              puppetlabs.services.versioned-code-service.versioned-code-core

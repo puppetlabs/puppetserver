@@ -9,7 +9,7 @@
             [liberator.core :refer [defresource]]
             ;[liberator.dev :as liberator-dev]
             [puppetlabs.comidi :as comidi]
-            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
+            [puppetlabs.ring-middleware.params :as pl-ring-params]
             [puppetlabs.i18n.core :as i18n]
             [slingshot.slingshot :as sling]
             [ring.util.response :as rr]
