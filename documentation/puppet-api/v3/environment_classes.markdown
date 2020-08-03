@@ -5,11 +5,11 @@ canonical: "/puppetserver/latest/puppet-api/v3/environment_classes.html"
 ---
 
 [classes]: https://puppet.com/docs/puppet/latest/lang_classes.html
-[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/latest/services_master_webrick.html
+[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/5.5/services_master_webrick.html
 [node definitions]: https://puppet.com/docs/puppet/latest/lang_node_definitions.html
 [defined types]: https://puppet.com/docs/puppet/latest/lang_defined_types.html
 [`environment_timeout`]: https://puppet.com/docs/puppet/latest/config_file_environment.html#environmenttimeout
-[resource type API]: https://puppet.com/docs/puppet/latest/http_api/http_resource_type.html
+[resource type API]: https://puppet.com/docs/puppet/4.10/http_api/http_resource_type.html
 [`manifest` setting]: https://puppet.com/docs/puppet/latest/config_file_environment.html#manifest
 
 [`auth.conf`]: ../../config_file_auth.markdown
