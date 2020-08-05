@@ -9,7 +9,7 @@
             [puppetlabs.puppetserver.common :as ps-common]
             [ring.util.codec :as ring-codec]
             [puppetlabs.trapperkeeper.authorization.ring :as ring-auth]
-            [puppetlabs.puppetserver.ring.middleware.params :as pl-ring-params]
+            [puppetlabs.ring-middleware.params :as pl-ring-params]
             [puppetlabs.puppetserver.jruby-request :as jruby-request]
             [schema.core :as schema]
             [puppetlabs.i18n.core :as i18n]))

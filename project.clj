@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.5.4"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.6.0"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -193,7 +193,6 @@
                              puppetlabs.puppetserver.ringutils
                              puppetlabs.puppetserver.certificate-authority
                              puppetlabs.services.ca.certificate-authority-core
-                             puppetlabs.puppetserver.ring.middleware.params
                              puppetlabs.services.puppet-admin.puppet-admin-core
                              puppetlabs.services.puppet-admin.puppet-admin-service
                              puppetlabs.services.versioned-code-service.versioned-code-core
