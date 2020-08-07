@@ -1,40 +1,43 @@
 (ns puppetlabs.services.jruby.jruby-puppet-pool-int-test
   (:require [clojure.test :refer :all]
-            [schema.test :as schema-test]
-            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
-            [puppetlabs.trapperkeeper.app :as tk-app]
-            [puppetlabs.trapperkeeper.services :as tk-services]
-            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
-            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
-            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
-            [puppetlabs.http.client.sync :as http-client]
+            [clojure.java.io :as io]
+            [clojure.set :as set]
+            [clojure.tools.logging :as log]
             [me.raynes.fs :as fs]
-            [puppetlabs.trapperkeeper.internal :as tk-internal]
-            [puppetlabs.trapperkeeper.core :as tk]
-            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
-            [puppetlabs.services.request-handler.request-handler-service :as handler-service]
-            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
-            [puppetlabs.services.config.puppet-server-config-service :as ps-config]
-            [puppetlabs.services.protocols.request-handler :as handler]
-            [puppetlabs.services.request-handler.request-handler-core :as handler-core]
-            [puppetlabs.ssl-utils.core :as ssl-utils]
+            [schema.test :as schema-test]
+            [puppetlabs.http.client.metrics :as metrics]
+            [puppetlabs.http.client.sync :as http-client]
+            [puppetlabs.kitchensink.core :as ks]
             [puppetlabs.kitchensink.testutils :as ks-testutils]
+            [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap]
             [puppetlabs.puppetserver.testutils :as testutils :refer
              [ca-cert localhost-cert localhost-key ssl-request-options]]
-            [puppetlabs.trapperkeeper.testutils.logging :as logging]
-            [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics-protocol]
-            [clojure.tools.logging :as log]
-            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
-            [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.services.config.puppet-server-config-service :as ps-config]
+            [puppetlabs.services.jruby.jruby-metrics-service :as jruby-metrics-service]
             [puppetlabs.services.jruby.jruby-puppet-core :as jruby-puppet-core]
-            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
+            [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
             [puppetlabs.services.jruby-pool-manager.impl.jruby-agents :as jruby-agents]
-            [puppetlabs.trapperkeeper.config :as tk-config]
-            [puppetlabs.http.client.metrics :as metrics]
+            [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
             [puppetlabs.services.jruby-pool-manager.jruby-schemas :as jruby-schemas]
+            [puppetlabs.services.protocols.jruby-puppet :as jruby-protocol]
+            [puppetlabs.services.protocols.request-handler :as handler]
+            [puppetlabs.services.request-handler.request-handler-core :as handler-core]
+            [puppetlabs.services.request-handler.request-handler-service :as handler-service]
+            [puppetlabs.services.versioned-code-service.versioned-code-service :as vcs]
+            [puppetlabs.ssl-utils.core :as ssl-utils]
+            [puppetlabs.trapperkeeper.app :as tk-app]
+            [puppetlabs.trapperkeeper.config :as tk-config]
+            [puppetlabs.trapperkeeper.core :as tk]
+            [puppetlabs.trapperkeeper.internal :as tk-internal]
+            [puppetlabs.trapperkeeper.services :as tk-services]
+            [puppetlabs.trapperkeeper.services.protocols.metrics :as metrics-protocol]
+            [puppetlabs.trapperkeeper.services.webserver.jetty9-service :as jetty9]
+            [puppetlabs.trapperkeeper.testutils.bootstrap :as tk-testutils]
             [puppetlabs.trapperkeeper.testutils.logging :as logutils])
-  (:import (org.jruby RubyInstanceConfig$CompileMode RubyInstanceConfig$ProfilingMode)
-           (com.codahale.metrics MetricRegistry)
+  (:import (com.codahale.metrics MetricRegistry)
+           (java.io ByteArrayOutputStream)
+           (org.jruby RubyInstanceConfig$CompileMode RubyInstanceConfig$ProfilingMode)
+           (org.jruby.embed EvalFailedException)
            (org.jruby.runtime Constants)))
 
 (def test-resources-dir
@@ -283,7 +286,7 @@
            (is (= 200 (:status ping-before-stop))
                "environment request before stop failed")
            (let [start (System/currentTimeMillis)]
-             (logging/with-test-logging
+             (logutils/with-test-logging
               (while (and
                       (< (- (System/currentTimeMillis) start) 10000)
                       (not= 503 (:status (ping-environment))))
@@ -292,7 +295,7 @@
              (is (not= :timed-out (timed-deref stop-complete?))
                  (str "timed out waiting for the stop to complete, stack:\n"
                       (get-all-stack-traces-as-str)))
-             (logging/with-test-logging
+             (logutils/with-test-logging
               (is (= 503 (:status (ping-environment)))))))
          (finally
            ;; Stop the tk app.  In success cases, this will end up being done
@@ -331,7 +334,7 @@
            "environment request before stop failed")
        (is (= "our env request has been mocked!" (:body ping-before-stop))
            "environment response did not have our mock response body")
-       (logging/with-test-logging
+       (logutils/with-test-logging
         (let [start (System/currentTimeMillis)]
           (while (and
                   (< (- (System/currentTimeMillis) start) 10000)
@@ -606,7 +609,7 @@
                   (fn [instance]
                     (log/info "In cleanup fn")
                     (.terminate (:jruby-puppet instance)))]
-      (logging/with-test-logging
+      (logutils/with-test-logging
         (tk-testutils/with-app-with-config
          app
          jruby-testutils/jruby-service-and-dependencies
@@ -618,11 +621,48 @@
            (jruby-protocol/flush-jruby-pool! jruby-service)
            ; wait until the flush is complete
            (await pool-agent)
-           (is (logged? #"In cleanup fn"))))))))
+           (is (logged? #"In cleanup fn")))))))
+  (testing "flushing the pool does not leave orphaned timeout threads"
+    (logutils/with-test-logging
+      (tk-testutils/with-app-with-config
+       app
+       jruby-testutils/jruby-service-and-dependencies
+       (jruby-testutils/jruby-puppet-tk-config
+        (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
+        ;; getName vs getId here is helpful in debugging
+        (let [threads-before-jruby (->> (Thread/getAllStackTraces)
+                                        (map #(.getName (key %)))
+                                        (set))
+              jruby-service (tk-app/get-service app :JRubyPuppetService)
+              pool-context (jruby-protocol/get-pool-context jruby-service)
+              pool-agent (jruby-agents/get-modify-instance-agent pool-context)
+              instance (jruby-testutils/borrow-instance jruby-service :test)
+              scripting-container (:scripting-container instance)
+              ;; Timeout will print to stderr otherwise
+              _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
+              script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
+          (try
+            (.runScriptlet scripting-container script)
+            (catch EvalFailedException e))
+          (let [threads-during-jruby (->> (Thread/getAllStackTraces)
+                                          (map #(.getName (key %)))
+                                          (set))]
+            (jruby-testutils/return-instance jruby-service instance :test)
+            (jruby-protocol/flush-jruby-pool! jruby-service)
+            ; wait until the flush is complete
+            (await pool-agent)
+            (Thread/sleep 5000)
+            (let [threads-after-jruby (->> (Thread/getAllStackTraces)
+                                           (map #(.getName (key %)))
+                                           (set))
+                  threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
+                  threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
+              (is (empty? threads-orphaned-by-jruby)))))))))
+
 
 (deftest compat-version-in-config-throws-exception-test
   (testing "compat-version setting in configuration throws exception"
-    (logging/with-test-logging
+    (logutils/with-test-logging
      (is (thrown-with-msg?
           IllegalArgumentException
           #"jruby-puppet.compat-version setting no longer supported"
