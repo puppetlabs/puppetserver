@@ -7,6 +7,7 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 [`trapperkeeper-authorization`]: https://github.com/puppetlabs/trapperkeeper-authorization
 [Puppet `auth.conf`]: https://puppet.com/docs/puppet/latest/config_file_auth.html
 [deprecated]: ./deprecated_features.markdown
+[short names]: https://puppet.com/docs/puppet/6.17/ssl_attributes_extensions.html#puppet_registered_ids
 [`puppetserver.conf`]: ./config_file_puppetserver.markdown
 
 Puppet Server's `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For an overview, see [Puppet Server Configuration](./configuration.markdown).
@@ -158,6 +159,9 @@ If a request matches the rule, Puppet Server checks the request's authenticated 
     -   A `certname` key equivalent to a bare string.
 
     If the request's authenticated name matches the parameter's value, Puppet Server allows it.
+
+> **Note:** If you are using Puppet Server with the CA disabled, you must use OID values for the extensions. Puppet Server will not be able to resolve [short names][] in this mode.
+
 -   **`deny`**: This parameter can take the same types of values as the `allow` parameter, but refuses the request if the authenticated name matches --- even if the rule contains an `allow` value that also matches.
 
 >
