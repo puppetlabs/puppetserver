@@ -9,4 +9,4 @@
 	url = https://github.com/puppetlabs/puppet-resource_api.git
 [submodule "ruby/facter"]
 	path = ruby/facter
-	url = https://github.com/puppetlabs/facter.git
+	url = https://github.com/IrimieBogdan/facter.git
