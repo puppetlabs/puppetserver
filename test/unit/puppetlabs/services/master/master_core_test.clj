@@ -12,7 +12,9 @@
             [puppetlabs.kitchensink.core :as ks]
             [ring.middleware.params :as ring]
             [puppetlabs.services.jruby-pool-manager.jruby-core :as jruby-core]
-            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core])
+            [puppetlabs.services.jruby-pool-manager.impl.jruby-pool-manager-core :as jruby-pool-manager-core]
+            [clojure.java.io :as io]
+            [me.raynes.fs :as fs])
   (:import (java.util HashMap)))
 
 (use-fixtures :once schema-test/validate-schemas)
@@ -37,7 +39,8 @@
                    (fn [___] (throw (IllegalStateException. "Versioned code not supported.")))
                    (constantly nil)
                    true
-                   nil)
+                   nil
+                   "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects")
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))
 
@@ -60,7 +63,6 @@
     (doseq [[method paths]
             {:get ["node"
                    "environment"
-                   "file_content"
                    "file_metadatas"
                    "file_metadata"
                    "file_bucket_file"
@@ -439,3 +441,51 @@
                                                                  :facts true}}))))]
             (is (= 200 (:status response)))
             (is (= {:cool "catalog"} (json/decode (:body response) true))))))))
+
+(deftest bolt-projects-test
+  (let [bolt-project-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"]
+
+    (testing "finding valid bolt projects"
+      (testing "finds bolt project"
+        (is (= "local"
+               (find-bolt-project bolt-project-dir "local"))))
+
+      (testing "return nil when a project isn't found"
+        (is (= nil
+               (find-bolt-project bolt-project-dir "nope"))))
+
+      (testing "doesn't return a directory if it doesn't appear to contain a valid bolt project (bolt-project.yaml, bolt.yaml, or Boltdir)"
+        (is (= nil
+               (find-bolt-project bolt-project-dir "empty"))))
+
+      (testing "find embedded bolt project"
+        (is (= "embedded"
+               (find-bolt-project bolt-project-dir "embedded")))))
+
+    (testing "find the root of a bolt project"
+      (testing "regular project"
+        (is (= (str bolt-project-dir "/local")
+               (get-project-root bolt-project-dir "local"))))
+
+      (testing "embedded project (Boltdir)"
+        (is (= (str bolt-project-dir "/embedded/Boltdir")
+               (get-project-root bolt-project-dir "embedded")))))
+
+    (testing "finding a file in a project"
+      (testing "in the modules mount"
+        (is (= (fs/file (str bolt-project-dir "/local/modules/helpers/files/marco.sh" ))
+               (find-project-file bolt-project-dir "local" "modules" "helpers" "marco.sh")))
+        (is (= (fs/file (str bolt-project-dir "/local/site-modules/utilities/files/etc/greeting" ))
+               (find-project-file bolt-project-dir "local" "modules" "utilities" "etc/greeting"))))
+
+      (testing "returns nil when a component is not found"
+        (is (= nil
+               (find-project-file bolt-project-dir "fake" "modules" "helpers" "marco.sh")))
+        (is (= nil
+               (find-project-file bolt-project-dir "local" "fake" "helpers" "marco.sh")))
+        (is (= nil
+               (find-project-file bolt-project-dir "local" "modules" "fake" "marco.sh")))
+        (is (= nil
+               (find-project-file bolt-project-dir "local" "modules" "helpers" "fake")))
+        (is (= nil
+               (find-project-file nil "local" "modules" "helpers" "marco.sh")))))))

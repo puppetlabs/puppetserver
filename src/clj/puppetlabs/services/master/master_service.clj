@@ -100,6 +100,7 @@
          certname (get-in config [:puppetserver :certname])
          localcacert (get-in config [:puppetserver :localcacert])
          puppet-version (get-in config [:puppetserver :puppet-version])
+         bolt-project-dir (get-in config [:bolt :project-dir])
          max-queued-requests (get-in config [:jruby-puppet :max-queued-requests] 0)
          max-retry-delay (get-in config [:jruby-puppet :max-retry-delay] 1800)
          settings (ca/config->master-settings config)
@@ -133,7 +134,8 @@
                                                (get-auth-handler)
                                                wrap-with-jruby-queue-limit
                                                environment-class-cache-enabled
-                                               boltlib-path))
+                                               boltlib-path
+                                               bolt-project-dir))
          routes (comidi/context path ring-app)
          route-metadata (comidi/route-metadata routes)
          comidi-handler (comidi/routes->handler routes)
