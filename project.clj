@@ -162,7 +162,7 @@
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.2.0"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
