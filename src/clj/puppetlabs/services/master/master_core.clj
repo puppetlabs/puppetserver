@@ -799,7 +799,7 @@
                                       get-code-content-fn
                                       current-code-id-fn
                                       environment-class-cache-enabled)
-                   clojure-request-wrapper )))
+                   clojure-request-wrapper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Lifecycle Helper Functions

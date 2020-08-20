@@ -475,8 +475,8 @@
       (or (false? (:authorization-required certificate-status-access-control))
           (not-empty certificate-status-whitelist))
       (log/warn (format "%s %s"
-               (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-               (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+                        (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+                        (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
       (not (nil? certificate-status-whitelist))
       (log/warn (format "%s %s %s"
                         (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
@@ -1151,7 +1151,7 @@
                   subject csr-path)]
         (log/warn msg)
         {:outcome :not-found
-         :message msg }))))
+         :message msg}))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
@@ -1189,20 +1189,20 @@
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
   [settings :- CaSettings]
-    (ensure-directories-exist! settings)
-    (let [required-files (-> (settings->cadir-paths settings)
-                            (select-keys required-ca-files)
-                            (vals))]
-     (if (every? fs/exists? required-files)
-       (do
-         (log/info (i18n/trs "CA already initialized for SSL"))
-         (when (:manage-internal-file-permissions settings)
-           (ensure-ca-file-perms! settings)))
-       (let [{found   true
-              missing false} (group-by fs/exists? required-files)]
-         (if (= required-files missing)
-           (generate-ssl-files! settings)
-           (throw (partial-state-error "CA" found missing)))))))
+  (ensure-directories-exist! settings)
+  (let [required-files (-> (settings->cadir-paths settings)
+                           (select-keys required-ca-files)
+                           (vals))]
+    (if (every? fs/exists? required-files)
+      (do
+        (log/info (i18n/trs "CA already initialized for SSL"))
+        (when (:manage-internal-file-permissions settings)
+          (ensure-ca-file-perms! settings)))
+      (let [{found   true
+             missing false} (group-by fs/exists? required-files)]
+        (if (= required-files missing)
+          (generate-ssl-files! settings)
+          (throw (partial-state-error "CA" found missing)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint

@@ -469,30 +469,30 @@
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "pson"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))
+            (is (= #{localhost-status test-agent-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true))))))
 
         (testing "with 'Accept: text/pson'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "text/pson"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+            (is (= #{localhost-status test-agent-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true))))))
 
         (testing "with 'Accept: application/json'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "application/json"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true)))))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
+            (is (= #{localhost-status test-agent-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
     (let [settings (testutils/ca-sandbox! cadir)

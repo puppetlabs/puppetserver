@@ -245,12 +245,12 @@
                   (name desired-state) subject))
               (let [cert-ttl (:cert_ttl json-body)]
                 (if (and cert-ttl (schema/check schema/Int cert-ttl))
-                     (malformed
-                      (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
-                     ; this is the happy path. we have a body, it's parsable json,
-                     ; and the desired_state field is one of (signed revoked), and
-                     ; it potentially has a valid cert_ttl field
-                     [false {::json-body json-body}])))
+                  (malformed
+                    (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
+                  ; this is the happy path. we have a body, it's parsable json,
+                  ; and the desired_state field is one of (signed revoked), and
+                  ; it potentially has a valid cert_ttl field
+                  [false {::json-body json-body}])))
             (malformed (i18n/tru "Missing required parameter \"desired_state\"")))
           (malformed (i18n/tru "Request body is not JSON.")))
         (malformed (i18n/tru "Empty request body.")))))
