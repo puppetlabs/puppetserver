@@ -6,7 +6,7 @@ canonical: "/puppetserver/latest/puppet-api/v3/file_content.html"
 
 The `file_content` endpoint returns contents of the specified file.
 
-## `GET /puppet/v3/file_content/:mount_point/:module/:file-path?environment=env`
+## `GET /puppet/v3/file_content/:mount_point/:module/:file-path?environment=:environment`
 
 When specifying environment see the [open source puppet API docs](https://puppet.com/docs/puppet/latest/http_api/http_file_content.html)
 
@@ -28,5 +28,5 @@ code with a `text/plain` Content-Type header:
 
 -   400: returned when neither the environment nor the project query parameters are provided, or when both project and environment are provided. 
 -   404: returned when requesting a file that is not within a module's `files` or `tasks`
-directory.
+directory, or when any other component (project, module, or mount point) is not found.
 
