@@ -937,15 +937,15 @@
           (verify-inventory-entry!
             (first entries)
             "0x0001"
-            "2014-02-14T18:09:07UTC"
-            "2019-02-14T18:09:07UTC"
+            "2020-08-19T20:23:52UTC"
+            "2025-08-19T20:23:52UTC"
             "/CN=Puppet CA: localhost")
 
           (verify-inventory-entry!
             (second entries)
             "0x0002"
-            "2014-02-14T18:09:07UTC"
-            "2019-02-14T18:09:07UTC"
+            "2020-08-19T20:26:02UTC"
+            "2025-08-19T20:26:02UTC"
             "/CN=localhost"))))))
 
 (deftest allow-duplicate-certs-test
