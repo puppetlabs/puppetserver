@@ -873,6 +873,121 @@
          :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
+(defn is-bolt-project?
+  [dir]
+  (or (fs/exists? (str dir "/bolt-project.yaml"))
+      (fs/exists? (str dir "/bolt.yaml"))
+      (fs/exists? (str dir "/Boltdir"))))
+
+(defn get-project-root
+  "Lookup a project by name and return the path where its project files are
+  located as a string."
+  [projects-dir project-name]
+  (let [boltdir-path (str projects-dir "/" project-name "/Boltdir")]
+    (if (fs/exists? boltdir-path)
+      boltdir-path
+      (str projects-dir "/" project-name))))
+
+(defn dirs-in-project-modulepath
+  "List all directories in a bolt project's modulepath. Returns a sequence of
+  File objects."
+  [project-root]
+  (->> ["modules" "site-modules" "site"]
+       (map #(str project-root "/" %))
+       (filter fs/exists?)
+       (mapcat fs/list-dir)
+       (filter fs/directory?)))
+
+(defn find-project-module
+  "Given the path of a project and the name of a module, search the project's
+  module path and return the path to that module as a File, or nil."
+  [project-root module]
+  (->> project-root
+       dirs-in-project-modulepath
+       (filter #(= module (fs/base-name %)))
+       first))
+
+(defn mount->path-component
+  "Map the fileserving \"mount\" to the subdirectory of modules it will serve
+  files out of."
+  [mount]
+  (case mount
+    "modules" "files"
+    ;; default to itself
+    mount))
+
+(defn find-project-file
+  "Find a file in a project using the parameters from a `file_content` request.
+  Returns the path as as string."
+  [bolt-projects-dir project-name mount module path]
+  (if (is-bolt-project? (str bolt-projects-dir "/" project-name))
+    (let [project-root (get-project-root bolt-projects-dir project-name)
+          module-root (find-project-module project-root module)
+          file-path (str module-root "/" (mount->path-component mount) "/" path)]
+      (if (fs/exists? file-path)
+        file-path))))
+
+(def project-routes
+  "Bidi routing table for project file_content endpoint. This is done separately
+  because we have to do additional routing after branching on the query
+  parameter, which is not natively supported in bidi."
+
+  ["" {[[#"tasks|modules" :mount-point] "/" :module "/" [#".+" :file-path]] :basic
+       [[#"plugins|pluginfacts" :mount-point] [#".*" :file-path]] :pluginsync}])
+
+(defn make-file-content-response
+  "Given a path to a file, generate an appropriate ring response map. Returns a
+  404 response if passed `nil`."
+  [file requested-file-path]
+  (if file
+    (-> file
+        rr/file-response
+        (rr/content-type "application/octet-stream"))
+    {:status 404
+     :headers {"Content-Type" "text/plain"}
+     :body (i18n/tru "Could not find file_content for path: {0}" requested-file-path)}))
+
+(defn handle-project-file-content
+  "Handle a file_content request for a bolt project."
+  [bolt-projects-dir request]
+  (let [project (get-in request [:params "project"])
+        path (get-in request [:params :rest])
+        match (bidi.bidi/match-route project-routes path)]
+    (if match
+      (let [mount-point (get-in match [:route-params :mount-point])
+            mount-type (get-in match [:handler])
+            module (get-in match [:route-params :module])
+            file-path (get-in match [:route-params :file-path])]
+        (case mount-type
+          :basic (make-file-content-response
+                  (find-project-file bolt-projects-dir project mount-point module file-path)
+                  file-path)
+          ;; :pluginsync nil
+          {:status 400
+           :headers {"Content-Type" "text/plain"}
+           :body (i18n/tru "Unsupported mount: {0}" mount-point)})))))
+
+(defn file-content-handler
+  "Handle file_content requests and dispatch them to the correct handler for
+  environments or projects."
+  [bolt-projects-dir ruby-request-handler request]
+  (let [project (get-in request [:params "project"])
+        environment (get-in request [:params "environment"])]
+    (cond
+      (and project environment)
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body (i18n/tru "A file_content request cannot specify both `environment` and `project` query parameters.")}
+      (and (nil? project) (nil? environment))
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body (i18n/tru "A file_content request must include an `environment` or `project` query parameter.")}
+      project
+      (handle-project-file-content bolt-projects-dir request)
+
+      :else
+      (ruby-request-handler request))))
+
 (def CatalogRequestV4
   {(schema/required-key "certname") schema/Str
    (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
@@ -988,12 +1103,14 @@
 (schema/defn ^:always-validate
   v3-ruby-routes :- bidi-schema/RoutePair
   "v3 route tree for the ruby side of the master service."
-  [request-handler :- IFn]
+  [request-handler :- IFn
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_content/" [#".*" :rest]] request
-               (request-handler request))
+               ;; Not strictly ruby routes anymore because of this
+               (file-content-handler bolt-projects-dir request-handler (ring/params-request request)))
    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
@@ -1114,9 +1231,10 @@
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool
    wrap-with-jruby-queue-limit :- IFn
-   boltlib-path :- (schema/maybe [schema/Str])]
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/context "/v3"
-                  (v3-ruby-routes ruby-request-handler)
+                  (v3-ruby-routes ruby-request-handler bolt-projects-dir)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
@@ -1225,7 +1343,8 @@
    get-code-content-fn :- IFn
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool
-   boltlib-path :- (schema/maybe [schema/Str])]
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/routes
    (v3-routes ruby-request-handler
               clojure-request-wrapper
@@ -1234,7 +1353,8 @@
               current-code-id-fn
               environment-class-cache-enabled
               wrap-with-jruby-queue-limit
-              boltlib-path)
+              boltlib-path
+              bolt-projects-dir)
    (v4-routes clojure-request-wrapper
               jruby-service
               wrap-with-jruby-queue-limit
@@ -1312,7 +1432,8 @@
    wrap-with-authorization-check :- IFn
    wrap-with-jruby-queue-limit :- IFn
    environment-class-cache-enabled :- schema/Bool
-   boltlib-path :- (schema/maybe [schema/Str])]
+   boltlib-path :- (schema/maybe [schema/Str])
+   bolt-projects-dir :- (schema/maybe schema/Str)]
   (let [ruby-request-handler (get-wrapped-handler handle-request
                                                   wrap-with-authorization-check
                                                   puppet-version
@@ -1329,7 +1450,8 @@
                  get-code-content
                  current-code-id
                  environment-class-cache-enabled
-                 boltlib-path)))
+                 boltlib-path
+                 bolt-projects-dir)))
 
 (def MasterStatusV1
   {(schema/optional-key :experimental) {:http-metrics [http-metrics/RouteSummary]
