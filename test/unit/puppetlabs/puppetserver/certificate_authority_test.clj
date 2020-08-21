@@ -463,7 +463,7 @@
                          (utils/revoked? cert)))]
       (fs/delete (:capub settings))
       (is (false? (revoked? cert)))
-      (revoke-existing-cert! settings "localhost")
+      (revoke-existing-certs! settings ["localhost"])
       (is (true? (revoked? cert))))))
 
 (deftest revoke-with-bundled-ca-certs
@@ -477,8 +477,27 @@
                          (utils/pem->crl)
                          (utils/revoked? cert)))]
       (is (false? (revoked? cert)))
-      (revoke-existing-cert! settings "localhost")
+      (revoke-existing-certs! settings ["localhost"])
       (is (true? (revoked? cert))))))
+
+(deftest revoke-multiple-certs
+  (testing "The revocation function can accept a list of certs to revoke"
+    (let [settings (testutils/ca-sandbox! cadir)
+          cert1 (-> (:signeddir settings)
+                    (path-to-cert "localhost")
+                    (utils/pem->cert))
+          cert2 (-> (:signeddir settings)
+                    (path-to-cert "test_cert")
+                    (utils/pem->cert))
+          revoked? (fn [cert]
+                     (-> (:cacrl settings)
+                         (utils/pem->crl)
+                         (utils/revoked? cert)))]
+      (is (false? (revoked? cert1)))
+      (is (false? (revoked? cert2)))
+      (revoke-existing-certs! settings ["localhost" "test_cert"])
+      (is (true? (revoked? cert1)))
+      (is (true? (revoked? cert2))))))
 
 (deftest get-certificate-revocation-list-test
   (testing "`get-certificate-revocation-list` returns a valid CRL file."

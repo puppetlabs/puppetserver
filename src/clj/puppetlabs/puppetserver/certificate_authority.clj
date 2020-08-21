@@ -1274,20 +1274,21 @@
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
-(schema/defn revoke-existing-cert!
-  "Revoke the subject's certificate. Note this does not destroy the certificate.
-   The certificate will remain in the signed directory despite being revoked."
+(schema/defn revoke-existing-certs!
+  "Revoke the subjects' certificates. Note this does not destroy the certificates.
+   The certificates will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacert cacrl cakey]} :- CaSettings
-   subject :- schema/Str]
-  (let [serial  (-> (path-to-cert signeddir subject)
-                    (utils/pem->cert)
-                    (utils/get-serial))
-        new-crl (utils/revoke (utils/pem->crl cacrl)
-                              (utils/pem->private-key cakey)
-                              (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                              serial)]
-    (utils/crl->pem! new-crl cacrl)
-    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
+   subjects :- [schema/Str]]
+  (let [original-crl (utils/pem->crl cacrl)
+        ca-private-key (utils/pem->private-key cakey)
+        ca-public-key (.getPublicKey (utils/pem->ca-cert cacert cakey))
+        serials (map #(-> (path-to-cert signeddir %)
+                          (utils/pem->cert)
+                          (utils/get-serial))
+                     subjects)
+        new-crl (utils/revoke-multiple original-crl ca-private-key
+                                       ca-public-key serials)]
+    (utils/crl->pem! new-crl cacrl)))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
@@ -1296,7 +1297,7 @@
    desired-state :- DesiredCertificateState]
   (if (= :signed desired-state)
     (sign-existing-csr! settings subject)
-    (revoke-existing-cert! settings subject)))
+    (revoke-existing-certs! settings [subject])))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
@@ -1355,6 +1356,14 @@
     (when (fs/exists? cert)
       (fs/delete cert)
       (log/debug (i18n/trs "Deleted certificate for {0}" subject)))))
+
+(schema/defn ^:always-validate delete-certificates!
+  "Delete each of the given certificates.
+  Note that this does not revoke the certs."
+  [ca-settings :- CaSettings
+   subjects :- [schema/Str]]
+  (doseq [subj subjects]
+    (delete-certificate! ca-settings subj)))
 
 (schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
   "Given a path to a custom OID mappings file, return a map of all oids to
