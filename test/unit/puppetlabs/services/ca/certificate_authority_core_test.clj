@@ -919,5 +919,85 @@
                         {:uri            "/v1/certificate_statuses/all"
                          :request-method :get})]
           (is (= 200 (:status response)))
-          (is (= #{test-agent-status revoked-agent-status localhost-status}
+          (is (= #{test-agent-status revoked-agent-status
+                   test-cert-status localhost-status}
                  (set (json/parse-string (:body response) true)))))))))
+
+(deftest cert-clean
+  (testing "Cleaning one existing cert"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "localhost")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"localhost\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Cleaning multiple existing certs"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path1 (ca/path-to-cert (:signeddir settings) "localhost")
+          cert1 (utils/pem->cert cert-path1)
+          cert-path2 (ca/path-to-cert (:signeddir settings) "test_cert")
+          cert2 (utils/pem->cert cert-path2)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"localhost\",\"test_cert\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert1)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert2)))
+      (is (false? (fs/exists? cert-path1)))
+      (is (false? (fs/exists? cert-path2)))))
+
+  (testing "Cleaning a missing cert"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "localhost")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"localhost\",\"missing\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (= "The following certs do not exist and cannot be revoked: [\"missing\"]"
+             (:body response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Cleaning a revoked cert succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "revoked-agent")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"revoked-agent\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (= "Successfully cleaned all certs."
+             (:body response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path))))))

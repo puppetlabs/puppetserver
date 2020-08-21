@@ -76,15 +76,36 @@
         (rr/status ((response :outcome) outcomes->codes))
         (rr/content-type "text/plain"))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Web app
-
 (defn try-to-parse
   [body]
   (try
     (cheshire/parse-stream (io/reader body) true)
     (catch Exception e
       (log/debug e))))
+
+(schema/defn handle-cert-clean
+  [{:keys [body]}
+   ca-settings :- ca/CaSettings]
+  (let [{:keys [certnames async]} (try-to-parse body)
+        [existing-certs missing-certs] (split-with
+                                        #(ca/certificate-exists? ca-settings %)
+                                        certnames)
+        message (when (seq missing-certs)
+                  (format "The following certs do not exist and cannot be revoked: %s"
+                          (vec missing-certs)))]
+    (try
+      (ca/revoke-existing-certs! ca-settings existing-certs)
+      (ca/delete-certificates! ca-settings existing-certs)
+      (-> (rr/response (or message "Successfully cleaned all certs."))
+          (rr/status 200)
+          (rr/content-type "text/plain"))
+      (catch Exception e
+        (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
+            (rr/status 500)
+            (rr/content-type "text/plain"))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Web app
 
 (defn malformed
   "Returns a value indicating to liberator that the request is malformed,
@@ -315,7 +336,9 @@
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] []
-        (handle-get-certificate-revocation-list ca-settings)))
+        (handle-get-certificate-revocation-list ca-settings))
+      (PUT ["/clean"] request
+        (handle-cert-clean request ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate
