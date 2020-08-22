@@ -1,13 +1,13 @@
 # SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR Puppet <docs@puppet.com>
-# This file is distributed under the same license as the PACKAGE package.
+# This file is distributed under the same license as the puppetlabs.puppetserver package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 828d512c235ce7dde216580d3a1b6c32102f3bf7\n"
+"X-Git-Ref: de00d5235e6f92e91651375dac56b65a42835444\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -551,6 +551,26 @@ msgstr ""
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
 "files, lib, or tasks directory of a module."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Could not find file_content for path: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid "Unsupported mount: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A file_content request cannot specify both `environment` and `project` query "
+"parameters."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/master_core.clj
+msgid ""
+"A file_content request must include an `environment` or `project` query "
+"parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
