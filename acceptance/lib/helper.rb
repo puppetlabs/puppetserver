@@ -121,8 +121,8 @@ module PuppetServerExtensions
           response = on(host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0,1])
           if response.exit_code == 1
             if response.stdout.match?(/Certificate (.+) has not been signed yet/)
-              Beaker::Log.notify "Cert not signed, possibly due to CI load; running agent again"
-              sleep 3
+              Beaker::Log.notify "Cert not signed, possibly due to 'puppet resource service puppetserver ensure=running' returning early, retrying in 20 seconds"
+              sleep 20
               on(host, puppet("agent --test --server #{master}"), :acceptable_exit_codes => [0])
             else
               fail_test("Exit code of 1 with unexpected stdout:\n#{response.stdout}")

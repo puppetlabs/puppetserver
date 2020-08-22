@@ -27,7 +27,7 @@
 
   :min-lein-version "2.9.1"
 
-  :parent-project {:coords [puppetlabs/clj-parent "4.6.1"]
+  :parent-project {:coords [puppetlabs/clj-parent "4.6.2"]
                    :inherit [:managed-dependencies]}
 
   :dependencies [[org.clojure/clojure]
@@ -162,7 +162,7 @@
                                                [puppetlabs/jruby-utils]
                                                [puppetlabs/puppetserver ~ps-version]
                                                [puppetlabs/trapperkeeper-webserver-jetty9]]
-                      :plugins [[puppetlabs/lein-ezbake "2.1.4"]]
+                      :plugins [[puppetlabs/lein-ezbake "2.2.1"]]
                       :name "puppetserver"}
              :uberjar {:dependencies [[org.bouncycastle/bcpkix-jdk15on]
                                       [puppetlabs/trapperkeeper-webserver-jetty9]]
