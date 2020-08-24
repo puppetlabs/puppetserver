@@ -1,6 +1,6 @@
 language: clojure
-lein: 2.7.1
-dist: xenial
+lein: 2.9.1
+dist: bionic
 sudo: required
 script:
   - ./ext/travisci/test.sh
