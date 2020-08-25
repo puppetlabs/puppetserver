@@ -475,8 +475,8 @@
       (or (false? (:authorization-required certificate-status-access-control))
           (not-empty certificate-status-whitelist))
       (log/warn (format "%s %s"
-               (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-               (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+                        (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+                        (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
       (not (nil? certificate-status-whitelist))
       (log/warn (format "%s %s %s"
                         (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
@@ -1151,7 +1151,7 @@
                   subject csr-path)]
         (log/warn msg)
         {:outcome :not-found
-         :message msg }))))
+         :message msg}))))
 
 (schema/defn ^:always-validate
   get-certificate-revocation-list :- schema/Str
@@ -1189,20 +1189,20 @@
    new ones will not be generated. If only some are found
    (but others are missing), an exception is thrown."
   [settings :- CaSettings]
-    (ensure-directories-exist! settings)
-    (let [required-files (-> (settings->cadir-paths settings)
-                            (select-keys required-ca-files)
-                            (vals))]
-     (if (every? fs/exists? required-files)
-       (do
-         (log/info (i18n/trs "CA already initialized for SSL"))
-         (when (:manage-internal-file-permissions settings)
-           (ensure-ca-file-perms! settings)))
-       (let [{found   true
-              missing false} (group-by fs/exists? required-files)]
-         (if (= required-files missing)
-           (generate-ssl-files! settings)
-           (throw (partial-state-error "CA" found missing)))))))
+  (ensure-directories-exist! settings)
+  (let [required-files (-> (settings->cadir-paths settings)
+                           (select-keys required-ca-files)
+                           (vals))]
+    (if (every? fs/exists? required-files)
+      (do
+        (log/info (i18n/trs "CA already initialized for SSL"))
+        (when (:manage-internal-file-permissions settings)
+          (ensure-ca-file-perms! settings)))
+      (let [{found   true
+             missing false} (group-by fs/exists? required-files)]
+        (if (= required-files missing)
+          (generate-ssl-files! settings)
+          (throw (partial-state-error "CA" found missing)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint
@@ -1274,20 +1274,21 @@
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
-(schema/defn revoke-existing-cert!
-  "Revoke the subject's certificate. Note this does not destroy the certificate.
-   The certificate will remain in the signed directory despite being revoked."
+(schema/defn revoke-existing-certs!
+  "Revoke the subjects' certificates. Note this does not destroy the certificates.
+   The certificates will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacert cacrl cakey]} :- CaSettings
-   subject :- schema/Str]
-  (let [serial  (-> (path-to-cert signeddir subject)
-                    (utils/pem->cert)
-                    (utils/get-serial))
-        new-crl (utils/revoke (utils/pem->crl cacrl)
-                              (utils/pem->private-key cakey)
-                              (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                              serial)]
-    (utils/crl->pem! new-crl cacrl)
-    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))))
+   subjects :- [schema/Str]]
+  (let [original-crl (utils/pem->crl cacrl)
+        ca-private-key (utils/pem->private-key cakey)
+        ca-public-key (.getPublicKey (utils/pem->ca-cert cacert cakey))
+        serials (map #(-> (path-to-cert signeddir %)
+                          (utils/pem->cert)
+                          (utils/get-serial))
+                     subjects)
+        new-crl (utils/revoke-multiple original-crl ca-private-key
+                                       ca-public-key serials)]
+    (utils/crl->pem! new-crl cacrl)))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
@@ -1296,7 +1297,7 @@
    desired-state :- DesiredCertificateState]
   (if (= :signed desired-state)
     (sign-existing-csr! settings subject)
-    (revoke-existing-cert! settings subject)))
+    (revoke-existing-certs! settings [subject])))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
@@ -1355,6 +1356,14 @@
     (when (fs/exists? cert)
       (fs/delete cert)
       (log/debug (i18n/trs "Deleted certificate for {0}" subject)))))
+
+(schema/defn ^:always-validate delete-certificates!
+  "Delete each of the given certificates.
+  Note that this does not revoke the certs."
+  [ca-settings :- CaSettings
+   subjects :- [schema/Str]]
+  (doseq [subj subjects]
+    (delete-certificate! ca-settings subj)))
 
 (schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
   "Given a path to a custom OID mappings file, return a map of all oids to

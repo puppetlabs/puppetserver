@@ -76,15 +76,49 @@
         (rr/status ((response :outcome) outcomes->codes))
         (rr/content-type "text/plain"))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Web app
-
 (defn try-to-parse
   [body]
   (try
     (cheshire/parse-stream (io/reader body) true)
     (catch Exception e
       (log/debug e))))
+
+(schema/defn handle-cert-clean
+  [{:keys [body]}
+   ca-settings :- ca/CaSettings]
+  (if-let [json-body (try-to-parse body)]
+    ;; TODO support async mode
+    (if (true? (:async json-body))
+      (-> (rr/response "Async mode is not currently supported.")
+          (rr/status 400)
+          (rr/content-type "text/plain"))
+      (if-let [certnames (:certnames json-body)]
+        (let [{existing-certs true
+               missing-certs false} (group-by
+                                     #(ca/certificate-exists? ca-settings %)
+                                     certnames)
+              message (when (seq missing-certs)
+                        (format "The following certs do not exist and cannot be revoked: %s"
+                                (vec missing-certs)))]
+          (try
+            (ca/revoke-existing-certs! ca-settings existing-certs)
+            (ca/delete-certificates! ca-settings existing-certs)
+            (-> (rr/response (or message "Successfully cleaned all certs."))
+                (rr/status 200)
+                (rr/content-type "text/plain"))
+            (catch Exception e
+              (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
+                  (rr/status 500)
+                  (rr/content-type "text/plain")))))
+        (-> (rr/response "Missing required key: 'certnames'. Please supply the list of certs you want to clean.")
+            (rr/status 400)
+            (rr/content-type "text/plain"))))
+    (-> (rr/response "Request body is not JSON.")
+        (rr/status 400)
+        (rr/content-type "text/plain"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Web app
 
 (defn malformed
   "Returns a value indicating to liberator that the request is malformed,
@@ -245,12 +279,12 @@
                   (name desired-state) subject))
               (let [cert-ttl (:cert_ttl json-body)]
                 (if (and cert-ttl (schema/check schema/Int cert-ttl))
-                     (malformed
-                      (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
-                     ; this is the happy path. we have a body, it's parsable json,
-                     ; and the desired_state field is one of (signed revoked), and
-                     ; it potentially has a valid cert_ttl field
-                     [false {::json-body json-body}])))
+                  (malformed
+                    (i18n/tru "cert_ttl specified for host {0} must be an integer, not \"{1}\"" subject cert-ttl))
+                  ; this is the happy path. we have a body, it's parsable json,
+                  ; and the desired_state field is one of (signed revoked), and
+                  ; it potentially has a valid cert_ttl field
+                  [false {::json-body json-body}])))
             (malformed (i18n/tru "Missing required parameter \"desired_state\"")))
           (malformed (i18n/tru "Request body is not JSON.")))
         (malformed (i18n/tru "Empty request body.")))))
@@ -315,7 +349,9 @@
         (DELETE [""] [subject]
           (handle-delete-certificate-request! subject ca-settings)))
       (GET ["/certificate_revocation_list/" :ignored-node-name] []
-        (handle-get-certificate-revocation-list ca-settings)))
+        (handle-get-certificate-revocation-list ca-settings))
+      (PUT ["/clean"] request
+        (handle-cert-clean request ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate

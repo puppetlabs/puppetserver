@@ -70,40 +70,50 @@
   (io/input-stream (.getBytes s)))
 
 (def localhost-status
-  {:dns_alt_names ["DNS:djroomba.vpn.puppetlabs.net"
-                   "DNS:localhost"
-                   "DNS:puppet"
-                   "DNS:puppet.vpn.puppetlabs.net"]
-   :fingerprint   "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"
-   :fingerprints  {:SHA1 "DB:32:CD:AB:88:86:E0:64:0A:B7:5B:88:76:E4:60:3A:CD:9E:36:C1"
-                   :SHA256 "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"
-                   :SHA512 "58:22:32:60:CE:E7:E9:C9:CB:6A:01:52:81:ED:24:D4:69:8E:9E:CF:D8:A7:4E:6E:B5:C7:E7:18:59:5F:81:4C:93:11:77:E6:F0:40:70:5B:9C:9D:BE:22:A6:61:0B:F9:46:70:43:09:58:7E:6B:B7:5B:D9:6A:54:36:09:53:F9"
-                   :default "F3:12:6C:81:AC:14:03:8D:63:37:82:E4:C4:1D:21:91:55:7E:88:67:9F:EA:BD:2B:BF:1A:02:96:CE:F8:1C:73"}
-   :name          "localhost"
-   :state         "signed"})
+  {:dns_alt_names ["DNS:localhost"
+                   "DNS:djroomba.vpn.puppetlabs.net"
+                   "DNS:puppet.vpn.puppetlabs.net"
+                   "DNS:puppet"]
+   :fingerprint "88:B1:67:67:78:E2:62:FD:8E:1B:8F:29:CB:2E:C9:41:E1:D3:36:44:27:AB:F9:E4:A7:87:C6:E3:FE:7C:C1:DC"
+   :fingerprints {:SHA1 "D4:3F:14:87:B9:80:FF:FF:90:0B:F2:69:81:64:07:B4:D2:65:72:92"
+                  :SHA256 "88:B1:67:67:78:E2:62:FD:8E:1B:8F:29:CB:2E:C9:41:E1:D3:36:44:27:AB:F9:E4:A7:87:C6:E3:FE:7C:C1:DC"
+                  :SHA512 "E2:97:07:DB:5C:1B:FE:D2:04:4B:94:95:3C:06:4D:2F:6C:B6:67:98:F8:3D:86:82:D1:8E:16:C9:F9:59:8F:19:92:94:69:5B:8B:A8:0A:3E:FF:E4:52:57:79:74:75:79:33:E3:B4:69:C3:16:95:02:4D:D4:F5:60:67:13:11:F9"
+                  :default "88:B1:67:67:78:E2:62:FD:8E:1B:8F:29:CB:2E:C9:41:E1:D3:36:44:27:AB:F9:E4:A7:87:C6:E3:FE:7C:C1:DC"}
+   :name "localhost"
+   :state "signed"})
 
 (def test-agent-status
   {:dns_alt_names []
-   :fingerprint   "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
-   :fingerprints  {:SHA1 "EB:3D:7B:9C:85:3E:56:7A:3E:9D:1B:C4:7A:21:5A:91:F5:00:4D:9D"
-                   :SHA256 "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"
-                   :SHA512 "80:C5:EE:B7:A5:FB:5E:53:7C:51:3A:A0:78:AF:CD:E3:7C:BA:B1:D6:BB:BD:61:9E:A0:2E:D2:12:3C:D8:6E:8D:86:7C:FC:FB:4C:6B:1D:15:63:02:19:D2:F8:49:7D:1A:11:78:07:31:23:22:36:61:0C:D8:E9:F4:97:0B:67:47"
-                   :default "36:94:27:47:EA:51:EE:7C:43:D2:EC:24:24:BB:85:CD:4A:D1:FB:BB:09:27:D9:61:59:D0:07:94:2B:2F:56:E3"}
-   :name          "test-agent"
-   :state         "requested"})
+   :fingerprint "D4:9C:03:6A:4B:4E:51:87:54:5B:BD:93:8E:4A:06:A7:6F:94:CE:33:62:F9:F4:74:61:4D:20:B1:A9:23:C8:0C"
+   :fingerprints {:SHA1 "91:A4:AE:9C:8D:DF:D1:7D:77:85:97:19:C1:85:12:12:89:69:C5:73"
+                  :SHA256 "D4:9C:03:6A:4B:4E:51:87:54:5B:BD:93:8E:4A:06:A7:6F:94:CE:33:62:F9:F4:74:61:4D:20:B1:A9:23:C8:0C"
+                  :SHA512 "51:DE:0B:B1:B2:1A:5C:3E:2B:D8:84:DE:03:B0:AF:9B:78:2C:A3:9A:70:15:B2:15:00:2C:B5:4F:99:8B:CB:98:9F:CE:C3:28:5C:02:A9:CD:3B:D9:34:E7:CB:D8:E1:5D:24:11:B9:4A:78:FF:68:92:12:CA:B3:A7:D2:89:22:38"
+                  :default "D4:9C:03:6A:4B:4E:51:87:54:5B:BD:93:8E:4A:06:A7:6F:94:CE:33:62:F9:F4:74:61:4D:20:B1:A9:23:C8:0C"}
+   :name "test-agent"
+   :state "requested"})
 
 (def revoked-agent-status
   {:dns_alt_names ["DNS:BAR"
                    "DNS:Baz4"
                    "DNS:foo"
                    "DNS:revoked-agent"]
-   :fingerprint   "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
-   :fingerprints  {:SHA1 "38:56:67:FF:20:91:0E:85:C4:DF:CA:16:77:60:D2:BB:FB:DF:68:BB"
-                   :SHA256 "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"
-                   :SHA512 "1A:E3:12:14:81:50:38:19:3C:C6:42:4B:BB:09:16:0C:B1:8A:3C:EB:8C:64:9C:88:46:C6:7E:35:5E:11:0C:7A:CC:B2:47:A2:EB:57:63:5C:48:68:22:57:62:A1:46:64:B4:56:29:47:A5:46:F4:BD:9B:45:77:19:91:0B:35:39"
-                   :default "1C:D0:29:04:9B:49:F5:ED:AB:E9:85:CC:D9:6F:20:E1:7F:84:06:8A:1D:37:19:ED:EA:24:66:C6:6E:D4:6D:95"}
-   :name          "revoked-agent"
-   :state         "revoked"})
+   :fingerprint "26:BE:A0:35:50:5E:C8:9A:BB:FB:12:EC:3A:CD:7E:F4:71:9B:86:C1:3B:CC:3B:3B:44:8D:9D:68:12:6A:C8:E2"
+   :fingerprints {:SHA1 "22:37:E2:C9:FB:20:8F:AA:71:72:EE:B7:02:D8:BE:35:D5:91:61:1B"
+                  :SHA256 "26:BE:A0:35:50:5E:C8:9A:BB:FB:12:EC:3A:CD:7E:F4:71:9B:86:C1:3B:CC:3B:3B:44:8D:9D:68:12:6A:C8:E2"
+                  :SHA512 "7A:35:00:F1:F6:8F:72:01:D7:5F:95:EC:D7:D7:03:DC:BC:55:95:98:F4:48:5E:B4:22:3B:1B:B1:82:B9:6C:59:7C:05:54:86:40:33:CE:3A:9E:75:E9:27:23:95:6E:D8:04:7A:3C:26:8E:0D:70:9B:F6:1F:74:51:29:97:1E:28"
+                  :default "26:BE:A0:35:50:5E:C8:9A:BB:FB:12:EC:3A:CD:7E:F4:71:9B:86:C1:3B:CC:3B:3B:44:8D:9D:68:12:6A:C8:E2"}
+   :name "revoked-agent"
+   :state "revoked"})
+
+(def test-cert-status
+  {:dns_alt_names []
+   :fingerprint "00:A9:C2:5E:2A:66:18:E2:99:DF:27:13:36:7E:DB:4D:9B:DC:93:DD:3A:B2:69:48:AD:1A:3B:12:45:BF:CF:8A"
+   :fingerprints {:SHA1 "CF:F9:E9:7E:05:13:1E:ED:CB:3B:94:49:07:D5:3E:6E:12:8C:5C:E4"
+                  :SHA256 "00:A9:C2:5E:2A:66:18:E2:99:DF:27:13:36:7E:DB:4D:9B:DC:93:DD:3A:B2:69:48:AD:1A:3B:12:45:BF:CF:8A"
+                  :SHA512 "7F:3A:D0:4C:12:68:FA:1C:B4:DE:7F:B7:39:AE:94:00:33:02:B9:E7:B1:2D:8F:6C:BB:58:84:0A:EF:98:D2:79:9F:12:76:23:58:2F:3D:CE:E9:34:16:88:43:DD:2E:A6:98:5E:33:FB:B1:61:38:5E:58:BC:EA:F9:4A:BC:E8:12"
+                  :default "00:A9:C2:5E:2A:66:18:E2:99:DF:27:13:36:7E:DB:4D:9B:DC:93:DD:3A:B2:69:48:AD:1A:3B:12:45:BF:CF:8A"}
+   :name "test_cert"
+   :state "signed"})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
@@ -435,7 +445,8 @@
                         {:uri "/v1/certificate_statuses/thisisirrelevant"
                          :request-method :get})]
           (is (= 200 (:status response)))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
+          (is (= #{localhost-status test-agent-status
+                   test-cert-status revoked-agent-status}
                  (set (json/parse-string (:body response) true)))))
 
         (testing "requires ignored path segment"
@@ -451,7 +462,8 @@
                           {:uri "/v1/certificate_statuses/*"
                            :request-method :get})]
             (is (= 200 (:status response)))
-            (is (= #{localhost-status test-agent-status revoked-agent-status}
+            (is (= #{localhost-status test-agent-status
+                     test-cert-status revoked-agent-status}
                  (set (json/parse-string (:body response) true))))))
 
         (testing "returns json when no accept header specified"
@@ -461,7 +473,8 @@
                            :headers {}})]
             (is (= 200 (:status response)))
             (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
-            (is (= #{localhost-status test-agent-status revoked-agent-status}
+            (is (= #{localhost-status test-agent-status
+                     test-cert-status revoked-agent-status}
                    (set (json/parse-string (:body response) true))))))
 
         (testing "with 'Accept: pson'"
@@ -469,30 +482,33 @@
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "pson"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "pson"))
+            (is (= #{localhost-status test-agent-status
+                     test-cert-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true))))))
 
         (testing "with 'Accept: text/pson'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "text/pson"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "text/pson"))
+            (is (= #{localhost-status test-agent-status
+                     test-cert-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true))))))
 
         (testing "with 'Accept: application/json'"
           (let [response (test-app
                           {:uri "/v1/certificate_statuses/thisisirrelevant"
                            :request-method :get
                            :headers {"accept" "application/json"}})]
-          (is (= 200 (:status response)))
-          (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
-          (is (= #{localhost-status test-agent-status revoked-agent-status}
-                 (set (json/parse-string (:body response) true)))))))))
+            (is (= 200 (:status response)))
+            (is (.startsWith (get-in response [:headers "Content-Type"]) "application/json"))
+            (is (= #{localhost-status test-agent-status
+                     test-cert-status revoked-agent-status}
+                   (set (json/parse-string (:body response) true)))))))))
 
   (testing "write requests"
     (let [settings (testutils/ca-sandbox! cadir)
@@ -880,7 +896,8 @@
                          :request-method  :get
                          :ssl-client-cert localhost-cert})]
           (is (= 200 (:status response)))
-          (is (= #{test-agent-status revoked-agent-status localhost-status}
+          (is (= #{test-agent-status revoked-agent-status
+                   test-cert-status localhost-status}
                  (set (json/parse-string (:body response) true))))))))
 
   (testing "access control can be disabled"
@@ -902,5 +919,123 @@
                         {:uri            "/v1/certificate_statuses/all"
                          :request-method :get})]
           (is (= 200 (:status response)))
-          (is (= #{test-agent-status revoked-agent-status localhost-status}
+          (is (= #{test-agent-status revoked-agent-status
+                   test-cert-status localhost-status}
                  (set (json/parse-string (:body response) true)))))))))
+
+(deftest cert-clean
+  (testing "Cleaning one existing cert"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "localhost")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"localhost\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Cleaning multiple existing certs"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path1 (ca/path-to-cert (:signeddir settings) "localhost")
+          cert1 (utils/pem->cert cert-path1)
+          cert-path2 (ca/path-to-cert (:signeddir settings) "test_cert")
+          cert2 (utils/pem->cert cert-path2)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"localhost\",\"test_cert\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert1)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert2)))
+      (is (false? (fs/exists? cert-path1)))
+      (is (false? (fs/exists? cert-path2)))))
+
+  (testing "Cleaning a missing cert"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "localhost")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"missing\",\"localhost\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (= "The following certs do not exist and cannot be revoked: [\"missing\"]"
+             (:body response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Cleaning a revoked cert succeeds"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          cert-path (ca/path-to-cert (:signeddir settings) "revoked-agent")
+          cert (utils/pem->cert cert-path)
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"revoked-agent\"],\"async\":false}")})]
+      (is (= 200 (:status response)))
+      (is (= "Successfully cleaned all certs."
+             (:body response)))
+      (is (true? (utils/revoked?
+                  (utils/pem->crl (:cacrl settings))
+                  cert)))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Malformed request body"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"bad-request\":true}")})]
+      (is (= 400 (:status response)))
+      (is (= "Request body is not JSON." (:body response)))))
+
+  (testing "Missing certnames"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"async\":false}")})]
+      (is (= 400 (:status response)))
+      (is (= (re-matches #"Missing.*certnames" (:body response))))))
+
+  (testing "Requesting async mode fails"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"revoked-agent\"],\"async\":true}")})]
+      (is (= 400 (:status response)))
+      (is (= "Async mode is not currently supported."
+             (:body response))))))
+
