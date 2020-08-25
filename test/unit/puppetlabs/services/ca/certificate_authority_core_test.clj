@@ -1000,4 +1000,18 @@
       (is (true? (utils/revoked?
                   (utils/pem->crl (:cacrl settings))
                   cert)))
-      (is (false? (fs/exists? cert-path))))))
+      (is (false? (fs/exists? cert-path)))))
+
+  (testing "Requesting async mode fails"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"revoked-agent\"],\"async\":true}")})]
+      (is (= 400 (:status response)))
+      (is (= "Async mode is not currently supported."
+             (:body response))))))
+

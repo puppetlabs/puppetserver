@@ -86,23 +86,28 @@
 (schema/defn handle-cert-clean
   [{:keys [body]}
    ca-settings :- ca/CaSettings]
-  (let [{:keys [certnames async]} (try-to-parse body)
-        [existing-certs missing-certs] (split-with
-                                        #(ca/certificate-exists? ca-settings %)
-                                        certnames)
-        message (when (seq missing-certs)
-                  (format "The following certs do not exist and cannot be revoked: %s"
-                          (vec missing-certs)))]
-    (try
-      (ca/revoke-existing-certs! ca-settings existing-certs)
-      (ca/delete-certificates! ca-settings existing-certs)
-      (-> (rr/response (or message "Successfully cleaned all certs."))
-          (rr/status 200)
+  (let [{:keys [certnames async]} (try-to-parse body)]
+    ;; TODO support async mode
+    (if (true? async)
+      (-> (rr/response "Async mode is not currently supported.")
+          (rr/status 400)
           (rr/content-type "text/plain"))
-      (catch Exception e
-        (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
-            (rr/status 500)
-            (rr/content-type "text/plain"))))))
+      (let [[existing-certs missing-certs] (split-with
+                                            #(ca/certificate-exists? ca-settings %)
+                                            certnames)
+            message (when (seq missing-certs)
+                      (format "The following certs do not exist and cannot be revoked: %s"
+                              (vec missing-certs)))]
+        (try
+          (ca/revoke-existing-certs! ca-settings existing-certs)
+          (ca/delete-certificates! ca-settings existing-certs)
+          (-> (rr/response (or message "Successfully cleaned all certs."))
+              (rr/status 200)
+              (rr/content-type "text/plain"))
+          (catch Exception e
+            (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
+                (rr/status 500)
+                (rr/content-type "text/plain"))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
