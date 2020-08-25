@@ -40,11 +40,22 @@ module Puppet
 
           Puppet[:node_name_value] = compile_options['certname']
 
+          # Prior to PE-29443 variables were in a hash. Serialization between ruby/clojure/json did
+          # not preserver hash order necessary for deserialization. The data strucutre is now stored
+          # in a list for moving data and the list is used to construct an ordered ruby hash.
+          variables = if compile_options['variables']['values'].is_a?(Array)
+                        compile_options['variables']['values'].each_with_object({}) do |param_hash, acc|
+                          acc[param_hash.keys.first] = param_hash.values.first
+                        end
+                      else
+                        compile_options['variables']['values']
+                      end
+
           env_conf = {
             pre_modulepath: boltlib_path,
             envpath: Puppet[:environmentpath],
             facts: compile_options['facts']['values'],
-            variables: compile_options['variables']['values']
+            variables: variables
           }
 
           # Use the existing environment with the requested name

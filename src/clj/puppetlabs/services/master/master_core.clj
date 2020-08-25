@@ -1007,7 +1007,7 @@
    (schema/required-key "code_ast") schema/Str
    (schema/required-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/required-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
-   (schema/required-key "variables") {(schema/required-key "values") {schema/Str schema/Any}}
+   (schema/required-key "variables") {(schema/required-key "values") (schema/either [{schema/Str schema/Any}] {schema/Str schema/Any})}
    (schema/optional-key "job_id") schema/Str
    (schema/optional-key "transaction_uuid") schema/Str
    (schema/optional-key "options") {(schema/optional-key "capture_logs") schema/Bool
