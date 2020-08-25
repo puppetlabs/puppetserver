@@ -974,7 +974,7 @@
                     {:uri "/v1/clean"
                      :request-method :put
                      :body (body-stream
-                            "{\"certnames\":[\"localhost\",\"missing\"],\"async\":false}")})]
+                            "{\"certnames\":[\"missing\",\"localhost\"],\"async\":false}")})]
       (is (= 200 (:status response)))
       (is (= "The following certs do not exist and cannot be revoked: [\"missing\"]"
              (:body response)))

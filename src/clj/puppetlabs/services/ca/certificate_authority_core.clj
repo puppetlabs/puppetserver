@@ -92,9 +92,10 @@
       (-> (rr/response "Async mode is not currently supported.")
           (rr/status 400)
           (rr/content-type "text/plain"))
-      (let [[existing-certs missing-certs] (split-with
-                                            #(ca/certificate-exists? ca-settings %)
-                                            certnames)
+      (let [{existing-certs true
+             missing-certs false} (group-by
+                                   #(ca/certificate-exists? ca-settings %)
+                                   certnames)
             message (when (seq missing-certs)
                       (format "The following certs do not exist and cannot be revoked: %s"
                               (vec missing-certs)))]
