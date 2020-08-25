@@ -1002,6 +1002,30 @@
                   cert)))
       (is (false? (fs/exists? cert-path)))))
 
+  (testing "Malformed request body"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"certnames\":[\"bad-request\":true}")})]
+      (is (= 400 (:status response)))
+      (is (= "Request body is not JSON." (:body response)))))
+
+  (testing "Missing certnames"
+    (let [settings (testutils/ca-sandbox! cadir)
+          test-app (-> (build-ring-handler settings "42.42.42")
+                       (wrap-with-ssl-client-cert))
+          response (test-app
+                    {:uri "/v1/clean"
+                     :request-method :put
+                     :body (body-stream
+                            "{\"async\":false}")})]
+      (is (= 400 (:status response)))
+      (is (= (re-matches #"Missing.*certnames" (:body response))))))
+
   (testing "Requesting async mode fails"
     (let [settings (testutils/ca-sandbox! cadir)
           test-app (-> (build-ring-handler settings "42.42.42")

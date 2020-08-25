@@ -86,29 +86,36 @@
 (schema/defn handle-cert-clean
   [{:keys [body]}
    ca-settings :- ca/CaSettings]
-  (let [{:keys [certnames async]} (try-to-parse body)]
+  (if-let [json-body (try-to-parse body)]
     ;; TODO support async mode
-    (if (true? async)
+    (if (true? (:async json-body))
       (-> (rr/response "Async mode is not currently supported.")
           (rr/status 400)
           (rr/content-type "text/plain"))
-      (let [{existing-certs true
-             missing-certs false} (group-by
-                                   #(ca/certificate-exists? ca-settings %)
-                                   certnames)
-            message (when (seq missing-certs)
-                      (format "The following certs do not exist and cannot be revoked: %s"
-                              (vec missing-certs)))]
-        (try
-          (ca/revoke-existing-certs! ca-settings existing-certs)
-          (ca/delete-certificates! ca-settings existing-certs)
-          (-> (rr/response (or message "Successfully cleaned all certs."))
-              (rr/status 200)
-              (rr/content-type "text/plain"))
-          (catch Exception e
-            (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
-                (rr/status 500)
-                (rr/content-type "text/plain"))))))))
+      (if-let [certnames (:certnames json-body)]
+        (let [{existing-certs true
+               missing-certs false} (group-by
+                                     #(ca/certificate-exists? ca-settings %)
+                                     certnames)
+              message (when (seq missing-certs)
+                        (format "The following certs do not exist and cannot be revoked: %s"
+                                (vec missing-certs)))]
+          (try
+            (ca/revoke-existing-certs! ca-settings existing-certs)
+            (ca/delete-certificates! ca-settings existing-certs)
+            (-> (rr/response (or message "Successfully cleaned all certs."))
+                (rr/status 200)
+                (rr/content-type "text/plain"))
+            (catch Exception e
+              (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
+                  (rr/status 500)
+                  (rr/content-type "text/plain")))))
+        (-> (rr/response "Missing required key: 'certnames'. Please supply the list of certs you want to clean.")
+            (rr/status 400)
+            (rr/content-type "text/plain"))))
+    (-> (rr/response "Request body is not JSON.")
+        (rr/status 400)
+        (rr/content-type "text/plain"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Web app
