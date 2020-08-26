@@ -252,14 +252,6 @@ msgid "Removed certificate request for {0} at ''{1}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Revoked {0} certificate with serial {1}"
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Infra node certificate being revoked; publishing updated infra CRL"
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Deleted certificate for {0}"
 msgstr ""
 

@@ -601,16 +601,16 @@
                                                   [:access-control
                                                    :certificate-status])
         certificate-status-whitelist (:client-whitelist
-                                       certificate-status-access-control)]
+                                      certificate-status-access-control)]
     (when (> ca-ttl max-ca-ttl)
       (throw (IllegalStateException.
-               (i18n/trs "Config setting ca_ttl must have a value below {0}" max-ca-ttl))))
+              (i18n/trs "Config setting ca_ttl must have a value below {0}" max-ca-ttl))))
     (cond
       (or (false? (:authorization-required certificate-status-access-control))
           (not-empty certificate-status-whitelist))
       (log/warn (format "%s %s"
-                  (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
-                  (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
+                        (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
+                        (i18n/trs "Remove these settings and create an appropriate authorization rule in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
       (not (nil? certificate-status-whitelist))
       (log/warn (format "%s %s %s"
                         (i18n/trs "The ''client-whitelist'' and ''authorization-required'' settings in the ''certificate-authority.certificate-status'' section are deprecated and will be removed in a future release.")
@@ -1382,20 +1382,20 @@
   [settings :- CaSettings]
   (ensure-directories-exist! settings)
   (let [required-files (-> (settings->cadir-paths settings)
-                          (select-keys (required-ca-files (:enable-infra-crl settings)))
-                          (vals))]
-   (if (every? fs/exists? required-files)
-     (do
-       (log/info (i18n/trs "CA already initialized for SSL"))
-       (when (:enable-infra-crl settings)
-         (generate-infra-serials settings))
-       (when (:manage-internal-file-permissions settings)
-         (ensure-ca-file-perms! settings)))
-     (let [{found   true
-            missing false} (group-by fs/exists? required-files)]
-       (if (= required-files missing)
-         (generate-ssl-files! settings)
-         (throw (partial-state-error "CA" found missing)))))))
+                           (select-keys (required-ca-files (:enable-infra-crl settings)))
+                           (vals))]
+    (if (every? fs/exists? required-files)
+      (do
+        (log/info (i18n/trs "CA already initialized for SSL"))
+        (when (:enable-infra-crl settings)
+          (generate-infra-serials settings))
+        (when (:manage-internal-file-permissions settings)
+          (ensure-ca-file-perms! settings)))
+      (let [{found true
+             missing false} (group-by fs/exists? required-files)]
+        (if (= required-files missing)
+          (generate-ssl-files! settings)
+          (throw (partial-state-error "CA" found missing)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; certificate_status endpoint
@@ -1494,36 +1494,39 @@
     (fs/delete csr-path)
     (log/debug (i18n/trs "Removed certificate request for {0} at ''{1}''" subject csr-path))))
 
-(schema/defn revoke-existing-cert!
-  "Revoke the subject's certificate. Note this does not destroy the certificate.
-   The certificate will remain in the signed directory despite being revoked."
+(schema/defn revoke-existing-certs!
+  "Revoke the subjects' certificates. Note this does not destroy the certificates.
+   The certificates will remain in the signed directory despite being revoked."
   [{:keys [signeddir cacert cacrl cakey infra-crl-path
            infra-node-serials-path enable-infra-crl]} :- CaSettings
-   subject :- schema/Str]
-  (let [serial  (-> (path-to-cert signeddir subject)
-                    (utils/pem->cert)
-                    (utils/get-serial))
+   subjects :- [schema/Str]]
+  (let [serials (map #(-> (path-to-cert signeddir %)
+                       (utils/pem->cert)
+                       (utils/get-serial))
+                  subjects)
         [our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
-        new-full-crl (utils/revoke our-full-crl
+        new-full-crl (utils/revoke-multiple our-full-crl
                                    (utils/pem->private-key cakey)
                                    (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                   serial)
+                                   serials)
         new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
     (write-crls new-full-chain cacrl)
-    (log/debug (i18n/trs "Revoked {0} certificate with serial {1}" subject serial))
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl
-               (fs/exists? infra-node-serials-path)
-               (seq-contains? (read-infra-nodes infra-node-serials-path) (str serial)))
-      (let [[our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
-            new-infra-crl (utils/revoke our-infra-crl
+               (fs/exists? infra-node-serials-path))
+      (let [infra-revocations (filter #(seq-contains?
+                                        (read-infra-nodes infra-node-serials-path)
+                                        (str %))
+                                      serials)
+            [our-infra-crl & rest-of-infra-chain] (utils/pem->crls infra-crl-path)
+            new-infra-crl (utils/revoke-multiple our-infra-crl
                                         (utils/pem->private-key cakey)
                                         (.getPublicKey (utils/pem->ca-cert cacert cakey))
-                                        serial)
-            full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
-        (write-crls full-infra-chain infra-crl-path)
-        (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
+                                        infra-revocations)
+              full-infra-chain (cons new-infra-crl (vec rest-of-infra-chain))]
+          (write-crls full-infra-chain infra-crl-path)
+          (log/info (i18n/trs "Infra node certificate being revoked; publishing updated infra CRL"))))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
@@ -1532,7 +1535,7 @@
    desired-state :- DesiredCertificateState]
   (if (= :signed desired-state)
     (sign-existing-csr! settings subject)
-    (revoke-existing-cert! settings subject)))
+    (revoke-existing-certs! settings [subject])))
 
 (schema/defn ^:always-validate certificate-exists? :- schema/Bool
   "Do we have a certificate for the given subject?"
@@ -1591,6 +1594,14 @@
     (when (fs/exists? cert)
       (fs/delete cert)
       (log/debug (i18n/trs "Deleted certificate for {0}" subject)))))
+
+(schema/defn ^:always-validate delete-certificates!
+  "Delete each of the given certificates.
+  Note that this does not revoke the certs."
+  [ca-settings :- CaSettings
+   subjects :- [schema/Str]]
+  (doseq [subj subjects]
+    (delete-certificate! ca-settings subj)))
 
 (schema/defn ^:always-validate get-custom-oid-mappings :- (schema/maybe OIDMappings)
   "Given a path to a custom OID mappings file, return a map of all oids to
