@@ -1286,9 +1286,13 @@
                           (utils/pem->cert)
                           (utils/get-serial))
                      subjects)
+        serial-count (count serials)
         new-crl (utils/revoke-multiple original-crl ca-private-key
                                        ca-public-key serials)]
-    (utils/crl->pem! new-crl cacrl)))
+    (utils/crl->pem! new-crl cacrl)
+    (log/debug (if (= 1 serial-count)
+                 (i18n/trs "Revoked 1 certificate.")
+                 (i18n/trs "Revoked {0} certificates." serial-count)))))
 
 (schema/defn ^:always-validate set-certificate-status!
   "Sign or revoke the certificate for the given subject."
