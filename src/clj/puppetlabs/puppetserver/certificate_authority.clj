@@ -1504,7 +1504,7 @@
                        (utils/pem->cert)
                        (utils/get-serial))
                   subjects)
-        serials-count (count serials)
+        serial-count (count serials)
         [our-full-crl & rest-of-full-chain] (utils/pem->crls cacrl)
         new-full-crl (utils/revoke-multiple our-full-crl
                                             (utils/pem->private-key cakey)
@@ -1512,9 +1512,9 @@
                                             serials)
         new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
     (write-crls new-full-chain cacrl)
-    (log/debug (if (= serials-count 1)
-                 (i18n/trs "Revoked {0} certificate." serials-count)
-                 (i18n/trs "Revoked {0} certificates." serials-count)))
+    (log/debug (if (= serial-count 1)
+                 (i18n/trs "Revoked 1 certificate.")
+                 (i18n/trs "Revoked {0} certificates." serial-count)))
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
