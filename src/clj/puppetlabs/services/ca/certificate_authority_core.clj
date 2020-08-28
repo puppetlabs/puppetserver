@@ -112,15 +112,49 @@
         (rr/status 200)
         (rr/content-type "application/json"))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Web app
-
 (defn try-to-parse
   [body]
   (try
     (cheshire/parse-stream (io/reader body) true)
     (catch Exception e
       (log/debug e))))
+
+(schema/defn handle-cert-clean
+  [{:keys [body]}
+   ca-settings :- ca/CaSettings]
+  (if-let [json-body (try-to-parse body)]
+    ;; TODO support async mode
+    (if (true? (:async json-body))
+      (-> (rr/response "Async mode is not currently supported.")
+          (rr/status 400)
+          (rr/content-type "text/plain"))
+      (if-let [certnames (:certnames json-body)]
+        (let [{existing-certs true
+               missing-certs false} (group-by
+                                     #(ca/certificate-exists? ca-settings %)
+                                     certnames)
+              message (when (seq missing-certs)
+                        (format "The following certs do not exist and cannot be revoked: %s"
+                                (vec missing-certs)))]
+          (try
+            (ca/revoke-existing-certs! ca-settings existing-certs)
+            (ca/delete-certificates! ca-settings existing-certs)
+            (-> (rr/response (or message "Successfully cleaned all certs."))
+                (rr/status 200)
+                (rr/content-type "text/plain"))
+            (catch Exception e
+              (-> (rr/response (str "Error while cleaning certs: " (.getMessage e)))
+                  (rr/status 500)
+                  (rr/content-type "text/plain")))))
+        (-> (rr/response "Missing required key: 'certnames'. Please supply the list of certs you want to clean.")
+            (rr/status 400)
+            (rr/content-type "text/plain"))))
+    (-> (rr/response "Request body is not JSON.")
+        (rr/status 400)
+        (rr/content-type "text/plain"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Web app
 
 (defn malformed
   "Returns a value indicating to liberator that the request is malformed,
@@ -215,21 +249,21 @@
   :conflict?
   (fn [context]
     (let [desired-state (get-desired-state context)]
-      (case desired-state
-        :revoked
-        ;; A signed cert must exist if we are to revoke it.
-        (when-not (ca/certificate-exists? settings subject)
-          (conflict (i18n/tru "Cannot revoke certificate for host {0} without a signed certificate" subject)))
+     (case desired-state
+       :revoked
+       ;; A signed cert must exist if we are to revoke it.
+       (when-not (ca/certificate-exists? settings subject)
+         (conflict (i18n/tru "Cannot revoke certificate for host {0} without a signed certificate" subject)))
 
-        :signed
-        (or
-          ;; A CSR must exist if we are to sign it.
-          (when-not (ca/csr-exists? settings subject)
-            (conflict (i18n/tru "Cannot sign certificate for host {0} without a certificate request" subject)))
+       :signed
+       (or
+        ;; A CSR must exist if we are to sign it.
+        (when-not (ca/csr-exists? settings subject)
+          (conflict (i18n/tru "Cannot sign certificate for host {0} without a certificate request" subject)))
 
-          ;; And the CSR must be valid.
-          (when-let [error-message (ca/validate-csr settings subject)]
-            (conflict error-message))))))
+        ;; And the CSR must be valid.
+        (when-let [error-message (ca/validate-csr settings subject)]
+          (conflict error-message))))))
 
   :delete!
   (fn [context]
@@ -239,8 +273,8 @@
   :exists?
   (fn [context]
     (or
-      (ca/certificate-exists? settings subject)
-      (ca/csr-exists? settings subject)))
+     (ca/certificate-exists? settings subject)
+     (ca/csr-exists? settings subject)))
 
   :handle-conflict
   (fn [context]
@@ -277,8 +311,8 @@
           (if-let [desired-state (keyword (:desired_state json-body))]
             (if (schema/check ca/DesiredCertificateState desired-state)
               (malformed
-                (i18n/tru "State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' for host {1}."
-                  (name desired-state) subject))
+               (i18n/tru "State {0} invalid; Must specify desired state of ''signed'' or ''revoked'' for host {1}."
+                         (name desired-state) subject))
               (let [cert-ttl (:cert_ttl json-body)]
                 (if (and cert-ttl (schema/check schema/Int cert-ttl))
                   (malformed
@@ -308,14 +342,14 @@
 
   :put!
   (fn [context]
-    (let [desired-state (get-desired-state context)]
-      (locking crl-write-serializer
-        (ca/set-certificate-status!
-         (merge-request-settings settings context)
-         subject
-         desired-state))
-      (-> context
-        (assoc-in [:representation :media-type] "text/plain")))))
+     (let [desired-state (get-desired-state context)]
+       (locking crl-write-serializer
+         (ca/set-certificate-status!
+          (merge-request-settings settings context)
+          subject
+          desired-state))
+       (-> context
+         (assoc-in [:representation :media-type] "text/plain")))))
 
 (defresource certificate-statuses
   [request settings]
@@ -358,7 +392,9 @@
       (GET ["/certificate_revocation_list/" :ignored-node-name] request
         (handle-get-certificate-revocation-list request ca-settings))
       (GET ["/expirations"] request
-        (handle-get-ca-expirations ca-settings)))
+        (handle-get-ca-expirations ca-settings))
+      (PUT ["/clean"] request
+        (handle-cert-clean request ca-settings)))
     (comidi/not-found "Not Found")))
 
 (schema/defn ^:always-validate

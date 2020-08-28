@@ -10,6 +10,26 @@ canonical: "/puppetserver/latest/release_notes.html"
 [puppetserver.conf]: ./config_file_puppetserver.markdown
 [product.conf]: ./config_file_product.markdown
 
+## Puppet Server 6.13.0
+
+Released 25 August 2020
+
+### New feature
+
+- Puppet Server packages are now available for Ubuntu 20.04. [SERVER-2828](https://tickets.puppetlabs.com/browse/SERVER-2858)
+
+- Added a new endpoint `/puppet-ca/v1/expirations` that returns the "not-after" date for each certificate in the CA bundle, as well as the "next-update" date of each CRL in the chain, keyed by common name. The endpoint requires authentication. [SERVER-2551](https://tickets.puppetlabs.com/browse/SERVER-2551)
+
+### Enhancement
+
+- The `/puppet-ca/v1/certificate_statuses` endpoint now accepts a `state` parameter that will filter search results by the given certificate state. Accepted states are 'requested', 'signed', and 'revoked'. [SERVER-2233](https://tickets.puppetlabs.com/browse/SERVER-2233)
+
+### Resolved issue
+
+- JRuby has been bumped to 9.2.13.0 for a security fix. [SERVER-2853](https://tickets.puppetlabs.com/browse/SERVER-2853)
+
+- Re-enabled the ability to delete certificate signing requests via the CA API. [SERVER-2795](https://tickets.puppetlabs.com/browse/SERVER-2795)
+
 ## Puppet Server 6.12.1
 
 Released 14 July 2020
