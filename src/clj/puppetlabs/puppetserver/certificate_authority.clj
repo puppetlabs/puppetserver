@@ -4,7 +4,7 @@
            [java.io InputStream ByteArrayOutputStream ByteArrayInputStream File StringReader IOException]
            [java.nio.file Files Paths LinkOption]
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
-           (java.security KeyPair)
+           (java.security PrivateKey PublicKey KeyPair)
            (java.security.cert CRLException))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -16,6 +16,7 @@
             [clj-time.coerce :as time-coerce]
             [slingshot.slingshot :as sling]
             [puppetlabs.kitchensink.core :as ks]
+            [puppetlabs.kitchensink.file :as ks-file]
             [puppetlabs.puppetserver.ringutils :as ringutils]
             [puppetlabs.ssl-utils.core :as utils]
             [clj-yaml.core :as yaml]
@@ -214,6 +215,10 @@
   "Posix permissions for all private keys on disk."
   "rw-r-----")
 
+(def public-key-perms
+  "Posix permissions for all public keys on disk."
+  "rw-r--r--")
+
 (def private-key-dir-perms
   "Posix permissions for the private key directory on disk."
   "rwxr-x---")
@@ -352,12 +357,54 @@
   (mapv (partial str "DNS:")
         (utils/get-subject-dns-alt-names cert-or-csr)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Writing various SSL objects safely
+;; These versions all encode writing atomically and knowledge of file permissions
+
+(schema/defn write-public-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a public key."
+  [key :- PublicKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) public-key-perms))
+
+(schema/defn write-private-key
+  "Encode a key to PEM format and write it to a file atomically and with
+  appropriate permissions for a private key."
+  [key :- PrivateKey
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/key->pem! key) private-key-perms))
+
+(schema/defn write-cert
+  "Encode a certificate to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [cert :- Certificate
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/cert->pem! cert) public-key-perms))
+
+(schema/defn write-crl
+  "Encode a CRL to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [crl :- CertificateRevocationList
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/crl->pem! crl) public-key-perms))
+
+(schema/defn write-csr
+  "Encode a CSR to PEM format and write it to a file atomically and with
+  appropriate permissions."
+  [csr :- CertificateRequest
+   path :- schema/Str]
+  (ks-file/atomic-write path (partial utils/obj->pem! csr) public-key-perms))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Serial number functions + lock
 
 (def serial-file-lock
   "The lock used to prevent concurrent access to the serial number file."
   (new Object))
+
+(def serial-file-permissions
+  "rw-r--r--")
 
 (schema/defn parse-serial-number :- schema/Int
   "Parses a serial number from its format on disk.  See `format-serial-number`
@@ -389,27 +436,32 @@
   [serial-file :- schema/Str]
   (locking serial-file-lock
     (let [serial-number (get-serial-number! serial-file)]
-      (spit serial-file (format-serial-number (inc serial-number)))
+      (ks-file/atomic-write-string serial-file
+                             (format-serial-number (inc serial-number))
+                             serial-file-permissions)
       serial-number)))
 
 (schema/defn initialize-serial-file!
   "Initializes the serial number file on disk.  Serial numbers start at 1."
   [path :- schema/Str]
-  (fs/create (fs/file path))
-  (spit path (format-serial-number 1)))
+  (ks-file/atomic-write-string path
+                             (format-serial-number 1)
+                             serial-file-permissions))
 
 (schema/defn write-local-cacrl! :- (schema/maybe Exception)
-  "Spits the contents of 'cacrl' string to the 'localcacrl' file location if
-  the 'cacrl' string contains valid CRL pem data. On success, return nil.
-  On failure, return the Exception captured from the failed attempt to parse
-  the CRL pem data."
-  [localcacrl :- schema/Str
-   cacrl :- schema/Str]
-  (let [crl-reader (StringReader. cacrl)]
+  "Spits the contents of 'cacrl-contents' string to the 'localcacrl' file
+  location if the 'cacrl' string contains valid CRL pem data. On success, return
+  nil. On failure, return the Exception captured from the failed attempt to
+  parse the CRL pem data."
+  [localcacrl-path :- schema/Str
+   cacrl-contents :- schema/Str]
+  (let [crl-reader (StringReader. cacrl-contents)]
     (try
       (when (zero? (count (utils/pem->crls crl-reader)))
         (throw (CRLException. "No CRL data found")))
-      (spit localcacrl cacrl)
+      (ks-file/atomic-write-string localcacrl-path
+                             cacrl-contents
+                             public-key-perms)
       nil
       (catch IOException e
         e)
@@ -532,11 +584,10 @@
                                         private-key
                                         public-key)]
     (write-cert-to-inventory! cacert (:cert-inventory ca-settings))
-    (utils/key->pem! public-key (:capub ca-settings))
-    (utils/key->pem! private-key
-      (create-file-with-perms (:cakey ca-settings) private-key-perms))
-    (utils/cert->pem! cacert (:cacert ca-settings))
-    (utils/crl->pem! cacrl (:cacrl ca-settings))))
+    (write-public-key public-key (:capub ca-settings))
+    (write-private-key private-key (:cakey ca-settings))
+    (write-cert cacert (:cacert ca-settings))
+    (write-crl cacrl (:cacrl ca-settings))))
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
@@ -683,10 +734,8 @@
   (let [keypair (utils/generate-key-pair keylength)
         public-key (utils/get-public-key keypair)
         private-key (utils/get-private-key keypair)]
-    (utils/key->pem! public-key hostpubkey)
-    (utils/key->pem! private-key
-                     (create-file-with-perms hostprivkey
-                                             private-key-perms))
+    (write-public-key public-key hostpubkey)
+    (write-private-key private-key hostprivkey)
     public-key))
 
 (schema/defn generate-master-ssl-keys! :- (schema/pred utils/public-key?)
@@ -752,9 +801,8 @@
                                                public-key
                                                extensions)]
     (write-cert-to-inventory! hostcert (:cert-inventory ca-settings))
-    (utils/cert->pem! hostcert (:hostcert settings))
-    (utils/cert->pem! hostcert
-                      (path-to-cert (:signeddir ca-settings) certname))))
+    (write-cert hostcert (:hostcert settings))
+    (write-cert hostcert (path-to-cert (:signeddir ca-settings) certname))))
 
 (schema/defn ^:always-validate initialize-master-ssl!
   "Given configuration settings, certname, and CA settings, ensure all
@@ -1031,7 +1079,7 @@
                                              (.getPublicKey cacert)))]
     (log/info (i18n/trs "Signed certificate request for {0}" subject))
     (write-cert-to-inventory! signed-cert cert-inventory)
-    (utils/cert->pem! signed-cert (path-to-cert signeddir subject))))
+    (write-cert signed-cert (path-to-cert signeddir subject))))
 
 (schema/defn ^:always-validate
   save-certificate-request!
@@ -1041,7 +1089,7 @@
    csrdir :- schema/Str]
   (let [csr-path (path-to-cert-request csrdir subject)]
     (log/debug (i18n/trs "Saving CSR to ''{0}''" csr-path))
-    (utils/obj->pem! csr csr-path)))
+    (write-csr csr csr-path)))
 
 (schema/defn validate-duplicate-cert-policy!
   "Throw a slingshot exception if allow-duplicate-certs is false
@@ -1109,6 +1157,7 @@
                         (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " dns-alt-names))
                         (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file,")
                         (i18n/tru "restart the puppetserver, and try signing this certificate again."))})))))
+
 (schema/defn ^:always-validate process-csr-submission!
   "Given a CSR for a subject (typically from the HTTP endpoint),
    perform policy checks and sign or save the CSR (based on autosign).
@@ -1289,7 +1338,7 @@
         serial-count (count serials)
         new-crl (utils/revoke-multiple original-crl ca-private-key
                                        ca-public-key serials)]
-    (utils/crl->pem! new-crl cacrl)
+    (write-crl new-crl cacrl)
     (log/debug (if (= 1 serial-count)
                  (i18n/trs "Revoked 1 certificate.")
                  (i18n/trs "Revoked {0} certificates." serial-count)))))
