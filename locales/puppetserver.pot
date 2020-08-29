@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: f6428743ad3a01e72c02d51a3981538c9292e9ee\n"
+"X-Git-Ref: af128d17bec920166759c116cecb526831cfd67c\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -252,7 +252,7 @@ msgid "Removed certificate request for {0} at ''{1}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Revoked {0} certificate."
+msgid "Revoked 1 certificate."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
