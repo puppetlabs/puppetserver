@@ -42,7 +42,7 @@
                    nil
                    "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects")
       (comidi/routes->handler)
-      (wrap-middleware puppet-version)))
+      (wrap-middleware identity puppet-version)))
 
 (defn app-request
   ([app path] (app-request app :get path))

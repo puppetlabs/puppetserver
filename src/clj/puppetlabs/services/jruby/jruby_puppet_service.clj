@@ -31,7 +31,6 @@
                         config
                         (get-profiler)
                         (partial shutdown-on-error (tk-services/service-id this))
-                        true
                         metrics-service)
           pool-context (create-pool jruby-config)]
       (log/info (i18n/trs "JRuby version info: {0}"

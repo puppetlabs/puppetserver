@@ -51,10 +51,6 @@
 
     * :http-client-metrics-enabled - Whether to use http client metrics.
 
-    * :use-legacy-auth-conf - Whether to use the legacy core Puppet auth.conf
-        (true) or trapperkeeper-authorization (false) to authorize requests
-        being made to core Puppet endpoints.
-
     * :boltlib-path - Optional array containing path(s) to bolt modules. This path
          will be prepended to AST compilation modulepath. This is required for
          compiling AST that contains bolt types."
@@ -71,6 +67,5 @@
    :http-client-idle-timeout-milliseconds schema/Int
    :http-client-metrics-enabled schema/Bool
    :max-requests-per-instance schema/Int
-   :use-legacy-auth-conf schema/Bool
    (schema/optional-key :boltlib-path) [schema/Str]})
 

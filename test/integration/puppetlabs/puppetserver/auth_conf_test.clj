@@ -31,42 +31,6 @@
   schema-test/validate-schemas
   (testutils/with-puppet-conf (fs/file test-resources-dir "puppet.conf")))
 
-(deftest ^:integration legacy-auth-conf-used-when-legacy-auth-conf-true
-  (testing "Authorization is done per legacy auth.conf when :use-legacy-auth-conf true"
-    (logutils/with-test-logging
-      (bootstrap/with-puppetserver-running
-        app
-        {:jruby-puppet
-          {:use-legacy-auth-conf true
-           :gem-path gem-path}}
-        (logutils/with-test-logging
-          (testing "for puppet 4 routes"
-            (let [response (http-get "puppet/v3/node/public?environment=production")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "puppet/v3/node/private?environment=production")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "puppet/v3/catalog/public?environment=production")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "puppet/v3/catalog/private?environment=production")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response))))
-          (testing "for legacy puppet routes"
-            (let [response (http-get "production/node/public")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/node/private")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/catalog/public")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/catalog/private")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))))))))
-
 (deftest ^:integration request-with-ssl-cert-handled-via-tk-auth
   (testing (str "Request with SSL certificate via trapperkeeper-authorization "
                 "handled")
@@ -74,8 +38,7 @@
       (bootstrap/with-puppetserver-running
         app
         {:jruby-puppet
-          {:use-legacy-auth-conf false
-           :gem-path gem-path}
+          {:gem-path gem-path}
          :authorization {:version 1
                          :allow-header-cert-info false
                          :rules
@@ -223,8 +186,7 @@
       (logutils/with-test-logging
        (bootstrap/with-puppetserver-running
         app
-        {:jruby-puppet  {:use-legacy-auth-conf false
-                         :gem-path gem-path}
+        {:jruby-puppet  {:gem-path gem-path}
          :authorization {:version 1
                          :allow-header-cert-info true
                          :rules
@@ -269,37 +231,6 @@
                          "' in full response body: " (:body response))))
               (finally
                 (fs/delete-dir environment-dir))))))))))
-
-(deftest ^:integration static-file-content-works-with-legacy-auth
-  (testing "The static_file_content endpoint works even if legacy-auth is enabled."
-    ;; with-test-logging is used here to suppress a warning about running with legacy auth enabled.
-    (logging/with-test-logging
-     (bootstrap/with-puppetserver-running-with-mock-jrubies
-      "JRuby mocking is safe here because the static_file_content endpoint is
-      implemented in Clojure."
-      app
-      {:jruby-puppet {:use-legacy-auth-conf true
-                      :gem-path gem-path}
-       :authorization {:version 1
-                       :rules
-                       [{:match-request {:path "/puppet/v3/static_file_content"
-                                         :type "path"}
-                         :allow ["private" "localhost"]
-                         :sort-order 1
-                         :name "static file content"}]}
-       :versioned-code
-       {:code-content-command (script-path "echo")
-        :code-id-command (script-path "echo")}}
-      (testing "for legacy puppet routes with a valid cert"
-        (let [response (testutils/get-static-file-content
-                        "modules/foo/files/bar?code_id=foobar&environment=test")]
-          (is (= 200 (:status response)) (ks/pprint-to-string response))
-          (is (= "test foobar modules/foo/files/bar\n" (:body response)) (ks/pprint-to-string response))))
-      (testing "for legacy puppet routes without a valid cert"
-        (let [response (testutils/get-static-file-content
-                        "modules/foo/files/bar?code_id=foobar&environment=test" false)]
-          (is (= 403 (:status response)) (ks/pprint-to-string response))
-          (is (re-find #"Forbidden request" (:body response)) (ks/pprint-to-string response))))))))
 
 (deftest ^:integration custom-oids-passed-to-tk-auth
   (testing "puppet server successfully utilizes custom oid mappings and puppet short names for authorization"

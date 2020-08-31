@@ -4,71 +4,8 @@ title: "Puppet Server: Deprecated Features"
 canonical: "/puppetserver/latest/deprecated_features.html"
 ---
 
-[auth.conf]: https://puppet.com/docs/puppet/latest/config_file_auth.html
-
 The following features / configuration settings are deprecated and will be
 removed in a future major release of Puppet Server.
-
-### Use of Core Puppet "auth.conf" for Authorizing Master Service Routes
-
-#### Now
-
-The value of the `jruby-puppet.use-legacy-auth-conf` setting in the
-[puppetserver.conf](./configuration.markdown#puppetserverconf) file determines
-which mechanism Puppet Server uses to authorize requests to the following
-endpoints:
-
-* [Puppet's HTTPS API (current)](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html)
-* [Puppet's HTTPS API (3.x)](https://github.com/puppetlabs/puppet/blob/3.8.0/api/docs/http_api_index.md)
-
-For a value of `true`, the core
-[Puppet auth.conf][auth.conf] file (`/etc/puppetlabs/puppet/auth.conf`), is
-used when authorizing client requests.
-
-For a value of `false` (also the default if not specified), Puppet Server uses the `authorization` settings in
-its own "auth.conf" file, evaluated by the `trapperkeeper-authorization`
-service. This "auth.conf" file is installed at
-`/etc/puppetlabs/puppetserver/conf.d/auth.conf`. See the
-[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
-information.
-
-#### In a Future Major Release
-
-The `jruby-puppet.use-legacy-auth-conf` setting will be removed from
-Puppet Server configuration, and Puppet Server will instead always use
-the new `trapperkeeper-authorization` "auth.conf" when authorizing client
-requests.
-
-#### Detecting and Updating
-
-Look at the value of the `use-legacy-auth-conf` setting in the `jruby-puppet`
-section of the "puppetserver.conf" file.  If the setting is not specified or
-is set to `true`, you are using the deprecated core Puppet "auth.conf" for
-authorization.
-
-If you have not customized any of the rules in the core Puppet "auth.conf"
-settings, you should just be able to set the `use-legacy-auth-conf` setting
-to `false` and restart your puppetserver service in order for Puppet Server
-to start using the `trapperkeeper-authorization` "auth.conf" file.
-
-If you have customized rules in the core Puppet "auth.conf" file, you will need
-to migrate your Puppet rule settings over to the `trapperkeeper-authorization`
-"auth.conf" file.  See the
-[puppetserver "auth.conf"](./config_file_auth.markdown) page for more
-information.  You would then also need to set the `use-legacy-auth-conf`
-setting to `false` and restart the puppetserver service.
-
-#### Context
-
-In previous Puppet Server releases, there was no unified mechanism for
-controlling access to the various endpoints that Puppet Server hosts. Puppet
-Server used core Puppet "auth.conf" to authorize requests handled by the master
-service and custom client whitelists for the CA and Admin endpoints.
-
-`trapperkeeper-authorization` unifies authorization configuration across all
-of these endpoints into a single file. The newer "auth.conf" file also uses
-the more flexible HOCON file format for compatibility with how Puppet Server
-configuration files are handled by the Trapperkeeper framework.
 
 ### `certificate-status` settings
 

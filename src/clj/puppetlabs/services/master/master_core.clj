@@ -1363,8 +1363,10 @@
 (schema/defn ^:always-validate
   wrap-middleware :- IFn
   [handler :- IFn
+   authorization-fn :- IFn
    puppet-version :- schema/Str]
   (-> handler
+      authorization-fn
       (middleware/wrap-uncaught-errors :plain)
       middleware/wrap-request-logging
       i18n/locale-negotiator
@@ -1402,29 +1404,10 @@
              (i18n/trs "Route not found for service {0}" master-ns)))))
 
 (schema/defn ^:always-validate
-  get-wrapped-handler :- IFn
-  "Conditionally wraps route-handler with authorization-fn before calling
-  wrap-middleware on the handler. If use-legacy-auth-conf is not specified,
-  defaults to wrapping route-handler with authorization-fn."
-  ([route-handler :- IFn
-    authorization-fn :- IFn
-    puppet-version :- schema/Str]
-   (get-wrapped-handler route-handler authorization-fn puppet-version false))
-  ([route-handler :- IFn
-    authorization-fn :- IFn
-    puppet-version :- schema/Str
-    use-legacy-auth-conf :- schema/Bool]
-   (let [handler-maybe-with-authorization (if use-legacy-auth-conf
-                                            route-handler
-                                            (authorization-fn route-handler))]
-     (wrap-middleware handler-maybe-with-authorization puppet-version))))
-
-(schema/defn ^:always-validate
   construct-root-routes :- bidi-schema/RoutePair
   "Creates a wrapped ruby request handler and a clojure request handler,
   then uses those to create all of the web routes for the master."
   [puppet-version :- schema/Str
-   use-legacy-auth-conf :- schema/Bool
    jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
    get-code-content :- IFn
    current-code-id :- IFn
@@ -1434,15 +1417,14 @@
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
    bolt-projects-dir :- (schema/maybe schema/Str)]
-  (let [ruby-request-handler (get-wrapped-handler handle-request
-                                                  wrap-with-authorization-check
-                                                  puppet-version
-                                                  use-legacy-auth-conf)
+  (let [ruby-request-handler (wrap-middleware handle-request
+                                              wrap-with-authorization-check
+                                              puppet-version)
         clojure-request-wrapper (fn [handler]
-                                  (get-wrapped-handler
-                                    (ring/wrap-params handler)
-                                    wrap-with-authorization-check
-                                    puppet-version))]
+                                  (wrap-middleware
+                                   (ring/wrap-params handler)
+                                   wrap-with-authorization-check
+                                   puppet-version))]
     (root-routes ruby-request-handler
                  clojure-request-wrapper
                  jruby-service
