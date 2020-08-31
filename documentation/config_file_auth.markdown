@@ -12,9 +12,7 @@ canonical: "/puppetserver/latest/config_file_auth.html"
 
 Puppet Server's `auth.conf` file contains rules for authorizing access to Puppet Server's HTTP API endpoints. For an overview, see [Puppet Server Configuration](./configuration.markdown).
 
-The new Puppet Server authentication configuration and functionality is similar to the legacy method in that you define rules in a file named `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule.
-
-However, Puppet Server now has its own `auth.conf` file that uses a new HOCON format with different parameters, syntax, and functionality. 
+The rules are defined in a file named `auth.conf`, and Puppet Server applies the settings when a request's endpoint matches a rule.
 
 > **Note:** You can also use the [`puppetlabs-puppet_authorization`](https://forge.puppet.com/puppetlabs/puppet_authorization) module to manage the new `auth.conf` file's authorization rules in the new HOCON format, and the [`puppetlabs-hocon`](https://forge.puppet.com/puppetlabs/hocon) module to use Puppet to manage HOCON-formatted settings in general.
 
