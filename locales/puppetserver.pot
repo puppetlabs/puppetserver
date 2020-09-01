@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: eff7b3005ac63ceec70e2d2e0e51719520fe2dc9\n"
+"X-Git-Ref: 32b2bc6886471a82a6cdf6ece29c1eb741fb4231\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -462,23 +462,6 @@ msgstr ""
 msgid "jruby-puppet.compat-version setting no longer supported"
 msgstr ""
 
-#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
-msgid "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''."
-msgstr ""
-
-#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
-msgid ""
-"Support for the legacy Puppet auth.conf file is deprecated and will be "
-"removed in a future release."
-msgstr ""
-
-#: src/clj/puppetlabs/services/jruby/jruby_puppet_core.clj
-msgid ""
-"Change this setting to 'false' and migrate your authorization rule "
-"definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/"
-"puppetlabs/puppetserver/conf.d/auth.conf file."
-msgstr ""
-
 #: src/clj/puppetlabs/services/jruby/jruby_puppet_service.clj
 msgid "Initializing the JRuby service"
 msgstr ""
@@ -698,22 +681,9 @@ msgid "Environment is required in a catalog request."
 msgstr ""
 
 #: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
-msgid "The ''master.allow-header-cert-info'' setting is deprecated."
-msgstr ""
-
-#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
-msgid ""
-"Remove it, set ''jruby-puppet.use-legacy-auth-conf'' to ''false'', migrate "
-"your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf "
-"file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file, and set "
-"''authorization.allow-header-cert-info'' to the desired value."
-msgstr ""
-
-#: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
 msgid ""
 "The ''master.allow-header-cert-info'' setting is deprecated and will be "
-"ignored in favor of the ''authorization.allow-header-cert-info'' setting "
-"because the ''jruby-puppet.use-legacy-auth-conf'' setting is ''false''."
+"ignored in favor of the ''authorization.allow-header-cert-info'' setting ."
 msgstr ""
 
 #: src/clj/puppetlabs/services/request_handler/request_handler_service.clj
