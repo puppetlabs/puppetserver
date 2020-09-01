@@ -36,13 +36,7 @@ This means you must:
 
 * Check any _custom_ rules you've added to your `auth.conf` file. (Don't worry about default rules.)
 
-    If you don't set `jruby-puppet.use-legacy-auth-conf` or set `jruby-puppet.use-legacy-auth-conf` in the `puppetserver.conf` file to `false`, you must reimplement your authorization rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf` and use the configuration file's new HOCON format. See the [Puppet Server `auth.conf` documentation][] for more information.
-
-    If you set `jruby-puppet.use-legacy-auth-conf` to `true`, implement your rules using the legacy format in `/etc/puppetlabs/puppet/auth.conf`. See the [Puppet `auth.conf` documentation][auth.conf] for more information on this file format. Support for this legacy format under Puppet Server is [deprecated][] and will be removed in a future release.
-* Change each `path` to match Puppet 4 URLs.
-    * Add `/puppet/v3` to the beginning of most paths.
-    * Note that `certificate*` endpoints are not validated by `auth.conf` rules when `jruby-puppet.use-legacy-auth-conf` is set to `true`. If you need to configure authorization for these endpoints, consider configuring this setting to `false` or leave it unset. See the [Puppet Server `auth.conf` documentation][] for more information.
-* Add the rules to the appropriate `auth.conf` file on your Puppet Server.
+    You must reimplement your authorization rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf` and use the configuration file's new HOCON format. See the [Puppet Server `auth.conf` documentation][] for more information.
 
 For more information, see:
 
@@ -55,19 +49,7 @@ For more information, see:
 
 The examples in this section convert this Puppet 3 example `auth.conf` rule so that it is compatible with Puppet 4:
 
-~~~
-# Puppet 3 auth.conf on the master
-path ~ ^/catalog/([^/]+).uuid$
-method find
-allow /^$1\.uuid.*/
-
-# Default rule, should follow the more specific rules
-path ~ ^/catalog/([^/]+)$
-method find
-allow $1
-~~~
-
-To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is `false` or unset, modify the rules to follow the new HOCON `auth.conf` format and place the new rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf`:
+To support both Puppet 3 and Puppet 4 agents, modify the rules to follow the new HOCON `auth.conf` format and place the new rules in `/etc/puppetlabs/puppetserver/conf.d/auth.conf`:
 
 ~~~
 authorization: {
@@ -99,20 +81,6 @@ authorization: {
         ...
     ]
 }
-~~~
-
-To support both Puppet 3 and Puppet 4 agents when the `use-legacy-auth-conf` parameter in the `jruby-puppet` setting is `true`, modify the rules to specify the v3 endpoints while following the legacy `auth.conf` format, and place the new rules in `/etc/puppetlabs/puppet/auth.conf`:
-
-~~~
-# Puppet 3 & 4 compatible auth.conf with Puppet Server 2.1+
-path ~ ^/puppet/v3/catalog/([^/]+).uuid$
-method find
-allow /^$1\.uuid.*/
-
-# Default rule, should follow the more specific rules
-path ~ ^/puppet/v3/catalog/([^/]+)$
-method find
-allow $1
 ~~~
 
 > **Note:** For more detailed `auth.conf` conversion examples, see [Migrating to the HOCON auth.conf Format](./config_file_auth_migration.markdown).

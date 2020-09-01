@@ -16,9 +16,7 @@ The `static_file_content` endpoint returns the standard output of a
 of a [file resource][] that has a `source` attribute with a `puppet:///` URI value. That
 source must be a file from the `files` or `tasks` directory of a module in a specific [environment][].
 
-Puppet Agent uses this endpoint only when applying a [static catalog][]. This endpoint
-is available only when the Puppet master is running Puppet Server, not Ruby Puppet masters, such as the
-[deprecated WEBrick Puppet master](https://puppet.com/docs/puppet/latest/services_master_webrick.html).
+Puppet Agent uses this endpoint only when applying a [static catalog][].
 
 ## `GET /puppet/v3/static_file_content/<FILE-PATH>`
 
@@ -97,11 +95,8 @@ is not configured on Puppet Server.
 
 #### Authorization
 
-Puppet Server **always** authorizes requests made to the `static_file_content` API endpoint
-with the [Trapperkeeper-based `auth.conf` feature][auth.conf] introduced in Puppet Server
-2.2. This is different than most other Puppet master service-based endpoints, for which
-the authorization mechanism is controlled by the `use-legacy-auth-conf` setting in the
-`jruby-puppet` configuration section. The value of the `use-legacy-auth-conf` setting is
-ignored for the `static_file_content` API endpoint, and Puppet Server **never** uses the
-legacy `auth.conf` mechanism when authorizing requests. For more information about
-authorization options, see the [`auth.conf` documentation][auth.conf].
+All requests made to the environment classes API are authorized using the
+Trapperkeeper-based [`auth.conf`][].
+
+For more information about the Puppet Server authorization process and configuration
+settings, see the [`auth.conf` documentation][`auth.conf`].

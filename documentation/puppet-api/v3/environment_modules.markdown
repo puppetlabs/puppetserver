@@ -4,17 +4,11 @@ title: "Puppet Server: Puppet API: Environment Modules"
 canonical: "/puppetserver/latest/puppet-api/v3/environment_modules.html"
 ---
 
-[deprecated WEBrick Puppet master]: https://puppet.com/docs/puppet/latest/services_master_webrick.html
 [`auth.conf`]: ../../config_file_auth.markdown
 [`puppetserver.conf`]: ../../config_file_puppetserver.markdown
 
 The environment modules API will return information about what modules are
 installed for the requested environment.
-
-This endpoint is available only when the Puppet master is running Puppet Server, not
-on Ruby Puppet masters, such as the [deprecated WEBrick Puppet master][]. It also ignores
-the Ruby-based Puppet master's authorization methods and configuration. See the
-[Authorization section](#authorization) for more information.
 
 ## `GET /puppet/v3/environment_modules`
 
@@ -217,14 +211,8 @@ ruby -rjson-schema -e "puts JSON::Validator.validate!('./documentation/puppet-ap
 
 ### Authorization
 
-Unlike other Puppet master service-based API endpoints, the environment modules API is
-provided exclusively by Puppet Server. All requests made to the environment
-modules API are authorized using the Trapperkeeper-based [`auth.conf`][] feature
-introduced in Puppet Server 2.2.0, and ignores the older Ruby-based authorization process
-and configuration. The value of the `use-legacy-auth-conf` setting in the `jruby-puppet`
-configuration section of [`puppetserver.conf`][] is ignored for requests
-to the environment modules API, because the Ruby-based authorization process is not equipped to
-authorize these requests.
+All requests made to the environment classes API are authorized using the
+Trapperkeeper-based [`auth.conf`][].
 
 For more information about the Puppet Server authorization process and configuration
 settings, see the [`auth.conf` documentation][`auth.conf`].

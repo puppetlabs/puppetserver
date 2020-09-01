@@ -24,9 +24,6 @@
           path (get-route this)
           config (get-config)
           puppet-version (get-in config [:puppetserver :puppet-version])
-          use-legacy-auth-conf (get-in config
-                                       [:jruby-puppet :use-legacy-auth-conf]
-                                       false)
           master-service (tk-services/get-service this :MasterService)
           master-ns (keyword (tk-services/service-symbol master-service))
           master-metrics (-> master-service
@@ -53,11 +50,10 @@
                         master-ns
                         master-route-config)
           master-handler-info {:mount master-mount
-                               :handler (-> (master-core/get-wrapped-handler
+                               :handler (-> (master-core/wrap-middleware
                                              master-route-handler
                                              (get-auth-handler)
-                                             puppet-version
-                                             use-legacy-auth-conf)
+                                             puppet-version)
                                             (http-metrics/wrap-with-request-metrics
                                              master-metrics)
                                             (legacy-routes-core/add-root-path-to-route-id

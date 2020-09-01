@@ -112,7 +112,6 @@
                   http-client-connect-timeout-milliseconds
                   http-client-idle-timeout-milliseconds
                   http-client-metrics-enabled
-                  use-legacy-auth-conf
                   track-lookups]} config
           scripting-container (:scripting-container jruby-instance)]
 
@@ -135,8 +134,7 @@
           (.put "profiler" profiler)
           (.put "environment_registry" env-registry)
           (.put "http_connect_timeout_milliseconds" http-client-connect-timeout-milliseconds)
-          (.put "http_idle_timeout_milliseconds" http-client-idle-timeout-milliseconds)
-          (.put "use_legacy_auth_conf" use-legacy-auth-conf))
+          (.put "http_idle_timeout_milliseconds" http-client-idle-timeout-milliseconds))
         (let [jruby-puppet (.callMethodWithArgArray
                             scripting-container
                             ruby-puppet-class
@@ -205,7 +203,6 @@
       (update-in [:master-log-dir] #(or % default-master-log-dir))
       (update-in [:max-requests-per-instance] #(or % 0))
       (assoc :disable-i18n multithreaded)
-      (update-in [:use-legacy-auth-conf] #(if (some? %) % false))
       (dissoc :environment-class-cache-enabled)))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
@@ -241,26 +238,23 @@
   :http-client :jruby-puppet will be given default values, except for
   :ruby-load-path and :gem-home, which are required.
 
-  The 1-arity function takes only a config and supplies a default of nil for the profiler,
-  an empty fn for the agent-shutdown-fn, and suppresses warnings about legacy auth.conf.
-  This arity is intended for uses where a jruby-config is required but will not be used
-  to create a pool, such as the cli ruby subcommands
+  The 1-arity function takes only a config and supplies a default of nil for the profiler
+  and an empty fn for the agent-shutdown-fn. This arity is intended for uses where a
+  jruby-config is required but will not be used to create a pool, such as the cli ruby
+  subcommands.
 
   The 5-arity function takes a profiler object and the metrics service. The profiler is placed into
   the puppetserver config through the :initialize-pool-instance lifecycle function. If the
   `http-client -> metrics-enabled` setting is set to true, then the metrics service is used to get a
   metrics registry for the `:puppetserver` domain, and the server id - these are also placed into
-  the puppetserver config. The agent-shutdown-fn is run when a jruby-instance is terminated. When
-  warn-legacy-auth-conf? is passed in as true, it will log a warning that the use-legacy-auth-conf
-  setting is deprecated if the config setting is set to true as well."
+  the puppetserver config. The agent-shutdown-fn is run when a jruby-instance is terminated."
   ([raw-config :- {:jruby-puppet {schema/Keyword schema/Any}
                    (schema/optional-key :http-client) {schema/Keyword schema/Any}
                    schema/Keyword schema/Any}]
-   (initialize-and-create-jruby-config raw-config nil (fn []) false nil))
+   (initialize-and-create-jruby-config raw-config nil (fn []) nil))
   ([raw-config :- {schema/Keyword schema/Any}
     profiler :- (schema/maybe PuppetProfiler)
     agent-shutdown-fn :- IFn
-    warn-legacy-auth-conf? :- schema/Bool
     metrics-service]
    (when (get-in raw-config [:jruby-puppet :compat-version])
      (log/errorf "%s"
@@ -275,12 +269,6 @@
          uninitialized-jruby-config (-> (extract-jruby-config (:jruby-puppet raw-config))
                                         (assoc :max-borrows-per-instance
                                                (:max-requests-per-instance jruby-puppet-config)))]
-     (when (and warn-legacy-auth-conf? (:use-legacy-auth-conf jruby-puppet-config))
-       (log/warnf
-        "%s %s %s"
-        (i18n/trs "The 'jruby-puppet.use-legacy-auth-conf' setting is set to ''true''.")
-        (i18n/trs "Support for the legacy Puppet auth.conf file is deprecated and will be removed in a future release.")
-        (i18n/trs "Change this setting to 'false' and migrate your authorization rule definitions in the /etc/puppetlabs/puppet/auth.conf file to the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")))
      (create-jruby-config jruby-puppet-config uninitialized-jruby-config agent-shutdown-fn profiler metrics-service))))
 
 (def EnvironmentCacheEntry

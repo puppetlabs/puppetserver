@@ -68,16 +68,14 @@
                                :master-var-dir "two"
                                :master-conf-dir "three"
                                :master-log-dir "four"
-                               :master-code-dir "five"
-                               :use-legacy-auth-conf true}
+                               :master-code-dir "five"}
           initialized-config (jruby-puppet-core/initialize-puppet-config {} jruby-puppet-config true)]
       (is (= "one" (:master-run-dir initialized-config)))
       (is (= "two" (:master-var-dir initialized-config)))
       (is (= "three" (:master-conf-dir initialized-config)))
       (is (= "four" (:master-log-dir initialized-config)))
       (is (= "five" (:master-code-dir initialized-config)))
-      (is (= true (:disable-i18n initialized-config)))
-      (is (= true (:use-legacy-auth-conf initialized-config)))))
+      (is (= true (:disable-i18n initialized-config)))))
 
   (testing "jruby-puppet values are set to defaults if not provided"
     (let [initialized-config (jruby-puppet-core/initialize-puppet-config {} {} false)]
@@ -86,7 +84,6 @@
       (is (= "/etc/puppetlabs/puppet" (:master-conf-dir initialized-config)))
       (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir initialized-config)))
       (is (= "/etc/puppetlabs/code" (:master-code-dir initialized-config)))
-      (is (= false (:use-legacy-auth-conf initialized-config)))
       (is (= false (:disable-i18n initialized-config)))
       (is (= true (:http-client-metrics-enabled initialized-config))))))
 

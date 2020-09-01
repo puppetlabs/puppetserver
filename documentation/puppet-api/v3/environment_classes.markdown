@@ -377,14 +377,8 @@ entries on the server, do one of the following:
 
 ### Authorization
 
-Unlike other Puppet master service-based API endpoints, the environment classes API is
-provided exclusively by Puppet Server. All requests made to the environment
-classes API are authorized using the Trapperkeeper-based [`auth.conf`][] feature
-introduced in Puppet Server 2.2.0, and ignores the older Ruby-based authorization process
-and configuration. The value of the `use-legacy-auth-conf` setting in the `jruby-puppet`
-configuration section of [`puppetserver.conf`][] is ignored for requests
-to the environment classes API, because the Ruby-based authorization process is not equipped to
-authorize these requests.
+All requests made to the environment classes API are authorized using the
+Trapperkeeper-based [`auth.conf`][].
 
 For more information about the Puppet Server authorization process and configuration
 settings, see the [`auth.conf` documentation][`auth.conf`].

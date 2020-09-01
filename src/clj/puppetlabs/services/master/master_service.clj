@@ -107,9 +107,6 @@
          metrics-service (tk-services/get-service this :JRubyMetricsService)
          metrics-server-id (get-server-id)
          jruby-service (tk-services/get-service this :JRubyPuppetService)
-         use-legacy-auth-conf (get-in config
-                                      [:jruby-puppet :use-legacy-auth-conf]
-                                      false)
          environment-class-cache-enabled (get-in config
                                                  [:jruby-puppet
                                                   :environment-class-cache-enabled]
@@ -126,7 +123,6 @@
          boltlib-path (get-in config [:jruby-puppet :boltlib-path])
          ring-app (comidi/routes
                    (core/construct-root-routes puppet-version
-                                               use-legacy-auth-conf
                                                jruby-service
                                                get-code-content
                                                current-code-id

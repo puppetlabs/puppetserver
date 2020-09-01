@@ -5,14 +5,13 @@ canonical: "/puppetserver/latest/config_file_auth_migration.html"
 ---
 
 [Puppet `auth.conf`]: https://puppet.com/docs/puppet/latest/config_file_auth.markdown
-[deprecated]: ./deprecated_features.markdown
 [Backward Compatibility with Puppet 3 Agents]: ./compatibility_with_puppet_agent.markdown
 
-Puppet Server 2.2.0 introduced a significant change in how it manages authentication to API endpoints. The older [Puppet `auth.conf`][] file and whitelist-based authorization method are [deprecated][]. Puppet Server's new `auth.conf` file, illustrated below in examples, also uses a different format for authorization rules.
+Puppet Server 2.2.0 introduced a significant change in how it manages authentication to API endpoints. The older [Puppet `auth.conf`][] file and whitelist-based authorization method were deprecated in the same release and are now removed in Puppet Server 7. Puppet Server's current `auth.conf` file format (which is different than the old auth.conf) is illustrated below in examples.
 
-Use the following examples and methods to convert your authorization rules when upgrading to Puppet Server 2.2.0 and newer. For detailed information about using the new or deprecated `auth.conf` rules with Puppet Server, see the [Puppet Server `auth.conf` documentation](./config_file_auth.markdown).
+Use the following examples and methods to convert your authorization rules when upgrading to Puppet Server 2.2.0 and newer. For detailed information about using the new `auth.conf` rules with Puppet Server, see the [Puppet Server `auth.conf` documentation](./config_file_auth.markdown).
 
-> **Note:** To continue using the deprecated [Puppet `auth.conf`][] file and authorization rule format, see the [Deprecated Ruby Parameters](https://puppet.com/docs/puppet/latest/config_file_auth.markdown#deprecated-ruby-parameters) section of the `auth.conf` documentation. To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
+> **Note:** To support both Puppet 3 and Puppet 4 agents connecting to Puppet Server, see [Backward Compatibility with Puppet 3 Agents][].
 
 ## Managing rules with Puppet modules
 
