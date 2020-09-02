@@ -432,6 +432,7 @@
 
 (defn seq-contains? [coll target] (some #(= target %) coll))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Writing various SSL objects safely
 ;; These versions all encode writing atomically and knowledge of file permissions
 
