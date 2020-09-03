@@ -790,6 +790,13 @@
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
+    (testing "can retrieve file_content from the top level of a project"
+      (let [response (http-get "/puppet/v3/file_content/tasks/local/init.sh?project=local")]
+        (is (= 200 (:status response)))
+        (is (= ". $PT__installdir/helpers/files/marco.sh\nmarco\n" (:body response)))
+        (is (= "63" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
     (testing "can retrieve file_content from a project with an embedded structure"
       (let [response (http-get "/puppet/v3/file_content/modules/test/packages?project=embedded")]
         (is (= 200 (:status response)))

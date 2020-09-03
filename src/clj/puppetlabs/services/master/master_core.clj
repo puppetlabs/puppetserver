@@ -918,11 +918,14 @@
 
 (defn find-project-file
   "Find a file in a project using the parameters from a `file_content` request.
-  Returns the path as as string."
+  Returns the path as as string. If the module name is the same as the project
+  name then files are served from the project directly."
   [bolt-projects-dir project-name mount module path]
   (if (is-bolt-project? (str bolt-projects-dir "/" project-name))
     (let [project-root (get-project-root bolt-projects-dir project-name)
-          module-root (find-project-module project-root module)
+          module-root (if (= project-name module)
+                        project-root
+                        (find-project-module project-root module))
           file-path (str module-root "/" (mount->path-component mount) "/" path)]
       (if (fs/exists? file-path)
         file-path))))
