@@ -137,11 +137,6 @@ with_puppet_running_on(master, {}) do
     assert_denied(/\/puppet\/v3\/file_bucket_file\/md5\/123 \(method :get\)/)
   end
 
-  step 'status endpoint' do
-    curl_unauthenticated('/puppet/v3/status/foo?environment=production')
-    assert_allowed
-  end
-
   step 'status service endpoint' do
     curl_unauthenticated('/status/v1/services')
     assert_allowed
