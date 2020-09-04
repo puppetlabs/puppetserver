@@ -123,15 +123,23 @@ with_puppet_running_on master, {} do
                 {:acceptable_exit_codes => [0,2]})
       end
 
-      # Can we poke an HTTP API endpoint?
-      cert = get_cert(a)
-      key = get_key(a)
-      rc = https_request("https://#{server}:8140/puppet/v3/catalog/#{a.hostname}?environment=production",
-                         :get,
-                         cert,
-                         key)
-      if (rc.code != '200')
-        fail_test "Unexpected HTTP status code: #{rc.code}"
+      step "Try to query locked down catalog endpoint" do
+        cert = get_cert(a)
+        key = get_key(a)
+        rc = https_request("https://#{server}:8140/puppet/v3/catalog/#{a.hostname}?environment=production",
+                           :get,
+                           cert,
+                           key)
+
+        if not_controller(a)
+          if rc.code != '200'
+            fail_test "Unexpected HTTP status code: #{rc.code}. Expected 200."
+          end
+        else
+          if rc.code != '403'
+            fail_test "Unexpected HTTP status code: #{rc.code}. Expected 403."
+          end
+        end
       end
     end
   end
