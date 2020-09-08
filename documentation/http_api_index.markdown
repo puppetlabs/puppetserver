@@ -30,7 +30,7 @@ Authorization for `/puppet` and `/puppet-ca` endpoints is controlled with [Puppe
 
 The Puppet agent application uses several network services to manage systems. These services are all grouped under the `/puppet` API. Other tools can access these services and use the Puppet master's data for other purposes.
 
-The V3 API contains endpoints of two types: those that are based on dispatching to Puppet's internal "indirector" framework, and those that are not (namely the [environment endpoints](#environment-endpoints)).
+The V3 API contains endpoints of two types: those that are based on dispatching to Puppet's internal "indirector" framework, and those that are not (namely the [environments endpoint](#environments-endpoint)).
 
 Every HTTP endpoint that dispatches to the indirector follows the form `/puppet/v3/:indirection/:key?environment=:environment`, where:
 
@@ -64,14 +64,13 @@ These services are not directly used by Puppet agent, but can be used by other t
 
 > **Note:** The [Puppet Server status API](#puppet-server-specific-endpoints) provides more detail and features than Puppet's.
 
-### Environment endpoints
+### Environments endpoint
 
-The `/puppet/v3/environments` and `/puppet/v3/environment/:environment` endpoints use a different format than the configuration management and informational services endpoints.
+The `/puppet/v3/environments` endpoint uses a different format than the configuration management and informational services endpoints.
 
-These endpoints accept only payloads formatted as JSON, and respond with JSON (MIME type of `application/json`).
+The endpoint accepts only payloads formatted as JSON, and responds with JSON (MIME type of `application/json`).
 
 -   [Environments](https://puppet.com/docs/puppet/latest/http_api/http_environments.html)
--   [Environment catalog](https://puppet.com/docs/puppet/latest/http_api/http_environment.html)
 
 ### Puppet Server-specific endpoints
 
