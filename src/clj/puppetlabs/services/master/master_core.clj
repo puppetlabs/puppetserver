@@ -1131,8 +1131,6 @@
    (comidi/PUT ["/report/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET "/environments" request
-               (request-handler request))
-   (comidi/GET ["/status/" [#".*" :rest]] request
                (request-handler request))))
 
 (schema/defn ^:always-validate
