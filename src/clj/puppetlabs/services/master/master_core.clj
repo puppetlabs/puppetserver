@@ -1130,8 +1130,6 @@
                (request-handler request))
    (comidi/PUT ["/report/" [#".*" :rest]] request
                (request-handler request))
-   (comidi/GET ["/environment/" [#".*" :environment]] request
-               (request-handler (assoc request :include-code-id? true)))
    (comidi/GET "/environments" request
                (request-handler request))
    (comidi/GET ["/status/" [#".*" :rest]] request
