@@ -62,11 +62,9 @@
     (is (nil? (request "/foo/bar")))
     (doseq [[method paths]
             {:get ["node"
-                   "environment"
                    "file_metadatas"
                    "file_metadata"
-                   "file_bucket_file"
-                   "status"]
+                   "file_bucket_file"]
              :put ["file_bucket_file"
                    "report"]
              :head ["file_bucket_file"]}
