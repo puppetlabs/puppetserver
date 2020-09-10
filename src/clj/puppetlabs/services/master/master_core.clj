@@ -31,7 +31,8 @@
             [puppetlabs.trapperkeeper.services.status.status-core :as status-core]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
-            [cheshire.core :as json]))
+            [cheshire.core :as json]
+            [clj-yaml.core :as yaml]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -916,13 +917,21 @@
     ;; default to itself
     mount))
 
+(defn read-bolt-project-config
+  [project-dir]
+  (let [config-path (str project-dir "/bolt-project.yaml")]
+    (if (fs/file? config-path)
+     (yaml/parse-string (slurp config-path)))))
+
 (defn find-project-file
   "Find a file in a project using the parameters from a `file_content` request.
   Returns the path as as string. If the module name is the same as the project
   name then files are served from the project directly."
-  [bolt-projects-dir project-name mount module path]
-  (if (is-bolt-project? (str bolt-projects-dir "/" project-name))
-    (let [project-root (get-project-root bolt-projects-dir project-name)
+  [bolt-projects-dir project-ref mount module path]
+  (if (is-bolt-project? (str bolt-projects-dir "/" project-ref))
+    (let [project-root (get-project-root bolt-projects-dir project-ref)
+          project-config (read-bolt-project-config project-root)
+          project-name (get project-config :name)
           module-root (if (= project-name module)
                         project-root
                         (find-project-module project-root module))
