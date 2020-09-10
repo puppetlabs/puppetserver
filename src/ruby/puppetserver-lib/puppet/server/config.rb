@@ -6,8 +6,6 @@ require 'puppet/environments'
 require 'puppet/server/logger'
 require 'puppet/server/jvm_profiler'
 require 'puppet/server/http_client'
-require 'puppet/server/auth_config_loader'
-require 'puppet/server/auth_provider'
 require 'puppet/server/execution'
 require 'puppet/server/environments/cached'
 
@@ -27,13 +25,6 @@ class Puppet::Server::Config
 
     Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
     Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
-
-    if !puppet_server_config["use_legacy_auth_conf"]
-      Puppet::Network::Authorization.authconfigloader_class =
-          Puppet::Server::AuthConfigLoader
-      Puppet::Network::AuthConfig.authprovider_class =
-          Puppet::Server::AuthProvider
-    end
 
     Puppet::Server::Execution.initialize_execution_stub
 
