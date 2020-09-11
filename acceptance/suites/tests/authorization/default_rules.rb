@@ -16,11 +16,6 @@ step 'Turn on new auth support' do
                    {'jruby-puppet' => {'use-legacy-auth-conf' => false}})
 end
 
-teardown do
-  modify_tk_config(master, options['puppetserver-config'],
-                   {'jruby-puppet' => {'use-legacy-auth-conf' => true}})
-end
-
 def curl_authenticated(path)
   curl = 'curl '
   curl += '--cert $(puppet config print hostcert) '
