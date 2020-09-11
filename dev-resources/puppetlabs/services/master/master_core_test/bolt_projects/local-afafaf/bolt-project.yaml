@@ -1,0 +1,3 @@
+name: local
+modulepath:
+  - "my-modules"

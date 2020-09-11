@@ -804,6 +804,17 @@
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
+    (testing "can retrieve file_content from a custom modulepath"
+      (let [response (http-get "/puppet/v3/file_content/modules/helpers/marco.sh?project=local-afafaf")]
+        (is (= 200 (:status response)))
+        (is (= "marco () {\n  echo \"polo\"\n}\n" (:body response)))
+        (is (= "27" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "cannot retrieve file_content from the default modulepath when a custom modulepath is set"
+      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local-afafaf")]
+        (is (= 404 (:status response)))))
+
     (testing "mount point not found"
       (let [response (http-get "/puppet/v3/file_content/glorb/test/packages?project=local-23")]
         (is (= 404 (:status response)))))
