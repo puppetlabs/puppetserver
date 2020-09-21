@@ -5,11 +5,17 @@ require 'java'
 
 describe 'Puppet::Server::HttpClient' do
   let :client do
-    Puppet::Server::HttpClient.new("localhost", 0, {})
+    Puppet::Server::HttpClient.new
   end
+
+  let(:url) { 'http://localhost:0/' }
 
   context "when settings are initialized with specific values" do
     before :all do
+      Puppet[:hostcert] = "spec/fixtures/localhost-cert.pem"
+      Puppet[:hostprivkey] = "spec/fixtures/localhost-privkey.pem"
+      Puppet[:localcacert] = "spec/fixtures/ca-cert.pem"
+
       @settings = Puppet::Server::HttpClient.settings
       Puppet::Server::HttpClient.initialize_settings(
         {"http_connect_timeout_milliseconds" => 42,
@@ -34,12 +40,20 @@ describe 'Puppet::Server::HttpClient' do
   end
 
   context 'when making a request with basic auth' do
-    let(:url) { '/' }
     let(:headers) { {} }
+    let(:params) { {} }
     let(:options) { {} }
 
     describe '#create_common_request_options' do
-      subject { client.create_common_request_options(url, headers, options) }
+      subject { client.create_common_request_options(url, headers, params, options) }
+
+      context 'with query params' do
+        let(:params) { {foo: 1, bar: 2} }
+
+        it 'includes the query params in the url' do
+          expect(subject.uri.get_query).to eq("foo=1&bar=2")
+        end
+      end
 
       context 'with auth provided via options' do
         let(:options) { {basic_auth: {user: 'username', password: 'secret'}} }
@@ -77,11 +91,10 @@ describe 'Puppet::Server::HttpClient' do
 
   context "when making a request that triggers a Java exception" do
     let :requests do
-      headers = {}
       body = nil
       {
-        get: lambda { client.get('/', headers) },
-        post: lambda { client.post('/', body, headers) }
+        get: lambda { client.get(url) },
+        post: lambda { client.post(url, body) }
       }
     end
 

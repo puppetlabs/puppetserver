@@ -460,22 +460,21 @@
              jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
              container (:scripting-container jruby-instance)]
          (try
-           (.runScriptlet container
-                          (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                  8080 false))
+           (.runScriptlet container "$c = Puppet::Server::HttpClient.new;")
            (let [metrics-svc (tk-app/get-service app :MetricsService)
-                 metric-registry (metrics-protocol/get-metrics-registry metrics-svc :puppetserver)]
+                 metric-registry (metrics-protocol/get-metrics-registry metrics-svc :puppetserver)
+                 url "http://localhost:8080/hello"]
              (testing "metric registry has no metrics when no http requests have been made"
                (is (= {:url [] :url-and-method [] :metric-id []}
                       (metrics/get-client-metrics-data metric-registry))))
              (testing "metric registry does not have any metrics by default"
                (testing "GET request"
-                 (.runScriptlet container "$c.get('/hello', {})")
+                 (.runScriptlet container (format "$c.get('%s')" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
                    (is (= [] (:url metrics-data)))
                    (is (= [] (:url-and-method metrics-data)))))
                (testing "POST request"
-                 (.runScriptlet container "$c.post('/hello', 'body', {})")
+                 (.runScriptlet container (format "$c.post('%s', 'body')" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)
                        url-metrics-data (:url metrics-data)]
                    (is (= [] (:url metrics-data)))
@@ -486,7 +485,7 @@
                            " with metric-id specified")
                (testing "GET request"
                  (.runScriptlet container
-                                "$c.get('/hello', {}, {:metric_id => ['foo', 'get']})")
+                                (format "$c.get('%s', options: {:metric_id => ['foo', 'get']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    (is (= 2 (count metric-id-data)))
                    (is (= #{(add-metric-ns "with-metric-id.foo")
@@ -498,7 +497,7 @@
                                           metric-registry ["foo" "get"]))))))
                (testing "POST request"
                  (.runScriptlet container
-                                "$c.post('/hello', 'body', {}, {:metric_id => ['foo', 'post']})")
+                                (format "$c.post('%s', 'body', options: {:metric_id => ['foo', 'post']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    ;; there should now be two requests with the 'foo' metric id, one with 'foo.get',
                    ;; and one with 'foo.post'

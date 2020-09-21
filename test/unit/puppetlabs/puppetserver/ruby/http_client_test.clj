@@ -82,7 +82,7 @@
 (def privkey-pem (test-resource "localhost_key.pem"))
 
 (schema/defn ^:always-validate
-jruby-config :- jruby-schemas/JRubyConfig
+ jruby-config :- jruby-schemas/JRubyConfig
   "Create a JRubyConfig for testing. The optional map argument `options` may
   contain a map, which, if present, will be merged into the final JRubyConfig
   map.  (This function differs from `jruby-tk-config` in that it returns a map
@@ -113,10 +113,9 @@ jruby-config :- jruby-schemas/JRubyConfig
     scripting-container))
 
 (defn create-http-client
-  [scripting-container port options]
+  [scripting-container options]
   (.runScriptlet scripting-container "require 'puppet/server/http_client'")
-  (let [use-ssl? (true? (:use-ssl options))
-        http-client-settings (get-http-client-settings
+  (let [http-client-settings (get-http-client-settings
                               (select-keys options [:ssl-protocols
                                                     :cipher-suites]))
         http-client-class (.runScriptlet scripting-container
@@ -126,9 +125,7 @@ jruby-config :- jruby-schemas/JRubyConfig
                              "initialize_settings"
                              (into-array Object [http-client-settings])
                              Object)
-    (.runScriptlet scripting-container
-                   (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                           port use-ssl?))))
+    (.runScriptlet scripting-container "$c = Puppet::Server::HttpClient.new;")))
 
 (defn terminate-http-client
   [scripting-container]
@@ -158,9 +155,9 @@ jruby-config :- jruby-schemas/JRubyConfig
            (terminate-scripting-container ~scripting-container))))))
 
 (defmacro with-http-client
-  [scripting-container port options & body]
+  [scripting-container options & body]
   `(try
-     (create-http-client ~scripting-container ~port ~options)
+     (create-http-client ~scripting-container ~options)
      ~@body
      (finally
        (terminate-http-client ~scripting-container))))
@@ -176,59 +173,62 @@ jruby-config :- jruby-schemas/JRubyConfig
 (deftest test-ruby-http-client
   (jetty9/with-test-webserver ring-app port
     (with-scripting-container sc
-      (with-http-client sc port {:use-ssl false}
-      (testing "HTTP GET"
-        (is (= "hi" (.runScriptlet sc "$c.get('/', {}).body"))))
-      (testing "HTTP POST"
-        (is (= "hi" (.runScriptlet sc "$c.post('/', 'foo', {}).body"))))))))
+      (with-http-client sc {}
+        (let [url (str "http://localhost:" port)]
+          (testing "HTTP GET"
+            (is (= "hi" (.runScriptlet sc (format "$c.get('%s').body" url)))))
+          (testing "HTTP POST"
+            (is (= "hi" (.runScriptlet sc (format "$c.post('%s', 'foo').body" url))))))))))
 
 (deftest http-basic-auth
   (jetty9/with-test-webserver ring-app-with-auth port
     (with-scripting-container sc
-      (with-http-client sc port {:use-ssl false}
-        (testing "no credentials"
-          (.runScriptlet sc "$response = $c.post('/', 'foo', {})")
-          (is (= "401" (.runScriptlet sc "$response.code")))
-          (is (= "access denied" (.runScriptlet sc "$response.body"))))
+      (with-http-client sc {}
+        (let [url (str "http://localhost:" port)]
+          (testing "no credentials"
+            (.runScriptlet sc (format "$response = $c.post('%s', 'foo')" url))
+            (is (= 401 (.runScriptlet sc "$response.code")))
+            (is (= "Unauthorized" (.runScriptlet sc "$response.reason")))
+            (is (= "access denied" (.runScriptlet sc "$response.body"))))
 
-        (testing "valid credentials"
-          (let [auth "{ :basic_auth => { :user => 'foo', :password => 'bar' }}"]
-            (.runScriptlet sc (format "$response = $c.post('/', 'foo', {}, %s)" auth)))
-          (is (= "200" (.runScriptlet sc "$response.code")))
-          (is (= "hi" (.runScriptlet sc "$response.body"))))
+          (testing "valid credentials"
+            (let [auth "{ :basic_auth => { :user => 'foo', :password => 'bar' }}"]
+              (.runScriptlet sc (format "$response = $c.post('%s', 'foo', options: %s)" url auth)))
+            (is (= 200 (.runScriptlet sc "$response.code")))
+            (is (= "hi" (.runScriptlet sc "$response.body"))))
 
-        (testing "invalid credentials"
-          (let [auth "{ :basic_auth => { :user => 'foo', :password => 'baz' }}"]
-            (.runScriptlet sc (format "$response = $c.post('/', 'foo', {}, %s)" auth)))
-          (is (= "401" (.runScriptlet sc "$response.code")))
-          (is (= "access denied" (.runScriptlet sc "$response.body"))))))))
+          (testing "invalid credentials"
+            (let [auth "{ :basic_auth => { :user => 'foo', :password => 'baz' }}"]
+              (.runScriptlet sc (format "$response = $c.post('%s', 'foo', options: %s)" url auth)))
+            (is (= 401 (.runScriptlet sc "$response.code")))
+            (is (= "access denied" (.runScriptlet sc "$response.body")))))))))
 
 (deftest http-compressed-requests
   (jetty9/with-test-webserver ring-app-decompressing-gzipped-request port
     (with-scripting-container sc
-      (with-http-client sc port {:use-ssl false}
-        (testing "GZIP compression format"
-          (let [compress "{ :compress => :gzip }"
-                body "howdy"]
-            (.runScriptlet sc (format "$response = $c.post('/', '%s', {}, %s)"
-                                      body
-                                      compress))
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= body (.runScriptlet sc "$response.body")))))
+      (with-http-client sc {}
+        (let [url (str "http://localhost:" port)]
+          (testing "GZIP compression format"
+            (let [compress "{ :compress => :gzip }"
+                  body "howdy"]
+              (.runScriptlet sc (format "$response = $c.post('%s', '%s', options: %s)"
+                                        url
+                                        body
+                                        compress))
+              (is (= 200 (.runScriptlet sc "$response.code")))
+              (is (= body (.runScriptlet sc "$response.body")))))
 
-       (testing "invalid compression format"
-         (let [compress "{ :compress => :bunk }"]
-           (is (= "Unsupported compression specified for request: bunk"
-                  (.runScriptlet
-                   sc
-                   (str "begin;"
-                        "  $response = $c.post('/', 'foo', {}, "
-                        compress
-                        ");"
-                        "  'No error raised from post';"
-                        "rescue ArgumentError => e;"
-                        "  e.message;"
-                        "end"))))))))))
+          (testing "invalid compression format"
+            (let [compress "{ :compress => :bunk }"]
+              (is (= "Unsupported compression specified for request: bunk"
+                     (.runScriptlet
+                      sc
+                      (str "begin;"
+                           (format "  $response = $c.post('%s', 'foo', options: %s);" url compress)
+                           "  'No error raised from post';"
+                           "rescue ArgumentError => e;"
+                           "  e.message;"
+                           "end")))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; SSL Tests
@@ -262,59 +262,62 @@ jruby-config :- jruby-schemas/JRubyConfig
   (testing "requests fail without an SSL client"
     (with-webserver-with-protocols nil nil
       (with-scripting-container sc
-        (with-http-client sc 10080 {:use-ssl false}
-         (logutils/with-test-logging
-          (let [ex-class (if (SSLUtils/isFIPS)
-                           ConnectionClosedException
-                           ProtocolException)]
-            (try
-              (.runScriptlet sc (raise-caught-http-error "$c.get('/', {})"))
-              (is false "Expected HTTP connection to HTTPS port to fail")
-              (catch EvalFailedException e
-                (is (instance? ex-class (.getCause e)))))))))))
+        (with-http-client sc {}
+          (let [url (str "http://localhost:10080")]
+            (logutils/with-test-logging
+             (let [ex-class (if (SSLUtils/isFIPS)
+                              ConnectionClosedException
+                              ProtocolException)]
+               (try
+                 (.runScriptlet sc (raise-caught-http-error (format "$c.get('%s')" url)))
+                 (is false "Expected HTTP connection to HTTPS port to fail")
+                 (catch EvalFailedException e
+                   (is (instance? ex-class (.getCause e))))))))))))
 
   (when-not (SSLUtils/isFIPS)
-    (testing "Can connect via TLSv1 by default"
-      (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body")))))))
+    (let [url (str "https://localhost:10080")]
+      (testing "Can connect via TLSv1 by default"
+        (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+          (with-scripting-container sc
+            (with-http-client sc {}
+              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (is (= 200 (.runScriptlet sc "$response.code")))
+              (is (= "hi" (.runScriptlet sc "$response.body")))))))
 
-    (testing "Can connect via TLSv1.1 by default"
-      (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-        (with-scripting-container sc
-          (with-http-client sc 10080 {:use-ssl true}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (is (= "hi" (.runScriptlet sc "$response.body"))))))))
+      (testing "Can connect via TLSv1.1 by default"
+        (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+          (with-scripting-container sc
+            (with-http-client sc {}
+              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (is (= 200 (.runScriptlet sc "$response.code")))
+              (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
   (testing "Can connect via TLSv1.2 by default"
     (with-webserver-with-protocols ["TLSv1.2"] nil
       (with-scripting-container sc
-        (with-http-client sc 10080 {:use-ssl true}
-          (.runScriptlet sc "$response = $c.get('/', {})")
-          (is (= "200" (.runScriptlet sc "$response.code")))
-          (is (= "hi" (.runScriptlet sc "$response.body"))))))))
+        (with-http-client sc {}
+          (let [url (str "https://localhost:10080")]
+            (.runScriptlet sc (format "$response = $c.get('%s')" url))
+            (is (= 200 (.runScriptlet sc "$response.code")))
+            (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
 (deftest clients-persist
   (testing "client persists when making HTTP requests"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app port
-      (with-scripting-container sc
-        (with-http-client sc port {:use-ssl false}
-          (let [client1 (.runScriptlet sc "$c.get('/', {}); $c.class.client")
-                client2 (.runScriptlet sc "$c.post('/', 'foo', {}); $c.class.client")]
-            (is (= client1 client2))))))))
+        (with-scripting-container sc
+          (with-http-client sc {}
+            (let [url (str "http://localhost:" port)
+                  client1 (.runScriptlet sc (format "$c.get('%s'); $c.class.client" url))
+                  client2 (.runScriptlet sc (format "$c.post('%s', 'foo'); $c.class.client" url))]
+              (is (= client1 client2))))))))
   (testing "all instances of HttpClient have the same underlying client object"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app port
         (with-scripting-container sc
-          (with-http-client sc port {:use-ssl false}
+          (with-http-client sc {}
             (let [client1 (.runScriptlet sc "$c.class.client")
-                  client2 (.runScriptlet sc (str (format "$c2 = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                                         port false)
+                  client2 (.runScriptlet sc (str "$c2 = Puppet::Server::HttpClient.new;"
                                                  "$c2.class.client"))]
               (is (= client1 client2)))))))))
 
@@ -323,31 +326,34 @@ jruby-config :- jruby-schemas/JRubyConfig
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
-          (with-http-client sc port {:use-ssl false}
-            (is (= "The Connection header has value close"
-                   (.runScriptlet sc "$c.get('/', {}).body"))))))))
+          (with-http-client sc {}
+            (let [url (str "http://localhost:" port)]
+              (is (= "The Connection header has value close"
+                     (.runScriptlet sc (format "$c.get('%s').body" url))))))))))
   (testing "connection header always set to close on post"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
-          (with-http-client sc port {:use-ssl false}
-            (is (= "The Connection header has value close"
-                   (.runScriptlet sc "$c.post('/', 'foo', {}).body"))))))))
+          (with-http-client sc {}
+            (let [url (str "http://localhost:" port)]
+              (is (= "The Connection header has value close"
+                     (.runScriptlet sc (format "$c.post('%s', 'foo').body" url))))))))))
   (testing "client's terminate function closes the client"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
-          (with-http-client sc port {:use-ssl false}
-            (.runScriptlet sc "$response = $c.get('/', {})")
-            (is (= "200" (.runScriptlet sc "$response.code")))
-            (.runScriptlet sc "$c.class.terminate")
-            (try
-              (.runScriptlet sc "$response = $c.get('/', {})")
-              (catch EvalFailedException e
-                (let [wrapped-exception (.getCause e)
-                      message (.getMessage e)]
-                  (is (instance? IllegalStateException wrapped-exception))
-                  (is (re-find #"Request cannot be executed; I/O reactor status: STOPPED" message)))))))))))
+          (with-http-client sc {}
+            (let [url (str "http://localhost:" port)]
+              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (is (= 200 (.runScriptlet sc "$response.code")))
+              (.runScriptlet sc "$c.class.terminate")
+              (try
+                (.runScriptlet sc (format "$response = $c.get('%s')" url))
+                (catch EvalFailedException e
+                  (let [wrapped-exception (.getCause e)
+                        message (.getMessage e)]
+                    (is (instance? IllegalStateException wrapped-exception))
+                    (is (re-find #"Request cannot be executed; I/O reactor status: STOPPED" message))))))))))))
 
 (deftest http-and-https
   (testing "can make http calls after https calls without a new scripting container"
@@ -355,28 +361,26 @@ jruby-config :- jruby-schemas/JRubyConfig
       (jetty9/with-test-webserver ring-app-alternate port
         (with-webserver-with-protocols nil nil
           (with-scripting-container sc
-            (with-http-client sc 10080 {:use-ssl true}
-              (.runScriptlet sc "$response = $c.get('/', {})")
-              (is (= "200" (.runScriptlet sc "$response.code")))
-              (is (= "hi" (.runScriptlet sc "$response.body")))
-              (.runScriptlet sc (str (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                            port false)
-                                    "$response = $c.get('/', {})"))
-              (is (= "200" (.runScriptlet sc "$response.code")))
-              (is (= "bye" (.runScriptlet sc "$response.body")))))))))
+            (with-http-client sc {}
+              (let [url (str "https://localhost:10080")]
+                (.runScriptlet sc (format "$response = $c.get('%s')" url))
+                (is (= 200 (.runScriptlet sc "$response.code")))
+                (is (= "hi" (.runScriptlet sc "$response.body")))
+                (.runScriptlet sc (str "$c = Puppet::Server::HttpClient.new;"
+                                       (format "$response = $c.get('http://localhost:%s')" port)))
+                (is (= 200 (.runScriptlet sc "$response.code")))
+                (is (= "bye" (.runScriptlet sc "$response.body"))))))))))
 
   (testing "can make https calls after http calls without a new scripting container"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-alternate port
         (with-webserver-with-protocols nil nil
           (with-scripting-container sc
-            (with-http-client sc port {:use-ssl false}
-              (.runScriptlet sc "$response = $c.get('/', {})")
-              (is (= "200" (.runScriptlet sc "$response.code")))
+            (with-http-client sc {}
+              (.runScriptlet sc (format "$response = $c.get('http://localhost:%s')" port))
+              (is (= 200 (.runScriptlet sc "$response.code")))
               (is (= "bye" (.runScriptlet sc "$response.body")))
-              (.runScriptlet sc (str (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                             10080 true)
-                                    "$response = $c.get('/', {})"))
-              (is (= "200" (.runScriptlet sc "$response.code")))
+              (.runScriptlet sc (str "$c = Puppet::Server::HttpClient.new;"
+                                     "$response = $c.get(URI('https://localhost:10080/'))"))
+              (is (= 200 (.runScriptlet sc "$response.code")))
               (is (= "hi" (.runScriptlet sc "$response.body"))))))))))
-

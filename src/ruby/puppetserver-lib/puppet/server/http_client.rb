@@ -1,7 +1,8 @@
 require 'puppet'
 require 'puppet/server'
 require 'puppet/server/config'
-require 'net/http'
+require 'puppet/server/http_response'
+require 'puppet/http/client'
 require 'base64'
 
 require 'java'
@@ -20,10 +21,9 @@ class Puppet::Server::HttpClientError < SocketError
   end
 end
 
-class Puppet::Server::HttpClient
+class Puppet::Server::HttpClient < Puppet::HTTP::Client
 
   OPTION_DEFAULTS = {
-      :use_ssl => true,
       :verify => nil,
       :redirect_limit => 10,
   }
@@ -44,17 +44,18 @@ class Puppet::Server::HttpClient
     @settings ||= {}
   end
 
-  def initialize(server, port, options = {})
+  def initialize(options = {})
     options = OPTION_DEFAULTS.merge(options)
-
-    @server = server
-    @port = port
-    @use_ssl = options[:use_ssl]
-    @protocol = @use_ssl ? "https" : "http"
   end
 
-  def post(url, body, headers = {}, options = {})
-    request_options = create_common_request_options(url, headers, options)
+  def get(url, headers: {}, params: {}, options: {}, &block)
+    request_options = create_common_request_options(url, headers, params, options)
+    response = self.class.client_get(request_options)
+    Puppet::Server::HttpResponse.new(response, url)
+  end
+
+  def post(url, body, headers: {}, params: {}, options: {}, &block)
+    request_options = create_common_request_options(url, headers, params, options)
     request_options.set_body(body)
 
     compress = options[:compress]
@@ -68,17 +69,10 @@ class Puppet::Server::HttpClient
     end
 
     response = self.class.client_post(request_options)
-    ruby_response(response)
+    Puppet::Server::HttpResponse.new(response, url)
   end
 
-  def get(url, headers={}, options={})
-
-    request_options = create_common_request_options(url, headers, options)
-    response = self.class.client_get(request_options)
-    ruby_response(response)
-  end
-
-  def create_common_request_options(url, headers, options)
+  def create_common_request_options(url, headers, params, options)
     # If credentials were supplied for HTTP basic auth, add them into the headers.
     # This is based on the code in lib/puppet/reports/http.rb.
     credentials = options[:basic_auth]
@@ -96,7 +90,14 @@ class Puppet::Server::HttpClient
 
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
-    request_options = RequestOptions.new(build_url(url))
+
+    if url.is_a?(String)
+      url = URI(url)
+    end
+    url = encode_query(url, params)
+
+    # Java will reparse the string into its own URI object
+    request_options = RequestOptions.new(url.to_s)
     if options[:metric_id]
       request_options.set_metric_id(options[:metric_id])
     end
@@ -148,36 +149,6 @@ class Puppet::Server::HttpClient
     end
   end
 
-  def remove_leading_slash(url)
-    url.sub(/^\//, "")
-  end
-
-  def build_url(url)
-    "#{@protocol}://#{@server}:#{@port}/#{remove_leading_slash(url)}"
-  end
-
-  # Copied from Net::HTTPResponse because it is private there.
-  def ruby_response_class(code)
-    Net::HTTPResponse::CODE_TO_OBJ[code] or
-    Net::HTTPResponse::CODE_CLASS_TO_OBJ[code[0,1]] or
-    Net::HTTPUnknownResponse
-  end
-
-  def ruby_response(response)
-    clazz = ruby_response_class(response.status.to_s)
-    result = clazz.new(nil, response.status.to_s, nil)
-    result.body = response.body
-    # This is nasty, nasty.  But apparently there is no way to create
-    # an instance of Net::HttpResponse from outside of the library and have
-    # the body be readable, unless you do stupid things like this.
-    result.instance_variable_set(:@read, true)
-
-    response.headers.each do |k,v|
-      result[k] = v
-    end
-    result
-  end
-
   def self.create_client_options
     client_options = ClientOptions.new
     self.configure_timeouts(client_options)
@@ -206,5 +177,26 @@ class Puppet::Server::HttpClient
     self.client.get(request_options)
   rescue Java::ComPuppetlabsHttpClient::HttpClientException => e
     raise Puppet::Server::HttpClientError.new(e.message, e)
+  end
+
+
+  def create_session
+    raise NotImplementedError
+  end
+
+  def connect(uri, options: {}, &block)
+    raise NotImplementedError
+  end
+
+  def head(url, headers: {}, params: {}, options: {})
+    raise NotImplementedError
+  end
+
+  def put(url, headers: {}, params: {}, options: {})
+    raise NotImplementedError
+  end
+
+  def delete(url, headers: {}, params: {}, options: {})
+    raise NotImplementedError
   end
 end

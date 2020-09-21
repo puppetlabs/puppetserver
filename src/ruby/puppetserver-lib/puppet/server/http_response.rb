@@ -1,6 +1,7 @@
 require 'puppet/http/response'
 
-class Puppet::Server::HttpResponse < Puppet::HTTP::Repsonse
+class Puppet::Server::HttpResponse < Puppet::HTTP::Response
+  attr_reader :url
 
   def initialize(java_response, url)
     @java_response = java_response

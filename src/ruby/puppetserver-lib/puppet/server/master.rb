@@ -36,7 +36,7 @@ class Puppet::Server::Master
     multithreaded = puppet_server_config.delete('multithreaded')
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: puppet_config)
-    # Tell Puppet's network layer which routes we are willing handle - which is
+    # Tell Puppet's network layer which routes we are willing to handle - which is
     # the master routes, not the CA routes.
     master_prefix = Regexp.new("^#{Puppet::Network::HTTP::MASTER_URL_PREFIX}/")
     master_routes = Puppet::Network::HTTP::Route.path(master_prefix).

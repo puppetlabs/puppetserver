@@ -515,8 +515,7 @@
              (.runScriptlet
               container
               ;; create a client and assign it to a global variable
-              (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                      8140 true))
+              "$c = Puppet::Server::HttpClient.new;")
              (let [make-request-with-metric-id (fn [metric-id-as-string]
                                                  (.runScriptlet
                                                   container
@@ -524,7 +523,7 @@
                                                   ;; doesn't actually matter whether the endpoint is
                                                   ;; reachable or not - we just need to make requests
                                                   ;; with the given metric ids.
-                                                  (format "$c.get('/fake', {}, {:metric_id => %s})"
+                                                  (format "$c.get('https://localhost:8140/fake', options: {:metric_id => %s})"
                                                           metric-id-as-string)))]
                (testing "http-client-metrics key in master status"
                  (testing "empty array if no requests have been made"
@@ -627,9 +626,7 @@
            (.runScriptlet
             container
             ;; create a client and assign it to a global variable
-            (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                    8140 true))
-
+            "$c = Puppet::Server::HttpClient.new;")
            (let [make-request-with-metric-id (fn [metric-id-as-string]
                                                (.runScriptlet
                                                 container
@@ -637,7 +634,7 @@
                                                 ;; doesn't actually matter whether the endpoint is
                                                 ;; reachable or not - we just need to make requests
                                                 ;; with the given metric ids.
-                                                (format "$c.get('/fake', {}, {:metric_id => %s})"
+                                                (format "$c.get('https://localhost:8140/fake', options: {:metric_id => %s})"
                                                         metric-id-as-string)))]
              (testing "http-client-metrics key in master status"
                (make-request-with-metric-id "['foo', 'bar', 'baz']")
