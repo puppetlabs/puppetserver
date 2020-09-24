@@ -363,11 +363,11 @@
                                                                     :profiler-output-file profiler-file})
           config (assoc
                   (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
-                   :http-client {:connect-timeout-milliseconds 2
-                                 :idle-timeout-milliseconds 5
-                                 :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
-                                                 "TLS_RSA_WITH_AES_256_CBC_SHA"]
-                                 :ssl-protocols ["TLSv1" "TLSv1.2"]})]
+                  :http-client {:connect-timeout-milliseconds 2
+                                :idle-timeout-milliseconds 5
+                                :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+                                                "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                                :ssl-protocols ["TLSv1" "TLSv1.2"]})]
       (logutils/with-test-logging
        (tk-testutils/with-app-with-config
         app
@@ -629,30 +629,29 @@
        jruby-testutils/jruby-service-and-dependencies
        (jruby-testutils/jruby-puppet-tk-config
         (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-        ;; getAllStackTraces returns a HashMap of Thread to StackTraceElement[]
-        (let [threads-before-jruby (set (keys (Thread/getAllStackTraces)))
-              jruby-service (tk-app/get-service app :JRubyPuppetService)
-              pool-context (jruby-protocol/get-pool-context jruby-service)
-              pool-agent (jruby-agents/get-modify-instance-agent pool-context)
-              instance (jruby-testutils/borrow-instance jruby-service :test)
-              scripting-container (:scripting-container instance)
-              ;; Timeout will print to stderr otherwise
-              _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
-              script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
-          (try
-            (.runScriptlet scripting-container script)
-            (catch EvalFailedException e))
-          (let [threads-during-jruby (set (keys (Thread/getAllStackTraces)))]
-            (jruby-testutils/return-instance jruby-service instance :test)
-            (jruby-protocol/flush-jruby-pool! jruby-service)
-            ; wait until the flush is complete
-            (await pool-agent)
-            (Thread/sleep 5000)
-            (let [threads-after-jruby (set (keys (Thread/getAllStackTraces)))
-                  threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
-                  threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
-              (is (empty? threads-orphaned-by-jruby)))))))))
-
+       ;; getAllStackTraces returns a HashMap of Thread to StackTraceElement[]
+       (let [threads-before-jruby (set (keys (Thread/getAllStackTraces)))
+             jruby-service (tk-app/get-service app :JRubyPuppetService)
+             pool-context (jruby-protocol/get-pool-context jruby-service)
+             pool-agent (jruby-agents/get-modify-instance-agent pool-context)
+             instance (jruby-testutils/borrow-instance jruby-service :test)
+             scripting-container (:scripting-container instance)
+             ;; Timeout will print to stderr otherwise
+             _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
+             script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
+         (try
+           (.runScriptlet scripting-container script)
+           (catch EvalFailedException e))
+         (let [threads-during-jruby (set (keys (Thread/getAllStackTraces)))]
+           (jruby-testutils/return-instance jruby-service instance :test)
+           (jruby-protocol/flush-jruby-pool! jruby-service)
+           ; wait until the flush is complete
+           (await pool-agent)
+           (Thread/sleep 5000)
+           (let [threads-after-jruby (set (keys (Thread/getAllStackTraces)))
+                 threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
+                 threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
+             (is (empty? threads-orphaned-by-jruby)))))))))
 
 (deftest compat-version-in-config-throws-exception-test
   (testing "compat-version setting in configuration throws exception"

@@ -718,27 +718,27 @@
                    :master-code-dir test-resources-code-dir
                    :master-conf-dir master-service-test-runtime-dir
                    :master-var-dir (fs/tmpdir)}}
-    (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
-          jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
-          container (:scripting-container jruby-instance)]
-      (try
-        (let [facts (.runScriptlet container "facts = Puppet::Node::Facts.new('puppet.node.test')
+   (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
+         jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
+         container (:scripting-container jruby-instance)]
+     (try
+       (let [facts (.runScriptlet container "facts = Puppet::Node::Facts.new('puppet.node.test')
                                               facts.values['foo'] = 'bar'
                                               facts.to_json")
-              response (http-put "/puppet/v3/facts/puppet.node.test?environment=production" facts)]
+             response (http-put "/puppet/v3/facts/puppet.node.test?environment=production" facts)]
 
-          (testing "Puppet Server responds to PUT requests for /puppet/v3/facts"
-            (is (= 200 (:status response))))
+         (testing "Puppet Server responds to PUT requests for /puppet/v3/facts"
+           (is (= 200 (:status response))))
 
-          (testing "Puppet Server saves facts to the configured facts terminus"
-            ;; Ensure the test is configured properly
-            (is (= "yaml" (.runScriptlet container "Puppet::Node::Facts.indirection.terminus_class")))
-            (let [stored-facts (-> (.runScriptlet container "facts = Puppet::Node::Facts.indirection.find('puppet.node.test')
+         (testing "Puppet Server saves facts to the configured facts terminus"
+           ;; Ensure the test is configured properly
+           (is (= "yaml" (.runScriptlet container "Puppet::Node::Facts.indirection.terminus_class")))
+           (let [stored-facts (-> (.runScriptlet container "facts = Puppet::Node::Facts.indirection.find('puppet.node.test')
                                                              (facts.nil? ? {} : facts).to_json")
-                                   (json/parse-string))]
-              (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
-        (finally
-          (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test))))))
+                                  (json/parse-string))]
+             (is (= "bar" (get-in stored-facts ["values" "foo"]))))))
+       (finally
+         (jruby-testutils/return-instance jruby-service jruby-instance :facts-upload-endpoint-test))))))
 
 (deftest ^:integration v4-queue-limit
   (bootstrap-testutils/with-puppetserver-running
@@ -750,11 +750,9 @@
                    :master-code-dir test-resources-code-dir
                    :master-conf-dir master-service-test-runtime-dir
                    :master-var-dir (fs/tmpdir)}}
-
-    (let [metrics-svc (tk-app/get-service app :JRubyMetricsService)
-          metrics (jruby-metrics/get-metrics metrics-svc)
-          _ (swap! (:requested-instances metrics) assoc :foo "bar" :baz "bar")]
-
+   (let [metrics-svc (tk-app/get-service app :JRubyMetricsService)
+         metrics (jruby-metrics/get-metrics metrics-svc)
+         _ (swap! (:requested-instances metrics) assoc :foo "bar" :baz "bar")]
       (logutils/with-test-logging
         (testing "v4 catalog endpoint is affected by the jruby queue limit"
           (let [body "{\"certname\": \"foo\", \"persistence\": {\"facts\": false, \"catalog\": false}}"
@@ -763,7 +761,6 @@
                 retry-after (-> response
                                 (get-in [:headers "retry-after"])
                                 Integer/parseInt)]
-
             (is (= 503 status-code))
             (is (<= 0 retry-after 1800))))))))
 
