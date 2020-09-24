@@ -446,31 +446,31 @@
   (let [bolt-projects-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"]
     (testing "find the root of a bolt project"
       (testing "regular project"
-        (is (= (str bolt-projects-dir "/local-23")
-               (get-project-root bolt-projects-dir "local-23"))))
+        (is (= (str bolt-projects-dir "/local_23")
+               (get-project-root bolt-projects-dir "local_23"))))
 
-      (testing "embedded-e19e09 project (Boltdir)"
-        (is (= (str bolt-projects-dir "/embedded-e19e09/Boltdir")
-               (get-project-root bolt-projects-dir "embedded-e19e09")))))
+      (testing "embedded_e19e09 project (Boltdir)"
+        (is (= (str bolt-projects-dir "/embedded_e19e09/Boltdir")
+               (get-project-root bolt-projects-dir "embedded_e19e09")))))
 
     (testing "finding a file in a project"
       (testing "in the modules mount"
-        (is (= (fs/file (str bolt-projects-dir "/local-23/modules/helpers/files/marco.sh" ))
-               (fs/file (find-project-file bolt-projects-dir "local-23" "modules" "helpers" "marco.sh"))))
-        (is (= (fs/file (str bolt-projects-dir "/local-23/site-modules/utilities/files/etc/greeting" ))
-               (fs/file (find-project-file bolt-projects-dir "local-23" "modules" "utilities" "etc/greeting")))))
+        (is (= (fs/file (str bolt-projects-dir "/local_23/modules/helpers/files/marco.sh" ))
+               (fs/file (find-project-file bolt-projects-dir "local_23" "modules" "helpers" "marco.sh"))))
+        (is (= (fs/file (str bolt-projects-dir "/local_23/site-modules/utilities/files/etc/greeting" ))
+               (fs/file (find-project-file bolt-projects-dir "local_23" "modules" "utilities" "etc/greeting")))))
 
       (testing "returns nil when a component is not found"
         (is (= nil
                (find-project-file bolt-projects-dir "fake" "modules" "helpers" "marco.sh")))
         (is (= nil
-               (find-project-file bolt-projects-dir "local-23" "fake" "helpers" "marco.sh")))
+               (find-project-file bolt-projects-dir "local_23" "fake" "helpers" "marco.sh")))
         (is (= nil
-               (find-project-file bolt-projects-dir "local-23" "modules" "fake" "marco.sh")))
+               (find-project-file bolt-projects-dir "local_23" "modules" "fake" "marco.sh")))
         (is (= nil
-               (find-project-file bolt-projects-dir "local-23" "modules" "helpers" "fake")))
+               (find-project-file bolt-projects-dir "local_23" "modules" "helpers" "fake")))
         (is (= nil
-               (find-project-file nil "local-23" "modules" "helpers" "marco.sh")))))))
+               (find-project-file nil "local_23" "modules" "helpers" "marco.sh")))))))
 
 (deftest get-project-modulepath-test
   (testing "it returns the default modulepath when none is supplied"
