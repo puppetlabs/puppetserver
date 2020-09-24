@@ -471,3 +471,24 @@
                (find-project-file bolt-projects-dir "local-23" "modules" "helpers" "fake")))
         (is (= nil
                (find-project-file nil "local-23" "modules" "helpers" "marco.sh")))))))
+
+(deftest get-project-modulepath-test
+  (testing "it returns the default modulepath when none is supplied"
+    (is (= ["modules" "site-modules" "site"]
+           (get-project-modulepath {}))))
+
+  (testing "it returns the supplied modulepath if it exists"
+    (let [modulepath ["dir" "otherdir"]]
+      (is (= modulepath
+             (get-project-modulepath {:modulepath modulepath})))))
+
+  (testing "when a modules key is present in the configration"
+    (testing "the default modulepath is just [\"modules\"]"
+      (is (= ["modules"]
+             (get-project-modulepath {:modules nil}))))
+
+    (testing ".modules is added to a supplied modulepath"
+      (let [modulepath ["dir" "otherdir"]]
+        (is (= (concat modulepath [".modules"])
+               (get-project-modulepath {:modules nil
+                                        :modulepath modulepath})))))))

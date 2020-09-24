@@ -948,9 +948,14 @@
   modulepath. If the modulepath is not defined or the configuration map passed
   is nil then return the default modulepath."
   [project-config]
-  (if-let [modulepath (get project-config :modulepath)]
-    (parse-modulepath modulepath)
-    default-project-modulepath))
+  (let [has-modules-key? (contains? project-config :modules)]
+    (if-let [modulepath (parse-modulepath (get project-config :modulepath))]
+      (if has-modules-key?
+        (concat modulepath [".modules"])
+        modulepath)
+      (if has-modules-key?
+        ["modules"]
+        default-project-modulepath))))
 
 (defn find-project-file
   "Find a file in a project using the parameters from a `file_content` request.
