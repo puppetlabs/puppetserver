@@ -38,15 +38,15 @@
                                                     (byte -127)
                                                     (byte -126)])
                digested                (.digest
-                                         (MessageDigest/getInstance "MD5")
+                                         (MessageDigest/getInstance "SHA-256")
                                          raw-byte-arr)
-               expected-md5            (.toString (BigInteger. 1 digested) 16)
+               expected-sha256         (.toString (BigInteger. 1 digested) 16)
                expected-bucket-file    (string/join
                                          "/"
                                          [bucket-dir
                                           (string/join "/"
-                                                       (subs expected-md5 0 8))
-                                          expected-md5
+                                                       (subs expected-sha256 0 8))
+                                          expected-sha256
                                           "contents"])
                options                 (merge ssl-request-options
                                               {:body (ByteArrayInputStream.
@@ -54,8 +54,8 @@
                                                :headers {"accept" "binary"
                                                          "content-type" "application/octet-stream"}})
                response (http-client/put (str "https://localhost:8140/"
-                                              "puppet/v3/file_bucket_file/md5/"
-                                              expected-md5
+                                              "puppet/v3/file_bucket_file/sha256/"
+                                              expected-sha256
                                               "?environment=production")
                                          options)]
            (is (= 200 (:status response)) "Bucket PUT request failed")
