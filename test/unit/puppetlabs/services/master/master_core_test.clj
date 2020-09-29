@@ -483,8 +483,8 @@
              (get-project-modulepath {:modulepath modulepath})))))
 
   (testing "when a modules key is present in the configration"
-    (testing "the default modulepath is just [\"modules\"]"
-      (is (= ["modules"]
+    (testing "the default modulepath is [\"modules\" \".modules\"]"
+      (is (= ["modules" ".modules"]
              (get-project-modulepath {:modules nil}))))
 
     (testing ".modules is added to a supplied modulepath"

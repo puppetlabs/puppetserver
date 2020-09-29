@@ -954,7 +954,7 @@
         (concat modulepath [".modules"])
         modulepath)
       (if has-modules-key?
-        ["modules"]
+        ["modules" ".modules"]
         default-project-modulepath))))
 
 (defn find-project-file
