@@ -176,9 +176,11 @@
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
           (testing "HTTP GET"
-            (is (= "hi" (.runScriptlet sc (format "$c.get('%s').body" url)))))
+            (is (= "hi" (.runScriptlet sc (format "$c.get(URI('%s')).body" url)))))
           (testing "HTTP POST"
-            (is (= "hi" (.runScriptlet sc (format "$c.post('%s', 'foo').body" url))))))))))
+            (is (= "hi" (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url)))))
+          (testing "URL with special characters"
+            (is (= "hi" (.runScriptlet sc (str "$c.get(URI('" url "/a%20b%3Fc')).body"))))))))))
 
 (deftest http-basic-auth
   (jetty9/with-test-webserver ring-app-with-auth port
@@ -186,20 +188,20 @@
       (with-http-client sc {}
         (let [url (str "http://localhost:" port)]
           (testing "no credentials"
-            (.runScriptlet sc (format "$response = $c.post('%s', 'foo')" url))
+            (.runScriptlet sc (format "$response = $c.post(URI('%s'), 'foo')" url))
             (is (= 401 (.runScriptlet sc "$response.code")))
             (is (= "Unauthorized" (.runScriptlet sc "$response.reason")))
             (is (= "access denied" (.runScriptlet sc "$response.body"))))
 
           (testing "valid credentials"
             (let [auth "{ :basic_auth => { :user => 'foo', :password => 'bar' }}"]
-              (.runScriptlet sc (format "$response = $c.post('%s', 'foo', options: %s)" url auth)))
+              (.runScriptlet sc (format "$response = $c.post(URI('%s'), 'foo', options: %s)" url auth)))
             (is (= 200 (.runScriptlet sc "$response.code")))
             (is (= "hi" (.runScriptlet sc "$response.body"))))
 
           (testing "invalid credentials"
             (let [auth "{ :basic_auth => { :user => 'foo', :password => 'baz' }}"]
-              (.runScriptlet sc (format "$response = $c.post('%s', 'foo', options: %s)" url auth)))
+              (.runScriptlet sc (format "$response = $c.post(URI('%s'), 'foo', options: %s)" url auth)))
             (is (= 401 (.runScriptlet sc "$response.code")))
             (is (= "access denied" (.runScriptlet sc "$response.body")))))))))
 
@@ -211,7 +213,7 @@
           (testing "GZIP compression format"
             (let [compress "{ :compress => :gzip }"
                   body "howdy"]
-              (.runScriptlet sc (format "$response = $c.post('%s', '%s', options: %s)"
+              (.runScriptlet sc (format "$response = $c.post(URI('%s'), '%s', options: %s)"
                                         url
                                         body
                                         compress))
@@ -224,7 +226,7 @@
                      (.runScriptlet
                       sc
                       (str "begin;"
-                           (format "  $response = $c.post('%s', 'foo', options: %s);" url compress)
+                           (format "  $response = $c.post(URI('%s'), 'foo', options: %s);" url compress)
                            "  'No error raised from post';"
                            "rescue ArgumentError => e;"
                            "  e.message;"
@@ -269,7 +271,7 @@
                               ConnectionClosedException
                               ProtocolException)]
                (try
-                 (.runScriptlet sc (raise-caught-http-error (format "$c.get('%s')" url)))
+                 (.runScriptlet sc (raise-caught-http-error (format "$c.get(URI('%s'))" url)))
                  (is false "Expected HTTP connection to HTTPS port to fail")
                  (catch EvalFailedException e
                    (is (instance? ex-class (.getCause e))))))))))))
@@ -280,7 +282,7 @@
         (with-webserver-with-protocols ["TLSv1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
           (with-scripting-container sc
             (with-http-client sc {}
-              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
               (is (= 200 (.runScriptlet sc "$response.code")))
               (is (= "hi" (.runScriptlet sc "$response.body")))))))
 
@@ -288,7 +290,7 @@
         (with-webserver-with-protocols ["TLSv1.1"] ["TLS_RSA_WITH_AES_128_CBC_SHA"]
           (with-scripting-container sc
             (with-http-client sc {}
-              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
               (is (= 200 (.runScriptlet sc "$response.code")))
               (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
@@ -297,7 +299,7 @@
       (with-scripting-container sc
         (with-http-client sc {}
           (let [url (str "https://localhost:10080")]
-            (.runScriptlet sc (format "$response = $c.get('%s')" url))
+            (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
             (is (= 200 (.runScriptlet sc "$response.code")))
             (is (= "hi" (.runScriptlet sc "$response.body")))))))))
 
@@ -308,8 +310,8 @@
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)
-                  client1 (.runScriptlet sc (format "$c.get('%s'); $c.class.client" url))
-                  client2 (.runScriptlet sc (format "$c.post('%s', 'foo'); $c.class.client" url))]
+                  client1 (.runScriptlet sc (format "$c.get(URI('%s')); $c.class.client" url))
+                  client2 (.runScriptlet sc (format "$c.post(URI('%s'), 'foo'); $c.class.client" url))]
               (is (= client1 client2))))))))
   (testing "all instances of HttpClient have the same underlying client object"
     (logutils/with-test-logging
@@ -329,7 +331,7 @@
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
               (is (= "The Connection header has value close"
-                     (.runScriptlet sc (format "$c.get('%s').body" url))))))))))
+                     (.runScriptlet sc (format "$c.get(URI('%s')).body" url))))))))))
   (testing "connection header always set to close on post"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
@@ -337,18 +339,18 @@
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
               (is (= "The Connection header has value close"
-                     (.runScriptlet sc (format "$c.post('%s', 'foo').body" url))))))))))
+                     (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url))))))))))
   (testing "client's terminate function closes the client"
     (logutils/with-test-logging
       (jetty9/with-test-webserver ring-app-connection-closed port
         (with-scripting-container sc
           (with-http-client sc {}
             (let [url (str "http://localhost:" port)]
-              (.runScriptlet sc (format "$response = $c.get('%s')" url))
+              (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
               (is (= 200 (.runScriptlet sc "$response.code")))
               (.runScriptlet sc "$c.class.terminate")
               (try
-                (.runScriptlet sc (format "$response = $c.get('%s')" url))
+                (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
                 (catch EvalFailedException e
                   (let [wrapped-exception (.getCause e)
                         message (.getMessage e)]
@@ -363,11 +365,11 @@
           (with-scripting-container sc
             (with-http-client sc {}
               (let [url (str "https://localhost:10080")]
-                (.runScriptlet sc (format "$response = $c.get('%s')" url))
+                (.runScriptlet sc (format "$response = $c.get(URI('%s'))" url))
                 (is (= 200 (.runScriptlet sc "$response.code")))
                 (is (= "hi" (.runScriptlet sc "$response.body")))
                 (.runScriptlet sc (str "$c = Puppet::Server::HttpClient.new;"
-                                       (format "$response = $c.get('http://localhost:%s')" port)))
+                                       (format "$response = $c.get(URI('http://localhost:%s'))" port)))
                 (is (= 200 (.runScriptlet sc "$response.code")))
                 (is (= "bye" (.runScriptlet sc "$response.body"))))))))))
 
@@ -377,7 +379,7 @@
         (with-webserver-with-protocols nil nil
           (with-scripting-container sc
             (with-http-client sc {}
-              (.runScriptlet sc (format "$response = $c.get('http://localhost:%s')" port))
+              (.runScriptlet sc (format "$response = $c.get(URI('http://localhost:%s'))" port))
               (is (= 200 (.runScriptlet sc "$response.code")))
               (is (= "bye" (.runScriptlet sc "$response.body")))
               (.runScriptlet sc (str "$c = Puppet::Server::HttpClient.new;"

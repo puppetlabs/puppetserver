@@ -8,7 +8,7 @@ describe 'Puppet::Server::HttpClient' do
     Puppet::Server::HttpClient.new
   end
 
-  let(:url) { 'http://localhost:0/' }
+  let(:url) { URI('http://localhost:0/') }
 
   context "when settings are initialized with specific values" do
     before :all do

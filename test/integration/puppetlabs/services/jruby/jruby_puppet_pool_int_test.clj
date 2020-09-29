@@ -469,12 +469,12 @@
                       (metrics/get-client-metrics-data metric-registry))))
              (testing "metric registry does not have any metrics by default"
                (testing "GET request"
-                 (.runScriptlet container (format "$c.get('%s')" url))
+                 (.runScriptlet container (format "$c.get(URI('%s'))" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
                    (is (= [] (:url metrics-data)))
                    (is (= [] (:url-and-method metrics-data)))))
                (testing "POST request"
-                 (.runScriptlet container (format "$c.post('%s', 'body')" url))
+                 (.runScriptlet container (format "$c.post(URI('%s'), 'body')" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)
                        url-metrics-data (:url metrics-data)]
                    (is (= [] (:url metrics-data)))
@@ -485,7 +485,7 @@
                            " with metric-id specified")
                (testing "GET request"
                  (.runScriptlet container
-                                (format "$c.get('%s', options: {:metric_id => ['foo', 'get']})" url))
+                                (format "$c.get(URI('%s'), options: {:metric_id => ['foo', 'get']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    (is (= 2 (count metric-id-data)))
                    (is (= #{(add-metric-ns "with-metric-id.foo")
@@ -497,7 +497,7 @@
                                           metric-registry ["foo" "get"]))))))
                (testing "POST request"
                  (.runScriptlet container
-                                (format "$c.post('%s', 'body', options: {:metric_id => ['foo', 'post']})" url))
+                                (format "$c.post(URI('%s'), 'body', options: {:metric_id => ['foo', 'post']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    ;; there should now be two requests with the 'foo' metric id, one with 'foo.get',
                    ;; and one with 'foo.post'

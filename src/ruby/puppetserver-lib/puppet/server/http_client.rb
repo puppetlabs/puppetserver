@@ -73,6 +73,10 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
   end
 
   def create_common_request_options(url, headers, params, options)
+    if !url.is_a?(URI)
+      raise ArgumentError, "URL must be provided as a URI object."
+    end
+
     # If credentials were supplied for HTTP basic auth, add them into the headers.
     # This is based on the code in lib/puppet/reports/http.rb.
     credentials = options[:basic_auth]
@@ -91,9 +95,6 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
 
-    if url.is_a?(String)
-      url = URI(url)
-    end
     url = encode_query(url, params)
 
     # Java will reparse the string into its own URI object
