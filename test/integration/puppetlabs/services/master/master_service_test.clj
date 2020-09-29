@@ -777,28 +777,46 @@
                     :master-conf-dir master-service-test-runtime-dir}}
 
     (testing "can retrieve file_content from the modules mount from a project"
-      (let [response (http-get "/puppet/v3/file_content/modules/utilities/etc/greeting?project=local")]
+      (let [response (http-get "/puppet/v3/file_content/modules/utilities/etc/greeting?project=local_23")]
         (is (= 200 (:status response)))
         (is (= "Good morning\n" (:body response)))
         (is (= "13" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve file_content from the tasks mount from a project"
-      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local")]
+      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local_23")]
         (is (= 200 (:status response)))
         (is (= "bye" (:body response)))
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
+    (testing "can retrieve file_content from the top level of a project"
+      (let [response (http-get "/puppet/v3/file_content/tasks/local/init.sh?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= ". $PT__installdir/helpers/files/marco.sh\nmarco\n" (:body response)))
+        (is (= "63" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
     (testing "can retrieve file_content from a project with an embedded structure"
-      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?project=embedded")]
+      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?project=embedded_e19e09")]
         (is (= 200 (:status response)))
         (is (= "vim" (:body response)))
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
+    (testing "can retrieve file_content from a custom modulepath"
+      (let [response (http-get "/puppet/v3/file_content/modules/helpers/marco.sh?project=local_afafaf")]
+        (is (= 200 (:status response)))
+        (is (= "marco () {\n  echo \"polo\"\n}\n" (:body response)))
+        (is (= "27" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "cannot retrieve file_content from the default modulepath when a custom modulepath is set"
+      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local_afafaf")]
+        (is (= 404 (:status response)))))
+
     (testing "mount point not found"
-      (let [response (http-get "/puppet/v3/file_content/glorb/test/packages?project=local")]
+      (let [response (http-get "/puppet/v3/file_content/glorb/test/packages?project=local_23")]
         (is (= 404 (:status response)))))
 
     (testing "project not found"
@@ -806,9 +824,9 @@
         (is (= 404 (:status response)))))
 
     (testing "module not found"
-      (let [response (http-get "/puppet/v3/file_content/modules/nomodule/packages?project=embedded")]
+      (let [response (http-get "/puppet/v3/file_content/modules/nomodule/packages?project=embedded_e19e09")]
         (is (= 404 (:status response)))))
 
     (testing "missing path?"
-      (let [response (http-get "/puppet/v3/file_content/modules/test/?project=embedded")]
+      (let [response (http-get "/puppet/v3/file_content/modules/test/?project=embedded_e19e09")]
         (is (= 404 (:status response)))))))
