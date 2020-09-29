@@ -1,4 +1,4 @@
-plan test_project(
+plan local(
   TargetSpec $targets
 ) {
   $target_object = get_target($targets)
