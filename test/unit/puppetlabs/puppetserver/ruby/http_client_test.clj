@@ -182,6 +182,16 @@
           (testing "URL with special characters"
             (is (= "hi" (.runScriptlet sc (str "$c.get(URI('" url "/a%20b%3Fc')).body"))))))))))
 
+(deftest http-escaped-urls-test
+  (jetty9/with-test-webserver ring-app port
+    (with-scripting-container sc
+      (with-http-client sc {}
+        (let [url (str "http://localhost:" port)]
+          (testing "HTTP GET"
+            (.runScriptlet sc (str "$response = $c.get(URI('" url "/a%20b%3Fc'), params: { foo: 'bar' })"))
+            (is (= 200 (.runScriptlet sc "$response.code")))
+            (is (= (str url "/a%20b%3Fc?foo=bar") (.runScriptlet sc "$response.url.to_s")))))))))
+
 (deftest http-basic-auth
   (jetty9/with-test-webserver ring-app-with-auth port
     (with-scripting-container sc

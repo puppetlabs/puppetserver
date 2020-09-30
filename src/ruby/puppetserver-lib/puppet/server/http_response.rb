@@ -3,6 +3,9 @@ require 'puppet/http/response'
 class Puppet::Server::HttpResponse < Puppet::HTTP::Response
   attr_reader :url
 
+  # @param [com.puppetlabs.http.client.Response] java_response the response
+  #        object from the Clojure HTTP client
+  # @param [URI] url the URL requested for this response
   def initialize(java_response, url)
     @java_response = java_response
     @url = url

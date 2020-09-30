@@ -51,7 +51,7 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
   def get(url, headers: {}, params: {}, options: {}, &block)
     request_options = create_common_request_options(url, headers, params, options)
     response = self.class.client_get(request_options)
-    Puppet::Server::HttpResponse.new(response, url)
+    Puppet::Server::HttpResponse.new(response, URI(request_options.uri.to_s))
   end
 
   def post(url, body, headers: {}, params: {}, options: {}, &block)
@@ -69,7 +69,7 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
     end
 
     response = self.class.client_post(request_options)
-    Puppet::Server::HttpResponse.new(response, url)
+    Puppet::Server::HttpResponse.new(response, request_options.get_uri.to_s)
   end
 
   def create_common_request_options(url, headers, params, options)
