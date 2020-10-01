@@ -629,10 +629,8 @@
        jruby-testutils/jruby-service-and-dependencies
        (jruby-testutils/jruby-puppet-tk-config
         (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-        ;; getName vs getId here is helpful in debugging
-        (let [threads-before-jruby (->> (Thread/getAllStackTraces)
-                                        (map #(.getName (key %)))
-                                        (set))
+        ;; getAllStackTraces returns a HashMap of Thread to StackTraceElement[]
+        (let [threads-before-jruby (set (keys (Thread/getAllStackTraces)))
               jruby-service (tk-app/get-service app :JRubyPuppetService)
               pool-context (jruby-protocol/get-pool-context jruby-service)
               pool-agent (jruby-agents/get-modify-instance-agent pool-context)
@@ -644,17 +642,13 @@
           (try
             (.runScriptlet scripting-container script)
             (catch EvalFailedException e))
-          (let [threads-during-jruby (->> (Thread/getAllStackTraces)
-                                          (map #(.getName (key %)))
-                                          (set))]
+          (let [threads-during-jruby (set (keys (Thread/getAllStackTraces)))]
             (jruby-testutils/return-instance jruby-service instance :test)
             (jruby-protocol/flush-jruby-pool! jruby-service)
             ; wait until the flush is complete
             (await pool-agent)
             (Thread/sleep 5000)
-            (let [threads-after-jruby (->> (Thread/getAllStackTraces)
-                                           (map #(.getName (key %)))
-                                           (set))
+            (let [threads-after-jruby (set (keys (Thread/getAllStackTraces)))
                   threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
                   threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
               (is (empty? threads-orphaned-by-jruby)))))))))
