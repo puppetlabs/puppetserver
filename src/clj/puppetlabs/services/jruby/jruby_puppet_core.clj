@@ -30,9 +30,9 @@
   directory is placed into the root of the jar structure which is on the
   classpath.
 
-  See also:  http://jruby.org/apidocs/org/jruby/runtime/load/LoadService.html"
+  See also:  https://www.javadoc.io/doc/org.jruby/jruby-core/latest/org/jruby/runtime/load/LoadService.html"
 
-  "classpath:/puppetserver-lib")
+  "uri:classloader:/puppetserver-lib")
 
 (def default-http-connect-timeout
   "The default number of milliseconds that the client will wait for a connection
