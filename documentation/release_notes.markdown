@@ -12,6 +12,19 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.15
+
+Released 20 October 2020
+
+### New feature
+
+- Adds a new CA API endpoint, `puppet-ca/v1/clean` that accepts a list of cert names to be revoked and deleted as a batch. [SERVER-2859](https://tickets.puppetlabs.com/browse/SERVER-2859)
+
+### Resolved issues
+
+- The Puppet Server CA will now write all of its files atomically, preventing an issue where CRLs could be read partway through being written, resulting in a failed load and corrupting CA state. [SERVER-2863](https://tickets.puppetlabs.com/browse/SERVER-2863)
+- Re-enabled the ability to delete certificate signing requests via the CA API. [SERVER-2795](https://tickets.puppetlabs.com/browse/SERVER-2795)
+
 ## Puppet Server 5.3.14
 
 Released 14 July 2020
