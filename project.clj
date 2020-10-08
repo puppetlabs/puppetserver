@@ -1,4 +1,4 @@
-(def ps-version "5.3.15-SNAPSHOT")
+(def ps-version "5.3.15")
 (def jruby-1_7-version "1.7.27-1")
 (def jruby-9k-version "9.1.16.0-1")
 
