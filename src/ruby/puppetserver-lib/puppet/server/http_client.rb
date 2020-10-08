@@ -95,6 +95,14 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
     # Ensure multiple requests are not made on the same connection
     headers["Connection"] = "close"
 
+    # TODO: this is using the same value as the agent would use.
+    # It would be better to have it include puppetserver's version
+    # instead of the puppet version, and include that we're running
+    # in JRuby more explicitly.
+    # TODO: Add a X-Puppetserver-Version header to match the one
+    # the agent sends, but with our version instead.
+    headers["User-Agent"] ||= Puppet[:http_user_agent]
+
     url = encode_query(url, params)
 
     # Java will reparse the string into its own URI object

@@ -47,6 +47,10 @@ describe 'Puppet::Server::HttpClient' do
     describe '#create_common_request_options' do
       subject { client.create_common_request_options(url, headers, params, options) }
 
+      it 'includes Puppet user-agent header' do
+        expect(subject.headers['User-Agent']).to match(/Puppet/)
+      end
+
       context 'with query params' do
         let(:params) { {foo: 1, bar: 2} }
 
