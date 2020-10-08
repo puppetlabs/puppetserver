@@ -23,11 +23,6 @@ end
 
 class Puppet::Server::HttpClient < Puppet::HTTP::Client
 
-  OPTION_DEFAULTS = {
-      :verify => nil,
-      :redirect_limit => 10,
-  }
-
   # Store a java HashMap of settings related to the http client
   def self.initialize_settings(settings)
     @settings = settings.select { |k,v|
@@ -45,7 +40,12 @@ class Puppet::Server::HttpClient < Puppet::HTTP::Client
   end
 
   def initialize(options = {})
-    options = OPTION_DEFAULTS.merge(options)
+    # NOTE: Unlike Puppet's HTTP client implementation, the Java HttpAsyncClient
+    # does not support retries in the version we are using, so the `retry_limit`
+    # option will be ignored if passed.
+    #
+    # Similarly, `redirect_limit` is not easily configurable, so we just use the default
+    # of 100. The param will be ignored if passed.
   end
 
   def get(url, headers: {}, params: {}, options: {}, &block)

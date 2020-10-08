@@ -178,9 +178,7 @@
           (testing "HTTP GET"
             (is (= "hi" (.runScriptlet sc (format "$c.get(URI('%s')).body" url)))))
           (testing "HTTP POST"
-            (is (= "hi" (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url)))))
-          (testing "URL with special characters"
-            (is (= "hi" (.runScriptlet sc (str "$c.get(URI('" url "/a%20b%3Fc')).body"))))))))))
+            (is (= "hi" (.runScriptlet sc (format "$c.post(URI('%s'), 'foo').body" url))))))))))
 
 (deftest http-escaped-urls-test
   (jetty9/with-test-webserver ring-app port
