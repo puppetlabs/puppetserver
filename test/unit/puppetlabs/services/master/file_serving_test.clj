@@ -1,7 +1,8 @@
 (ns puppetlabs.services.master.file-serving-test
   (:require [clojure.test :refer :all]
             [me.raynes.fs :as fs]
-            [puppetlabs.services.master.file-serving :refer :all]))
+            [puppetlabs.services.master.file-serving :refer :all])
+  (:import java.nio.file.Paths))
 
 (deftest bolt-projects-test
   (let [bolt-projects-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"]
@@ -53,3 +54,11 @@
         (is (= (concat modulepath [".modules"])
                (get-project-modulepath {:modules nil
                                         :modulepath modulepath})))))))
+
+(deftest metadata
+  (let [path (Paths/get
+              "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects/local_23/modules/helpers/files/marco.sh"
+              (into-array String []))
+        attributes (read-attributes path "md5" true)]
+    (testing "just get the metadata"
+      (is (= "file" (:type attributes))))))

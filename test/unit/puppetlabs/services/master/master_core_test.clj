@@ -62,7 +62,6 @@
     (doseq [[method paths]
             {:get ["node"
                    "environment"
-                   "file_metadatas"
                    "file_metadata"
                    "file_bucket_file"
                    "status"]

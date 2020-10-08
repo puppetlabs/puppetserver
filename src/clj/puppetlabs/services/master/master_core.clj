@@ -998,7 +998,7 @@
                ;; Not strictly ruby routes anymore because of this
                (file-serving/file-content-handler bolt-projects-dir request-handler (ring/params-request request)))
    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-               (request-handler request))
+               (file-serving/file-metadatas-handler bolt-projects-dir request-handler (ring/params-request request)))
    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request

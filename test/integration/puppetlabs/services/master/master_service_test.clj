@@ -829,4 +829,50 @@
 
     (testing "missing path?"
       (let [response (http-get "/puppet/v3/file_content/modules/test/?project=embedded_e19e09")]
-        (is (= 404 (:status response)))))))
+        (is (= 404 (:status response)))))
+
+    (testing "can retrieve plugin metadata"
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23")
+            [file-entry] (filter #(= "puppet/monkey_patch.rb" (get % "relative_path")) (json/decode (:body response)))]
+        ;; Only check some of the entries that won't vary based on the test environment
+        (is (= nil (get file-entry "destination")))
+        (is (= "file" (get file-entry "type")))
+        (is (= "md5" (get-in file-entry ["checksum" "type"])))
+        (is (= "{md5}0e65e68baff3f37e4d62ee9ce2129a55" (get-in file-entry ["checksum" "value"])))
+        ;; Does it choose from the right module?
+        (is (str/ends-with? (get file-entry "path") "modules/helpers/lib"))))
+
+    (testing "can retrieve plugin files"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/monkey_patch.rb?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
+        (is (= "59" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve plugin files from the top level project lib dir"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/comment.rb?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "# This is the project\n" (:body response)))
+        (is (= "22" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve pluginfacts metadata"
+      (let [response (http-get "/puppet/v3/file_metadatas/pluginfacts?project=local_23")
+            [file-entry] (filter #(= "something" (get % "relative_path")) (json/decode (:body response)))]
+        (is (= nil (get file-entry "destination")))
+        (is (= "file" (get file-entry "type")))
+        (is (= "md5" (get-in file-entry ["checksum" "type"])))
+        (is (= "{md5}6265b22b66502d70d5f004f08238ac3c" (get-in file-entry ["checksum" "value"])))))
+
+    (testing "can retrieve pluginfacts files"
+      (let [response (http-get "/puppet/v3/file_content/pluginfacts/unhelpful?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "factually unhelpful\n" (:body response)))
+        (is (= "20" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "doesn't support nonstandard options"
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23&links=manage")]
+        (is (= 400 (:status response)))
+        (is (= "Not all parameter values are supported in this implementation: \nThe only supported value of `links` at this time is `follow`"
+               (:body response)))))))

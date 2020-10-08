@@ -1,10 +1,97 @@
 (ns puppetlabs.services.master.file-serving
   (:require [bidi.bidi :as bidi]
             [clj-yaml.core :as yaml]
+            [clojure.java.io :as io]
             [clojure.string :as str]
+            [digest :as digest]
             [me.raynes.fs :as fs]
             [puppetlabs.i18n.core :as i18n]
-            [ring.util.response :as rr]))
+            [puppetlabs.ring-middleware.utils :as middleware-utils]
+            [ring.util.response :as rr])
+  (:import com.sun.security.auth.module.UnixSystem
+           [java.nio.file Files FileSystems FileVisitOption FileVisitResult LinkOption Paths SimpleFileVisitor]))
+
+(def follow-links
+  (into-array LinkOption []))
+
+(defn as-path
+  [string & more]
+  (Paths/get string (into-array String more)))
+
+(defn path-exists?
+  [path]
+  (Files/exists path follow-links))
+
+(defn get-checksum
+  [file algorithm]
+  (case algorithm
+    "md5" (str "{md5}" (digest/md5 (io/file file)))
+    "sha256" (str "{sha256}" (digest/sha-256 (io/file file)))
+    :default (throw (Exception. "Unsupported digest"))))
+
+(defn read-attributes
+  [path checksum-type ignore-source-permissions]
+  (let [attributes (Files/readAttributes path "unix:*" follow-links)]
+    {:owner (if ignore-source-permissions
+              (.getUid (UnixSystem.))
+              (get attributes "uid"))
+     :group (if ignore-source-permissions
+              (.getGid (UnixSystem.))
+              (get attributes "gid"))
+     :mode (if ignore-source-permissions
+             0644  ;; Yes, Puppet even sends 644 for directories in this case
+             (bit-and (get attributes "mode") 07777))
+     :type (if (get attributes "isDirectory")
+             "directory"
+             "file")
+     :checksum (if (get attributes "isDirectory")
+                 {:type "ctime"
+                  :value (str "{ctime}" (get attributes "ctime"))}
+                 {:type checksum-type
+                  :value (get-checksum path checksum-type)})}))
+
+(defn get-file-metadata
+  [checksum-type ignore-source-permissions [relative-path root]]
+  (merge (read-attributes (.resolve root relative-path) checksum-type ignore-source-permissions)
+         {:path (.toString root)
+          :relative_path (.toString relative-path)
+          :links "follow"
+          :destination nil}))
+
+(defn relativize
+  "A version of java's Path#relativize that matches puppet's behavior"
+  [root path]
+  (let [relative-path (.relativize root path)]
+    (if (= (.toString relative-path) "")
+      (as-path ".")
+      relative-path)))
+
+(defn make-visitor
+  [tree root ignores]
+  (let [filesystem (FileSystems/getDefault)
+        matchers (map #(.getPathMatcher filesystem (str "glob:" %)) ignores)
+        ignore? (fn [path]
+                  (let [file-name (.getFileName path)]
+                   (some #(.matches % file-name) matchers)))]
+    (proxy [SimpleFileVisitor] []
+     (preVisitDirectory [path attributes]
+       (if (ignore? path)
+         FileVisitResult/SKIP_SUBTREE
+         (do
+           (swap! tree assoc (relativize root path) root)
+           FileVisitResult/CONTINUE)))
+     (visitFile [path attributes]
+       (when-not (ignore? path)
+         (swap! tree assoc (relativize root path) root))
+       FileVisitResult/CONTINUE))))
+
+(defn walk-directory
+  [path ignores]
+  (let [results (atom {})
+        absolute-path (.toAbsolutePath path)
+        visitor (make-visitor results absolute-path ignores)]
+    (Files/walkFileTree absolute-path #{FileVisitOption/FOLLOW_LINKS} Integer/MAX_VALUE visitor)
+    @results))
 
 (defn is-bolt-project?
   [dir]
@@ -15,11 +102,11 @@
 (defn get-project-root
   "Lookup a project by name and return the path where its project files are
   located as a string."
-  [projects-dir project-name]
-  (let [boltdir-path (str projects-dir "/" project-name "/Boltdir")]
+  [projects-dir project-name-and-ref]
+  (let [boltdir-path (str projects-dir "/" project-name-and-ref "/Boltdir")]
     (if (fs/exists? boltdir-path)
       boltdir-path
-      (str projects-dir "/" project-name))))
+      (str projects-dir "/" project-name-and-ref))))
 
 (defn list-dirs-in-paths
   "Given a list of directories, return a list of all the subdirectories
@@ -28,7 +115,7 @@
   [paths]
   (->> paths
        (filter fs/exists?)
-       (mapcat fs/list-dir)
+       (mapcat (comp sort fs/list-dir))
        (filter fs/directory?)))
 
 (defn dirs-in-project-modulepath
@@ -61,7 +148,7 @@
 (defn read-bolt-project-config
   [project-dir]
   (let [config-path (str project-dir "/bolt-project.yaml")]
-    (if (fs/file? config-path)
+    (when (fs/file? config-path)
      (yaml/parse-string (slurp config-path)))))
 
 (def default-project-modulepath
@@ -93,9 +180,9 @@
   "Find a file in a project using the parameters from a `file_content` request.
   Returns the path as as string. If the module name is the same as the project
   name then files are served from the project directly."
-  [bolt-projects-dir project-ref mount module path]
-  (if (is-bolt-project? (str bolt-projects-dir "/" project-ref))
-    (let [project-root (get-project-root bolt-projects-dir project-ref)
+  [bolt-projects-dir project-name-and-ref mount module path]
+  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
+    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
           project-config (read-bolt-project-config project-root)
           project-name (get project-config :name)
           modulepath (get-project-modulepath project-config)
@@ -103,8 +190,65 @@
                         project-root
                         (find-project-module project-root module modulepath))
           file-path (str module-root "/" (mount->path-component mount) "/" path)]
-      (if (fs/exists? file-path)
+      (when (fs/exists? file-path)
         file-path))))
+
+(defn mount-dirs-in-modulepath
+  "Collect all the paths represented by a specific mount that are found in the
+  modulepath. If `project-as-module?` is truthy then include any mount
+  directory found at the top level of the project."
+  [mount modulepath project-root project-as-module?]
+  (let [sub-dir (case mount
+                    "plugins" "lib"
+                    "pluginfacts" "facts.d")
+        modules-in-modulepath (dirs-in-project-modulepath modulepath project-root)
+        module-dirs (if project-as-module?
+                      (cons (fs/file project-root) modules-in-modulepath)
+                      modules-in-modulepath)]
+    (->> module-dirs
+         (map #(.resolve (.toPath %) sub-dir))
+         (filter path-exists?))))
+
+(defn project-configured-as-module?
+  "Given a project config, return whether it is configured to use the project
+  itself as a module. Users opt in to this by including a project name setting
+  in the configuration file. "
+  [project-config]
+  (boolean (get project-config :name)))
+
+(defn plugin-file-if-exists
+  "Given a relative path as received by the plugins mount, and the path of a lib
+  dir in a module, return the path of the file if it exists in the lib dir."
+  [relative-path lib-root]
+  (let [file-path (.resolve lib-root relative-path)]
+    (when (path-exists? file-path)
+      (.toString file-path))))
+
+(defn find-project-plugin-file
+  "Given a relative path as received by the plugins mount, search all lib dirs
+  and return the path to the file if it's found in any of them."
+  [bolt-projects-dir project-name-and-ref mount relative-path]
+  (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+        project-config (read-bolt-project-config project-root)
+        project-as-module? (project-configured-as-module? project-config)
+        modulepath (get-project-modulepath project-config)
+        mount-dirs (mount-dirs-in-modulepath mount modulepath project-root project-as-module?)]
+    (some (partial plugin-file-if-exists relative-path) mount-dirs)))
+
+(defn get-plugins-metadata
+  "Return the metadata for pluginsync. This scans the lib directories of all
+  modules and returns a list of files smashed together."
+  [bolt-projects-dir project-name-and-ref mount checksum-type ignores ignore-source-permissions]
+  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
+    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+          project-config (read-bolt-project-config project-root)
+          project-as-module? (project-configured-as-module? project-config)
+          modulepath (get-project-modulepath project-config)
+          files (->> (mount-dirs-in-modulepath mount modulepath project-root project-as-module?)
+                     (map #(walk-directory % ignores))
+                     reverse
+                     (apply merge))]
+      (map (partial get-file-metadata checksum-type ignore-source-permissions) files))))
 
 (def project-routes
   "Bidi routing table for project file_content endpoint. This is done separately
@@ -112,7 +256,7 @@
   parameter, which is not natively supported in bidi."
 
   ["" {[[#"tasks|modules" :mount-point] "/" :module "/" [#".+" :file-path]] :basic
-       [[#"plugins|pluginfacts" :mount-point] [#".*" :file-path]] :pluginsync}])
+       [[#"plugins|pluginfacts" :mount-point] #"/?" [#".*" :file-path]] :pluginsync}])
 
 (defn make-file-content-response
   "Given a path to a file, generate an appropriate ring response map. Returns a
@@ -132,7 +276,7 @@
   (let [project (get-in request [:params "project"])
         path (get-in request [:params :rest])
         match (bidi/match-route project-routes path)]
-    (if match
+    (when match
       (let [mount-point (get-in match [:route-params :mount-point])
             mount-type (get-in match [:handler])
             module (get-in match [:route-params :module])
@@ -141,7 +285,9 @@
           :basic (make-file-content-response
                   (find-project-file bolt-projects-dir project mount-point module file-path)
                   file-path)
-          ;; :pluginsync nil
+          :pluginsync (make-file-content-response
+                       (find-project-plugin-file bolt-projects-dir project mount-point file-path)
+                       file-path)
           {:status 400
            :headers {"Content-Type" "text/plain"}
            :body (i18n/tru "Unsupported mount: {0}" mount-point)})))))
@@ -163,6 +309,65 @@
        :body (i18n/tru "A file_content request must include an `environment` or `project` query parameter.")}
       project
       (handle-project-file-content bolt-projects-dir request)
+
+      :else
+      (ruby-request-handler request))))
+
+(defn metadatas-params-errors
+  "Reject requests with parameter values that we haven't implemented yet.
+  Returns a list of errors."
+  [params]
+  (->>
+   (for [[value default] {"recurse" "true"
+                          "links" "follow"
+                          "source_permissions" "ignore"
+                          "recurselimit" "infinite"}]
+     (when (and (get params value)
+                (not (= value default)))
+       (str "The only supported value of `" value "` at this time is `" default "`")))
+   (filter (comp not nil?))))
+
+(defn handle-project-file-metadatas
+  "Handle a file_metadatas request for a bolt project."
+  [bolt-projects-dir request]
+  (let [project (get-in request [:params "project"])
+        path (get-in request [:params :rest])
+        match (bidi/match-route project-routes path)]
+    (when match
+      (let [mount-point (get-in match [:route-params :mount-point])
+            mount-type (get-in match [:handler])
+            ignore (get-in request [:params "ignore"] [])
+            checksum-type (get-in request [:params "checksum_type"] "md5")]
+        (case mount-type
+          :pluginsync (let [errors (metadatas-params-errors (get-in request [:params]))]
+                        (if (empty? errors)
+                          (middleware-utils/json-response
+                           200
+                           (get-plugins-metadata bolt-projects-dir project mount-point checksum-type ignore true))
+                          {:status 400
+                           :headers {"Content-Type" "text/plain"}
+                           :body (str/join "\n" (cons "Not all parameter values are supported in this implementation: " errors))}))
+          {:status 400
+           :headers {"Content-Type" "text/plain"}
+           :body (i18n/tru "Unsupported mount: {0}" mount-point)})))))
+
+(defn file-metadatas-handler
+  "Handle file_metadatas requests and dispatch them to the correct handler for
+  environments or projects."
+  [bolt-projects-dir ruby-request-handler request]
+  (let [project (get-in request [:params "project"])
+        environment (get-in request [:params "environment"])]
+    (cond
+      (and project environment)
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body (i18n/tru "A file_metadatas request cannot specify both `environment` and `project` query parameters.")}
+      (and (nil? project) (nil? environment))
+      {:status 400
+       :headers {"Content-Type" "text/plain"}
+       :body (i18n/tru "A file_metadatas request must include an `environment` or `project` query parameter.")}
+      project
+      (handle-project-file-metadatas bolt-projects-dir request)
 
       :else
       (ruby-request-handler request))))
