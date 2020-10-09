@@ -184,6 +184,11 @@
       (status-core/get-artifact-version "puppetlabs" "puppetserver")
       master-service-status-version
       (partial core/v1-status http-metrics http-client-metric-ids-for-status registry))
+     (register-status
+      "server"
+      (status-core/get-artifact-version "puppetlabs" "puppetserver")
+      master-service-status-version
+      (partial core/v1-status http-metrics http-client-metric-ids-for-status registry))
      (-> context
          (assoc :http-metrics http-metrics)
          (assoc :http-client-metric-ids-for-status http-client-metric-ids-for-status))))
