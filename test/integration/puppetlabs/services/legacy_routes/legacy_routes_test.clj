@@ -123,7 +123,7 @@
      (is (= 200 (:status resp)))
      (let [status (json/parse-string (:body resp) true)]
 
-       (is (= #{:ca :jruby-metrics :master :puppet-profiler :status-service}
+       (is (= #{:ca :jruby-metrics :master :puppet-profiler :status-service :server}
               (set (keys status))))
 
        (is (= 1 (get-in status [:jruby-metrics :service_status_version])))
