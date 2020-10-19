@@ -11,7 +11,7 @@ teardown do
 end
 
 step 'Install Puppet Release Repo' do
-  install_puppetlabs_release_repo_on(master, 'puppet6')
+  install_puppetlabs_dev_repo master, 'puppetdb', "7.0.0.SNAPSHOT.2020.10.16T1915"
 end
 
 step 'Install PuppetDB module' do
