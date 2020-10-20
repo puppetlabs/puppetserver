@@ -18,7 +18,7 @@ Released 20 October 2020
 
 ### New feature
 
-- Adds a new CA API endpoint, `puppet-ca/v1/clean` that accepts a list of cert names to be revoked and deleted as a batch. [SERVER-2859](https://tickets.puppetlabs.com/browse/SERVER-2859)
+- Adds a new CA API endpoint - `puppet-ca/v1/clean` - that accepts a list of cert names to be revoked and deleted as a batch. [SERVER-2859](https://tickets.puppetlabs.com/browse/SERVER-2859)
 
 ### Resolved issues
 
