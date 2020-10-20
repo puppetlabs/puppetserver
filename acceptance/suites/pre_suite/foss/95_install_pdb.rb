@@ -10,8 +10,8 @@ teardown do
   on(master, "rm -f #{sitepp}")
 end
 
-step 'Install Puppet Release Repo' do
-  install_puppetlabs_dev_repo master, 'puppetdb', "7.0.0.SNAPSHOT.2020.10.16T1915"
+step 'Install Puppet nightly repo' do
+  install_puppetlabs_release_repo_on(master, 'puppet7-nightly')
 end
 
 step 'Install PuppetDB module' do
