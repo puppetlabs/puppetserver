@@ -363,11 +363,11 @@
                                                                     :profiler-output-file profiler-file})
           config (assoc
                   (jruby-testutils/jruby-puppet-tk-config jruby-puppet-config)
-                   :http-client {:connect-timeout-milliseconds 2
-                                 :idle-timeout-milliseconds 5
-                                 :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
-                                                 "TLS_RSA_WITH_AES_256_CBC_SHA"]
-                                 :ssl-protocols ["TLSv1" "TLSv1.2"]})]
+                  :http-client {:connect-timeout-milliseconds 2
+                                :idle-timeout-milliseconds 5
+                                :cipher-suites ["TLS_RSA_WITH_AES_256_CBC_SHA256"
+                                                "TLS_RSA_WITH_AES_256_CBC_SHA"]
+                                :ssl-protocols ["TLSv1" "TLSv1.2"]})]
       (logutils/with-test-logging
        (tk-testutils/with-app-with-config
         app
@@ -460,22 +460,21 @@
              jruby-instance (jruby-testutils/borrow-instance jruby-service :http-client-metrics-test)
              container (:scripting-container jruby-instance)]
          (try
-           (.runScriptlet container
-                          (format "$c = Puppet::Server::HttpClient.new('localhost', %d, {:use_ssl => %s});"
-                                  8080 false))
+           (.runScriptlet container "$c = Puppet::Server::HttpClient.new;")
            (let [metrics-svc (tk-app/get-service app :MetricsService)
-                 metric-registry (metrics-protocol/get-metrics-registry metrics-svc :puppetserver)]
+                 metric-registry (metrics-protocol/get-metrics-registry metrics-svc :puppetserver)
+                 url "http://localhost:8080/hello"]
              (testing "metric registry has no metrics when no http requests have been made"
                (is (= {:url [] :url-and-method [] :metric-id []}
                       (metrics/get-client-metrics-data metric-registry))))
              (testing "metric registry does not have any metrics by default"
                (testing "GET request"
-                 (.runScriptlet container "$c.get('/hello', {})")
+                 (.runScriptlet container (format "$c.get(URI('%s'))" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)]
                    (is (= [] (:url metrics-data)))
                    (is (= [] (:url-and-method metrics-data)))))
                (testing "POST request"
-                 (.runScriptlet container "$c.post('/hello', 'body', {})")
+                 (.runScriptlet container (format "$c.post(URI('%s'), 'body')" url))
                  (let [metrics-data (metrics/get-client-metrics-data metric-registry)
                        url-metrics-data (:url metrics-data)]
                    (is (= [] (:url metrics-data)))
@@ -486,7 +485,7 @@
                            " with metric-id specified")
                (testing "GET request"
                  (.runScriptlet container
-                                "$c.get('/hello', {}, {:metric_id => ['foo', 'get']})")
+                                (format "$c.get(URI('%s'), options: {:metric_id => ['foo', 'get']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    (is (= 2 (count metric-id-data)))
                    (is (= #{(add-metric-ns "with-metric-id.foo")
@@ -498,7 +497,7 @@
                                           metric-registry ["foo" "get"]))))))
                (testing "POST request"
                  (.runScriptlet container
-                                "$c.post('/hello', 'body', {}, {:metric_id => ['foo', 'post']})")
+                                (format "$c.post(URI('%s'), 'body', options: {:metric_id => ['foo', 'post']})" url))
                  (let [metric-id-data (:metric-id (metrics/get-client-metrics-data metric-registry))]
                    ;; there should now be two requests with the 'foo' metric id, one with 'foo.get',
                    ;; and one with 'foo.post'
@@ -629,30 +628,29 @@
        jruby-testutils/jruby-service-and-dependencies
        (jruby-testutils/jruby-puppet-tk-config
         (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
-        ;; getAllStackTraces returns a HashMap of Thread to StackTraceElement[]
-        (let [threads-before-jruby (set (keys (Thread/getAllStackTraces)))
-              jruby-service (tk-app/get-service app :JRubyPuppetService)
-              pool-context (jruby-protocol/get-pool-context jruby-service)
-              pool-agent (jruby-agents/get-modify-instance-agent pool-context)
-              instance (jruby-testutils/borrow-instance jruby-service :test)
-              scripting-container (:scripting-container instance)
-              ;; Timeout will print to stderr otherwise
-              _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
-              script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
-          (try
-            (.runScriptlet scripting-container script)
-            (catch EvalFailedException e))
-          (let [threads-during-jruby (set (keys (Thread/getAllStackTraces)))]
-            (jruby-testutils/return-instance jruby-service instance :test)
-            (jruby-protocol/flush-jruby-pool! jruby-service)
-            ; wait until the flush is complete
-            (await pool-agent)
-            (Thread/sleep 5000)
-            (let [threads-after-jruby (set (keys (Thread/getAllStackTraces)))
-                  threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
-                  threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
-              (is (empty? threads-orphaned-by-jruby)))))))))
-
+       ;; getAllStackTraces returns a HashMap of Thread to StackTraceElement[]
+       (let [threads-before-jruby (set (keys (Thread/getAllStackTraces)))
+             jruby-service (tk-app/get-service app :JRubyPuppetService)
+             pool-context (jruby-protocol/get-pool-context jruby-service)
+             pool-agent (jruby-agents/get-modify-instance-agent pool-context)
+             instance (jruby-testutils/borrow-instance jruby-service :test)
+             scripting-container (:scripting-container instance)
+             ;; Timeout will print to stderr otherwise
+             _ (.setErrorWriter scripting-container (io/writer (ByteArrayOutputStream.)))
+             script "require 'timeout'; Timeout::timeout(0.1) { sleep(5) }"]
+         (try
+           (.runScriptlet scripting-container script)
+           (catch EvalFailedException e))
+         (let [threads-during-jruby (set (keys (Thread/getAllStackTraces)))]
+           (jruby-testutils/return-instance jruby-service instance :test)
+           (jruby-protocol/flush-jruby-pool! jruby-service)
+           ; wait until the flush is complete
+           (await pool-agent)
+           (Thread/sleep 5000)
+           (let [threads-after-jruby (set (keys (Thread/getAllStackTraces)))
+                 threads-created-by-jruby (set/difference threads-during-jruby threads-before-jruby)
+                 threads-orphaned-by-jruby (set/intersection threads-created-by-jruby threads-after-jruby)]
+             (is (empty? threads-orphaned-by-jruby)))))))))
 
 (deftest compat-version-in-config-throws-exception-test
   (testing "compat-version setting in configuration throws exception"

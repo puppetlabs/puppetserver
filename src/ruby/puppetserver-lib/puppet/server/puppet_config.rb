@@ -1,5 +1,6 @@
 require 'puppet/server'
 require 'puppet/server/logger'
+require 'puppet/server/http_client'
 
 class Puppet::Server::PuppetConfig
 
@@ -32,7 +33,8 @@ class Puppet::Server::PuppetConfig
 
     # We check parameter length because Method#arity returns -1 for varargs
     if Puppet.method(:initialize_settings).parameters.length >= 3
-      Puppet.initialize_settings(cli_flags, require_config, push_settings_globally)
+      Puppet.initialize_settings(cli_flags, require_config, push_settings_globally,
+                                 { :http => Puppet::Server::HttpClient.new })
     else
       Puppet.initialize_settings(cli_flags)
     end
