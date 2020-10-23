@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: 85c1c4df01399e0ea857b6ff63bbc1eb1a278677\n"
+"X-Git-Ref: da4048d8cf0482fa067855fca279c75ec2a28cc9\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -17,6 +17,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Cannot initialize {0} with partial state; need all files or none."
@@ -251,12 +252,10 @@ msgid "Removed certificate request for {0} at ''{1}''"
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Revoked 1 certificate."
-msgstr ""
-
-#: src/clj/puppetlabs/puppetserver/certificate_authority.clj
-msgid "Revoked {0} certificates."
-msgstr ""
+msgid "Revoked 1 certificate: {1}"
+msgid_plural "Revoked {0} certificates: {1}"
+msgstr[0] ""
+msgstr[1] ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid "Deleted certificate for {0}"
