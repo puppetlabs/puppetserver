@@ -12,6 +12,14 @@ canonical: "/puppetserver/latest/release_notes.html"
 
 For release notes on versions of Puppet Server prior to Puppet Server 5, see [docs.puppet.com](https://docs.puppet.com/puppetserver/2.8/release_notes.html).
 
+## Puppet Server 5.3.16
+
+Released 26 October 2020
+
+### Resolved Issues
+
+- The `puppet-ca/v1/clean` endpoint now logs the certname of each certificate it revokes. [SERVER-2897](https://tickets.puppetlabs.com/browse/SERVER-2897)
+
 ## Puppet Server 5.3.15
 
 Released 20 October 2020
