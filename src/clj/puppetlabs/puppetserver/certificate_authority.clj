@@ -1513,9 +1513,10 @@
                                             serials)
         new-full-chain (cons new-full-crl (vec rest-of-full-chain))]
     (write-crls new-full-chain cacrl)
-    (log/debug (if (= serial-count 1)
-                 (i18n/trs "Revoked 1 certificate.")
-                 (i18n/trs "Revoked {0} certificates." serial-count)))
+    (log/info (i18n/trsn "Revoked 1 certificate: {1}"
+                         "Revoked {0} certificates: {1}"
+                         serial-count
+                         (str/join ", " subjects)))
 
     ;; Publish infra-crl if an infra node is getting revoked.
     (when (and enable-infra-crl (fs/exists? infra-node-serials-path))
