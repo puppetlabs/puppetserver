@@ -76,22 +76,6 @@
               (is (testutils/catalog-name-matches?
                    (testutils/catalog-ring-response->catalog response)
                    "private"))))
-          (testing "for legacy puppet routes"
-            (let [response (http-get "production/node/public")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/node/private")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/catalog/public")]
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response (http-get "production/catalog/private")]
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response))
-              (is (testutils/catalog-name-matches?
-                   (testutils/catalog-ring-response->catalog response)
-                   "private"))))
           (testing "for puppet 4 routes with url encoding"
             (let [response
                   (http-get
@@ -124,38 +108,6 @@
                         "environment=production"))]
               ;; The web server should decode the above URI path component to
               ;; "puppet/v3/catalog/private/../secret".  The relative
-              ;; path, "/../", inside of the path component is forbidden and
-              ;; so should cause the webserver to throw a 'Bad Request' error.
-              (is (= 400 (:status response))
-                  (ks/pprint-to-string response))))
-          (testing "for legacy puppet routes with url encoding"
-            (let [response
-                  (http-get "production/%63atalog/%65ncoded")]
-              ;; The web server should decode the above URI path component to
-              ;; "production/catalog/encoded".  There is a rule allowing
-              ;; "localhost" for "%65ncoded" but no rule allowing "localhost"
-              ;; for "encoded", so this should request should fail with a
-              ;; 403 (Forbidden) error.
-              (is (= 403 (:status response))
-                  (ks/pprint-to-string response)))
-            (let [response
-                  (http-get "production/%63atalog/%2565ncoded")]
-              ;; The web server should decode the above URI path component to
-              ;; "production/catalog/%65ncoded".  There is a rule allowing
-              ;; "localhost" for "%65ncoded", so this should request should
-              ;; succeed.
-              (is (= 200 (:status response))
-                  (ks/pprint-to-string response))
-              ;; The catalog which is returned should have a name of "%65ncoded"
-              ;; since this should be the name derived from the web server
-              ;; request after a single percent-decode.
-              (is (testutils/catalog-name-matches?
-                   (testutils/catalog-ring-response->catalog response)
-                   "%65ncoded")))
-            (let [response
-                  (http-get "production/%63atalog/private/%2E%2E/secret?")]
-              ;; The web server should decode the above URI path component to
-              ;; "production/catalog/private/../secret".  The relative
               ;; path, "/../", inside of the path component is forbidden and
               ;; so should cause the webserver to throw a 'Bad Request' error.
               (is (= 400 (:status response))
@@ -309,26 +261,6 @@
                   catalog-response (http-get-no-ssl path url-encoded-allowable-cert)]
               (is (= 200 (:status catalog-response)))
               (is (= "we've been tk-authorized!" (:body catalog-response)))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
-
-          (testing "legacy endpoints support oid shortnames"
-            (let [path "/v2.0/environments"
-                  env-response (http-get-no-ssl path url-encoded-allowable-cert)]
-              (is (= 200 (:status env-response)))
-              (is (= "we've been tk-authorized!" (:body env-response)))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
-
-          (testing "legacy CA endpoints support oid shortnames"
-            (let [path "/production/certificate_status/localhost"
-                  cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
-                  cert-status-body (-> cert-status-response
-                                       :body
-                                       cheshire/parse-string)]
-              (is (= 200 (:status cert-status-response)))
-              ;; Assert that some of the content looks like it came from the
-              ;; certificate_statuses endpoint
-              (is (= "localhost" (get cert-status-body "name")))
-              (is (= "signed" (get cert-status-body "state")))
               (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
           (testing "puppet-admin endpoints support oid shortnames"

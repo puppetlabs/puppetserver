@@ -30,9 +30,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Utilities
 
+;; TODO remove the loops that used to use this to test legacy routes
 (def ca-mount-points
-  ["puppet-ca/v1/" ; puppet 4 style
-   "production/"]) ; pre-puppet 4 style
+  ["puppet-ca/v1/"]) ; puppet 4 style
 
 (defn cert-status-request-params
   ([]
@@ -175,15 +175,7 @@
           (is (= "localhost" (-> response
                                 :body
                                 json/parse-string
-                                (get "name")))))
-        (let [response (http-get (str "production/certificate_status/"
-                                      "%6cocalhost"))]
-          (is (= 200 (:status response))
-              (ks/pprint-to-string response))
-          (is (= "localhost" (-> response
-                                 :body
-                                 json/parse-string
-                                 (get "name"))))))
+                                (get "name"))))))
       (logutils/with-test-logging
         (testing "are denied for non-matching client"
           (doseq [ca-mount-point ca-mount-points
@@ -217,8 +209,8 @@
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
-                        (str "https://localhost:8140"
-                            "puppet-ca/v1/certificate_status/test_cert_ca_true")
+                        (str "https://localhost:8140/"
+                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
                         {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
                          :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
                          :ssl-ca-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
@@ -278,15 +270,6 @@
        (testing "for a puppet v4 style CA request"
          (let [response (http-client/get
                          (str "https://localhost:8140/puppet-ca/v1/"
-                              "certificate_status/%256cocalhost")
-                         {:ssl-context ssl-context
-                          :as :text})]
-           (is (= 404 (:status response))
-               (ks/pprint-to-string response))
-           (is (= "Not Found" (:body response)))))
-       (testing "for a legacy CA request"
-         (let [response (http-client/get
-                         (str "https://localhost:8140/production/"
                               "certificate_status/%256cocalhost")
                          {:ssl-context ssl-context
                           :as :text})]
@@ -364,7 +347,6 @@
                   :else (do
                           (Thread/sleep 500)
                           (recur (dec times)))))))))))
-
 
 (deftest ^:integration revoke-compile-master-test
   (testing "Compile master certificate revocation "
@@ -578,7 +560,7 @@
          :certificate-authority {:allow-authorization-extensions true}}
         (testing "Auth extensions on a CSR"
           (let [response (http-client/get
-                           (str "https://localhost:8140"
+                           (str "https://localhost:8140/"
                                 "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                            (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
@@ -588,11 +570,11 @@
               (is (= "requested" (get status-body "state"))))))
         (testing "Auth extensions on a cert"
           (let [sign-response (http-client/put
-                                (str "https://localhost:8140"
+                                (str "https://localhost:8140/"
                                      "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                                 (cert-status-request-params "{\"desired_state\": \"signed\"}"))
                 status-response (http-client/get
-                                  (str "https://localhost:8140"
+                                  (str "https://localhost:8140/"
                                        "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                                   (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
