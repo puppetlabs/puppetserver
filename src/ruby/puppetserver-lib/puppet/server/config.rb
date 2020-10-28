@@ -26,7 +26,6 @@ class Puppet::Server::Config
     end
 
     Puppet::Server::HttpClient.initialize_settings(puppet_server_config)
-    Puppet::Network::HttpPool.http_client_class = Puppet::Server::HttpClient
 
     if !puppet_server_config["use_legacy_auth_conf"]
       Puppet::Network::Authorization.authconfigloader_class =

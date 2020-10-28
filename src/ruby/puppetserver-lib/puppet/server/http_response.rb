@@ -39,7 +39,7 @@ class Puppet::Server::HttpResponse < Puppet::HTTP::Response
   end
 
   # Yield each header name and value. Returns an enumerator if no block is given.
-  def each_header
+  def each_header(&block)
     @java_response.get_headers.each(&block)
   end
 
