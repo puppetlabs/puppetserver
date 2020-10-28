@@ -53,7 +53,7 @@ class Puppet::Server::PuppetConfig
 
     app_defaults = Puppet::Settings.app_defaults_for_run_mode(Puppet::Util::RunMode[:master]).
         merge({:name => "master",
-               :facts_terminus => 'yaml'})
+               :facts_terminus => 'json'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
     if push_settings_globally
