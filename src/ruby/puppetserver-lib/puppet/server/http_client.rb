@@ -3,6 +3,7 @@ require 'puppet/server'
 require 'puppet/server/config'
 require 'puppet/server/http_response'
 require 'puppet/http/client'
+require 'puppet/http/errors'
 require 'base64'
 
 require 'java'
@@ -12,7 +13,7 @@ java_import com.puppetlabs.http.client.CompressType
 java_import com.puppetlabs.http.client.ResponseBodyType
 SyncHttpClient = com.puppetlabs.http.client.Sync
 
-class Puppet::Server::HttpClientError < SocketError
+class Puppet::Server::HttpClientError < Puppet::HTTP::HTTPError
   attr_reader :cause
 
   def initialize(message, cause = nil)

@@ -106,8 +106,8 @@ describe 'Puppet::Server::HttpClient' do
       describe "#{request} request" do
         subject { requests[request].call }
 
-        it 'raises a SocketError' do
-          expect { subject }.to raise_error SocketError
+        it 'raises a Puppet::HTTP::HTTPError' do
+          expect { subject }.to raise_error Puppet::HTTP::HTTPError
         end
         it 'raises a Puppet::Server::HttpClientError' do
           expect { subject }.to raise_error Puppet::Server::HttpClientError
