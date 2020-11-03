@@ -20,7 +20,7 @@
          (is (= ca/private-key-dir-perms (ca/get-file-perms pk-dir)))
          (is (= ca/private-key-perms
                 (ca/get-file-perms (str bootstrap/master-conf-dir
-                                        "/ssl/ca/ca_key.pem"))))
+                                        "/ca/ca_key.pem"))))
          (doseq [pk pks]
            (is (= ca/private-key-perms (ca/get-file-perms (.getPath pk)))))))
      (is (true? true)))))

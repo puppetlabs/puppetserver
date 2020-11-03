@@ -28,7 +28,7 @@
 (def test-resources-dir "./dev-resources/puppetlabs/puppetserver/certificate_authority_test")
 (def confdir (str test-resources-dir "/master/conf"))
 (def ssldir (str confdir "/ssl"))
-(def cadir (str ssldir "/ca"))
+(def cadir (str confdir "/ca"))
 (def cacert (str cadir "/ca_crt.pem"))
 (def cakey (str cadir "/ca_key.pem"))
 (def capub (str cadir "/ca_pub.pem"))
@@ -557,7 +557,7 @@
 
     (testing "Does not replace files if they all exist"
       (let [files (-> (settings->cadir-paths (assoc settings :enable-infra-crl false))
-                      (dissoc :csrdir :signeddir)
+                      (dissoc :csrdir :signeddir :cadir)
                       (vals))]
         (doseq [f files] (spit f "testable string"))
         (initialize! settings)
@@ -624,7 +624,7 @@
   (testing "CA file copied when it doesn't already exist"
     (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
           settings    (testutils/master-settings tmp-confdir)
-          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ca"))
           cacert      (:cacert ca-settings)
           localcacert (:localcacert settings)
           cacert-text (slurp cacert)]
@@ -654,7 +654,7 @@
   (testing "CRL file copied when it doesn't already exist"
     (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
           settings    (testutils/master-settings tmp-confdir)
-          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ca"))
           cacrl       (:cacrl ca-settings)
           hostcrl     (:hostcrl settings)
           cacrl-text (slurp cacrl)]
@@ -683,7 +683,7 @@
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
         settings    (-> (testutils/master-settings tmp-confdir "master")
                         (assoc :dns-alt-names "onefish,twofish"))
-        ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
+        ca-settings (testutils/ca-settings (str tmp-confdir "/ca"))]
 
     (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
     (retrieve-ca-crl! (:cacrl ca-settings) (:hostcrl settings))
@@ -811,7 +811,7 @@
   (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
         settings (-> (testutils/master-settings tmp-confdir)
                      (assoc :keylength 768))
-        ca-settings (assoc (testutils/ca-settings (str tmp-confdir "/ssl/ca")) :keylength 768)]
+        ca-settings (assoc (testutils/ca-settings (str tmp-confdir "/ca")) :keylength 768)]
 
     (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
     (initialize-master-ssl! settings "master" ca-settings)
@@ -830,7 +830,7 @@
   (deftest initialize-master-ssl!-test-with-incorrect-keylength
     (let [tmp-confdir (fs/copy-dir confdir (ks/temp-dir))
           settings (testutils/master-settings tmp-confdir)
-          ca-settings (testutils/ca-settings (str tmp-confdir "/ssl/ca"))]
+          ca-settings (testutils/ca-settings (str tmp-confdir "/ca"))]
 
       (retrieve-ca-cert! (:cacert ca-settings) (:localcacert settings))
 

@@ -19,7 +19,7 @@
 ;;; Utilities
 
 (def test-resources-dir "./dev-resources/puppetlabs/services/ca/certificate_authority_core_test")
-(def cadir (str test-resources-dir "/master/conf/ssl/ca"))
+(def cadir (str test-resources-dir "/master/conf/ca"))
 (def csrdir (str cadir "/requests"))
 (def test-pems-dir (str test-resources-dir "/pems"))
 (def autosign-files-dir (str test-resources-dir "/autosign"))

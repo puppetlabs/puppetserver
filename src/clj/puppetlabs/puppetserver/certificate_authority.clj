@@ -63,6 +63,7 @@
    :allow-subject-alt-names          schema/Bool
    :autosign                         (schema/either schema/Str schema/Bool)
    :cacert                           schema/Str
+   :cadir                            schema/Str
    :cacrl                            schema/Str
    :cakey                            schema/Str
    :capub                            schema/Str

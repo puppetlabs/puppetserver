@@ -21,6 +21,7 @@
   #{:allow-duplicate-certs
     :autosign
     :cacert
+    :cadir
     :cacrl
     :cakey
     :ca-name
