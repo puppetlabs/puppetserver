@@ -43,6 +43,7 @@ mkdir -p "${CONFDIR}"
 cat > "${CONFDIR}/puppet.conf" <<PUPPET_CONF_CONTENT
 [main]
 certname = ${CERTNAME}
+cadir = ${ROOTDIR}/etc/puppetserver/ca
 
 [agent]
 server = ${CERTNAME}
