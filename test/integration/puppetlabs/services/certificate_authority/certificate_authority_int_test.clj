@@ -278,254 +278,230 @@
            (is (= "Not Found" (:body response)))))))))
 
 (deftest ^:integration crl-reloaded-without-server-restart
-  (bootstrap/with-puppetserver-running
-    app
-    {:jruby-puppet
-     {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-     :webserver
-     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
-      :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
-      :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
-      :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
-    (let [key-pair (ssl-utils/generate-key-pair)
-          subject "crl_reload"
-          subject-dn (ssl-utils/cn subject)
-          public-key (ssl-utils/get-public-key key-pair)
-          private-key (ssl-utils/get-private-key key-pair)
-          private-key-file (ks/temp-file)
-          csr (ssl-utils/generate-certificate-request key-pair subject-dn)
-          options {:ssl-cert (str bootstrap/master-conf-dir
-                                  "/ca/ca_crt.pem")
-                   :ssl-key (str bootstrap/master-conf-dir
-                                 "/ca/ca_key.pem")
-                   :ssl-ca-cert (str bootstrap/master-conf-dir
-                                     "/ca/ca_crt.pem")
-                   :as :text}
-          _ (ssl-utils/key->pem! private-key private-key-file)
-          _ (ssl-utils/obj->pem! csr (str bootstrap/master-conf-dir
-                                         "/ca/requests/"
-                                         subject
-                                         ".pem"))
-          cert-status-request (fn [action]
-                                (http-client/put
-                                  (str "https://localhost:8140/"
-                                       "puppet-ca/v1/certificate_status/"
-                                       subject)
-                                  (merge options
-                                         {:body (str "{\"desired_state\": \""
-                                                     action
-                                                     "\"}")
-                                          :headers {"content-type"
-                                                    "application/json"}})))
-          client-request #(http-client/get
-                           "https://localhost:8140/status/v1/services"
-                            (merge options
-                                   {:ssl-key (str private-key-file)
-                                    :ssl-cert (str bootstrap/master-conf-dir
-                                                   "/ca/signed/"
-                                                   subject
-                                                   ".pem")}))]
-      (testing "node certificate request can be signed successfully"
-        (let [sign-response (cert-status-request "signed")]
-          (is (= 204 (:status sign-response)))))
-      (testing "node request before revocation is successful"
-        (let [node-response-before-revoke (client-request)]
-          (is (= 200 (:status node-response-before-revoke)))))
-      (testing "node certificate can be successfully revoked"
-        (let [revoke-response (cert-status-request "revoked")]
-          (is (= 204 (:status revoke-response)))))
-      (testing "node request after revocation fails"
-        (let [ssl-exception-for-request? #(try
-                                            (client-request)
-                                            false
-                                            (catch SSLException e
-                                              true))]
-          (is (loop [times 30]
-                (cond
-                  (ssl-exception-for-request?) true
-                  (zero? times) false
-                  :else (do
-                          (Thread/sleep 500)
-                          (recur (dec times)))))))))))
+  (testutils/with-stub-puppet-conf
+    (bootstrap/with-puppetserver-running
+      app
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}}
+      (let [key-pair (ssl-utils/generate-key-pair)
+            subject "crl_reload"
+            subject-dn (ssl-utils/cn subject)
+            public-key (ssl-utils/get-public-key key-pair)
+            private-key (ssl-utils/get-private-key key-pair)
+            private-key-file (ks/temp-file)
+            csr (ssl-utils/generate-certificate-request key-pair subject-dn)
+            options {:ssl-cert (str bootstrap/master-conf-dir
+                                    "/ca/ca_crt.pem")
+                     :ssl-key (str bootstrap/master-conf-dir
+                                   "/ca/ca_key.pem")
+                     :ssl-ca-cert (str bootstrap/master-conf-dir
+                                       "/ca/ca_crt.pem")
+                     :as :text}
+            _ (ssl-utils/key->pem! private-key private-key-file)
+            _ (ssl-utils/obj->pem! csr (str bootstrap/master-conf-dir
+                                           "/ca/requests/"
+                                           subject
+                                           ".pem"))
+            cert-status-request (fn [action]
+                                  (http-client/put
+                                    (str "https://localhost:8140/"
+                                         "puppet-ca/v1/certificate_status/"
+                                         subject)
+                                    (merge options
+                                           {:body (str "{\"desired_state\": \""
+                                                       action
+                                                       "\"}")
+                                            :headers {"content-type"
+                                                      "application/json"}})))
+            client-request #(http-client/get
+                             "https://localhost:8140/status/v1/services"
+                              (merge options
+                                     {:ssl-key (str private-key-file)
+                                      :ssl-cert (str bootstrap/master-conf-dir
+                                                     "/ca/signed/"
+                                                     subject
+                                                     ".pem")}))]
+        (testing "node certificate request can be signed successfully"
+          (let [sign-response (cert-status-request "signed")]
+            (is (= 204 (:status sign-response)))))
+        (testing "node request before revocation is successful"
+          (let [node-response-before-revoke (client-request)]
+            (is (= 200 (:status node-response-before-revoke)))))
+        (testing "node certificate can be successfully revoked"
+          (let [revoke-response (cert-status-request "revoked")]
+            (is (= 204 (:status revoke-response)))))
+        (testing "node request after revocation fails"
+          (let [ssl-exception-for-request? #(try
+                                              (client-request)
+                                              false
+                                              (catch SSLException e
+                                                true))]
+            (is (loop [times 30]
+                  (cond
+                    (ssl-exception-for-request?) true
+                    (zero? times) false
+                    :else (do
+                            (Thread/sleep 500)
+                            (recur (dec times))))))))))))
 
 (deftest ^:integration revoke-compile-master-test
   (testing "Compile master certificate revocation "
-    (let [master-conf-dir (str test-resources-dir "/infracrl_test/master/conf")
-          subject "compile-master"
-          node-subject "agent-node"
-          hostcrl-path (str master-conf-dir "/ssl/crl.pem")
-          hostcrl-content (slurp hostcrl-path)
-          full-crl-path (str master-conf-dir "/ca/ca_crl.pem")
-          full-crl-content (slurp full-crl-path)
-          infra-crl-path (str master-conf-dir "/ca/infra_crl.pem")
-          infra-crl-content (slurp infra-crl-path)
-          infra-serials-path (str master-conf-dir "/ca/infra_serials")
-          infra-serials-content (slurp infra-serials-path)]
-        (bootstrap/with-puppetserver-running-with-mock-jrubies
-         "JRuby mocking is safe here because all of the requests are to the CA
-         endpoints, which are implemented in Clojure."
-          app
-          {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:enable-infra-crl true}}
-          (testing "should update infrastructure CRL"
-            (let [ca-cert (ssl-utils/pem->ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                                                  (str master-conf-dir "/ca/ca_key.pem"))
-                  cm-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ca/signed") subject))
-                  node-cert (utils/pem->cert (ca/path-to-cert (str master-conf-dir "/ca/signed") node-subject))
-                  options {:ssl-cert (str master-conf-dir "/ca/ca_crt.pem")
-                           :ssl-key (str master-conf-dir "/ca/ca_key.pem")
-                           :ssl-ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                           :as :text}
-                  cert-status-request (fn [action
-                                           certtorevoke]
-                                        (http-client/put
-                                         (str "https://localhost:8140/"
-                                              "puppet-ca/v1/certificate_status/"
-                                              certtorevoke)
-                                         (merge options
-                                                {:body (str "{\"desired_state\": \""
-                                                            action
-                                                            "\"}")
-                                                 :headers {"content-type"
-                                                           "application/json"}})))]
-              (testing "Infra CRL should contain the revoked compile master certificate"
-                (let [revoke-response (cert-status-request "revoked" subject)]
-                  ;; If the revocation was successful infra CRL should contain above revoked compile master cert
-                  (is (= 204 (:status revoke-response)))
-                  (is (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ca/infra_crl.pem") ca-cert) cm-cert))))
+    (testutils/with-config-dirs
+      {(str test-resources-dir "/infracrl_test/master/conf/ssl") (str bootstrap/master-conf-dir "/ssl")
+       (str test-resources-dir "/infracrl_test/master/conf/ca") (str bootstrap/master-conf-dir "/ca")}
+      (let [subject "compile-master"
+            node-subject "agent-node"
+            infra-crl (str bootstrap/master-conf-dir "/ca/infra_crl.pem")
+            signed-dir (str bootstrap/master-conf-dir "/ca/signed")
+            ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+            ca-key (str bootstrap/master-conf-dir "/ca/ca_key.pem")
+            ca-crl (str bootstrap/master-conf-dir "/ca/ca_crl.pem")]
+          (bootstrap/with-puppetserver-running-with-mock-jrubies
+           "JRuby mocking is safe here because all of the requests are to the CA
+           endpoints, which are implemented in Clojure."
+            app
+            {:certificate-authority {:enable-infra-crl true}}
+            (testing "should update infrastructure CRL"
+              (let [ca-cert' (ssl-utils/pem->ca-cert ca-cert ca-key)
+                    cm-cert (utils/pem->cert (ca/path-to-cert signed-dir subject))
+                    node-cert (utils/pem->cert (ca/path-to-cert signed-dir node-subject))
+                    options {:ssl-cert ca-cert
+                             :ssl-key ca-key
+                             :ssl-ca-cert ca-cert
+                             :as :text}
+                    cert-status-request (fn [action
+                                             certtorevoke]
+                                          (http-client/put
+                                           (str "https://localhost:8140/"
+                                                "puppet-ca/v1/certificate_status/"
+                                                certtorevoke)
+                                           (merge options
+                                                  {:body (str "{\"desired_state\": \""
+                                                              action
+                                                              "\"}")
+                                                   :headers {"content-type"
+                                                             "application/json"}})))]
+                (testing "Infra CRL should contain the revoked compile master certificate"
+                  (let [revoke-response (cert-status-request "revoked" subject)]
+                    ;; If the revocation was successful infra CRL should contain above revoked compile master cert
+                    (is (= 204 (:status revoke-response)))
+                    (is (utils/revoked? (utils/pem->ca-crl infra-crl ca-cert') cm-cert))))
 
-              (testing "Infra CRL should NOT contain a revoked non compile master certificate"
-                (let [revoke-response (cert-status-request "revoked" node-subject)]
-                  (is (= 204 (:status revoke-response)))
-                  (is (not (utils/revoked? (utils/pem->ca-crl (str master-conf-dir "/ca/infra_crl.pem") ca-cert) node-cert)))))))
+                (testing "Infra CRL should NOT contain a revoked non compile master certificate"
+                  (let [revoke-response (cert-status-request "revoked" node-subject)]
+                    (is (= 204 (:status revoke-response)))
+                    (is (not (utils/revoked? (utils/pem->ca-crl infra-crl ca-cert') node-cert)))))))
 
-          (testing "Verify correct CRL is returned depending on enable-infra-crl"
-            (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")
-                  infra-crl-response (handle-get-certificate-revocation-list
-                                      request {:cacrl (str master-conf-dir "/ca/ca_crl.pem")
-                                               :infra-crl-path (str master-conf-dir "/ca/infra_crl.pem")
-                                               :enable-infra-crl true})
-                  infra-crl-response-body (:body infra-crl-response)
-                  full-crl-response (handle-get-certificate-revocation-list
-                                     request {:cacrl (str master-conf-dir "/ca/ca_crl.pem")
-                                              :infra-crl-path (str master-conf-dir "/ca/infra_crl.pem")
-                                              :enable-infra-crl false})
-                  full-crl-response-body (:body full-crl-response)]
-              (is (map? infra-crl-response))
-              (is (= 200 (:status infra-crl-response)))
-              (is (= "text/plain" (get-in infra-crl-response [:headers "Content-Type"])))
-              (is (string? infra-crl-response-body))
-              (is (= infra-crl-response-body (slurp (str master-conf-dir "/ca/infra_crl.pem"))))
+            (testing "Verify correct CRL is returned depending on enable-infra-crl"
+              (let [request (mock/request :get "/v1/certificate_revocation_list/mynode")
+                    infra-crl-response (handle-get-certificate-revocation-list
+                                        request {:cacrl ca-crl
+                                                 :infra-crl-path infra-crl
+                                                 :enable-infra-crl true})
+                    infra-crl-response-body (:body infra-crl-response)
+                    full-crl-response (handle-get-certificate-revocation-list
+                                       request {:cacrl ca-crl
+                                                :infra-crl-path infra-crl
+                                                :enable-infra-crl false})
+                    full-crl-response-body (:body full-crl-response)]
+                (is (map? infra-crl-response))
+                (is (= 200 (:status infra-crl-response)))
+                (is (= "text/plain" (get-in infra-crl-response [:headers "Content-Type"])))
+                (is (string? infra-crl-response-body))
+                (is (= infra-crl-response-body (slurp infra-crl)))
 
-              (is (map? full-crl-response))
-              (is (= 200 (:status full-crl-response)))
-              (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
-              (is (string? full-crl-response-body))
-              (is (= full-crl-response-body (slurp (str master-conf-dir "/ca/ca_crl.pem")))))))
+                (is (map? full-crl-response))
+                (is (= 200 (:status full-crl-response)))
+                (is (= "text/plain" (get-in full-crl-response [:headers "Content-Type"])))
+                (is (string? full-crl-response-body))
+                (is (= full-crl-response-body (slurp ca-crl))))))
 
-        (bootstrap/with-puppetserver-running-with-mock-jrubies
-         "JRuby mocking is safe here because all of the requests are to the CA
-         endpoints, which are implemented in Clojure."
-          app
-          {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:enable-infra-crl true}}
-          (testing "Verify infrastructure CRL is returned "
-            (let [options {:ssl-ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                           :as :text}
-                  crl-response (http-client/get
-                                   "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
-                                   (merge options {:headers {"Accept" "text/plain"}}))
-                  crl-response-body (:body crl-response)]
-              (is (map? crl-response))
-              (is (= 200 (:status crl-response)))
-              (is (string? crl-response-body))
-              (is (= crl-response-body (slurp (str master-conf-dir "/ca/infra_crl.pem")))))))
+          (bootstrap/with-puppetserver-running-with-mock-jrubies
+           "JRuby mocking is safe here because all of the requests are to the CA
+           endpoints, which are implemented in Clojure."
+            app
+            {:certificate-authority {:enable-infra-crl true}}
+            (testing "Verify infrastructure CRL is returned "
+              (let [options {:ssl-ca-cert ca-cert
+                             :as :text}
+                    crl-response (http-client/get
+                                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
+                                     (merge options {:headers {"Accept" "text/plain"}}))
+                    crl-response-body (:body crl-response)]
+                (is (map? crl-response))
+                (is (= 200 (:status crl-response)))
+                (is (string? crl-response-body))
+                (is (= crl-response-body (slurp infra-crl))))))
 
-        (bootstrap/with-puppetserver-running-with-mock-jrubies
-         "JRuby mocking is safe here because all of the requests are to the CA
-         endpoints, which are implemented in Clojure."
-          app
-          {:jruby-puppet {:master-conf-dir master-conf-dir}
-           :certificate-authority {:enable-infra-crl false}}
-          (testing "Verify full CRL is returned "
-            (let [options {:ssl-ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                           :as :text}
-                  crl-response (http-client/get
-                                   "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
-                                   (merge options {:headers {"Accept" "text/plain"}}))
-                  crl-response-body (:body crl-response)]
-              (is (map? crl-response))
-              (is (= 200 (:status crl-response)))
-              (is (string? crl-response-body))
-              (is (= crl-response-body (slurp (str master-conf-dir "/ca/ca_crl.pem")))))))
-        ;; Add back our fixture content
-        (spit hostcrl-path hostcrl-content)
-        (spit full-crl-path full-crl-content)
-        (spit infra-crl-path infra-crl-content)
-        (spit infra-serials-path infra-serials-content))))
+          (bootstrap/with-puppetserver-running-with-mock-jrubies
+           "JRuby mocking is safe here because all of the requests are to the CA
+           endpoints, which are implemented in Clojure."
+            app
+            {:certificate-authority {:enable-infra-crl false}}
+            (testing "Verify full CRL is returned "
+              (let [options {:ssl-ca-cert ca-cert
+                             :as :text}
+                    crl-response (http-client/get
+                                     "https://localhost:8140/puppet-ca/v1/certificate_revocation_list/ca"
+                                     (merge options {:headers {"Accept" "text/plain"}}))
+                    crl-response-body (:body crl-response)]
+                (is (map? crl-response))
+                (is (= 200 (:status crl-response)))
+                (is (string? crl-response-body))
+                (is (= crl-response-body (slurp ca-crl))))))))))
 
 (deftest ^:integration clean-infrastructure-certs
-  (let [master-conf-dir (str test-resources-dir "/infracrl_test/master/conf")
-        subject1 "compile-master"
-        ;; We're going to pretend this is an infra cert for this test
-        subject2 "agent-node"
-        hostcrl-path (str master-conf-dir "/ssl/crl.pem")
-        hostcrl-content (slurp hostcrl-path)
-        full-crl-path (str master-conf-dir "/ca/ca_crl.pem")
-        full-crl-content (slurp full-crl-path)
-        infra-crl-path (str master-conf-dir "/ca/infra_crl.pem")
-        infra-crl-content (slurp infra-crl-path)
-        infra-serials-path (str master-conf-dir "/ca/infra_serials")
-        infra-serials-content (slurp infra-serials-path)
-        infra-inventory-path (str master-conf-dir "/ca/infra_inventory.txt")
-        infra-inventory-content (slurp infra-inventory-path)
-        cert1-path (ca/path-to-cert (str master-conf-dir "/ca/signed") subject1)
-        cert1 (utils/pem->cert cert1-path)
-        cert2-path (ca/path-to-cert (str master-conf-dir "/ca/signed") subject2)
-        cert2 (utils/pem->cert cert2-path)]
-    ;; Add another cert to the infra inventory
-    (spit infra-inventory-path (str infra-inventory-content subject2))
-    (bootstrap/with-puppetserver-running-with-mock-jrubies
-     "JRuby mocking is safe here because all of the requests are to the CA
-     endpoints, which are implemented in Clojure."
-     app
-     {:jruby-puppet {:master-conf-dir master-conf-dir}
-      :certificate-authority {:enable-infra-crl true}}
-     (testing "should update infrastructure CRL with multiple certs"
-       (let [ca-cert (ssl-utils/pem->ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                                             (str master-conf-dir "/ca/ca_key.pem"))
-             options {:ssl-cert (str master-conf-dir "/ca/ca_crt.pem")
-                      :ssl-key (str master-conf-dir "/ca/ca_key.pem")
-                      :ssl-ca-cert (str master-conf-dir "/ca/ca_crt.pem")
-                      :as :text}]
-         (testing "Infra CRL should contain the revoked compile master certificate"
-           (let [revoke-response (http-client/put
-                                   "https://localhost:8140/puppet-ca/v1/clean"
-                                   (merge options
-                                           {:body (format "{\"certnames\":[\"%s\",\"%s\"]}"
-                                                          subject1 subject2)
-                                            :headers {"content-type"
-                                                      "application/json"}}))]
-             ;; If the revocation was successful infra CRL should contain above revoked compile master cert
-             (is (= 200 (:status revoke-response)))
-             (is (utils/revoked? (utils/pem->ca-crl
-                                  (str master-conf-dir "/ca/infra_crl.pem")
-                                  ca-cert)
-                                 cert1))
-             (is (utils/revoked? (utils/pem->ca-crl
-                                  (str master-conf-dir "/ca/infra_crl.pem")
-                                  ca-cert)
-                                 cert2))
-             (is (false? (fs/exists? cert1-path)))
-             (is (false? (fs/exists? cert2-path))))))))
-    ;; Add back our fixture content
-    (utils/cert->pem! cert1 cert1-path)
-    (utils/cert->pem! cert2 cert2-path)
-    (spit hostcrl-path hostcrl-content)
-    (spit full-crl-path full-crl-content)
-    (spit infra-crl-path infra-crl-content)
-    (spit infra-inventory-path infra-inventory-content)
-    (spit infra-serials-path infra-serials-content)))
+  (testutils/with-config-dirs
+    {(str test-resources-dir "/infracrl_test/master/conf/ssl") (str bootstrap/master-conf-dir "/ssl")
+     (str test-resources-dir "/infracrl_test/master/conf/ca") (str bootstrap/master-conf-dir "/ca")}
+    (let [infra-inventory-path (str bootstrap/master-conf-dir "/ca/infra_inventory.txt")
+          infra-inventory-content (slurp infra-inventory-path)
+          ;; We're going to pretend this is an infra cert for this test
+          subject2 "agent-node"]
+      ;; Add another cert to the infra inventory
+      (spit infra-inventory-path (str infra-inventory-content subject2))
+      (bootstrap/with-puppetserver-running-with-mock-jrubies
+       "JRuby mocking is safe here because all of the requests are to the CA
+       endpoints, which are implemented in Clojure."
+       app
+       {:certificate-authority {:enable-infra-crl true}}
+       (let [subject1 "compile-master"
+             cert1-path (ca/path-to-cert (str bootstrap/master-conf-dir "/ca/signed") subject1)
+             cert1 (utils/pem->cert cert1-path)
+             cert2-path (ca/path-to-cert (str bootstrap/master-conf-dir "/ca/signed") subject2)
+             cert2 (utils/pem->cert cert2-path)]
+       (testing "should update infrastructure CRL with multiple certs"
+         (let [ca-cert (ssl-utils/pem->ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+                                               (str bootstrap/master-conf-dir "/ca/ca_key.pem"))
+               options {:ssl-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+                        :ssl-key (str bootstrap/master-conf-dir "/ca/ca_key.pem")
+                        :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+                        :as :text}]
+           (testing "Infra CRL should contain the revoked compile master certificate"
+             (let [revoke-response (http-client/put
+                                     "https://localhost:8140/puppet-ca/v1/clean"
+                                     (merge options
+                                             {:body (format "{\"certnames\":[\"%s\",\"%s\"]}"
+                                                            subject1 subject2)
+                                              :headers {"content-type"
+                                                        "application/json"}}))]
+               ;; If the revocation was successful infra CRL should contain above revoked compile master cert
+               (is (= 200 (:status revoke-response)))
+               (is (utils/revoked? (utils/pem->ca-crl
+                                    (str bootstrap/master-conf-dir "/ca/infra_crl.pem")
+                                    ca-cert)
+                                   cert1))
+               (is (utils/revoked? (utils/pem->ca-crl
+                                    (str bootstrap/master-conf-dir "/ca/infra_crl.pem")
+                                    ca-cert)
+                                   cert2))
+               (is (false? (fs/exists? cert1-path)))
+               (is (false? (fs/exists? cert2-path))))))))))))
 
 
 (deftest ^:integration certificate-status-returns-auth-ext-info
@@ -586,49 +562,50 @@
     (fs/delete (str bootstrap/master-conf-dir "/ca/signed/test_cert_with_auth_ext.pem"))))
 
 (deftest csr-api-test
-  (bootstrap/with-puppetserver-running-with-config
-   app
-   (bootstrap/load-dev-config-with-overrides
-    {:jruby-puppet
-     {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
-     :webserver
-     {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
-      :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
-      :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
-      :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}})
-   (let [request-dir (str bootstrap/master-conf-dir "/ca/requests")
-         key-pair (ssl-utils/generate-key-pair)
-         subjectDN (ssl-utils/cn "test_cert")
-         csr (ssl-utils/generate-certificate-request key-pair subjectDN)
-         csr-file (ks/temp-file "test_csr.pem")
-         saved-csr (str request-dir "/test_cert.pem")
-         url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
-         request-opts {:ssl-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
-                       :ssl-key (str bootstrap/master-conf-dir "/ca/ca_key.pem")
-                       :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
-                       :as :text
-                       :headers {"content-type" "text/plain"}}]
-     (ssl-utils/obj->pem! csr csr-file)
-     (testing "submit a CSR via the API"
-       (let [response (http-client/put
-                       url
-                       (merge request-opts {:body (slurp csr-file)}))]
-         (is (= 200 (:status response)))
-         (is (= (slurp csr-file) (slurp saved-csr)))))
-     (testing "get a CSR from the API"
-       (let [response (http-client/get
-                       url
-                       request-opts)
-             csr (:body response)]
-         (is (= 200 (:status response)))
-         (is (= (slurp csr-file) csr))))
-     (testing "delete a CSR via the API"
-       (let [response (http-client/delete
-                       url
-                       request-opts)]
-         (is (= 204 (:status response)))
-         (is (not (fs/exists? saved-csr)))))
-     (fs/delete csr-file))))
+  (testutils/with-stub-puppet-conf
+    (bootstrap/with-puppetserver-running-with-config
+     app
+     (bootstrap/load-dev-config-with-overrides
+      {:jruby-puppet
+       {:gem-path [(ks/absolute-path jruby-testutils/gem-path)]}
+       :webserver
+       {:ssl-cert (str bootstrap/master-conf-dir "/ssl/certs/localhost.pem")
+        :ssl-key (str bootstrap/master-conf-dir "/ssl/private_keys/localhost.pem")
+        :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+        :ssl-crl-path (str bootstrap/master-conf-dir "/ssl/crl.pem")}})
+     (let [request-dir (str bootstrap/master-conf-dir "/ca/requests")
+           key-pair (ssl-utils/generate-key-pair)
+           subjectDN (ssl-utils/cn "test_cert")
+           csr (ssl-utils/generate-certificate-request key-pair subjectDN)
+           csr-file (ks/temp-file "test_csr.pem")
+           saved-csr (str request-dir "/test_cert.pem")
+           url "https://localhost:8140/puppet-ca/v1/certificate_request/test_cert"
+           request-opts {:ssl-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+                         :ssl-key (str bootstrap/master-conf-dir "/ca/ca_key.pem")
+                         :ssl-ca-cert (str bootstrap/master-conf-dir "/ca/ca_crt.pem")
+                         :as :text
+                         :headers {"content-type" "text/plain"}}]
+       (ssl-utils/obj->pem! csr csr-file)
+       (testing "submit a CSR via the API"
+         (let [response (http-client/put
+                         url
+                         (merge request-opts {:body (slurp csr-file)}))]
+           (is (= 200 (:status response)))
+           (is (= (slurp csr-file) (slurp saved-csr)))))
+       (testing "get a CSR from the API"
+         (let [response (http-client/get
+                         url
+                         request-opts)
+               csr (:body response)]
+           (is (= 200 (:status response)))
+           (is (= (slurp csr-file) csr))))
+       (testing "delete a CSR via the API"
+         (let [response (http-client/delete
+                         url
+                         request-opts)]
+           (is (= 204 (:status response)))
+           (is (not (fs/exists? saved-csr)))))
+       (fs/delete csr-file)))))
 
 (deftest ca-expirations-endpoint-test
   (testing "returns expiration dates for all CA certs and CRLs"

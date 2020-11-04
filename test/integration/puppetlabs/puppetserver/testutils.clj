@@ -375,6 +375,17 @@
   ([puppet-conf-file dest-dir]
    (with-puppet-conf-fixture {"puppet.conf" puppet-conf-file} dest-dir)))
 
+(defmacro with-stub-puppet-conf
+  "Provides similar functionality of `with-puppet-conf` but uses a default
+  stub puppet.conf for testing and is not meant to be used inline in tests
+  (not as a `use-fixtures` fn). More advanced uses should create a fixture
+  directory."
+  [body]
+  `(let [content# (str "[main]\n  cadir = " conf-dir "/ca")
+         file# (str (ks/temp-file))]
+    (spit file# content#)
+    (with-puppet-conf-files {"puppet.conf" file#} conf-dir ~body)))
+
 (defn copy-config-files
   [dirs-to-copy]
   (doseq [[src target] dirs-to-copy]
