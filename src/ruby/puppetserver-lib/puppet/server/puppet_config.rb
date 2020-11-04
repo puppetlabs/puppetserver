@@ -13,7 +13,7 @@ class Puppet::Server::PuppetConfig
 
     # It's critical that we initialize the run mode before allowing any of the
     # other settings to be loaded / accessed.
-    Puppet.settings.preferred_run_mode = :master
+    Puppet.settings.preferred_run_mode = :server
 
     # Puppet.initialize_settings is the method that you call if you want to use
     # the puppet code as a library.  (It is called implicitly by all of the puppet
@@ -51,8 +51,8 @@ class Puppet::Server::PuppetConfig
       Puppet[:always_retry_plugins] = false
     end
 
-    app_defaults = Puppet::Settings.app_defaults_for_run_mode(Puppet::Util::RunMode[:master]).
-        merge({:name => "master",
+    app_defaults = Puppet::Settings.app_defaults_for_run_mode(Puppet::Util::RunMode[:server]).
+        merge({:name => "server",
                :facts_terminus => 'json'})
     Puppet.settings.initialize_app_defaults(app_defaults)
 
@@ -72,7 +72,7 @@ class Puppet::Server::PuppetConfig
                                require_config: true,
                                push_settings_globally: true)
 
-    Puppet::ApplicationSupport.push_application_context(Puppet::Util::RunMode[:master])
+    Puppet::ApplicationSupport.push_application_context(Puppet::Util::RunMode[:server])
 
     # Puppet's https machinery expects to find an object at
     # `Puppet.lookup(:ssl_context)` which it will then use as an input
@@ -88,7 +88,7 @@ class Puppet::Server::PuppetConfig
       Puppet.push_context(dummy_ssl_context)
     end
 
-    Puppet.settings.use :main, :master, :ssl, :metrics
+    Puppet.settings.use :main, :server, :ssl, :metrics
 
     if Puppet::Indirector::Indirection.method_defined?(:set_global_setting)
       Puppet::FileServing::Content.indirection.set_global_setting(:terminus_class, :file_server)

@@ -13,8 +13,8 @@ describe 'Puppet::Server::Master' do
       master.run_mode
     end
 
-    it "is set to 'master'" do
-      expect(subject).to eq('master')
+    it "is set to 'server'" do
+      expect(subject).to eq('server')
     end
   end
 
