@@ -1,30 +1,28 @@
 (ns puppetlabs.services.master.master-service-test
   (:require
     [clojure.test :refer :all]
-    [clojure.set :as setutils]
     [puppetlabs.services.master.master-service :refer :all]
-    [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-    [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
-    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
-    [puppetlabs.trapperkeeper.app :as tk-app]
-    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-    [me.raynes.fs :as fs]
-    [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.http.client.sync :as http-client]
     [cheshire.core :as json]
-    [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-    [puppetlabs.trapperkeeper.services :as tk-services]
+    [clojure.set :as setutils]
+    [clojure.string :as str]
+    [me.raynes.fs :as fs]
+    [puppetlabs.http.client.sync :as http-client]
+    [puppetlabs.kitchensink.core :as ks]
+    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
-    [schema.core :as schema]
+    [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.services.master.master-core :as master-core]
-    [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
     [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]
+    [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.trapperkeeper.app :as tk-app]
+    [puppetlabs.trapperkeeper.services :as tk-services]
     [puppetlabs.trapperkeeper.services.metrics.metrics-core :as metrics-core]
     [puppetlabs.trapperkeeper.services.metrics.metrics-testutils :as metrics-testutils]
-    [puppetlabs.trapperkeeper.services :as tk]
-    [clojure.string :as str]
-    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+    [schema.core :as schema]
     [schema.test :as schema-test]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
@@ -325,7 +323,7 @@
                          :max-active-instances 1}
           :webserver {:port 8081}}
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (jruby/with-jruby-puppet
+           (jruby-service/with-jruby-puppet
             jruby-puppet jruby-service :ca-files-test
             (letfn [(test-path!
                       [setting expected-path]
@@ -598,7 +596,7 @@
                (jruby-testutils/return-instance jruby-service jruby-instance :http-client-metrics-test)))))))))
 
 (deftest ^:integration add-metric-ids-to-http-client-metrics-list-test
-  (let [test-service (tk/service
+  (let [test-service (tk-services/service
                       [[:MasterService add-metric-ids-to-http-client-metrics-list!]]
                       (init [this context]
                             (add-metric-ids-to-http-client-metrics-list! [["foo" "bar"]
