@@ -6,10 +6,13 @@ skip_test 'Skipping for PE since it pre-configures a CRL file and Puppet ' \
 
 puppetservice=options['puppetservice']
 ssldir = master.puppet['ssldir']
+cadir = master.puppet['cadir']
 backup_ssldir = master.tmpdir("agent_run_before_master_init_ssldir_backup")
+backup_cadir = master.tmpdir("agent_run_before_master_init_cadir_backup")
 
 step "Backup original SSL configuration so can be restored when test finishes" do
   on(master, "cp -pR #{ssldir} #{backup_ssldir}")
+  on(master, "cp -pR #{cadir} #{backup_cadir}")
 end
 
 teardown do
@@ -28,7 +31,9 @@ teardown do
 
   step 'Restore the original server SSL config' do
     on(master, "rm -rf #{ssldir}")
+    on(master, "rm -rf #{cadir}")
     on(master, "mv #{backup_ssldir}/#{File.basename(ssldir)} #{File.dirname(ssldir)}")
+    on(master, "mv #{backup_cadir}/#{File.basename(cadir)} #{File.dirname(cadir)}")
   end
   step 'Restart the server with original SSL config before ending the test' do
     on(master, puppet("resource service #{puppetservice} ensure=running"))
@@ -46,6 +51,7 @@ end
 
 step 'Nuke the existing SSL directory' do
   on(master, "rm -rf #{ssldir}/*")
+  on(master, "rm -rf #{cadir}/*")
 end
 
 step 'Do an agent run with the server stopped so a public/private key can be created' do

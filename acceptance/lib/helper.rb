@@ -107,8 +107,10 @@ module PuppetServerExtensions
     step "Clear SSL on all hosts"
     hosts.each do |host|
       ssldir = on(host, puppet('agent --configprint ssldir')).stdout.chomp
+      cadir = on(host, puppet('agent --configprint cadir')).stdout.chomp
       on(master, 'puppet resource service puppetserver ensure=stopped') if host == master
       on(host, "rm -rf '#{ssldir}'/*")
+      on(host, "rm -rf '#{cadir}'/*")
       if host == master
         on(host, 'puppetserver ca setup')
         on(master, 'puppet resource service puppetserver ensure=running')
