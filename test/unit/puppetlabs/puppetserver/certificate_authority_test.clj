@@ -156,6 +156,27 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Tests
 
+(deftest symlink-cadir-test
+  (testing "does not symlink if custom cadir"
+    (let [tmpdir (ks/temp-dir)
+          cadir (str tmpdir "/foo/bar")
+          ssldir (str tmpdir "puppet/ssl")]
+      (fs/mkdirs cadir)
+      (fs/mkdirs ssldir)
+      (symlink-cadir cadir)
+      (is (not (fs/exists? (str ssldir "/ca"))))))
+  (testing "symlinks correctly and removes existing old-cadir if needed"
+    (let [tmpdir (ks/temp-dir)
+          cadir (str tmpdir "/puppetserver/ca")
+          ssldir (str tmpdir "/puppet/ssl")
+          old-cadir (str ssldir "/ca")]
+      (fs/mkdirs ssldir)
+      (fs/mkdirs cadir)
+      (symlink-cadir cadir)
+      (is (fs/link? old-cadir))
+      (let [target (-> old-cadir fs/read-sym-link str)]
+        (is (= target cadir))))))
+
 (deftest validate-settings-test
   (testing "invalid ca-ttl is rejected"
     (let [settings (assoc

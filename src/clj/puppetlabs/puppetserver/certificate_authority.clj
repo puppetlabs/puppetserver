@@ -156,7 +156,7 @@
   "Adds in default ca config keys/values, which may be overwritten if a value for
   any of those keys already exists in the ca-data"
   [ca-data]
-  (let [cadir (fs/parent (:cacrl ca-data))
+  (let [cadir (:cadir ca-data)
         defaults {:infra-nodes-path (str cadir "/infra_inventory.txt")
                   :infra-node-serials-path (str cadir "/infra_serials")
                   :infra-crl-path (str cadir "/infra_crl.pem")
@@ -666,6 +666,18 @@
                                                         signeddir)
                         public-key-perms))
 
+(defn symlink-cadir
+  "Symlinks the new cadir that ends in 'puppetserver/ca' to the old cadir
+  of 'puppet/ssl/ca' for backwards compatibility. Will delete the old cadir
+  if it exists. Does nothing if set to a custom value."
+  [cadir]
+  (let [[_ base] (re-matches #"(.*)puppetserver/ca" cadir)
+        old-cadir (str base "puppet/ssl/ca")]
+    (when base
+      (when (fs/exists? old-cadir)
+        (fs/delete-dir old-cadir))
+      (fs/sym-link old-cadir cadir))))
+
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
   SSL files for the CA. Any existing files will be replaced."
@@ -708,7 +720,8 @@
     (write-private-key private-key (:cakey ca-settings))
     (write-cert cacert (:cacert ca-settings))
     (write-crl cacrl (:cacrl ca-settings))
-    (write-crl infra-crl (:infra-crl-path ca-settings))))
+    (write-crl infra-crl (:infra-crl-path ca-settings))
+    (symlink-cadir (:cadir ca-settings))))
 
 (schema/defn split-hostnames :- (schema/maybe [schema/Str])
   "Given a comma-separated list of hostnames, return a list of the
