@@ -337,7 +337,7 @@
       (let [mount-point (get-in match [:route-params :mount-point])
             mount-type (get-in match [:handler])
             ignore (get-in request [:params "ignore"] [])
-            checksum-type (get-in request [:params "checksum_type"] "md5")]
+            checksum-type (get-in request [:params "checksum_type"] "sha256")]
         (case mount-type
           :pluginsync (let [errors (metadatas-params-errors (get-in request [:params]))]
                         (if (empty? errors)

@@ -829,8 +829,8 @@
         ;; Only check some of the entries that won't vary based on the test environment
         (is (= nil (get file-entry "destination")))
         (is (= "file" (get file-entry "type")))
-        (is (= "md5" (get-in file-entry ["checksum" "type"])))
-        (is (= "{md5}0e65e68baff3f37e4d62ee9ce2129a55" (get-in file-entry ["checksum" "value"])))
+        (is (= "sha256" (get-in file-entry ["checksum" "type"])))
+        (is (= "{sha256}76b2e03b82880885385595045033c4e3122e373c7023e037461a650ec85829ad" (get-in file-entry ["checksum" "value"])))
         ;; Does it choose from the right module?
         (is (str/ends-with? (get file-entry "path") "modules/helpers/lib"))))
 
@@ -853,8 +853,8 @@
             [file-entry] (filter #(= "something" (get % "relative_path")) (json/decode (:body response)))]
         (is (= nil (get file-entry "destination")))
         (is (= "file" (get file-entry "type")))
-        (is (= "md5" (get-in file-entry ["checksum" "type"])))
-        (is (= "{md5}6265b22b66502d70d5f004f08238ac3c" (get-in file-entry ["checksum" "value"])))))
+        (is (= "sha256" (get-in file-entry ["checksum" "type"])))
+        (is (= "{sha256}4bc453b53cb3d914b45f4b250294236adba2c0e09ff6f03793949e7e39fd4cc1" (get-in file-entry ["checksum" "value"])))))
 
     (testing "can retrieve pluginfacts files"
       (let [response (http-get "/puppet/v3/file_content/pluginfacts/unhelpful?project=local_23")]
