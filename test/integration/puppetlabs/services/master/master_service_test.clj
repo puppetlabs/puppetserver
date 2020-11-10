@@ -1,30 +1,28 @@
 (ns puppetlabs.services.master.master-service-test
   (:require
     [clojure.test :refer :all]
-    [clojure.set :as setutils]
     [puppetlabs.services.master.master-service :refer :all]
-    [puppetlabs.services.jruby.jruby-puppet-service :as jruby]
-    [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
-    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
-    [puppetlabs.trapperkeeper.app :as tk-app]
-    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
-    [me.raynes.fs :as fs]
-    [puppetlabs.kitchensink.core :as ks]
-    [puppetlabs.http.client.sync :as http-client]
     [cheshire.core :as json]
-    [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
-    [puppetlabs.trapperkeeper.services :as tk-services]
+    [clojure.set :as setutils]
+    [clojure.string :as str]
+    [me.raynes.fs :as fs]
+    [puppetlabs.http.client.sync :as http-client]
+    [puppetlabs.kitchensink.core :as ks]
+    [puppetlabs.puppetserver.bootstrap-testutils :as bootstrap-testutils]
     [puppetlabs.puppetserver.testutils :as testutils]
     [puppetlabs.services.jruby.jruby-metrics-core :as jruby-metrics-core]
-    [schema.core :as schema]
+    [puppetlabs.services.jruby.jruby-puppet-service :as jruby-service]
+    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
     [puppetlabs.services.master.master-core :as master-core]
-    [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.services.protocols.jruby-metrics :as jruby-metrics]
     [puppetlabs.services.protocols.puppet-profiler :as profiler-protocol]
+    [puppetlabs.services.puppet-profiler.puppet-profiler-core :as puppet-profiler-core]
+    [puppetlabs.trapperkeeper.app :as tk-app]
+    [puppetlabs.trapperkeeper.services :as tk-services]
     [puppetlabs.trapperkeeper.services.metrics.metrics-core :as metrics-core]
     [puppetlabs.trapperkeeper.services.metrics.metrics-testutils :as metrics-testutils]
-    [puppetlabs.trapperkeeper.services :as tk]
-    [clojure.string :as str]
-    [puppetlabs.services.jruby.jruby-puppet-testutils :as jruby-testutils]
+    [puppetlabs.trapperkeeper.testutils.logging :as logutils]
+    [schema.core :as schema]
     [schema.test :as schema-test]))
 
 (def test-resources-path "./dev-resources/puppetlabs/services/master/master_service_test")
@@ -325,7 +323,7 @@
                          :max-active-instances 1}
           :webserver {:port 8081}}
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
-           (jruby/with-jruby-puppet
+           (jruby-service/with-jruby-puppet
             jruby-puppet jruby-service :ca-files-test
             (letfn [(test-path!
                       [setting expected-path]
@@ -598,7 +596,7 @@
                (jruby-testutils/return-instance jruby-service jruby-instance :http-client-metrics-test)))))))))
 
 (deftest ^:integration add-metric-ids-to-http-client-metrics-list-test
-  (let [test-service (tk/service
+  (let [test-service (tk-services/service
                       [[:MasterService add-metric-ids-to-http-client-metrics-list!]]
                       (init [this context]
                             (add-metric-ids-to-http-client-metrics-list! [["foo" "bar"]
@@ -829,4 +827,50 @@
 
     (testing "missing path?"
       (let [response (http-get "/puppet/v3/file_content/modules/test/?project=embedded_e19e09")]
-        (is (= 404 (:status response)))))))
+        (is (= 404 (:status response)))))
+
+    (testing "can retrieve plugin metadata"
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23")
+            [file-entry] (filter #(= "puppet/monkey_patch.rb" (get % "relative_path")) (json/decode (:body response)))]
+        ;; Only check some of the entries that won't vary based on the test environment
+        (is (= nil (get file-entry "destination")))
+        (is (= "file" (get file-entry "type")))
+        (is (= "md5" (get-in file-entry ["checksum" "type"])))
+        (is (= "{md5}0e65e68baff3f37e4d62ee9ce2129a55" (get-in file-entry ["checksum" "value"])))
+        ;; Does it choose from the right module?
+        (is (str/ends-with? (get file-entry "path") "modules/helpers/lib"))))
+
+    (testing "can retrieve plugin files"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/monkey_patch.rb?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
+        (is (= "59" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve plugin files from the top level project lib dir"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/comment.rb?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "# This is the project\n" (:body response)))
+        (is (= "22" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve pluginfacts metadata"
+      (let [response (http-get "/puppet/v3/file_metadatas/pluginfacts?project=local_23")
+            [file-entry] (filter #(= "something" (get % "relative_path")) (json/decode (:body response)))]
+        (is (= nil (get file-entry "destination")))
+        (is (= "file" (get file-entry "type")))
+        (is (= "md5" (get-in file-entry ["checksum" "type"])))
+        (is (= "{md5}6265b22b66502d70d5f004f08238ac3c" (get-in file-entry ["checksum" "value"])))))
+
+    (testing "can retrieve pluginfacts files"
+      (let [response (http-get "/puppet/v3/file_content/pluginfacts/unhelpful?project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "factually unhelpful\n" (:body response)))
+        (is (= "20" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "doesn't support nonstandard options"
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23&links=manage")]
+        (is (= 400 (:status response)))
+        (is (= "Not all parameter values are supported in this implementation: \nThe only supported value of `links` at this time is `follow`"
+               (:body response)))))))
