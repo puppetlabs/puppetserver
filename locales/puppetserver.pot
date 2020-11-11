@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: af128d17bec920166759c116cecb526831cfd67c\n"
+"X-Git-Ref: b967daa647416b7de84d99bd60932c3f96e5c71e\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -516,6 +516,38 @@ msgid ""
 "handle requests"
 msgstr ""
 
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid "Could not find file_content for path: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid "Unsupported mount: {0}"
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid ""
+"A file_content request cannot specify both `environment` and `project` query "
+"parameters."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid ""
+"A file_content request must include an `environment` or `project` query "
+"parameter."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid ""
+"A file_metadatas request cannot specify both `environment` and `project` "
+"query parameters."
+msgstr ""
+
+#: src/clj/puppetlabs/services/master/file_serving.clj
+msgid ""
+"A file_metadatas request must include an `environment` or `project` query "
+"parameter."
+msgstr ""
+
 #: src/clj/puppetlabs/services/master/master_core.clj
 msgid "Object cannot be coerced to a keyword: {0}"
 msgstr ""
@@ -554,26 +586,6 @@ msgstr ""
 msgid ""
 "Request Denied: A /static_file_content request must be a file within the "
 "files, lib, or tasks directory of a module."
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_core.clj
-msgid "Could not find file_content for path: {0}"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_core.clj
-msgid "Unsupported mount: {0}"
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_core.clj
-msgid ""
-"A file_content request cannot specify both `environment` and `project` query "
-"parameters."
-msgstr ""
-
-#: src/clj/puppetlabs/services/master/master_core.clj
-msgid ""
-"A file_content request must include an `environment` or `project` query "
-"parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj
