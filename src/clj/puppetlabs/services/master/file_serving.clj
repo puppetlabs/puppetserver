@@ -102,11 +102,11 @@
 (defn get-project-root
   "Lookup a project by name and return the path where its project files are
   located as a string."
-  [projects-dir project-name-and-ref]
-  (let [boltdir-path (str projects-dir "/" project-name-and-ref "/Boltdir")]
+  [projects-dir versioned-project]
+  (let [boltdir-path (str projects-dir "/" versioned-project "/Boltdir")]
     (if (fs/exists? boltdir-path)
       boltdir-path
-      (str projects-dir "/" project-name-and-ref))))
+      (str projects-dir "/" versioned-project))))
 
 (defn list-dirs-in-paths
   "Given a list of directories, return a list of all the subdirectories
@@ -180,9 +180,9 @@
   "Find a file in a project using the parameters from a `file_content` request.
   Returns the path as as string. If the module name is the same as the project
   name then files are served from the project directly."
-  [bolt-projects-dir project-name-and-ref mount module path]
-  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
-    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount module path]
+  (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
+    (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
           project-name (get project-config :name)
           modulepath (get-project-modulepath project-config)
@@ -227,8 +227,8 @@
 (defn find-project-plugin-file
   "Given a relative path as received by the plugins mount, search all lib dirs
   and return the path to the file if it's found in any of them."
-  [bolt-projects-dir project-name-and-ref mount relative-path]
-  (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount relative-path]
+  (let [project-root (get-project-root bolt-projects-dir versioned-project)
         project-config (read-bolt-project-config project-root)
         project-as-module? (project-configured-as-module? project-config)
         modulepath (get-project-modulepath project-config)
@@ -238,9 +238,9 @@
 (defn get-plugins-metadata
   "Return the metadata for pluginsync. This scans the lib directories of all
   modules and returns a list of files smashed together."
-  [bolt-projects-dir project-name-and-ref mount checksum-type ignores ignore-source-permissions]
-  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
-    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount checksum-type ignores ignore-source-permissions]
+  (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
+    (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
           project-as-module? (project-configured-as-module? project-config)
           modulepath (get-project-modulepath project-config)
