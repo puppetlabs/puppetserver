@@ -102,11 +102,11 @@
 (defn get-project-root
   "Lookup a project by name and return the path where its project files are
   located as a string."
-  [projects-dir project-name-and-ref]
-  (let [boltdir-path (str projects-dir "/" project-name-and-ref "/Boltdir")]
+  [projects-dir versioned-project]
+  (let [boltdir-path (str projects-dir "/" versioned-project "/Boltdir")]
     (if (fs/exists? boltdir-path)
       boltdir-path
-      (str projects-dir "/" project-name-and-ref))))
+      (str projects-dir "/" versioned-project))))
 
 (defn list-dirs-in-paths
   "Given a list of directories, return a list of all the subdirectories
@@ -180,9 +180,9 @@
   "Find a file in a project using the parameters from a `file_content` request.
   Returns the path as as string. If the module name is the same as the project
   name then files are served from the project directly."
-  [bolt-projects-dir project-name-and-ref mount module path]
-  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
-    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount module path]
+  (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
+    (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
           project-name (get project-config :name)
           modulepath (get-project-modulepath project-config)
@@ -227,8 +227,8 @@
 (defn find-project-plugin-file
   "Given a relative path as received by the plugins mount, search all lib dirs
   and return the path to the file if it's found in any of them."
-  [bolt-projects-dir project-name-and-ref mount relative-path]
-  (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount relative-path]
+  (let [project-root (get-project-root bolt-projects-dir versioned-project)
         project-config (read-bolt-project-config project-root)
         project-as-module? (project-configured-as-module? project-config)
         modulepath (get-project-modulepath project-config)
@@ -238,9 +238,9 @@
 (defn get-plugins-metadata
   "Return the metadata for pluginsync. This scans the lib directories of all
   modules and returns a list of files smashed together."
-  [bolt-projects-dir project-name-and-ref mount checksum-type ignores ignore-source-permissions]
-  (when (is-bolt-project? (str bolt-projects-dir "/" project-name-and-ref))
-    (let [project-root (get-project-root bolt-projects-dir project-name-and-ref)
+  [bolt-projects-dir versioned-project mount checksum-type ignores ignore-source-permissions]
+  (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
+    (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
           project-as-module? (project-configured-as-module? project-config)
           modulepath (get-project-modulepath project-config)
@@ -273,7 +273,7 @@
 (defn handle-project-file-content
   "Handle a file_content request for a bolt project."
   [bolt-projects-dir request]
-  (let [project (get-in request [:params "project"])
+  (let [versioned-project (get-in request [:params "versioned_project"])
         path (get-in request [:params :rest])
         match (bidi/match-route project-routes path)]
     (when match
@@ -283,10 +283,10 @@
             file-path (get-in match [:route-params :file-path])]
         (case mount-type
           :basic (make-file-content-response
-                  (find-project-file bolt-projects-dir project mount-point module file-path)
+                  (find-project-file bolt-projects-dir versioned-project mount-point module file-path)
                   file-path)
           :pluginsync (make-file-content-response
-                       (find-project-plugin-file bolt-projects-dir project mount-point file-path)
+                       (find-project-plugin-file bolt-projects-dir versioned-project mount-point file-path)
                        file-path)
           {:status 400
            :headers {"Content-Type" "text/plain"}
@@ -296,18 +296,18 @@
   "Handle file_content requests and dispatch them to the correct handler for
   environments or projects."
   [bolt-projects-dir ruby-request-handler request]
-  (let [project (get-in request [:params "project"])
+  (let [versioned-project (get-in request [:params "versioned_project"])
         environment (get-in request [:params "environment"])]
     (cond
-      (and project environment)
+      (and versioned-project environment)
       {:status 400
        :headers {"Content-Type" "text/plain"}
-       :body (i18n/tru "A file_content request cannot specify both `environment` and `project` query parameters.")}
-      (and (nil? project) (nil? environment))
+       :body (i18n/tru "A file_content request cannot specify both `environment` and `versioned_project` query parameters.")}
+      (and (nil? versioned-project) (nil? environment))
       {:status 400
        :headers {"Content-Type" "text/plain"}
-       :body (i18n/tru "A file_content request must include an `environment` or `project` query parameter.")}
-      project
+       :body (i18n/tru "A file_content request must include an `environment` or `versioned_project` query parameter.")}
+      versioned-project
       (handle-project-file-content bolt-projects-dir request)
 
       :else
@@ -330,7 +330,7 @@
 (defn handle-project-file-metadatas
   "Handle a file_metadatas request for a bolt project."
   [bolt-projects-dir request]
-  (let [project (get-in request [:params "project"])
+  (let [versioned-project (get-in request [:params "versioned_project"])
         path (get-in request [:params :rest])
         match (bidi/match-route project-routes path)]
     (when match
@@ -343,7 +343,7 @@
                         (if (empty? errors)
                           (middleware-utils/json-response
                            200
-                           (get-plugins-metadata bolt-projects-dir project mount-point checksum-type ignore true))
+                           (get-plugins-metadata bolt-projects-dir versioned-project mount-point checksum-type ignore true))
                           {:status 400
                            :headers {"Content-Type" "text/plain"}
                            :body (str/join "\n" (cons "Not all parameter values are supported in this implementation: " errors))}))
@@ -355,18 +355,18 @@
   "Handle file_metadatas requests and dispatch them to the correct handler for
   environments or projects."
   [bolt-projects-dir ruby-request-handler request]
-  (let [project (get-in request [:params "project"])
+  (let [versioned-project (get-in request [:params "versioned_project"])
         environment (get-in request [:params "environment"])]
     (cond
-      (and project environment)
+      (and versioned-project environment)
       {:status 400
        :headers {"Content-Type" "text/plain"}
-       :body (i18n/tru "A file_metadatas request cannot specify both `environment` and `project` query parameters.")}
-      (and (nil? project) (nil? environment))
+       :body (i18n/tru "A file_metadatas request cannot specify both `environment` and `versioned_project` query parameters.")}
+      (and (nil? versioned-project) (nil? environment))
       {:status 400
        :headers {"Content-Type" "text/plain"}
-       :body (i18n/tru "A file_metadatas request must include an `environment` or `project` query parameter.")}
-      project
+       :body (i18n/tru "A file_metadatas request must include an `environment` or `versioned_project` query parameter.")}
+      versioned-project
       (handle-project-file-metadatas bolt-projects-dir request)
 
       :else
