@@ -509,26 +509,26 @@ msgstr ""
 
 #: src/clj/puppetlabs/services/master/file_serving.clj
 msgid ""
-"A file_content request cannot specify both `environment` and `project` query "
-"parameters."
+"A file_content request cannot specify both `environment` and "
+"`versioned_project` query parameters."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/file_serving.clj
 msgid ""
-"A file_content request must include an `environment` or `project` query "
-"parameter."
+"A file_content request must include an `environment` or `versioned_project` "
+"query parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/file_serving.clj
 msgid ""
-"A file_metadatas request cannot specify both `environment` and `project` "
-"query parameters."
+"A file_metadatas request cannot specify both `environment` and "
+"`versioned_project` query parameters."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/file_serving.clj
 msgid ""
-"A file_metadatas request must include an `environment` or `project` query "
-"parameter."
+"A file_metadatas request must include an `environment` or "
+"`versioned_project` query parameter."
 msgstr ""
 
 #: src/clj/puppetlabs/services/master/master_core.clj

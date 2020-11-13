@@ -769,62 +769,62 @@
                     :master-conf-dir master-service-test-runtime-dir}}
 
     (testing "can retrieve file_content from the modules mount from a project"
-      (let [response (http-get "/puppet/v3/file_content/modules/utilities/etc/greeting?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/modules/utilities/etc/greeting?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "Good morning\n" (:body response)))
         (is (= "13" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve file_content from the tasks mount from a project"
-      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "bye" (:body response)))
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve file_content from the top level of a project"
-      (let [response (http-get "/puppet/v3/file_content/tasks/local/init.sh?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/tasks/local/init.sh?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= ". $PT__installdir/helpers/files/marco.sh\nmarco\n" (:body response)))
         (is (= "63" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve file_content from a project with an embedded structure"
-      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?project=embedded_e19e09")]
+      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?versioned_project=embedded_e19e09")]
         (is (= 200 (:status response)))
         (is (= "vim" (:body response)))
         (is (= "3" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve file_content from a custom modulepath"
-      (let [response (http-get "/puppet/v3/file_content/modules/helpers/marco.sh?project=local_afafaf")]
+      (let [response (http-get "/puppet/v3/file_content/modules/helpers/marco.sh?versioned_project=local_afafaf")]
         (is (= 200 (:status response)))
         (is (= "marco () {\n  echo \"polo\"\n}\n" (:body response)))
         (is (= "27" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "cannot retrieve file_content from the default modulepath when a custom modulepath is set"
-      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?project=local_afafaf")]
+      (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?versioned_project=local_afafaf")]
         (is (= 404 (:status response)))))
 
     (testing "mount point not found"
-      (let [response (http-get "/puppet/v3/file_content/glorb/test/packages?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/glorb/test/packages?versioned_project=local_23")]
         (is (= 404 (:status response)))))
 
     (testing "project not found"
-      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?project=nothere")]
+      (let [response (http-get "/puppet/v3/file_content/modules/test/packages?versioned_project=nothere")]
         (is (= 404 (:status response)))))
 
     (testing "module not found"
-      (let [response (http-get "/puppet/v3/file_content/modules/nomodule/packages?project=embedded_e19e09")]
+      (let [response (http-get "/puppet/v3/file_content/modules/nomodule/packages?versioned_project=embedded_e19e09")]
         (is (= 404 (:status response)))))
 
     (testing "missing path?"
-      (let [response (http-get "/puppet/v3/file_content/modules/test/?project=embedded_e19e09")]
+      (let [response (http-get "/puppet/v3/file_content/modules/test/?versioned_project=embedded_e19e09")]
         (is (= 404 (:status response)))))
 
     (testing "can retrieve plugin metadata"
-      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23")
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?versioned_project=local_23")
             [file-entry] (filter #(= "puppet/monkey_patch.rb" (get % "relative_path")) (json/decode (:body response)))]
         ;; Only check some of the entries that won't vary based on the test environment
         (is (= nil (get file-entry "destination")))
@@ -835,21 +835,21 @@
         (is (str/ends-with? (get file-entry "path") "modules/helpers/lib"))))
 
     (testing "can retrieve plugin files"
-      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/monkey_patch.rb?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/monkey_patch.rb?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
         (is (= "59" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve plugin files from the top level project lib dir"
-      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/comment.rb?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/comment.rb?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "# This is the project\n" (:body response)))
         (is (= "22" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve pluginfacts metadata"
-      (let [response (http-get "/puppet/v3/file_metadatas/pluginfacts?project=local_23")
+      (let [response (http-get "/puppet/v3/file_metadatas/pluginfacts?versioned_project=local_23")
             [file-entry] (filter #(= "something" (get % "relative_path")) (json/decode (:body response)))]
         (is (= nil (get file-entry "destination")))
         (is (= "file" (get file-entry "type")))
@@ -857,14 +857,14 @@
         (is (= "{sha256}4bc453b53cb3d914b45f4b250294236adba2c0e09ff6f03793949e7e39fd4cc1" (get-in file-entry ["checksum" "value"])))))
 
     (testing "can retrieve pluginfacts files"
-      (let [response (http-get "/puppet/v3/file_content/pluginfacts/unhelpful?project=local_23")]
+      (let [response (http-get "/puppet/v3/file_content/pluginfacts/unhelpful?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "factually unhelpful\n" (:body response)))
         (is (= "20" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "doesn't support nonstandard options"
-      (let [response (http-get "/puppet/v3/file_metadatas/plugins?project=local_23&links=manage")]
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?versioned_project=local_23&links=manage")]
         (is (= 400 (:status response)))
         (is (= "Not all parameter values are supported in this implementation: \nThe only supported value of `links` at this time is `follow`"
                (:body response)))))))
