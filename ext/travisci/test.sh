@@ -4,6 +4,10 @@ set -e
 
 echo "Total memory available: $(grep MemTotal /proc/meminfo | awk '{print $2}')"
 
+git submodule update --recursive --init
+lein clean
+rm -rf vendor
+
 ./dev/install-test-gems.sh
 
 if [ "$MULTITHREADED" = "true" ]; then
