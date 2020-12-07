@@ -98,12 +98,12 @@ describe Puppet::Server::ASTCompiler do
           ]
         }
         target_variables = {
-          "values" => [
+          "values" => {
             # should be shadowed by target_var_fact fact
-            {"target_var_fact" => "target_value"},
+            "target_var_fact" => "target_value",
             # should be shadowed by plan_var_plain plan variable
-            {"plan_var_plain"  => "target_value"},
-          ]
+            "plan_var_plain"  => "target_value"
+          }
         }
 
         code = <<CODE
