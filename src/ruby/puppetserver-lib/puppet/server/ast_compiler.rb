@@ -40,7 +40,7 @@ module Puppet
           # Prior to PE-29443 variables were in a hash. Serialization between ruby/clojure/json did
           # not preserver hash order necessary for deserialization. The data strucutre is now stored
           # in a list for moving data and the list is used to construct an ordered ruby hash.
-          variables = if compile_options['variables']['values'].is_a?(Array)
+          plan_variables = if compile_options['variables']['values'].is_a?(Array)
                         compile_options['variables']['values'].each_with_object({}) do |param_hash, acc|
                           acc[param_hash.keys.first] = param_hash.values.first
                         end
@@ -48,16 +48,10 @@ module Puppet
                         compile_options['variables']['values']
                       end
 
-          target_variables = if compile_options.key?('target_variables')
-                               compile_options['target_variables']['values'].each_with_object({}) do |param_hash, acc|
-                                 acc[param_hash.keys.first] = param_hash.values.first
-                               end
-                             else
-                               {}
-                             end
+          target_variables = compile_options.dig('target_variables', 'values') || {}
 
           variables = {
-            variables: variables,
+            variables: plan_variables,
             target_variables: target_variables,
           }
 
