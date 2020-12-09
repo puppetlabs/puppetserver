@@ -25,9 +25,10 @@ def request(code)
    "variables" => {"values" => {"foo" => "bar"}}}
 end
 
-def find_notify(catalog)
+def find_notify(catalog, title: nil)
   catalog['resources'].find do |item|
-    item['type'] == 'Notify'
+    next item['type'] == 'Notify' unless title
+    item['type'] == 'Notify' && item['title'] == title
   end
 end
 
@@ -69,6 +70,70 @@ describe Puppet::Server::ASTCompiler do
       expect {
         Puppet::Server::ASTCompiler.compile(bolt_request, boltlib_path)
       }.to raise_error(Puppet::Error, /the path to boltlib modules must be provided/)
+    end
+
+    context 'when compiling for a plan with fact and plan/target variable collisions' do
+      let(:boltlib_path) { [] }
+
+      it 'properly shadows the relevant variables' do
+        # TODO: This is a temporary stub of the Bolt requires to get this
+        # test to pass. We should figure out how to properly load Bolt code
+        # later for the tests.
+        allow(Puppet::Server::ASTCompiler).to receive(:load_bolt)
+        mock_apply_inventory_class = double('Bolt::ApplyInventory')
+        allow(mock_apply_inventory_class).to receive(:new).with(anything).and_return(double('mock'))
+        stub_const("Bolt::ApplyInventory", mock_apply_inventory_class)
+
+        facts = {
+          "values" => {
+            "plan_var_fact"   => "fact_value",
+            "target_var_fact" => "fact_value",
+          }
+        }
+        variables = {
+          "values" => [
+            # should be shadowed by plan_var_fact fact
+            {"plan_var_fact"  => "plan_value"},
+            {"plan_var_plain" => "plan_value"},
+          ]
+        }
+        target_variables = {
+          "values" => {
+            # should be shadowed by target_var_fact fact
+            "target_var_fact" => "target_value",
+            # should be shadowed by plan_var_plain plan variable
+            "plan_var_plain"  => "target_value"
+          }
+        }
+
+        code = <<CODE
+notify { "plan_var_fact": message => $plan_var_fact }
+notify { "target_var_fact": message => $target_var_fact }
+notify { "plan_var_plain":  message => $plan_var_plain }
+CODE
+        bolt_request = request(code)
+        bolt_request.merge!(
+          'facts'            => facts,
+          'variables'        => variables,
+          'target_variables' => target_variables,
+          'options'          => { 'compile_for_plan' => true },
+        )
+
+        response = Puppet::Server::ASTCompiler.compile(bolt_request, boltlib_path)
+        catalog = response[:catalog]
+
+        # assert the shadowed values
+        expected_collisions = {
+          'plan_var_fact'   => 'fact_value',
+          'target_var_fact' => 'fact_value',
+          'plan_var_plain'  => 'plan_value',
+        }
+        expected_collisions.each do |var, expected_value|
+          notify = find_notify(catalog, title: var)
+          expect(notify).not_to be_nil
+          expect(notify['parameters']['message']).to eql(expected_value)
+        end
+      end
     end
   end
 end
