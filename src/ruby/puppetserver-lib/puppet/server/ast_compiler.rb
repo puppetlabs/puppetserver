@@ -33,17 +33,14 @@ module Puppet
             raise(Puppet::Error, msg)
           end
 
-          # TODO: PE-28677 Develop entrypoint for loading bits of bolt we need here.
-          require 'bolt/apply_inventory'
-          require 'bolt/apply_target'
-          require 'bolt/pal/issues'
+          load_bolt()
 
           Puppet[:node_name_value] = compile_options['certname']
 
           # Prior to PE-29443 variables were in a hash. Serialization between ruby/clojure/json did
           # not preserver hash order necessary for deserialization. The data strucutre is now stored
           # in a list for moving data and the list is used to construct an ordered ruby hash.
-          variables = if compile_options['variables']['values'].is_a?(Array)
+          plan_variables = if compile_options['variables']['values'].is_a?(Array)
                         compile_options['variables']['values'].each_with_object({}) do |param_hash, acc|
                           acc[param_hash.keys.first] = param_hash.values.first
                         end
@@ -51,11 +48,17 @@ module Puppet
                         compile_options['variables']['values']
                       end
 
+          target_variables = compile_options.dig('target_variables', 'values') || {}
+
+          variables = {
+            variables: plan_variables,
+            target_variables: target_variables,
+          }
+
           env_conf = {
             pre_modulepath: boltlib_path,
             envpath: Puppet[:environmentpath],
             facts: compile_options['facts']['values'],
-            variables: variables
           }
 
           # Use the existing environment with the requested name
@@ -75,7 +78,7 @@ module Puppet
               # This compiler has been configured with a node containing
               # the requested environment, facts, and variables, and is used
               # to compile a catalog in that context from the supplied AST.
-              pal.with_catalog_compiler() do |compiler|
+              pal.with_catalog_compiler(**variables) do |compiler|
                 # TODO: PUP-10476 Explore setting these as default in PAL. They are the defaults in Puppet
                 Puppet[:strict] = :warning
                 Puppet[:strict_variables] = false
@@ -116,6 +119,14 @@ module Puppet
         end
       end
       private_class_method :compile_ast
+
+      def self.load_bolt()
+        # TODO: PE-28677 Develop entrypoint for loading bits of bolt we need here.
+        require 'bolt/apply_inventory'
+        require 'bolt/apply_target'
+        require 'bolt/pal/issues'
+      end
+      private_class_method :load_bolt
 
       def self.build_program(code)
         ast = Puppet::Pops::Serialization::FromDataConverter.convert(code)
