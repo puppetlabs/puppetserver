@@ -676,7 +676,16 @@
     (when base
       (when (fs/exists? old-cadir)
         (fs/delete-dir old-cadir))
-      (fs/sym-link old-cadir cadir))))
+      (fs/sym-link old-cadir cadir)
+      ;; Ensure the symlink has the same ownership as the actual cadir.
+      ;; Symlink permissions are ignored in favor of the target's permissions,
+      ;; so we don't have to change those.
+      (let [old-cadir-path (ks-file/str->path old-cadir)
+            cadir-path (ks-file/str->path cadir)
+            owner (Files/getOwner cadir-path ks-file/nofollow-links)
+            group (Files/getAttribute cadir-path "posix:group" ks-file/nofollow-links)]
+        (Files/setOwner old-cadir-path owner)
+        (Files/setAttribute old-cadir-path "posix:group" group ks-file/nofollow-links)))))
 
 (schema/defn generate-ssl-files!
   "Given the CA settings, generate and write to disk all of the necessary
