@@ -7,7 +7,7 @@ echo "* HOSTNAME: '${HOSTNAME}'"
 echo "* hostname -f: '$(hostname -f)'"
 if test -n "${PUPPETSERVER_HOSTNAME}"; then
   echo "* PUPPETSERVER_HOSTNAME: '${PUPPETSERVER_HOSTNAME}'"
-  certname='${PUPPETSERVER_HOSTNAME}.pem'
+  certname=${PUPPETSERVER_HOSTNAME}.pem
 else
   echo "* PUPPETSERVER_HOSTNAME: unset"
   certname=$(ls "${SSLDIR}/certs" | grep --invert-match ca.pem)
