@@ -56,4 +56,41 @@ describe 'Puppet::Server::Master' do
       expect(Puppet.settings).to be_a_kind_of(Puppet::Server::Settings)
     end
   end
+
+  context "#check_ca_dir_for_deprecation_warning" do
+    before do
+      @master = Puppet::Server::Master.new({}, {})
+      @ssldir = Puppet[:ssldir]
+      @cadir = File.join(@ssldir, 'ca')
+    end
+
+    it "warns when there is a directory in puppet's ssl dir" do
+      expect(File).to receive(:exist?).with(@cadir).and_return(true)
+      expect(File).to receive(:symlink?).with(@cadir).and_return(false)
+      expect(@master).to receive(:log_ca_migration_warning)
+      @master.check_cadir_for_deprecation_warning
+    end
+
+    it "warns when the symlink target is in puppet's ssl dir" do
+      expect(File).to receive(:exist?).with(@cadir).and_return(true)
+      expect(File).to receive(:symlink?).with(@cadir).and_return(true)
+      expect(File).to receive(:readlink).with(@cadir).and_return(File.join(@ssldir, 'someotherdirinssldir'))
+      expect(@master).to receive(:log_ca_migration_warning)
+      @master.check_cadir_for_deprecation_warning
+    end
+
+    it "does not warn when there is no ca directory in puppet's ssl dir" do
+      expect(File).to receive(:exist?).with(@cadir).and_return(false)
+      expect(@master).to_not receive(:log_ca_migration_warning)
+      @master.check_cadir_for_deprecation_warning
+    end
+
+    it "does not warn when there is a symlink pointing outside puppet's ssl dir" do
+      expect(File).to receive(:exist?).with(@cadir).and_return(true)
+      expect(File).to receive(:symlink?).with(@cadir).and_return(true)
+      expect(File).to receive(:readlink).with(@cadir).and_return('/I/am/a/dir/outside/of/puppets/ssl/dir')
+      expect(@master).to_not receive(:log_ca_migration_warning)
+      @master.check_cadir_for_deprecation_warning
+    end
+  end
 end

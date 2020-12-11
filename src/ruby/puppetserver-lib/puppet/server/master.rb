@@ -57,6 +57,7 @@ class Puppet::Server::Master
           "supports threadsafe settings. Please upgrade to Puppet 6.13.0 or greater.")
       end
     end
+    check_cadir_for_deprecation_warning
   end
 
   def handleRequest(request)
@@ -193,6 +194,35 @@ class Puppet::Server::Master
     # otherwise we have to request 'module::planname'
     qualified_plan_name = plan_name == 'init' ? module_name : "#{module_name}::#{plan_name}"
     Puppet::InfoService.plan_data(environment_name, module_name, qualified_plan_name)
+  end
+
+  def log_ca_migration_warning
+    urge_to_migrate = <<-UTM
+The cadir is currently configured to be inside the #{Puppet[:ssldir]} directory. This config
+setting and the directory location will not be used in a future version of puppet. Please run the
+puppetserver ca tool to migrate out from the puppet confdir to the /etc/puppetlabs/puppetserver/ca
+directory. Use `puppetserver ca migrate --help` for more info.
+UTM
+    Puppet.warn_once('deprecations',
+                     'CA migration message',
+                     urge_to_migrate,
+                     :default,
+                     :default)
+  end
+
+  def check_cadir_for_deprecation_warning
+    old_ca_dir = "#{Puppet[:ssldir]}/ca"
+
+    if File.exist?(old_ca_dir)
+      if File.symlink?(old_ca_dir)
+        target = File.readlink(old_ca_dir)
+        if target.start_with?(Puppet[:ssldir])
+          log_ca_migration_warning
+        end
+      else
+        log_ca_migration_warning
+      end
+    end
   end
 
   private
