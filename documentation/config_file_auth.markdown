@@ -208,10 +208,10 @@ name: "my path"
 
 Puppet 4 changed the URL structure for Puppet master and CA endpoints. For more information, see:
 
--   [Puppet 4 HTTPS API documentation](https://puppet.com/docs/puppet/latest/http_api/http_api_index.html)
--   [Puppet 3 HTTPS API documentation](https://docs.puppet.com/references/3.8.0/developer/file.http_api_index.html)
--   [Puppet 4 `auth.conf` documentation](https://puppet.com/docs/puppet/latest/config_file_auth.html)
--   [Puppet 3 `auth.conf` documentation](https://docs.puppet.com/puppet/3.8/config_file_auth.html)
+-   [Puppet 4 HTTPS API documentation](https://github.com/puppetlabs/docs-archive/blob/master/puppet/4.10/http_api/http_api_index.md)
+-   [Puppet 3 HTTPS API documentation](https://github.com/puppetlabs/docs-archive/blob/master/puppet/3.8/http_api/http_api_index.md)
+-   [Puppet 4 `auth.conf` documentation](https://puppet.com/docs/puppet/4.10/config_file_auth.html)
+-   [Puppet 3 `auth.conf` documentation](https://puppet.com/docs/puppet/3.8/config_file_auth.html)
 
 Puppet Server allows agents to make requests at the old URLs and internally translates them as requests to the new endpoints. However, rules in `auth.conf` that match Puppet 3-style URLs will have _no effect._ For more information, see [Backward Compatibility With Puppet 3 Agents](./compatibility_with_puppet_agent.markdown).
 
