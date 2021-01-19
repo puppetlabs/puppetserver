@@ -39,6 +39,7 @@
                    (constantly nil)
                    true
                    nil
+                   ["./dev-resources/puppetlabs/services/master/master_core_test/builtin_bolt_content"]
                    "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects")
       (comidi/routes->handler)
       (wrap-middleware puppet-version)))

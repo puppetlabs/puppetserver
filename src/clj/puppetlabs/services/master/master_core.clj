@@ -991,15 +991,16 @@
   v3-ruby-routes :- bidi-schema/RoutePair
   "v3 route tree for the ruby side of the master service."
   [request-handler :- IFn
+   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
    bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/routes
    (comidi/GET ["/node/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_content/" [#".*" :rest]] request
                ;; Not strictly ruby routes anymore because of this
-               (file-serving/file-content-handler bolt-projects-dir request-handler (ring/params-request request)))
+               (file-serving/file-content-handler bolt-builtin-content-dir bolt-projects-dir request-handler (ring/params-request request)))
    (comidi/GET ["/file_metadatas/" [#".*" :rest]] request
-               (file-serving/file-metadatas-handler bolt-projects-dir request-handler (ring/params-request request)))
+               (file-serving/file-metadatas-handler bolt-builtin-content-dir bolt-projects-dir request-handler (ring/params-request request)))
    (comidi/GET ["/file_metadata/" [#".*" :rest]] request
                (request-handler request))
    (comidi/GET ["/file_bucket_file/" [#".*" :rest]] request
@@ -1119,9 +1120,10 @@
    environment-class-cache-enabled :- schema/Bool
    wrap-with-jruby-queue-limit :- IFn
    boltlib-path :- (schema/maybe [schema/Str])
+   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
    bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/context "/v3"
-                  (v3-ruby-routes ruby-request-handler bolt-projects-dir)
+                  (v3-ruby-routes ruby-request-handler bolt-builtin-content-dir bolt-projects-dir)
                   (comidi/wrap-routes
                    (v3-clojure-routes jruby-service
                                       get-code-content-fn
@@ -1231,6 +1233,7 @@
    current-code-id-fn :- IFn
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
+   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
    bolt-projects-dir :- (schema/maybe schema/Str)]
   (comidi/routes
    (v3-routes ruby-request-handler
@@ -1241,6 +1244,7 @@
               environment-class-cache-enabled
               wrap-with-jruby-queue-limit
               boltlib-path
+              bolt-builtin-content-dir
               bolt-projects-dir)
    (v4-routes clojure-request-wrapper
               jruby-service
@@ -1320,6 +1324,7 @@
    wrap-with-jruby-queue-limit :- IFn
    environment-class-cache-enabled :- schema/Bool
    boltlib-path :- (schema/maybe [schema/Str])
+   bolt-builtin-content-dir :- (schema/maybe [schema/Str])
    bolt-projects-dir :- (schema/maybe schema/Str)]
   (let [ruby-request-handler (get-wrapped-handler handle-request
                                                   wrap-with-authorization-check
@@ -1338,6 +1343,7 @@
                  current-code-id
                  environment-class-cache-enabled
                  boltlib-path
+                 bolt-builtin-content-dir
                  bolt-projects-dir)))
 
 (def MasterStatusV1

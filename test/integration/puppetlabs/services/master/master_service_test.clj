@@ -768,7 +768,8 @@
 (deftest ^:integration project-file-content
   (bootstrap-testutils/with-puppetserver-running
     app
-    {:bolt {:projects-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"}
+    {:bolt {:builtin-content-dir ["./dev-resources/puppetlabs/services/master/master_core_test/builtin_bolt_content"]
+            :projects-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"}
      :jruby-puppet {:gem-path gem-path
                     :max-active-instances 1
                     :master-code-dir test-resources-code-dir
@@ -807,6 +808,20 @@
         (is (= 200 (:status response)))
         (is (= "marco () {\n  echo \"polo\"\n}\n" (:body response)))
         (is (= "27" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve built-in file_content"
+      (let [response (http-get "/puppet/v3/file_content/tasks/bic_module_one/init.sh?versioned_project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= ". $PT__installdir/helpers/files/marco.sh\nmarco\n" (:body response)))
+        (is (= "63" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve overriden built-in file_content"
+      (let [response (http-get "/puppet/v3/file_content/tasks/bic_module_one/init.sh?versioned_project=override_builtin_content")]
+        (is (= 200 (:status response)))
+        (is (= ". $PT__installdir/helpers/files/marco.sh\noverride_marco\n" (:body response)))
+        (is (= "73" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "cannot retrieve file_content from the default modulepath when a custom modulepath is set"

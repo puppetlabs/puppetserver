@@ -130,9 +130,10 @@
   "Given the path of a project, the name of a module, and the modulepath defined
   in the project's config (can be nil) search the project's module path and
   return the path to that module as a File, or nil."
-  [project-root module modulepath]
-  (->> project-root
-       (dirs-in-project-modulepath modulepath)
+  [bolt-builtin-content-dir project-root module modulepath]
+  (->> bolt-builtin-content-dir
+       list-dirs-in-paths
+       (concat (dirs-in-project-modulepath modulepath project-root))
        (filter #(= module (fs/base-name %)))
        first))
 
@@ -180,7 +181,7 @@
   "Find a file in a project using the parameters from a `file_content` request.
   Returns the path as as string. If the module name is the same as the project
   name then files are served from the project directly."
-  [bolt-projects-dir versioned-project mount module path]
+  [bolt-builtin-content-dir bolt-projects-dir versioned-project mount module path]
   (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
     (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
@@ -188,7 +189,7 @@
           modulepath (get-project-modulepath project-config)
           module-root (if (= project-name module)
                         project-root
-                        (find-project-module project-root module modulepath))
+                        (find-project-module bolt-builtin-content-dir project-root module modulepath))
           file-path (str module-root "/" (mount->path-component mount) "/" path)]
       (when (fs/exists? file-path)
         file-path))))
@@ -272,7 +273,7 @@
 
 (defn handle-project-file-content
   "Handle a file_content request for a bolt project."
-  [bolt-projects-dir request]
+  [bolt-builtin-content-dir bolt-projects-dir request]
   (let [versioned-project (get-in request [:params "versioned_project"])
         path (get-in request [:params :rest])
         match (bidi/match-route project-routes path)]
@@ -283,7 +284,7 @@
             file-path (get-in match [:route-params :file-path])]
         (case mount-type
           :basic (make-file-content-response
-                  (find-project-file bolt-projects-dir versioned-project mount-point module file-path)
+                  (find-project-file bolt-builtin-content-dir bolt-projects-dir versioned-project mount-point module file-path)
                   file-path)
           :pluginsync (make-file-content-response
                        (find-project-plugin-file bolt-projects-dir versioned-project mount-point file-path)
@@ -295,7 +296,7 @@
 (defn file-content-handler
   "Handle file_content requests and dispatch them to the correct handler for
   environments or projects."
-  [bolt-projects-dir ruby-request-handler request]
+  [bolt-builtin-content-dir bolt-projects-dir ruby-request-handler request]
   (let [versioned-project (get-in request [:params "versioned_project"])
         environment (get-in request [:params "environment"])]
     (cond
@@ -308,7 +309,7 @@
        :headers {"Content-Type" "text/plain"}
        :body (i18n/tru "A file_content request must include an `environment` or `versioned_project` query parameter.")}
       versioned-project
-      (handle-project-file-content bolt-projects-dir request)
+      (handle-project-file-content bolt-builtin-content-dir bolt-projects-dir request)
 
       :else
       (ruby-request-handler request))))
@@ -329,7 +330,7 @@
 
 (defn handle-project-file-metadatas
   "Handle a file_metadatas request for a bolt project."
-  [bolt-projects-dir request]
+  [bolt-builtin-content-dir bolt-projects-dir request]
   (let [versioned-project (get-in request [:params "versioned_project"])
         path (get-in request [:params :rest])
         match (bidi/match-route project-routes path)]
@@ -354,7 +355,7 @@
 (defn file-metadatas-handler
   "Handle file_metadatas requests and dispatch them to the correct handler for
   environments or projects."
-  [bolt-projects-dir ruby-request-handler request]
+  [bolt-builtin-content-dir bolt-projects-dir ruby-request-handler request]
   (let [versioned-project (get-in request [:params "versioned_project"])
         environment (get-in request [:params "environment"])]
     (cond
@@ -367,7 +368,7 @@
        :headers {"Content-Type" "text/plain"}
        :body (i18n/tru "A file_metadatas request must include an `environment` or `versioned_project` query parameter.")}
       versioned-project
-      (handle-project-file-metadatas bolt-projects-dir request)
+      (handle-project-file-metadatas bolt-builtin-content-dir bolt-projects-dir request)
 
       :else
       (ruby-request-handler request))))
