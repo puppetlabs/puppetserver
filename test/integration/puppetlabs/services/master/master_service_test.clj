@@ -855,11 +855,36 @@
         ;; Does it choose from the right module?
         (is (str/ends-with? (get file-entry "path") "modules/helpers/lib"))))
 
+    (testing "can retrieve builtin plugin metadata"
+      (let [response (http-get "/puppet/v3/file_metadatas/plugins?versioned_project=local_23")
+            [file-entry] (filter #(= "puppet/builtin_monkey_patch.rb" (get % "relative_path")) (json/decode (:body response)))]
+        ;; Only check some of the entries that won't vary based on the test environment
+        (is (= nil (get file-entry "destination")))
+        (is (= "file" (get file-entry "type")))
+        (is (= "md5" (get-in file-entry ["checksum" "type"])))
+        (is (= "{md5}0e65e68baff3f37e4d62ee9ce2129a55" (get-in file-entry ["checksum" "value"])))
+        ;; Does it choose from the right module?
+        (is (str/ends-with? (get file-entry "path") "bic_module_one/lib"))))
+
     (testing "can retrieve plugin files"
       (let [response (http-get "/puppet/v3/file_content/plugins/puppet/monkey_patch.rb?versioned_project=local_23")]
         (is (= 200 (:status response)))
         (is (= "class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
         (is (= "59" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve builtin plugin files"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/builtin_monkey_patch.rb?versioned_project=local_23")]
+        (is (= 200 (:status response)))
+        (is (= "class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
+        (is (= "59" (get-in response [:headers "content-length"])))
+        (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
+
+    (testing "can retrieve overridden builtin plugin files"
+      (let [response (http-get "/puppet/v3/file_content/plugins/puppet/builtin_monkey_patch.rb?versioned_project=override_builtin_content")]
+        (is (= 200 (:status response)))
+        (is (= "overridden_class NilClass\n  def empty?\n    true\n  end\nend\n" (:body response)))
+        (is (= "70" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
     (testing "can retrieve plugin files from the top level project lib dir"

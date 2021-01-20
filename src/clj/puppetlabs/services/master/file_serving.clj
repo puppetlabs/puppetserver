@@ -198,11 +198,13 @@
   "Collect all the paths represented by a specific mount that are found in the
   modulepath. If `project-as-module?` is truthy then include any mount
   directory found at the top level of the project."
-  [mount modulepath project-root project-as-module?]
+  [bolt-builtin-content-dir mount modulepath project-root project-as-module?]
   (let [sub-dir (case mount
                     "plugins" "lib"
                     "pluginfacts" "facts.d")
-        modules-in-modulepath (dirs-in-project-modulepath modulepath project-root)
+        modules-in-modulepath (concat
+                                (dirs-in-project-modulepath modulepath project-root)
+                                (list-dirs-in-paths bolt-builtin-content-dir))
         module-dirs (if project-as-module?
                       (cons (fs/file project-root) modules-in-modulepath)
                       modules-in-modulepath)]
@@ -228,24 +230,24 @@
 (defn find-project-plugin-file
   "Given a relative path as received by the plugins mount, search all lib dirs
   and return the path to the file if it's found in any of them."
-  [bolt-projects-dir versioned-project mount relative-path]
+  [bolt-builtin-content-dir bolt-projects-dir versioned-project mount relative-path]
   (let [project-root (get-project-root bolt-projects-dir versioned-project)
         project-config (read-bolt-project-config project-root)
         project-as-module? (project-configured-as-module? project-config)
         modulepath (get-project-modulepath project-config)
-        mount-dirs (mount-dirs-in-modulepath mount modulepath project-root project-as-module?)]
+        mount-dirs (mount-dirs-in-modulepath bolt-builtin-content-dir mount modulepath project-root project-as-module?)]
     (some (partial plugin-file-if-exists relative-path) mount-dirs)))
 
 (defn get-plugins-metadata
   "Return the metadata for pluginsync. This scans the lib directories of all
   modules and returns a list of files smashed together."
-  [bolt-projects-dir versioned-project mount checksum-type ignores ignore-source-permissions]
+  [bolt-builtin-content-dir bolt-projects-dir versioned-project mount checksum-type ignores ignore-source-permissions]
   (when (is-bolt-project? (str bolt-projects-dir "/" versioned-project))
     (let [project-root (get-project-root bolt-projects-dir versioned-project)
           project-config (read-bolt-project-config project-root)
           project-as-module? (project-configured-as-module? project-config)
           modulepath (get-project-modulepath project-config)
-          files (->> (mount-dirs-in-modulepath mount modulepath project-root project-as-module?)
+          files (->> (mount-dirs-in-modulepath bolt-builtin-content-dir mount modulepath project-root project-as-module?)
                      (map #(walk-directory % ignores))
                      reverse
                      (apply merge))]
@@ -287,7 +289,7 @@
                   (find-project-file bolt-builtin-content-dir bolt-projects-dir versioned-project mount-point module file-path)
                   file-path)
           :pluginsync (make-file-content-response
-                       (find-project-plugin-file bolt-projects-dir versioned-project mount-point file-path)
+                       (find-project-plugin-file bolt-builtin-content-dir bolt-projects-dir versioned-project mount-point file-path)
                        file-path)
           {:status 400
            :headers {"Content-Type" "text/plain"}
@@ -344,7 +346,7 @@
                         (if (empty? errors)
                           (middleware-utils/json-response
                            200
-                           (get-plugins-metadata bolt-projects-dir versioned-project mount-point checksum-type ignore true))
+                           (get-plugins-metadata bolt-builtin-content-dir bolt-projects-dir versioned-project mount-point checksum-type ignore true))
                           {:status 400
                            :headers {"Content-Type" "text/plain"}
                            :body (str/join "\n" (cons "Not all parameter values are supported in this implementation: " errors))}))
