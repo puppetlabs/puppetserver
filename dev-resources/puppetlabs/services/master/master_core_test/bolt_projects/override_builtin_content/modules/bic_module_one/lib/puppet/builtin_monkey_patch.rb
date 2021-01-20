@@ -1,4 +1,4 @@
-class NilClass
+overridden_class NilClass
   def empty?
     true
   end
