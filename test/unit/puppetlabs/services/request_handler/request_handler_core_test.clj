@@ -266,8 +266,8 @@
   (testing "Improperly URL encoded content"
     (is (thrown+? [:kind :bad-request
                    :msg (str "Unable to URL decode the x-client-cert header: "
-                             "For input string: \"1%\"")]
-                  (jruby-request-with-client-cert-header "%1%2"))))
+                             "For input string: \"1Q\"")]
+                  (jruby-request-with-client-cert-header "%1Q%2"))))
   (testing "Bad certificate content"
     (is (thrown+? [:kind :bad-request
                    :msg (str "Unable to parse x-client-cert into "
