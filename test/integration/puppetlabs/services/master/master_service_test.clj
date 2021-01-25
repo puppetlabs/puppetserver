@@ -855,8 +855,8 @@
         ;; Only check some of the entries that won't vary based on the test environment
         (is (= nil (get file-entry "destination")))
         (is (= "file" (get file-entry "type")))
-        (is (= "md5" (get-in file-entry ["checksum" "type"])))
-        (is (= "{md5}0e65e68baff3f37e4d62ee9ce2129a55" (get-in file-entry ["checksum" "value"])))
+        (is (= "sha256" (get-in file-entry ["checksum" "type"])))
+        (is (= "{sha256}76b2e03b82880885385595045033c4e3122e373c7023e037461a650ec85829ad" (get-in file-entry ["checksum" "value"])))
         ;; Does it choose from the right module?
         (is (str/ends-with? (get file-entry "path") "bic_module_one/lib"))))
 
