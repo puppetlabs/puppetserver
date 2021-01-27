@@ -104,7 +104,7 @@ COPY --from=build /puppetserver.deb /puppetserver.deb
 
 ARG UBUNTU_CODENAME
 ARG install_path=/puppetserver.deb
-ARG deb_uri=http://nightlies.puppet.com/apt/puppet6-nightly-release-$UBUNTU_CODENAME.deb
+ARG deb_uri=http://nightlies.puppet.com/apt/puppet7-nightly-release-$UBUNTU_CODENAME.deb
 
 ######################################################
 # release (build from packages)
@@ -115,7 +115,7 @@ FROM base as release
 ARG version
 ARG UBUNTU_CODENAME
 ARG install_path=puppetserver="$version"-1"$UBUNTU_CODENAME"
-ARG deb_uri=https://apt.puppetlabs.com/puppet6-release-$UBUNTU_CODENAME.deb
+ARG deb_uri=https://apt.puppetlabs.com/puppet7-release-$UBUNTU_CODENAME.deb
 
 ######################################################
 # final image
@@ -145,7 +145,7 @@ RUN dpkg -i /puppet.deb && \
     apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k && \
+    gem install --no-doc r10k && \
     puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
     cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
