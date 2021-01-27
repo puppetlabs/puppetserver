@@ -145,7 +145,7 @@ RUN dpkg -i /puppet.deb && \
     apt-get install --no-install-recommends -y $install_path puppetdb-termini && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
-    gem install --no-rdoc --no-ri r10k && \
+    gem install --no-doc r10k && \
     puppet config set autosign true --section master && \
     cp -pr /etc/puppetlabs/puppet /var/tmp && \
     cp -pr /opt/puppetlabs/server/data/puppetserver /var/tmp && \
