@@ -69,10 +69,16 @@ class Puppet::Server::Master
 
     body = response[:body]
     body_to_return =
-        if body.is_a? String or body.nil?
-          body
+        if body.is_a? String
+          if body.encoding == Encoding::ASCII_8BIT
+            body.to_java_bytes
+          else
+            body
+          end
         elsif body.is_a? IO
           body.to_inputstream
+        elsif body.nil?
+          body
         else
           raise "Don't know how to handle response body from puppet, which is a #{body.class}"
         end
