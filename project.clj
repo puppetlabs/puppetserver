@@ -121,7 +121,12 @@
                                         [ring-basic-authentication]
                                         [ring/ring-mock]
                                         [beckon]
-                                        [com.cemerick/url "0.1.1"]]}
+                                        [com.cemerick/url "0.1.1"]
+                                        ;; Pinned to fix CVE-2015-5237, overrides what's pulled
+                                        ;; in by cemerick/url, which is unmaintained.
+                                        ;; This pin should be removed when we can rip out
+                                        ;; cemerick/url, see SERVER-2959.
+                                        [com.google.protobuf/protobuf-java "3.4.0"]]}
              :dev [:defaults
                    {:dependencies [[org.bouncycastle/bcpkix-jdk15on]]}]
              :fips [:defaults
