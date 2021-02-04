@@ -1168,6 +1168,31 @@
          (whitelist-matches? autosign subject))
        false))))
 
+(schema/defn ensure-cn-as-san :- utils/SSLExtension
+  "Given an SSLExtension for alt names and a cn, ensure that the cn is listed as a DNS alt name."
+  [extension :- utils/SSLExtension
+   cn :- schema/Str]
+  (if (some #(= cn %) (get-in extension [:value :dns-name]))
+    extension
+    (update-in extension [:value :dns-name] conj cn)))
+
+(schema/defn is-san?
+  [extension]
+  (= utils/subject-alt-name-oid (:oid extension)))
+
+(schema/defn ensure-ext-list-has-cn-san
+  "Given a list of extensions to be signed onto a certificate, ensure that a CN is provided
+   as a subject alternative name; if no subject alternative name is found, generate a new
+   extension and add it to the list with the CN supplied"
+  [cn :- schema/Str
+   extensions :- (schema/pred utils/extension-list?)]
+  (let [[san] (filter is-san? extensions)
+        sans-san (filter (complement is-san?) extensions)
+        new-san (if san
+                  (ensure-cn-as-san san cn)
+                  (utils/subject-dns-alt-names [cn] false))]
+    (conj sans-san new-san)))
+
 (schema/defn create-agent-extensions :- (schema/pred utils/extension-list?)
   "Given a certificate signing request, generate a list of extensions that
   should be signed onto the certificate. This includes a base set of standard
@@ -1187,8 +1212,10 @@
                          #{:key-encipherment
                            :digital-signature} true)
                        (utils/subject-key-identifier
-                         subj-pub-key false)]]
-    (concat base-ext-list csr-ext-list)))
+                        subj-pub-key false)]
+        subject (get-csr-subject csr)
+        combined-list (vec (concat base-ext-list csr-ext-list))]
+    (ensure-ext-list-has-cn-san subject combined-list)))
 
 (schema/defn ^:always-validate
   autosign-certificate-request!
