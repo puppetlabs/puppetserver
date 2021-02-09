@@ -618,6 +618,32 @@
                         (i18n/trs "Because the ''client-whitelist'' is empty and ''authorization-required'' is set to ''false'', the ''certificate-authority.certificate-status'' settings will be ignored and authorization for the ''certificate_status'' endpoints will be done per the authorization rules in the /etc/puppetlabs/puppetserver/conf.d/auth.conf file.")
                         (i18n/trs "To suppress this warning, remove the ''certificate-authority'' configuration settings."))))))
 
+(schema/defn ensure-cn-as-san :- utils/SSLExtension
+  "Given the SSLExtension for subject alt names and a common name, ensure that the CN is listed in the SAN dns name list."
+  [extension :- utils/SSLExtension
+   cn :- schema/Str]
+  (if (some #(= cn %) (get-in extension [:value :dns-name]))
+    extension
+    (update-in extension [:value :dns-name] conj cn)))
+
+(schema/defn is-san?
+  [extension]
+  (= utils/subject-alt-name-oid (:oid extension)))
+
+(schema/defn ensure-ext-list-has-cn-san
+  "Given a list of extensions to be signed onto a certificate, ensure that a CN is provided
+   as a subject alternative name; if no subject alternative name extension is found, generate a new
+   extension and add it to the list with the CN supplied"
+  [cn :- schema/Str
+   extensions :- (schema/pred utils/extension-list?)]
+  (let [[san] (filter is-san? extensions)
+        sans-san (filter (complement is-san?) extensions)
+        new-san (if san
+                  (ensure-cn-as-san san cn)
+                  (utils/subject-dns-alt-names [cn] false))]
+    (conj sans-san new-san)))
+
+
 (schema/defn create-ca-extensions :- (schema/pred utils/extension-list?)
   "Create a list of extensions to be added to the CA certificate."
   [ca-name :- (schema/pred utils/valid-x500-name?)
@@ -626,7 +652,8 @@
   (vec
     (cons (utils/netscape-comment
            netscape-comment-value)
-          (utils/create-ca-extensions ca-name ca-serial ca-public-key))))
+          (->> (utils/create-ca-extensions ca-name ca-serial ca-public-key)
+               (ensure-ext-list-has-cn-san (utils/x500-name->CN ca-name))))))
 
 (schema/defn read-infra-nodes
     "Returns a list of infra nodes or infra node serials from the specified file organized as one item per line."
@@ -1167,31 +1194,6 @@
                zero?))
          (whitelist-matches? autosign subject))
        false))))
-
-(schema/defn ensure-cn-as-san :- utils/SSLExtension
-  "Given an SSLExtension for alt names and a cn, ensure that the cn is listed as a DNS alt name."
-  [extension :- utils/SSLExtension
-   cn :- schema/Str]
-  (if (some #(= cn %) (get-in extension [:value :dns-name]))
-    extension
-    (update-in extension [:value :dns-name] conj cn)))
-
-(schema/defn is-san?
-  [extension]
-  (= utils/subject-alt-name-oid (:oid extension)))
-
-(schema/defn ensure-ext-list-has-cn-san
-  "Given a list of extensions to be signed onto a certificate, ensure that a CN is provided
-   as a subject alternative name; if no subject alternative name is found, generate a new
-   extension and add it to the list with the CN supplied"
-  [cn :- schema/Str
-   extensions :- (schema/pred utils/extension-list?)]
-  (let [[san] (filter is-san? extensions)
-        sans-san (filter (complement is-san?) extensions)
-        new-san (if san
-                  (ensure-cn-as-san san cn)
-                  (utils/subject-dns-alt-names [cn] false))]
-    (conj sans-san new-san)))
 
 (schema/defn create-agent-extensions :- (schema/pred utils/extension-list?)
   "Given a certificate signing request, generate a list of extensions that
