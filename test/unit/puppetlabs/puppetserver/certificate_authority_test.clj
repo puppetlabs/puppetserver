@@ -1091,12 +1091,80 @@
         subject-pub  (utils/get-public-key subject-keys)
         subject      "subject"
         subject-dn   (utils/cn subject)]
+
     (testing "basic extensions are created for an agent"
       (let [csr  (utils/generate-certificate-request subject-keys subject-dn)
             exts (create-agent-extensions csr issuer-pub)
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
+                           {:oid       "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name [subject]}}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "basic extensions are created for an agent csr with dns-alt-names specified, aka subject alternative names, aka san"
+      (let [alt-names-list [subject "altname1"]
+            csr  (utils/generate-certificate-request
+                  subject-keys
+                  subject-dn
+                  [(utils/subject-dns-alt-names alt-names-list false)])
+            exts (create-agent-extensions csr issuer-pub)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid       "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name alt-names-list}}
+                           {:oid      "2.5.29.35"
+                            :critical false
+                            :value    {:issuer-dn     nil
+                                       :public-key    issuer-pub
+                                       :serial-number nil}}
+                           {:oid      "2.5.29.19"
+                            :critical true
+                            :value    {:is-ca false}}
+                           {:oid      "2.5.29.37"
+                            :critical true
+                            :value    [ssl-server-cert ssl-client-cert]}
+                           {:oid      "2.5.29.15"
+                            :critical true
+                            :value    #{:digital-signature :key-encipherment}}
+                           {:oid      "2.5.29.14"
+                            :critical false
+                            :value    subject-pub}]]
+        (is (= (set exts) (set exts-expected)))))
+
+    (testing "basic extensions are created for an agent csr with no CN in SAN"
+      (let [alt-names-list ["altname1" "altname2"]
+            csr  (utils/generate-certificate-request
+                  subject-keys
+                  subject-dn
+                  [(utils/subject-dns-alt-names alt-names-list false)])
+            exts (create-agent-extensions csr issuer-pub)
+            exts-expected [{:oid      "2.16.840.1.113730.1.13"
+                            :critical false
+                            :value    netscape-comment-value}
+                           {:oid       "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name (conj alt-names-list subject)}}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     nil
@@ -1233,6 +1301,9 @@
             exts-expected [{:oid      "2.16.840.1.113730.1.13"
                             :critical false
                             :value    netscape-comment-value}
+                           {:oid       "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name [subject]}}
                            {:oid      "2.5.29.35"
                             :critical false
                             :value    {:issuer-dn     (str "CN=" subject)
@@ -1265,6 +1336,9 @@
                             :value    {:issuer-dn     nil
                                        :public-key    issuer-pub
                                        :serial-number nil}}
+                           {:oid       "2.5.29.17"
+                            :critical false
+                            :value    {:dns-name ["subject"]}}
                            {:oid      "2.5.29.19"
                             :critical true
                             :value    {:is-ca false}}
