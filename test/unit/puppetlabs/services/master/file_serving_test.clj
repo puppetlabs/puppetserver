@@ -20,7 +20,7 @@
       (testing "in the modules mount"
         (is (= (fs/file (str bolt-projects-dir "/local_23/modules/helpers/files/marco.sh" ))
                (fs/file (find-project-file bolt-builtin-content-dir bolt-projects-dir "local_23" "modules" "helpers" "marco.sh"))))
-        (is (= (fs/file (str bolt-projects-dir "/local_23/site-modules/utilities/files/etc/greeting" ))
+        (is (= (fs/file (str bolt-projects-dir "/local_23/.modules/utilities/files/etc/greeting" ))
                (fs/file (find-project-file bolt-builtin-content-dir bolt-projects-dir "local_23" "modules" "utilities" "etc/greeting")))))
 
       (testing "returns nil when a component is not found"
@@ -37,24 +37,13 @@
 
 (deftest get-project-modulepath-test
   (testing "it returns the default modulepath when none is supplied"
-    (is (= ["modules" "site-modules" "site"]
+    (is (= ["modules" ".modules"]
            (get-project-modulepath {}))))
 
-  (testing "it returns the supplied modulepath if it exists"
+  (testing "if a modulepath is supplied, then it returns modulepath + '.modules'"
     (let [modulepath ["dir" "otherdir"]]
-      (is (= modulepath
-             (get-project-modulepath {:modulepath modulepath})))))
-
-  (testing "when a modules key is present in the configration"
-    (testing "the default modulepath is [\"modules\" \".modules\"]"
-      (is (= ["modules" ".modules"]
-             (get-project-modulepath {:modules nil}))))
-
-    (testing ".modules is added to a supplied modulepath"
-      (let [modulepath ["dir" "otherdir"]]
-        (is (= (concat modulepath [".modules"])
-               (get-project-modulepath {:modules nil
-                                        :modulepath modulepath})))))))
+      (is (= ["dir" "otherdir" ".modules"]
+             (get-project-modulepath {:modulepath modulepath}))))))
 
 (deftest metadata
   (let [path (Paths/get
