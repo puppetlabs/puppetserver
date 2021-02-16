@@ -782,6 +782,8 @@
         (is (= "13" (get-in response [:headers "content-length"])))
         (is (= "application/octet-stream" (get-in response [:headers "content-type"])))))
 
+    ;; this also tests that we can retrieve file content from the .modules mount of the project
+    ;; since that is where this task is located
     (testing "can retrieve file_content from the tasks mount from a project"
       (let [response (http-get "/puppet/v3/file_content/tasks/utilities/blah?versioned_project=local_23")]
         (is (= 200 (:status response)))
