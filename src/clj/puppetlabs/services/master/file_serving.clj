@@ -152,9 +152,6 @@
     (when (fs/file? config-path)
      (yaml/parse-string (slurp config-path)))))
 
-(def default-project-modulepath
-  ["modules" "site-modules" "site"])
-
 (defn parse-modulepath
   "The modulepath for a bolt project can either be an array of paths or a string
   with a path separator."
@@ -168,14 +165,13 @@
   modulepath. If the modulepath is not defined or the configuration map passed
   is nil then return the default modulepath."
   [project-config]
-  (let [has-modules-key? (contains? project-config :modules)]
-    (if-let [modulepath (parse-modulepath (get project-config :modulepath))]
-      (if has-modules-key?
-        (concat modulepath [".modules"])
-        modulepath)
-      (if has-modules-key?
-        ["modules" ".modules"]
-        default-project-modulepath))))
+  ;; Note that the :modulepath config key's useful when the project
+  ;; organizes its modules inside relative directories. It doesn't
+  ;; make sense for absolute paths since those may not exist
+  ;; on the Puppetserver host.
+  (-> (get project-config :modulepath "modules")
+      (parse-modulepath)
+      (concat [".modules"])))
 
 (defn find-project-file
   "Find a file in a project using the parameters from a `file_content` request.
