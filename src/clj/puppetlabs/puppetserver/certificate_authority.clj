@@ -1303,13 +1303,13 @@
             {:kind :disallowed-extension
              :msg (format "%s %s %s"
                           (i18n/trs "CSR ''{0}'' contains an authorization extension, which is disallowed." (get-csr-subject csr))
-                          (i18n/trs "To allow authorization extensions, set allow-authorization-extensions to true in your puppetserver.conf file.")
+                          (i18n/trs "To allow authorization extensions, set allow-authorization-extensions to true in your ca.conf file.")
                           (i18n/trs "Then restart the puppetserver and try signing this certificate again."))}))))))
 
 (schema/defn ensure-subject-alt-names-allowed!
   "Throws an exception if the CSR contains subject-alt-names AND the user has
    chosen to disallow subject-alt-names. Subject alt names can be allowed by
-   setting allow-subject-alt-names to true in the puppetserver.conf file."
+   setting allow-subject-alt-names to true in the ca.conf file."
   [csr :- CertificateRequest
    allow-subject-alt-names :- schema/Bool]
   (when-let [subject-alt-names (not-empty (subject-alt-names csr))]
@@ -1319,7 +1319,7 @@
           {:kind :disallowed-extension
            :msg (format "%s %s %s"
                         (i18n/tru "CSR ''{0}'' contains subject alternative names ({1}), which are disallowed." subject (str/join ", " subject-alt-names))
-                        (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your puppetserver.conf file.")
+                        (i18n/tru "To allow subject alternative names, set allow-subject-alt-names to true in your ca.conf file.")
                         (i18n/tru "Then restart the puppetserver and try signing this certificate again."))})))))
 
 (schema/defn ^:always-validate process-csr-submission!
