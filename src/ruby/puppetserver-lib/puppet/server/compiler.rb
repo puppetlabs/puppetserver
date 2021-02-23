@@ -1,6 +1,8 @@
 require 'puppet/server'
 require 'puppet/server/logging'
 
+require 'puppet/util/profiler'
+
 module Puppet
   module Server
     class Compiler
@@ -87,7 +89,10 @@ module Puppet
                                           'certname',
                                           'job_id')
 
-        node = create_node(request_data)
+        node = nil
+        Puppet::Util::Profiler.profile(_("Found node information using the v4 catalog endpoint"), [:compiler, :v4, :find_node]) do
+          node = create_node(request_data)
+        end
 
         if persist['facts']
           save_facts(node.facts, node.trusted_data, save_options)
@@ -96,7 +101,12 @@ module Puppet
         # Note: if we change this to use the indirection we may no longer
         # need to call `save_catalog` below. See its documentation for
         # further info.
-        catalog = Puppet::Parser::Compiler.compile(node, request_data['code_id'])
+        catalog = nil
+        info_string = _("Compiled catalog for %{node} in environment %{environment} using the v4 catalog endpoint") % { node: node.name, environment: node.environment }
+        Puppet::Util::Profiler.profile(info_string, [:compiler, :v4, :compile, node.environment, node.name]) do
+          catalog = Puppet::Parser::Compiler.compile(node, request_data['code_id'])
+          Puppet.info(info_string)
+        end
 
         if persist['catalog']
           save_catalog(catalog, save_options)
@@ -152,8 +162,13 @@ module Puppet
 
       # @return Puppet::Node::Facts facts, Hash trusted_facts
       def process_facts(request_data)
-        facts = extract_facts(request_data)
-        trusted_facts = extract_trusted_facts(request_data, facts)
+        facts = nil
+        trusted_facts = nil
+
+        Puppet::Util::Profiler.profile(_("Found facts using the v4 catalog endpoint"), [:compiler, :v4, :find_facts]) do
+          facts = extract_facts(request_data)
+          trusted_facts = extract_trusted_facts(request_data, facts)
+        end
 
         return facts, trusted_facts
       end
