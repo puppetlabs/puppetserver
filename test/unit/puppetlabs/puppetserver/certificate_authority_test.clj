@@ -1071,7 +1071,7 @@
                            :msg (str "CSR 'hostwithaltnames' contains subject alternative names "
                                    "(DNS:altname1, DNS:altname2, DNS:altname3), which are disallowed. "
                                    "To allow subject alternative names, set allow-subject-alt-names to "
-                                   "true in your puppetserver.conf file. Then restart the puppetserver "
+                                   "true in your ca.conf file. Then restart the puppetserver "
                                    "and try signing this certificate again.")}
                           (select-keys % [:kind :msg]))]
                      ["unknown extension exists" "meow" "meow-bad-extension.pem"

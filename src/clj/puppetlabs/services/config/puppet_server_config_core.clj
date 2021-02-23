@@ -110,13 +110,13 @@
      (assoc config :puppet-version (.puppetVersion jruby-puppet)))))
 
 (defn init-webserver!
-  "Initialize Jetty with paths to the master's SSL certs."
+  "Initialize Jetty with paths to puppetserver's SSL certs."
   [override-webserver-settings! webserver-settings puppet-config]
-  (let [{:keys [hostcert localcacert cacrl hostprivkey]} puppet-config
+  (let [{:keys [hostcert localcacert hostcrl hostprivkey]} puppet-config
         overrides {:ssl-cert     hostcert
                    :ssl-key      hostprivkey
                    :ssl-ca-cert  localcacert
-                   :ssl-crl-path cacrl}]
+                   :ssl-crl-path hostcrl}]
     (if (some #((key %) webserver-settings) overrides)
       (log/info (i18n/trs "Not overriding webserver settings with values from core Puppet"))
       (do
