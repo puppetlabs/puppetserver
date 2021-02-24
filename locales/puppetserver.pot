@@ -7,7 +7,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: puppetlabs.puppetserver \n"
-"X-Git-Ref: b5ae0b91497f0dd8c4f6313579e2c649b1adf222\n"
+"X-Git-Ref: ef2832c3faca6359b0dcc4578e9b61d780928898\n"
 "Report-Msgid-Bugs-To: docs@puppet.com\n"
 "POT-Creation-Date: \n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
@@ -204,7 +204,7 @@ msgstr ""
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "To allow authorization extensions, set allow-authorization-extensions to "
-"true in your puppetserver.conf file."
+"true in your ca.conf file."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
@@ -219,7 +219,7 @@ msgstr ""
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
 msgid ""
 "To allow subject alternative names, set allow-subject-alt-names to true in "
-"your puppetserver.conf file."
+"your ca.conf file."
 msgstr ""
 
 #: src/clj/puppetlabs/puppetserver/certificate_authority.clj
