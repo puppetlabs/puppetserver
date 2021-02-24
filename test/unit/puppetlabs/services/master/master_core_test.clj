@@ -427,7 +427,7 @@
                           (compile-ast [_ _ _ _] {:cool "catalog"}))
           handler (fn ([req] {:request req}))
           app (build-ring-handler handler "1.2.3" jruby-service)]
-      (testing "catalog endpoint"
+      (testing "catalog endpoint succeeds"
           (let [response (app (-> {:request-method :post
                                    :uri "/v4/catalog"
                                    :content-type "application/json"}
@@ -437,4 +437,15 @@
                                                                 {:catalog true
                                                                  :facts true}}))))]
             (is (= 200 (:status response)))
-            (is (= {:cool "catalog"} (json/decode (:body response) true))))))))
+            (is (= {:cool "catalog"} (json/decode (:body response) true)))))
+      (testing "catalog endpoint fails with invalid environment name"
+          (let [response (app (-> {:request-method :post
+                                   :uri "/v4/catalog"
+                                   :content-type "application/json"}
+                                  (ring-mock/body (json/encode {:certname "foo"
+                                                                :environment ""
+                                                                :persistence
+                                                                {:catalog true
+                                                                 :facts true}}))))]
+            (is (= 400 (:status response)))
+            (is (re-matches #".*Invalid input:.*\"\".*" (:body response))))))))
