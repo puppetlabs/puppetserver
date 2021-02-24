@@ -25,14 +25,14 @@
             [ring.util.response :as rr]
             [schema.core :as schema]
             [slingshot.slingshot :refer [throw+ try+]])
-  (:import clojure.lang.IFn
-           [com.codahale.metrics Gauge MetricRegistry]
-           com.fasterxml.jackson.core.JsonParseException
-           java.io.FileInputStream
-           java.lang.management.ManagementFactory
-           [java.util List Map Map$Entry]
-           org.jruby.exceptions.RaiseException
-           org.jruby.RubySymbol))
+  (:import (clojure.lang IFn)
+           (com.codahale.metrics Gauge MetricRegistry)
+           (com.fasterxml.jackson.core JsonParseException)
+           (java.io FileInputStream)
+           (java.lang.management ManagementFactory)
+           (java.util List Map Map$Entry)
+           (org.jruby.exceptions RaiseException)
+           (org.jruby RubySymbol)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Constants
@@ -874,11 +874,15 @@
          :headers {"Content-Type" "application/octet-stream"}
          :body (get-code-content environment code-id file-path)}))))
 
+(defn valid-env-name?
+  [string]
+  (re-matches #"\w+" string))
+
 (def CatalogRequestV4
   {(schema/required-key "certname") schema/Str
    (schema/required-key "persistence") {(schema/required-key "facts") schema/Bool
                                         (schema/required-key "catalog") schema/Bool}
-   (schema/required-key "environment") schema/Str
+   (schema/required-key "environment") (schema/constrained schema/Str valid-env-name?)
    (schema/optional-key "trusted_facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/optional-key "facts") {(schema/required-key "values") {schema/Str schema/Any}}
    (schema/optional-key "job_id") schema/Str
@@ -909,7 +913,11 @@
           (catch JsonParseException e
             (throw+ {:kind :bad-request
                      :msg (format "Error parsing JSON: %s" e)})))]
-    (schema/validate schema parameters)
+    (try+
+      (schema/validate schema parameters)
+      (catch [:type :schema.core/error] {:keys [error]}
+        (throw+ {:kind :bad-request
+                 :msg (format "Invalid input: %s" error)})))
     parameters))
 
 (schema/defn ^:always-validate
@@ -928,7 +936,7 @@
                                               (:jruby-instance request)
                                               (assoc request-options
                                                      "code_id"
-                                                     (current-code-id-fn (jruby-request/get-environment-from-request request)))))})))
+                                                     (current-code-id-fn (get request-options "environment")))))})))
 
 (schema/defn ^:always-validate compile-fn :- IFn
   [jruby-service :- (schema/protocol jruby-protocol/JRubyPuppetService)
