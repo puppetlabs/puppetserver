@@ -21,8 +21,8 @@
   [code-dir :- File, conf-dir :- File]
   (jruby-testutils/jruby-puppet-tk-config
    (jruby-testutils/jruby-puppet-config
-    {:master-code-dir (.getAbsolutePath code-dir)
-     :master-conf-dir (.getAbsolutePath conf-dir)})))
+    {:server-code-dir (.getAbsolutePath code-dir)
+     :server-conf-dir (.getAbsolutePath conf-dir)})))
 
 (def puppet-conf-file-contents
   "[main]\nenvironment_timeout=0\nbasemodulepath=$codedir/modules\n")
@@ -67,7 +67,7 @@
 
   This function exists in addition to the tasks-generating utilities in
   puppetlabs.puppetserver.testutils primarily because those other utilites only
-  generate things inside a hardcoded conf-dir at 'target/master-conf'."
+  generate things inside a hardcoded conf-dir at 'target/server-conf'."
   [env-dir :- (schema/cond-pre File schema/Str)
    task :- TaskOptions]
   (let [task-name (:name task)
@@ -97,7 +97,7 @@
 
   This function exists in addition to the tasks-generating utilities in
   puppetlabs.puppetserver.testutils primarily because those other utilites only
-  generate things inside a hardcoded conf-dir at 'target/master-conf'."
+  generate things inside a hardcoded conf-dir at 'target/server-conf'."
   [env-dir tasks]
   (dorun (map (partial gen-empty-task env-dir) tasks)))
 

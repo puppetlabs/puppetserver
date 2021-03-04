@@ -41,8 +41,8 @@
           conf-dir (ks/temp-dir)
           config (jruby-testutils/jruby-puppet-tk-config
                   (jruby-testutils/jruby-puppet-config
-                   {:master-code-dir (.getAbsolutePath code-dir)
-                    :master-conf-dir (.getAbsolutePath conf-dir)}))]
+                   {:server-code-dir (.getAbsolutePath code-dir)
+                    :server-conf-dir (.getAbsolutePath conf-dir)}))]
 
       (tk-bootstrap/with-app-with-config
        app

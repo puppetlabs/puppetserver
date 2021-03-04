@@ -48,19 +48,19 @@
   "The default for whether or not to enable http client metrics. Currently set to true."
   true)
 
-(def default-master-conf-dir
+(def default-server-conf-dir
   "/etc/puppetlabs/puppet")
 
-(def default-master-code-dir
+(def default-server-code-dir
   "/etc/puppetlabs/code")
 
-(def default-master-log-dir
+(def default-server-log-dir
   "/var/log/puppetlabs/puppetserver")
 
-(def default-master-run-dir
+(def default-server-run-dir
   "/var/run/puppetlabs/puppetserver")
 
-(def default-master-var-dir
+(def default-server-var-dir
   "/opt/puppetlabs/server/data/puppetserver")
 
 (def default-vendored-gems-dir
@@ -80,12 +80,12 @@
   HashMap with the configuration necessary for ruby Puppet."
   [config :- jruby-puppet-schemas/JRubyPuppetConfig]
   (let [puppet-config (new HashMap)]
-    (doseq [[setting dir] [[:master-conf-dir "confdir"]
-                           [:master-code-dir "codedir"]
-                           [:master-var-dir "vardir"]
-                           [:master-run-dir "rundir"]
-                           [:master-log-dir "logdir"]]]
-      (if-let [value (get config setting)]
+    (doseq [[setting-name dir] [[:server-conf-dir "confdir"]
+                                [:server-code-dir "codedir"]
+                                [:server-var-dir "vardir"]
+                                [:server-run-dir "rundir"]
+                                [:server-log-dir "logdir"]]]
+      (if-let [value (get config setting-name)]
         (.put puppet-config dir (ks/absolute-path value))))
     (if (:disable-i18n config)
       ; The value for disable-i18n is stripped in Puppet::Server::PuppetConfig
@@ -185,25 +185,31 @@
    multithreaded :- schema/Bool]
   (if multithreaded
     (log/info (i18n/trs "Disabling i18n for puppet because using multithreaded jruby")))
-  (-> jruby-puppet-config
-      (assoc :http-client-ssl-protocols (:ssl-protocols http-config))
-      (assoc :http-client-cipher-suites (:cipher-suites http-config))
-      (assoc :http-client-connect-timeout-milliseconds
-             (get http-config :connect-timeout-milliseconds
-                  default-http-connect-timeout))
-      (assoc :http-client-idle-timeout-milliseconds
-             (get http-config :idle-timeout-milliseconds
-                  default-http-socket-timeout))
-      (assoc :http-client-metrics-enabled
-             (get http-config :metrics-enabled default-http-metrics-enabled))
-      (update-in [:master-conf-dir] #(or % default-master-conf-dir))
-      (update-in [:master-var-dir] #(or % default-master-var-dir))
-      (update-in [:master-code-dir] #(or % default-master-code-dir))
-      (update-in [:master-run-dir] #(or % default-master-run-dir))
-      (update-in [:master-log-dir] #(or % default-master-log-dir))
-      (update-in [:max-requests-per-instance] #(or % 0))
-      (assoc :disable-i18n multithreaded)
-      (dissoc :environment-class-cache-enabled)))
+  (let [config (-> jruby-puppet-config
+                 (assoc :http-client-ssl-protocols (:ssl-protocols http-config))
+                 (assoc :http-client-cipher-suites (:cipher-suites http-config))
+                 (assoc :http-client-connect-timeout-milliseconds
+                        (get http-config :connect-timeout-milliseconds
+                             default-http-connect-timeout))
+                 (assoc :http-client-idle-timeout-milliseconds
+                        (get http-config :idle-timeout-milliseconds
+                             default-http-socket-timeout))
+                 (assoc :http-client-metrics-enabled
+                        (get http-config :metrics-enabled default-http-metrics-enabled))
+                 (update-in [:master-conf-dir] #(or % default-server-conf-dir))
+                 (update-in [:master-var-dir] #(or % default-server-var-dir))
+                 (update-in [:master-code-dir] #(or % default-server-code-dir))
+                 (update-in [:master-run-dir] #(or % default-server-run-dir))
+                 (update-in [:master-log-dir] #(or % default-server-log-dir))
+                 (update-in [:max-requests-per-instance] #(or % 0))
+                 (assoc :disable-i18n multithreaded)
+                 (dissoc :environment-class-cache-enabled))]
+    (-> config
+      (update-in [:server-conf-dir] #(or % (:master-conf-dir config)))
+      (update-in [:server-var-dir] #(or % (:master-var-dir config)))
+      (update-in [:server-code-dir] #(or % (:master-code-dir config)))
+      (update-in [:server-run-dir] #(or % (:master-run-dir config)))
+      (update-in [:server-log-dir] #(or % (:master-log-dir config))))))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
   "Handles creating a valid JRubyConfig map for use in the jruby-puppet-service.

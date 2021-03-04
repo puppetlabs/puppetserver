@@ -64,28 +64,41 @@
       (is (= false (:http-client-metrics-enabled initialized-config)))))
 
   (testing "jruby-puppet values are not overridden by defaults"
-    (let [jruby-puppet-config {:master-run-dir "one"
-                               :master-var-dir "two"
-                               :master-conf-dir "three"
-                               :master-log-dir "four"
-                               :master-code-dir "five"}
+    (let [jruby-puppet-config {:server-run-dir "one"
+                               :server-var-dir "two"
+                               :server-conf-dir "three"
+                               :server-log-dir "four"
+                               :server-code-dir "five"}
           initialized-config (jruby-puppet-core/initialize-puppet-config {} jruby-puppet-config true)]
-      (is (= "one" (:master-run-dir initialized-config)))
-      (is (= "two" (:master-var-dir initialized-config)))
-      (is (= "three" (:master-conf-dir initialized-config)))
-      (is (= "four" (:master-log-dir initialized-config)))
-      (is (= "five" (:master-code-dir initialized-config)))
+      (is (= "one" (:server-run-dir initialized-config)))
+      (is (= "two" (:server-var-dir initialized-config)))
+      (is (= "three" (:server-conf-dir initialized-config)))
+      (is (= "four" (:server-log-dir initialized-config)))
+      (is (= "five" (:server-code-dir initialized-config)))
       (is (= true (:disable-i18n initialized-config)))))
 
   (testing "jruby-puppet values are set to defaults if not provided"
     (let [initialized-config (jruby-puppet-core/initialize-puppet-config {} {} false)]
-      (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir initialized-config)))
-      (is (= "/opt/puppetlabs/server/data/puppetserver" (:master-var-dir initialized-config)))
-      (is (= "/etc/puppetlabs/puppet" (:master-conf-dir initialized-config)))
-      (is (= "/var/log/puppetlabs/puppetserver" (:master-log-dir initialized-config)))
-      (is (= "/etc/puppetlabs/code" (:master-code-dir initialized-config)))
+      (is (= "/var/run/puppetlabs/puppetserver" (:server-run-dir initialized-config)))
+      (is (= "/opt/puppetlabs/server/data/puppetserver" (:server-var-dir initialized-config)))
+      (is (= "/etc/puppetlabs/puppet" (:server-conf-dir initialized-config)))
+      (is (= "/var/log/puppetlabs/puppetserver" (:server-log-dir initialized-config)))
+      (is (= "/etc/puppetlabs/code" (:server-code-dir initialized-config)))
       (is (= false (:disable-i18n initialized-config)))
-      (is (= true (:http-client-metrics-enabled initialized-config))))))
+      (is (= true (:http-client-metrics-enabled initialized-config)))))
+
+  (testing "jruby-puppet server-* prefer master-* variants to default values"
+    (let [initialized-config (jruby-puppet-core/initialize-puppet-config
+                              {}
+                              {:master-conf-dir "/etc/puppetlabs/puppetserver"
+                               :master-code-dir "/etc/puppetlabs/puppetserver/code"
+                               :master-log-dir "/log/foo"}
+                              false)]
+      (is (= "/var/run/puppetlabs/puppetserver" (:server-run-dir initialized-config)))
+      (is (= "/opt/puppetlabs/server/data/puppetserver" (:server-var-dir initialized-config)))
+      (is (= "/etc/puppetlabs/puppetserver" (:server-conf-dir initialized-config)))
+      (is (= "/log/foo" (:server-log-dir initialized-config)))
+      (is (= "/etc/puppetlabs/puppetserver/code" (:server-code-dir initialized-config))))))
 
 (deftest create-jruby-config-test
   (testing "provided values are not overriden"

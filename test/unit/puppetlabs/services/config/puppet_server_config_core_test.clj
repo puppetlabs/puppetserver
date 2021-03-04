@@ -15,8 +15,8 @@
 
 (deftest ^:integration test-puppet-config-values
   (let [jruby-config (-> (jruby-testutils/jruby-puppet-config)
-                         (update :master-conf-dir #(str (fs/normalized %)))
-                         (update :master-code-dir #(str (fs/normalized %))))]
+                         (update :server-conf-dir #(str (fs/normalized %)))
+                         (update :server-code-dir #(str (fs/normalized %))))]
     (tk-bootstrap/with-app-with-config
      app
      jruby-testutils/jruby-service-and-dependencies

@@ -95,8 +95,8 @@
      app
      {:jruby-puppet {:gem-path gem-path
                      :max-active-instances 1
-                     :master-code-dir test-resources-code-dir
-                     :master-conf-dir master-service-test-runtime-dir}
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
      ;; mostly just making sure we can get here w/o exception
      (is (true? true))
@@ -234,8 +234,8 @@
      app
      {:jruby-puppet {:gem-path gem-path
                      :max-active-instances 1
-                     :master-code-dir test-resources-code-dir
-                     :master-conf-dir master-service-test-runtime-dir}
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
      (let [jruby-metrics-service (tk-app/get-service app :JRubyMetricsService)
            svc-context (tk-services/service-context jruby-metrics-service)
@@ -319,7 +319,7 @@
         (bootstrap-testutils/with-puppetserver-running
          app
          {:jruby-puppet {:gem-path gem-path
-                         :master-conf-dir ca-files-test-runtime-dir
+                         :server-conf-dir ca-files-test-runtime-dir
                          :max-active-instances 1}
           :webserver {:port 8081}}
          (let [jruby-service (tk-app/get-service app :JRubyPuppetService)]
@@ -351,8 +351,8 @@
              :registries {:puppetserver
                           {:reporters {:graphite {:enabled true}}}}}
    :jruby-puppet {:gem-path gem-path
-                  :master-code-dir test-resources-code-dir
-                  :master-conf-dir master-service-test-runtime-dir}})
+                  :server-code-dir test-resources-code-dir
+                  :server-conf-dir master-service-test-runtime-dir}})
 
 (defn get-puppetserver-registry-context
       [app]
@@ -608,8 +608,8 @@
              test-service)
        {:jruby-puppet {:gem-path gem-path
                        :max-active-instances 1
-                       :master-code-dir test-resources-code-dir
-                       :master-conf-dir master-service-test-runtime-dir}
+                       :server-code-dir test-resources-code-dir
+                       :server-conf-dir master-service-test-runtime-dir}
         :metrics {:server-id "localhost"}}
        (testing "atom has correct metric-ids"
          (let [master-service (tk-app/get-service app :MasterService)
@@ -663,8 +663,8 @@
      app
      {:jruby-puppet {:gem-path gem-path
                      :max-active-instances 2 ; we need 2 jruby-instances since processing the report uses an instance
-                     :master-code-dir test-resources-code-dir
-                     :master-conf-dir master-service-test-runtime-dir}
+                     :server-code-dir test-resources-code-dir
+                     :server-conf-dir master-service-test-runtime-dir}
       :metrics {:server-id "localhost"}}
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            jruby-instance (jruby-testutils/borrow-instance jruby-service :http-report-processor-metrics-test)
@@ -700,7 +700,7 @@
      _
      {:jruby-puppet {:gem-path gem-path
                      :max-active-instances 1
-                     :master-conf-dir master-service-test-runtime-dir}}
+                     :server-conf-dir master-service-test-runtime-dir}}
      ;; SERVER-1954 - In bidi 1.25.0 and later, %20 in a URL would cause a 500 to be raised here instead
      (let [resp (http-get "/puppet/v3/enviro%20nment")]
        (is (= 404 (:status resp)))))))
@@ -710,9 +710,9 @@
    app
    {:jruby-puppet {:gem-path gem-path
                    :max-active-instances 2 ; we need 2 jruby-instances since processing the upload uses an instance
-                   :master-code-dir test-resources-code-dir
-                   :master-conf-dir master-service-test-runtime-dir
-                   :master-var-dir (fs/tmpdir)}}
+                   :server-code-dir test-resources-code-dir
+                   :server-conf-dir master-service-test-runtime-dir
+                   :server-var-dir (fs/tmpdir)}}
    (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
          jruby-instance (jruby-testutils/borrow-instance jruby-service :facts-upload-endpoint-test)
          container (:scripting-container jruby-instance)]
@@ -742,9 +742,9 @@
                    :max-active-instances 1
                    :max-retry-delay 1800
                    :max-queued-requests 1
-                   :master-code-dir test-resources-code-dir
-                   :master-conf-dir master-service-test-runtime-dir
-                   :master-var-dir (fs/tmpdir)}}
+                   :server-code-dir test-resources-code-dir
+                   :server-conf-dir master-service-test-runtime-dir
+                   :server-var-dir (fs/tmpdir)}}
    (let [metrics-svc (tk-app/get-service app :JRubyMetricsService)
          metrics (jruby-metrics/get-metrics metrics-svc)
          _ (swap! (:requested-instances metrics) assoc :foo "bar" :baz "bar")]
@@ -766,8 +766,8 @@
             :projects-dir "./dev-resources/puppetlabs/services/master/master_core_test/bolt_projects"}
      :jruby-puppet {:gem-path gem-path
                     :max-active-instances 1
-                    :master-code-dir test-resources-code-dir
-                    :master-conf-dir master-service-test-runtime-dir}}
+                    :server-code-dir test-resources-code-dir
+                    :server-conf-dir master-service-test-runtime-dir}}
 
     (testing "can retrieve file_content from the modules mount from a project"
       (let [response (http-get "/puppet/v3/file_content/modules/utilities/etc/greeting?versioned_project=local_23")]
