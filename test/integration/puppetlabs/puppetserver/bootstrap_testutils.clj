@@ -24,20 +24,20 @@
 (def logging-test-conf-file
   "./dev-resources/logback-test.xml")
 
-(def master-conf-dir
-  "./target/master-conf")
+(def server-conf-dir
+  "./target/server-conf")
 
-(def master-code-dir
-  "./target/master-code")
+(def server-code-dir
+  "./target/server-code")
 
-(def master-var-dir
-  "./target/master-var")
+(def server-var-dir
+  "./target/server-var")
 
-(def master-run-dir
-  "./target/master-var/run")
+(def server-run-dir
+  "./target/server-var/run")
 
-(def master-log-dir
-  "./target/master-var/log")
+(def server-log-dir
+  "./target/server-var/log")
 
 (def multithreaded
   (= "true" (System/getenv "MULTITHREADED")))
@@ -48,11 +48,11 @@
     (fs/copy dev-config-file tmp-conf)
     (-> (tk-config/load-config (.getPath tmp-conf))
         (assoc-in [:global :logging-config] logging-test-conf-file)
-        (assoc-in [:jruby-puppet :master-conf-dir] master-conf-dir)
-        (assoc-in [:jruby-puppet :master-code-dir] master-code-dir)
-        (assoc-in [:jruby-puppet :master-var-dir] master-var-dir)
-        (assoc-in [:jruby-puppet :master-run-dir] master-run-dir)
-        (assoc-in [:jruby-puppet :master-log-dir] master-log-dir)
+        (assoc-in [:jruby-puppet :server-conf-dir] server-conf-dir)
+        (assoc-in [:jruby-puppet :server-code-dir] server-code-dir)
+        (assoc-in [:jruby-puppet :server-var-dir] server-var-dir)
+        (assoc-in [:jruby-puppet :server-run-dir] server-run-dir)
+        (assoc-in [:jruby-puppet :server-log-dir] server-log-dir)
         (assoc-in [:jruby-puppet :multithreaded] multithreaded)
         (ks/deep-merge overrides))))
 
@@ -175,14 +175,14 @@
 
 (schema/defn get-ca-cert-for-running-server :- ca/Certificate
   []
-  (ssl-utils/pem->cert "./target/master-conf/ca/ca_crt.pem"))
+  (ssl-utils/pem->cert "./target/server-conf/ca/ca_crt.pem"))
 
 (schema/defn get-cert-signed-by-ca-for-running-server
   :- (schema/pred ssl-simple/ssl-cert?)
   [ca-cert :- ca/Certificate
    certname :- schema/Str]
   (let [ca-private-key (ssl-utils/pem->private-key
-                        (str "./target/master-conf/ca/ca_key.pem"))
+                        (str "./target/server-conf/ca/ca_key.pem"))
         ca-dn (-> ca-cert
                   (.getSubjectX500Principal)
                   (.getName))

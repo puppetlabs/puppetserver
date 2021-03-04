@@ -30,7 +30,7 @@
   (-> (jruby-testutils/jruby-puppet-tk-config
         (jruby-testutils/jruby-puppet-config {:max-active-instances 1}))
       (assoc :webserver {:port 8081})
-      (assoc-in [:jruby-puppet :master-conf-dir]
+      (assoc-in [:jruby-puppet :server-conf-dir]
                 (str test-resources-dir "/master/conf"))))
 
 (deftest config-service-functions
@@ -45,11 +45,11 @@
             service-config (get-config service)]
 
         (is (= (-> (:jruby-puppet service-config)
-                   (dissoc :master-conf-dir)
+                   (dissoc :server-conf-dir)
                    (dissoc :profiler-output-file))
                (-> (:jruby-puppet (jruby-testutils/jruby-puppet-tk-config
                                     (jruby-testutils/jruby-puppet-config {:max-active-instances 1})))
-                   (dissoc :master-conf-dir)
+                   (dissoc :server-conf-dir)
                    (dissoc :profiler-output-file))))
         (is (= (:webserver service-config) {:port 8081}))
         (is (= (:my-config service-config) {:foo "bar"}))

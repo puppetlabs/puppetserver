@@ -31,11 +31,11 @@
 (def gem-home "./target/jruby-gem-home")
 (def gem-path "./target/jruby-gem-home:./target/vendored-jruby-gems")
 
-(def conf-dir "./target/master-conf")
-(def code-dir "./target/master-code")
-(def var-dir "./target/master-var")
-(def run-dir "./target/master-var/run")
-(def log-dir "./target/master-var/log")
+(def conf-dir "./target/server-conf")
+(def code-dir "./target/server-code")
+(def var-dir "./target/server-var")
+(def run-dir "./target/server-var/run")
+(def log-dir "./target/server-var/log")
 
 (def multithreaded
   (= "true" (System/getenv "MULTITHREADED")))
@@ -150,11 +150,11 @@ create-mock-pool-instance :- JRubyInstance
    (let [combined-configs
          (merge (jruby-puppet-core/initialize-puppet-config
                  {}
-                 {:master-conf-dir conf-dir
-                  :master-code-dir code-dir
-                  :master-var-dir var-dir
-                  :master-run-dir run-dir
-                  :master-log-dir log-dir}
+                 {:server-conf-dir conf-dir
+                  :server-code-dir code-dir
+                  :server-var-dir var-dir
+                  :server-run-dir run-dir
+                  :server-log-dir log-dir}
                  false)
                 (jruby-core/initialize-config {:ruby-load-path ruby-load-path
                                                :gem-home gem-home
@@ -218,11 +218,11 @@ create-mock-pool-instance :- JRubyInstance
   mock-puppet-config-settings :- {schema/Str schema/Any}
   "Return a map of settings that mock the settings that core Ruby Puppet
   would return via a call to JRubyPuppet.getSetting()."
-  [jruby-puppet-config :- {:master-conf-dir schema/Str
-                           :master-code-dir schema/Str
+  [jruby-puppet-config :- {:server-conf-dir schema/Str
+                           :server-code-dir schema/Str
                            schema/Keyword schema/Any}]
   (let [certname "localhost"
-        confdir (:master-conf-dir jruby-puppet-config)
+        confdir (:server-conf-dir jruby-puppet-config)
         ssldir (str confdir "/ssl")
         certdir (str ssldir "/certs")
         cadir (str confdir "/ca")
@@ -240,7 +240,7 @@ create-mock-pool-instance :- JRubyInstance
      "certdir" certdir
      "certname" certname
      "cert_inventory" (str cadir "/inventory.txt")
-     "codedir" (:master-code-dir jruby-puppet-config)
+     "codedir" (:server-code-dir jruby-puppet-config)
      "csr_attributes" (str confdir "/csr_attributes.yaml")
      "csrdir" (str cadir "/requests")
      "dns_alt_names" ""

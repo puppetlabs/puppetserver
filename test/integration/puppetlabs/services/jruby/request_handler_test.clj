@@ -28,7 +28,7 @@
 (deftest ^:integration file-bucket-test
   (testing "that a file bucket upload with *binary*, non-UTF-8, content is
             successful (SERVER-269)"
-    (let [bucket-dir (str bootstrap/master-var-dir "/bucket")]
+    (let [bucket-dir (str bootstrap/server-var-dir "/bucket")]
       (fs/delete-dir bucket-dir)
       (bootstrap/with-puppetserver-running
         app

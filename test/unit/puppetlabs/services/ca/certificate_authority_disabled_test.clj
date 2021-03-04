@@ -17,7 +17,7 @@
            config (-> (jruby-testutils/jruby-puppet-tk-config
                        (jruby-testutils/jruby-puppet-config
                         {:max-active-instances 1}))
-                      (assoc-in [:jruby-puppet :master-conf-dir]
+                      (assoc-in [:jruby-puppet :server-conf-dir]
                                 puppet-conf-dir)
                       (assoc :puppet {"vardir" (str puppet-conf-dir "/var")}))]
        (tk-testutils/with-app-with-config
