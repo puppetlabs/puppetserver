@@ -102,7 +102,7 @@ class Puppet::Server::PuppetConfig
       Puppet::Node.indirection.cache_class = Puppet[:node_cache_terminus]
     end
 
-    Puppet::ApplicationSupport.configure_indirector_routes("master")
+    Puppet::ApplicationSupport.configure_indirector_routes("server")
 
     oid_defns = Puppet::SSL::Oids.parse_custom_oid_file(Puppet[:trusted_oid_mapping_file])
     if oid_defns

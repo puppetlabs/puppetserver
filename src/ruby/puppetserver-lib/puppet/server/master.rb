@@ -3,6 +3,7 @@ require 'puppet/server'
 require 'puppet/info_service'
 
 require 'puppet/network/http'
+# TODO: In Puppet 8, require the "server" vesion of this path
 require 'puppet/network/http/api/master/v3'
 require 'puppet/node/facts'
 
@@ -37,12 +38,14 @@ class Puppet::Server::Master
     Puppet::Server::Config.initialize_puppet_server(puppet_server_config)
     Puppet::Server::PuppetConfig.initialize_puppet(puppet_config: puppet_config)
     # Tell Puppet's network layer which routes we are willing to handle - which is
-    # the master routes, not the CA routes.
-    master_prefix = Regexp.new("^#{Puppet::Network::HTTP::MASTER_URL_PREFIX}/")
-    master_routes = Puppet::Network::HTTP::Route.path(master_prefix).
+    # the server routes, not the CA routes.
+    # There are SERVER variants of this constant in Puppet > 7.4, but we should
+    # continue to use this one until Puppet 8 for backwards compatibility.
+    server_prefix = Regexp.new("^#{Puppet::Network::HTTP::MASTER_URL_PREFIX}/")
+    server_routes = Puppet::Network::HTTP::Route.path(server_prefix).
                           any.
                           chain(Puppet::Network::HTTP::API::Master::V3.routes)
-    register([master_routes])
+    register([server_routes])
     @env_loader = Puppet.lookup(:environments)
     @transports_loader = Puppet::Util::Autoload.new(self, "puppet/transport/schema")
     @catalog_compiler = Puppet::Server::Compiler.new
