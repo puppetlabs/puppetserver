@@ -526,11 +526,11 @@
        {:ruby-load-path  jruby-testutils/ruby-load-path
         :gem-home        jruby-testutils/gem-home
         :gem-path        jruby-testutils/gem-path
-        :master-conf-dir jruby-testutils/conf-dir
-        :master-code-dir jruby-testutils/code-dir
-        :master-var-dir  jruby-testutils/var-dir
-        :master-run-dir  jruby-testutils/run-dir
-        :master-log-dir  jruby-testutils/log-dir}))
+        :server-conf-dir jruby-testutils/conf-dir
+        :server-code-dir jruby-testutils/code-dir
+        :server-var-dir  jruby-testutils/var-dir
+        :server-run-dir  jruby-testutils/run-dir
+        :server-log-dir  jruby-testutils/log-dir}))
      (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
            jruby-instance (jruby-testutils/borrow-instance jruby-service :test)
            jruby-puppet (:jruby-puppet jruby-instance)]
@@ -560,7 +560,7 @@
        (try
          (testing "Various data types"
            (is (= "ldap" (.getSetting jruby-puppet "ldapserver")))
-           (is (= 8140 (.getSetting jruby-puppet "masterport")))
+           (is (= 8140 (.getSetting jruby-puppet "serverport")))
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
@@ -579,11 +579,11 @@
               {:ruby-load-path   jruby-testutils/ruby-load-path
                :gem-home         jruby-testutils/gem-home
                :gem-path         jruby-testutils/gem-path
-               :master-conf-dir  jruby-testutils/conf-dir
-               :master-code-dir  jruby-testutils/code-dir
-               :master-var-dir   jruby-testutils/var-dir
-               :master-run-dir   jruby-testutils/run-dir
-               :master-log-dir   jruby-testutils/log-dir}
+               :server-conf-dir  jruby-testutils/conf-dir
+               :server-code-dir  jruby-testutils/code-dir
+               :server-var-dir   jruby-testutils/var-dir
+               :server-run-dir   jruby-testutils/run-dir
+               :server-log-dir   jruby-testutils/log-dir}
               (tk-config/load-config (.getPath tmp-conf))))))
       (let [jruby-service (tk-app/get-service app :JRubyPuppetService)
             jruby-instance (jruby-testutils/borrow-instance jruby-service :test)

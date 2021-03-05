@@ -15,11 +15,11 @@
      app {}
      (is (true? true))
      (testing "Private keys have the correct permissions."
-       (let [pk-dir (str bootstrap/master-conf-dir "/ssl/private_keys")
+       (let [pk-dir (str bootstrap/server-conf-dir "/ssl/private_keys")
              pks (fs/find-files pk-dir #".*pem$")]
          (is (= ca/private-key-dir-perms (ca/get-file-perms pk-dir)))
          (is (= ca/private-key-perms
-                (ca/get-file-perms (str bootstrap/master-conf-dir
+                (ca/get-file-perms (str bootstrap/server-conf-dir
                                         "/ca/ca_key.pem"))))
          (doseq [pk pks]
            (is (= ca/private-key-perms (ca/get-file-perms (.getPath pk)))))))

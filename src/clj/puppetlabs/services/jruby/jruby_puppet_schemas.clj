@@ -10,19 +10,19 @@
 
   The keys should have the following values:
 
-    * :master-conf-dir - file path to puppetmaster's conf dir;
+    * :server-conf-dir - file path to Puppet Server's conf dir;
         if not specified, will use the puppet default.
 
-    * :master-code-dir - file path to puppetmaster's code dir;
+    * :server-code-dir - file path to Puppet Server's code dir;
         if not specified, will use the puppet default.
 
-    * :master-var-dir - path to the puppetmaster's var dir;
+    * :server-var-dir - path to the Puppet Server's var dir;
         if not specified, will use the puppet default.
 
-    * :master-run-dir - path to the puppetmaster's run dir;
+    * :server-run-dir - path to the Puppet Server's run dir;
         if not specified, will use the puppet default.
 
-    * :master-log-dir - path to the puppetmaster's log dir;
+    * :server-log-dir - path to the Puppet Server's log dir;
         if not specified, will use the puppet default.
 
     * :track-lookups - a boolean to turn on tracking hiera lookups during compilation;
@@ -54,11 +54,11 @@
     * :boltlib-path - Optional array containing path(s) to bolt modules. This path
          will be prepended to AST compilation modulepath. This is required for
          compiling AST that contains bolt types."
-  {:master-conf-dir (schema/maybe schema/Str)
-   :master-code-dir (schema/maybe schema/Str)
-   :master-var-dir (schema/maybe schema/Str)
-   :master-run-dir (schema/maybe schema/Str)
-   :master-log-dir (schema/maybe schema/Str)
+  {(schema/optional-key :server-conf-dir) (schema/maybe schema/Str)
+   (schema/optional-key :server-code-dir) (schema/maybe schema/Str)
+   (schema/optional-key :server-var-dir) (schema/maybe schema/Str)
+   (schema/optional-key :server-run-dir) (schema/maybe schema/Str)
+   (schema/optional-key :server-log-dir) (schema/maybe schema/Str)
    (schema/optional-key :track-lookups) schema/Bool
    (schema/optional-key :disable-i18n) schema/Bool
    :http-client-ssl-protocols [schema/Str]
@@ -67,5 +67,12 @@
    :http-client-idle-timeout-milliseconds schema/Int
    :http-client-metrics-enabled schema/Bool
    :max-requests-per-instance schema/Int
-   (schema/optional-key :boltlib-path) [schema/Str]})
+   (schema/optional-key :boltlib-path) [schema/Str]
+   ;; Deprecated in favor of their `server-*` counterparts.
+   ;; to be removed in Puppet 8.
+   (schema/optional-key :master-conf-dir) (schema/maybe schema/Str)
+   (schema/optional-key :master-code-dir) (schema/maybe schema/Str)
+   (schema/optional-key :master-var-dir) (schema/maybe schema/Str)
+   (schema/optional-key :master-run-dir) (schema/maybe schema/Str)
+   (schema/optional-key :master-log-dir) (schema/maybe schema/Str)})
 

@@ -47,7 +47,7 @@
 ;;; Default settings
 
 (schema/def ^:always-validate conf-dir :- schema/Str
-  "./target/master-conf")
+  "./target/server-conf")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Certificates and keys
@@ -369,7 +369,7 @@
   "This function returns a test fixture that will copy a specified puppet.conf
   file into the provided location for testing, and then delete it after the
   tests have completed. If no destination dir is provided then the puppet.conf
-  file is copied to the default location of './target/master-conf'."
+  file is copied to the default location of './target/server-conf'."
   ([puppet-conf-file]
    (with-puppet-conf puppet-conf-file conf-dir))
   ([puppet-conf-file dest-dir]
