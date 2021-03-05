@@ -560,7 +560,7 @@
        (try
          (testing "Various data types"
            (is (= "ldap" (.getSetting jruby-puppet "ldapserver")))
-           (is (= 8140 (.getSetting jruby-puppet "masterport")))
+           (is (= 8140 (.getSetting jruby-puppet "serverport")))
            (is (= false (.getSetting jruby-puppet "onetime"))))
          (finally
            (jruby-testutils/return-instance jruby-service jruby-instance :settings-plumbed-test)))))))
