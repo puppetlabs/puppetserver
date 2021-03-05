@@ -6,7 +6,7 @@
 
 class Puppet::Server::AuthConfig
   def initialize
-    Puppet.debug 'Using PuppetServer AuthConfig for master routes'
+    Puppet.debug 'Using PuppetServer AuthConfig for server routes'
   end
 
   def check_authorization(method, path, params)
