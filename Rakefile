@@ -15,9 +15,9 @@ PUPPET_SERVER_RUBY_SPEC = File.join(PROJECT_ROOT, 'spec')
 PUPPET_SUBMODULE_PATH = File.join('ruby','puppet')
 FACTER_SUBMODULE_PATH = File.join('ruby','facter')
 # Branch of puppetserver for which to update submodule pins
-PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || 'master'
+PUPPETSERVER_BRANCH = ENV['PUPPETSERVER_BRANCH'] || '6.x'
 # Branch of puppet-agent to track for passing puppet SHA
-PUPPET_AGENT_BRANCH = ENV['PUPPET_AGENT_BRANCH'] || 'master'
+PUPPET_AGENT_BRANCH = ENV['PUPPET_AGENT_BRANCH'] || '6.x'
 # Branch of puppet-agent to track for Facter's passing SHA.
 # This needs to be separate because for 6.x, we want to use facter#main
 # instead of Facter 3.
