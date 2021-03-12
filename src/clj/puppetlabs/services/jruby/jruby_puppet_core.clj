@@ -196,20 +196,20 @@
                              default-http-socket-timeout))
                  (assoc :http-client-metrics-enabled
                         (get http-config :metrics-enabled default-http-metrics-enabled))
-                 (update-in [:master-conf-dir] #(or % default-server-conf-dir))
-                 (update-in [:master-var-dir] #(or % default-server-var-dir))
-                 (update-in [:master-code-dir] #(or % default-server-code-dir))
-                 (update-in [:master-run-dir] #(or % default-server-run-dir))
-                 (update-in [:master-log-dir] #(or % default-server-log-dir))
+                 (update-in [:server-conf-dir] #(or % (:master-conf-dir jruby-puppet-config) default-server-conf-dir))
+                 (update-in [:server-var-dir] #(or % (:master-var-dir jruby-puppet-config) default-server-var-dir))
+                 (update-in [:server-code-dir] #(or % (:master-code-dir jruby-puppet-config) default-server-code-dir))
+                 (update-in [:server-run-dir] #(or % (:master-run-dir jruby-puppet-config) default-server-run-dir))
+                 (update-in [:server-log-dir] #(or % (:master-log-dir jruby-puppet-config) default-server-log-dir))
                  (update-in [:max-requests-per-instance] #(or % 0))
                  (assoc :disable-i18n multithreaded)
                  (dissoc :environment-class-cache-enabled))]
-    (-> config
-      (update-in [:server-conf-dir] #(or % (:master-conf-dir config)))
-      (update-in [:server-var-dir] #(or % (:master-var-dir config)))
-      (update-in [:server-code-dir] #(or % (:master-code-dir config)))
-      (update-in [:server-run-dir] #(or % (:master-run-dir config)))
-      (update-in [:server-log-dir] #(or % (:master-log-dir config))))))
+    (assoc config
+           :master-conf-dir (:server-conf-dir config)
+           :master-var-dir (:server-var-dir config)
+           :master-code-dir (:server-code-dir config)
+           :master-run-dir (:server-run-dir config)
+           :master-log-dir (:server-log-dir config))))
 
 (schema/defn create-jruby-config :- jruby-schemas/JRubyConfig
   "Handles creating a valid JRubyConfig map for use in the jruby-puppet-service.

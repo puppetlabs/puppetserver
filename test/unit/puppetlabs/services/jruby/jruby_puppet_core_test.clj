@@ -98,7 +98,19 @@
       (is (= "/opt/puppetlabs/server/data/puppetserver" (:server-var-dir initialized-config)))
       (is (= "/etc/puppetlabs/puppetserver" (:server-conf-dir initialized-config)))
       (is (= "/log/foo" (:server-log-dir initialized-config)))
-      (is (= "/etc/puppetlabs/puppetserver/code" (:server-code-dir initialized-config))))))
+      (is (= "/etc/puppetlabs/puppetserver/code" (:server-code-dir initialized-config)))))
+  (testing "still provides proper values at master-* variants"
+    (let [initialized-config (jruby-puppet-core/initialize-puppet-config
+                               {}
+                               {:master-conf-dir "/my/master/conf"
+                                :server-code-dir "/my/server/code"}
+                               false)]
+      (is (= "/my/master/conf" (:master-conf-dir initialized-config)))
+      (is (= "/my/master/conf" (:server-conf-dir initialized-config)))
+      (is (= "/my/server/code" (:server-code-dir initialized-config)))
+      (is (= "/my/server/code" (:master-code-dir initialized-config)))
+      (is (= "/var/run/puppetlabs/puppetserver" (:server-run-dir initialized-config)))
+      (is (= "/var/run/puppetlabs/puppetserver" (:master-run-dir initialized-config))))))
 
 (deftest create-jruby-config-test
   (testing "provided values are not overriden"
