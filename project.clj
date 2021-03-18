@@ -45,7 +45,6 @@
                  [liberator]
                  [org.apache.commons/commons-exec]
                  [io.dropwizard.metrics/metrics-core]
-                 [com.fasterxml.jackson.module/jackson-module-afterburner]
 
                  ;; We do not currently use this dependency directly, but
                  ;; we have documentation that shows how users can use it to
