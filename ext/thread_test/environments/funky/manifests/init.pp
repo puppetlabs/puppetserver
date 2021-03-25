@@ -1,8 +1,8 @@
-notify {'hello': }
+notify { 'hello': }
 
 notify { threader::doit(): }
 
-notify { threader::futurist(): }
+notify { threader::color(): }
 
 notify { oldschool(): }
 

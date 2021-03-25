@@ -2,6 +2,8 @@ require 'net/http'
 require 'json'
 require 'rspec/expectations'
 
+iterations = 100
+processes_per_catalog = 2
 include RSpec::Matchers
 
 class CatalogTester
@@ -75,11 +77,31 @@ class CatalogThreeTester < CatalogTester
   end
 end
 
-# Use tester2 for funky env, and swap out for tester1 to use production instead,
-# or tester3 for a node in the production env with special classification.
-tester2 = CatalogTwoTester.new
-Process.fork do
-  tester2.run
+processes_per_catalog.times do
+  Process.fork do
+    tester = CatalogOneTester.new
+    iterations.times do
+      tester.run
+    end
+  end
+end
+
+processes_per_catalog.times do
+  Process.fork do
+    tester = CatalogTwoTester.new
+    iterations.times do
+      tester.run
+    end
+  end
+end
+
+processes_per_catalog.times do
+  Process.fork do
+    tester = CatalogThreeTester.new
+    iterations.times do
+      tester.run
+    end
+  end
 end
 
 exit_codes = Process.waitall

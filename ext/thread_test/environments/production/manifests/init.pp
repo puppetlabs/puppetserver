@@ -1,9 +1,15 @@
-notify { 'hello': }
+node default {
+  notify { 'hello': }
 
-notify { threader::doit(): }
+  notify { threader::doit(): }
 
-notify { threader::futurist(): }
+  notify { threader::color(): }
 
-notify { oldschool(): }
+  notify { oldschool(): }
 
-include threader::params_class
+  include threader::params_class
+}
+
+node 'testthree' {
+  notify { threader::other_func(): }
+}
