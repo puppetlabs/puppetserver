@@ -3,7 +3,7 @@
 set -x
 set -e
 
-certname=$(ls "${SSLDIR}/certs" | grep --invert-match ca.pem) && \
+certname=$(cd "${SSLDIR}/certs" && ls *.pem | grep --invert-match ca.pem) && \
 hostname=$(basename $certname .pem) && \
 hostprivkey="${SSLDIR}/private_keys/$certname" && \
 hostcert="${SSLDIR}/certs/$certname" && \
