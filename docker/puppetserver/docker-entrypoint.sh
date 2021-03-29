@@ -1,4 +1,5 @@
 #!/bin/bash
+# bash is required to pass ENV vars with dots as sh cannot
 
 set -e
 
