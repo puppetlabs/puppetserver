@@ -9,7 +9,7 @@ hadolint_container := ghcr.io/hadolint/hadolint:latest
 export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
-export DOCKER_BUILDKIT = 1
+DOCKER_BUILDKIT ?= 1
 PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 ifeq ($(IS_RELEASE),true)
@@ -53,7 +53,7 @@ else
 endif
 
 build: prep
-	docker build \
+	DOCKER_BUILDKIT=${DOCKER_BUILDKIT} docker build \
 		${DOCKER_BUILD_FLAGS} \
 		--pull \
 		--build-arg build_type=$(BUILD_TYPE) \

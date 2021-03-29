@@ -26,6 +26,7 @@ jobs:
       language: ruby
       rvm: 2.6.5
       env:
+        - DOCKER_BUILDKIT=0
         - DOCKER_COMPOSE_VERSION=1.28.6
         # necessary to prevent overwhelming TravisCI build output limits
         - DOCKER_BUILD_FLAGS="--progress plain"
