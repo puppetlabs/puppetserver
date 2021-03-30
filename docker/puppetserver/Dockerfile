@@ -54,7 +54,7 @@ COPY docker/puppetserver/docker-entrypoint.sh \
       /
 COPY docker/puppetserver/docker-entrypoint.d /docker-entrypoint.d
 # k8s uses livenessProbe, startupProbe, readinessProbe and ignores HEALTHCHECK
-HEALTHCHECK --interval=10s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
+HEALTHCHECK --interval=20s --timeout=15s --retries=12 --start-period=3m CMD ["/healthcheck.sh"]
 
 # no need to pin versions or clear apt cache as its still being used
 # hadolint ignore=DL3008,DL3009

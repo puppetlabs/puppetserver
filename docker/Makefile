@@ -9,7 +9,7 @@ hadolint_container := ghcr.io/hadolint/hadolint:latest
 export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
-export DOCKER_BUILDKIT = 1
+export DOCKER_BUILDKIT ?= 1
 PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 ifeq ($(IS_RELEASE),true)
