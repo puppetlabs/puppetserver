@@ -510,6 +510,61 @@
                   utils/pem->crl)]
       (testutils/assert-issuer crl "CN=Puppet CA: localhost"))))
 
+(deftest update-crls-test
+  (let [cert-chain-path (str test-resources-dir "/update_crls/ca_crt.pem")
+        crl-path (str test-resources-dir "/update_crls/ca_crl.pem")
+        crl-backup-path (str test-resources-dir "/update_crls/ca_crl.pem.bak")
+        new-crl-path (str test-resources-dir "/update_crls/new_root_crl.pem")
+        multiple-new-crls-path (str test-resources-dir "/update_crls/multiple_new_root_crls.pem")
+        multiple-newest-crls-path (str test-resources-dir "/update_crls/multiple_newest_root_crls.pem")
+        new-crls-for-multiple-certs-path (str test-resources-dir "/update_crls/new_crls_for_multiple_certs.pem")
+        new-and-unrelated-crls-path (str test-resources-dir "/update_crls/new_crls_and_unrelated_crls.pem")
+        unrelated-crls-path (str test-resources-dir "/update_crls/unrelated_crls.pem")
+        delta-crl-path (str test-resources-dir "/update_crls/delta_crl.pem")
+        ;; to do: incoming CRL that isn't newer than existing
+        good-inputs [new-crl-path
+                     multiple-new-crls-path
+                     new-crls-for-multiple-certs-path
+                     new-and-unrelated-crls-path
+                     ;; to do: add logging around CRLs received and CRLs replaced
+                     unrelated-crls-path]
+        bad-inputs-and-error-msgs {multiple-newest-crls-path #"Could not determine newest CRL."
+                                   delta-crl-path #"Cannot support delta CRL."}]
+    (logutils/with-test-logging
+     (doseq [path good-inputs]
+       (testing (str "CRLs from " path " are accepted")
+         (let [incoming-crl-stream (ByteArrayInputStream. (.getBytes (slurp path)))]
+           ;; make a backup copy of the ca_crl.pem file so we can restore it after each test
+           (fs/copy crl-path crl-backup-path)
+           (try
+             (update-crls incoming-crl-stream crl-path cert-chain-path)
+             (let [old-crls (utils/pem->crls crl-backup-path)
+                   new-crls (utils/pem->crls crl-path)]
+               (is (= (count old-crls) (count new-crls)))
+               ;; this feels silly
+               (when-not (= path unrelated-crls-path)
+                 (is (not (= (set old-crls) (set new-crls))))))
+             ;; put back the original ca_crl.pem file
+             (finally
+               (fs/delete crl-path)
+               (fs/move crl-backup-path crl-path))))))
+     (doseq [[path error-message] bad-inputs-and-error-msgs]
+       (testing (str "CRLs from " path " are rejected")
+         (let [incoming-crl-stream (ByteArrayInputStream. (.getBytes (slurp path)))]
+           ;; make a backup copy of the ca_crl.pem file so we can restore it after each test,
+           ;; just in case something fails and updates the file.
+           (fs/copy crl-path crl-backup-path)
+           (try
+             (is (thrown-with-msg? IllegalArgumentException error-message
+                                   (update-crls incoming-crl-stream crl-path cert-chain-path)))
+             (let [old-crls (utils/pem->crls crl-backup-path)
+                   new-crls (utils/pem->crls crl-path)]
+               (is (= (set old-crls) (set new-crls))))
+             ;; put back the original ca_crl.pem file, just in case
+             (finally
+               (fs/delete crl-path)
+               (fs/move crl-backup-path crl-path)))))))))
+
 (deftest initialize!-test
   (let [settings (testutils/ca-settings (ks/temp-dir))]
 

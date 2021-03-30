@@ -176,6 +176,8 @@
       (is (= 304 (:status response))
           (is (nil? (:body response)))))))
 
+(deftest handle-put-certificate-revocation-list!-test)
+
 (deftest puppet-version-header-test
   (testing "Responses contain a X-Puppet-Version header"
     (let [version-number "42.42.42"

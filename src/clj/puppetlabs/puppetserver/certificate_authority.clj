@@ -6,7 +6,8 @@
            [java.nio.file.attribute FileAttribute PosixFilePermissions]
            (java.security PrivateKey PublicKey KeyPair)
            (org.joda.time DateTime)
-           (java.security.cert CRLException X509CRL)
+           (java.security.cert CRLException CertPathValidatorException X509CRL)
+           (javax.security.auth.x500 X500Principal)
            (sun.security.x509 X509CertImpl))
   (:require [me.raynes.fs :as fs]
             [schema.core :as schema]
@@ -1380,6 +1381,83 @@
   [cacrl :- schema/Str]
   (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
        (time-coerce/from-long last-modified-milliseconds)))
+
+(schema/defn ^:always-validate reject-delta-crl
+  [crl :- CertificateRevocationList]
+  (when (utils/delta-crl? crl)
+    (throw (IllegalArgumentException.
+            ^String (i18n/trs "Cannot support delta CRL.")))))
+
+(schema/defn ^:always-validate validate-certs-and-crls
+  "Given a list of certificates and a list of CRLs, validate the certificate
+   chain, i.e. ensure that none of the certs have been revoked by checking the
+   appropriate CRL, which must be present and currently valid. Delta CRLs are
+   not supported. Returns nil if successful."
+  [cert-chain :- [Certificate]
+   crl-chain :- [CertificateRevocationList]]
+  (doseq [crl crl-chain]
+    (reject-delta-crl crl))
+  (try
+    (utils/validate-cert-chain cert-chain crl-chain)
+    ;; currently not distinguishing between invalid CRLs
+    ;; and a revoked cert in the CA chain
+    (catch CertPathValidatorException e
+      (throw (IllegalArgumentException.
+              ^String (i18n/trs "Invalid certs and/or CRLs: {0}" (.getMessage e)))))))
+
+(schema/defn ^:always-validate get-newest-crl :- CertificateRevocationList
+  "Determine the newest CRL by looking for the highest CRL Number. This assumes
+  all given CRLs have the same issuer. Fails if more than one CRL has the
+  highest CRL Number."
+  [crls :- [CertificateRevocationList]]
+  (let [newest-crl (->> crls
+                        (group-by utils/get-crl-number)
+                        (into (sorted-map))
+                        last
+                        last)]
+    (if (= 1 (count newest-crl))
+      (first newest-crl)
+      (throw (IllegalArgumentException.
+              ^String (i18n/trs "Could not determine newest CRL."))))))
+
+(schema/defn ^:always-validate maybe-replace-crl :- CertificateRevocationList
+  "Given a CRL and a map of issuers to CRLs, determine the newest CRL for the
+  issuer of the given CRL. Warn if the newest CRL is the given CRL."
+  [crl :- CertificateRevocationList
+   key-crl-map :- {schema/Any [CertificateRevocationList]}]
+  (let [key-id (utils/get-extension-value crl utils/authority-key-identifier-oid)
+        maybe-new-crls (get key-crl-map key-id)]
+    (if maybe-new-crls
+      (let [new-crl (get-newest-crl (conj maybe-new-crls crl))]
+        (when (.equals crl new-crl)
+          (log/warn (i18n/trs
+                     "Received CRLs for issuer {0} but none were newer than the existing CRL; keeping the existing CRL."
+                     (.getIssuerX500Principal crl))))
+        new-crl)
+      ;; no new CRLs found for this issuer, keep it
+      crl)))
+
+(schema/defn ^:always-validate update-crls
+  "Given a collection of CRLs, update the CRL chain and confirm that
+  all CRLs are currently valid."
+  [incoming-crl-pem :- InputStream
+   crl-path :- schema/Str
+   cert-chain-path :- schema/Str]
+  (log/info (i18n/trs "Updating CRL at {0}" crl-path))
+  (let [incoming-crls (utils/pem->crls incoming-crl-pem)
+        current-crls (utils/pem->crls crl-path)
+        cert-chain (utils/pem->certs cert-chain-path)
+        incoming-crls-by-key-id (->> incoming-crls
+                                     ;; just in case we're given multiple copies
+                                     ;; of the same CRL, deduplicate so we can
+                                     ;; identify the newest CRL
+                                     set
+                                     (group-by #(utils/get-extension-value
+                                                % utils/authority-key-identifier-oid)))
+        new-crl-chain (map #(maybe-replace-crl % incoming-crls-by-key-id)
+                       current-crls)]
+    (validate-certs-and-crls cert-chain new-crl-chain)
+    (write-crls new-crl-chain crl-path)))
 
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
