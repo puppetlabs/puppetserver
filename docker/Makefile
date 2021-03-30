@@ -4,12 +4,12 @@ vcs_ref := $(shell git rev-parse HEAD)
 build_date := $(shell date -u +%FT%T)
 hadolint_available := $(shell hadolint --help > /dev/null 2>&1; echo $$?)
 hadolint_command := hadolint
-hadolint_container := hadolint/hadolint:latest
+hadolint_container := ghcr.io/hadolint/hadolint:latest
 
 export BUNDLE_PATH = $(PWD)/.bundle/gems
 export BUNDLE_BIN = $(PWD)/.bundle/bin
 export GEMFILE = $(PWD)/Gemfile
-export DOCKER_BUILDKIT = 1
+export DOCKER_BUILDKIT ?= 1
 PUPPERWARE_ANALYTICS_STREAM ?= dev
 
 ifeq ($(IS_RELEASE),true)
