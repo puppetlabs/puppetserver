@@ -3,16 +3,20 @@
 set -x
 set -e
 
-certname=$(cd "${SSLDIR}/certs" && ls *.pem | grep --invert-match ca.pem) && \
-hostname=$(basename $certname .pem) && \
-hostprivkey="${SSLDIR}/private_keys/$certname" && \
-hostcert="${SSLDIR}/certs/$certname" && \
-localcacert="${SSLDIR}/certs/ca.pem" && \
+timeout=10
+if [ "$#" -gt 0 ]; then
+  timeout=$1
+fi
+
+certname=$(cd "${SSLDIR}/certs" && ls *.pem | grep --invert-match ca.pem)
+
 curl --fail \
---resolve "${hostname}:${PUPPET_MASTERPORT}:127.0.0.1" \
---cert   $hostcert \
---key    $hostprivkey \
---cacert $localcacert \
-"https://${hostname}:${PUPPET_MASTERPORT}/status/v1/simple" \
-|  grep -q '^running$' \
-|| exit 1
+    --no-progress-meter \
+    --max-time ${timeout} \
+    --resolve "${HOSTNAME}:${PUPPET_MASTERPORT}:127.0.0.1" \
+    --cert    "${SSLDIR}/certs/$certname" \
+    --key     "${SSLDIR}/private_keys/$certname" \
+    --cacert  "${SSLDIR}/certs/ca.pem" \
+    "https://${HOSTNAME}:${PUPPET_MASTERPORT}/status/v1/simple" \
+    |  grep -q '^running$' \
+    || exit 1
