@@ -1381,6 +1381,20 @@
   (let [last-modified-milliseconds (.lastModified (io/file cacrl))]
        (time-coerce/from-long last-modified-milliseconds)))
 
+(schema/defn ^:always-validate update-crl :- CertificateRevocationList
+  "Given a collection of upstream CRLs, update the CRL chain and confirm that
+  all CRLs were issued by a trusted cert."
+  [upstream-crl-pem :- InputStream
+   crl-path :- schema/Str
+   cert-chain-path :- schema/Str]
+  (log/info (i18n/trs "Updating CRL at {0}" crl-path))
+  (let [upstream-crls (utils/pem->crls upstream-crl-pem)
+        ca-crl (first (utils/pem->crls crl-path))
+        new-crl-chain (cons ca-crl upstream-crls)
+        cert-chain (utils/pem->certs cert-chain-path)]
+    (utils/verify-crls-against-cert-chain new-crl-chain cert-chain)
+    (write-crls new-crl-chain crl-path)))
+
 (schema/defn ensure-directories-exist!
   "Create any directories used by the CA if they don't already exist."
   [settings :- CaSettings]
