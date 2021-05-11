@@ -215,7 +215,7 @@
         app
         {:jruby-puppet {:master-conf-dir master-conf-dir}}
         (let [response (http-client/put
-                        (str "https://localhost:8140"
+                        (str "https://localhost:8140/"
                             "puppet-ca/v1/certificate_status/test_cert_ca_true")
                         {:ssl-cert (str master-conf-dir "/ssl/ca/ca_crt.pem")
                          :ssl-key (str master-conf-dir "/ssl/ca/ca_key.pem")
@@ -576,7 +576,7 @@
          :certificate-authority {:allow-authorization-extensions true}}
         (testing "Auth extensions on a CSR"
           (let [response (http-client/get
-                           (str "https://localhost:8140"
+                           (str "https://localhost:8140/"
                                 "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                            (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
@@ -586,11 +586,11 @@
               (is (= "requested" (get status-body "state"))))))
         (testing "Auth extensions on a cert"
           (let [sign-response (http-client/put
-                                (str "https://localhost:8140"
+                                (str "https://localhost:8140/"
                                      "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                                 (cert-status-request-params "{\"desired_state\": \"signed\"}"))
                 status-response (http-client/get
-                                  (str "https://localhost:8140"
+                                  (str "https://localhost:8140/"
                                        "puppet-ca/v1/certificate_status/test_cert_with_auth_ext")
                                   (cert-status-request-params))
                 auth-exts {"pp_auth_role" "true" "1.3.6.1.4.1.34380.1.3.1.2" "true"}]
