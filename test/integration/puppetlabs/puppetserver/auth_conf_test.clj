@@ -326,89 +326,89 @@
        (jruby-testutils/create-mock-jruby-puppet-fn-with-handle-response-params
         200
         "we've been tk-authorized!")
-        (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
-                          :critical false
-                          :value "12345"}
-                         {:oid "1.3.6.1.4.1.34380.1.2.2"
-                          :critical false
-                          :value "Burning Finger"}]
-              bad-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
+       (let [good-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
                          :critical false
-                         :value "not a uuid"}
+                         :value "12345"}
                         {:oid "1.3.6.1.4.1.34380.1.2.2"
                          :critical false
                          :value "Burning Finger"}]
-              create-cert (fn [extensions]
-                            (:cert (ssl-simple/gen-self-signed-cert
-                                     "ssl-client"
-                                     1
-                                     {:keylength 512
-                                      :extensions extensions})))
-              allowable-cert (create-cert good-exts)
-              deniable-cert (create-cert bad-exts)
-              url-encode-cert (fn [cert]
-                                (let [cert-writer (StringWriter.)
-                                      _ (ssl-utils/cert->pem! cert cert-writer)]
-                                  (ring-codec/url-encode cert-writer)))
-              url-encoded-allowable-cert (url-encode-cert allowable-cert)
-              url-encoded-deniable-cert (url-encode-cert deniable-cert)
-              http-get-no-ssl (fn [path cert]
-                                (http-client/get
-                                  (str "http://localhost:8080/" path)
-                                  {:headers {"Accept" "application/json"
-                                             "X-Client-Cert" cert
-                                             "X-Client-DN" "CN=private"
-                                             "X-Client-Verify" "SUCCESS"}
-                                   :as :text}))]
-          (testing "ca endpoints use oid shortnames"
-            (let [path "/puppet-ca/v1/certificate_status/localhost"
-                  cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
-                  cert-status-body (-> cert-status-response
-                                       :body
-                                       cheshire/parse-string)]
-              (is (= 200 (:status cert-status-response)))
-              ;; Assert that some of the content looks like it came from the
-              ;; certificate_statuses endpoint
-              (is (= "localhost" (get cert-status-body "name")))
-              (is (= "signed" (get cert-status-body "state")))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+             bad-exts [{:oid "1.3.6.1.4.1.34380.1.1.1"
+                        :critical false
+                        :value "not a uuid"}
+                       {:oid "1.3.6.1.4.1.34380.1.2.2"
+                        :critical false
+                        :value "Burning Finger"}]
+             create-cert (fn [extensions]
+                           (:cert (ssl-simple/gen-self-signed-cert
+                                    "ssl-client"
+                                    1
+                                    {:keylength 512
+                                     :extensions extensions})))
+             allowable-cert (create-cert good-exts)
+             deniable-cert (create-cert bad-exts)
+             url-encode-cert (fn [cert]
+                               (let [cert-writer (StringWriter.)
+                                     _ (ssl-utils/cert->pem! cert cert-writer)]
+                                 (ring-codec/url-encode cert-writer)))
+             url-encoded-allowable-cert (url-encode-cert allowable-cert)
+             url-encoded-deniable-cert (url-encode-cert deniable-cert)
+             http-get-no-ssl (fn [path cert]
+                               (http-client/get
+                                 (str "http://localhost:8080/" path)
+                                 {:headers {"Accept" "application/json"
+                                            "X-Client-Cert" cert
+                                            "X-Client-DN" "CN=private"
+                                            "X-Client-Verify" "SUCCESS"}
+                                  :as :text}))]
+         (testing "ca endpoints use oid shortnames"
+           (let [path "puppet-ca/v1/certificate_status/localhost"
+                 cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
+                 cert-status-body (-> cert-status-response
+                                      :body
+                                      cheshire/parse-string)]
+             (is (= 200 (:status cert-status-response)))
+             ;; Assert that some of the content looks like it came from the
+             ;; certificate_statuses endpoint
+             (is (= "localhost" (get cert-status-body "name")))
+             (is (= "signed" (get cert-status-body "state")))
+             (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
-          (testing "master endpoints use oid shortnames"
-            (let [path "puppet/v3/catalog/private?environment=production"
-                  catalog-response (http-get-no-ssl path url-encoded-allowable-cert)]
-              (is (= 200 (:status catalog-response)))
-              (is (= "we've been tk-authorized!" (:body catalog-response)))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+         (testing "master endpoints use oid shortnames"
+           (let [path "puppet/v3/catalog/private?environment=production"
+                 catalog-response (http-get-no-ssl path url-encoded-allowable-cert)]
+             (is (= 200 (:status catalog-response)))
+             (is (= "we've been tk-authorized!" (:body catalog-response)))
+             (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
-          (testing "legacy endpoints support oid shortnames"
-            (let [path "/v2.0/environments"
-                  env-response (http-get-no-ssl path url-encoded-allowable-cert)]
-              (is (= 200 (:status env-response)))
-              (is (= "we've been tk-authorized!" (:body env-response)))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+         (testing "legacy endpoints support oid shortnames"
+           (let [path "/v2.0/environments"
+                 env-response (http-get-no-ssl path url-encoded-allowable-cert)]
+             (is (= 200 (:status env-response)))
+             (is (= "we've been tk-authorized!" (:body env-response)))
+             (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
-          (testing "legacy CA endpoints support oid shortnames"
-            (let [path "/production/certificate_status/localhost"
-                  cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
-                  cert-status-body (-> cert-status-response
-                                       :body
-                                       cheshire/parse-string)]
-              (is (= 200 (:status cert-status-response)))
-              ;; Assert that some of the content looks like it came from the
-              ;; certificate_statuses endpoint
-              (is (= "localhost" (get cert-status-body "name")))
-              (is (= "signed" (get cert-status-body "state")))
-              (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
+         (testing "legacy CA endpoints support oid shortnames"
+           (let [path "/production/certificate_status/localhost"
+                 cert-status-response (http-get-no-ssl path url-encoded-allowable-cert)
+                 cert-status-body (-> cert-status-response
+                                      :body
+                                      cheshire/parse-string)]
+             (is (= 200 (:status cert-status-response)))
+             ;; Assert that some of the content looks like it came from the
+             ;; certificate_statuses endpoint
+             (is (= "localhost" (get cert-status-body "name")))
+             (is (= "signed" (get cert-status-body "state")))
+             (is (= 403 (:status (http-get-no-ssl path url-encoded-deniable-cert))))))
 
-          (testing "puppet-admin endpoints support oid shortnames"
-            (let [path "/puppet-admin-api/v1/environment-cache?environment=production"
-                  http-delete (fn [cert]
-                                (http-client/delete
-                                  (str "http://localhost:8080/" path)
-                                  {:headers {"Accept" "application/json"
-                                             "X-Client-Cert" cert
-                                             "X-Client-DN" "CN=private"
-                                             "X-Client-Verify" "SUCCESS"}
-                                   :as :text}))]
-              (is (= 204 (:status (http-delete url-encoded-allowable-cert))))
-              (is (= 403 (:status (http-delete url-encoded-deniable-cert)))))))))))
+         (testing "puppet-admin endpoints support oid shortnames"
+           (let [path "puppet-admin-api/v1/environment-cache?environment=production"
+                 http-delete (fn [cert]
+                               (http-client/delete
+                                 (str "http://localhost:8080/" path)
+                                 {:headers {"Accept" "application/json"
+                                            "X-Client-Cert" cert
+                                            "X-Client-DN" "CN=private"
+                                            "X-Client-Verify" "SUCCESS"}
+                                  :as :text}))]
+             (is (= 204 (:status (http-delete url-encoded-allowable-cert))))
+             (is (= 403 (:status (http-delete url-encoded-deniable-cert)))))))))))

@@ -45,7 +45,7 @@
    {:jruby-puppet {:gem-path gem-path}}
 
    (testing "Requests made to legacy endpoints are routed to new endpoints"
-     (let [env-response (http-get "/v2.0/environments")
+     (let [env-response (http-get "v2.0/environments")
            env-response-body (-> env-response :body json/parse-string)]
        (is (= 200 (:status env-response)))
        ;; Assert that some of the content looks like it came from the
@@ -53,7 +53,7 @@
        (is (not (nil? (get env-response-body "search_paths"))))
        (is (not (nil? (get env-response-body "environments")))))
      (let [node-response (logutils/with-test-logging
-                          (http-get "/production/node/localhost"))
+                          (http-get "production/node/localhost"))
            node-response-body (-> node-response :body json/parse-string)]
        (is (= 200 (:status node-response)))
        ;; Assert that some of the content looks like it came from the
@@ -61,7 +61,7 @@
        (is (= "localhost" (get node-response-body "name")))
        (is (= "production" (get node-response-body "environment"))))
      (let [catalog-response (logutils/with-test-logging
-                             (http-get "/production/catalog/localhost"))
+                             (http-get "production/catalog/localhost"))
            catalog-response-body (-> catalog-response :body json/parse-string)]
        (is (= 200 (:status catalog-response)))
        ;; Assert that some of the content looks like it came from the
@@ -72,7 +72,7 @@
 
        (is (= "localhost" (get catalog-response-body "name")))
        (is (= "production" (get catalog-response-body "environment"))))
-     (let [cert-status-response (http-get "/production/certificate_status/localhost")
+     (let [cert-status-response (http-get "production/certificate_status/localhost")
            cert-status-body (-> cert-status-response :body json/parse-string)]
        (is (= 200 (:status cert-status-response)))
        ;; Assert that some of the content looks like it came from the
@@ -85,7 +85,7 @@
    ;; Seed metrics with an extra request which doesn't match any of the
    ;; pre-defined routes that puppetserver registers.
    (is (= 404 (:status (http-get
-                        "/puppet/funky/town"))))
+                        "puppet/funky/town"))))
    (let [master-service (tk-app/get-service app :MasterService)
          svc-context (tk-services/service-context master-service)
          http-metrics (:http-metrics svc-context)
@@ -119,7 +119,7 @@
            (is (= 1 (metric :count)))
            (is (= (metric :aggregate) (metric :mean)))))))
 
-   (let [resp (http-get "/status/v1/services?level=debug")]
+   (let [resp (http-get "status/v1/services?level=debug")]
      (is (= 200 (:status resp)))
      (let [status (json/parse-string (:body resp) true)]
 
@@ -220,7 +220,7 @@
         (let [time-before-second-borrow (System/currentTimeMillis)]
           (future
            (logutils/with-test-logging
-            (http-get "/production/catalog/localhost")))
+            (http-get "production/catalog/localhost")))
           ;; Wait up to 10 seconds for the catalog request to get to the
           ;; point where it is in the jruby borrow queue.
           (while (and
@@ -232,7 +232,7 @@
                             first
                             (get-in [:reason :request :uri]))))
             (Thread/yield))
-          (let [resp (http-get "/status/v1/services/jruby-metrics?level=debug")]
+          (let [resp (http-get "status/v1/services/jruby-metrics?level=debug")]
             (is (= 200 (:status resp)))
             (let [status (json/parse-string (:body resp) true)]
               (is (= 1 (:service_status_version status)))
@@ -291,7 +291,7 @@
                  (str "request routed to: " (get request "uri"))
                  "text/plain"
                  "1.2.3")))
-     (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
+     (let [node-response (http-get "puppet/v3/node/localhost?environment=production")]
        (is (= 200 (:status node-response)))
        (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response))))))
 
@@ -329,7 +329,7 @@
                    (str "request routed to: " (get request "uri"))
                    "text/plain"
                    "1.2.3")))
-       (let [node-response (http-get "/puppet/v3/node/localhost?environment=production")]
+       (let [node-response (http-get "puppet/v3/node/localhost?environment=production")]
          (is (= 200 (:status node-response)))
          (is (= "request routed to: /puppet/v3/node/localhost" (:body node-response)))))))
 
@@ -367,10 +367,10 @@
           (cons disabled-ca/certificate-authority-disabled-service))
      {:jruby-puppet {:gem-path gem-path}}
 
-     (is (= 404 (:status (http-get "/production/certificate_statuses/all")))
+     (is (= 404 (:status (http-get "production/certificate_statuses/all")))
          (str "A 404 was not returned, indicating that the legacy CA routes "
               "are still being forwarded to the core CA functions."))
 
-     (is (not (= 200 (:status (http-get "/production/certificate_statuses/all"))))
+     (is (not (= 200 (:status (http-get "production/certificate_statuses/all"))))
          (str "A 200 was returned from a request made to a legacy CA endpoint "
               "indicating the disabled CA service was not detected.")))))
